@@ -124,6 +124,7 @@ Kotlin Multiplatform (see the decision log). Modules:
 | --- | --- | --- |
 | `core` | Media Core contracts and pure logic. No platform APIs. | kotlinx-coroutines |
 | `library` | The local-first library engine: SQLite schema (SQLDelight), scan planning and reconciliation, read models (movies, shows, Continue Watching, search), watch state, favorites, identity corrections, version preferences, metadata storage and refresh, Identify flow, smart search, collections, the default Home feed, diagnostics, and the background pipeline. JVM: database driver, `JdkHttpFetcher`, `ArtworkCache`. | `core`, SQLDelight |
+| `design` | Platform-free design system: color tokens with enforced contrast, liquid-glass material roles, motion specs, adaptive layout profiles (including the controller morph), artwork accent extraction. Consumed by the Compose shells. | `core` |
 | `sources:local` | Read-only local folder adapter for desktop JVMs. | `core` |
 | `sources:webdav` | Read-only WebDAV share source (PROPFIND listing, streamed playback with share credentials). | `core` |
 | `sources:jellyfin` | Jellyfin catalog source (platform-free): sign-in, catalog paging, direct-stream playback targets, watch-state reporting. | `core`, kotlinx-serialization-json |

@@ -15,6 +15,7 @@ dependencyResolutionManagement {
 
 include(":core")
 include(":library")
+include(":design")
 include(":sources:local")
 include(":sources:jellyfin")
 include(":sources:webdav")
