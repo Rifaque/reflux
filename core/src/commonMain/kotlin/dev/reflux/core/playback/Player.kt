@@ -32,6 +32,7 @@ data class PlayerState(
     val tracks: List<PlayerTrack> = emptyList(),
     val selectedAudioId: String? = null,
     val selectedSubtitleId: String? = null,
+    val chapters: List<Chapter> = emptyList(),
     val error: String? = null,
 ) {
     val audioTracks: List<PlayerTrack> get() = tracks.filter { it.type == TrackType.AUDIO }

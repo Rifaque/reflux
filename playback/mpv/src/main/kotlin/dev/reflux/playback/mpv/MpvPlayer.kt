@@ -128,6 +128,7 @@ class MpvPlayer private constructor(
                 Property.VOLUME -> state.copy(volume = data.getDouble(0).roundToLong().toInt())
                 Property.MUTE -> state.copy(muted = data.getInt(0) != 0)
                 Property.TRACK_LIST -> state.copy(tracks = MpvTracks.playerTracks(data.getPointer(0)?.getString(0, "UTF-8")))
+                Property.CHAPTERS -> state.copy(chapters = MpvTracks.chapters(data.getPointer(0)?.getString(0, "UTF-8")))
                 Property.AID -> state.copy(selectedAudioId = trackId(data))
                 Property.SID -> state.copy(selectedSubtitleId = trackId(data))
                 Property.PAUSE, Property.PAUSED_FOR_CACHE, Property.SEEKING ->
@@ -158,6 +159,7 @@ class MpvPlayer private constructor(
         PAUSED_FOR_CACHE("paused-for-cache", LibMpv.FORMAT_FLAG),
         SEEKING("seeking", LibMpv.FORMAT_FLAG),
         TRACK_LIST("track-list", LibMpv.FORMAT_STRING),
+        CHAPTERS("chapter-list", LibMpv.FORMAT_STRING),
         AID("aid", LibMpv.FORMAT_STRING),
         SID("sid", LibMpv.FORMAT_STRING),
     }
