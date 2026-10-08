@@ -254,6 +254,30 @@ class MediaPathParserTest {
     }
 
     @Test
+    fun corpusRegressions() {
+        assertEquals(ConfidenceLevel.HIGH, parse("Movies/300.2006.1080p.BluRay.mkv").confidence.level)
+        assertEquals(ConfidenceLevel.HIGH, parse("Movies/9.2009.1080p.mkv").confidence.level)
+        assertEquals(ConfidenceLevel.LOW, parse("00001.mkv").confidence.level)
+        assertEquals("Rogue Cut", parse("X-Men.Days.of.Future.Past.2014.Rogue.Cut.1080p.mkv").edition)
+        assertEquals("Redux", parse("Apocalypse.Now.1979.Redux.1080p.mkv").edition)
+
+        val titan = parse("TV/Attack on Titan/Season 4/[SubsPlease] Shingeki no Kyojin - The Final Season - 28 (1080p) [8D3E2C8E].mkv")
+        assertEquals(ParsedKind.EPISODE, titan.kind)
+        assertEquals("Attack on Titan", titan.title)
+        assertEquals(4, titan.season)
+        assertEquals(28, titan.episode)
+
+        val band = parse("TV/Band of Brothers/Band.of.Brothers.Part.01.Currahee.mkv")
+        assertEquals(ParsedKind.EPISODE, band.kind)
+        assertEquals("Band of Brothers", band.title)
+        assertEquals(1 to 1, band.season to band.episode)
+        assertEquals("Currahee", band.episodeTitle)
+        // Movies split in parts stay movies.
+        assertMovie("Movies/Harry Potter and the Deathly Hallows Part 1 (2010).mkv", "Harry Potter and the Deathly Hallows Part 1", 2010)
+        assertMovie("Movies/Dune.Part.One.2021.mkv", "Dune Part One", 2021)
+    }
+
+    @Test
     fun confidenceReflectsEvidence() {
         assertEquals(ConfidenceLevel.HIGH, parse("Movies/Heat (1995)/Heat (1995).mkv").confidence.level)
         assertEquals(ConfidenceLevel.HIGH, parse("TV/Lost/Season 1/Lost.S01E01.mkv").confidence.level)

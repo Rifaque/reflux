@@ -40,6 +40,7 @@ internal object ReleaseTokens {
             """theatrical(?:[ ._-](?:edition|cut|version))?""", "unrated", "uncut", """remastered""",
             """special[ ._-]edition""", """ultimate[ ._-](?:edition|cut)""", """final[ ._-]cut""",
             """collector'?s[ ._-]edition""", """anniversary[ ._-]edition""", """imax(?:[ ._-]edition)?""", "criterion",
+            """rogue[ ._-]cut""", "redux", """black[ ._-]and[ ._-]chrome""", """open[ ._-]matte""",
         ).joinToString("|"),
     )
 
