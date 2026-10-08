@@ -18,6 +18,7 @@
 | Smart search (deterministic query understanding over metadata, credits, stream facts, watch state) | Implemented and tested |
 | Smart library: default Home feed, franchise/manual/smart collections, diagnostics (weak identification, unmatched works, multiple versions, missing episodes and artwork, offline sources) | Implemented and tested |
 | Catalog-source architecture and Jellyfin adapter (sign-in, catalog, multi-version items, direct streams, two-way watch state) | Implemented and tested against API fixtures; needs verification against a live server |
+| WebDAV network source (read-only) | Implemented and tested against protocol fixtures |
 | Cross-source unification: works sharing a provider ID merge into one work (Best Version across sources) | Implemented and tested |
 | Desktop shell (Compose) with embedded video | Next — needs Google Maven (`dl.google.com`) access to build Compose |
 

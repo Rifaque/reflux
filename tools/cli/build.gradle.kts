@@ -17,6 +17,7 @@ dependencies {
     implementation(project(":library"))
     implementation(project(":sources:local"))
     implementation(project(":sources:jellyfin"))
+    implementation(project(":sources:webdav"))
     implementation(project(":metadata:tmdb"))
     implementation(project(":playback:mpv"))
     implementation(libs.kotlinx.coroutines.core)

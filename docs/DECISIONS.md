@@ -142,3 +142,7 @@ libmpv's defaults are tuned for hardware but fall back instead of failing: video
 ## 2026-10-08 — Developer CLI
 
 `tools/cli` is a long-lived diagnostic tool, not a product shell: it wires the engine exactly as a desktop shell does and makes identification, metadata, and playback behavior observable on real libraries. Tests run against file-backed databases, because the in-memory driver hid a connection-threading bug that the CLI exposed.
+
+## 2026-10-08 — First network file source: WebDAV
+
+WebDAV is the first network file source because it is plain HTTP(S): it reuses the `HttpFetcher` abstraction, streams directly into the player with standard headers, works through Nextcloud and most NAS devices, and needs no protocol library. SMB remains a candidate; on desktop, OS-mounted SMB shares already work as local folders. The adapter is read-only by construction (`PROPFIND`/`GET` only).

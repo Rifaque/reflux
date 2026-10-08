@@ -16,6 +16,8 @@ import dev.reflux.library.planPlayback
 import dev.reflux.playback.mpv.MpvPlayer
 import dev.reflux.sources.jellyfin.JellyfinSource
 import dev.reflux.sources.local.LocalFolderSource
+import dev.reflux.sources.webdav.WebDavConfig
+import dev.reflux.sources.webdav.WebDavSource
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import java.nio.file.Files
@@ -29,6 +31,7 @@ Usage: reflux <command> [arguments]
 
   add <folder> [name]          Add a local media folder (read-only; files are never modified)
   jellyfin <server> <user>     Sign in to a Jellyfin server (password from REFLUX_JELLYFIN_PASSWORD or prompt)
+  webdav <url> [user]          Add a WebDAV share, read-only (password from REFLUX_WEBDAV_PASSWORD or prompt)
   sources                      List sources and whether they are reachable
   refresh                      Scan all sources, probe new files, fetch metadata and artwork
   library                      List movies and shows
@@ -51,6 +54,7 @@ fun main(args: Array<String>) {
         when (command) {
             "add" -> add(env, rest)
             "jellyfin" -> jellyfin(env, rest)
+            "webdav" -> webdav(env, rest)
             "sources" -> sources(env)
             "refresh" -> refresh(env)
             "library" -> library(env)
@@ -89,6 +93,22 @@ private suspend fun jellyfin(env: AppEnvironment, args: List<String>): Boolean {
     env.library.addSource(source, credentials.encode())
     env.registry.register(source)
     println("Signed in to ${credentials.serverUrl}. Reading the catalog...")
+    return refresh(env, source.descriptor.id)
+}
+
+private suspend fun webdav(env: AppEnvironment, args: List<String>): Boolean {
+    val url = args.firstOrNull() ?: return usage("webdav <url> [user]")
+    val user = args.getOrNull(1)
+    val password = user?.let {
+        System.getenv("REFLUX_WEBDAV_PASSWORD") ?: System.console()?.readPassword("Password for $it: ")?.concatToString()
+            ?: return fail("No password: set REFLUX_WEBDAV_PASSWORD or run in a terminal.")
+    }
+    val config = WebDavConfig(url, user, password)
+    val source = WebDavSource(config, env.http)
+    if (source.availability() != Availability.AVAILABLE) return fail("Cannot reach $url (check the address and credentials).")
+    env.library.addSource(source, config.encode())
+    env.registry.register(source)
+    println("Added ${source.descriptor.displayName}. Scanning...")
     return refresh(env, source.descriptor.id)
 }
 
