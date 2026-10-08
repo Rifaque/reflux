@@ -12,7 +12,6 @@ import dev.reflux.core.search.SearchMatcher
 import dev.reflux.core.search.SearchVocabulary
 import dev.reflux.core.search.SmartDocument
 import dev.reflux.core.search.SmartQuery
-import dev.reflux.core.search.SmartQueryParser
 import dev.reflux.core.search.matches
 import dev.reflux.library.db.RefluxDatabase
 

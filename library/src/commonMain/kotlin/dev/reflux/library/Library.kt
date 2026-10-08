@@ -1,20 +1,9 @@
 package dev.reflux.library
 
 import app.cash.sqldelight.coroutines.asFlow
-import dev.reflux.core.identify.ConfidenceLevel
-import dev.reflux.core.identify.IdentityKeys
 import dev.reflux.core.identify.IdentityOverride
-import dev.reflux.core.metadata.Credit
-import dev.reflux.core.metadata.CreditRole
-import dev.reflux.core.metadata.MetadataCandidate
-import dev.reflux.core.metadata.MetadataKind
-import dev.reflux.core.metadata.MetadataMatcher
-import dev.reflux.core.metadata.MetadataProvider
-import dev.reflux.core.metadata.MetadataQuery
-import dev.reflux.core.metadata.ScoredCandidate
 import dev.reflux.core.identify.MediaPathParser
 import dev.reflux.core.identify.ParsedKind
-import dev.reflux.core.identify.TitleText
 import dev.reflux.core.model.ArtworkKind
 import dev.reflux.core.model.ArtworkLocator
 import dev.reflux.core.model.Availability
@@ -24,15 +13,12 @@ import dev.reflux.core.model.MediaId
 import dev.reflux.core.model.MediaItem
 import dev.reflux.core.model.MediaKind
 import dev.reflux.core.model.MediaLocation
-import dev.reflux.core.model.MediaVersion
 import dev.reflux.core.model.Movie
 import dev.reflux.core.model.Season
 import dev.reflux.core.model.Show
 import dev.reflux.core.model.SourceId
-import dev.reflux.core.model.StableIds
 import dev.reflux.core.model.VersionId
 import dev.reflux.core.model.WatchState
-import dev.reflux.core.model.StreamInfoOrigin
 import dev.reflux.core.playback.DeviceCapabilities
 import dev.reflux.core.playback.MediaProber
 import dev.reflux.core.playback.StreamInfo
@@ -75,7 +61,8 @@ class Library(
     internal val now: () -> Long,
 ) : WatchReporter {
     internal val queries = database.libraryQueries
-    private val metadataSync = MetadataSync(database, now)
+    private val writer = PlanApplier(queries, now)
+    internal val metadataSync = MetadataSync(database, now)
     private val smartSearch = SmartSearch(database)
     private val parser get() = MediaPathParser(maxYear = yearOf(now()) + 1)
 
@@ -93,7 +80,7 @@ class Library(
 
     /** Removes a source and everything Reflux derived from it. Watch history of its works is kept. */
     fun removeSource(id: SourceId) = database.transaction {
-        applyPlan(ScanPlan(id, emptyList(), emptyList(), emptyList(), emptyMap()))
+        writer.apply(ScanPlan(id, emptyList(), emptyList(), emptyList(), emptyMap()))
         queries.deleteSource(id.value)
     }
 
@@ -132,7 +119,7 @@ class Library(
         if (!hasVideo && hasKnownVersions(id)) return keepEmpty(id)
         return database.transactionWithResult {
             val plan = planner().plan(id, files, overrides(id), yearHints(id))
-            val report = applyPlan(plan)
+            val report = writer.apply(plan)
             queries.markSourceScanned(now(), id.value)
             report
         }
@@ -142,7 +129,7 @@ class Library(
         if (entries.isEmpty() && hasKnownVersions(id)) return keepEmpty(id)
         return database.transactionWithResult {
             val plan = planner().planCatalog(id, entries, overrides(id), yearHints(id))
-            val report = applyPlan(plan)
+            val report = writer.apply(plan)
             val itemByPath = plan.versions.associate { it.version.location.path to it.version.itemId }
             for (entry in entries) {
                 val state = entry.userState ?: continue
@@ -199,7 +186,7 @@ class Library(
                 ScanPlanner.decodeCatalogEntry(row.source_identity ?: return@mapNotNull null, row.path, row.size_bytes, row.modified_at, stream)
             }
             return database.transactionWithResult {
-                applyPlan(planner().planCatalog(sourceId, entries, overrides(sourceId), yearHints(sourceId)))
+                writer.apply(planner().planCatalog(sourceId, entries, overrides(sourceId), yearHints(sourceId)))
             }
         }
         val files = versions.map { SourceFile(it.path, it.size_bytes, it.modified_at) } +
@@ -207,7 +194,7 @@ class Library(
             queries.artworkPathsOfSource(sourceId.value).executeAsList().map { SourceFile(it, 0, 0) }
         val report = database.transactionWithResult {
             val plan = planner().plan(sourceId, files.distinctBy { it.path }, overrides(sourceId), yearHints(sourceId))
-            applyPlan(plan)
+            writer.apply(plan)
         }
         return report
     }
@@ -229,200 +216,6 @@ class Library(
                 { it.year!!.toInt() },
             )
             .mapValues { it.value.toSet() }
-
-    /** Applies a plan inside the caller's transaction: the plan becomes the complete contents of its source. */
-    private fun applyPlan(plan: ScanPlan): ScanReport {
-        val time = now()
-        val sourceId = plan.sourceId.value
-        val existing = queries.versionsOfSource(sourceId).executeAsList().associateBy { it.path }
-
-        for (item in plan.items) {
-            queries.insertItemIfAbsent(
-                id = item.id.value,
-                kind = item.kind.name,
-                title = item.storedTitle(),
-                title_key = item.storedTitleKey(),
-                sort_key = TitleText.sortKey(item.storedTitle()),
-                year = item.yearOrNull()?.toLong(),
-                show_id = (item as? Season)?.showId?.value ?: (item as? Episode)?.showId?.value,
-                season_id = (item as? Episode)?.seasonId?.value,
-                season_number = ((item as? Season)?.number ?: (item as? Episode)?.seasonNumber)?.toLong(),
-                episode_number = (item as? Episode)?.episodeNumber?.toLong(),
-                episode_number_end = (item as? Episode)?.episodeNumberEnd?.toLong(),
-                absolute_number = (item as? Episode)?.absoluteNumber?.toLong(),
-                air_date = (item as? Episode)?.airDate?.toString(),
-                external_hints = encodePairs(plan.externalHints[item.id].orEmpty()),
-                identity_key = plan.identityKeys[item.id],
-                added_at = time,
-            )
-            queries.updateItem(
-                title = item.storedTitle(),
-                titleKey = item.storedTitleKey(),
-                sortKey = TitleText.sortKey(item.storedTitle()),
-                year = item.yearOrNull()?.toLong(),
-                episodeNumberEnd = (item as? Episode)?.episodeNumberEnd?.toLong(),
-                externalHints = encodePairs(plan.externalHints[item.id].orEmpty()),
-                identityKey = plan.identityKeys[item.id],
-                id = item.id.value,
-            )
-        }
-
-        var added = 0
-        var updated = 0
-        var unchanged = 0
-        val movedItems = mutableListOf<Pair<String, String>>()
-        for ((version, parsed, sourceIdentity) in plan.versions) {
-            val previous = existing[version.location.path]
-            val signals = parsed.confidence.signals.joinToString(",") { it.name }
-            val fileChanged = previous == null ||
-                previous.size_bytes != version.sizeBytes || previous.modified_at != version.modifiedAtEpochMs
-            when {
-                previous == null -> {
-                    insertVersion(version, parsed.confidence.score, signals, sourceIdentity, time)
-                    added++
-                }
-                !fileChanged && previous.stream_origin != version.streamOrigin.name -> {
-                    // Keep probed stream data for unchanged files; only identity may change.
-                    queries.updateVersionIdentity(
-                        version.itemId.value, version.edition, version.part?.toLong(), parsed.confidence.score, signals,
-                        time, version.id.value,
-                    )
-                    if (previous.item_id != version.itemId.value) updated++ else unchanged++
-                }
-                else -> {
-                    updateVersion(version, parsed.confidence.score, signals, sourceIdentity, time)
-                    if (fileChanged || previous.item_id != version.itemId.value) updated++ else unchanged++
-                }
-            }
-            if (previous != null && previous.item_id != version.itemId.value) {
-                movedItems += previous.item_id to version.itemId.value
-            }
-        }
-
-        val planned = plan.versions.map { it.version.location.path }.toSet()
-        val removed = existing.values.filter { it.path !in planned }
-        for (row in removed) {
-            queries.deleteVersion(row.id)
-            queries.deleteTracksOfVersion(row.id)
-            queries.deleteExternalSubtitlesOfVersion(row.id)
-        }
-
-        queries.deleteExternalSubtitlesOfSource(sourceId)
-        for ((version, _, _) in plan.versions) {
-            for (sub in version.externalSubtitles) {
-                queries.insertExternalSubtitle(
-                    version.id.value, sourceId, sub.location.path, sub.format.name, sub.language,
-                    sub.forced.toLong(), sub.hearingImpaired.toLong(),
-                )
-            }
-        }
-
-        queries.deleteArtworkOfSource(sourceId, ScanPlanner.sourceArtworkOrigin(plan.sourceId))
-        for (art in plan.artwork) {
-            val locator = art.locator as ArtworkLocator.SourceFile
-            queries.upsertArtwork(art.itemId.value, art.kind.name, art.origin, sourceId, locator.location.path)
-        }
-
-        // A work whose only file was re-identified carries its watch history to the new identity.
-        for ((from, to) in movedItems.distinct()) {
-            if (!queries.itemHasVersions(from).executeAsOne()) queries.moveWatchState(to, from)
-        }
-        queries.deleteOrphanPlayables()
-        queries.deleteEmptySeasons()
-        queries.deleteEmptyShows()
-        queries.deleteOrphanArtwork()
-        queries.deleteOrphanMetadata()
-        queries.deleteOrphanCredits()
-        queries.deleteOrphanAttempts()
-
-        return ScanReport(
-            sourceId = plan.sourceId,
-            status = ScanReport.Status.COMPLETED,
-            added = added,
-            updated = updated,
-            removed = removed.size,
-            unchanged = unchanged,
-            skipped = plan.skipped,
-            lowConfidence = plan.versions.count { it.parsed.confidence.level == ConfidenceLevel.LOW },
-        )
-    }
-
-    private fun insertVersion(version: MediaVersion, confidence: Double, signals: String, sourceIdentity: String?, time: Long) {
-        val video = version.stream.video
-        queries.insertVersionIfAbsent(
-            id = version.id.value,
-            item_id = version.itemId.value,
-            source_id = version.location.sourceId.value,
-            path = version.location.path,
-            size_bytes = version.sizeBytes,
-            modified_at = version.modifiedAtEpochMs,
-            stream_origin = version.streamOrigin.name,
-            container = version.stream.container.name,
-            video_codec = video?.codec?.name,
-            width = video?.width?.toLong(),
-            height = video?.height?.toLong(),
-            bit_depth = video?.bitDepth?.toLong(),
-            dynamic_range = video?.dynamicRange?.name,
-            dolby_vision_profile = video?.dolbyVisionProfile?.toLong(),
-            frame_rate = video?.frameRate,
-            duration_ms = version.stream.durationMs,
-            bitrate_bps = version.stream.bitrateBps,
-            edition = version.edition,
-            part = version.part?.toLong(),
-            confidence = confidence,
-            signals = signals,
-            source_identity = sourceIdentity,
-            first_seen_at = time,
-            last_seen_at = time,
-        )
-        replaceTracks(version)
-    }
-
-    private fun updateVersion(version: MediaVersion, confidence: Double, signals: String, sourceIdentity: String?, time: Long) {
-        val video = version.stream.video
-        queries.updateVersion(
-            itemId = version.itemId.value,
-            sizeBytes = version.sizeBytes,
-            modifiedAt = version.modifiedAtEpochMs,
-            streamOrigin = version.streamOrigin.name,
-            container = version.stream.container.name,
-            videoCodec = video?.codec?.name,
-            width = video?.width?.toLong(),
-            height = video?.height?.toLong(),
-            bitDepth = video?.bitDepth?.toLong(),
-            dynamicRange = video?.dynamicRange?.name,
-            dolbyVisionProfile = video?.dolbyVisionProfile?.toLong(),
-            frameRate = video?.frameRate,
-            durationMs = version.stream.durationMs,
-            bitrateBps = version.stream.bitrateBps,
-            edition = version.edition,
-            part = version.part?.toLong(),
-            confidence = confidence,
-            signals = signals,
-            sourceIdentity = sourceIdentity,
-            lastSeenAt = time,
-            id = version.id.value,
-        )
-        replaceTracks(version)
-    }
-
-    private fun replaceTracks(version: MediaVersion) = replaceTracks(version.id.value, version.stream)
-
-    private fun replaceTracks(id: String, stream: StreamInfo) {
-        queries.deleteTracksOfVersion(id)
-        stream.audio.forEachIndexed { index, track ->
-            queries.insertTrack(
-                id, index.toLong(), TRACK_AUDIO, track.codec.name, track.channels?.toLong(), track.language,
-                track.atmos.toLong(), 0, track.default.toLong(),
-            )
-        }
-        stream.subtitles.forEachIndexed { index, track ->
-            queries.insertTrack(
-                id, index.toLong(), TRACK_SUBTITLE, track.format.name, null, track.language, 0,
-                track.forced.toLong(), track.default.toLong(),
-            )
-        }
-    }
 
     // Probing ------------------------------------------------------------------------------------
 
@@ -447,97 +240,7 @@ class Library(
     }
 
     /** Stores probed stream information for a version. */
-    fun recordProbe(versionId: VersionId, stream: StreamInfo) = database.transaction {
-        val video = stream.video
-        queries.updateVersionStream(
-            streamOrigin = StreamInfoOrigin.PROBE.name,
-            container = stream.container.name,
-            videoCodec = video?.codec?.name,
-            width = video?.width?.toLong(),
-            height = video?.height?.toLong(),
-            bitDepth = video?.bitDepth?.toLong(),
-            dynamicRange = video?.dynamicRange?.name,
-            dolbyVisionProfile = video?.dolbyVisionProfile?.toLong(),
-            frameRate = video?.frameRate,
-            durationMs = stream.durationMs,
-            bitrateBps = stream.bitrateBps,
-            probedAt = now(),
-            id = versionId.value,
-        )
-        replaceTracks(versionId.value, stream)
-    }
-
-    // Metadata -----------------------------------------------------------------------------------
-
-    /**
-     * Looks up metadata and artwork for works that have none yet, newest first. Unmatched works are retried
-     * after [retryAfterMs]. Safe to call while offline: it stops early and reports [MetadataReport.offline].
-     */
-    suspend fun refreshMetadata(
-        provider: MetadataProvider,
-        language: String,
-        limit: Int = 100,
-        retryAfterMs: Long = 7 * 24 * 3_600_000L,
-    ): MetadataReport = metadataSync.refresh(provider, language, limit, retryAfterMs)
-
-    fun metadata(itemId: MediaId): ItemMetadata? = queries.metadataOf(itemId.value).executeAsOneOrNull()?.toModel()
-
-    fun credits(itemId: MediaId): List<Credit> = queries.creditsOf(itemId.value).executeAsList().map {
-        Credit(it.name, enumOrNull<CreditRole>(it.role) ?: CreditRole.ACTOR, it.character, it.profile_url)
-    }
-
-    /** Candidates for the Identify flow: the work's own title and year, or what the user typed. */
-    suspend fun searchMetadata(
-        itemId: MediaId,
-        provider: MetadataProvider,
-        language: String,
-        title: String? = null,
-        year: Int? = null,
-    ): List<ScoredCandidate> {
-        val row = queries.itemById(itemId.value).executeAsOneOrNull() ?: return emptyList()
-        val kind = if (row.kind == MediaKind.SHOW.name) MetadataKind.SHOW else MetadataKind.MOVIE
-        val query = MetadataQuery(kind, title ?: row.title, if (title != null) year else year ?: row.year?.toInt(), language = language)
-        return MetadataMatcher.rank(query, provider.search(query))
-    }
-
-    /**
-     * "Identify this movie/show → choose": re-identifies every file of the work as [candidate], remembers the
-     * choice, and fetches its metadata. Files are never touched. Returns the work's (possibly new) ID.
-     */
-    suspend fun identifyAs(itemId: MediaId, candidate: MetadataCandidate, provider: MetadataProvider, language: String): MediaId {
-        val item = rawItem(itemId) ?: return itemId
-        val newId: MediaId
-        val overrides: List<Pair<MediaLocation, IdentityOverride>>
-        when (item) {
-            is Movie -> {
-                newId = StableIds.mediaId(IdentityKeys.movie(candidate.title, candidate.year))
-                overrides = versions(itemId).map { it.version.location to IdentityOverride(ParsedKind.MOVIE, candidate.title, candidate.year) }
-            }
-            is Show -> {
-                newId = StableIds.mediaId(IdentityKeys.show(candidate.title, candidate.year))
-                overrides = queries.episodesOfShow(itemId.value).executeAsList().map { it.toModel() as Episode }.flatMap { episode ->
-                    val number = episode.episodeNumber ?: episode.absoluteNumber ?: return@flatMap emptyList()
-                    versions(episode.id).map {
-                        it.version.location to IdentityOverride(ParsedKind.EPISODE, candidate.title, candidate.year, episode.seasonNumber, number)
-                    }
-                }
-            }
-            else -> return itemId
-        }
-        database.transaction {
-            for ((location, override) in overrides) {
-                queries.upsertOverride(
-                    location.sourceId.value, location.path, override.kind.name, override.title, override.year?.toLong(),
-                    override.season?.toLong(), override.episode?.toLong(), now(),
-                )
-            }
-            queries.pinMetadata(newId.value, candidate.ref.toString())
-            queries.clearMetadataAttempt(newId.value)
-        }
-        overrides.map { it.first.sourceId }.distinct().forEach { reidentify(it) }
-        queries.itemById(newId.value).executeAsOneOrNull()?.let { metadataSync.refreshWork(it, provider, language, candidate.ref) }
-        return newId
-    }
+    fun recordProbe(versionId: VersionId, stream: StreamInfo) = database.transaction { writer.recordProbe(versionId, stream) }
 
     // Identity corrections -----------------------------------------------------------------------
 
@@ -573,7 +276,7 @@ class Library(
     /** A work with its display title (provider metadata wins over the parsed title). */
     fun item(id: MediaId): MediaItem? = rawItem(id)?.let { it.withMetadata(metadata(id)) }
 
-    private fun rawItem(id: MediaId): MediaItem? = queries.itemById(id.value).executeAsOneOrNull()?.toModel()
+    internal fun rawItem(id: MediaId): MediaItem? = queries.itemById(id.value).executeAsOneOrNull()?.toModel()
 
     fun entry(id: MediaId): LibraryEntry? = item(id)?.let { entries(listOf(it)).single() }
 
@@ -711,7 +414,7 @@ class Library(
         return entries(order.mapNotNull { items[it] })
     }
 
-    private fun saveWatchState(state: WatchState) {
+    internal fun saveWatchState(state: WatchState) {
         queries.upsertWatchState(
             state.itemId.value, state.positionMs, state.durationMs, state.completed.toLong(), state.playCount.toLong(),
             state.lastPlayedAtEpochMs,
@@ -798,13 +501,6 @@ class Library(
             }
         }
     }
-
-    private fun MediaItem.storedTitle(): String = when (this) {
-        is Episode -> episodeTitle ?: ""
-        else -> title
-    }
-
-    private fun MediaItem.storedTitleKey(): String = TitleText.key(storedTitle())
 
     companion object {
         /** Stays below SQLite's historical limit of 999 bound parameters. */
