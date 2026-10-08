@@ -104,6 +104,9 @@ class MpvEngineTest {
             assertEquals(2, loaded.subtitleTracks.size)
             assertTrue(loaded.subtitleTracks.any { it.external })
             assertEquals(TrackType.VIDEO, loaded.tracks.first().type)
+            val withChapters = player.await { it.chapters.size == 2 }
+            assertEquals(listOf("Intro", "Chapter 1"), withChapters.chapters.map { it.title })
+            assertEquals(1_000L, withChapters.chapters[1].startMs)
 
             val ended = player.await { it.status == PlayerStatus.ENDED }
             assertTrue(ended.positionMs >= 2_900)

@@ -15,13 +15,19 @@ object TestMedia {
         val srt = directory.resolve("embedded.srt")
         Files.writeString(srt, "1\n00:00:00,000 --> 00:00:02,000\nHello\n")
         val output = directory.resolve("Sample (2020).mkv")
+        val chapters = directory.resolve("chapters.txt")
+        Files.writeString(
+            chapters,
+            ";FFMETADATA1\n[CHAPTER]\nTIMEBASE=1/1000\nSTART=0\nEND=1000\ntitle=Intro\n[CHAPTER]\nTIMEBASE=1/1000\nSTART=1000\nEND=3000\ntitle=Chapter 1\n",
+        )
         run(
             "ffmpeg", "-y", "-loglevel", "error",
             "-f", "lavfi", "-i", "testsrc=duration=3:size=320x240:rate=24",
             "-f", "lavfi", "-i", "sine=frequency=440:duration=3",
             "-f", "lavfi", "-i", "sine=frequency=660:duration=3",
             "-i", srt.toString(),
-            "-map", "0:v", "-map", "1:a", "-map", "2:a", "-map", "3:s",
+            "-i", chapters.toString(),
+            "-map", "0:v", "-map", "1:a", "-map", "2:a", "-map", "3:s", "-map_chapters", "4",
             "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac", "-ac:a:1", "6", "-c:s", "srt",
             "-metadata:s:a:0", "language=eng", "-metadata:s:a:1", "language=jpn", "-metadata:s:s:0", "language=eng",
             output.toString(),

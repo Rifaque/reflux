@@ -51,6 +51,12 @@ internal object MpvTracks {
         )
     }
 
+    /** mpv `chapter-list`: `[{"title": "Intro", "time": 0.0}, ...]`. */
+    fun chapters(json: String?): List<dev.reflux.core.playback.Chapter> = parse(json).mapNotNull { chapter ->
+        val time = chapter.double("time") ?: return@mapNotNull null
+        dev.reflux.core.playback.Chapter(chapter.string("title"), (time * 1000).toLong())
+    }
+
     fun video(track: JsonObject): VideoStream = VideoStream(
         codec = videoCodec(track.string("codec")),
         width = track.int("demux-w"),

@@ -11,7 +11,7 @@
 | Filename/folder identification, sidecars, confidence | Implemented and tested |
 | Local persistence / offline model (SQLite, offline and unmount safety) | Implemented and tested |
 | Local folder source (desktop) and scan → identify → library | Implemented and tested |
-| Player contract, default track selection, playback controller | Implemented and tested |
+| Player contract, default track selection, playback controller, chapters, skip intro/recap/credits, next-episode autoplay with "still watching?" | Implemented and tested |
 | Desktop engine: libmpv playback and probing (verified headlessly against real media) | Implemented and tested |
 | Metadata engine: provider contract, deterministic matching, TMDB provider, episode metadata, Identify flow, artwork cache | Implemented and tested |
 | Background pipeline: change watching, debounced rescans, reconnect detection, scan → probe → metadata → artwork | Implemented and tested |
