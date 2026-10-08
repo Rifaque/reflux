@@ -75,5 +75,15 @@ interface FileEnumeratingSource : MediaSource {
     fun files(): Flow<SourceFile>
 }
 
+/**
+ * A source that can signal changes, so the library updates without polling.
+ *
+ * Signals are coarse ("something changed") and may be spurious; consumers debounce them and rescan.
+ * The flow completes or fails when watching is impossible; consumers then fall back to periodic scans.
+ */
+interface ChangeNotifyingSource : MediaSource {
+    fun changes(): Flow<Unit>
+}
+
 class SourceUnavailableException(sourceId: SourceId, cause: Throwable? = null) :
     Exception("source unavailable: $sourceId", cause)
