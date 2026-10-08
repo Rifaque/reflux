@@ -203,3 +203,55 @@ class CatalogSourceTest {
         assertTrue(heat.artwork.containsKey(ArtworkKind.POSTER), "server artwork survives re-identification")
     }
 }
+
+private class SyncingServer : dev.reflux.core.source.WatchStateSyncSource {
+    val calls = mutableListOf<String>()
+    var failing = false
+    override val descriptor = FakeServer().descriptor
+    override suspend fun availability() = Availability.AVAILABLE
+    override suspend fun playbackTarget(path: String) = PlaybackTarget("https://media.example/$path")
+    override suspend fun reportProgress(path: String, positionMs: Long, paused: Boolean) = record("progress:$path:$positionMs")
+    override suspend fun reportStopped(path: String, positionMs: Long) = record("stopped:$path:$positionMs")
+    override suspend fun setPlayed(path: String, played: Boolean) = record("played:$path:$played")
+    private fun record(call: String) {
+        if (failing) error("offline")
+        calls += call
+    }
+}
+
+class WatchSyncTest {
+    private var clock = 1_790_000_000_000L
+    private val library = Library(LibraryDatabase.inMemory()) { clock }
+    private val server = FakeServer().apply { movie("a", "Heat", 1995) }
+    private val syncing = SyncingServer()
+
+    @Test
+    fun playbackIsReportedToTheLibraryAndTheServer() = runTest(kotlinx.coroutines.test.UnconfinedTestDispatcher()) {
+        library.addSource(server, "x")
+        library.scan(server)
+        val heat = library.movies().single()
+        val version = library.versions(heat.item.id).single().version
+        val reporter = SyncingWatchReporter(library, version, syncing, this)
+        reporter.progress(heat.item.id, 120_000, 6_000_000)
+        reporter.stopped(heat.item.id, 300_000, 6_000_000)
+        assertEquals(listOf("progress:items/a/sources/a:120000", "stopped:items/a/sources/a:300000"), syncing.calls)
+        assertEquals(300_000, library.watchState(heat.item.id)?.positionMs)
+
+        syncing.failing = true
+        reporter.progress(heat.item.id, 400_000, 6_000_000)
+        assertEquals(400_000, library.watchState(heat.item.id)?.positionMs, "a failing server never blocks local state")
+    }
+
+    @Test
+    fun markingWatchedReachesTheServer() = runTest {
+        library.addSource(server, "x")
+        library.scan(server)
+        val heat = library.movies().single()
+        assertEquals(0, library.setWatchedEverywhere(heat.item.id, true) { syncing })
+        assertEquals(listOf("played:items/a/sources/a:true"), syncing.calls)
+        assertEquals(true, library.watchState(heat.item.id)?.completed)
+        syncing.failing = true
+        assertEquals(1, library.setWatchedEverywhere(heat.item.id, false) { syncing })
+        assertEquals(false, library.watchState(heat.item.id)?.completed)
+    }
+}

@@ -690,7 +690,7 @@ class Library(
 
     /** Marks a work as watched or unwatched. Shows and seasons apply to all their episodes. */
     fun setWatched(itemId: MediaId, watched: Boolean) = database.transaction {
-        for (id in playablesOf(itemId)) {
+        for (id in playableIdsOf(itemId)) {
             val previous = watchState(id)
             saveWatchState(if (watched) WatchRules.markWatched(previous, id, now()) else WatchRules.markUnwatched(previous, id))
         }
@@ -714,7 +714,7 @@ class Library(
         )
     }
 
-    private fun playablesOf(itemId: MediaId): List<MediaId> = when (val item = item(itemId)) {
+    internal fun playableIdsOf(itemId: MediaId): List<MediaId> = when (val item = item(itemId)) {
         is Show -> queries.episodesOfShow(item.id.value).executeAsList().map { MediaId(it.id) }
         is Season -> queries.episodesOfShow(item.showId.value).executeAsList()
             .filter { it.season_id == item.id.value }.map { MediaId(it.id) }

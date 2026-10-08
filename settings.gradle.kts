@@ -16,5 +16,6 @@ dependencyResolutionManagement {
 include(":core")
 include(":library")
 include(":sources:local")
+include(":sources:jellyfin")
 include(":playback:mpv")
 include(":metadata:tmdb")
