@@ -76,3 +76,11 @@ Consistency should come from:
 - the same media concepts.
 
 Not from forcing identical layouts onto every screen.
+
+## Implemented foundations (`design`)
+
+- **Palette:** dark cinematic base; text tokens are tested to meet WCAG AA on every surface, and glass materials raise their tint over bright artwork until text stays at 4.5:1.
+- **Materials:** Base, Elevated, Floating, Interactive, Focused, and Modal, each with tint, backdrop blur, highlight, shadow, and corner radius. Blur applies to what is behind a material, never to its content.
+- **Motion:** standard, emphasized, and exit curves; focus changes 140 ms, navigation 320 ms, poster-to-details 420 ms, input morph 360 ms; player controls auto-hide after 3.5 s.
+- **Adaptive layout:** form factor (phone, tablet, desktop, TV) comes from the window and device; input modality only changes density, focus scale, target size, and button prompts. That is what makes the controller morph a transition rather than a mode. TVs keep a 5% overscan-safe margin and a 1.5× type scale.
+- **Artwork accent:** a deterministic, saturation-weighted hue histogram picks an accent from artwork; it is adjusted until text on it meets AA, and grey artwork keeps the default accent.
