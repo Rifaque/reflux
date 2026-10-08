@@ -118,8 +118,9 @@ Kotlin Multiplatform (see the decision log). Modules:
 | Module | Contents | Depends on |
 | --- | --- | --- |
 | `core` | Media Core contracts and pure logic. No platform APIs. | kotlinx-coroutines |
-| `library` | The local-first library engine: SQLite schema (SQLDelight), scan planning and reconciliation, read models (movies, shows, Continue Watching, search), watch state, favorites, identity corrections, version preferences. | `core`, SQLDelight |
+| `library` | The local-first library engine: SQLite schema (SQLDelight), scan planning and reconciliation, read models (movies, shows, Continue Watching, search), watch state, favorites, identity corrections, version preferences, metadata storage and refresh, Identify flow. JVM: database driver, `JdkHttpFetcher`, `ArtworkCache`. | `core`, SQLDelight |
 | `sources:local` | Read-only local folder adapter for desktop JVMs. | `core` |
+| `metadata:tmdb` | TMDB v3 metadata provider over the core `HttpFetcher` (platform-free). | `core`, kotlinx-serialization-json |
 | `playback:mpv` | Desktop playback engine and media probe on libmpv (JNA binding), desktop capability profile. | `core`, JNA, kotlinx-serialization-json |
 
 Packages in `core` (`dev.reflux.core`):
@@ -131,6 +132,8 @@ Packages in `core` (`dev.reflux.core`):
 - `versions` — Best Version (`VersionSelector`), ranked and explained.
 - `watch` — resume/completion rules and Next Up.
 - `search` — deterministic title search.
+- `metadata` — provider contract (`MetadataProvider`), work/season/episode metadata, deterministic `MetadataMatcher`.
+- `net` — `HttpFetcher`, the only network abstraction core-level code sees.
 - `input` — semantic actions, default mappings, glyphs, and input-modality tracking.
 
 Playing a work: `Library.planPlayback` picks the version (Best Version or the user's choice), resolves it and its external subtitles through the source adapter, and adds the resume position. A `PlaybackController` then drives the platform `Player` and reports progress back to the library. Probing (`Library.probePending` with a `MediaProber`) replaces file-name hints with real stream data in the background; failures are not retried until the file changes.

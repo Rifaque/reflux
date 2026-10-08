@@ -13,8 +13,8 @@
 | Local folder source (desktop) and scan → identify → library | Implemented and tested |
 | Player contract, default track selection, playback controller | Implemented and tested |
 | Desktop engine: libmpv playback and probing (verified headlessly against real media) | Implemented and tested |
-| Desktop shell (Compose) with embedded video | Next |
-| Metadata and artwork providers | Planned |
+| Metadata engine: provider contract, deterministic matching, TMDB provider, episode metadata, Identify flow, artwork cache | Implemented and tested |
+| Desktop shell (Compose) with embedded video | Next — needs Google Maven (`dl.google.com`) access to build Compose |
 
 ## Phase 0 — Product and architecture foundation
 

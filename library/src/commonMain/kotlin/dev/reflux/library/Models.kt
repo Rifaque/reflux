@@ -33,6 +33,8 @@ data class LibraryEntry(
     /** Whether any version can be played right now. Cached entries stay browsable either way. */
     val availability: Availability,
     val favorite: Boolean,
+    /** Provider metadata, when the work has been matched. Titles in [item] already reflect it. */
+    val metadata: ItemMetadata? = null,
 )
 
 /** A version with the state of its source. */
