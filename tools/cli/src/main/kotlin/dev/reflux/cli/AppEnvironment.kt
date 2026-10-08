@@ -15,6 +15,9 @@ import dev.reflux.playback.mpv.MpvProbe
 import dev.reflux.sources.jellyfin.JellyfinCredentials
 import dev.reflux.sources.jellyfin.JellyfinSource
 import dev.reflux.sources.local.LocalFolderSource
+import dev.reflux.sources.smb.LocalStreamServer
+import dev.reflux.sources.smb.SmbShareConfig
+import dev.reflux.sources.smb.SmbSource
 import dev.reflux.sources.webdav.WebDavConfig
 import dev.reflux.sources.webdav.WebDavSource
 import java.awt.GraphicsEnvironment
@@ -44,6 +47,9 @@ class AppEnvironment(dataDirectory: Path = AppDirectories.data()) {
         else java.util.UUID.randomUUID().toString().also { java.nio.file.Files.writeString(file, it) }
     }
 
+    /** Streams SMB files to players over loopback HTTP. */
+    val streams by lazy { LocalStreamServer() }
+
     val registry = SourceRegistry(
         mapOf(
             LocalFolderSource.TYPE to { record -> LocalFolderSource.fromConfig(record.config, record.displayName) },
@@ -51,6 +57,7 @@ class AppEnvironment(dataDirectory: Path = AppDirectories.data()) {
                 JellyfinCredentials.decode(record.config)?.let { JellyfinSource(it, http, record.displayName) }
             },
             WebDavSource.TYPE to { record -> WebDavConfig.decode(record.config)?.let { WebDavSource(it, http, record.displayName) } },
+            SmbSource.TYPE to { record -> SmbShareConfig.decode(record.config)?.let { SmbSource(it, streams, record.displayName) } },
         ),
     ).apply { load(library.sources()) }
 

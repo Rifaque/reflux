@@ -4,6 +4,8 @@ coroutines = "1.11.0"
 sqldelight = "2.4.1"
 jna = "5.19.1"
 serialization = "1.11.0"
+smbj = "0.15.0"
+slf4j = "2.0.17"
 
 [libraries]
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
@@ -11,6 +13,8 @@ kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-t
 sqldelight-runtime = { module = "app.cash.sqldelight:runtime", version.ref = "sqldelight" }
 sqldelight-coroutines = { module = "app.cash.sqldelight:coroutines-extensions", version.ref = "sqldelight" }
 sqldelight-sqlite-driver = { module = "app.cash.sqldelight:sqlite-driver", version.ref = "sqldelight" }
+slf4j-nop = { module = "org.slf4j:slf4j-nop", version.ref = "slf4j" }
+smbj = { module = "com.hierynomus:smbj", version.ref = "smbj" }
 jna = { module = "net.java.dev.jna:jna", version.ref = "jna" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "serialization" }
 

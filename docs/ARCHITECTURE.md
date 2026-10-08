@@ -113,7 +113,7 @@ A source is allowed to lack capabilities. The Media Core should represent that e
 
 Two kinds of sources exist today:
 
-- **File-enumerating sources** (`FileEnumeratingSource`: local folders, WebDAV shares; later SMB) list files that Reflux parses and identifies itself.
+- **File-enumerating sources** (`FileEnumeratingSource`: local folders, WebDAV and SMB shares) list files that Reflux parses and identifies itself.
 - **Catalog sources** (`CatalogSource`: media servers such as Jellyfin) list works they already identified. Their descriptions use the same shape as a file-name parse, so they pass through the same identity rules and merge with local copies of the same work; the same work on two sources is one item with two versions, and Best Version chooses between them. Server-reported stream data is trusted and not probed; server watch state is imported when newer, and `WatchStateSyncSource` lets Reflux report back.
 
 ## Implementation
@@ -127,6 +127,7 @@ Kotlin Multiplatform (see the decision log). Modules:
 | `design` | Platform-free design system: color tokens with enforced contrast, liquid-glass material roles, motion specs, adaptive layout profiles (including the controller morph), artwork accent extraction. Consumed by the Compose shells. | `core` |
 | `sources:local` | Read-only local folder adapter for desktop JVMs. | `core` |
 | `sources:webdav` | Read-only WebDAV share source (PROPFIND listing, streamed playback with share credentials). | `core` |
+| `sources:smb` | Read-only SMB share source (smbj) and a loopback range-capable stream server that lets any player open share files. | `core`, smbj |
 | `sources:jellyfin` | Jellyfin catalog source (platform-free): sign-in, catalog paging, direct-stream playback targets, watch-state reporting. | `core`, kotlinx-serialization-json |
 | `metadata:tmdb` | TMDB v3 metadata provider over the core `HttpFetcher` (platform-free). | `core`, kotlinx-serialization-json |
 | `tools:cli` | Developer and diagnostic CLI wired exactly like a desktop shell (registry, pipeline, playback). | everything above |

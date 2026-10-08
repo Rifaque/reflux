@@ -19,10 +19,11 @@
 | Smart library: default Home feed, franchise/manual/smart collections, diagnostics (weak identification, unmatched works, multiple versions, missing episodes and artwork, offline sources) | Implemented and tested |
 | Catalog-source architecture and Jellyfin adapter (sign-in, catalog, multi-version items, direct streams, two-way watch state) | Implemented and tested against API fixtures; needs verification against a live server |
 | WebDAV network source (read-only) | Implemented; tested against fixtures and a live WsgiDAV server |
+| SMB network source (read-only, streamed through a loopback server) | Implemented; tested against a live SMB2 server (impacket), including probing and playback |
 | Cross-source unification: works sharing a provider ID merge into one work (Best Version across sources) | Implemented and tested |
 | Design system foundations (tokens, materials, motion, adaptive layout, accent extraction) | Implemented and tested; Compose rendering pending |
 | Developer CLI (scan, search, info, play, doctor) over the real engine | Implemented; verified end to end |
-| Continuous integration (Linux with libmpv, Windows) | Configured |
+| Continuous integration (Linux with libmpv, Windows) | Running; first Windows run found a watcher difference, fixed |
 | Desktop shell (Compose) with embedded video | Next — needs Google Maven (`dl.google.com`) to build Compose |
 | Android phone/tablet and Android TV shells (Media3 player, Storage Access Framework source) | Planned — needs the Android SDK |
 | Known gaps | Stacked multi-part files play as separate versions; disc structures (BDMV/VIDEO_TS) are recognized but not playable; credentials are not yet in platform secure storage |
