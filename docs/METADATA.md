@@ -70,7 +70,7 @@ Sidecars are honored when present: `Movie.en.forced.srt`, `Subs/English.srt`, `p
 
 Providers describe works; they never define identity. For each movie or show without metadata, Reflux resolves a provider entry in this order: a choice the user made in the Identify flow, an ID embedded in a file or folder name (`{tmdb-…}`, then IMDb/TVDB IDs through the provider's lookup), then a title search. Search results are scored by title similarity (normalized, article- and qualifier-insensitive, original titles included) and year agreement (±1 year tolerated). A candidate is accepted only when it is strong and clearly ahead of the runner-up; when the year is unknown, popularity decides only exact-title ties where it is decisive. Everything else is left for the Identify flow and retried after a week.
 
-Shows fetch the seasons present in the library; episodes match by season and episode number, absolute numbers map across provider seasons, and episodes added later are filled in without re-matching the show. Dated (daily-show) episodes are not matched yet.
+Shows fetch the seasons present in the library; episodes match by season and episode number, absolute numbers map across provider seasons, and episodes added later are filled in without re-matching the show. Dated (daily-show) episodes match by air date in the season named after the year or the season implied by the show's first air year.
 
 Artwork choice is deterministic: one image per kind; posters and logos prefer the user's language then text-free images; backdrops and stills prefer text-free images. User-provided local artwork always wins over provider artwork. Provider failures (offline, rate limits, rejected credentials) stop the refresh without recording failures, so it resumes next time.
 
