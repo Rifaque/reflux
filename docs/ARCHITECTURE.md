@@ -111,6 +111,27 @@ Examples:
 
 A source is allowed to lack capabilities. The Media Core should represent that explicitly.
 
+## Implementation
+
+Kotlin Multiplatform (see the decision log). Modules:
+
+| Module | Contents | Depends on |
+| --- | --- | --- |
+| `core` | Media Core contracts and pure logic. No platform APIs. | kotlinx-coroutines |
+
+Packages in `core` (`dev.reflux.core`):
+
+- `model` — `MediaItem` (Movie, Show, Season, Episode), `MediaVersion`, `MediaLocation`, `Artwork`, `WatchState`, `Availability`, deterministic `StableIds`.
+- `source` — `MediaSource` / `FileEnumeratingSource` adapter contracts, `SourceCapability`, `SourceLocality`, shared `ScanRules`.
+- `identify` — path parsing (`MediaPathParser`), identity keys and grouping (`Identifier`), user overrides, sidecar subtitle/artwork matching.
+- `playback` — stream description (`StreamInfo`), `DeviceCapabilities`, and `PlaybackAssessor` (optimal / degraded / unsupported with reasons).
+- `versions` — Best Version (`VersionSelector`), ranked and explained.
+- `watch` — resume/completion rules and Next Up.
+- `search` — deterministic title search.
+- `input` — semantic actions, default mappings, glyphs, and input-modality tracking.
+
+Contracts follow three rules: unknown is not failure, capabilities are explicit, and every decision is deterministic and explainable (identification signals, playback issues, selection criteria).
+
 ## File safety
 
 Reflux must not silently rename, move, delete, or modify user media files.

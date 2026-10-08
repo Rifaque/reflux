@@ -1,5 +1,16 @@
 # Reflux Roadmap
 
+## Status
+
+| Area | State |
+| --- | --- |
+| Media Core contracts (entities, versions, locations, availability, watch state, artwork) | Implemented in `core` |
+| Source abstraction and capabilities | Contracts implemented |
+| Playback capability model and Best Version | Implemented and tested |
+| Input model (semantic actions, mappings, modality tracking) | Implemented and tested |
+| Filename/folder identification, sidecars, confidence | Implemented and tested |
+| Local persistence / offline model | Next |
+
 ## Phase 0 — Product and architecture foundation
 
 - Define universal media entities.

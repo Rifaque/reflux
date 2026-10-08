@@ -52,7 +52,7 @@ UI and playback features should consume normalized media entities and source cap
 
 ## Project status
 
-Early architecture and product-definition stage. See [docs/ROADMAP.md](docs/ROADMAP.md).
+The Media Core is being implemented. See the status section of [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## Documentation
 
@@ -66,7 +66,14 @@ Early architecture and product-definition stage. See [docs/ROADMAP.md](docs/ROAD
 
 ## Development
 
-Implementation should begin only after the Media Core contracts, source abstraction, input model, and first-platform strategy are sufficiently defined.
+Reflux is written in Kotlin (Multiplatform). Requirements: JDK 21. Gradle is provided by the wrapper.
+
+```sh
+./gradlew check        # build and run all tests
+./gradlew :core:jvmTest
+```
+
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#implementation) for the module layout.
 
 ## License
 

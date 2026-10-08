@@ -24,8 +24,9 @@ coverage/
 target/
 Cargo.lock
 
-# Android / Gradle
+# Android / Gradle / Kotlin
 .gradle/
+.kotlin/
 local.properties
 captures/
 .externalNativeBuild/

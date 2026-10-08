@@ -72,6 +72,13 @@ This should be a smooth state transition rather than a destructive mode switch.
 
 Touch/pointer/keyboard interaction should still remain possible.
 
+## Implemented defaults (`core/input`)
+
+- Gamepad buttons are modeled by **position** (`FACE_SOUTH`, `FACE_EAST`, ...). Confirm is south on PlayStation/Xbox and east on Nintendo; cancel is the other one.
+- Mappings depend on context: in `PLAYBACK`, confirm is Play/Pause and left/right seek; in `BROWSE` they select and navigate.
+- Keyboard: arrows, Enter, Space, Escape/Backspace, `F` fullscreen, `M` mute, `J`/`K`/`L` seek and pause, `,`/`.` speed. Media and remote keys map directly.
+- Modality tracking: a controller button or a stick deflection of at least 50% switches to `DIRECTIONAL`; pointer input must travel 24 dp continuously to leave it; media keys never switch modality. The last controller family is remembered for glyphs.
+
 ## Configuration
 
 Users may eventually override mappings, but sensible controller mappings must work without configuration.
