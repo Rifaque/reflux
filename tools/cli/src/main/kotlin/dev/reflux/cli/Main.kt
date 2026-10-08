@@ -8,14 +8,13 @@ import dev.reflux.core.model.Show
 import dev.reflux.core.playback.PlaybackController
 import dev.reflux.core.playback.PlayerStatus
 import dev.reflux.core.playback.TrackPreferences
+import dev.reflux.desktop.engine.DesktopEnvironment
 import dev.reflux.library.LibraryEntry
 import dev.reflux.library.SyncingWatchReporter
 import dev.reflux.library.VersionInfo
 import dev.reflux.library.diagnostics
 import dev.reflux.library.planPlayback
-import dev.reflux.playback.mpv.MpvPlayer
 import dev.reflux.sources.jellyfin.JellyfinSource
-import dev.reflux.sources.local.LocalFolderSource
 import dev.reflux.sources.smb.SmbShareConfig
 import dev.reflux.sources.smb.SmbSource
 import dev.reflux.sources.webdav.WebDavConfig
@@ -53,7 +52,7 @@ fun main(args: Array<String>) {
         return
     }
     val rest = args.drop(1)
-    val env = AppEnvironment()
+    val env = DesktopEnvironment()
     val ok = runBlocking {
         when (command) {
             "add" -> add(env, rest)
@@ -74,17 +73,15 @@ fun main(args: Array<String>) {
     exitProcess(if (ok) 0 else 1)
 }
 
-private suspend fun add(env: AppEnvironment, args: List<String>): Boolean {
+private suspend fun add(env: DesktopEnvironment, args: List<String>): Boolean {
     val folder = args.firstOrNull()?.let { Path.of(it).toAbsolutePath().normalize() } ?: return usage("add <folder> [name]")
     if (!Files.isDirectory(folder)) return fail("Not a folder: $folder")
-    val source = LocalFolderSource(folder, args.getOrNull(1) ?: folder.fileName?.toString() ?: folder.toString())
-    env.library.addSource(source, folder.toString())
-    env.registry.register(source)
+    val source = env.addLocalFolder(folder, args.getOrNull(1))
     println("Added ${source.descriptor.displayName} ($folder). Scanning...")
     return refresh(env, source.descriptor.id)
 }
 
-private suspend fun jellyfin(env: AppEnvironment, args: List<String>): Boolean {
+private suspend fun jellyfin(env: DesktopEnvironment, args: List<String>): Boolean {
     if (args.size < 2) return usage("jellyfin <server> <user>")
     val password = System.getenv("REFLUX_JELLYFIN_PASSWORD")
         ?: System.console()?.readPassword("Password for ${args[1]}: ")?.concatToString()
@@ -101,7 +98,7 @@ private suspend fun jellyfin(env: AppEnvironment, args: List<String>): Boolean {
     return refresh(env, source.descriptor.id)
 }
 
-private suspend fun webdav(env: AppEnvironment, args: List<String>): Boolean {
+private suspend fun webdav(env: DesktopEnvironment, args: List<String>): Boolean {
     val url = args.firstOrNull() ?: return usage("webdav <url> [user]")
     val user = args.getOrNull(1)
     val password = user?.let {
@@ -117,7 +114,7 @@ private suspend fun webdav(env: AppEnvironment, args: List<String>): Boolean {
     return refresh(env, source.descriptor.id)
 }
 
-private suspend fun smb(env: AppEnvironment, args: List<String>): Boolean {
+private suspend fun smb(env: DesktopEnvironment, args: List<String>): Boolean {
     val location = args.firstOrNull()?.removePrefix("smb://") ?: return usage("smb <host[:port]/share[/folder]> [user]")
     val hostPart = location.substringBefore('/')
     val segments = location.substringAfter('/', "").split('/').filter { it.isNotEmpty() }
@@ -143,7 +140,7 @@ private suspend fun smb(env: AppEnvironment, args: List<String>): Boolean {
     return refresh(env, source.descriptor.id)
 }
 
-private fun sources(env: AppEnvironment): Boolean {
+private fun sources(env: DesktopEnvironment): Boolean {
     val sources = env.library.sources()
     if (sources.isEmpty()) println("No sources yet. Add one with: reflux add <folder>")
     for (source in sources) {
@@ -157,7 +154,7 @@ private fun sources(env: AppEnvironment): Boolean {
     return true
 }
 
-private suspend fun refresh(env: AppEnvironment, only: dev.reflux.core.model.SourceId? = null): Boolean {
+private suspend fun refresh(env: DesktopEnvironment, only: dev.reflux.core.model.SourceId? = null): Boolean {
     val reports = env.pipeline.refresh(only)
     for (report in reports) {
         val name = env.library.source(report.sourceId)?.displayName ?: report.sourceId.value
@@ -169,7 +166,7 @@ private suspend fun refresh(env: AppEnvironment, only: dev.reflux.core.model.Sou
     return true
 }
 
-private fun library(env: AppEnvironment): Boolean {
+private fun library(env: DesktopEnvironment): Boolean {
     val movies = env.library.movies()
     val shows = env.library.shows()
     println("Movies (${movies.size})")
@@ -179,7 +176,7 @@ private fun library(env: AppEnvironment): Boolean {
     return true
 }
 
-private fun search(env: AppEnvironment, query: String): Boolean {
+private fun search(env: DesktopEnvironment, query: String): Boolean {
     if (query.isBlank()) return usage("search <query>")
     val result = env.library.smartSearch(query)
     val q = result.query
@@ -206,7 +203,7 @@ private fun search(env: AppEnvironment, query: String): Boolean {
     return true
 }
 
-private fun info(env: AppEnvironment, query: String): Boolean {
+private fun info(env: DesktopEnvironment, query: String): Boolean {
     val entry = bestMatch(env, query) ?: return fail("Nothing matches \"$query\".")
     println(line(entry))
     entry.metadata?.overview?.let { println("  $it") }
@@ -222,14 +219,13 @@ private fun info(env: AppEnvironment, query: String): Boolean {
     return true
 }
 
-private suspend fun play(env: AppEnvironment, query: String, resume: Boolean): Boolean {
+private suspend fun play(env: DesktopEnvironment, query: String, resume: Boolean): Boolean {
     val entry = bestMatch(env, query) ?: return fail("Nothing matches \"$query\".")
     val playable = playableOf(env, entry.item) ?: return fail("Nothing to play.")
     val device = env.deviceCapabilities()
     val plan = env.library.planPlayback(playable.id, device, env.registry::resolve, resume = resume)
         ?: return fail("No playable version right now (is the source offline?).")
-    val player = MpvPlayer.create(
-        device,
+    val player = env.createPlayer(
         // A standalone mpv window with mpv's own controls, since the CLI has no UI of its own.
         mapOf("input-default-bindings" to "yes", "input-vo-keyboard" to "yes", "osc" to "yes", "force-window" to "yes"),
     ) ?: return fail("libmpv is not installed.")
@@ -249,7 +245,7 @@ private suspend fun play(env: AppEnvironment, query: String, resume: Boolean): B
     return true
 }
 
-private fun doctor(env: AppEnvironment): Boolean {
+private fun doctor(env: DesktopEnvironment): Boolean {
     val report = env.library.diagnostics()
     println("Weak identification (${report.lowConfidence.size}) - fix with Identify:")
     report.lowConfidence.forEach { println("  ${it.version.location.path}") }
@@ -265,11 +261,11 @@ private fun doctor(env: AppEnvironment): Boolean {
     return true
 }
 
-private fun bestMatch(env: AppEnvironment, query: String): LibraryEntry? =
+private fun bestMatch(env: DesktopEnvironment, query: String): LibraryEntry? =
     if (query.isBlank()) null else env.library.smartSearch(query).results.firstOrNull()
 
 /** Movies and episodes play themselves; a show plays its Next Up episode, or its first one. */
-private fun playableOf(env: AppEnvironment, item: MediaItem): MediaItem? = when (item) {
+private fun playableOf(env: DesktopEnvironment, item: MediaItem): MediaItem? = when (item) {
     is Movie, is Episode -> item
     is Show -> env.library.showDetail(item.id)?.let { detail ->
         detail.nextUp ?: detail.seasons.firstOrNull { it.season.number > 0 }?.episodes?.firstOrNull()?.item

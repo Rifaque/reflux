@@ -41,7 +41,10 @@ object TestMedia {
         run(
             "ffmpeg", "-y", "-loglevel", "error",
             "-f", "lavfi", "-i", "testsrc2=duration=2:size=640x360:rate=24",
-            "-c:v", "libx265", "-pix_fmt", "yuv420p10le", "-x265-params", "log-level=error",
+            // Tagged in the bitstream by the encoder: newer FFmpeg no longer copies the output colour
+            // options below into the HEVC stream, and a probe reads the stream.
+            "-c:v", "libx265", "-pix_fmt", "yuv420p10le",
+            "-x265-params", "log-level=error:colorprim=bt2020:transfer=smpte2084:colormatrix=bt2020nc",
             "-color_primaries", "bt2020", "-color_trc", "smpte2084", "-colorspace", "bt2020nc",
             output.toString(),
         )

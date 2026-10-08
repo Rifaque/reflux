@@ -52,7 +52,7 @@ UI and playback features should consume normalized media entities and source cap
 
 ## Project status
 
-The Media Core is being implemented. See the status section of [docs/ROADMAP.md](docs/ROADMAP.md).
+The engine (Media Core, sources, metadata, playback) is implemented, and the desktop app is the first visual slice on top of it: point it at a folder, browse, search, and play. See the status section of [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## Documentation
 
@@ -66,7 +66,7 @@ The Media Core is being implemented. See the status section of [docs/ROADMAP.md]
 
 ## Development
 
-Reflux is written in Kotlin (Multiplatform). Requirements: JDK 21. Gradle is provided by the wrapper.
+Reflux is written in Kotlin (Multiplatform). Gradle is provided by the wrapper, and the wrapper downloads JDK 21 if the machine has none.
 
 ```sh
 ./gradlew check        # build and run all tests
@@ -75,9 +75,17 @@ Reflux is written in Kotlin (Multiplatform). Requirements: JDK 21. Gradle is pro
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#implementation) for the module layout.
 
+### Desktop app
+
+```sh
+./gradlew :desktop:app:run
+```
+
+Choose a media folder on first run; everything else is automatic. Playback needs libmpv (below); without it the library is still fully browsable. Titles, artwork, and details come from TMDB when `REFLUX_TMDB_TOKEN` is set; without it Reflux shows what it identified from file names. Library state lives in the platform data directory (override with `REFLUX_HOME`), never in your media folders.
+
 ### Developer CLI
 
-Until the platform shells land, `tools/cli` runs the real engine against your own media: it scans folders (read-only), probes files with libmpv when installed, fetches metadata when `REFLUX_TMDB_TOKEN` is set, and plays in an mpv window.
+`tools/cli` runs the same engine from a terminal, for diagnosing identification, metadata, and playback on real libraries: it scans folders (read-only), probes files with libmpv when installed, fetches metadata when `REFLUX_TMDB_TOKEN` is set, and plays in an mpv window.
 
 ```sh
 ./gradlew :tools:cli:installDist
@@ -87,7 +95,7 @@ tools/cli/build/install/reflux/bin/reflux play breaking bad
 tools/cli/build/install/reflux/bin/reflux doctor
 ```
 
-Playback and probing need libmpv (`libmpv2` on Debian/Ubuntu, `mpv-libs` on Fedora, `libmpv-2.dll` on Windows).
+Playback and probing need libmpv (`libmpv2` on Debian/Ubuntu, `mpv-libs` on Fedora, `libmpv-2.dll` on Windows). When running from Gradle, a library placed in `.reflux/native/` (ignored by Git) is found without installing it system-wide.
 
 ## License
 

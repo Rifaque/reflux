@@ -21,12 +21,15 @@
 | WebDAV network source (read-only) | Implemented; tested against fixtures and a live WsgiDAV server |
 | SMB network source (read-only, streamed through a loopback server) | Implemented; tested against a live SMB2 server (impacket), including probing and playback |
 | Cross-source unification: works sharing a provider ID merge into one work (Best Version across sources) | Implemented and tested |
-| Design system foundations (tokens, materials, motion, adaptive layout, accent extraction) | Implemented and tested; Compose rendering pending |
+| Design system foundations (tokens, materials, motion, adaptive layout, accent extraction) | Implemented and tested; rendered by the experience layer |
 | Developer CLI (scan, search, info, play, doctor) over the real engine | Implemented; verified end to end |
-| Continuous integration (Linux with libmpv, Windows) | Green on both |
-| Desktop shell (Compose) with embedded video | Next — needs Google Maven (`dl.google.com`) to build Compose |
+| Continuous integration (Linux with libmpv, Windows) | Green on both before the desktop shell; not yet run with it |
+| Experience layer (`ui`): first-run, Home, Movies/Shows, smart search, movie and show details, sources, player controls, input-adaptive layout | First vertical slice implemented and tested (state logic and rendered screens) |
+| Desktop shell (`desktop:app`): window, embedded libmpv video with Reflux controls above it, borderless fullscreen, keyboard input, native folder picker | First vertical slice implemented; verified end to end on Windows with real playback; Linux not yet run |
 | Android phone/tablet and Android TV shells (Media3 player, Storage Access Framework source) | Planned — needs the Android SDK |
 | Known gaps | Stacked multi-part files play as separate versions; disc structures (BDMV/VIDEO_TS) are recognized but not playable; credentials are not yet in platform secure storage |
+| Not yet in the experience layer | Identify flow, library diagnostics, user collections, and non-folder sources (Jellyfin, WebDAV, SMB) have engine support but no UI; no settings screen yet |
+| Desktop shell gaps | Controllers are not read yet (the semantic path and the layout morph exist, the gamepad reader does not); libmpv is not bundled and there is no installer; media keys are not captured; the folder picker falls back to the toolkit's chooser outside Windows |
 
 ## Phase 0 — Product and architecture foundation
 

@@ -1,6 +1,8 @@
-package dev.reflux.cli
+package dev.reflux.desktop.engine
 
+import dev.reflux.core.metadata.MetadataProvider
 import dev.reflux.core.model.SourceId
+import dev.reflux.core.playback.DeviceCapabilities
 import dev.reflux.core.playback.DisplayCapabilities
 import dev.reflux.core.source.MediaSource
 import dev.reflux.library.ArtworkCache
@@ -11,6 +13,7 @@ import dev.reflux.library.SourceRegistry
 import dev.reflux.library.net.JdkHttpFetcher
 import dev.reflux.metadata.tmdb.TmdbProvider
 import dev.reflux.playback.mpv.DesktopCapabilities
+import dev.reflux.playback.mpv.MpvPlayer
 import dev.reflux.playback.mpv.MpvProbe
 import dev.reflux.sources.jellyfin.JellyfinCredentials
 import dev.reflux.sources.jellyfin.JellyfinSource
@@ -36,8 +39,12 @@ object AppDirectories {
     }
 }
 
-/** Wires the engine the same way a desktop shell does. */
-class AppEnvironment(dataDirectory: Path = AppDirectories.data()) {
+/**
+ * The Reflux engine wired for a desktop machine: library database, artwork cache, source adapters, metadata,
+ * probing, and the background pipeline. Shared by the desktop shell and the developer CLI, so both exercise
+ * exactly the same engine.
+ */
+class DesktopEnvironment(dataDirectory: Path = AppDirectories.data()) {
     val http = JdkHttpFetcher(userAgent = "Reflux/0.1")
     val library = Library(LibraryDatabase.open(dataDirectory.resolve("library.db"))) { System.currentTimeMillis() }
     val artwork = ArtworkCache(dataDirectory.resolve("artwork"), http)
@@ -62,7 +69,7 @@ class AppEnvironment(dataDirectory: Path = AppDirectories.data()) {
     ).apply { load(library.sources()) }
 
     /** TMDB is enabled when the build or environment provides an application credential. */
-    val metadata: TmdbProvider? = (System.getenv("REFLUX_TMDB_TOKEN") ?: System.getProperty("reflux.tmdb.token"))
+    val metadata: MetadataProvider? = (System.getenv("REFLUX_TMDB_TOKEN") ?: System.getProperty("reflux.tmdb.token"))
         ?.takeIf { it.isNotBlank() }
         ?.let { TmdbProvider(it, http) }
 
@@ -79,7 +86,31 @@ class AppEnvironment(dataDirectory: Path = AppDirectories.data()) {
 
     fun source(id: SourceId): MediaSource? = registry.resolve(id)
 
-    fun deviceCapabilities() = DesktopCapabilities.of(display())
+    fun deviceCapabilities(): DeviceCapabilities = DesktopCapabilities.of(display())
+
+    /** Whether a playback engine is installed. Without one the library still works; only playback is unavailable. */
+    val canPlay: Boolean get() = MpvPlayer.isAvailable
+
+    /**
+     * Adds a local media folder as a source (idempotent) and returns it. The folder is only ever read.
+     * Call [LibraryPipeline.refresh] afterwards to scan it.
+     */
+    fun addLocalFolder(folder: Path, displayName: String? = null): MediaSource {
+        val root = folder.toAbsolutePath().normalize()
+        val source = LocalFolderSource(root, displayName ?: root.fileName?.toString() ?: root.toString())
+        library.addSource(source, root.toString())
+        registry.register(source)
+        return source
+    }
+
+    /** Removes a source and what Reflux derived from it. Watch history is kept; files are never touched. */
+    fun removeSource(id: SourceId) {
+        library.removeSource(id)
+        registry.unregister(id)
+    }
+
+    /** Creates a playback engine with Reflux's defaults plus [options], or null when libmpv is not installed. */
+    fun createPlayer(options: Map<String, String> = emptyMap()): MpvPlayer? = MpvPlayer.create(deviceCapabilities(), options)
 
     private fun display(): DisplayCapabilities {
         if (GraphicsEnvironment.isHeadless()) return DisplayCapabilities(1920, 1080)

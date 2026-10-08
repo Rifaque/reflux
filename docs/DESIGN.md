@@ -84,3 +84,12 @@ Not from forcing identical layouts onto every screen.
 - **Motion:** standard, emphasized, and exit curves; focus changes 140 ms, navigation 320 ms, poster-to-details 420 ms, input morph 360 ms; player controls auto-hide after 3.5 s.
 - **Adaptive layout:** form factor (phone, tablet, desktop, TV) comes from the window and device; input modality only changes density, focus scale, target size, and button prompts. That is what makes the controller morph a transition rather than a mode. TVs keep a 5% overscan-safe margin and a 1.5× type scale.
 - **Artwork accent:** a deterministic, saturation-weighted hue histogram picks an accent from artwork; it is adjusted until text on it meets AA, and grey artwork keeps the default accent.
+
+## Rendering (`ui`)
+
+- **Glass:** a material is a blurred copy of what is behind it, a tint, a top-lit hairline, and a shadow. Blur is real for materials that float above a screen (navigation bar, panels, notices): the screen is recorded as it draws and the material blurs that recording. Materials inside scrolling content, and everything over video, use the tint alone.
+- **No artwork is a designed state.** A work without artwork is drawn as its title on a color derived from the title, and Home opens on a generated backdrop, so a library with no metadata yet looks intentional rather than broken.
+- **Details pages take their accent from the poster**; only the primary action and switched-on toggles use it.
+- **Active state:** pointer hover and keyboard or controller focus are one "active" state shown by a small lift; a focus ring is added only for input that needs one.
+- **Player:** title, scrubber with chapter marks, and transport controls over scrims; they fade out after 3.5 s of playback without input and return on any input. Tracks and speed are one level deeper. A skip button appears while the position is inside a named intro, recap, or credits chapter.
+- **Type:** the platform's system sans-serif. A bundled typeface is a later decision with licensing attached.
