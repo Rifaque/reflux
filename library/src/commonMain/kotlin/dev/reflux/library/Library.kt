@@ -2,7 +2,16 @@ package dev.reflux.library
 
 import app.cash.sqldelight.coroutines.asFlow
 import dev.reflux.core.identify.ConfidenceLevel
+import dev.reflux.core.identify.IdentityKeys
 import dev.reflux.core.identify.IdentityOverride
+import dev.reflux.core.metadata.Credit
+import dev.reflux.core.metadata.CreditRole
+import dev.reflux.core.metadata.MetadataCandidate
+import dev.reflux.core.metadata.MetadataKind
+import dev.reflux.core.metadata.MetadataMatcher
+import dev.reflux.core.metadata.MetadataProvider
+import dev.reflux.core.metadata.MetadataQuery
+import dev.reflux.core.metadata.ScoredCandidate
 import dev.reflux.core.identify.MediaPathParser
 import dev.reflux.core.identify.ParsedKind
 import dev.reflux.core.identify.TitleText
@@ -19,6 +28,7 @@ import dev.reflux.core.model.Movie
 import dev.reflux.core.model.Season
 import dev.reflux.core.model.Show
 import dev.reflux.core.model.SourceId
+import dev.reflux.core.model.StableIds
 import dev.reflux.core.model.VersionId
 import dev.reflux.core.model.WatchState
 import dev.reflux.core.model.StreamInfoOrigin
@@ -60,6 +70,7 @@ class Library(
     private val now: () -> Long,
 ) : WatchReporter {
     private val queries = database.libraryQueries
+    private val metadataSync = MetadataSync(database, now)
     private val parser get() = MediaPathParser(maxYear = yearOf(now()) + 1)
 
     // Sources ------------------------------------------------------------------------------------
@@ -169,6 +180,7 @@ class Library(
                 episode_number_end = (item as? Episode)?.episodeNumberEnd?.toLong(),
                 absolute_number = (item as? Episode)?.absoluteNumber?.toLong(),
                 air_date = (item as? Episode)?.airDate?.toString(),
+                external_hints = encodePairs(plan.externalHints[item.id].orEmpty()),
                 added_at = time,
             )
             queries.updateItem(
@@ -177,6 +189,7 @@ class Library(
                 sortKey = TitleText.sortKey(item.storedTitle()),
                 year = item.yearOrNull()?.toLong(),
                 episodeNumberEnd = (item as? Episode)?.episodeNumberEnd?.toLong(),
+                externalHints = encodePairs(plan.externalHints[item.id].orEmpty()),
                 id = item.id.value,
             )
         }
@@ -245,6 +258,9 @@ class Library(
         queries.deleteEmptySeasons()
         queries.deleteEmptyShows()
         queries.deleteOrphanArtwork()
+        queries.deleteOrphanMetadata()
+        queries.deleteOrphanCredits()
+        queries.deleteOrphanAttempts()
 
         return ScanReport(
             sourceId = plan.sourceId,
@@ -376,6 +392,78 @@ class Library(
         replaceTracks(versionId.value, stream)
     }
 
+    // Metadata -----------------------------------------------------------------------------------
+
+    /**
+     * Looks up metadata and artwork for works that have none yet, newest first. Unmatched works are retried
+     * after [retryAfterMs]. Safe to call while offline: it stops early and reports [MetadataReport.offline].
+     */
+    suspend fun refreshMetadata(
+        provider: MetadataProvider,
+        language: String,
+        limit: Int = 100,
+        retryAfterMs: Long = 7 * 24 * 3_600_000L,
+    ): MetadataReport = metadataSync.refresh(provider, language, limit, retryAfterMs)
+
+    fun metadata(itemId: MediaId): ItemMetadata? = queries.metadataOf(itemId.value).executeAsOneOrNull()?.toModel()
+
+    fun credits(itemId: MediaId): List<Credit> = queries.creditsOf(itemId.value).executeAsList().map {
+        Credit(it.name, enumOrNull<CreditRole>(it.role) ?: CreditRole.ACTOR, it.character, it.profile_url)
+    }
+
+    /** Candidates for the Identify flow: the work's own title and year, or what the user typed. */
+    suspend fun searchMetadata(
+        itemId: MediaId,
+        provider: MetadataProvider,
+        language: String,
+        title: String? = null,
+        year: Int? = null,
+    ): List<ScoredCandidate> {
+        val row = queries.itemById(itemId.value).executeAsOneOrNull() ?: return emptyList()
+        val kind = if (row.kind == MediaKind.SHOW.name) MetadataKind.SHOW else MetadataKind.MOVIE
+        val query = MetadataQuery(kind, title ?: row.title, if (title != null) year else year ?: row.year?.toInt(), language = language)
+        return MetadataMatcher.rank(query, provider.search(query))
+    }
+
+    /**
+     * "Identify this movie/show → choose": re-identifies every file of the work as [candidate], remembers the
+     * choice, and fetches its metadata. Files are never touched. Returns the work's (possibly new) ID.
+     */
+    suspend fun identifyAs(itemId: MediaId, candidate: MetadataCandidate, provider: MetadataProvider, language: String): MediaId {
+        val item = rawItem(itemId) ?: return itemId
+        val newId: MediaId
+        val overrides: List<Pair<MediaLocation, IdentityOverride>>
+        when (item) {
+            is Movie -> {
+                newId = StableIds.mediaId(IdentityKeys.movie(candidate.title, candidate.year))
+                overrides = versions(itemId).map { it.version.location to IdentityOverride(ParsedKind.MOVIE, candidate.title, candidate.year) }
+            }
+            is Show -> {
+                newId = StableIds.mediaId(IdentityKeys.show(candidate.title, candidate.year))
+                overrides = queries.episodesOfShow(itemId.value).executeAsList().map { it.toModel() as Episode }.flatMap { episode ->
+                    val number = episode.episodeNumber ?: episode.absoluteNumber ?: return@flatMap emptyList()
+                    versions(episode.id).map {
+                        it.version.location to IdentityOverride(ParsedKind.EPISODE, candidate.title, candidate.year, episode.seasonNumber, number)
+                    }
+                }
+            }
+            else -> return itemId
+        }
+        database.transaction {
+            for ((location, override) in overrides) {
+                queries.upsertOverride(
+                    location.sourceId.value, location.path, override.kind.name, override.title, override.year?.toLong(),
+                    override.season?.toLong(), override.episode?.toLong(), now(),
+                )
+            }
+            queries.pinMetadata(newId.value, candidate.ref.toString())
+            queries.clearMetadataAttempt(newId.value)
+        }
+        overrides.map { it.first.sourceId }.distinct().forEach { reidentify(it) }
+        queries.itemById(newId.value).executeAsOneOrNull()?.let { metadataSync.refreshWork(it, provider, language, candidate.ref) }
+        return newId
+    }
+
     // Identity corrections -----------------------------------------------------------------------
 
     /** "Identify this movie/show": remembers what a file is and re-identifies its source immediately. */
@@ -403,11 +491,14 @@ class Library(
             Item(
                 row.id, row.kind, row.title, row.title_key, row.sort_key, row.year, row.show_id, row.season_id,
                 row.season_number, row.episode_number, row.episode_number_end, row.absolute_number, row.air_date,
-                row.added_at,
+                row.external_hints, row.added_at,
             ).toModel()
         })
 
-    fun item(id: MediaId): MediaItem? = queries.itemById(id.value).executeAsOneOrNull()?.toModel()
+    /** A work with its display title (provider metadata wins over the parsed title). */
+    fun item(id: MediaId): MediaItem? = rawItem(id)?.let { it.withMetadata(metadata(id)) }
+
+    private fun rawItem(id: MediaId): MediaItem? = queries.itemById(id.value).executeAsOneOrNull()?.toModel()
 
     fun entry(id: MediaId): LibraryEntry? = item(id)?.let { entries(listOf(it)).single() }
 
@@ -469,14 +560,20 @@ class Library(
 
     /** Deterministic title search across movies, shows, and episodes. */
     fun search(query: String, limit: Int = 50): List<LibraryEntry> {
-        val shows = queries.presentShows().executeAsList().associate { MediaId(it.id) to it.title }
-        val documents = queries.presentMovies().executeAsList().map {
-            SearchDocument(MediaId(it.id), MediaKind.MOVIE, it.title, it.year?.toInt())
-        } + queries.presentShows().executeAsList().map {
-            SearchDocument(MediaId(it.id), MediaKind.SHOW, it.title, it.year?.toInt())
-        } + queries.presentPlayables().executeAsList().filter { it.kind == MediaKind.EPISODE.name && it.title.isNotEmpty() }.map {
-            SearchDocument(MediaId(it.id), MediaKind.EPISODE, it.title, aliases = listOfNotNull(shows[MediaId(it.show_id!!)]))
+        val movies = queries.presentMovies().executeAsList()
+        val shows = queries.presentShows().executeAsList()
+        val episodes = queries.presentPlayables().executeAsList().filter { it.kind == MediaKind.EPISODE.name }
+        val metadata = metadataOf((movies + shows + episodes).map { it.id })
+        val showTitles = shows.associate { it.id to (metadata[it.id]?.title ?: it.title) }
+        fun document(row: Item, kind: MediaKind, aliases: List<String?> = emptyList()): SearchDocument? {
+            val meta = metadata[row.id]
+            val title = meta?.title ?: row.title.ifEmpty { return null }
+            val year = meta?.releaseDate?.year ?: row.year?.toInt()
+            return SearchDocument(MediaId(row.id), kind, title, year, (aliases + row.title + meta?.originalTitle).filterNotNull().filter { it.isNotEmpty() && it != title }.distinct())
         }
+        val documents = movies.mapNotNull { document(it, MediaKind.MOVIE) } +
+            shows.mapNotNull { document(it, MediaKind.SHOW) } +
+            episodes.mapNotNull { document(it, MediaKind.EPISODE, listOf(showTitles[it.show_id])) }
         val hits = SearchMatcher.search(query, documents, limit)
         val byId = entries(itemsByIds(hits.map { it.document.id.value })).associateBy { it.item.id }
         return hits.mapNotNull { byId[it.document.id] }
@@ -544,6 +641,9 @@ class Library(
 
     private fun subtitles(versionId: String) = queries.externalSubtitlesOfVersion(versionId).executeAsList()
 
+    private fun metadataOf(ids: List<String>): Map<String, ItemMetadata> =
+        ids.chunked(QUERY_CHUNK).flatMap { queries.metadataOfItems(it).executeAsList() }.associate { it.item_id to it.toModel() }
+
     private fun itemsByIds(ids: List<String>): List<MediaItem> =
         ids.chunked(QUERY_CHUNK).flatMap { queries.itemsByIds(it).executeAsList() }.map { it.toModel() }
 
@@ -556,6 +656,7 @@ class Library(
         val favorites = queries.allFavorites().executeAsList().map { it.item_id }.toSet()
         val states = ids.chunked(QUERY_CHUNK).flatMap { queries.watchStatesOfItems(it).executeAsList() }
             .associate { it.item_id to it.toModel() }
+        val metadata = metadataOf(ids)
         val artwork = ids.chunked(QUERY_CHUNK).flatMap { queries.artworkOfItems(it).executeAsList() }
             .sortedBy { if (it.origin.startsWith("local:")) 0 else 1 } // user-provided artwork wins
             .groupBy { it.item_id }
@@ -571,12 +672,14 @@ class Library(
                 }.toMap()
             }
         return items.map { item ->
+            val itemMetadata = metadata[item.id.value]
             LibraryEntry(
-                item = item,
+                item = item.withMetadata(itemMetadata),
                 artwork = artwork[item.id.value].orEmpty(),
                 watchState = states[item.id.value],
                 availability = availability(item),
                 favorite = item.id.value in favorites,
+                metadata = itemMetadata,
             )
         }
     }

@@ -29,6 +29,8 @@ CREATE TABLE item (
     episode_number_end INTEGER,
     absolute_number INTEGER,
     air_date TEXT,
+    -- Provider IDs found in file names, e.g. "tmdb=157336" (newline separated).
+    external_hints TEXT NOT NULL DEFAULT '',
     added_at INTEGER NOT NULL
 );
 
@@ -131,6 +133,48 @@ CREATE TABLE identity_override (
     PRIMARY KEY (source_id, path)
 );
 
+-- Descriptive metadata from a provider. Display titles here override parsed titles.
+CREATE TABLE metadata (
+    item_id TEXT NOT NULL PRIMARY KEY,
+    provider_ref TEXT NOT NULL,
+    title TEXT,
+    sort_key TEXT,
+    original_title TEXT,
+    overview TEXT,
+    tagline TEXT,
+    genres TEXT NOT NULL,
+    runtime_minutes INTEGER,
+    release_date TEXT,
+    rating REAL,
+    content_rating TEXT,
+    external_ids TEXT NOT NULL,
+    match_score REAL NOT NULL,
+    fetched_at INTEGER NOT NULL
+);
+
+CREATE TABLE credit (
+    item_id TEXT NOT NULL,
+    position INTEGER NOT NULL,
+    name TEXT NOT NULL,
+    role TEXT NOT NULL,
+    character TEXT,
+    profile_url TEXT,
+    PRIMARY KEY (item_id, position)
+);
+
+-- Outcome of the last automatic lookup, so unmatched works are not looked up on every refresh.
+CREATE TABLE metadata_attempt (
+    item_id TEXT NOT NULL PRIMARY KEY,
+    attempted_at INTEGER NOT NULL,
+    outcome TEXT NOT NULL
+);
+
+-- A provider entry the user chose in the Identify flow.
+CREATE TABLE metadata_pin (
+    item_id TEXT NOT NULL PRIMARY KEY,
+    provider_ref TEXT NOT NULL
+);
+
 -- A user's pinned version for a work.
 CREATE TABLE version_preference (
     item_id TEXT NOT NULL PRIMARY KEY,
@@ -168,12 +212,12 @@ DELETE FROM source WHERE id = ?;
 insertItemIfAbsent:
 INSERT OR IGNORE INTO item(
     id, kind, title, title_key, sort_key, year, show_id, season_id, season_number, episode_number,
-    episode_number_end, absolute_number, air_date, added_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+    episode_number_end, absolute_number, air_date, external_hints, added_at
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 updateItem:
 UPDATE item SET title = :title, title_key = :titleKey, sort_key = :sortKey, year = :year,
-    episode_number_end = :episodeNumberEnd
+    episode_number_end = :episodeNumberEnd, external_hints = :externalHints
 WHERE id = :id;
 
 itemById:
@@ -195,16 +239,16 @@ WHERE year IS NOT NULL AND kind = 'SHOW' AND EXISTS (
 );
 
 presentMovies:
-SELECT * FROM item
-WHERE kind = 'MOVIE' AND EXISTS (SELECT 1 FROM version WHERE version.item_id = item.id)
-ORDER BY sort_key, year;
+SELECT item.* FROM item LEFT JOIN metadata ON metadata.item_id = item.id
+WHERE item.kind = 'MOVIE' AND EXISTS (SELECT 1 FROM version WHERE version.item_id = item.id)
+ORDER BY COALESCE(metadata.sort_key, item.sort_key), item.year;
 
 presentShows:
-SELECT * FROM item
-WHERE kind = 'SHOW' AND EXISTS (
+SELECT item.* FROM item LEFT JOIN metadata ON metadata.item_id = item.id
+WHERE item.kind = 'SHOW' AND EXISTS (
     SELECT 1 FROM item episode JOIN version ON version.item_id = episode.id WHERE episode.show_id = item.id
 )
-ORDER BY sort_key, year;
+ORDER BY COALESCE(metadata.sort_key, item.sort_key), item.year;
 
 presentSeasonsOfShow:
 SELECT * FROM item
@@ -358,6 +402,95 @@ DELETE FROM artwork WHERE source_id = ? AND origin = ?;
 
 deleteOrphanArtwork:
 DELETE FROM artwork WHERE item_id NOT IN (SELECT id FROM item);
+
+deleteArtworkOfItemByOrigin:
+DELETE FROM artwork WHERE item_id = ? AND origin = ?;
+
+-- Metadata ----------------------------------------------------------------------------------------
+
+upsertMetadata:
+INSERT OR REPLACE INTO metadata(
+    item_id, provider_ref, title, sort_key, original_title, overview, tagline, genres, runtime_minutes,
+    release_date, rating, content_rating, external_ids, match_score, fetched_at
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+metadataOf:
+SELECT * FROM metadata WHERE item_id = ?;
+
+metadataOfItems:
+SELECT * FROM metadata WHERE item_id IN ?;
+
+deleteCredits:
+DELETE FROM credit WHERE item_id = ?;
+
+insertCredit:
+INSERT OR REPLACE INTO credit(item_id, position, name, role, character, profile_url) VALUES (?, ?, ?, ?, ?, ?);
+
+creditsOf:
+SELECT * FROM credit WHERE item_id = ? ORDER BY position;
+
+-- Movies and shows to look up: no metadata yet, and no recent unsuccessful attempt.
+worksNeedingMetadata:
+SELECT item.* FROM item
+WHERE item.kind IN ('MOVIE', 'SHOW')
+  AND NOT EXISTS (SELECT 1 FROM metadata WHERE metadata.item_id = item.id)
+  AND NOT EXISTS (
+    SELECT 1 FROM metadata_attempt WHERE metadata_attempt.item_id = item.id AND metadata_attempt.attempted_at > :retryBefore
+  )
+  AND (
+    EXISTS (SELECT 1 FROM version WHERE version.item_id = item.id)
+    OR EXISTS (SELECT 1 FROM item episode JOIN version ON version.item_id = episode.id WHERE episode.show_id = item.id)
+  )
+ORDER BY item.added_at DESC, item.id
+LIMIT :limit;
+
+-- Shows with metadata whose present episodes still lack it (new episodes added later).
+showsWithEpisodesNeedingMetadata:
+SELECT DISTINCT show.id FROM item show
+JOIN metadata show_meta ON show_meta.item_id = show.id
+JOIN item episode ON episode.show_id = show.id AND episode.kind = 'EPISODE'
+JOIN version ON version.item_id = episode.id
+WHERE show.kind = 'SHOW'
+  AND NOT EXISTS (SELECT 1 FROM metadata WHERE metadata.item_id = episode.id)
+  AND NOT EXISTS (
+    SELECT 1 FROM metadata_attempt WHERE metadata_attempt.item_id = episode.id AND metadata_attempt.attempted_at > :retryBefore
+  )
+LIMIT :limit;
+
+recordMetadataAttempt:
+INSERT OR REPLACE INTO metadata_attempt(item_id, attempted_at, outcome) VALUES (?, ?, ?);
+
+clearMetadataAttempt:
+DELETE FROM metadata_attempt WHERE item_id = ?;
+
+metadataAttemptOf:
+SELECT * FROM metadata_attempt WHERE item_id = ?;
+
+pinMetadata:
+INSERT OR REPLACE INTO metadata_pin(item_id, provider_ref) VALUES (?, ?);
+
+metadataPinOf:
+SELECT provider_ref FROM metadata_pin WHERE item_id = ?;
+
+deleteMetadataOf:
+DELETE FROM metadata WHERE item_id = ?;
+
+deleteOrphanMetadata:
+DELETE FROM metadata WHERE item_id NOT IN (SELECT id FROM item);
+
+deleteOrphanCredits:
+DELETE FROM credit WHERE item_id NOT IN (SELECT id FROM item);
+
+deleteOrphanAttempts:
+DELETE FROM metadata_attempt WHERE item_id NOT IN (SELECT id FROM item);
+
+presentSeasonsAndEpisodesOfShow:
+SELECT * FROM item
+WHERE show_id = ? AND (
+    (kind = 'EPISODE' AND EXISTS (SELECT 1 FROM version WHERE version.item_id = item.id))
+    OR (kind = 'SEASON' AND EXISTS (
+        SELECT 1 FROM item episode JOIN version ON version.item_id = episode.id WHERE episode.season_id = item.id))
+);
 
 -- Watch state, favorites, overrides, preferences -------------------------------------------------
 

@@ -41,6 +41,8 @@ internal data class ScanPlan(
     val versions: List<PlannedVersion>,
     val artwork: List<Artwork>,
     val skipped: Map<ParsedKind, Int>,
+    /** Provider IDs from file and folder names, per movie or show. */
+    val externalHints: Map<MediaId, Map<String, String>> = emptyMap(),
 )
 
 /**
@@ -101,7 +103,15 @@ internal class ScanPlanner(private val parser: MediaPathParser) {
         val items = chooseItems(identified.map { it.second })
         val identificationByPath = identified.associate { (file, identification) -> file.path to identification }
         val artwork = resolveArtwork(sourceId, sidecars.artwork, identificationByPath, items.map { it.id }.toSet())
-        return ScanPlan(sourceId, items, versions, artwork, skipped)
+        val externalHints = identified.groupBy({ (_, identification) ->
+            when (identification) {
+                is Identification.OfMovie -> identification.movie.id
+                is Identification.OfEpisode -> identification.show.id
+            }
+        }, { (_, identification) -> identification.parsed.externalIds })
+            .mapValues { (_, maps) -> maps.fold(emptyMap<String, String>()) { acc, map -> map + acc } }
+            .filterValues { it.isNotEmpty() }
+        return ScanPlan(sourceId, items, versions, artwork, skipped, externalHints)
     }
 
     private fun mergeHints(

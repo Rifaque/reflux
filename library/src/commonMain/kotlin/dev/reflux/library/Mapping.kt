@@ -158,3 +158,21 @@ internal fun versionInfoOf(
 }
 
 internal fun Boolean.toLong(): Long = if (this) 1L else 0L
+
+/** Encodes small string maps as `key=value` lines (keys and values never contain newlines or `=`). */
+internal fun encodePairs(pairs: Map<String, String>): String =
+    pairs.entries.sortedBy { it.key }.joinToString("\n") { "${it.key}=${it.value}" }
+
+internal fun decodePairs(encoded: String): Map<String, String> =
+    encoded.lines().filter { '=' in it }.associate { it.substringBefore('=') to it.substringAfter('=') }
+
+/** Applies provider metadata to a work's display fields. Identity fields never change. */
+internal fun MediaItem.withMetadata(metadata: ItemMetadata?): MediaItem {
+    if (metadata == null) return this
+    return when (this) {
+        is Movie -> copy(title = metadata.title ?: title, year = metadata.releaseDate?.year ?: year)
+        is Show -> copy(title = metadata.title ?: title, year = metadata.releaseDate?.year ?: year)
+        is Episode -> copy(episodeTitle = metadata.title ?: episodeTitle, airDate = airDate ?: metadata.releaseDate)
+        else -> this
+    }
+}
