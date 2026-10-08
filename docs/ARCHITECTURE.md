@@ -111,6 +111,11 @@ Examples:
 
 A source is allowed to lack capabilities. The Media Core should represent that explicitly.
 
+Two kinds of sources exist today:
+
+- **File-enumerating sources** (`FileEnumeratingSource`: local folders; later SMB, WebDAV) list files that Reflux parses and identifies itself.
+- **Catalog sources** (`CatalogSource`: media servers such as Jellyfin) list works they already identified. Their descriptions use the same shape as a file-name parse, so they pass through the same identity rules and merge with local copies of the same work; the same work on two sources is one item with two versions, and Best Version chooses between them. Server-reported stream data is trusted and not probed; server watch state is imported when newer, and `WatchStateSyncSource` lets Reflux report back.
+
 ## Implementation
 
 Kotlin Multiplatform (see the decision log). Modules:

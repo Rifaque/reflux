@@ -17,6 +17,7 @@ import dev.reflux.core.model.ArtworkKind
 import dev.reflux.core.model.CalendarDate
 import dev.reflux.core.net.HttpFetcher
 import dev.reflux.core.net.HttpResult
+import dev.reflux.core.net.get
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.serialization.json.Json

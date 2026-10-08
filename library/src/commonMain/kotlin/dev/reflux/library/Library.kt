@@ -41,7 +41,10 @@ import dev.reflux.core.playback.withHints
 import dev.reflux.core.search.SearchDocument
 import dev.reflux.core.search.SearchMatcher
 import dev.reflux.core.search.SmartQueryParser
+import dev.reflux.core.source.CatalogEntry
+import dev.reflux.core.source.CatalogSource
 import dev.reflux.core.source.FileEnumeratingSource
+import dev.reflux.core.source.SourceUserState
 import dev.reflux.core.source.FileRole
 import dev.reflux.core.source.ScanRules
 import dev.reflux.core.source.MediaSource
@@ -103,23 +106,85 @@ class Library(
 
     // Scanning -----------------------------------------------------------------------------------
 
-    /** Scans a file-enumerating source and updates the library. Safe to call repeatedly. */
-    suspend fun scan(source: FileEnumeratingSource): ScanReport {
+    /**
+     * Scans a source and updates the library: file-enumerating sources are parsed and identified by Reflux,
+     * catalog sources contribute their own identification. Safe to call repeatedly.
+     */
+    suspend fun scan(source: MediaSource): ScanReport {
         val id = source.descriptor.id
         check(queries.sourceById(id.value).executeAsOneOrNull() != null) { "source $id is not registered" }
+        if (source !is FileEnumeratingSource && source !is CatalogSource) return ScanReport(id, ScanReport.Status.COMPLETED)
         if (refreshAvailability(source) != Availability.AVAILABLE) return ScanReport(id, ScanReport.Status.UNAVAILABLE)
-        val files = try {
-            source.files().toList()
+        return try {
+            when (source) {
+                is CatalogSource -> scanCatalog(id, source.catalog().toList())
+                is FileEnumeratingSource -> scanFiles(id, source.files().toList())
+                else -> error("unreachable")
+            }
         } catch (_: SourceUnavailableException) {
             queries.setSourceAvailability(Availability.UNAVAILABLE.name, now(), id.value)
-            return ScanReport(id, ScanReport.Status.UNAVAILABLE)
+            ScanReport(id, ScanReport.Status.UNAVAILABLE)
         }
+    }
+
+    private fun scanFiles(id: SourceId, files: List<SourceFile>): ScanReport {
         val hasVideo = files.any { ScanRules.roleOf(it.path.substringAfterLast('/')) == FileRole.VIDEO }
-        if (!hasVideo && queries.versionsOfSource(id.value).executeAsList().isNotEmpty()) {
-            queries.setSourceAvailability(Availability.UNAVAILABLE.name, now(), id.value)
-            return ScanReport(id, ScanReport.Status.EMPTY_KEPT)
+        if (!hasVideo && hasKnownVersions(id)) return keepEmpty(id)
+        return database.transactionWithResult {
+            val plan = ScanPlanner(parser).plan(id, files, overrides(id), yearHints(id))
+            val report = applyPlan(plan)
+            queries.markSourceScanned(now(), id.value)
+            report
         }
-        return reconcile(id, files)
+    }
+
+    private fun scanCatalog(id: SourceId, entries: List<CatalogEntry>): ScanReport {
+        if (entries.isEmpty() && hasKnownVersions(id)) return keepEmpty(id)
+        return database.transactionWithResult {
+            val plan = ScanPlanner(parser).planCatalog(id, entries, overrides(id), yearHints(id))
+            val report = applyPlan(plan)
+            val itemByPath = plan.versions.associate { it.version.location.path to it.version.itemId }
+            for (entry in entries) {
+                val state = entry.userState ?: continue
+                val itemId = entry.versions.firstNotNullOfOrNull { itemByPath[it.path] } ?: continue
+                importSourceState(itemId, state)
+            }
+            queries.markSourceScanned(now(), id.value)
+            report
+        }
+    }
+
+    private fun hasKnownVersions(id: SourceId): Boolean = queries.versionsOfSource(id.value).executeAsList().isNotEmpty()
+
+    /** An empty listing from a source Reflux knows media on is treated as a disconnection, never a deletion. */
+    private fun keepEmpty(id: SourceId): ScanReport {
+        queries.setSourceAvailability(Availability.UNAVAILABLE.name, now(), id.value)
+        return ScanReport(id, ScanReport.Status.EMPTY_KEPT)
+    }
+
+    /**
+     * Adopts a source's watch state when it is newer than Reflux's, so watching on the server's own clients is
+     * reflected here. Server favorites are added; local favorites are never removed by a server.
+     */
+    private fun importSourceState(itemId: MediaId, state: SourceUserState) {
+        val local = watchState(itemId)
+        val sourcePlayed = state.lastPlayedAtEpochMs
+        val localPlayed = local?.lastPlayedAtEpochMs
+        val sourceIsNewer = sourcePlayed != null && (localPlayed == null || sourcePlayed > localPlayed)
+        val playedWithoutDate = state.played && sourcePlayed == null && local == null
+        if (sourceIsNewer || playedWithoutDate) {
+            saveWatchState(
+                WatchState(
+                    itemId = itemId,
+                    positionMs = if (state.played) 0 else state.positionMs,
+                    durationMs = local?.durationMs,
+                    completed = state.played,
+                    playCount = maxOf(local?.playCount ?: 0, state.playCount, if (state.played) 1 else 0),
+                    lastPlayedAtEpochMs = sourcePlayed ?: localPlayed,
+                ),
+            )
+        }
+        if (state.favorite) queries.insertFavorite(itemId.value, now())
     }
 
     /**
@@ -128,6 +193,15 @@ class Library(
      */
     fun reidentify(sourceId: SourceId): ScanReport {
         val versions = queries.versionsOfSource(sourceId.value).executeAsList()
+        if (versions.any { it.source_identity != null }) {
+            val entries = versions.mapNotNull { row ->
+                val stream = version(VersionId(row.id))?.version ?: return@mapNotNull null
+                ScanPlanner.decodeCatalogEntry(row.source_identity ?: return@mapNotNull null, row.path, row.size_bytes, row.modified_at, stream)
+            }
+            return database.transactionWithResult {
+                applyPlan(ScanPlanner(parser).planCatalog(sourceId, entries, overrides(sourceId), yearHints(sourceId)))
+            }
+        }
         val files = versions.map { SourceFile(it.path, it.size_bytes, it.modified_at) } +
             queries.externalSubtitlePathsOfSource(sourceId.value).executeAsList().map { SourceFile(it, 0, 0) } +
             queries.artworkPathsOfSource(sourceId.value).executeAsList().map { SourceFile(it, 0, 0) }
@@ -137,14 +211,6 @@ class Library(
         }
         return report
     }
-
-    private fun reconcile(sourceId: SourceId, files: List<SourceFile>): ScanReport =
-        database.transactionWithResult {
-            val plan = ScanPlanner(parser).plan(sourceId, files, overrides(sourceId), yearHints(sourceId))
-            val report = applyPlan(plan)
-            queries.markSourceScanned(now(), sourceId.value)
-            report
-        }
 
     private fun overrides(sourceId: SourceId): Map<String, IdentityOverride> =
         queries.overridesOfSource(sourceId.value).executeAsList().mapNotNull { row ->
@@ -201,14 +267,14 @@ class Library(
         var updated = 0
         var unchanged = 0
         val movedItems = mutableListOf<Pair<String, String>>()
-        for ((version, parsed) in plan.versions) {
+        for ((version, parsed, sourceIdentity) in plan.versions) {
             val previous = existing[version.location.path]
             val signals = parsed.confidence.signals.joinToString(",") { it.name }
             val fileChanged = previous == null ||
                 previous.size_bytes != version.sizeBytes || previous.modified_at != version.modifiedAtEpochMs
             when {
                 previous == null -> {
-                    insertVersion(version, parsed.confidence.score, signals, time)
+                    insertVersion(version, parsed.confidence.score, signals, sourceIdentity, time)
                     added++
                 }
                 !fileChanged && previous.stream_origin != version.streamOrigin.name -> {
@@ -220,7 +286,7 @@ class Library(
                     if (previous.item_id != version.itemId.value) updated++ else unchanged++
                 }
                 else -> {
-                    updateVersion(version, parsed.confidence.score, signals, time)
+                    updateVersion(version, parsed.confidence.score, signals, sourceIdentity, time)
                     if (fileChanged || previous.item_id != version.itemId.value) updated++ else unchanged++
                 }
             }
@@ -238,7 +304,7 @@ class Library(
         }
 
         queries.deleteExternalSubtitlesOfSource(sourceId)
-        for ((version, _) in plan.versions) {
+        for ((version, _, _) in plan.versions) {
             for (sub in version.externalSubtitles) {
                 queries.insertExternalSubtitle(
                     version.id.value, sourceId, sub.location.path, sub.format.name, sub.language,
@@ -247,7 +313,7 @@ class Library(
             }
         }
 
-        queries.deleteArtworkOfSource(sourceId, ScanPlanner.localArtworkOrigin(plan.sourceId))
+        queries.deleteArtworkOfSource(sourceId, ScanPlanner.sourceArtworkOrigin(plan.sourceId))
         for (art in plan.artwork) {
             val locator = art.locator as ArtworkLocator.SourceFile
             queries.upsertArtwork(art.itemId.value, art.kind.name, art.origin, sourceId, locator.location.path)
@@ -277,7 +343,7 @@ class Library(
         )
     }
 
-    private fun insertVersion(version: MediaVersion, confidence: Double, signals: String, time: Long) {
+    private fun insertVersion(version: MediaVersion, confidence: Double, signals: String, sourceIdentity: String?, time: Long) {
         val video = version.stream.video
         queries.insertVersionIfAbsent(
             id = version.id.value,
@@ -301,13 +367,14 @@ class Library(
             part = version.part?.toLong(),
             confidence = confidence,
             signals = signals,
+            source_identity = sourceIdentity,
             first_seen_at = time,
             last_seen_at = time,
         )
         replaceTracks(version)
     }
 
-    private fun updateVersion(version: MediaVersion, confidence: Double, signals: String, time: Long) {
+    private fun updateVersion(version: MediaVersion, confidence: Double, signals: String, sourceIdentity: String?, time: Long) {
         val video = version.stream.video
         queries.updateVersion(
             itemId = version.itemId.value,
@@ -328,6 +395,7 @@ class Library(
             part = version.part?.toLong(),
             confidence = confidence,
             signals = signals,
+            sourceIdentity = sourceIdentity,
             lastSeenAt = time,
             id = version.id.value,
         )
@@ -680,7 +748,7 @@ class Library(
             .associate { it.item_id to it.toModel() }
         val metadata = metadataOf(ids)
         val artwork = ids.chunked(QUERY_CHUNK).flatMap { queries.artworkOfItems(it).executeAsList() }
-            .sortedBy { if (it.origin.startsWith("local:")) 0 else 1 } // user-provided artwork wins
+            .sortedBy { if (it.origin.startsWith(ScanPlanner.SOURCE_ARTWORK_PREFIX)) 0 else 1 } // the user's own artwork wins
             .groupBy { it.item_id }
             .mapValues { (_, rows) ->
                 rows.distinctBy { it.kind }.mapNotNull { row ->

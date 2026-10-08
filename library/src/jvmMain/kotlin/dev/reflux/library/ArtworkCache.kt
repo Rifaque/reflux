@@ -3,6 +3,7 @@ package dev.reflux.library
 import dev.reflux.core.model.ArtworkLocator
 import dev.reflux.core.model.SourceId
 import dev.reflux.core.net.HttpFetcher
+import dev.reflux.core.net.get
 import dev.reflux.core.source.MediaSource
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers

@@ -24,7 +24,8 @@ class ArtworkCacheTest {
     private val media: Path = Files.createTempDirectory("reflux-media")
     private var online = true
     private val downloads = mutableListOf<String>()
-    private val http = HttpFetcher { url, _ ->
+    private val http = HttpFetcher { request ->
+        val url = request.url
         if (!online) error("offline")
         downloads += url
         if (url.endsWith("missing.jpg")) HttpResult(404, ByteArray(0)) else HttpResult(200, url.encodeToByteArray())

@@ -62,6 +62,8 @@ CREATE TABLE version (
     signals TEXT NOT NULL,
     -- Last probe attempt; reset when the file changes. Avoids re-probing unreadable files on every pass.
     probe_attempted_at INTEGER,
+    -- For catalog sources: the source's own description of the work, so corrections re-identify offline.
+    source_identity TEXT,
     first_seen_at INTEGER NOT NULL,
     last_seen_at INTEGER NOT NULL,
     UNIQUE (source_id, path)
@@ -320,8 +322,8 @@ insertVersionIfAbsent:
 INSERT OR IGNORE INTO version(
     id, item_id, source_id, path, size_bytes, modified_at, stream_origin, container, video_codec, width, height,
     bit_depth, dynamic_range, dolby_vision_profile, frame_rate, duration_ms, bitrate_bps, edition, part,
-    confidence, signals, first_seen_at, last_seen_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+    confidence, signals, source_identity, first_seen_at, last_seen_at
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 updateVersion:
 UPDATE version SET item_id = :itemId, size_bytes = :sizeBytes, modified_at = :modifiedAt,
@@ -329,7 +331,7 @@ UPDATE version SET item_id = :itemId, size_bytes = :sizeBytes, modified_at = :mo
     height = :height, bit_depth = :bitDepth, dynamic_range = :dynamicRange,
     dolby_vision_profile = :dolbyVisionProfile, frame_rate = :frameRate, duration_ms = :durationMs,
     bitrate_bps = :bitrateBps, edition = :edition, part = :part, confidence = :confidence, signals = :signals,
-    probe_attempted_at = NULL, last_seen_at = :lastSeenAt
+    probe_attempted_at = NULL, source_identity = :sourceIdentity, last_seen_at = :lastSeenAt
 WHERE id = :id;
 
 updateVersionStream:
@@ -350,7 +352,7 @@ ORDER BY version.first_seen_at DESC, version.id
 LIMIT ?;
 
 versionsOfSource:
-SELECT id, item_id, path, size_bytes, modified_at, stream_origin FROM version WHERE source_id = ?;
+SELECT id, item_id, path, size_bytes, modified_at, stream_origin, source_identity FROM version WHERE source_id = ?;
 
 updateVersionIdentity:
 UPDATE version SET item_id = :itemId, edition = :edition, part = :part, confidence = :confidence,

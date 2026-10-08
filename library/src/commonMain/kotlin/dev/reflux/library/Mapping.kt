@@ -95,10 +95,10 @@ internal fun versionInfoOf(
     subtitles: (String) -> List<External_subtitle>,
 ): (
     String, String, String, String, Long, Long, String, String, String?, Long?, Long?, Long?, String?, Long?,
-    Double?, Long?, Long?, String?, Long?, Double, String, Long?, Long, Long, String, String,
+    Double?, Long?, Long?, String?, Long?, Double, String, Long?, String?, Long, Long, String, String,
 ) -> VersionInfo = {
         id, itemId, sourceId, path, size, modified, origin, container, videoCodec, width, height, bitDepth,
-        dynamicRange, dvProfile, frameRate, duration, bitrate, edition, part, confidence, _, _, _, _,
+        dynamicRange, dvProfile, frameRate, duration, bitrate, edition, part, confidence, _, _, _, _, _,
         availability, locality,
     ->
     val trackRows = tracks(id)
