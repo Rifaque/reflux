@@ -294,10 +294,12 @@ class Library(
 
     /** All versions of a playable work with source state, in stable order. */
     fun versions(itemId: MediaId): List<VersionInfo> =
-        queries.versionsOfItem(itemId.value, versionInfoOf(::tracks, ::subtitles)).executeAsList()
+        queries.versionsOfItem(itemId.value, ::versionRow).executeAsList().map { it.withDetails() }
 
     fun version(id: VersionId): VersionInfo? =
-        queries.versionById(id.value, versionInfoOf(::tracks, ::subtitles)).executeAsOneOrNull()
+        queries.versionById(id.value, ::versionRow).executeAsOneOrNull()?.withDetails()
+
+    private fun VersionInfo.withDetails(): VersionInfo = complete(tracks(version.id.value), subtitles(version.id.value))
 
     /** Best Version for this device, honoring the user's pinned version. */
     fun selectVersion(itemId: MediaId, device: DeviceCapabilities): VersionSelection {

@@ -31,7 +31,7 @@ import kotlin.test.assertTrue
 class PlaybackPlanTest {
     private val root: Path = Files.createTempDirectory("reflux-plan")
     private var clock = 1_790_000_000_000L
-    private val library = Library(LibraryDatabase.inMemory()) { clock }
+    private val library = Library(testDatabase()) { clock }
     private val source = LocalFolderSource(root)
     private val sources = { id: dev.reflux.core.model.SourceId -> source.takeIf { it.descriptor.id == id } }
 

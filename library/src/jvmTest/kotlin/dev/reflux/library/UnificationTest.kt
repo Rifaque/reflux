@@ -36,7 +36,7 @@ private class Server(private val entries: List<CatalogEntry>) : CatalogSource {
 class UnificationTest {
     private val root: Path = Files.createTempDirectory("reflux-unify")
     private var clock = 1_790_000_000_000L
-    private val library = Library(LibraryDatabase.inMemory()) { clock }
+    private val library = Library(testDatabase()) { clock }
     private val local = LocalFolderSource(root)
     private val provider = FakeMetadataProvider()
 

@@ -127,6 +127,7 @@ Kotlin Multiplatform (see the decision log). Modules:
 | `sources:local` | Read-only local folder adapter for desktop JVMs. | `core` |
 | `sources:jellyfin` | Jellyfin catalog source (platform-free): sign-in, catalog paging, direct-stream playback targets, watch-state reporting. | `core`, kotlinx-serialization-json |
 | `metadata:tmdb` | TMDB v3 metadata provider over the core `HttpFetcher` (platform-free). | `core`, kotlinx-serialization-json |
+| `tools:cli` | Developer and diagnostic CLI wired exactly like a desktop shell (registry, pipeline, playback). | everything above |
 | `playback:mpv` | Desktop playback engine and media probe on libmpv (JNA binding), desktop capability profile. | `core`, JNA, kotlinx-serialization-json |
 
 Packages in `core` (`dev.reflux.core`):

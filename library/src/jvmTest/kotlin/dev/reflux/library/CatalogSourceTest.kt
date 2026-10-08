@@ -90,7 +90,7 @@ private class FakeServer : CatalogSource {
 class CatalogSourceTest {
     private val root: Path = Files.createTempDirectory("reflux-catalog")
     private var clock = 1_790_000_000_000L
-    private val library = Library(LibraryDatabase.inMemory()) { clock }
+    private val library = Library(testDatabase()) { clock }
     private val local = LocalFolderSource(root)
     private val server = FakeServer()
 
@@ -221,7 +221,7 @@ private class SyncingServer : dev.reflux.core.source.WatchStateSyncSource {
 
 class WatchSyncTest {
     private var clock = 1_790_000_000_000L
-    private val library = Library(LibraryDatabase.inMemory()) { clock }
+    private val library = Library(testDatabase()) { clock }
     private val server = FakeServer().apply { movie("a", "Heat", 1995) }
     private val syncing = SyncingServer()
 

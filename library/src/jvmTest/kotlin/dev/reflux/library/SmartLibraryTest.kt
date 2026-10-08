@@ -20,7 +20,7 @@ import kotlin.test.assertTrue
 class SmartLibraryTest {
     private val root: Path = Files.createTempDirectory("reflux-smartlib")
     private var clock = 1_790_000_000_000L // 2026-09-21
-    private val library = Library(LibraryDatabase.inMemory()) { clock }
+    private val library = Library(testDatabase()) { clock }
     private val source = LocalFolderSource(root)
     private val provider = FakeMetadataProvider()
 

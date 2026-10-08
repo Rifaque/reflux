@@ -88,20 +88,19 @@ internal fun External_subtitle.toModel() = ExternalSubtitle(
     hearingImpaired = hearing_impaired != 0L,
 )
 
-/** Builds a [VersionInfo] from the columns of `versionsOfItem` / `versionById`. */
-@Suppress("LongParameterList", "UNUSED_PARAMETER")
-internal fun versionInfoOf(
-    tracks: (String) -> List<Track>,
-    subtitles: (String) -> List<External_subtitle>,
-): (
-    String, String, String, String, Long, Long, String, String, String?, Long?, Long?, Long?, String?, Long?,
-    Double?, Long?, Long?, String?, Long?, Double, String, Long?, String?, Long, Long, String, String,
-) -> VersionInfo = {
-        id, itemId, sourceId, path, size, modified, origin, container, videoCodec, width, height, bitDepth,
-        dynamicRange, dvProfile, frameRate, duration, bitrate, edition, part, confidence, _, _, _, _, _,
-        availability, locality,
-    ->
-    val trackRows = tracks(id)
+/**
+ * Maps the columns of `versionsOfItem` / `versionById` without running queries (a row mapper must never query:
+ * the JDBC driver forbids nested statements). Tracks and subtitles are attached afterwards with [complete].
+ */
+@Suppress("LongParameterList")
+internal fun versionRow(
+    id: String, itemId: String, sourceId: String, path: String, size: Long, modified: Long, origin: String,
+    container: String, videoCodec: String?, width: Long?, height: Long?, bitDepth: Long?, dynamicRange: String?,
+    dvProfile: Long?, frameRate: Double?, duration: Long?, bitrate: Long?, edition: String?, part: Long?,
+    confidence: Double, @Suppress("UNUSED_PARAMETER") signals: String, @Suppress("UNUSED_PARAMETER") probeAttemptedAt: Long?,
+    @Suppress("UNUSED_PARAMETER") sourceIdentity: String?, @Suppress("UNUSED_PARAMETER") firstSeen: Long,
+    @Suppress("UNUSED_PARAMETER") lastSeen: Long, availability: String, locality: String,
+): VersionInfo {
     val video = if (videoCodec == null && height == null && dynamicRange == null) {
         null
     } else {
@@ -115,47 +114,54 @@ internal fun versionInfoOf(
             frameRate = frameRate,
         )
     }
-    val stream = StreamInfo(
-        container = enumOrNull<Container>(container) ?: Container.UNKNOWN,
-        video = video,
-        audio = trackRows.filter { it.type == TRACK_AUDIO }.map {
-            AudioStream(
-                codec = enumOrNull<AudioCodec>(it.codec) ?: AudioCodec.UNKNOWN,
-                channels = it.channels?.toInt(),
-                language = it.language,
-                atmos = it.atmos != 0L,
-                default = it.is_default != 0L,
-            )
-        },
-        subtitles = trackRows.filter { it.type == TRACK_SUBTITLE }.map {
-            SubtitleStream(
-                format = enumOrNull<SubtitleFormat>(it.codec) ?: SubtitleFormat.UNKNOWN,
-                language = it.language,
-                forced = it.forced != 0L,
-                default = it.is_default != 0L,
-            )
-        },
-        durationMs = duration,
-        bitrateBps = bitrate,
-    )
-    VersionInfo(
+    return VersionInfo(
         version = MediaVersion(
             id = VersionId(id),
             itemId = MediaId(itemId),
             location = MediaLocation(SourceId(sourceId), path),
             sizeBytes = size,
             modifiedAtEpochMs = modified,
-            stream = stream,
+            stream = StreamInfo(
+                container = enumOrNull<Container>(container) ?: Container.UNKNOWN,
+                video = video,
+                durationMs = duration,
+                bitrateBps = bitrate,
+            ),
             streamOrigin = enumOrNull<StreamInfoOrigin>(origin) ?: StreamInfoOrigin.FILENAME_HINTS,
             edition = edition,
             part = part?.toInt(),
-            externalSubtitles = subtitles(id).map { it.toModel() },
         ),
         availability = enumOrNull<Availability>(availability) ?: Availability.UNKNOWN,
         locality = enumOrNull<SourceLocality>(locality) ?: SourceLocality.REMOTE,
         confidence = confidence,
     )
 }
+
+/** Attaches tracks and external subtitles loaded separately. */
+internal fun VersionInfo.complete(tracks: List<Track>, subtitles: List<External_subtitle>): VersionInfo = copy(
+    version = version.copy(
+        stream = version.stream.copy(
+            audio = tracks.filter { it.type == TRACK_AUDIO }.map {
+                AudioStream(
+                    codec = enumOrNull<AudioCodec>(it.codec) ?: AudioCodec.UNKNOWN,
+                    channels = it.channels?.toInt(),
+                    language = it.language,
+                    atmos = it.atmos != 0L,
+                    default = it.is_default != 0L,
+                )
+            },
+            subtitles = tracks.filter { it.type == TRACK_SUBTITLE }.map {
+                SubtitleStream(
+                    format = enumOrNull<SubtitleFormat>(it.codec) ?: SubtitleFormat.UNKNOWN,
+                    language = it.language,
+                    forced = it.forced != 0L,
+                    default = it.is_default != 0L,
+                )
+            },
+        ),
+        externalSubtitles = subtitles.map { it.toModel() },
+    ),
+)
 
 internal fun Boolean.toLong(): Long = if (this) 1L else 0L
 
