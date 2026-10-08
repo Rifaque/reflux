@@ -2,6 +2,7 @@ package dev.reflux.sources.local
 
 import dev.reflux.core.model.Availability
 import dev.reflux.core.model.StableIds
+import dev.reflux.core.source.ChangeNotifyingSource
 import dev.reflux.core.source.FileEnumeratingSource
 import dev.reflux.core.source.PlaybackTarget
 import dev.reflux.core.source.ScanRules
@@ -15,11 +16,19 @@ import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.withContext
 import java.io.IOException
+import java.nio.file.ClosedWatchServiceException
 import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.file.StandardWatchEventKinds.ENTRY_CREATE
+import java.nio.file.StandardWatchEventKinds.ENTRY_DELETE
+import java.nio.file.StandardWatchEventKinds.ENTRY_MODIFY
+import java.nio.file.StandardWatchEventKinds.OVERFLOW
+import java.nio.file.WatchKey
 import java.nio.file.attribute.BasicFileAttributes
 
 /**
@@ -32,7 +41,7 @@ import java.nio.file.attribute.BasicFileAttributes
 class LocalFolderSource(
     root: Path,
     displayName: String = root.fileName?.toString() ?: root.toString(),
-) : FileEnumeratingSource {
+) : FileEnumeratingSource, ChangeNotifyingSource {
     val root: Path = root.toAbsolutePath().normalize()
 
     override val descriptor: SourceDescriptor = SourceDescriptor(
@@ -40,7 +49,7 @@ class LocalFolderSource(
         type = TYPE,
         displayName = displayName,
         locality = SourceLocality.DEVICE,
-        capabilities = setOf(SourceCapability.ENUMERATE_FILES),
+        capabilities = setOf(SourceCapability.ENUMERATE_FILES, SourceCapability.CHANGE_NOTIFICATIONS),
     )
 
     override suspend fun availability(): Availability = withContext(Dispatchers.IO) {
@@ -96,6 +105,66 @@ class LocalFolderSource(
             subdirectories.asReversed().forEach(pending::addLast)
         }
     }.flowOn(Dispatchers.IO)
+
+    /**
+     * Emits when relevant files or folders change anywhere below the root. Uses the platform file watcher
+     * (inotify, ReadDirectoryChangesW, ...) and registers new subfolders as they appear.
+     */
+    override fun changes(): Flow<Unit> = callbackFlow {
+        val watcher = root.fileSystem.newWatchService()
+        val watched = HashMap<WatchKey, Path>()
+        fun register(directory: Path) {
+            val walk = ArrayDeque(listOf(directory))
+            while (walk.isNotEmpty()) {
+                val current = walk.removeLast()
+                val key = try {
+                    current.register(watcher, ENTRY_CREATE, ENTRY_DELETE, ENTRY_MODIFY)
+                } catch (_: IOException) {
+                    continue
+                }
+                watched[key] = current
+                try {
+                    Files.newDirectoryStream(current) { Files.isDirectory(it) && ScanRules.shouldEnter(it.fileName.toString()) }
+                        .use { stream -> stream.forEach(walk::addLast) }
+                } catch (_: IOException) {
+                    // unreadable subfolder: not watched
+                }
+            }
+        }
+        register(root)
+        val thread = Thread({
+            try {
+                while (true) {
+                    val key = watcher.take()
+                    val directory = watched[key]
+                    var relevant = false
+                    for (event in key.pollEvents()) {
+                        if (event.kind() == OVERFLOW) {
+                            relevant = true
+                            continue
+                        }
+                        val name = (event.context() as? Path)?.fileName?.toString() ?: continue
+                        val path = directory?.resolve(name)
+                        val isDirectory = path != null && Files.isDirectory(path)
+                        if (isDirectory && event.kind() == ENTRY_CREATE && ScanRules.shouldEnter(name)) register(path!!)
+                        if (isDirectory || ScanRules.roleOf(name) != null || event.kind() == ENTRY_DELETE) relevant = true
+                    }
+                    if (!key.reset()) watched.remove(key)
+                    if (relevant) trySend(Unit)
+                }
+            } catch (_: InterruptedException) {
+                // closed
+            } catch (_: ClosedWatchServiceException) {
+                // closed
+            }
+        }, "reflux-watch-${descriptor.id}")
+        thread.isDaemon = true
+        thread.start()
+        awaitClose {
+            watcher.close()
+            thread.interrupt()
+        }
+    }
 
     private fun directoryKey(directory: Path): Any? = try {
         Files.readAttributes(directory, BasicFileAttributes::class.java).fileKey()

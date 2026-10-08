@@ -2,7 +2,14 @@ package dev.reflux.sources.local
 
 import dev.reflux.core.model.Availability
 import dev.reflux.core.source.SourceUnavailableException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.test.runTest
 import java.nio.file.Files
 import java.nio.file.Path
@@ -73,6 +80,35 @@ class LocalFolderSourceTest {
         assertTrue(target.uri.startsWith("file:"))
         assertTrue(target.uri.endsWith("a%20b/movie.mkv"))
         assertFailsWith<IllegalArgumentException> { source.resolve("../escape.mkv") }
+    }
+
+    @Test
+    fun watchesForNewMediaIncludingNewFolders() = runBlocking {
+        file("Movies/existing.mkv")
+        val source = LocalFolderSource(root)
+        val signals = Channel<Unit>(Channel.UNLIMITED)
+        val job = launch(Dispatchers.IO) { source.changes().collect { signals.send(it) } }
+        try {
+            delay(300) // let the watcher register
+            file("Movies/Heat (1995).mkv")
+            withTimeout(10_000) { signals.receive() }
+            while (signals.tryReceive().isSuccess) Unit
+
+            root.resolve("TV/Lost").createDirectories()
+            withTimeout(10_000) { signals.receive() }
+            delay(300)
+            while (signals.tryReceive().isSuccess) Unit
+            file("TV/Lost/Lost.S01E01.mkv")
+            withTimeout(10_000) { signals.receive() }
+
+            delay(300)
+            while (signals.tryReceive().isSuccess) Unit
+            file("Movies/notes.txt")
+            delay(1_000)
+            assertTrue(signals.tryReceive().isFailure, "irrelevant files are ignored")
+        } finally {
+            job.cancelAndJoin()
+        }
     }
 
     @Test

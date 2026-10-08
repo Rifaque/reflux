@@ -14,6 +14,7 @@
 | Player contract, default track selection, playback controller | Implemented and tested |
 | Desktop engine: libmpv playback and probing (verified headlessly against real media) | Implemented and tested |
 | Metadata engine: provider contract, deterministic matching, TMDB provider, episode metadata, Identify flow, artwork cache | Implemented and tested |
+| Background pipeline: change watching, debounced rescans, reconnect detection, scan → probe → metadata → artwork | Implemented and tested |
 | Desktop shell (Compose) with embedded video | Next — needs Google Maven (`dl.google.com`) access to build Compose |
 
 ## Phase 0 — Product and architecture foundation
