@@ -3,6 +3,7 @@ package dev.reflux.library
 import dev.reflux.core.metadata.RemoteArtwork
 import dev.reflux.core.model.ArtworkKind
 import dev.reflux.core.model.ArtworkLocator
+import dev.reflux.core.model.CalendarDate
 import dev.reflux.core.model.Episode
 import dev.reflux.core.model.Movie
 import dev.reflux.sources.local.LocalFolderSource
@@ -153,6 +154,23 @@ class MetadataTest {
         val episode = library.showDetail(library.shows().single().item.id)!!.seasons.single().episodes.single()
         assertEquals("Jujutsu Kaisen S2E2", episode.item.title)
         assertEquals(26, (episode.item as Episode).absoluteNumber)
+    }
+
+    @Test
+    fun datedEpisodesMatchByAirDate() = runTest {
+        val ref = provider.show("60694", "Last Week Tonight with John Oliver", 2014, emptyMap())
+        provider.seasons[ref to 11] = dev.reflux.core.metadata.SeasonMetadata(
+            11,
+            episodes = listOf(
+                dev.reflux.core.metadata.EpisodeMetadata(11, 3, "Tariffs", airDate = CalendarDate(2024, 3, 3)),
+                dev.reflux.core.metadata.EpisodeMetadata(11, 4, "Elections", airDate = CalendarDate(2024, 3, 10)),
+            ),
+        )
+        file("TV/Last Week Tonight with John Oliver/Last.Week.Tonight.With.John.Oliver.2024.03.10.1080p.mkv")
+        library.scan(source)
+        library.refreshMetadata(provider, "en-US")
+        val episode = library.showDetail(library.shows().single().item.id)!!.seasons.single().episodes.single()
+        assertEquals("Elections", episode.item.title)
     }
 
     @Test

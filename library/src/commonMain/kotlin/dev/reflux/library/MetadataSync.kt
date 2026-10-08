@@ -178,7 +178,8 @@ internal class MetadataSync(database: RefluxDatabase, private val now: () -> Lon
                 episode.episode_number != null ->
                     season(episode.season_number!!.toInt())?.episodes?.firstOrNull { it.episodeNumber.toLong() == episode.episode_number }
                 episode.absolute_number != null -> absoluteEpisode(episode.absolute_number.toInt(), ::season)
-                else -> null // dated episodes need air-date matching across seasons (not yet supported)
+                episode.air_date != null -> datedEpisode(showId, CalendarDate.parse(episode.air_date), ::season)
+                else -> null
             }
             if (match == null) {
                 queries.recordMetadataAttempt(episode.id, now(), AttemptOutcome.NO_MATCH.name)
@@ -188,6 +189,17 @@ internal class MetadataSync(database: RefluxDatabase, private val now: () -> Lon
             }
         }
         return stored
+    }
+
+    /**
+     * Daily shows: providers number seasons either by year (2024) or sequentially from the first air year.
+     * Both candidates are tried and the episode is matched by its air date.
+     */
+    private suspend fun datedEpisode(showId: String, date: CalendarDate?, season: suspend (Int) -> SeasonMetadata?): EpisodeMetadata? {
+        date ?: return null
+        val firstYear = queries.metadataOf(showId).executeAsOneOrNull()?.release_date?.let(CalendarDate::parse)?.year
+        val candidates = listOfNotNull(firstYear?.let { date.year - it + 1 }?.takeIf { it > 0 }, date.year).distinct()
+        return candidates.firstNotNullOfOrNull { number -> season(number)?.episodes?.firstOrNull { it.airDate == date } }
     }
 
     /** Maps an absolute episode number onto provider seasons (season 1 onwards, specials excluded). */

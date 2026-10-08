@@ -25,7 +25,7 @@
 | Continuous integration (Linux with libmpv, Windows) | Configured |
 | Desktop shell (Compose) with embedded video | Next — needs Google Maven (`dl.google.com`) to build Compose |
 | Android phone/tablet and Android TV shells (Media3 player, Storage Access Framework source) | Planned — needs the Android SDK |
-| Known gaps | Stacked multi-part files play as separate versions; disc structures (BDMV/VIDEO_TS) are recognized but not playable; dated (daily-show) episodes get no provider metadata; credentials are not yet in platform secure storage |
+| Known gaps | Stacked multi-part files play as separate versions; disc structures (BDMV/VIDEO_TS) are recognized but not playable; credentials are not yet in platform secure storage |
 
 ## Phase 0 — Product and architecture foundation
 
