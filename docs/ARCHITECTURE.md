@@ -131,7 +131,7 @@ Packages in `core` (`dev.reflux.core`):
 - `playback` — stream description (`StreamInfo`), `DeviceCapabilities`, `PlaybackAssessor` (optimal / degraded / unsupported with reasons), the engine-agnostic `Player` contract, `MediaProber`, default `TrackSelector`, and `PlaybackController` (semantic actions, default tracks, watch reporting).
 - `versions` — Best Version (`VersionSelector`), ranked and explained.
 - `watch` — resume/completion rules and Next Up.
-- `search` — deterministic title search.
+- `search` — deterministic title search (`SearchMatcher`) and smart query understanding (`SmartQueryParser`).
 - `metadata` — provider contract (`MetadataProvider`), work/season/episode metadata, deterministic `MetadataMatcher`.
 - `net` — `HttpFetcher`, the only network abstraction core-level code sees.
 - `input` — semantic actions, default mappings, glyphs, and input-modality tracking.

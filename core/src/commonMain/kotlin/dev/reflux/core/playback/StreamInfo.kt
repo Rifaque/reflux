@@ -26,6 +26,16 @@ data class VideoStream(
     val frameRate: Double? = null,
 ) {
     /**
+     * The resolution class by convention: a 3840×1600 scope film is "2160p" and 1920×800 is "1080p".
+     * Uses the larger of the height and the height a 16:9 frame of the same width would have.
+     */
+    val nominalHeight: Int?
+        get() = when {
+            width != null && height != null -> maxOf(height, width * 9 / 16)
+            else -> height ?: width?.let { it * 9 / 16 }
+        }
+
+    /**
      * Whether a Dolby Vision stream carries an HDR10/SDR-compatible base layer that plays correctly without DV support.
      * Profiles 7 and 8 do; profile 5 does not. Unknown profiles are treated as compatible.
      */

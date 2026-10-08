@@ -80,3 +80,13 @@ class PlaybackAssessorTest {
         assertEquals(PlaybackVerdict.UNSUPPORTED, PlaybackAssessor.assess(avi, Devices.oldPhone).verdict)
     }
 }
+
+class NominalHeightTest {
+    @Test
+    fun scopeFramesKeepTheirResolutionClass() {
+        kotlin.test.assertEquals(2160, VideoStream(width = 3840, height = 1600).nominalHeight)
+        kotlin.test.assertEquals(1080, VideoStream(width = 1920, height = 800).nominalHeight)
+        kotlin.test.assertEquals(1080, VideoStream(width = 1440, height = 1080).nominalHeight)
+        kotlin.test.assertEquals(720, VideoStream(height = 720).nominalHeight)
+    }
+}

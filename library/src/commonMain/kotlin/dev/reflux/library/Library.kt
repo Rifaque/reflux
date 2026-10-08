@@ -39,6 +39,7 @@ import dev.reflux.core.playback.WatchReporter
 import dev.reflux.core.playback.withHints
 import dev.reflux.core.search.SearchDocument
 import dev.reflux.core.search.SearchMatcher
+import dev.reflux.core.search.SmartQueryParser
 import dev.reflux.core.source.FileEnumeratingSource
 import dev.reflux.core.source.FileRole
 import dev.reflux.core.source.ScanRules
@@ -71,6 +72,7 @@ class Library(
 ) : WatchReporter {
     private val queries = database.libraryQueries
     private val metadataSync = MetadataSync(database, now)
+    private val smartSearch = SmartSearch(database)
     private val parser get() = MediaPathParser(maxYear = yearOf(now()) + 1)
 
     // Sources ------------------------------------------------------------------------------------
@@ -577,6 +579,25 @@ class Library(
         val hits = SearchMatcher.search(query, documents, limit)
         val byId = entries(itemsByIds(hits.map { it.document.id.value })).associateBy { it.item.id }
         return hits.mapNotNull { byId[it.document.id] }
+    }
+
+    /**
+     * Deterministic smart search: understands kinds, watch state, quality, genres, people, years, and
+     * runtimes ("4k movies I haven't watched", "Nolan movies", "90s comedies under 2 hours"). Queries with
+     * nothing structured fall back to title search. The interpretation is returned for display.
+     */
+    fun smartSearch(query: String, limit: Int = 100): SmartSearchResult {
+        val parsed = SmartQueryParser.parse(query, smartSearch.vocabulary(), yearOf(now()))
+        if (!parsed.structured) return SmartSearchResult(parsed, search(query, limit))
+        val kinds = parsed.kinds.ifEmpty { setOf(MediaKind.MOVIE, MediaKind.SHOW) }
+        val candidates = buildList {
+            if (MediaKind.MOVIE in kinds) addAll(movies())
+            if (MediaKind.SHOW in kinds) addAll(shows())
+            if (MediaKind.EPISODE in kinds) {
+                addAll(entries(queries.presentPlayables().executeAsList().filter { it.kind == MediaKind.EPISODE.name }.map { it.toModel() }))
+            }
+        }
+        return SmartSearchResult(parsed, smartSearch.evaluate(parsed, candidates, limit))
     }
 
     /** Versions whose identification is weak, for diagnostics and the Identify flow. */
