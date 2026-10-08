@@ -58,6 +58,8 @@ CREATE TABLE version (
     part INTEGER,
     confidence REAL NOT NULL,
     signals TEXT NOT NULL,
+    -- Last probe attempt; reset when the file changes. Avoids re-probing unreadable files on every pass.
+    probe_attempted_at INTEGER,
     first_seen_at INTEGER NOT NULL,
     last_seen_at INTEGER NOT NULL,
     UNIQUE (source_id, path)
@@ -257,8 +259,25 @@ UPDATE version SET item_id = :itemId, size_bytes = :sizeBytes, modified_at = :mo
     height = :height, bit_depth = :bitDepth, dynamic_range = :dynamicRange,
     dolby_vision_profile = :dolbyVisionProfile, frame_rate = :frameRate, duration_ms = :durationMs,
     bitrate_bps = :bitrateBps, edition = :edition, part = :part, confidence = :confidence, signals = :signals,
-    last_seen_at = :lastSeenAt
+    probe_attempted_at = NULL, last_seen_at = :lastSeenAt
 WHERE id = :id;
+
+updateVersionStream:
+UPDATE version SET stream_origin = :streamOrigin, container = :container, video_codec = :videoCodec, width = :width,
+    height = :height, bit_depth = :bitDepth, dynamic_range = :dynamicRange,
+    dolby_vision_profile = :dolbyVisionProfile, frame_rate = :frameRate, duration_ms = :durationMs,
+    bitrate_bps = :bitrateBps, probe_attempted_at = :probedAt
+WHERE id = :id;
+
+markProbeAttempted:
+UPDATE version SET probe_attempted_at = ? WHERE id = ?;
+
+versionsAwaitingProbe:
+SELECT version.id FROM version JOIN source ON source.id = version.source_id
+WHERE version.stream_origin = 'FILENAME_HINTS' AND version.probe_attempted_at IS NULL
+  AND source.availability = 'AVAILABLE'
+ORDER BY version.first_seen_at DESC, version.id
+LIMIT ?;
 
 versionsOfSource:
 SELECT id, item_id, path, size_bytes, modified_at, stream_origin FROM version WHERE source_id = ?;

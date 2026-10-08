@@ -120,17 +120,20 @@ Kotlin Multiplatform (see the decision log). Modules:
 | `core` | Media Core contracts and pure logic. No platform APIs. | kotlinx-coroutines |
 | `library` | The local-first library engine: SQLite schema (SQLDelight), scan planning and reconciliation, read models (movies, shows, Continue Watching, search), watch state, favorites, identity corrections, version preferences. | `core`, SQLDelight |
 | `sources:local` | Read-only local folder adapter for desktop JVMs. | `core` |
+| `playback:mpv` | Desktop playback engine and media probe on libmpv (JNA binding), desktop capability profile. | `core`, JNA, kotlinx-serialization-json |
 
 Packages in `core` (`dev.reflux.core`):
 
 - `model` — `MediaItem` (Movie, Show, Season, Episode), `MediaVersion`, `MediaLocation`, `Artwork`, `WatchState`, `Availability`, deterministic `StableIds`.
 - `source` — `MediaSource` / `FileEnumeratingSource` adapter contracts, `SourceCapability`, `SourceLocality`, shared `ScanRules`.
 - `identify` — path parsing (`MediaPathParser`), identity keys and grouping (`Identifier`), user overrides, sidecar subtitle/artwork matching.
-- `playback` — stream description (`StreamInfo`), `DeviceCapabilities`, and `PlaybackAssessor` (optimal / degraded / unsupported with reasons).
+- `playback` — stream description (`StreamInfo`), `DeviceCapabilities`, `PlaybackAssessor` (optimal / degraded / unsupported with reasons), the engine-agnostic `Player` contract, `MediaProber`, default `TrackSelector`, and `PlaybackController` (semantic actions, default tracks, watch reporting).
 - `versions` — Best Version (`VersionSelector`), ranked and explained.
 - `watch` — resume/completion rules and Next Up.
 - `search` — deterministic title search.
 - `input` — semantic actions, default mappings, glyphs, and input-modality tracking.
+
+Playing a work: `Library.planPlayback` picks the version (Best Version or the user's choice), resolves it and its external subtitles through the source adapter, and adds the resume position. A `PlaybackController` then drives the platform `Player` and reports progress back to the library. Probing (`Library.probePending` with a `MediaProber`) replaces file-name hints with real stream data in the background; failures are not retried until the file changes.
 
 A scan is a pure plan followed by one transaction: the source's file listing is parsed, corrected by user overrides, identified, matched with sidecars, and then applied so the plan becomes the complete contents of that source. The same listing always yields the same library.
 

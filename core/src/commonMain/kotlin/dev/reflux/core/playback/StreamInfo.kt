@@ -47,3 +47,37 @@ data class SubtitleStream(
     val forced: Boolean = false,
     val default: Boolean = false,
 )
+
+/** Reads real stream information from a playable target (libmpv on desktop, MediaExtractor on Android). */
+fun interface MediaProber {
+    /** Returns null when the target cannot be opened or read. */
+    suspend fun probe(target: dev.reflux.core.source.PlaybackTarget): StreamInfo?
+}
+
+/**
+ * Combines probed facts with file-name hints. Probed values win; hints only fill what probes cannot see.
+ *
+ * Probes without Dolby Vision support report a DV profile 7/8 stream as plain HDR10 (its base layer), so a
+ * `DV` release tag upgrades an HDR10 probe result to Dolby Vision.
+ */
+fun StreamInfo.withHints(hints: StreamInfo): StreamInfo {
+    val probedVideo = video ?: return copy(video = hints.video)
+    val hintedRange = hints.video?.dynamicRange
+    val range = if (probedVideo.dynamicRange == DynamicRange.HDR10 && hintedRange == DynamicRange.DOLBY_VISION) {
+        DynamicRange.DOLBY_VISION
+    } else {
+        probedVideo.dynamicRange
+    }
+    return copy(
+        container = if (container == Container.UNKNOWN) hints.container else container,
+        video = probedVideo.copy(dynamicRange = range),
+        audio = if (audio.isEmpty()) hints.audio else audio.mapIndexed { index, track ->
+            // TrueHD/E-AC-3 Atmos is often only visible in the release name.
+            if (index == 0 && !track.atmos && hints.audio.firstOrNull()?.atmos == true && track.codec == hints.audio.first().codec) {
+                track.copy(atmos = true)
+            } else {
+                track
+            }
+        },
+    )
+}
