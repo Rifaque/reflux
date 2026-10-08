@@ -1,0 +1,404 @@
+-- Reflux-owned library state. User media files are never modified; everything here can be rebuilt by
+-- rescanning except user state (watch state, favorites, overrides, preferences).
+-- SQL stays within SQLite 3.18 so platform SQLite on older Android devices works.
+
+CREATE TABLE source (
+    id TEXT NOT NULL PRIMARY KEY,
+    type TEXT NOT NULL,
+    display_name TEXT NOT NULL,
+    locality TEXT NOT NULL,
+    -- Adapter-specific connection data (e.g. a folder path). Interpreted only by the adapter.
+    config TEXT NOT NULL,
+    availability TEXT NOT NULL,
+    added_at INTEGER NOT NULL,
+    last_scan_at INTEGER,
+    last_available_at INTEGER
+);
+
+CREATE TABLE item (
+    id TEXT NOT NULL PRIMARY KEY,
+    kind TEXT NOT NULL,
+    title TEXT NOT NULL,
+    title_key TEXT NOT NULL,
+    sort_key TEXT NOT NULL,
+    year INTEGER,
+    show_id TEXT,
+    season_id TEXT,
+    season_number INTEGER,
+    episode_number INTEGER,
+    episode_number_end INTEGER,
+    absolute_number INTEGER,
+    air_date TEXT,
+    added_at INTEGER NOT NULL
+);
+
+CREATE INDEX item_kind ON item(kind);
+CREATE INDEX item_show ON item(show_id);
+CREATE INDEX item_title_key ON item(title_key);
+
+CREATE TABLE version (
+    id TEXT NOT NULL PRIMARY KEY,
+    item_id TEXT NOT NULL,
+    source_id TEXT NOT NULL,
+    path TEXT NOT NULL,
+    size_bytes INTEGER NOT NULL,
+    modified_at INTEGER NOT NULL,
+    stream_origin TEXT NOT NULL,
+    container TEXT NOT NULL,
+    video_codec TEXT,
+    width INTEGER,
+    height INTEGER,
+    bit_depth INTEGER,
+    dynamic_range TEXT,
+    dolby_vision_profile INTEGER,
+    frame_rate REAL,
+    duration_ms INTEGER,
+    bitrate_bps INTEGER,
+    edition TEXT,
+    part INTEGER,
+    confidence REAL NOT NULL,
+    signals TEXT NOT NULL,
+    first_seen_at INTEGER NOT NULL,
+    last_seen_at INTEGER NOT NULL,
+    UNIQUE (source_id, path)
+);
+
+CREATE INDEX version_item ON version(item_id);
+
+-- Audio and embedded subtitle tracks of a version.
+CREATE TABLE track (
+    version_id TEXT NOT NULL,
+    position INTEGER NOT NULL,
+    type TEXT NOT NULL,
+    codec TEXT NOT NULL,
+    channels INTEGER,
+    language TEXT,
+    atmos INTEGER NOT NULL DEFAULT 0,
+    forced INTEGER NOT NULL DEFAULT 0,
+    is_default INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (version_id, type, position)
+);
+
+CREATE TABLE external_subtitle (
+    version_id TEXT NOT NULL,
+    source_id TEXT NOT NULL,
+    path TEXT NOT NULL,
+    format TEXT NOT NULL,
+    language TEXT,
+    forced INTEGER NOT NULL,
+    hearing_impaired INTEGER NOT NULL,
+    PRIMARY KEY (version_id, path)
+);
+
+CREATE TABLE artwork (
+    item_id TEXT NOT NULL,
+    kind TEXT NOT NULL,
+    origin TEXT NOT NULL,
+    -- For images inside a source; null for remote artwork.
+    source_id TEXT,
+    locator TEXT NOT NULL,
+    PRIMARY KEY (item_id, kind, origin)
+);
+
+CREATE INDEX artwork_source ON artwork(source_id);
+
+CREATE TABLE watch_state (
+    item_id TEXT NOT NULL PRIMARY KEY,
+    position_ms INTEGER NOT NULL,
+    duration_ms INTEGER,
+    completed INTEGER NOT NULL,
+    play_count INTEGER NOT NULL,
+    last_played_at INTEGER
+);
+
+CREATE TABLE favorite (
+    item_id TEXT NOT NULL PRIMARY KEY,
+    added_at INTEGER NOT NULL
+);
+
+-- "Identify this movie/show": a correction keyed by file location.
+CREATE TABLE identity_override (
+    source_id TEXT NOT NULL,
+    path TEXT NOT NULL,
+    kind TEXT NOT NULL,
+    title TEXT NOT NULL,
+    year INTEGER,
+    season INTEGER,
+    episode INTEGER,
+    created_at INTEGER NOT NULL,
+    PRIMARY KEY (source_id, path)
+);
+
+-- A user's pinned version for a work.
+CREATE TABLE version_preference (
+    item_id TEXT NOT NULL PRIMARY KEY,
+    version_id TEXT NOT NULL
+);
+
+-- Sources ---------------------------------------------------------------------------------------
+
+insertSource:
+INSERT OR IGNORE INTO source(id, type, display_name, locality, config, availability, added_at)
+VALUES (?, ?, ?, ?, ?, ?, ?);
+
+renameSource:
+UPDATE source SET display_name = ? WHERE id = ?;
+
+sourceById:
+SELECT * FROM source WHERE id = ?;
+
+allSources:
+SELECT * FROM source ORDER BY added_at, id;
+
+markSourceScanned:
+UPDATE source SET availability = 'AVAILABLE', last_scan_at = :now, last_available_at = :now WHERE id = :id;
+
+setSourceAvailability:
+UPDATE source SET availability = :availability,
+    last_available_at = CASE WHEN :availability = 'AVAILABLE' THEN :now ELSE last_available_at END
+WHERE id = :id;
+
+deleteSource:
+DELETE FROM source WHERE id = ?;
+
+-- Items -----------------------------------------------------------------------------------------
+
+insertItemIfAbsent:
+INSERT OR IGNORE INTO item(
+    id, kind, title, title_key, sort_key, year, show_id, season_id, season_number, episode_number,
+    episode_number_end, absolute_number, air_date, added_at
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+updateItem:
+UPDATE item SET title = :title, title_key = :titleKey, sort_key = :sortKey, year = :year,
+    episode_number_end = :episodeNumberEnd
+WHERE id = :id;
+
+itemById:
+SELECT * FROM item WHERE id = ?;
+
+itemsByIds:
+SELECT * FROM item WHERE id IN ?;
+
+-- Years known for titles from *other* sources; this source's own items are re-derived during its scan.
+yearHintsExcludingSource:
+SELECT kind, title_key, year FROM item
+WHERE year IS NOT NULL AND kind = 'MOVIE'
+  AND EXISTS (SELECT 1 FROM version WHERE version.item_id = item.id AND version.source_id != :sourceId)
+UNION
+SELECT kind, title_key, year FROM item
+WHERE year IS NOT NULL AND kind = 'SHOW' AND EXISTS (
+    SELECT 1 FROM item episode JOIN version ON version.item_id = episode.id
+    WHERE episode.show_id = item.id AND version.source_id != :sourceId
+);
+
+presentMovies:
+SELECT * FROM item
+WHERE kind = 'MOVIE' AND EXISTS (SELECT 1 FROM version WHERE version.item_id = item.id)
+ORDER BY sort_key, year;
+
+presentShows:
+SELECT * FROM item
+WHERE kind = 'SHOW' AND EXISTS (
+    SELECT 1 FROM item episode JOIN version ON version.item_id = episode.id WHERE episode.show_id = item.id
+)
+ORDER BY sort_key, year;
+
+presentSeasonsOfShow:
+SELECT * FROM item
+WHERE kind = 'SEASON' AND show_id = ? AND EXISTS (
+    SELECT 1 FROM item episode JOIN version ON version.item_id = episode.id WHERE episode.season_id = item.id
+)
+ORDER BY season_number;
+
+episodesOfShow:
+SELECT * FROM item WHERE kind = 'EPISODE' AND show_id = ?;
+
+presentEpisodesOfSeason:
+SELECT * FROM item
+WHERE kind = 'EPISODE' AND season_id = ? AND EXISTS (SELECT 1 FROM version WHERE version.item_id = item.id)
+ORDER BY episode_number, absolute_number, air_date;
+
+presentPlayables:
+SELECT * FROM item
+WHERE kind IN ('MOVIE', 'EPISODE') AND EXISTS (SELECT 1 FROM version WHERE version.item_id = item.id);
+
+deleteOrphanPlayables:
+DELETE FROM item
+WHERE kind IN ('MOVIE', 'EPISODE')
+  AND NOT EXISTS (SELECT 1 FROM version WHERE version.item_id = item.id)
+  AND NOT EXISTS (SELECT 1 FROM watch_state WHERE watch_state.item_id = item.id)
+  AND NOT EXISTS (SELECT 1 FROM favorite WHERE favorite.item_id = item.id);
+
+deleteEmptySeasons:
+DELETE FROM item
+WHERE kind = 'SEASON'
+  AND NOT EXISTS (SELECT 1 FROM item episode WHERE episode.season_id = item.id)
+  AND NOT EXISTS (SELECT 1 FROM favorite WHERE favorite.item_id = item.id);
+
+deleteEmptyShows:
+DELETE FROM item
+WHERE kind = 'SHOW'
+  AND NOT EXISTS (SELECT 1 FROM item child WHERE child.show_id = item.id)
+  AND NOT EXISTS (SELECT 1 FROM favorite WHERE favorite.item_id = item.id);
+
+-- Versions --------------------------------------------------------------------------------------
+
+insertVersionIfAbsent:
+INSERT OR IGNORE INTO version(
+    id, item_id, source_id, path, size_bytes, modified_at, stream_origin, container, video_codec, width, height,
+    bit_depth, dynamic_range, dolby_vision_profile, frame_rate, duration_ms, bitrate_bps, edition, part,
+    confidence, signals, first_seen_at, last_seen_at
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+updateVersion:
+UPDATE version SET item_id = :itemId, size_bytes = :sizeBytes, modified_at = :modifiedAt,
+    stream_origin = :streamOrigin, container = :container, video_codec = :videoCodec, width = :width,
+    height = :height, bit_depth = :bitDepth, dynamic_range = :dynamicRange,
+    dolby_vision_profile = :dolbyVisionProfile, frame_rate = :frameRate, duration_ms = :durationMs,
+    bitrate_bps = :bitrateBps, edition = :edition, part = :part, confidence = :confidence, signals = :signals,
+    last_seen_at = :lastSeenAt
+WHERE id = :id;
+
+versionsOfSource:
+SELECT id, item_id, path, size_bytes, modified_at, stream_origin FROM version WHERE source_id = ?;
+
+updateVersionIdentity:
+UPDATE version SET item_id = :itemId, edition = :edition, part = :part, confidence = :confidence,
+    signals = :signals, last_seen_at = :lastSeenAt
+WHERE id = :id;
+
+externalSubtitlePathsOfSource:
+SELECT path FROM external_subtitle WHERE source_id = ?;
+
+artworkPathsOfSource:
+SELECT locator FROM artwork WHERE source_id = ?;
+
+versionsOfItem:
+SELECT version.*, source.availability, source.locality
+FROM version JOIN source ON source.id = version.source_id
+WHERE version.item_id = ?
+ORDER BY version.id;
+
+versionById:
+SELECT version.*, source.availability, source.locality
+FROM version JOIN source ON source.id = version.source_id
+WHERE version.id = ?;
+
+itemAvailability:
+SELECT version.item_id, source.availability
+FROM version JOIN source ON source.id = version.source_id;
+
+lowConfidenceVersions:
+SELECT * FROM version WHERE confidence < ? ORDER BY source_id, path;
+
+deleteVersion:
+DELETE FROM version WHERE id = ?;
+
+itemHasVersions:
+SELECT EXISTS (SELECT 1 FROM version WHERE item_id = ?);
+
+-- Tracks and subtitles --------------------------------------------------------------------------
+
+insertTrack:
+INSERT OR REPLACE INTO track(version_id, position, type, codec, channels, language, atmos, forced, is_default)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+tracksOfVersion:
+SELECT * FROM track WHERE version_id = ? ORDER BY type, position;
+
+deleteTracksOfVersion:
+DELETE FROM track WHERE version_id = ?;
+
+insertExternalSubtitle:
+INSERT OR REPLACE INTO external_subtitle(version_id, source_id, path, format, language, forced, hearing_impaired)
+VALUES (?, ?, ?, ?, ?, ?, ?);
+
+externalSubtitlesOfVersion:
+SELECT * FROM external_subtitle WHERE version_id = ? ORDER BY path;
+
+deleteExternalSubtitlesOfSource:
+DELETE FROM external_subtitle WHERE source_id = ?;
+
+deleteExternalSubtitlesOfVersion:
+DELETE FROM external_subtitle WHERE version_id = ?;
+
+-- Artwork ---------------------------------------------------------------------------------------
+
+upsertArtwork:
+INSERT OR REPLACE INTO artwork(item_id, kind, origin, source_id, locator) VALUES (?, ?, ?, ?, ?);
+
+artworkOfItem:
+SELECT * FROM artwork WHERE item_id = ?;
+
+artworkOfItems:
+SELECT * FROM artwork WHERE item_id IN ?;
+
+deleteArtworkOfSource:
+DELETE FROM artwork WHERE source_id = ? AND origin = ?;
+
+deleteOrphanArtwork:
+DELETE FROM artwork WHERE item_id NOT IN (SELECT id FROM item);
+
+-- Watch state, favorites, overrides, preferences -------------------------------------------------
+
+upsertWatchState:
+INSERT OR REPLACE INTO watch_state(item_id, position_ms, duration_ms, completed, play_count, last_played_at)
+VALUES (?, ?, ?, ?, ?, ?);
+
+watchStateOf:
+SELECT * FROM watch_state WHERE item_id = ?;
+
+allWatchStates:
+SELECT * FROM watch_state;
+
+watchStatesOfItems:
+SELECT * FROM watch_state WHERE item_id IN ?;
+
+recentlyPlayed:
+SELECT * FROM watch_state WHERE last_played_at IS NOT NULL ORDER BY last_played_at DESC LIMIT ?;
+
+-- Movies and shows by when they (or a show's newest episode) appeared.
+recentlyAdded:
+SELECT item.*, CASE WHEN item.kind = 'SHOW' THEN (
+    SELECT MAX(episode.added_at) FROM item episode JOIN version ON version.item_id = episode.id
+    WHERE episode.show_id = item.id
+) ELSE item.added_at END AS latest_added_at
+FROM item
+WHERE (item.kind = 'MOVIE' AND EXISTS (SELECT 1 FROM version WHERE version.item_id = item.id))
+   OR (item.kind = 'SHOW' AND EXISTS (
+        SELECT 1 FROM item episode JOIN version ON version.item_id = episode.id WHERE episode.show_id = item.id))
+ORDER BY latest_added_at DESC, item.sort_key
+LIMIT ?;
+
+moveWatchState:
+UPDATE watch_state SET item_id = :toId
+WHERE item_id = :fromId AND NOT EXISTS (SELECT 1 FROM watch_state WHERE item_id = :toId);
+
+insertFavorite:
+INSERT OR IGNORE INTO favorite(item_id, added_at) VALUES (?, ?);
+
+deleteFavorite:
+DELETE FROM favorite WHERE item_id = ?;
+
+allFavorites:
+SELECT * FROM favorite ORDER BY added_at DESC;
+
+upsertOverride:
+INSERT OR REPLACE INTO identity_override(source_id, path, kind, title, year, season, episode, created_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+
+overridesOfSource:
+SELECT * FROM identity_override WHERE source_id = ?;
+
+deleteOverride:
+DELETE FROM identity_override WHERE source_id = ? AND path = ?;
+
+setPreferredVersion:
+INSERT OR REPLACE INTO version_preference(item_id, version_id) VALUES (?, ?);
+
+preferredVersion:
+SELECT version_id FROM version_preference WHERE item_id = ?;
+
+clearPreferredVersion:
+DELETE FROM version_preference WHERE item_id = ?;

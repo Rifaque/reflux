@@ -78,3 +78,19 @@ A work (`MediaItem`: movie, show, season, episode) is separate from its `MediaVe
 ## 2026-10-08 — Unknown technical information never blocks playback
 
 Compatibility checks (`PlaybackAssessor`) treat unknown stream properties as "no evidence of a problem". Reflux ranks and explains versions but does not refuse to try a file it could not inspect; the platform player remains the final authority.
+
+## 2026-10-08 — Library persistence: SQLite through SQLDelight
+
+The library index, metadata cache references, watch state, favorites, identity overrides, and version preferences live in one SQLite database owned by Reflux, accessed through SQLDelight (Apache-2.0, Kotlin Multiplatform, compile-time-checked SQL, reactive queries). SQLite is available on every target and is the right tool for an embedded, offline, single-user index.
+
+- SQL stays within the SQLite 3.18 dialect so the platform SQLite of older Android TV devices works; upserts are written as insert-or-ignore plus update.
+- Desktop uses the JDBC driver (sqlite-jdbc) with WAL; Android will use the platform driver.
+- Everything except user state (watch state, favorites, overrides, preferences) can be rebuilt by rescanning.
+
+## 2026-10-08 — Offline and unmount safety
+
+A scan only changes the cached library for a source that is reachable. If a source is unreachable, or reachable but contains no media although Reflux knows media on it (the typical unmounted drive or share leaving an empty mount point), the cached library is kept and the source is marked unavailable. Only a reachable, non-empty source can remove versions. Removing a work's last file hides the work but keeps its watch history; an identity correction carries the history to the corrected work.
+
+## 2026-10-08 — Local folder adapter
+
+`LocalFolderSource` (desktop JVM) walks a folder read-only, follows symbolic links with loop protection, skips hidden and system folders, and tolerates unreadable entries. Android will need a separate Storage Access Framework adapter because user-chosen folders are `content:` trees there, not paths.

@@ -67,11 +67,12 @@ data class SourceFile(
 /**
  * A source that lists files for Reflux to identify.
  *
- * [files] walks the source, consulting [ScanRules] to skip directories and irrelevant files early.
- * It throws [SourceUnavailableException] if the source cannot be reached at all.
+ * [files] walks the source, applying [ScanRules] to skip directories and irrelevant files early.
+ * It throws [SourceUnavailableException] if the source cannot be reached at all; unreadable
+ * individual entries are skipped.
  */
 interface FileEnumeratingSource : MediaSource {
-    fun files(rules: ScanRules): Flow<SourceFile>
+    fun files(): Flow<SourceFile>
 }
 
 class SourceUnavailableException(sourceId: SourceId, cause: Throwable? = null) :

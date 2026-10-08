@@ -14,3 +14,5 @@ dependencyResolutionManagement {
 }
 
 include(":core")
+include(":library")
+include(":sources:local")

@@ -87,6 +87,14 @@ class MediaPathParser(maxYear: Int) {
         }
     }
 
+    /** The season a folder name denotes (`Season 2`, `S02`, `Specials` → 0), or null. */
+    fun seasonOfFolder(name: String): Int? {
+        val trimmed = name.trim()
+        if (specialsFolder.matches(trimmed)) return 0
+        val match = seasonFolder.matchEntire(trimmed) ?: return null
+        return match.groupValues[1].ifEmpty { match.groupValues[2] }.toInt()
+    }
+
     private fun special(kind: ParsedKind, stem: String) =
         ParsedMedia(kind = kind, title = NameParser.cleanTitle(stem))
 
@@ -96,11 +104,7 @@ class MediaPathParser(maxYear: Int) {
     private fun findSeasonContext(dirs: List<String>): SeasonContext? {
         for (i in dirs.indices.reversed()) {
             val name = dirs[i].trim()
-            if (specialsFolder.matches(name)) return SeasonContext(0, i)
-            seasonFolder.matchEntire(name)?.let { m ->
-                val number = m.groupValues[1].ifEmpty { m.groupValues[2] }.toInt()
-                return SeasonContext(number, i)
-            }
+            seasonOfFolder(name)?.let { return SeasonContext(it, i) }
             // Season-pack folders like "Show.S02.1080p.BluRay-GROUP" (but not single-episode release folders).
             val parsed = names.parse(name)
             if (parsed.episode == null) {
@@ -226,7 +230,7 @@ class MediaPathParser(maxYear: Int) {
         for (i in (0 until searchEnd).reversed()) {
             val name = dirs[i]
             if (name.lowercase() in categoryFolders) continue
-            if (seasonFolder.matches(name.trim()) || specialsFolder.matches(name.trim())) continue
+            if (seasonOfFolder(name) != null) continue
             val parts = names.parse(name)
             if (parts.episode != null) continue
             if (seasonPackFolder.find(name)?.takeIf { it.range.first > 0 } != null) continue
