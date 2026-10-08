@@ -41,9 +41,13 @@ class MediaPathParser(maxYear: Int) {
     )
     private val sampleToken = Regex("""(?<![\p{L}\p{N}])sample(?![\p{L}\p{N}])""", RegexOption.IGNORE_CASE)
     private val genericFileName = Regex(
-        """^(?:movie|film|video|feature|main|title[ _-]?t?\d*|vts[ _]\d+[ _]\d+|\d{3,5}|disc[ _-]?\d*|playlist|index)$""",
+        """^(?:movie|film|video|feature|main|title[ _-]?t?\d*|vts[ _]\d+[ _]\d+|disc[ _-]?\d*|playlist|index)$""",
         RegexOption.IGNORE_CASE,
     )
+
+    /** Disc-rip style numeric names (`00001.m2ts`); only generic when no year says it is a title like "300". */
+    private val numericFileName = Regex("""^\d{3,5}$""")
+    private val miniseriesPart = Regex("""(?<![\p{L}\p{N}])(?:part|pt|chapter)[ ._-]?(0\d)(?![\p{L}\p{N}])""", RegexOption.IGNORE_CASE)
 
     private val extrasFolders = setOf(
         "extras", "extra", "featurettes", "behind the scenes", "deleted scenes", "interviews", "scenes", "shorts",
@@ -78,7 +82,9 @@ class MediaPathParser(maxYear: Int) {
         val episodeFile = when {
             file.episode != null -> file
             seasonContext != null -> contextualEpisode(stem, seasonContext.number)
-            else -> absoluteCandidate(stem)
+                // "[Group] Show - 28" inside a season folder numbers episodes within that season.
+                ?: absoluteCandidate(stem)?.let { it.copy(episode = EpisodeMarker.EpisodeOnly((it.episode as EpisodeMarker.Absolute).number, null)) }
+            else -> absoluteCandidate(stem) ?: miniseriesEpisode(stem, dirs)
         }
         return if (episodeFile != null) {
             episode(episodeFile, extension, dirs, seasonContext)
@@ -144,6 +150,29 @@ class MediaPathParser(maxYear: Int) {
         val number = (parts.episode as EpisodeMarker.Absolute).number
         val plausible = stem.trimStart().startsWith("[") || (parts.hasReleaseTokens && number < 1000)
         return parts.takeIf { plausible && it.title.isNotBlank() }
+    }
+
+    /**
+     * Miniseries parts (`Band.of.Brothers.Part.01.Currahee`) inside a folder named after the series. The part
+     * number must be zero-padded and the folder must agree, because movies also use "Part 1".
+     */
+    private fun miniseriesEpisode(stem: String, dirs: List<String>): NameParts? {
+        val match = miniseriesPart.find(stem)?.takeIf { it.range.first > 0 } ?: return null
+        val folder = dirs.lastOrNull()?.let { names.parse(it) } ?: return null
+        val title = NameParser.cleanTitle(stem.substring(0, match.range.first))
+        if (TitleText.key(title) != folder.titleKey || title.isBlank()) return null
+        val rest = names.parse(stem.substring(match.range.last + 1).ifBlank { "x" })
+        return NameParts(
+            title = title,
+            year = folder.year,
+            episode = EpisodeMarker.EpisodeOnly(match.groupValues[1].toInt(), null),
+            episodeTitle = rest.title.takeIf { stem.substring(match.range.last + 1).isNotBlank() && it.isNotBlank() },
+            edition = null,
+            part = null,
+            externalIds = emptyMap(),
+            technical = rest.technical,
+            hasReleaseTokens = rest.hasReleaseTokens,
+        )
     }
 
     private fun episode(file: NameParts, extension: String, dirs: List<String>, seasonContext: SeasonContext?): ParsedMedia {
@@ -251,7 +280,8 @@ class MediaPathParser(maxYear: Int) {
         val folderName = dirs.lastOrNull { it.lowercase() !in categoryFolders }
             ?.takeIf { it == dirs.last() }
         val folder = folderName?.let { names.parse(it) }?.takeIf { it.title.isNotBlank() && it.episode == null }
-        val generic = genericFileName.matches(file.title.trim()) || TitleText.key(file.title).isEmpty()
+        val generic = genericFileName.matches(file.title.trim()) || TitleText.key(file.title).isEmpty() ||
+            (file.year == null && numericFileName.matches(file.title.trim()))
 
         var title = file.title
         var year = file.year
@@ -287,7 +317,8 @@ class MediaPathParser(maxYear: Int) {
             signals += EXTERNAL_ID_HINT
             score += 0.2
         }
-        if (generic && TITLE_FROM_FOLDER !in signals || TitleText.key(title).length < 2) {
+        // One-character titles exist ("9", "M", "Q"), but only a year makes them trustworthy.
+        if (generic && TITLE_FROM_FOLDER !in signals || (TitleText.key(title).length < 2 && year == null)) {
             signals += WEAK_TITLE
             score -= 0.4
         }

@@ -82,7 +82,7 @@ Until the platform shells land, `tools/cli` runs the real engine against your ow
 ```sh
 ./gradlew :tools:cli:installDist
 tools/cli/build/install/reflux/bin/reflux add ~/Videos
-tools/cli/build/install/reflux/bin/reflux search 4k movies I haven't watched
+tools/cli/build/install/reflux/bin/reflux search "4k movies I haven't watched"
 tools/cli/build/install/reflux/bin/reflux play breaking bad
 tools/cli/build/install/reflux/bin/reflux doctor
 ```
