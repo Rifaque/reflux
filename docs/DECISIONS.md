@@ -150,3 +150,29 @@ WebDAV is the first network file source because it is plain HTTP(S): it reuses t
 ## 2026-10-08 — SMB through a loopback stream server
 
 SMB shares are read with smbj (Apache-2.0, works on desktop JVMs and Android). Because Media3 cannot open `smb://` and typical libmpv builds lack libsmbclient, share files are served to players by a minimal loopback-only HTTP server with byte-range support and unguessable per-file tokens. The same URLs serve probing and artwork, so SMB needs no special cases elsewhere. Verified against a live SMB2 server, including probing and playback.
+
+## 2026-10-09 — One experience layer, thin shells
+
+The screens, navigation, playback session logic, and the Compose rendering of the design system live in one platform-free module (`ui`, Compose Multiplatform `commonMain`). Shells implement a small `Platform` interface and feed normalized input in. The desktop shell is the first consumer; the Android shells are meant to reuse the same module rather than re-implement the experience.
+
+- The UI is built on Compose foundation with Reflux's own components. No Material library: the design language is Reflux's, and a component kit would have to be fought rather than used.
+- Library access from the UI is asynchronous and keyed on a revision counter, so screens stay current without each one subscribing to queries.
+- Rendered screens are tested offscreen against a real library over a temporary folder, with a fake provider and a fake engine.
+
+## 2026-10-09 — Desktop video: native surface, controls in an overlay window
+
+**Decision.** On desktop, libmpv renders into a native child window (`wid`) of the main window. The player's controls are a transparent, undecorated, never-focused window owned by the main window and kept exactly over the video surface.
+
+**Alternatives evaluated.**
+
+| Option | Result |
+| --- | --- |
+| Native surface inside the Compose window, Compose drawn over it (`compose.interop.blending`) | Tested: the video disappears. The toolkit clips a native child wherever another native child overlaps it, and Compose's own layer is one. |
+| libmpv render API into a texture or bitmap drawn by Compose | One window and real blur over video, but every frame is read back and re-uploaded: no zero-copy hardware decoding, no HDR output, no engine-driven frame timing. It gives up what libmpv was chosen for. |
+| Native surface with controls in a layered overlay window | Chosen. Tested on Windows with real playback: translucent controls compose over live video, follow moves and resizes, receive pointer input, and leave keyboard focus with the main window. |
+
+**Consequences.** The engine keeps its direct path to the display. Player glass cannot blur the video behind it, so over video the materials use a denser tint; Android's `SurfaceView` has the same property, so the player design does not depend on blurring video anywhere. A fully transparent pixel lets pointer input fall through to the surface, so the overlay is filled with an imperceptible tint. All keys are taken at the application level and routed through the semantic input path, so input does not depend on which native window has focus.
+
+## 2026-10-09 — Desktop fullscreen keeps the window
+
+Fullscreen must not recreate the main window, because the playing engine renders into a child of it. On Windows the toolkit's fullscreen leaves the title bar on a decorated window, so the shell removes the frame styles and stretches the same window over its monitor (borderless fullscreen) and restores them afterwards. Elsewhere the toolkit's fullscreen is used. Leaving the player restores the window to how it was when playback started.

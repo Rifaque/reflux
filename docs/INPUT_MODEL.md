@@ -79,6 +79,13 @@ Touch/pointer/keyboard interaction should still remain possible.
 - Keyboard: arrows, Enter, Space, Escape/Backspace, `F` fullscreen, `M` mute, `J`/`K`/`L` seek and pause, `,`/`.` speed. Media and remote keys map directly.
 - Modality tracking: a controller button or a stick deflection of at least 50% switches to `DIRECTIONAL`; pointer input must travel 24 dp continuously to leave it; media keys never switch modality. The last controller family is remembered for glyphs.
 
+## Desktop shell
+
+- Keys are taken once, at the application level, normalized to `Key`, and handed to the experience layer. This works whichever native window has focus, including the video surface.
+- While browsing, navigation actions move toolkit focus and Back unwinds navigation; while playing, the same keys are playback actions. While a text field has focus, only Escape and Down are taken, so typing is never read as shortcuts.
+- Keys with Ctrl, Alt, or Meta held are left to the system. `F11` is fullscreen alongside `F`.
+- Not yet read on desktop: controllers and media keys. The semantic path, the modality tracker, and the layout morph are in place and covered by tests; a gamepad reader for Windows (XInput and DualSense) and Linux (evdev) is the missing piece.
+
 ## Configuration
 
 Users may eventually override mappings, but sensible controller mappings must work without configuration.

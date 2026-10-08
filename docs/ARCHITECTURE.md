@@ -130,8 +130,11 @@ Kotlin Multiplatform (see the decision log). Modules:
 | `sources:smb` | Read-only SMB share source (smbj) and a loopback range-capable stream server that lets any player open share files. | `core`, smbj |
 | `sources:jellyfin` | Jellyfin catalog source (platform-free): sign-in, catalog paging, direct-stream playback targets, watch-state reporting. | `core`, kotlinx-serialization-json |
 | `metadata:tmdb` | TMDB v3 metadata provider over the core `HttpFetcher` (platform-free). | `core`, kotlinx-serialization-json |
-| `tools:cli` | Developer and diagnostic CLI wired exactly like a desktop shell (registry, pipeline, playback). | everything above |
 | `playback:mpv` | Desktop playback engine and media probe on libmpv (JNA binding), desktop capability profile. | `core`, JNA, kotlinx-serialization-json |
+| `ui` | The experience layer, shared by every shell: navigation and playback state, screens, player controls, and the design system rendered with Compose. No platform APIs; shells implement its `Platform` interface. | `core`, `library`, `design`, Compose runtime/foundation/ui |
+| `desktop:engine` | The engine wired for a desktop machine (data directories, source factories, metadata, probing, pipeline). No UI. | everything except `ui` |
+| `desktop:app` | The Windows/Linux shell: window, native video surface with the player overlay above it, fullscreen, keyboard normalization, folder picker, artwork decoding. | `ui`, `desktop:engine`, Compose Desktop, JNA |
+| `tools:cli` | Developer and diagnostic CLI over the same `desktop:engine` wiring as the shell. | `desktop:engine` |
 
 Packages in `core` (`dev.reflux.core`):
 
@@ -153,6 +156,14 @@ Playing a work: `Library.planPlayback` picks the version (Best Version or the us
 A scan is a pure plan followed by one transaction: the source's file listing is parsed, corrected by user overrides, identified, matched with sidecars, and then applied so the plan becomes the complete contents of that source. The same listing always yields the same library.
 
 Contracts follow three rules: unknown is not failure, capabilities are explicit, and every decision is deterministic and explainable (identification signals, playback issues, selection criteria).
+
+### Experience layer and shells
+
+`ui` is the experience layer. `AppState` holds where the user is, what is playing, and how they are interacting; screens read the library through it off the UI thread and reload when it changes. A `PlaybackSession` is one visit to the player: it plans playback through the library, drives the core `PlaybackController`, and decides what follows an ending (next-episode countdown, "still watching?", or leaving the player). Everything the UI says about a work goes through one pure `Formatting` object.
+
+A shell supplies what only a platform can, through `Platform`: decoded artwork, device capabilities, a playback engine attached to a video surface, a way to add a media folder, and fullscreen. It also normalizes raw input into core `Key`s and `InputSignal`s and hands them to `AppState`, which maps them to semantic actions for the current context; the UI never sees physical keys.
+
+Video is always a platform surface beneath the experience layer's transparent `PlayerOverlay` (a native child window with libmpv on desktop, a `SurfaceView` with Media3 on Android), so the engine keeps its direct path to the display. The layout comes from `AdaptiveLayout` for the window and the current input modality, and is animated when the modality changes.
 
 ## File safety
 
