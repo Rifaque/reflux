@@ -113,7 +113,7 @@ A source is allowed to lack capabilities. The Media Core should represent that e
 
 Two kinds of sources exist today:
 
-- **File-enumerating sources** (`FileEnumeratingSource`: local folders; later SMB, WebDAV) list files that Reflux parses and identifies itself.
+- **File-enumerating sources** (`FileEnumeratingSource`: local folders, WebDAV shares; later SMB) list files that Reflux parses and identifies itself.
 - **Catalog sources** (`CatalogSource`: media servers such as Jellyfin) list works they already identified. Their descriptions use the same shape as a file-name parse, so they pass through the same identity rules and merge with local copies of the same work; the same work on two sources is one item with two versions, and Best Version chooses between them. Server-reported stream data is trusted and not probed; server watch state is imported when newer, and `WatchStateSyncSource` lets Reflux report back.
 
 ## Implementation
@@ -125,6 +125,7 @@ Kotlin Multiplatform (see the decision log). Modules:
 | `core` | Media Core contracts and pure logic. No platform APIs. | kotlinx-coroutines |
 | `library` | The local-first library engine: SQLite schema (SQLDelight), scan planning and reconciliation, read models (movies, shows, Continue Watching, search), watch state, favorites, identity corrections, version preferences, metadata storage and refresh, Identify flow, smart search, collections, the default Home feed, diagnostics, and the background pipeline. JVM: database driver, `JdkHttpFetcher`, `ArtworkCache`. | `core`, SQLDelight |
 | `sources:local` | Read-only local folder adapter for desktop JVMs. | `core` |
+| `sources:webdav` | Read-only WebDAV share source (PROPFIND listing, streamed playback with share credentials). | `core` |
 | `sources:jellyfin` | Jellyfin catalog source (platform-free): sign-in, catalog paging, direct-stream playback targets, watch-state reporting. | `core`, kotlinx-serialization-json |
 | `metadata:tmdb` | TMDB v3 metadata provider over the core `HttpFetcher` (platform-free). | `core`, kotlinx-serialization-json |
 | `tools:cli` | Developer and diagnostic CLI wired exactly like a desktop shell (registry, pipeline, playback). | everything above |
