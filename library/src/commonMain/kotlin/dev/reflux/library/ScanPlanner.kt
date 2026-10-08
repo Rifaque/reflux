@@ -1,6 +1,7 @@
 package dev.reflux.library
 
 import dev.reflux.core.identify.ArtworkScope
+import dev.reflux.core.identify.Confidence
 import dev.reflux.core.identify.IdentificationSignal
 import dev.reflux.core.identify.Identification
 import dev.reflux.core.identify.Identifier
@@ -26,12 +27,22 @@ import dev.reflux.core.model.Show
 import dev.reflux.core.model.SourceId
 import dev.reflux.core.model.StableIds
 import dev.reflux.core.model.StreamInfoOrigin
+import dev.reflux.core.model.CalendarDate
+import dev.reflux.core.playback.SubtitleFormat
+import dev.reflux.core.source.CatalogEntry
+import dev.reflux.core.source.CatalogSubtitle
+import dev.reflux.core.source.CatalogVersion
 import dev.reflux.core.source.FileRole
 import dev.reflux.core.source.ScanRules
 import dev.reflux.core.source.SourceFile
 
-/** A version as planned by a scan, with the parse that produced it. */
-internal data class PlannedVersion(val version: MediaVersion, val parsed: ParsedMedia)
+/** A version as planned by a scan, with the description that produced it. */
+internal data class PlannedVersion(
+    val version: MediaVersion,
+    val parsed: ParsedMedia,
+    /** For catalog sources: the encoded source description, kept for offline re-identification. */
+    val sourceIdentity: String? = null,
+)
 
 /** Everything one scan of one source contributes to the library. Pure data; applying it is separate. */
 internal data class ScanPlan(
@@ -45,13 +56,24 @@ internal data class ScanPlan(
     val externalHints: Map<MediaId, Map<String, String>> = emptyMap(),
 )
 
+/** A playable file or stream with what is known about it, before identification. */
+private data class Candidate(
+    val file: SourceFile,
+    val parsed: ParsedMedia,
+    val origin: StreamInfoOrigin,
+    val subtitles: List<ExternalSubtitle>,
+    val sourceIdentity: String? = null,
+)
+
 /**
- * Turns a file listing into a [ScanPlan]: parse, apply overrides, identify, choose titles, attach sidecars.
+ * Turns a source listing into a [ScanPlan]: describe each file (parse, or take the catalog's description),
+ * apply user overrides, identify, choose titles, and attach subtitles and artwork.
  *
  * Deterministic: the same listing, overrides, and hints always produce the same plan.
  */
 internal class ScanPlanner(private val parser: MediaPathParser) {
 
+    /** Plans a file-enumerating source: everything is learned from paths and sidecar files. */
     fun plan(
         sourceId: SourceId,
         files: List<SourceFile>,
@@ -60,49 +82,99 @@ internal class ScanPlanner(private val parser: MediaPathParser) {
     ): ScanPlan {
         val videos = files.filter { ScanRules.roleOf(it.path.substringAfterLast('/')) == FileRole.VIDEO }
         val skipped = mutableMapOf<ParsedKind, Int>()
-        val parsedByFile = videos.mapNotNull { file ->
+        val sidecars = SidecarMatcher.match(files.map { it.path })
+        val subtitlesByVideo = sidecars.subtitles.groupBy { it.videoPath }
+        val candidates = videos.mapNotNull { file ->
             val parsed = parser.parse(file.path) ?: return@mapNotNull null
             val effective = overrides[file.path]?.applyTo(parsed) ?: parsed
             if (effective.kind != ParsedKind.MOVIE && effective.kind != ParsedKind.EPISODE) {
                 skipped[effective.kind] = (skipped[effective.kind] ?: 0) + 1
-                null
-            } else {
-                file to effective
+                return@mapNotNull null
+            }
+            val subtitles = subtitlesByVideo[file.path].orEmpty().map {
+                ExternalSubtitle(MediaLocation(sourceId, it.subtitlePath), it.format, it.language, it.forced, it.hearingImpaired)
+            }
+            Candidate(file, effective, StreamInfoOrigin.FILENAME_HINTS, subtitles)
+        }
+        val assembled = assemble(sourceId, candidates, externalYearHints)
+        val artwork = resolveArtwork(sourceId, sidecars.artwork, assembled.identificationByPath, assembled.items.map { it.id }.toSet())
+        return ScanPlan(sourceId, assembled.items, assembled.versions, artwork, skipped, assembled.externalHints)
+    }
+
+    /** Plans a catalog source: identities, streams, subtitles, and artwork come from the source. */
+    fun planCatalog(
+        sourceId: SourceId,
+        entries: List<CatalogEntry>,
+        overrides: Map<String, IdentityOverride>,
+        externalYearHints: Map<Pair<ParsedKind, String>, Set<Int>>,
+    ): ScanPlan {
+        val sourceConfidence = Confidence(0.95, setOf(IdentificationSignal.SOURCE_IDENTIFIED))
+        val candidates = entries.flatMap { entry ->
+            entry.versions.map { version ->
+                val described = entry.identity.copy(
+                    stream = version.stream,
+                    edition = version.edition ?: entry.identity.edition,
+                    confidence = sourceConfidence,
+                )
+                Candidate(
+                    file = SourceFile(version.path, version.sizeBytes, version.modifiedAtEpochMs),
+                    parsed = overrides[version.path]?.applyTo(described) ?: described,
+                    origin = StreamInfoOrigin.SOURCE,
+                    subtitles = version.subtitles.map {
+                        ExternalSubtitle(MediaLocation(sourceId, it.path), it.format, it.language, it.forced, it.hearingImpaired)
+                    },
+                    sourceIdentity = encodeCatalogEntry(entry, version),
+                )
             }
         }
+        val assembled = assemble(sourceId, candidates, externalYearHints)
+        val origin = sourceArtworkOrigin(sourceId)
+        val known = assembled.items.map { it.id }.toSet()
+        val artwork = entries.flatMap { entry ->
+            val identification = entry.versions.firstNotNullOfOrNull { assembled.identificationByPath[it.path] } ?: return@flatMap emptyList()
+            val showId = (identification as? Identification.OfEpisode)?.show?.id
+            entry.artwork.map { (kind, path) -> Artwork(identification.playable.id, kind, ArtworkLocator.SourceFile(MediaLocation(sourceId, path)), origin) } +
+                (showId?.let { id -> entry.showArtwork.map { (kind, path) -> Artwork(id, kind, ArtworkLocator.SourceFile(MediaLocation(sourceId, path)), origin) } } ?: emptyList())
+        }.filter { it.itemId in known }.distinctBy { it.itemId to it.kind }
+        return ScanPlan(sourceId, assembled.items, assembled.versions, artwork, emptyMap(), assembled.externalHints)
+    }
 
-        val hints = mergeHints(externalYearHints, Identifier.yearHintsOf(parsedByFile.map { it.second }))
+    private class Assembled(
+        val items: List<MediaItem>,
+        val versions: List<PlannedVersion>,
+        val identificationByPath: Map<String, Identification>,
+        val externalHints: Map<MediaId, Map<String, String>>,
+    )
+
+    private fun assemble(
+        sourceId: SourceId,
+        candidates: List<Candidate>,
+        externalYearHints: Map<Pair<ParsedKind, String>, Set<Int>>,
+    ): Assembled {
+        val hints = mergeHints(externalYearHints, Identifier.yearHintsOf(candidates.map { it.parsed }))
         val identifier = Identifier { kind, key -> hints[kind to key].orEmpty() }
-        val identified = parsedByFile.mapNotNull { (file, parsed) -> identifier.identify(parsed)?.let { file to it } }
+        val identified = candidates.mapNotNull { candidate -> identifier.identify(candidate.parsed)?.let { candidate to it } }
 
-        val sidecars = SidecarMatcher.match(files.map { it.path })
-        val subtitlesByVideo = sidecars.subtitles.groupBy { it.videoPath }
-
-        val versions = identified.map { (file, identification) ->
-            val location = MediaLocation(sourceId, file.path)
+        val versions = identified.map { (candidate, identification) ->
+            val location = MediaLocation(sourceId, candidate.file.path)
             val parsed = identification.parsed
             PlannedVersion(
                 version = MediaVersion(
                     id = StableIds.versionId(location),
                     itemId = identification.playable.id,
                     location = location,
-                    sizeBytes = file.sizeBytes,
-                    modifiedAtEpochMs = file.modifiedAtEpochMs,
+                    sizeBytes = candidate.file.sizeBytes,
+                    modifiedAtEpochMs = candidate.file.modifiedAtEpochMs,
                     stream = parsed.stream,
-                    streamOrigin = StreamInfoOrigin.FILENAME_HINTS,
+                    streamOrigin = candidate.origin,
                     edition = parsed.edition,
                     part = parsed.part,
-                    externalSubtitles = subtitlesByVideo[file.path].orEmpty().map {
-                        ExternalSubtitle(MediaLocation(sourceId, it.subtitlePath), it.format, it.language, it.forced, it.hearingImpaired)
-                    },
+                    externalSubtitles = candidate.subtitles,
                 ),
                 parsed = parsed,
+                sourceIdentity = candidate.sourceIdentity,
             )
         }
-
-        val items = chooseItems(identified.map { it.second })
-        val identificationByPath = identified.associate { (file, identification) -> file.path to identification }
-        val artwork = resolveArtwork(sourceId, sidecars.artwork, identificationByPath, items.map { it.id }.toSet())
         val externalHints = identified.groupBy({ (_, identification) ->
             when (identification) {
                 is Identification.OfMovie -> identification.movie.id
@@ -111,7 +183,12 @@ internal class ScanPlanner(private val parser: MediaPathParser) {
         }, { (_, identification) -> identification.parsed.externalIds })
             .mapValues { (_, maps) -> maps.fold(emptyMap<String, String>()) { acc, map -> map + acc } }
             .filterValues { it.isNotEmpty() }
-        return ScanPlan(sourceId, items, versions, artwork, skipped, externalHints)
+        return Assembled(
+            items = chooseItems(identified.map { it.second }),
+            versions = versions,
+            identificationByPath = identified.associate { (candidate, identification) -> candidate.file.path to identification },
+            externalHints = externalHints,
+        )
     }
 
     private fun mergeHints(
@@ -162,7 +239,8 @@ internal class ScanPlanner(private val parser: MediaPathParser) {
         val signals = confidence.signals
         return IdentificationSignal.SHOW_FOLDER in signals ||
             IdentificationSignal.FOLDER_AGREES in signals ||
-            IdentificationSignal.TITLE_FROM_FOLDER in signals
+            IdentificationSignal.TITLE_FROM_FOLDER in signals ||
+            IdentificationSignal.SOURCE_IDENTIFIED in signals
     }
 
     private fun resolveArtwork(
@@ -171,7 +249,7 @@ internal class ScanPlanner(private val parser: MediaPathParser) {
         identificationByPath: Map<String, Identification>,
         knownItems: Set<MediaId>,
     ): List<Artwork> {
-        val origin = localArtworkOrigin(sourceId)
+        val origin = sourceArtworkOrigin(sourceId)
         val resolved = sidecars.mapNotNull { sidecar ->
             val target = when (val scope = sidecar.scope) {
                 is ArtworkScope.Video -> identificationByPath[scope.videoPath]?.let { identification ->
@@ -238,7 +316,66 @@ internal class ScanPlanner(private val parser: MediaPathParser) {
     }
 
     companion object {
-        fun localArtworkOrigin(sourceId: SourceId): String = "local:${sourceId.value}"
+        /** Artwork that came with a source (sidecar files, a media server's images). It wins over provider artwork. */
+        fun sourceArtworkOrigin(sourceId: SourceId): String = "$SOURCE_ARTWORK_PREFIX${sourceId.value}"
+
+        const val SOURCE_ARTWORK_PREFIX = "source:"
+
+        /** Encodes what a catalog source said about one version (identity, edition, subtitles, artwork). */
+        fun encodeCatalogEntry(entry: CatalogEntry, version: CatalogVersion): String {
+            val identity = entry.identity
+            val pairs = buildMap {
+                put("kind", identity.kind.name)
+                put("title", identity.title)
+                identity.year?.let { put("year", it.toString()) }
+                identity.season?.let { put("season", it.toString()) }
+                identity.episode?.let { put("episode", it.toString()) }
+                identity.episodeEnd?.let { put("episodeEnd", it.toString()) }
+                identity.absoluteEpisode?.let { put("absolute", it.toString()) }
+                identity.airDate?.let { put("airDate", it.toString()) }
+                identity.episodeTitle?.let { put("episodeTitle", it) }
+                (version.edition ?: identity.edition)?.let { put("edition", it) }
+                identity.externalIds.forEach { (key, value) -> put("id.$key", value) }
+                entry.artwork.forEach { (kind, path) -> put("art.${kind.name}", path) }
+                entry.showArtwork.forEach { (kind, path) -> put("showArt.${kind.name}", path) }
+                version.subtitles.forEachIndexed { index, sub ->
+                    put("sub.$index", listOf(sub.path, sub.format.name, sub.language.orEmpty(), sub.forced, sub.hearingImpaired).joinToString("\t"))
+                }
+            }
+            return encodePairs(pairs.mapValues { it.value.replace('\n', ' ') })
+        }
+
+        /** Rebuilds a single-version catalog entry from [encoded] (see [encodeCatalogEntry]). */
+        fun decodeCatalogEntry(encoded: String, path: String, size: Long, modified: Long, version: MediaVersion): CatalogEntry? {
+            val pairs = decodePairs(encoded)
+            val kind = pairs["kind"]?.let { enumOrNull<ParsedKind>(it) } ?: return null
+            fun artwork(prefix: String) = pairs.filterKeys { it.startsWith(prefix) }.mapNotNull { (key, value) ->
+                enumOrNull<ArtworkKind>(key.removePrefix(prefix))?.let { it to value }
+            }.toMap()
+            val subtitles = pairs.filterKeys { it.startsWith("sub.") }.toSortedMap().values.mapNotNull { value ->
+                val parts = value.split('\t')
+                if (parts.size != 5) return@mapNotNull null
+                CatalogSubtitle(parts[0], enumOrNull<SubtitleFormat>(parts[1]) ?: SubtitleFormat.UNKNOWN, parts[2].ifEmpty { null }, parts[3].toBoolean(), parts[4].toBoolean())
+            }
+            return CatalogEntry(
+                identity = ParsedMedia(
+                    kind = kind,
+                    title = pairs["title"].orEmpty(),
+                    year = pairs["year"]?.toIntOrNull(),
+                    season = pairs["season"]?.toIntOrNull(),
+                    episode = pairs["episode"]?.toIntOrNull(),
+                    episodeEnd = pairs["episodeEnd"]?.toIntOrNull(),
+                    absoluteEpisode = pairs["absolute"]?.toIntOrNull(),
+                    airDate = pairs["airDate"]?.let(CalendarDate::parse),
+                    episodeTitle = pairs["episodeTitle"],
+                    edition = pairs["edition"],
+                    externalIds = pairs.filterKeys { it.startsWith("id.") }.mapKeys { it.key.removePrefix("id.") },
+                ),
+                versions = listOf(CatalogVersion(path, size, modified, version.stream, pairs["edition"], subtitles)),
+                artwork = artwork("art."),
+                showArtwork = artwork("showArt."),
+            )
+        }
     }
 }
 

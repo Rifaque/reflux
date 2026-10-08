@@ -33,6 +33,9 @@ enum class IdentificationSignal {
     EXTERNAL_ID_HINT,
     GENERIC_FILE_NAME,
     WEAK_TITLE,
+
+    /** Identified by a catalog source (a media server) rather than parsed by Reflux. */
+    SOURCE_IDENTIFIED,
 }
 
 enum class ConfidenceLevel { HIGH, MEDIUM, LOW }

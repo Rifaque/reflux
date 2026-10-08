@@ -21,8 +21,9 @@ class TmdbProviderTest {
     private val requests = mutableListOf<Pair<String, Map<String, String>>>()
     private var routes: Map<String, () -> HttpResult> = emptyMap()
 
-    private val http = HttpFetcher { url, headers ->
-        requests += url to headers
+    private val http = HttpFetcher { request ->
+        val url = request.url
+        requests += url to request.headers
         val path = url.removePrefix("https://api.themoviedb.org/3/").substringBefore('?')
         routes[path]?.invoke() ?: HttpResult(404, "{}".encodeToByteArray())
     }
@@ -159,7 +160,7 @@ class TmdbProviderTest {
         routes = mapOf("search/movie" to { HttpResult(401, """{"status_code":7}""".encodeToByteArray()) })
         assertFailsWith<MetadataUnavailableException> { tmdb.search(MetadataQuery(MetadataKind.MOVIE, "x", null, language = "en")) }
 
-        val offline = TmdbProvider(token, HttpFetcher { _, _ -> throw IllegalStateException("no network") })
+        val offline = TmdbProvider(token, HttpFetcher { throw IllegalStateException("no network") })
         assertFailsWith<MetadataUnavailableException> { offline.search(MetadataQuery(MetadataKind.MOVIE, "x", null, language = "en")) }
     }
 

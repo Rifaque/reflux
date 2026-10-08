@@ -6,6 +6,7 @@ import dev.reflux.core.model.ArtworkLocator
 import dev.reflux.core.model.Availability
 import dev.reflux.core.model.SourceId
 import dev.reflux.core.playback.MediaProber
+import dev.reflux.core.source.CatalogSource
 import dev.reflux.core.source.ChangeNotifyingSource
 import dev.reflux.core.source.FileEnumeratingSource
 import kotlinx.coroutines.CancellationException
@@ -55,7 +56,7 @@ class LibraryPipeline(
         try {
             val ids = sourceId?.let(::listOf) ?: library.sources().map { it.id }
             val reports = ids.mapNotNull { id ->
-                val source = registry.resolve(id) as? FileEnumeratingSource ?: return@mapNotNull null
+                val source = registry.resolve(id)?.takeIf { it is FileEnumeratingSource || it is CatalogSource } ?: return@mapNotNull null
                 mutableActivity.value = PipelineActivity.Scanning(source.descriptor.displayName)
                 library.scan(source)
             }

@@ -1,6 +1,7 @@
 package dev.reflux.library.net
 
 import dev.reflux.core.net.HttpFetcher
+import dev.reflux.core.net.HttpRequest as RefluxRequest
 import dev.reflux.core.net.HttpResult
 import kotlinx.coroutines.future.await
 import java.net.URI
@@ -17,14 +18,15 @@ class JdkHttpFetcher(
         .connectTimeout(Duration.ofSeconds(10))
         .build(),
 ) : HttpFetcher {
-    override suspend fun get(url: String, headers: Map<String, String>): HttpResult {
-        val request = HttpRequest.newBuilder(URI(url))
+    override suspend fun send(request: RefluxRequest): HttpResult {
+        val body = request.body?.let(HttpRequest.BodyPublishers::ofByteArray) ?: HttpRequest.BodyPublishers.noBody()
+        val jdkRequest = HttpRequest.newBuilder(URI(request.url))
             .timeout(Duration.ofSeconds(30))
             .header("User-Agent", userAgent)
-            .apply { headers.forEach { (name, value) -> header(name, value) } }
-            .GET()
+            .apply { request.headers.forEach { (name, value) -> header(name, value) } }
+            .method(request.method, body)
             .build()
-        val response = client.sendAsync(request, HttpResponse.BodyHandlers.ofByteArray()).await()
+        val response = client.sendAsync(jdkRequest, HttpResponse.BodyHandlers.ofByteArray()).await()
         val responseHeaders = response.headers().map().mapValues { it.value.firstOrNull().orEmpty() }
         return HttpResult(response.statusCode(), response.body(), responseHeaders)
     }
