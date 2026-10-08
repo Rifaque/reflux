@@ -554,3 +554,15 @@ SELECT version_id FROM version_preference WHERE item_id = ?;
 
 clearPreferredVersion:
 DELETE FROM version_preference WHERE item_id = ?;
+
+-- Smart search facts ------------------------------------------------------------------------------
+
+versionFacts:
+SELECT version.item_id, item.show_id, version.width, version.height, version.dynamic_range, version.duration_ms
+FROM version JOIN item ON item.id = version.item_id;
+
+metadataFacts:
+SELECT item_id, genres, runtime_minutes, release_date FROM metadata;
+
+creditNames:
+SELECT item_id, name FROM credit;

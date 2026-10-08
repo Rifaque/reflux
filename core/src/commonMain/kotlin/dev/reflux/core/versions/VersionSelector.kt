@@ -110,7 +110,7 @@ object VersionSelector {
     }
 
     private fun effectiveHeight(version: RankedVersion, device: DeviceCapabilities): Int {
-        val height = version.version.stream.video?.height ?: return 0
+        val height = version.version.stream.video?.nominalHeight ?: return 0
         return minOf(height, device.display.maxHeight)
     }
 

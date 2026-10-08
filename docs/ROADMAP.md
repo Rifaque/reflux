@@ -15,6 +15,7 @@
 | Desktop engine: libmpv playback and probing (verified headlessly against real media) | Implemented and tested |
 | Metadata engine: provider contract, deterministic matching, TMDB provider, episode metadata, Identify flow, artwork cache | Implemented and tested |
 | Background pipeline: change watching, debounced rescans, reconnect detection, scan → probe → metadata → artwork | Implemented and tested |
+| Smart search (deterministic query understanding over metadata, credits, stream facts, watch state) | Implemented and tested |
 | Desktop shell (Compose) with embedded video | Next — needs Google Maven (`dl.google.com`) access to build Compose |
 
 ## Phase 0 — Product and architecture foundation
@@ -82,7 +83,7 @@ Initial target:
 
 ## Phase 6 — Smart search
 
-Start deterministic and rule based.
+Start deterministic and rule based. The first version is implemented (`SmartQueryParser`, `Library.smartSearch`): kinds, watch state, resolution and HDR, genres and people from the user's own library, years and decades, and runtimes; leftover words match titles, and the interpretation is returned for display.
 
 Examples:
 
