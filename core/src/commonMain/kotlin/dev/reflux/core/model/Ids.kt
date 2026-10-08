@@ -35,6 +35,9 @@ object StableIds {
     fun versionId(location: MediaLocation): VersionId =
         VersionId("v" + fnv1a64(location.sourceId.value + "\u0000" + location.path))
 
+    /** A stable 64-bit hex digest of [input], for deriving opaque IDs. */
+    fun hash(input: String): String = fnv1a64(input)
+
     internal fun fnv1a64(input: String): String {
         var hash = -0x340d631b7bdddcdbL // 0xcbf29ce484222325
         val prime = 0x100000001b3L

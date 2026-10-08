@@ -46,6 +46,9 @@ data class Credit(val name: String, val role: CreditRole, val character: String?
 
 enum class CreditRole { ACTOR, DIRECTOR, WRITER, CREATOR }
 
+/** A provider-defined franchise, e.g. "The Dark Knight Collection". */
+data class ProviderCollection(val id: String, val name: String, val posterUrl: String? = null, val backdropUrl: String? = null)
+
 /** Descriptive metadata for a movie or show. */
 data class WorkMetadata(
     val ref: ProviderRef,
@@ -62,6 +65,8 @@ data class WorkMetadata(
     val credits: List<Credit> = emptyList(),
     val artwork: List<RemoteArtwork> = emptyList(),
     val externalIds: Map<String, String> = emptyMap(),
+    /** The franchise a movie belongs to, if the provider groups it. */
+    val collection: ProviderCollection? = null,
 )
 
 data class EpisodeMetadata(

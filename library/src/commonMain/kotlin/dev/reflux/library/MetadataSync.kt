@@ -125,9 +125,12 @@ internal class MetadataSync(database: RefluxDatabase, private val now: () -> Lon
                 rating = details.rating,
                 content_rating = details.contentRating,
                 external_ids = encodePairs(details.externalIds),
+                collection_id = details.collection?.id,
+                episode_count = null,
                 match_score = score,
                 fetched_at = now(),
             )
+            details.collection?.let { queries.upsertProviderCollection(it.id, it.name, it.posterUrl, it.backdropUrl) }
             queries.deleteCredits(itemId)
             selectCredits(details.credits).forEachIndexed { index, credit ->
                 queries.insertCredit(itemId, index.toLong(), credit.name, credit.role.name, credit.character, credit.profileUrl)
@@ -202,7 +205,12 @@ internal class MetadataSync(database: RefluxDatabase, private val now: () -> Lon
     }
 
     private fun storeSeason(itemId: String, season: SeasonMetadata, providerId: String) = db.transaction {
-        upsertSimple(itemId, season.title, season.overview, null, null, "$providerId:season:${season.number}")
+        val today = todayFromClock()
+        val aired = season.episodes.count { episode -> episode.airDate.let { it == null || it <= today } }
+        upsertSimple(
+            itemId, season.title, season.overview, null, null, "$providerId:season:${season.number}",
+            episodeCount = aired.takeIf { season.episodes.isNotEmpty() },
+        )
         storeArtwork(itemId, providerId, listOfNotNull(season.posterUrl?.let { ArtworkKind.POSTER to it }).toMap())
     }
 
@@ -215,14 +223,25 @@ internal class MetadataSync(database: RefluxDatabase, private val now: () -> Lon
         queries.recordMetadataAttempt(itemId, now(), AttemptOutcome.MATCHED.name)
     }
 
-    private fun upsertSimple(itemId: String, title: String?, overview: String?, date: CalendarDate?, runtime: Int?, ref: String) {
+    private fun upsertSimple(
+        itemId: String,
+        title: String?,
+        overview: String?,
+        date: CalendarDate?,
+        runtime: Int?,
+        ref: String,
+        episodeCount: Int? = null,
+    ) {
         queries.upsertMetadata(
             item_id = itemId, provider_ref = ref, title = title, sort_key = title?.let(TitleText::sortKey),
             original_title = null, overview = overview, tagline = null, genres = "", runtime_minutes = runtime?.toLong(),
-            release_date = date?.toString(), rating = null, content_rating = null, external_ids = "", match_score = 1.0,
-            fetched_at = now(),
+            release_date = date?.toString(), rating = null, content_rating = null, external_ids = "",
+            collection_id = null, episode_count = episodeCount?.toLong(), match_score = 1.0, fetched_at = now(),
         )
     }
+
+    /** Today's date from the injected clock (UTC), used to ignore episodes that have not aired yet. */
+    private fun todayFromClock(): CalendarDate = Library.dateOf(now())
 
     companion object {
         private const val MAX_SEASONS_FOR_ABSOLUTE = 50

@@ -8,6 +8,7 @@ import dev.reflux.core.metadata.MetadataKind
 import dev.reflux.core.metadata.MetadataProvider
 import dev.reflux.core.metadata.MetadataQuery
 import dev.reflux.core.metadata.MetadataUnavailableException
+import dev.reflux.core.metadata.ProviderCollection
 import dev.reflux.core.metadata.ProviderRef
 import dev.reflux.core.metadata.RemoteArtwork
 import dev.reflux.core.metadata.SeasonMetadata
@@ -148,6 +149,15 @@ class TmdbProvider(
                 cast(json),
             artwork = artwork(json),
             externalIds = externalIds(json),
+            collection = json.obj("belongs_to_collection")?.let { collection ->
+                val id = collection.int("id") ?: return@let null
+                ProviderCollection(
+                    id = "$ID:collection:$id",
+                    name = collection.string("name") ?: return@let null,
+                    posterUrl = image(collection.string("poster_path"), POSTER_SIZE),
+                    backdropUrl = image(collection.string("backdrop_path"), BACKDROP_SIZE),
+                )
+            },
         )
     }
 

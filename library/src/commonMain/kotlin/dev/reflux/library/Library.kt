@@ -18,6 +18,7 @@ import dev.reflux.core.identify.TitleText
 import dev.reflux.core.model.ArtworkKind
 import dev.reflux.core.model.ArtworkLocator
 import dev.reflux.core.model.Availability
+import dev.reflux.core.model.CalendarDate
 import dev.reflux.core.model.Episode
 import dev.reflux.core.model.MediaId
 import dev.reflux.core.model.MediaItem
@@ -67,10 +68,10 @@ import kotlinx.coroutines.flow.toList
  * @param now wall-clock time in epoch milliseconds.
  */
 class Library(
-    private val database: RefluxDatabase,
-    private val now: () -> Long,
+    internal val database: RefluxDatabase,
+    internal val now: () -> Long,
 ) : WatchReporter {
-    private val queries = database.libraryQueries
+    internal val queries = database.libraryQueries
     private val metadataSync = MetadataSync(database, now)
     private val smartSearch = SmartSearch(database)
     private val parser get() = MediaPathParser(maxYear = yearOf(now()) + 1)
@@ -665,12 +666,12 @@ class Library(
     private fun metadataOf(ids: List<String>): Map<String, ItemMetadata> =
         ids.chunked(QUERY_CHUNK).flatMap { queries.metadataOfItems(it).executeAsList() }.associate { it.item_id to it.toModel() }
 
-    private fun itemsByIds(ids: List<String>): List<MediaItem> =
+    internal fun itemsByIds(ids: List<String>): List<MediaItem> =
         ids.chunked(QUERY_CHUNK).flatMap { queries.itemsByIds(it).executeAsList() }.map { it.toModel() }
 
     private fun hasVersions(id: MediaId): Boolean = queries.itemHasVersions(id.value).executeAsOne()
 
-    private fun entries(items: List<MediaItem>): List<LibraryEntry> {
+    internal fun entries(items: List<MediaItem>): List<LibraryEntry> {
         if (items.isEmpty()) return emptyList()
         val ids = items.map { it.id.value }
         val availability = itemAvailability()
@@ -734,12 +735,24 @@ class Library(
     private fun MediaItem.storedTitleKey(): String = TitleText.key(storedTitle())
 
     companion object {
-        private const val MS_PER_YEAR = 31_556_952_000L
-
         /** Stays below SQLite's historical limit of 999 bound parameters. */
         private const val QUERY_CHUNK = 500
 
-        /** The calendar year of an epoch-millisecond timestamp (accurate except within hours of New Year). */
-        internal fun yearOf(epochMs: Long): Int = (1970 + epochMs / MS_PER_YEAR).toInt()
+        /** The calendar year of an epoch-millisecond timestamp (UTC). */
+        internal fun yearOf(epochMs: Long): Int = dateOf(epochMs).year
+
+        /** The UTC calendar date of an epoch-millisecond timestamp (proleptic Gregorian, civil-from-days). */
+        internal fun dateOf(epochMs: Long): CalendarDate {
+            val days: Long = epochMs.floorDiv(86_400_000L) + 719_468L
+            val era: Long = days.floorDiv(146_097L)
+            val dayOfEra: Long = days - era * 146_097L
+            val yearOfEra: Long = (dayOfEra - dayOfEra / 1_460L + dayOfEra / 36_524L - dayOfEra / 146_096L) / 365L
+            val dayOfYear: Long = dayOfEra - (365L * yearOfEra + yearOfEra / 4L - yearOfEra / 100L)
+            val mp: Long = (5L * dayOfYear + 2L) / 153L
+            val day = (dayOfYear - (153L * mp + 2L) / 5L + 1L).toInt()
+            val month = if (mp < 10L) (mp + 3L).toInt() else (mp - 9L).toInt()
+            val year = (yearOfEra + era * 400L).toInt() + if (month <= 2) 1 else 0
+            return CalendarDate(year, month, day)
+        }
     }
 }
