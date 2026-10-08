@@ -9,7 +9,10 @@
 | Playback capability model and Best Version | Implemented and tested |
 | Input model (semantic actions, mappings, modality tracking) | Implemented and tested |
 | Filename/folder identification, sidecars, confidence | Implemented and tested |
-| Local persistence / offline model | Next |
+| Local persistence / offline model (SQLite, offline and unmount safety) | Implemented and tested |
+| Local folder source (desktop) and scan → identify → library | Implemented and tested |
+| Media probing (real stream data), metadata/artwork providers | Next |
+| Desktop shell with libmpv playback | Planned |
 
 ## Phase 0 — Product and architecture foundation
 

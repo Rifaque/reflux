@@ -118,6 +118,8 @@ Kotlin Multiplatform (see the decision log). Modules:
 | Module | Contents | Depends on |
 | --- | --- | --- |
 | `core` | Media Core contracts and pure logic. No platform APIs. | kotlinx-coroutines |
+| `library` | The local-first library engine: SQLite schema (SQLDelight), scan planning and reconciliation, read models (movies, shows, Continue Watching, search), watch state, favorites, identity corrections, version preferences. | `core`, SQLDelight |
+| `sources:local` | Read-only local folder adapter for desktop JVMs. | `core` |
 
 Packages in `core` (`dev.reflux.core`):
 
@@ -129,6 +131,8 @@ Packages in `core` (`dev.reflux.core`):
 - `watch` — resume/completion rules and Next Up.
 - `search` — deterministic title search.
 - `input` — semantic actions, default mappings, glyphs, and input-modality tracking.
+
+A scan is a pure plan followed by one transaction: the source's file listing is parsed, corrected by user overrides, identified, matched with sidecars, and then applied so the plan becomes the complete contents of that source. The same listing always yields the same library.
 
 Contracts follow three rules: unknown is not failure, capabilities are explicit, and every decision is deterministic and explainable (identification signals, playback issues, selection criteria).
 

@@ -29,6 +29,9 @@ value class SourceId(val value: String) {
 object StableIds {
     fun mediaId(identityKey: String): MediaId = MediaId("m" + fnv1a64(identityKey))
 
+    /** A source ID from the adapter type and its identifying configuration (e.g. a folder path). */
+    fun sourceId(type: String, identity: String): SourceId = SourceId(type + "-" + fnv1a64(identity))
+
     fun versionId(location: MediaLocation): VersionId =
         VersionId("v" + fnv1a64(location.sourceId.value + "\u0000" + location.path))
 
