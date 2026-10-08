@@ -51,7 +51,7 @@ private class MemorySource(name: String) : FileEnumeratingSource, ChangeNotifyin
 
 class LibraryPipelineTest {
     private var clock = 1_790_000_000_000L
-    private val library = Library(LibraryDatabase.inMemory()) { clock }
+    private val library = Library(testDatabase()) { clock }
     private val source = MemorySource("Media")
     private val registry = SourceRegistry(emptyMap()).apply { register(source) }
     private val provider = FakeMetadataProvider()

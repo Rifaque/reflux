@@ -21,7 +21,10 @@ object LibraryDatabase {
         return RefluxDatabase(driver)
     }
 
-    /** An in-memory database, for tests and previews. */
+    /**
+     * An in-memory database for UI previews. It uses a single shared connection, so it does not enforce the
+     * connection-threading rules of [open]; tests should use a file-backed database instead.
+     */
     fun inMemory(): RefluxDatabase =
         RefluxDatabase(JdbcSqliteDriver(JdbcSqliteDriver.IN_MEMORY, Properties(), RefluxDatabase.Schema))
 }

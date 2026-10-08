@@ -20,7 +20,7 @@ import kotlin.test.assertFalse
 class SmartSearchTest {
     private val root: Path = Files.createTempDirectory("reflux-smart")
     private var clock = 1_790_000_000_000L
-    private val library = Library(LibraryDatabase.inMemory()) { clock }
+    private val library = Library(testDatabase()) { clock }
     private val source = LocalFolderSource(root)
     private val provider = FakeMetadataProvider()
 

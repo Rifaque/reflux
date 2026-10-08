@@ -75,6 +75,20 @@ Reflux is written in Kotlin (Multiplatform). Requirements: JDK 21. Gradle is pro
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#implementation) for the module layout.
 
+### Developer CLI
+
+Until the platform shells land, `tools/cli` runs the real engine against your own media: it scans folders (read-only), probes files with libmpv when installed, fetches metadata when `REFLUX_TMDB_TOKEN` is set, and plays in an mpv window.
+
+```sh
+./gradlew :tools:cli:installDist
+tools/cli/build/install/reflux/bin/reflux add ~/Videos
+tools/cli/build/install/reflux/bin/reflux search 4k movies I haven't watched
+tools/cli/build/install/reflux/bin/reflux play breaking bad
+tools/cli/build/install/reflux/bin/reflux doctor
+```
+
+Playback and probing need libmpv (`libmpv2` on Debian/Ubuntu, `mpv-libs` on Fedora, `libmpv-2.dll` on Windows).
+
 ## License
 
 Not decided yet.

@@ -36,7 +36,7 @@ import kotlin.test.assertTrue
 class LibraryTest {
     private val root: Path = Files.createTempDirectory("reflux-library")
     private var clock = 1_790_000_000_000L // 2026-09
-    private val library = Library(LibraryDatabase.inMemory()) { clock }
+    private val library = Library(testDatabase()) { clock }
     private val source = LocalFolderSource(root, "Media")
 
     init {

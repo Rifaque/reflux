@@ -84,7 +84,11 @@ class MpvPlayer private constructor(
         while (!closed) {
             val event = MpvEvent(mpv.mpv_wait_event(handle, -1.0))
             when (event.eventId) {
-                LibMpv.EVENT_SHUTDOWN -> return
+                LibMpv.EVENT_SHUTDOWN -> {
+                    // The user closed mpv's own window (standalone use) or the player is being destroyed.
+                    mutableState.update { if (it.status == PlayerStatus.ENDED) it else it.copy(status = PlayerStatus.IDLE) }
+                    return
+                }
                 LibMpv.EVENT_START_FILE -> mutableState.update { it.copy(status = PlayerStatus.LOADING, error = null) }
                 // Read tracks synchronously so external subtitles and status become visible together.
                 LibMpv.EVENT_FILE_LOADED -> {
@@ -174,7 +178,10 @@ class MpvPlayer private constructor(
             "sub-auto" to "no",
             "audio-file-auto" to "no",
             "hwdec" to "auto-safe",
-            "vo" to "gpu-next",
+            // gpu-next first; plain outputs keep playback working without usable GPU drivers (VMs, remote desktops).
+            "vo" to if (System.getProperty("os.name").startsWith("Windows")) "gpu-next,gpu" else "gpu-next,gpu,xv,x11",
+            // A missing or disconnected audio device must not stop video playback.
+            "audio-fallback-to-null" to "yes",
         )
 
         /** Whether libmpv can be loaded on this machine. */
