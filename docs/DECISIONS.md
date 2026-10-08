@@ -146,3 +146,7 @@ libmpv's defaults are tuned for hardware but fall back instead of failing: video
 ## 2026-10-08 — First network file source: WebDAV
 
 WebDAV is the first network file source because it is plain HTTP(S): it reuses the `HttpFetcher` abstraction, streams directly into the player with standard headers, works through Nextcloud and most NAS devices, and needs no protocol library. SMB remains a candidate; on desktop, OS-mounted SMB shares already work as local folders. The adapter is read-only by construction (`PROPFIND`/`GET` only).
+
+## 2026-10-08 — SMB through a loopback stream server
+
+SMB shares are read with smbj (Apache-2.0, works on desktop JVMs and Android). Because Media3 cannot open `smb://` and typical libmpv builds lack libsmbclient, share files are served to players by a minimal loopback-only HTTP server with byte-range support and unguessable per-file tokens. The same URLs serve probing and artwork, so SMB needs no special cases elsewhere. Verified against a live SMB2 server, including probing and playback.

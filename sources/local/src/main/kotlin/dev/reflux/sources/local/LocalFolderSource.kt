@@ -147,7 +147,10 @@ class LocalFolderSource(
                         val path = directory?.resolve(name)
                         val isDirectory = path != null && Files.isDirectory(path)
                         if (isDirectory && event.kind() == ENTRY_CREATE && ScanRules.shouldEnter(name)) register(path!!)
-                        if (isDirectory || ScanRules.roleOf(name) != null || event.kind() == ENTRY_DELETE) relevant = true
+                        // Folder modifications (reported on Windows when anything inside changes) carry no information:
+                        // subfolders are watched themselves.
+                        val folderAddedOrRemoved = isDirectory && event.kind() != ENTRY_MODIFY
+                        if (folderAddedOrRemoved || ScanRules.roleOf(name) != null || event.kind() == ENTRY_DELETE) relevant = true
                     }
                     if (!key.reset()) watched.remove(key)
                     if (relevant) trySend(Unit)
