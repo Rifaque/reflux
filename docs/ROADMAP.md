@@ -17,6 +17,7 @@
 | Background pipeline: change watching, debounced rescans, reconnect detection, scan → probe → metadata → artwork | Implemented and tested |
 | Smart search (deterministic query understanding over metadata, credits, stream facts, watch state) | Implemented and tested |
 | Smart library: default Home feed, franchise/manual/smart collections, diagnostics (weak identification, unmatched works, multiple versions, missing episodes and artwork, offline sources) | Implemented and tested |
+| Catalog-source architecture and Jellyfin adapter (sign-in, catalog, multi-version items, direct streams, two-way watch state) | Implemented and tested against API fixtures; needs verification against a live server |
 | Desktop shell (Compose) with embedded video | Next — needs Google Maven (`dl.google.com`) access to build Compose |
 
 ## Phase 0 — Product and architecture foundation

@@ -19,6 +19,8 @@ data class PlaybackPlan(
     val version: RankedVersion,
     val selection: VersionSelection,
     val request: PlaybackRequest,
+    /** The source holding the version; pass it to [SyncingWatchReporter]. */
+    val source: MediaSource,
 )
 
 /**
@@ -59,7 +61,7 @@ suspend fun Library.planPlayback(
         startPositionMs = if (resume) WatchRules.resumePosition(watchState(itemId)) else null,
         subtitles = subtitles,
     )
-    return PlaybackPlan(itemId, chosen, selection, request)
+    return PlaybackPlan(itemId, chosen, selection, request, source)
 }
 
 /** "Heat (1995)" or "Breaking Bad · S1 E2 · Grilled". */
