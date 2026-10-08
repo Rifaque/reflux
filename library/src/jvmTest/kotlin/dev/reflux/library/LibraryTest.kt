@@ -120,7 +120,7 @@ class LibraryTest {
         sampleLibrary.forEach { file(it) }
         library.scan(source)
         val movie = library.movies().first()
-        library.reportStopped(movie.item.id, 30 * 60_000L, 120 * 60_000L)
+        library.stopped(movie.item.id, 30 * 60_000L, 120 * 60_000L)
 
         // The drive disappears.
         val unplugged = root.resolveSibling(root.fileName.toString() + "-unplugged")
@@ -196,7 +196,7 @@ class LibraryTest {
         library.scan(source)
         val wrong = library.movies().single()
         assertEquals(1, library.lowConfidence().size)
-        library.reportStopped(wrong.item.id, 10 * 60_000L, 100 * 60_000L)
+        library.stopped(wrong.item.id, 10 * 60_000L, 100 * 60_000L)
 
         val location = MediaLocation(source.descriptor.id, "Movies/movie.mkv")
         library.identify(location, IdentityOverride(ParsedKind.MOVIE, "Primer", 2004))
@@ -234,9 +234,9 @@ class LibraryTest {
         val episodes = library.showDetail(show.item.id)!!.seasons.flatMap { it.episodes }
 
         clock += 1000
-        library.reportStopped(heat.item.id, 40 * 60_000L, 170 * 60_000L)
+        library.stopped(heat.item.id, 40 * 60_000L, 170 * 60_000L)
         clock += 1000
-        library.reportStopped(episodes[0].item.id, 46 * 60_000L, 47 * 60_000L) // finished the pilot
+        library.stopped(episodes[0].item.id, 46 * 60_000L, 47 * 60_000L) // finished the pilot
 
         val continueWatching = library.continueWatching()
         assertEquals(listOf(episodes[1].item.id, heat.item.id), continueWatching.map { it.item.id })
@@ -296,7 +296,7 @@ class LibraryTest {
         sampleLibrary.forEach { file(it) }
         library.scan(source)
         val heat = library.movies().single { it.item.title == "Heat" }
-        library.reportStopped(heat.item.id, 20 * 60_000L, 170 * 60_000L)
+        library.stopped(heat.item.id, 20 * 60_000L, 170 * 60_000L)
         library.removeSource(source.descriptor.id)
         assertTrue(library.movies().isEmpty())
         assertTrue(library.sources().isEmpty())

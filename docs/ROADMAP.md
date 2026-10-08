@@ -11,8 +11,10 @@
 | Filename/folder identification, sidecars, confidence | Implemented and tested |
 | Local persistence / offline model (SQLite, offline and unmount safety) | Implemented and tested |
 | Local folder source (desktop) and scan → identify → library | Implemented and tested |
-| Media probing (real stream data), metadata/artwork providers | Next |
-| Desktop shell with libmpv playback | Planned |
+| Player contract, default track selection, playback controller | Implemented and tested |
+| Desktop engine: libmpv playback and probing (verified headlessly against real media) | Implemented and tested |
+| Desktop shell (Compose) with embedded video | Next |
+| Metadata and artwork providers | Planned |
 
 ## Phase 0 — Product and architecture foundation
 

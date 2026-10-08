@@ -21,7 +21,12 @@ import dev.reflux.core.model.Show
 import dev.reflux.core.model.SourceId
 import dev.reflux.core.model.VersionId
 import dev.reflux.core.model.WatchState
+import dev.reflux.core.model.StreamInfoOrigin
 import dev.reflux.core.playback.DeviceCapabilities
+import dev.reflux.core.playback.MediaProber
+import dev.reflux.core.playback.StreamInfo
+import dev.reflux.core.playback.WatchReporter
+import dev.reflux.core.playback.withHints
 import dev.reflux.core.search.SearchDocument
 import dev.reflux.core.search.SearchMatcher
 import dev.reflux.core.source.FileEnumeratingSource
@@ -53,7 +58,7 @@ import kotlinx.coroutines.flow.toList
 class Library(
     private val database: RefluxDatabase,
     private val now: () -> Long,
-) {
+) : WatchReporter {
     private val queries = database.libraryQueries
     private val parser get() = MediaPathParser(maxYear = yearOf(now()) + 1)
 
@@ -310,21 +315,65 @@ class Library(
         replaceTracks(version)
     }
 
-    private fun replaceTracks(version: MediaVersion) {
-        val id = version.id.value
+    private fun replaceTracks(version: MediaVersion) = replaceTracks(version.id.value, version.stream)
+
+    private fun replaceTracks(id: String, stream: StreamInfo) {
         queries.deleteTracksOfVersion(id)
-        version.stream.audio.forEachIndexed { index, track ->
+        stream.audio.forEachIndexed { index, track ->
             queries.insertTrack(
                 id, index.toLong(), TRACK_AUDIO, track.codec.name, track.channels?.toLong(), track.language,
                 track.atmos.toLong(), 0, track.default.toLong(),
             )
         }
-        version.stream.subtitles.forEachIndexed { index, track ->
+        stream.subtitles.forEachIndexed { index, track ->
             queries.insertTrack(
                 id, index.toLong(), TRACK_SUBTITLE, track.format.name, null, track.language, 0,
                 track.forced.toLong(), track.default.toLong(),
             )
         }
+    }
+
+    // Probing ------------------------------------------------------------------------------------
+
+    /**
+     * Probes versions that are still described by file-name hints, newest first, on available sources.
+     * Returns how many were probed successfully. Failures are remembered until the file changes.
+     */
+    suspend fun probePending(sources: (SourceId) -> MediaSource?, prober: MediaProber, limit: Int = 50): Int {
+        var probed = 0
+        for (id in queries.versionsAwaitingProbe(limit.toLong()).executeAsList()) {
+            val info = version(VersionId(id)) ?: continue
+            val source = sources(info.version.location.sourceId) ?: continue
+            val stream = runCatching { prober.probe(source.playbackTarget(info.version.location.path)) }.getOrNull()
+            if (stream == null) {
+                queries.markProbeAttempted(now(), id)
+            } else {
+                recordProbe(info.version.id, stream.withHints(info.version.stream))
+                probed++
+            }
+        }
+        return probed
+    }
+
+    /** Stores probed stream information for a version. */
+    fun recordProbe(versionId: VersionId, stream: StreamInfo) = database.transaction {
+        val video = stream.video
+        queries.updateVersionStream(
+            streamOrigin = StreamInfoOrigin.PROBE.name,
+            container = stream.container.name,
+            videoCodec = video?.codec?.name,
+            width = video?.width?.toLong(),
+            height = video?.height?.toLong(),
+            bitDepth = video?.bitDepth?.toLong(),
+            dynamicRange = video?.dynamicRange?.name,
+            dolbyVisionProfile = video?.dolbyVisionProfile?.toLong(),
+            frameRate = video?.frameRate,
+            durationMs = stream.durationMs,
+            bitrateBps = stream.bitrateBps,
+            probedAt = now(),
+            id = versionId.value,
+        )
+        replaceTracks(versionId.value, stream)
     }
 
     // Identity corrections -----------------------------------------------------------------------
@@ -444,10 +493,12 @@ class Library(
 
     fun watchState(itemId: MediaId): WatchState? = queries.watchStateOf(itemId.value).executeAsOneOrNull()?.toModel()
 
-    fun reportProgress(itemId: MediaId, positionMs: Long, durationMs: Long?) =
+    /** Periodic playback progress (see [WatchRules.onProgress]). */
+    override fun progress(itemId: MediaId, positionMs: Long, durationMs: Long?) =
         saveWatchState(WatchRules.onProgress(watchState(itemId), itemId, positionMs, durationMs, now()))
 
-    fun reportStopped(itemId: MediaId, positionMs: Long, durationMs: Long?) =
+    /** End of a playback session (see [WatchRules.onStop]). */
+    override fun stopped(itemId: MediaId, positionMs: Long, durationMs: Long?) =
         saveWatchState(WatchRules.onStop(watchState(itemId), itemId, positionMs, durationMs, now()))
 
     /** Marks a work as watched or unwatched. Shows and seasons apply to all their episodes. */
