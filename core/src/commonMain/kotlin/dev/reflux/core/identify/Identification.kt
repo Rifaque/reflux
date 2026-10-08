@@ -84,11 +84,20 @@ object IdentityKeys {
 /**
  * Converts parsed files into Media Core works.
  *
+ * Works are keyed by [IdentityKeys]; [canonicalKey] lets the library redirect a key to an equivalent work.
+ *
  * [yearHints] maps `kind + title key` to every year known for that title across the library. A file without
  * a year joins the single known year for its title (`Dune.mkv` next to `Dune (2021)`); when several years are
  * known the title is ambiguous and the file stays separate rather than being guessed into the wrong work.
  */
-class Identifier(private val yearHints: (kind: ParsedKind, titleKey: String) -> Set<Int> = { _, _ -> emptySet() }) {
+class Identifier(
+    private val yearHints: (kind: ParsedKind, titleKey: String) -> Set<Int> = { _, _ -> emptySet() },
+    /**
+     * Maps a movie or show identity key to the key of the work it was unified with (e.g. two names for the same
+     * provider entry), or returns the key unchanged.
+     */
+    private val canonicalKey: (String) -> String = { it },
+) {
 
     fun identify(parsed: ParsedMedia): Identification? = when (parsed.kind) {
         ParsedKind.MOVIE -> identifyMovie(parsed)
@@ -101,14 +110,14 @@ class Identifier(private val yearHints: (kind: ParsedKind, titleKey: String) -> 
 
     private fun identifyMovie(parsed: ParsedMedia): Identification {
         val year = resolvedYear(ParsedKind.MOVIE, parsed)
-        val key = IdentityKeys.movie(parsed.title, year)
+        val key = canonicalKey(IdentityKeys.movie(parsed.title, year))
         val movie = Movie(id = StableIds.mediaId(key), title = parsed.title, year = year)
         return Identification.OfMovie(movie, parsed.copy(year = year))
     }
 
     private fun identifyEpisode(parsed: ParsedMedia): Identification {
         val year = resolvedYear(ParsedKind.EPISODE, parsed)
-        val showKey = IdentityKeys.show(parsed.title, year)
+        val showKey = canonicalKey(IdentityKeys.show(parsed.title, year))
         val show = Show(id = StableIds.mediaId(showKey), title = parsed.title, year = year)
         val seasonNumber = parsed.season ?: 1
         val season = Season(

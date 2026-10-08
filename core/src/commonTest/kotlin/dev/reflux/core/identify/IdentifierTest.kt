@@ -33,14 +33,14 @@ class IdentifierTest {
 
     @Test
     fun yearlessFileJoinsTheOnlyKnownYear() {
-        val identifier = Identifier { _, key -> if (key == "dune") setOf(2021) else emptySet() }
+        val identifier = Identifier(yearHints = { _, key -> if (key == "dune") setOf(2021) else emptySet() })
         val yearless = identify("Dune.mkv", identifier)
         assertEquals(identify("Dune (2021).mkv").playable.id, yearless.playable.id)
     }
 
     @Test
     fun yearlessFileStaysSeparateWhenAmbiguous() {
-        val identifier = Identifier { _, key -> if (key == "dune") setOf(1984, 2021) else emptySet() }
+        val identifier = Identifier(yearHints = { _, key -> if (key == "dune") setOf(1984, 2021) else emptySet() })
         val yearless = identify("Dune.mkv", identifier)
         val movie = assertIs<Identification.OfMovie>(yearless).movie
         assertNull(movie.year)
@@ -71,6 +71,20 @@ class IdentifierTest {
         assertEquals(identify("Arrival (2016).mkv").playable.id, identification.playable.id)
         assertEquals(2160, corrected.stream.video?.height)
         assertEquals(ConfidenceLevel.HIGH, corrected.confidence.level)
+    }
+
+    @Test
+    fun canonicalKeysRedirectWorksAndTheirEpisodes() {
+        val aliases = mapOf("show:the office us" to "show:the office:2005", "movie:star wars:1977" to "movie:star wars episode iv a new hope:1977")
+        val identifier = Identifier(canonicalKey = { aliases[it] ?: it })
+        val local = assertIs<Identification.OfEpisode>(identify("The Office (US)/Season 2/S02E01.mkv", identifier))
+        val server = assertIs<Identification.OfEpisode>(identify("The.Office.2005.S02E01.mkv"))
+        assertEquals(server.show.id, local.show.id)
+        assertEquals(server.episode.id, local.episode.id)
+        assertEquals(
+            identify("Star Wars Episode IV A New Hope (1977).mkv").playable.id,
+            identify("Star Wars (1977).mkv", identifier).playable.id,
+        )
     }
 
     @Test

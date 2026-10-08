@@ -54,6 +54,8 @@ internal data class ScanPlan(
     val skipped: Map<ParsedKind, Int>,
     /** Provider IDs from file and folder names, per movie or show. */
     val externalHints: Map<MediaId, Map<String, String>> = emptyMap(),
+    /** The (canonical) identity key of each movie and show. */
+    val identityKeys: Map<MediaId, String> = emptyMap(),
 )
 
 /** A playable file or stream with what is known about it, before identification. */
@@ -71,7 +73,17 @@ private data class Candidate(
  *
  * Deterministic: the same listing, overrides, and hints always produce the same plan.
  */
-internal class ScanPlanner(private val parser: MediaPathParser) {
+internal class ScanPlanner(
+    private val parser: MediaPathParser,
+    /** Unified identity keys (alias → canonical), see [Library.unifyWorks]. */
+    private val aliases: Map<String, String> = emptyMap(),
+) {
+    private fun canonical(key: String): String {
+        var current = key
+        repeat(MAX_ALIAS_DEPTH) { current = aliases[current] ?: return current }
+        return current
+    }
+
 
     /** Plans a file-enumerating source: everything is learned from paths and sidecar files. */
     fun plan(
@@ -98,7 +110,7 @@ internal class ScanPlanner(private val parser: MediaPathParser) {
         }
         val assembled = assemble(sourceId, candidates, externalYearHints)
         val artwork = resolveArtwork(sourceId, sidecars.artwork, assembled.identificationByPath, assembled.items.map { it.id }.toSet())
-        return ScanPlan(sourceId, assembled.items, assembled.versions, artwork, skipped, assembled.externalHints)
+        return ScanPlan(sourceId, assembled.items, assembled.versions, artwork, skipped, assembled.externalHints, assembled.identityKeys)
     }
 
     /** Plans a catalog source: identities, streams, subtitles, and artwork come from the source. */
@@ -136,7 +148,7 @@ internal class ScanPlanner(private val parser: MediaPathParser) {
             entry.artwork.map { (kind, path) -> Artwork(identification.playable.id, kind, ArtworkLocator.SourceFile(MediaLocation(sourceId, path)), origin) } +
                 (showId?.let { id -> entry.showArtwork.map { (kind, path) -> Artwork(id, kind, ArtworkLocator.SourceFile(MediaLocation(sourceId, path)), origin) } } ?: emptyList())
         }.filter { it.itemId in known }.distinctBy { it.itemId to it.kind }
-        return ScanPlan(sourceId, assembled.items, assembled.versions, artwork, emptyMap(), assembled.externalHints)
+        return ScanPlan(sourceId, assembled.items, assembled.versions, artwork, emptyMap(), assembled.externalHints, assembled.identityKeys)
     }
 
     private class Assembled(
@@ -144,6 +156,7 @@ internal class ScanPlanner(private val parser: MediaPathParser) {
         val versions: List<PlannedVersion>,
         val identificationByPath: Map<String, Identification>,
         val externalHints: Map<MediaId, Map<String, String>>,
+        val identityKeys: Map<MediaId, String>,
     )
 
     private fun assemble(
@@ -152,7 +165,7 @@ internal class ScanPlanner(private val parser: MediaPathParser) {
         externalYearHints: Map<Pair<ParsedKind, String>, Set<Int>>,
     ): Assembled {
         val hints = mergeHints(externalYearHints, Identifier.yearHintsOf(candidates.map { it.parsed }))
-        val identifier = Identifier { kind, key -> hints[kind to key].orEmpty() }
+        val identifier = Identifier(yearHints = { kind, key -> hints[kind to key].orEmpty() }, canonicalKey = ::canonical)
         val identified = candidates.mapNotNull { candidate -> identifier.identify(candidate.parsed)?.let { candidate to it } }
 
         val versions = identified.map { (candidate, identification) ->
@@ -183,11 +196,19 @@ internal class ScanPlanner(private val parser: MediaPathParser) {
         }, { (_, identification) -> identification.parsed.externalIds })
             .mapValues { (_, maps) -> maps.fold(emptyMap<String, String>()) { acc, map -> map + acc } }
             .filterValues { it.isNotEmpty() }
+        val identityKeys = identified.associate { (_, identification) ->
+            val parsed = identification.parsed
+            when (identification) {
+                is Identification.OfMovie -> identification.movie.id to canonical(IdentityKeys.movie(parsed.title, parsed.year))
+                is Identification.OfEpisode -> identification.show.id to canonical(IdentityKeys.show(parsed.title, parsed.year))
+            }
+        }
         return Assembled(
             items = chooseItems(identified.map { it.second }),
             versions = versions,
             identificationByPath = identified.associate { (candidate, identification) -> candidate.file.path to identification },
             externalHints = externalHints,
+            identityKeys = identityKeys,
         )
     }
 
@@ -320,6 +341,7 @@ internal class ScanPlanner(private val parser: MediaPathParser) {
         fun sourceArtworkOrigin(sourceId: SourceId): String = "$SOURCE_ARTWORK_PREFIX${sourceId.value}"
 
         const val SOURCE_ARTWORK_PREFIX = "source:"
+        private const val MAX_ALIAS_DEPTH = 8
 
         /** Encodes what a catalog source said about one version (identity, edition, subtitles, artwork). */
         fun encodeCatalogEntry(entry: CatalogEntry, version: CatalogVersion): String {

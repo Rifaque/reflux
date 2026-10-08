@@ -131,7 +131,7 @@ class Library(
         val hasVideo = files.any { ScanRules.roleOf(it.path.substringAfterLast('/')) == FileRole.VIDEO }
         if (!hasVideo && hasKnownVersions(id)) return keepEmpty(id)
         return database.transactionWithResult {
-            val plan = ScanPlanner(parser).plan(id, files, overrides(id), yearHints(id))
+            val plan = planner().plan(id, files, overrides(id), yearHints(id))
             val report = applyPlan(plan)
             queries.markSourceScanned(now(), id.value)
             report
@@ -141,7 +141,7 @@ class Library(
     private fun scanCatalog(id: SourceId, entries: List<CatalogEntry>): ScanReport {
         if (entries.isEmpty() && hasKnownVersions(id)) return keepEmpty(id)
         return database.transactionWithResult {
-            val plan = ScanPlanner(parser).planCatalog(id, entries, overrides(id), yearHints(id))
+            val plan = planner().planCatalog(id, entries, overrides(id), yearHints(id))
             val report = applyPlan(plan)
             val itemByPath = plan.versions.associate { it.version.location.path to it.version.itemId }
             for (entry in entries) {
@@ -199,18 +199,20 @@ class Library(
                 ScanPlanner.decodeCatalogEntry(row.source_identity ?: return@mapNotNull null, row.path, row.size_bytes, row.modified_at, stream)
             }
             return database.transactionWithResult {
-                applyPlan(ScanPlanner(parser).planCatalog(sourceId, entries, overrides(sourceId), yearHints(sourceId)))
+                applyPlan(planner().planCatalog(sourceId, entries, overrides(sourceId), yearHints(sourceId)))
             }
         }
         val files = versions.map { SourceFile(it.path, it.size_bytes, it.modified_at) } +
             queries.externalSubtitlePathsOfSource(sourceId.value).executeAsList().map { SourceFile(it, 0, 0) } +
             queries.artworkPathsOfSource(sourceId.value).executeAsList().map { SourceFile(it, 0, 0) }
         val report = database.transactionWithResult {
-            val plan = ScanPlanner(parser).plan(sourceId, files.distinctBy { it.path }, overrides(sourceId), yearHints(sourceId))
+            val plan = planner().plan(sourceId, files.distinctBy { it.path }, overrides(sourceId), yearHints(sourceId))
             applyPlan(plan)
         }
         return report
     }
+
+    private fun planner() = ScanPlanner(parser, queries.allAliases().executeAsList().associate { it.alias_key to it.canonical_key })
 
     private fun overrides(sourceId: SourceId): Map<String, IdentityOverride> =
         queries.overridesOfSource(sourceId.value).executeAsList().mapNotNull { row ->
@@ -250,6 +252,7 @@ class Library(
                 absolute_number = (item as? Episode)?.absoluteNumber?.toLong(),
                 air_date = (item as? Episode)?.airDate?.toString(),
                 external_hints = encodePairs(plan.externalHints[item.id].orEmpty()),
+                identity_key = plan.identityKeys[item.id],
                 added_at = time,
             )
             queries.updateItem(
@@ -259,6 +262,7 @@ class Library(
                 year = item.yearOrNull()?.toLong(),
                 episodeNumberEnd = (item as? Episode)?.episodeNumberEnd?.toLong(),
                 externalHints = encodePairs(plan.externalHints[item.id].orEmpty()),
+                identityKey = plan.identityKeys[item.id],
                 id = item.id.value,
             )
         }
@@ -562,7 +566,7 @@ class Library(
             Item(
                 row.id, row.kind, row.title, row.title_key, row.sort_key, row.year, row.show_id, row.season_id,
                 row.season_number, row.episode_number, row.episode_number_end, row.absolute_number, row.air_date,
-                row.external_hints, row.added_at,
+                row.external_hints, row.identity_key, row.added_at,
             ).toModel()
         })
 
