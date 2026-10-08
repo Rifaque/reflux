@@ -100,6 +100,7 @@ class TmdbProviderTest {
                           "logos":[{"file_path":"/l.png","iso_639_1":"en","vote_average":5.0}]},
                 "release_dates":{"results":[{"iso_3166_1":"DE","release_dates":[{"certification":"16"}]},
                                             {"iso_3166_1":"US","release_dates":[{"certification":""},{"certification":"R"}]}]},
+                "belongs_to_collection":{"id":2344,"name":"The Matrix Collection","poster_path":"/c.jpg","backdrop_path":null},
                 "external_ids":{"imdb_id":"tt0133093"}}""",
             ),
         )
@@ -116,6 +117,10 @@ class TmdbProviderTest {
         assertEquals(setOf(ArtworkKind.POSTER, ArtworkKind.BACKDROP, ArtworkKind.LOGO), movie.artwork.map { it.kind }.toSet())
         assertEquals("https://image.tmdb.org/t/p/w1280/b.jpg", movie.artwork.single { it.kind == ArtworkKind.BACKDROP }.url)
         assertEquals(mapOf("imdb" to "tt0133093", "tmdb" to "603"), movie.externalIds)
+        assertEquals("tmdb:collection:2344", movie.collection?.id)
+        assertEquals("The Matrix Collection", movie.collection?.name)
+        assertEquals("https://image.tmdb.org/t/p/w780/c.jpg", movie.collection?.posterUrl)
+        assertNull(movie.collection?.backdropUrl)
         assertTrue("include_image_language=en%2Cnull" in requests.single().first)
     }
 

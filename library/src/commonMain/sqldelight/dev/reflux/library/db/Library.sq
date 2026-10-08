@@ -148,8 +148,34 @@ CREATE TABLE metadata (
     rating REAL,
     content_rating TEXT,
     external_ids TEXT NOT NULL,
+    -- Franchise of a movie (see provider_collection).
+    collection_id TEXT,
+    -- For seasons: how many episodes the provider lists as aired.
+    episode_count INTEGER,
     match_score REAL NOT NULL,
     fetched_at INTEGER NOT NULL
+);
+
+CREATE TABLE provider_collection (
+    id TEXT NOT NULL PRIMARY KEY,
+    name TEXT NOT NULL,
+    poster_url TEXT,
+    backdrop_url TEXT
+);
+
+-- Collections the user made: a fixed list of works, or a saved smart search.
+CREATE TABLE user_collection (
+    id TEXT NOT NULL PRIMARY KEY,
+    name TEXT NOT NULL,
+    smart_query TEXT,
+    created_at INTEGER NOT NULL
+);
+
+CREATE TABLE user_collection_item (
+    collection_id TEXT NOT NULL,
+    item_id TEXT NOT NULL,
+    added_at INTEGER NOT NULL,
+    PRIMARY KEY (collection_id, item_id)
 );
 
 CREATE TABLE credit (
@@ -411,8 +437,11 @@ DELETE FROM artwork WHERE item_id = ? AND origin = ?;
 upsertMetadata:
 INSERT OR REPLACE INTO metadata(
     item_id, provider_ref, title, sort_key, original_title, overview, tagline, genres, runtime_minutes,
-    release_date, rating, content_rating, external_ids, match_score, fetched_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+    release_date, rating, content_rating, external_ids, collection_id, episode_count, match_score, fetched_at
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+upsertProviderCollection:
+INSERT OR REPLACE INTO provider_collection(id, name, poster_url, backdrop_url) VALUES (?, ?, ?, ?);
 
 metadataOf:
 SELECT * FROM metadata WHERE item_id = ?;
@@ -566,3 +595,69 @@ SELECT item_id, genres, runtime_minutes, release_date FROM metadata;
 
 creditNames:
 SELECT item_id, name FROM credit;
+
+-- Collections ---------------------------------------------------------------------------------------
+
+-- Provider franchises with at least two present movies.
+franchises:
+SELECT provider_collection.*, COUNT(*) AS present
+FROM provider_collection
+JOIN metadata ON metadata.collection_id = provider_collection.id
+JOIN item ON item.id = metadata.item_id
+WHERE item.kind = 'MOVIE' AND EXISTS (SELECT 1 FROM version WHERE version.item_id = item.id)
+GROUP BY provider_collection.id
+HAVING COUNT(*) >= 2
+ORDER BY provider_collection.name;
+
+franchiseMovies:
+SELECT item.* FROM item JOIN metadata ON metadata.item_id = item.id
+WHERE metadata.collection_id = ? AND item.kind = 'MOVIE'
+  AND EXISTS (SELECT 1 FROM version WHERE version.item_id = item.id)
+ORDER BY metadata.release_date, item.year;
+
+franchiseOf:
+SELECT provider_collection.* FROM provider_collection JOIN metadata ON metadata.collection_id = provider_collection.id
+WHERE metadata.item_id = ?;
+
+insertUserCollection:
+INSERT INTO user_collection(id, name, smart_query, created_at) VALUES (?, ?, ?, ?);
+
+renameUserCollection:
+UPDATE user_collection SET name = ? WHERE id = ?;
+
+deleteUserCollection:
+DELETE FROM user_collection WHERE id = ?;
+
+deleteUserCollectionItems:
+DELETE FROM user_collection_item WHERE collection_id = ?;
+
+userCollections:
+SELECT * FROM user_collection ORDER BY created_at, id;
+
+userCollectionById:
+SELECT * FROM user_collection WHERE id = ?;
+
+addToUserCollection:
+INSERT OR IGNORE INTO user_collection_item(collection_id, item_id, added_at) VALUES (?, ?, ?);
+
+removeFromUserCollection:
+DELETE FROM user_collection_item WHERE collection_id = ? AND item_id = ?;
+
+userCollectionItemIds:
+SELECT item_id FROM user_collection_item WHERE collection_id = ? ORDER BY added_at, item_id;
+
+-- Diagnostics ---------------------------------------------------------------------------------------
+
+worksWithoutMatch:
+SELECT item.*, metadata_attempt.outcome FROM item JOIN metadata_attempt ON metadata_attempt.item_id = item.id
+WHERE item.kind IN ('MOVIE', 'SHOW') AND metadata_attempt.outcome != 'MATCHED'
+  AND NOT EXISTS (SELECT 1 FROM metadata WHERE metadata.item_id = item.id)
+ORDER BY item.sort_key;
+
+worksWithSeveralVersions:
+SELECT item_id, COUNT(*) AS versions FROM version GROUP BY item_id HAVING COUNT(*) > 1;
+
+seasonEpisodeCounts:
+SELECT item.id, item.show_id, item.season_number, metadata.episode_count
+FROM item JOIN metadata ON metadata.item_id = item.id
+WHERE item.kind = 'SEASON' AND metadata.episode_count IS NOT NULL;
