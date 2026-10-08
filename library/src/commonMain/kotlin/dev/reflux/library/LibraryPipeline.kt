@@ -78,6 +78,8 @@ class LibraryPipeline(
                 val report = library.refreshMetadata(provider, language, limit = BATCH)
             } while (!report.offline && report.matched + report.ambiguous + report.unmatched == BATCH)
         }
+        // Works that turned out to share a provider ID become one work with several versions.
+        library.unifyWorks()
         prefetchArtwork?.let { prefetch ->
             mutableActivity.value = PipelineActivity.FetchingArtwork
             val kinds = setOf(ArtworkKind.POSTER, ArtworkKind.BACKDROP, ArtworkKind.LOGO)

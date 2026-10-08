@@ -76,6 +76,10 @@ Artwork choice is deterministic: one image per kind; posters and logos prefer th
 
 TMDB is the first provider. Its credential is an application credential supplied by the build, never something users configure.
 
+## Unification
+
+When two works of the same kind share a provider identifier (a matched provider entry, or an ID embedded in a name or reported by a server), they are the same work under two names. The oldest survives; the other's identity key is recorded as an alias, its files are re-identified into the survivor (episode by episode for shows), and its watch history, favorites, and collection membership move along. Aliases are permanent, so rescans keep one work.
+
 ## Manual correction
 
 Provide a fast flow such as:

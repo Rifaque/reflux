@@ -31,6 +31,8 @@ CREATE TABLE item (
     air_date TEXT,
     -- Provider IDs found in file names, e.g. "tmdb=157336" (newline separated).
     external_hints TEXT NOT NULL DEFAULT '',
+    -- For movies and shows: the identity key the work was created from (after aliasing).
+    identity_key TEXT,
     added_at INTEGER NOT NULL
 );
 
@@ -203,6 +205,13 @@ CREATE TABLE metadata_pin (
     provider_ref TEXT NOT NULL
 );
 
+-- Two identity keys for the same work (e.g. different names on two sources sharing a provider ID).
+CREATE TABLE identity_alias (
+    alias_key TEXT NOT NULL PRIMARY KEY,
+    canonical_key TEXT NOT NULL,
+    created_at INTEGER NOT NULL
+);
+
 -- A user's pinned version for a work.
 CREATE TABLE version_preference (
     item_id TEXT NOT NULL PRIMARY KEY,
@@ -240,12 +249,12 @@ DELETE FROM source WHERE id = ?;
 insertItemIfAbsent:
 INSERT OR IGNORE INTO item(
     id, kind, title, title_key, sort_key, year, show_id, season_id, season_number, episode_number,
-    episode_number_end, absolute_number, air_date, external_hints, added_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+    episode_number_end, absolute_number, air_date, external_hints, identity_key, added_at
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 updateItem:
 UPDATE item SET title = :title, title_key = :titleKey, sort_key = :sortKey, year = :year,
-    episode_number_end = :episodeNumberEnd, external_hints = :externalHints
+    episode_number_end = :episodeNumberEnd, external_hints = :externalHints, identity_key = :identityKey
 WHERE id = :id;
 
 itemById:
@@ -663,3 +672,35 @@ seasonEpisodeCounts:
 SELECT item.id, item.show_id, item.season_number, metadata.episode_count
 FROM item JOIN metadata ON metadata.item_id = item.id
 WHERE item.kind = 'SEASON' AND metadata.episode_count IS NOT NULL;
+
+-- Unification -----------------------------------------------------------------------------------------
+
+allAliases:
+SELECT alias_key, canonical_key FROM identity_alias;
+
+insertAlias:
+INSERT OR REPLACE INTO identity_alias(alias_key, canonical_key, created_at) VALUES (?, ?, ?);
+
+-- Present movies and shows with everything that can identify them at a provider.
+unificationCandidates:
+SELECT item.id, item.kind, item.identity_key, item.added_at, item.external_hints, metadata.provider_ref, metadata.external_ids
+FROM item LEFT JOIN metadata ON metadata.item_id = item.id
+WHERE item.identity_key IS NOT NULL AND (
+    (item.kind = 'MOVIE' AND EXISTS (SELECT 1 FROM version WHERE version.item_id = item.id))
+    OR (item.kind = 'SHOW' AND EXISTS (
+        SELECT 1 FROM item episode JOIN version ON version.item_id = episode.id WHERE episode.show_id = item.id))
+);
+
+sourcesOfWork:
+SELECT DISTINCT version.source_id FROM version JOIN item ON item.id = version.item_id
+WHERE item.id = :id OR item.show_id = :id;
+
+moveFavorite:
+INSERT OR IGNORE INTO favorite(item_id, added_at) SELECT :toId, added_at FROM favorite WHERE item_id = :fromId;
+
+moveCollectionMembership:
+INSERT OR IGNORE INTO user_collection_item(collection_id, item_id, added_at)
+SELECT collection_id, :toId, added_at FROM user_collection_item WHERE item_id = :fromId;
+
+deleteCollectionMembershipOf:
+DELETE FROM user_collection_item WHERE item_id = ?;
