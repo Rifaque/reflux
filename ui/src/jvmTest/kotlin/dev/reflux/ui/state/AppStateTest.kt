@@ -8,10 +8,13 @@ import dev.reflux.core.input.Key
 import dev.reflux.core.input.SemanticAction
 import dev.reflux.core.model.Availability
 import dev.reflux.core.playback.PlayerStatus
+import dev.reflux.core.source.MediaSource
+import dev.reflux.core.source.PlaybackTarget
 import dev.reflux.core.versions.SelectionCriterion
 import dev.reflux.ui.FakePlatform
 import dev.reflux.ui.TestWorld
 import dev.reflux.ui.testDevice
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
@@ -223,7 +226,7 @@ class AppStateTest {
         assertTrue(world.library.homeModel().empty)
         platform.chooseFolder = {
             world.file("Heat (1995)/Heat.1995.1080p.mkv")
-            world.source.descriptor.id
+            FolderChoice.Added(world.source.descriptor.id)
         }
 
         app.addFolder().join() // scanning reads the folder on real I/O threads
@@ -277,5 +280,189 @@ class AppStateTest {
         runCurrent()
         assertNull(app.playback)
         assertEquals(Destination.Home, app.navigator.current, "Back closed the player, not the page beneath it")
+    }
+
+    @Test
+    fun aCancelledFolderChoiceChangesNothing() = runTest {
+        val world = TestWorld()
+        val platform = FakePlatform()
+        val app = appState(world, platform)
+        val before = app.revision
+
+        app.addFolder().join()
+        assertNull(app.notice, "closing the picker is not an error")
+        assertEquals(before, app.revision)
+        assertTrue(platform.reports.isEmpty())
+    }
+
+    @Test
+    fun aFolderThatCannotBeUsedIsExplained() = runTest {
+        val world = TestWorld()
+        val platform = FakePlatform()
+        val app = appState(world, platform)
+
+        platform.chooseFolder = { FolderChoice.Unreadable("Backup Drive") }
+        app.addFolder().join()
+        assertTrue(assertNotNull(app.notice).contains("Backup Drive"))
+
+        platform.chooseFolder = { FolderChoice.NotAFolder("This PC") }
+        app.addFolder().join()
+        assertTrue(assertNotNull(app.notice).contains("This PC"))
+
+        platform.chooseFolder = { FolderChoice.AlreadyInLibrary(world.source.descriptor.id, "Media") }
+        world.file("Heat (1995)/Heat.1995.1080p.mkv")
+        val rescan = app.addFolder()
+        runCurrent()
+        assertTrue(assertNotNull(app.notice).contains("already in your library"))
+        rescan.join() // scanning reads the folder on real I/O threads
+        assertEquals("Heat", world.library.movies().single().item.title, "choosing a known folder again rescans it")
+    }
+
+    @Test
+    fun aFailingFolderPickerIsReportedNotFatal() = runTest {
+        val platform = FakePlatform()
+        val app = appState(TestWorld(), platform)
+        platform.chooseFolder = { error("the dialog crashed") }
+
+        app.addFolder().join()
+        assertNotNull(app.notice)
+        assertEquals(1, platform.reports.size, "the cause is kept for diagnostics")
+
+        // The failure does not leave the picker locked.
+        var asked = 0
+        platform.chooseFolder = {
+            asked++
+            FolderChoice.Cancelled
+        }
+        app.addFolder().join()
+        assertEquals(1, asked)
+    }
+
+    @Test
+    fun theFolderPickerOpensOnceHoweverOftenItIsAskedFor() = runTest {
+        val platform = FakePlatform()
+        val app = appState(TestWorld(), platform)
+        val open = CompletableDeferred<FolderChoice>()
+        var asked = 0
+        platform.chooseFolder = {
+            asked++
+            open.await()
+        }
+
+        val first = app.addFolder()
+        runCurrent()
+        app.addFolder().join()
+        assertEquals(1, asked, "a second request while the picker is open is ignored")
+        open.complete(FolderChoice.Cancelled)
+        first.join()
+    }
+
+    @Test
+    fun anEngineThatWillNotStartIsExplainedAndReported() = runTest {
+        val world = TestWorld().apply { populate() }
+        val platform = FakePlatform().apply { failToStart = true }
+        val app = appState(world, platform)
+
+        app.play(world.movie("Heat").item.id)
+        runCurrent()
+        assertNull(app.playback)
+        assertTrue(assertNotNull(app.notice).contains("couldn't start"))
+        assertEquals(1, platform.reports.size)
+
+        // Nothing is left half-started: the next attempt works.
+        platform.failToStart = false
+        app.play(world.movie("Heat").item.id)
+        runCurrent()
+        assertNotNull(app.playback)
+    }
+
+    @Test
+    fun aSourceThatFailsWhileResolvingAFileDoesNotEndTheApp() = runTest {
+        val world = TestWorld().apply { populate() }
+        val platform = FakePlatform()
+        val app = appState(world, platform)
+        world.registry.register(object : MediaSource by world.source {
+            override suspend fun playbackTarget(path: String): PlaybackTarget = error("the share dropped the connection")
+        })
+
+        app.play(world.movie("Heat").item.id)
+        runCurrent()
+        assertNull(app.playback)
+        assertNotNull(app.notice)
+        assertTrue(platform.players.isEmpty())
+        assertEquals(1, platform.reports.size)
+    }
+
+    @Test
+    fun anOfflineSourceIsNamed() = runTest {
+        val world = TestWorld().apply { populate() }
+        val app = appState(world)
+        world.registry.unregister(world.source.descriptor.id)
+
+        app.play(world.movie("Heat").item.id)
+        runCurrent()
+        assertEquals("This can't be played right now. Media is offline.", app.notice)
+    }
+
+    @Test
+    fun longerNoticesStayLongEnoughToRead() = runTest {
+        val app = appState(TestWorld())
+        app.notify("Short.")
+        advanceTimeBy(4_600)
+        runCurrent()
+        assertNull(app.notice)
+
+        app.notify("Reflux can't open the folder you chose. Check that it is connected and that you are allowed to read it, then try again.")
+        advanceTimeBy(4_600)
+        runCurrent()
+        assertNotNull(app.notice)
+        advanceTimeBy(10_000)
+        runCurrent()
+        assertNull(app.notice)
+    }
+
+    @Test
+    fun controllerButtonsBecomeSemanticActions() = runTest {
+        val platform = FakePlatform()
+        val app = appState(TestWorld(), platform)
+        val moves = mutableListOf<SemanticAction>()
+        var activations = 0
+        app.moveFocus = { moves += it; true }
+        app.activateFocused = { activations++; true }
+        val pad = ControllerFamily.PLAYSTATION
+
+        assertTrue(app.onGamepadButton(GamepadButton.DPAD_LEFT, pad))
+        assertEquals(listOf(SemanticAction.NAVIGATE_LEFT), moves)
+        assertEquals(InputModality.DIRECTIONAL, app.input.modality)
+        assertTrue(app.onGamepadButton(GamepadButton.FACE_SOUTH, pad), "a controller's confirm has no key, so Reflux activates the focused control")
+        assertEquals(1, activations)
+
+        app.navigator.show(Destination.Movies)
+        assertTrue(app.onGamepadButton(GamepadButton.FACE_EAST, pad))
+        assertEquals(Destination.Home, app.navigator.current)
+        assertTrue(app.onGamepadButton(GamepadButton.START, pad))
+        assertTrue(app.sourcesOpen)
+        assertTrue(app.onGamepadButton(GamepadButton.FACE_EAST, pad))
+        assertFalse(app.sourcesOpen)
+        assertTrue(app.onGamepadButton(GamepadButton.SELECT, pad))
+        assertTrue(platform.fullscreen)
+        assertFalse(app.onGamepadButton(GamepadButton.STICK_LEFT, pad), "buttons without a meaning are ignored")
+
+        // Nintendo's confirm and cancel are the other way round; positions, not labels, are what is mapped.
+        assertTrue(app.onGamepadButton(GamepadButton.FACE_EAST, ControllerFamily.NINTENDO))
+        assertEquals(2, activations)
+    }
+
+    @Test
+    fun backLeavesATextFieldBeforeItLeavesThePage() = runTest {
+        val app = appState(TestWorld())
+        var cleared = 0
+        app.clearFocus = { cleared++ }
+        app.navigator.show(Destination.Search)
+        app.textInputActive = true
+
+        assertTrue(app.onGamepadButton(GamepadButton.FACE_EAST, ControllerFamily.XBOX))
+        assertEquals(1, cleared)
+        assertEquals(Destination.Search, app.navigator.current)
     }
 }

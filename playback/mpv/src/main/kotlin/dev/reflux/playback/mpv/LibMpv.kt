@@ -55,6 +55,13 @@ internal interface LibMpv : Library {
         const val END_FILE_REASON_STOP = 2
         const val END_FILE_REASON_QUIT = 3
         const val END_FILE_REASON_ERROR = 4
+
+        const val ERROR_LOADING_FAILED = -13
+        const val ERROR_AO_INIT_FAILED = -14
+        const val ERROR_VO_INIT_FAILED = -15
+        const val ERROR_NOTHING_TO_PLAY = -16
+        const val ERROR_UNKNOWN_FORMAT = -17
+        const val ERROR_UNSUPPORTED = -18
     }
 }
 

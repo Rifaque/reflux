@@ -87,9 +87,12 @@ Not from forcing identical layouts onto every screen.
 
 ## Rendering (`ui`)
 
-- **Glass:** a material is a blurred copy of what is behind it, a tint, a top-lit hairline, and a shadow. Blur is real for materials that float above a screen (navigation bar, panels, notices): the screen is recorded as it draws and the material blurs that recording. Materials inside scrolling content, and everything over video, use the tint alone.
-- **No artwork is a designed state.** A work without artwork is drawn as its title on a color derived from the title, and Home opens on a generated backdrop, so a library with no metadata yet looks intentional rather than broken.
+- **Glass:** a material is a blurred copy of what is behind it, a tint, a top-lit hairline, and a shadow. Blur is real for materials that float above a screen (navigation bar, panels, notices): the screen is recorded as it draws and the material blurs that recording over an opaque base, so nothing sharp shows through. Materials inside scrolling content, and everything over video, use the tint alone.
+- **Floating chrome is solid to the pointer.** A click, hover, or scroll on the navigation bar or a panel never reaches the page beneath it; a click outside an open panel closes it and goes no further.
+- **No artwork is a designed state.** A work without artwork is drawn as its title on a color derived from the title, and Home opens on a generated backdrop, so a library with no metadata yet looks intentional rather than broken. A placeholder already says the title, so only the caption is repeated under it. Empty states (first run, an empty folder, a work that left the library) sit on a quiet ambient glow.
+- **Grids use columns of exactly equal width,** so posters in a row are the same height and their captions share a baseline.
 - **Details pages take their accent from the poster**; only the primary action and switched-on toggles use it.
 - **Active state:** pointer hover and keyboard or controller focus are one "active" state shown by a small lift; a focus ring is added only for input that needs one.
-- **Player:** title, scrubber with chapter marks, and transport controls over scrims; they fade out after 3.5 s of playback without input and return on any input. Tracks and speed are one level deeper. A skip button appears while the position is inside a named intro, recap, or credits chapter.
+- **Player:** title, scrubber with chapter marks, and transport controls over scrims; they fade out after 3.5 s of playback without input and return on any input. Chapters, audio, subtitles, and speed are one level deeper, in one menu with its siblings across the top. A skip button appears while the position is inside a named intro, recap, or credits chapter. A failure replaces the controls with what happened and the way back.
+- **Controller prompts** live in the navigation bar while browsing and in the player's top corner, never over content.
 - **Type:** the platform's system sans-serif. A bundled typeface is a later decision with licensing attached.

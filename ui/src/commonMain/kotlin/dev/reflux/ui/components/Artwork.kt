@@ -75,8 +75,16 @@ fun ArtworkImage(
     modifier: Modifier = Modifier,
     alignment: Alignment = Alignment.Center,
     fallback: @Composable () -> Unit = {},
+) = ArtworkImage(rememberArtwork(locator, width), modifier, alignment, fallback)
+
+/** An already loaded [image], or [fallback] while there is none. */
+@Composable
+fun ArtworkImage(
+    image: ImageBitmap?,
+    modifier: Modifier = Modifier,
+    alignment: Alignment = Alignment.Center,
+    fallback: @Composable () -> Unit = {},
 ) {
-    val image = rememberArtwork(locator, width)
     val alpha by animateFloatAsState(if (image != null) 1f else 0f, Motion.controlsShow.tween())
     Box(modifier) {
         if (alpha < 1f) fallback()
@@ -179,17 +187,20 @@ fun PosterCard(card: MediaCard, onClick: () -> Unit, modifier: Modifier = Modifi
     val layout = LocalLayout.current
     val width = layout.posterWidthDp.dp
     val shape = RoundedCornerShape(12.dp)
+    val poster = rememberArtwork(card.poster, width)
     Column(if (fill) modifier.fillMaxWidth() else modifier.width(width), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Pressable(onClick, Modifier.semantics { contentDescription = describe(card) }, shape) { active ->
             Box(Modifier.fillMaxWidth().aspectRatio(2f / 3f)) {
-                ArtworkImage(card.poster, width, Modifier.fillMaxSize()) { TitlePlaceholder(card.title, null) }
+                ArtworkImage(poster, Modifier.fillMaxSize()) { TitlePlaceholder(card.title, null) }
                 if (active) Box(Modifier.fillMaxSize().background(Color.White.copy(alpha = 0.06f)))
                 StateBadges(card)
             }
         }
+        // Two lines are always reserved so rows line up; a placeholder already says the title, so only the caption follows it.
         Column(Modifier.padding(horizontal = 2.dp)) {
-            Text(card.title, style = LocalTypography.current.captionStrong, maxLines = 1)
+            if (poster != null) Text(card.title, style = LocalTypography.current.captionStrong, maxLines = 1)
             Text(card.caption ?: " ", style = LocalTypography.current.caption, color = RefluxColors.textTertiary, maxLines = 1)
+            if (poster == null) Text(" ", style = LocalTypography.current.captionStrong, maxLines = 1)
         }
     }
 }

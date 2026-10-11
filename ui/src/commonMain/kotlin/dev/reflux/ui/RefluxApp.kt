@@ -9,6 +9,7 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -20,7 +21,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
@@ -31,6 +34,7 @@ import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerEventType
@@ -38,20 +42,32 @@ import androidx.compose.ui.input.pointer.PointerType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import dev.reflux.core.input.ControllerFamily
+import dev.reflux.core.input.GamepadButton
+import dev.reflux.core.input.InputMapping
 import dev.reflux.core.input.InputSignal
 import dev.reflux.core.input.SemanticAction
 import dev.reflux.design.AdaptiveLayout
 import dev.reflux.design.MaterialRole
 import dev.reflux.design.Motion
 import dev.reflux.library.PipelineActivity
+import dev.reflux.ui.components.ButtonPrompts
+import dev.reflux.ui.components.FocusEntry
+import dev.reflux.ui.components.FocusScrollInsets
+import dev.reflux.ui.components.FocusedControl
 import dev.reflux.ui.components.Icon
 import dev.reflux.ui.components.IconButton
 import dev.reflux.ui.components.LocalArtworkLoader
+import dev.reflux.ui.components.LocalFocusEntry
+import dev.reflux.ui.components.LocalFocusedControl
 import dev.reflux.ui.components.Pressable
+import dev.reflux.ui.components.absorbsPointer
 import dev.reflux.ui.screens.BrowseScreen
 import dev.reflux.ui.screens.DetailsScreen
 import dev.reflux.ui.screens.HomeScreen
+import dev.reflux.ui.screens.ScreenTopInset
 import dev.reflux.ui.screens.SearchScreen
 import dev.reflux.ui.screens.SourcesPanel
 import dev.reflux.ui.state.AppState
@@ -113,9 +129,11 @@ internal fun Modifier.trackPointer(app: AppState): Modifier = pointerInput(app) 
 fun RefluxApp(app: AppState, modifier: Modifier = Modifier) {
     RefluxTheme(app, modifier) {
         val focus = LocalFocusManager.current
+        val entry = remember { FocusEntry() }
+        val focused = remember { FocusedControl() }
         DisposableEffect(app, focus) {
             app.moveFocus = { action ->
-                focus.moveFocus(
+                entry.enter() || focus.moveFocus(
                     when (action) {
                         SemanticAction.NAVIGATE_UP -> FocusDirection.Up
                         SemanticAction.NAVIGATE_DOWN -> FocusDirection.Down
@@ -125,31 +143,38 @@ fun RefluxApp(app: AppState, modifier: Modifier = Modifier) {
                 )
             }
             app.clearFocus = { focus.clearFocus() }
+            app.activateFocused = focused::activate
             onDispose {
                 app.moveFocus = null
                 app.clearFocus = null
+                app.activateFocused = null
             }
         }
         val screens = rememberSaveableStateHolder()
-        GlassScene(
-            Modifier.fillMaxSize().background(RefluxColors.background).trackPointer(app),
-            overlay = { Chrome(app) },
-        ) {
-            AnimatedContent(
-                targetState = app.navigator.current,
-                transitionSpec = {
-                    (fadeIn(Motion.navigation.tween()) + slideInVertically(Motion.navigation.tween()) { it / 40 }) togetherWith
-                        fadeOut(Motion.focusChange.tween())
-                },
-            ) { destination ->
-                screens.SaveableStateProvider(destination.toString()) {
-                    when (destination) {
-                        Destination.Home -> HomeScreen(app)
-                        Destination.Movies -> BrowseScreen(app, "Movies", query = null, shows = false)
-                        Destination.Shows -> BrowseScreen(app, "TV Shows", query = null, shows = true)
-                        Destination.Search -> SearchScreen(app)
-                        is Destination.Listing -> BrowseScreen(app, destination.title, destination.query, shows = false)
-                        is Destination.Details -> DetailsScreen(app, destination.itemId)
+        CompositionLocalProvider(LocalFocusEntry provides entry, LocalFocusedControl provides focused) {
+            GlassScene(
+                Modifier.fillMaxSize().background(RefluxColors.background).trackPointer(app).onFocusChanged { entry.hasFocus = it.hasFocus },
+                overlay = { Chrome(app) },
+            ) {
+                // Focus that scrolls a page stops short of the floating navigation bar.
+                FocusScrollInsets(start = ScreenTopInset, end = 72.dp) {
+                    AnimatedContent(
+                        targetState = app.navigator.current,
+                        transitionSpec = {
+                            (fadeIn(Motion.navigation.tween()) + slideInVertically(Motion.navigation.tween()) { it / 40 }) togetherWith
+                                fadeOut(Motion.focusChange.tween())
+                        },
+                    ) { destination ->
+                        screens.SaveableStateProvider(destination.toString()) {
+                            when (destination) {
+                                Destination.Home -> HomeScreen(app)
+                                Destination.Movies -> BrowseScreen(app, "Movies", query = null, shows = false)
+                                Destination.Shows -> BrowseScreen(app, "TV Shows", query = null, shows = true)
+                                Destination.Search -> SearchScreen(app)
+                                is Destination.Listing -> BrowseScreen(app, destination.title, destination.query, shows = false)
+                                is Destination.Details -> DetailsScreen(app, destination.itemId)
+                            }
+                        }
                     }
                 }
             }
@@ -157,31 +182,39 @@ fun RefluxApp(app: AppState, modifier: Modifier = Modifier) {
     }
 }
 
-/** Everything that floats above the screens: navigation, the sources panel, and transient notices. */
+/** Everything that floats above the screens: navigation, the sources panel, button prompts, and notices. */
 @Composable
 private fun Chrome(app: AppState) {
     val layout = LocalLayout.current
-    Box(Modifier.fillMaxSize().padding(horizontal = layout.safeMarginDp.dp)) {
-        NavigationBar(app, Modifier.align(Alignment.TopCenter).padding(top = 14.dp))
-        AnimatedVisibility(
-            visible = app.sourcesOpen,
-            modifier = Modifier.align(Alignment.TopEnd).padding(top = 14.dp + NavigationBarHeight + 10.dp),
-            enter = fadeIn(Motion.controlsShow.tween()) + slideInVertically(Motion.controlsShow.tween()) { -it / 12 },
-            exit = fadeOut(Motion.controlsHide.tween()),
-        ) {
-            SourcesPanel(app)
-        }
-        AnimatedContent(
-            targetState = app.notice,
-            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 32.dp),
-            transitionSpec = {
-                (fadeIn(Motion.controlsShow.tween()) + slideInVertically(Motion.controlsShow.tween()) { it / 3 }) togetherWith
-                    (fadeOut(Motion.controlsHide.tween()) + slideOutVertically(Motion.controlsHide.tween()) { it / 3 })
-            },
-        ) { message ->
-            if (message != null) {
-                Box(Modifier.glass(MaterialRole.FLOATING, CircleShape).padding(horizontal = 20.dp, vertical = 12.dp)) {
-                    Text(message, style = LocalTypography.current.bodyStrong)
+    val margin = Modifier.fillMaxSize().padding(horizontal = layout.safeMarginDp.dp)
+    Box(Modifier.fillMaxSize()) {
+        Box(margin) { NavigationBar(app, Modifier.align(Alignment.TopCenter).padding(top = 14.dp)) }
+        // A click outside the open panel closes it and goes no further.
+        if (app.sourcesOpen) Box(Modifier.fillMaxSize().pointerInput(app) { detectTapGestures { app.sourcesOpen = false } })
+        Box(margin) {
+            AnimatedVisibility(
+                visible = app.sourcesOpen,
+                modifier = Modifier.align(Alignment.TopEnd).padding(top = 14.dp + NavigationBarHeight + 10.dp),
+                enter = fadeIn(Motion.controlsShow.tween()) + slideInVertically(Motion.controlsShow.tween()) { -it / 12 },
+                exit = fadeOut(Motion.controlsHide.tween()),
+            ) {
+                SourcesPanel(app)
+            }
+            AnimatedContent(
+                targetState = app.notice,
+                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 32.dp),
+                transitionSpec = {
+                    (fadeIn(Motion.controlsShow.tween()) + slideInVertically(Motion.controlsShow.tween()) { it / 3 }) togetherWith
+                        (fadeOut(Motion.controlsHide.tween()) + slideOutVertically(Motion.controlsHide.tween()) { it / 3 })
+                },
+            ) { message ->
+                if (message != null) {
+                    Box(
+                        Modifier.widthIn(max = 640.dp).glass(MaterialRole.MODAL, RoundedCornerShape(22.dp)).absorbsPointer()
+                            .padding(horizontal = 22.dp, vertical = 13.dp),
+                    ) {
+                        Text(message, style = LocalTypography.current.bodyStrong, align = TextAlign.Center)
+                    }
                 }
             }
         }
@@ -193,7 +226,7 @@ private fun NavigationBar(app: AppState, modifier: Modifier = Modifier) {
     val navigator = app.navigator
     val activity by app.activity.collectAsState()
     Row(
-        modifier.fillMaxWidth().height(NavigationBarHeight).glass(MaterialRole.FLOATING, CircleShape).padding(horizontal = 10.dp),
+        modifier.fillMaxWidth().height(NavigationBarHeight).glass(MaterialRole.FLOATING, CircleShape).absorbsPointer().padding(horizontal = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (navigator.current !is Destination.Section) {
@@ -208,6 +241,24 @@ private fun NavigationBar(app: AppState, modifier: Modifier = Modifier) {
             Tab("Shows", navigator.section == Destination.Shows) { navigator.show(Destination.Shows) }
         }
         Spacer(Modifier.weight(1f))
+        // With a controller in hand, the bar says what its buttons do here, in that controller's own terms.
+        AnimatedVisibility(
+            visible = LocalLayout.current.showsButtonPrompts,
+            enter = fadeIn(Motion.inputMorph.tween()),
+            exit = fadeOut(Motion.controlsHide.tween()),
+        ) {
+            val family = app.input.controllerFamily ?: ControllerFamily.GENERIC
+            ButtonPrompts(
+                listOfNotNull(
+                    InputMapping.confirmButton(family) to "Select",
+                    (InputMapping.cancelButton(family) to if (app.sourcesOpen) "Close" else "Back").takeIf { app.sourcesOpen || navigator.canGoBack },
+                    (GamepadButton.START to "Sources").takeIf { !app.sourcesOpen },
+                ),
+                family,
+                Modifier.padding(end = 14.dp),
+                floating = false,
+            )
+        }
         ActivityIndicator(activity)
         IconButton(Icon.SEARCH, "Search", { navigator.show(Destination.Search) }, tint = tabColor(navigator.section == Destination.Search))
         IconButton(Icon.FOLDER, "Media sources", { app.sourcesOpen = !app.sourcesOpen }, tint = tabColor(app.sourcesOpen))

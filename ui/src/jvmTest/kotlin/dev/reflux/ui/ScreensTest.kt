@@ -1,15 +1,5 @@
 package dev.reflux.ui
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asSkiaBitmap
-import androidx.compose.ui.test.DesktopComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.onAllNodesWithText
@@ -22,21 +12,18 @@ import androidx.compose.ui.test.hasScrollToNodeAction
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.performScrollToNode
-import androidx.compose.ui.test.v2.runDesktopComposeUiTest
 import dev.reflux.core.input.ControllerFamily
 import dev.reflux.core.input.GamepadButton
 import dev.reflux.core.input.InputModality
 import dev.reflux.core.input.InputSignal
-import dev.reflux.ui.player.PlayerOverlay
-import dev.reflux.ui.state.AppState
+import dev.reflux.core.model.Availability
+import dev.reflux.core.playback.PlaybackFailure
+import dev.reflux.core.source.MediaSource
 import dev.reflux.ui.state.Destination
 import kotlinx.coroutines.runBlocking
-import org.jetbrains.skia.EncodedImageFormat
-import org.jetbrains.skia.Image
-import java.io.File
+import java.nio.file.Files
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 /**
@@ -46,45 +33,6 @@ import kotlin.test.assertTrue
  */
 @OptIn(ExperimentalTestApi::class)
 class ScreensTest {
-    private val screenshots: File? = System.getProperty("reflux.screenshots")?.takeIf { it.isNotBlank() }?.let(::File)
-
-    private fun screen(
-        world: TestWorld,
-        platform: FakePlatform = FakePlatform(),
-        width: Int = 1440,
-        height: Int = 900,
-        block: DesktopComposeUiTest.(AppState) -> Unit,
-    ) = runDesktopComposeUiTest(width, height) {
-        var app: AppState? = null
-        setContent {
-            val scope = rememberCoroutineScope()
-            val state = remember { AppState(world.library, world.pipeline, world.registry::resolve, platform, scope).also { app = it } }
-            Box(Modifier.fillMaxSize()) {
-                RefluxApp(state)
-                state.playback?.let { session ->
-                    // Stands in for the shell's video surface.
-                    Box(Modifier.fillMaxSize().background(Brush.linearGradient(listOf(Color(0xFF5A3E2B), Color(0xFF0E1A2B)))))
-                    PlayerOverlay(state, session)
-                }
-            }
-        }
-        waitForIdle()
-        block(app!!)
-    }
-
-    private fun DesktopComposeUiTest.awaitText(text: String) =
-        waitUntil("\"$text\" to appear", 10_000) { onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty() }
-
-    private fun DesktopComposeUiTest.save(name: String) {
-        waitForIdle()
-        val directory = screenshots ?: return
-        directory.mkdirs()
-        val png = Image.makeFromBitmap(captureToImage().asSkiaBitmap()).encodeToData(EncodedImageFormat.PNG)
-        File(directory, "$name.png").writeBytes(assertNotNull(png).bytes)
-    }
-
-    private fun populated(metadata: Boolean = true) = TestWorld(metadata).also { runBlocking { it.populate() } }
-
     @Test
     fun firstRunAsksForAFolderAndNothingElse() = screen(TestWorld().also { it.library.removeSource(it.source.descriptor.id) }) {
         awaitText("Point Reflux at your media")
@@ -201,6 +149,104 @@ class ScreensTest {
             awaitText("Off")
             onNodeWithText("English").assertExists()
             save("player")
+        }
+    }
+
+    @Test
+    fun aFolderWithoutMediaSaysSoAndOffersAnother() = screen(TestWorld().also { runBlocking { it.pipeline.refresh() } }) {
+        awaitText("Nothing to watch here yet")
+        onNodeWithText("Add another folder").assertIsDisplayed()
+        save("empty-folder")
+    }
+
+    @Test
+    fun aLibraryWhoseOnlySourceIsAwayStaysBrowsable() = screen(
+        populated().also { world ->
+            world.registry.register(object : MediaSource by world.source {
+                override suspend fun availability() = Availability.UNAVAILABLE
+            })
+            runBlocking { world.library.refreshAvailability(world.registry.resolve(world.source.descriptor.id)!!) }
+        },
+    ) { app ->
+        awaitText("Recently Added")
+        onAllNodesWithText("Offline").fetchSemanticsNodes().let { assertTrue(it.isNotEmpty(), "cards say they cannot be played right now") }
+        save("home-offline")
+        app.navigator.open(Destination.Details(app.library.movies().first { it.item.title == "Heat" }.item.id))
+        awaitText("Versions")
+        save("details-offline")
+    }
+
+    @Test
+    fun theMovieGridFillsTheWindow() = screen(populated()) { app ->
+        app.navigator.show(Destination.Movies)
+        awaitText("10 titles")
+        save("movies")
+    }
+
+    @Test
+    fun searchSuggestsAndAdmitsWhenNothingMatches() = screen(populated()) { app ->
+        app.navigator.show(Destination.Search)
+        awaitText("Try")
+        save("search-empty")
+        onNode(hasSetTextAction()).performTextInput("zzzz")
+        awaitText("Nothing in your library matches “zzzz”.")
+        save("search-no-results")
+    }
+
+    @Test
+    fun aWorkThatLeftTheLibrarySaysSo() {
+        val world = populated()
+        screen(world) { app ->
+            val heat = world.movie("Heat").item.id
+            app.navigator.open(Destination.Details(heat))
+            awaitText("Versions")
+            world.library.versions(heat).forEach { Files.delete(world.source.resolve(it.version.location.path)) }
+            runOnIdle { app.refresh() }
+            awaitText("This is no longer in your library")
+            save("details-gone")
+            onNodeWithText("Back").performClick()
+            awaitText("Recently Added")
+        }
+    }
+
+    @Test
+    fun noticesFloatAboveThePage() = screen(populated()) { app ->
+        awaitText("Recently Added")
+        // Time is stepped by hand, so the notice is looked at while it is up rather than on its way out.
+        mainClock.autoAdvance = false
+        val message = "Reflux can't open “Backup Drive”. Check that it is connected and that you are allowed to read it."
+        runOnUiThread { app.notify(message) }
+        mainClock.advanceTimeBy(1_000)
+        onNodeWithText(message).assertIsDisplayed()
+        save("notice")
+        mainClock.advanceTimeBy(8_000)
+        onNodeWithText(message).assertDoesNotExist()
+    }
+
+    @Test
+    fun thePlayerExplainsWhatComesNextAndWhatWentWrong() {
+        val platform = FakePlatform()
+        screen(populated(), platform) { app ->
+            awaitText("Recently Added")
+            runOnIdle { app.play(app.library.shows().first { it.item.title == "Breaking Bad" }.item.id) }
+            awaitText("S1 · E1 · Pilot")
+            val player = platform.players.single()
+            player.apply { playTo(26 * 60_000L) }.pause()
+            onNodeWithContentDescription("Chapters").performClick()
+            awaitText("Part Two")
+            save("player-chapters")
+
+            player.end()
+            awaitText("Play now")
+            mainClock.autoAdvance = false
+            save("player-up-next")
+            mainClock.autoAdvance = true
+            onNodeWithText("Cancel").performClick()
+
+            player.fail("unrecognized file format", PlaybackFailure.UNSUPPORTED)
+            awaitText("PLAYBACK STOPPED")
+            onNodeWithText("This file isn't in a format Reflux can play.").assertExists()
+            save("player-error")
         }
     }
 }

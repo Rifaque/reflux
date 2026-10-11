@@ -1,6 +1,8 @@
 package dev.reflux.ui.state
 
+import dev.reflux.core.input.Key
 import dev.reflux.core.input.SemanticAction
+import dev.reflux.core.playback.PlaybackFailure
 import dev.reflux.core.playback.PlayerStatus
 import dev.reflux.ui.FakePlatform
 import dev.reflux.ui.TestWorld
@@ -178,10 +180,161 @@ class PlaybackSessionTest {
         val playing = playing("Breaking Bad", 0)
         playing.player.fail("unsupported format")
         runCurrent()
-        assertTrue(assertNotNull(playing.session.error).contains("unsupported format"))
+        assertEquals("unsupported format", assertNotNull(playing.session.error).detail)
         assertNotNull(playing.app.playback, "the player stays open to explain")
         playing.session.close()
         runCurrent()
         assertNull(playing.app.playback)
+    }
+
+    @Test
+    fun failuresAreExplainedInTheUsersTermsAndKeptForDiagnostics() = runTest {
+        val playing = playing("Breaking Bad", 0)
+        playing.player.fail("loading failed", PlaybackFailure.UNREACHABLE)
+        runCurrent()
+        val error = assertNotNull(playing.session.error)
+        assertTrue("moved or deleted" in error.message)
+        assertEquals("loading failed", error.detail)
+        assertTrue(playing.platform.reports.single().let { "Breaking Bad" in it && "UNREACHABLE" in it && "loading failed" in it })
+
+        val unsupported = playing("Breaking Bad", 0)
+        unsupported.player.fail("unrecognized file format", PlaybackFailure.UNSUPPORTED)
+        runCurrent()
+        assertTrue("format" in assertNotNull(unsupported.session.error).message)
+    }
+
+    @Test
+    fun aFileThatDisappearedLeavesTheLibraryAfterItFailsToPlay() = runTest {
+        val playing = playing("Severance", 0)
+        val episode = playing.world.episodes("Severance")[0].item.id
+        java.nio.file.Files.delete(playing.world.source.resolve("Severance/Season 1/Severance.S01E01.2160p.mkv"))
+
+        playing.player.fail("loading failed", PlaybackFailure.UNREACHABLE)
+        runCurrent()
+        // The rescan reads the folder on real I/O threads.
+        val deadline = System.currentTimeMillis() + 10_000
+        while (playing.world.episodes("Severance").any { it.item.id == episode } && System.currentTimeMillis() < deadline) {
+            Thread.sleep(20)
+            runCurrent()
+        }
+        assertEquals(3, playing.world.episodes("Severance").size, "the library no longer offers the missing episode")
+    }
+
+    @Test
+    fun afterAFailureEveryWayOnIsTheWayOut() = runTest {
+        val playing = playing("Breaking Bad", 0)
+        playing.player.fail("no audio or video data played", PlaybackFailure.UNSUPPORTED)
+        runCurrent()
+        playing.session.handle(SemanticAction.MENU)
+        assertNull(playing.session.menu, "no menus for something that is not playing")
+        playing.session.handle(SemanticAction.PLAY_PAUSE)
+        runCurrent()
+        assertNull(playing.app.playback)
+    }
+
+    @Test
+    fun menusAreDrivenBySemanticActions() = runTest {
+        val playing = playing("Breaking Bad", 0)
+        val session = playing.session
+        val player = playing.player
+        assertEquals(listOf(PlayerMenu.CHAPTERS, PlayerMenu.AUDIO, PlayerMenu.SUBTITLES, PlayerMenu.SPEED), session.menus())
+
+        session.handle(SemanticAction.MENU)
+        assertEquals(PlayerMenu.SUBTITLES, session.menu)
+        assertEquals(listOf("Off" to true, "English" to false), session.options(PlayerMenu.SUBTITLES).take(2).map { it.label to it.selected })
+        assertEquals(0, session.highlighted, "a menu opens on what is in effect")
+        session.handle(SemanticAction.NAVIGATE_UP)
+        assertEquals(0, session.highlighted)
+        repeat(5) { session.handle(SemanticAction.NAVIGATE_DOWN) }
+        assertEquals(2, session.highlighted, "the highlight stops at the last option")
+        session.handle(SemanticAction.NAVIGATE_UP)
+        session.handle(SemanticAction.SELECT)
+        assertEquals("1", player.state.value.selectedSubtitleId)
+        assertNull(session.menu)
+
+        session.handle(SemanticAction.MENU)
+        assertEquals(1, session.highlighted)
+        session.handle(SemanticAction.NAVIGATE_RIGHT)
+        assertEquals(PlayerMenu.SPEED, session.menu)
+        session.handle(SemanticAction.NAVIGATE_RIGHT)
+        assertEquals(PlayerMenu.SPEED, session.menu, "there is no menu past the last")
+        assertEquals("Normal", session.options(PlayerMenu.SPEED)[session.highlighted].label)
+        session.handle(SemanticAction.NAVIGATE_DOWN)
+        session.handle(SemanticAction.SELECT)
+        assertEquals(1.25, player.state.value.speed)
+
+        session.toggleMenu(PlayerMenu.AUDIO)
+        session.handle(SemanticAction.BACK)
+        assertNull(session.menu)
+        assertNotNull(playing.app.playback, "Back closes the menu first")
+        session.handle(SemanticAction.BACK)
+        runCurrent()
+        assertNull(playing.app.playback)
+    }
+
+    @Test
+    fun keysMeanNavigationWhileAMenuIsOpenAndPlaybackOtherwise() = runTest {
+        val playing = playing("Breaking Bad", 0)
+        val player = playing.player
+        playing.app.onKey(Key.ARROW_RIGHT)
+        assertEquals(10_000L, player.state.value.positionMs)
+
+        playing.session.toggleMenu(PlayerMenu.CHAPTERS)
+        playing.app.onKey(Key.ARROW_DOWN)
+        playing.app.onKey(Key.ARROW_RIGHT)
+        assertEquals(PlayerMenu.AUDIO, playing.session.menu)
+        assertEquals(10_000L, player.state.value.positionMs, "arrows moved through the menus instead of seeking")
+        assertEquals(100, player.state.value.volume)
+        playing.app.onKey(Key.ARROW_DOWN)
+        playing.app.onKey(Key.ENTER)
+        assertEquals("2", player.state.value.selectedAudioId)
+        assertEquals(PlayerStatus.PLAYING, player.state.value.status, "Enter chose the track; it did not pause")
+
+        playing.app.onKey(Key.ESCAPE)
+        runCurrent()
+        assertNull(playing.app.playback)
+    }
+
+    @Test
+    fun chaptersCanBeJumpedTo() = runTest {
+        val playing = playing("Breaking Bad", 0)
+        playing.player.playTo(200_000)
+        val chapters = playing.session.options(PlayerMenu.CHAPTERS)
+        assertEquals(listOf("Intro", "Part One", "Part Two", "Credits"), chapters.map { it.label })
+        assertEquals(listOf("1:00", "2:30", "25:00", "47:00"), chapters.map { it.detail })
+        assertEquals("Part One", chapters.single { it.selected }.label)
+
+        playing.session.toggleMenu(PlayerMenu.CHAPTERS)
+        assertEquals(1, playing.session.highlighted)
+        playing.session.choose(PlayerMenu.CHAPTERS, 2)
+        assertEquals(25 * 60_000L, playing.player.state.value.positionMs)
+
+        playing.player.chapters = emptyList()
+        playing.session.playNext()
+        runCurrent()
+        assertFalse(PlayerMenu.CHAPTERS in playing.session.menus(), "no chapter menu for a file without chapters")
+    }
+
+    @Test
+    fun aTrackThatIsGoneIsRefusedWithAWord() = runTest {
+        val playing = playing("Breaking Bad", 0)
+        playing.session.selectAudio("9")
+        assertEquals("1", playing.player.state.value.selectedAudioId)
+        assertTrue(assertNotNull(playing.app.notice).contains("no longer available"))
+
+        playing.session.selectSubtitle("9")
+        assertNull(playing.player.state.value.selectedSubtitleId)
+        playing.session.selectSubtitle(null)
+        assertNull(playing.player.state.value.selectedSubtitleId, "turning subtitles off is always possible")
+    }
+
+    @Test
+    fun aNextEpisodeOnAnOfflineSourceIsExplained() = runTest {
+        val playing = playing("Breaking Bad", 0)
+        playing.world.registry.unregister(playing.world.source.descriptor.id)
+        playing.session.playNext()
+        runCurrent()
+        assertNull(playing.app.playback)
+        assertEquals("This can't be played right now. Media is offline.", playing.app.notice)
     }
 }

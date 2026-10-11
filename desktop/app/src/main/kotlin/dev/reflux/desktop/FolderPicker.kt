@@ -11,35 +11,35 @@ import com.sun.jna.ptr.PointerByReference
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.awt.Window
+import java.io.IOException
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
-import java.nio.file.Files
 import java.nio.file.Path
 import javax.swing.JFileChooser
 import javax.swing.SwingUtilities
 import javax.swing.UIManager
 
 /**
- * Lets the user choose a media folder with the platform's own folder dialog: the Windows shell dialog on
- * Windows, and the toolkit's chooser elsewhere.
+ * Lets the user choose a media folder with the platform's own folder dialog: the shell dialog on Windows,
+ * the desktop's dialog on Linux (GNOME's or KDE's), and the toolkit's chooser when neither can be shown.
  */
 internal object FolderPicker {
-    private const val TITLE = "Choose a folder with movies or shows"
+    const val TITLE = "Choose a folder with movies or shows"
 
     /** Returns the chosen folder, or null when the dialog was cancelled. */
-    suspend fun choose(owner: Window?): Path? {
-        val chosen = if (System.getProperty("os.name").startsWith("Windows")) {
-            // The shell dialog is modal and needs its own apartment-threaded COM thread.
-            withContext(Dispatchers.IO) { runCatching { WindowsFolderDialog.show(owner, TITLE) }.getOrElse { swing(owner) } }
+    suspend fun choose(owner: Window?): Path? = withContext(Dispatchers.IO) {
+        // Every dialog here is modal and blocks its caller, so none of them may run on the UI thread.
+        val native = if (System.getProperty("os.name").startsWith("Windows")) {
+            runCatching { Shown(WindowsFolderDialog.show(owner, TITLE)) }.getOrNull()
         } else {
-            swing(owner)
+            DesktopFolderDialog.show(TITLE)
         }
-        return chosen?.takeIf { Files.isDirectory(it) }
+        (native ?: Shown(toolkit(owner))).folder
     }
 
-    private fun swing(owner: Window?): Path? {
+    private fun toolkit(owner: Window?): Path? {
         var result: Path? = null
-        val show = Runnable {
+        SwingUtilities.invokeAndWait {
             runCatching { UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName()) }
             val chooser = JFileChooser().apply {
                 dialogTitle = TITLE
@@ -48,8 +48,46 @@ internal object FolderPicker {
             }
             if (chooser.showOpenDialog(owner) == JFileChooser.APPROVE_OPTION) result = chooser.selectedFile?.toPath()
         }
-        if (SwingUtilities.isEventDispatchThread()) show.run() else SwingUtilities.invokeAndWait(show)
         return result
+    }
+}
+
+/** A dialog that was shown: the folder chosen in it, or null when the user cancelled. */
+internal class Shown(val folder: Path?)
+
+/**
+ * The folder dialog of the Linux desktop in use, through the helper each desktop ships: `kdialog` on KDE,
+ * `zenity` on GNOME and most others.
+ */
+internal object DesktopFolderDialog {
+    /** Shows the dialog and waits for it. Returns null when no helper is installed, so another dialog can be used. */
+    fun show(
+        title: String,
+        desktop: String = System.getenv("XDG_CURRENT_DESKTOP").orEmpty(),
+        home: String = System.getProperty("user.home"),
+        run: (List<String>) -> Pair<Int, String>? = ::run,
+    ): Shown? {
+        val zenity = listOf("zenity", "--file-selection", "--directory", "--title=$title")
+        val kdialog = listOf("kdialog", "--title", title, "--getexistingdirectory", home)
+        val helpers = if (desktop.contains("KDE", ignoreCase = true)) listOf(kdialog, zenity) else listOf(zenity, kdialog)
+        for (command in helpers) {
+            val (exit, output) = run(command) ?: continue
+            return when (exit) {
+                0 -> Shown(output.lineSequence().firstOrNull { it.isNotBlank() }?.let { Path.of(it.trim()) })
+                1 -> Shown(null) // cancelled
+                else -> continue // the helper could not open a dialog (no display, missing toolkit)
+            }
+        }
+        return null
+    }
+
+    /** Runs [command] and returns its exit code and output, or null when the program is not installed. */
+    private fun run(command: List<String>): Pair<Int, String>? = try {
+        val process = ProcessBuilder(command).redirectError(ProcessBuilder.Redirect.DISCARD).start()
+        val output = process.inputStream.bufferedReader().readText()
+        process.waitFor() to output
+    } catch (_: IOException) {
+        null
     }
 }
 
@@ -70,6 +108,7 @@ internal object WindowsFolderDialog {
     private const val FOS_PICKFOLDERS = 0x20
     private const val FOS_FORCEFILESYSTEM = 0x40
     private const val SIGDN_FILESYSPATH = 0x80058000.toInt()
+    private const val CANCELLED = 0x800704C7.toInt() // HRESULT_FROM_WIN32(ERROR_CANCELLED)
 
     // Vtable slots: IUnknown (0..2), IModalWindow::Show (3), then IFileDialog and IShellItem methods.
     private const val RELEASE = 2
@@ -81,7 +120,9 @@ internal object WindowsFolderDialog {
     private const val GET_DISPLAY_NAME = 5
 
     fun show(owner: Window?, title: String): Path? = withDialog(title) { dialog ->
-        if (dialog.call(SHOW, owner?.let { Native.getWindowPointer(it) }) < 0) return@withDialog null // cancelled
+        val shown = dialog.call(SHOW, owner?.let { Native.getWindowPointer(it) })
+        if (shown == CANCELLED) return@withDialog null
+        check(shown >= 0) { "The folder dialog could not be shown" }
         val itemRef = PointerByReference()
         if (dialog.call(GET_RESULT, itemRef) < 0) return@withDialog null
         val item = itemRef.value

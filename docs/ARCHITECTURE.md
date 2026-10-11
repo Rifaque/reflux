@@ -132,8 +132,8 @@ Kotlin Multiplatform (see the decision log). Modules:
 | `metadata:tmdb` | TMDB v3 metadata provider over the core `HttpFetcher` (platform-free). | `core`, kotlinx-serialization-json |
 | `playback:mpv` | Desktop playback engine and media probe on libmpv (JNA binding), desktop capability profile. | `core`, JNA, kotlinx-serialization-json |
 | `ui` | The experience layer, shared by every shell: navigation and playback state, screens, player controls, and the design system rendered with Compose. No platform APIs; shells implement its `Platform` interface. | `core`, `library`, `design`, Compose runtime/foundation/ui |
-| `desktop:engine` | The engine wired for a desktop machine (data directories, source factories, metadata, probing, pipeline). No UI. | everything except `ui` |
-| `desktop:app` | The Windows/Linux shell: window, native video surface with the player overlay above it, fullscreen, keyboard normalization, folder picker, artwork decoding. | `ui`, `desktop:engine`, Compose Desktop, JNA |
+| `desktop:engine` | The engine wired for a desktop machine (data directories, source factories, metadata, probing, pipeline, the rule for adding folders, the diagnostics log). No UI. | everything except `ui` |
+| `desktop:app` | The Windows/Linux shell: window, native video surface with the player overlay above it, fullscreen, keyboard and controller input, folder picker, artwork decoding. | `ui`, `desktop:engine`, Compose Desktop, JNA |
 | `tools:cli` | Developer and diagnostic CLI over the same `desktop:engine` wiring as the shell. | `desktop:engine` |
 
 Packages in `core` (`dev.reflux.core`):
@@ -161,7 +161,9 @@ Contracts follow three rules: unknown is not failure, capabilities are explicit,
 
 `ui` is the experience layer. `AppState` holds where the user is, what is playing, and how they are interacting; screens read the library through it off the UI thread and reload when it changes. A `PlaybackSession` is one visit to the player: it plans playback through the library, drives the core `PlaybackController`, and decides what follows an ending (next-episode countdown, "still watching?", or leaving the player). Everything the UI says about a work goes through one pure `Formatting` object.
 
-A shell supplies what only a platform can, through `Platform`: decoded artwork, device capabilities, a playback engine attached to a video surface, a way to add a media folder, and fullscreen. It also normalizes raw input into core `Key`s and `InputSignal`s and hands them to `AppState`, which maps them to semantic actions for the current context; the UI never sees physical keys.
+A shell supplies what only a platform can, through `Platform`: decoded artwork, device capabilities, a playback engine attached to a video surface, a way to add a media folder, fullscreen, and somewhere to report problems. It also normalizes raw input into core `Key`s, gamepad buttons by position, and `InputSignal`s and hands them to `AppState`, which maps them to semantic actions for the current context; the UI never sees physical keys or controller brands.
+
+Failures are part of the contracts rather than exceptions that escape: engines say why playback stopped, adding a folder has explicit outcomes, and the experience layer turns each into words in one place (`Problems`) while the cause goes to the shell's diagnostics (decision log, "Failures are states").
 
 Video is always a platform surface beneath the experience layer's transparent `PlayerOverlay` (a native child window with libmpv on desktop, a `SurfaceView` with Media3 on Android), so the engine keeps its direct path to the display. The layout comes from `AdaptiveLayout` for the window and the current input modality, and is animated when the modality changes.
 

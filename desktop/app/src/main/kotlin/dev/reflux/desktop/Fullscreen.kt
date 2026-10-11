@@ -7,6 +7,7 @@ import com.sun.jna.Library
 import com.sun.jna.Memory
 import com.sun.jna.Native
 import com.sun.jna.Pointer
+import kotlinx.coroutines.delay
 import java.awt.Frame
 import java.awt.Rectangle
 
@@ -21,19 +22,35 @@ import java.awt.Rectangle
 internal class Fullscreen(private val window: ComposeWindow, private val state: WindowState) {
     private val borderless = if (System.getProperty("os.name").startsWith("Windows")) runCatching { Borderless(window) }.getOrNull() else null
     private var windowed = WindowPlacement.Floating
+    private var bounds = Rectangle()
     private var active = false
 
-    fun set(fullscreen: Boolean) {
+    suspend fun set(fullscreen: Boolean) {
         if (fullscreen == active) return
         active = fullscreen
         if (borderless != null) {
             if (fullscreen) borderless.enter() else borderless.leave()
         } else if (fullscreen) {
             windowed = state.placement
+            bounds = window.bounds
             state.placement = WindowPlacement.Fullscreen
         } else {
             state.placement = windowed
+            // A window manager puts the frame back on its own schedule, and not always where it was
+            // (X11 managers tend to drop it in a corner), so its place is restored once it has settled.
+            if (windowed == WindowPlacement.Floating) {
+                repeat(RESTORE_CHECKS) {
+                    delay(RESTORE_CHECK_MS)
+                    if (active) return
+                    if (window.bounds != bounds) window.bounds = bounds
+                }
+            }
         }
+    }
+
+    private companion object {
+        const val RESTORE_CHECKS = 6
+        const val RESTORE_CHECK_MS = 80L
     }
 }
 

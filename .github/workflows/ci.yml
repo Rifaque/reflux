@@ -30,13 +30,25 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
 
       # Real-engine tests (libmpv playback/probing against FFmpeg-generated media) run where libmpv is available
-      # and are skipped elsewhere.
-      - name: Install libmpv and FFmpeg
+      # and are skipped elsewhere. The virtual desktop is for the window tests below.
+      - name: Install libmpv, FFmpeg, and a virtual desktop
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libmpv2 ffmpeg
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libmpv2 ffmpeg xvfb openbox xcompmgr libgl1-mesa-dri libglx-mesa0 libegl1
 
       - name: Build and test
         run: ./gradlew check :tools:cli:installDist --stacktrace
+
+      # The real desktop shell in a real window: first run through the folder chooser, browsing with a mouse
+      # and a controller, and playback with libmpv under controls operated by a mouse.
+      - name: Desktop window tests
+        if: runner.os == 'Linux'
+        run: |
+          Xvfb :99 -screen 0 1600x1000x24 -nolisten tcp &
+          sleep 2
+          export DISPLAY=:99
+          openbox &
+          xcompmgr &
+          ./gradlew :desktop:app:test -Preflux.windowTests=true --stacktrace
 
       - name: Upload test reports
         if: failure()

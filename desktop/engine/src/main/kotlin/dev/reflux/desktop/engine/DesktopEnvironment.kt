@@ -9,6 +9,7 @@ import dev.reflux.library.ArtworkCache
 import dev.reflux.library.Library
 import dev.reflux.library.LibraryDatabase
 import dev.reflux.library.LibraryPipeline
+import dev.reflux.library.SourceRecord
 import dev.reflux.library.SourceRegistry
 import dev.reflux.library.net.JdkHttpFetcher
 import dev.reflux.metadata.tmdb.TmdbProvider
@@ -24,6 +25,8 @@ import dev.reflux.sources.smb.SmbSource
 import dev.reflux.sources.webdav.WebDavConfig
 import dev.reflux.sources.webdav.WebDavSource
 import java.awt.GraphicsEnvironment
+import java.io.IOException
+import java.nio.file.Files
 import java.nio.file.Path
 import java.util.Locale
 
@@ -39,6 +42,20 @@ object AppDirectories {
     }
 }
 
+/** What happened when a folder was offered as a media source. */
+sealed interface FolderAddition {
+    /** The folder is now a source. [replaced] are narrower folder sources it took over. */
+    data class Added(val source: MediaSource, val replaced: List<SourceRecord> = emptyList()) : FolderAddition
+
+    /** The folder, or a folder containing it, is already a source. */
+    data class AlreadyCovered(val by: SourceRecord) : FolderAddition
+
+    data class NotAFolder(val path: Path) : FolderAddition
+
+    /** The folder exists but its contents cannot be listed (permissions, a disconnected mount). */
+    data class Unreadable(val path: Path) : FolderAddition
+}
+
 /**
  * The Reflux engine wired for a desktop machine: library database, artwork cache, source adapters, metadata,
  * probing, and the background pipeline. Shared by the desktop shell and the developer CLI, so both exercise
@@ -46,12 +63,15 @@ object AppDirectories {
  */
 class DesktopEnvironment(dataDirectory: Path = AppDirectories.data()) {
     val http = JdkHttpFetcher(userAgent = "Reflux/0.1")
+
+    /** Problems worth a developer's attention, kept next to the library. */
+    val diagnostics = DiagnosticLog(dataDirectory.resolve("reflux.log"))
     val library = Library(LibraryDatabase.open(dataDirectory.resolve("library.db"))) { System.currentTimeMillis() }
     val artwork = ArtworkCache(dataDirectory.resolve("artwork"), http)
     val language: String = Locale.getDefault().toLanguageTag().takeIf { it != "und" } ?: "en-US"
     val deviceId: String = dataDirectory.resolve("device-id").let { file ->
-        if (java.nio.file.Files.exists(file)) java.nio.file.Files.readString(file).trim()
-        else java.util.UUID.randomUUID().toString().also { java.nio.file.Files.writeString(file, it) }
+        if (Files.exists(file)) Files.readString(file).trim()
+        else java.util.UUID.randomUUID().toString().also { Files.writeString(file, it) }
     }
 
     /** Streams SMB files to players over loopback HTTP. */
@@ -92,15 +112,36 @@ class DesktopEnvironment(dataDirectory: Path = AppDirectories.data()) {
     val canPlay: Boolean get() = MpvPlayer.isAvailable
 
     /**
-     * Adds a local media folder as a source (idempotent) and returns it. The folder is only ever read.
-     * Call [LibraryPipeline.refresh] afterwards to scan it.
+     * Offers a local folder as a media source. The folder is only ever read. A folder that is already
+     * covered by a source is not added twice, and a folder that contains existing folder sources takes them
+     * over, so the same files never appear as two sources. Call [LibraryPipeline.refresh] afterwards to scan.
      */
-    fun addLocalFolder(folder: Path, displayName: String? = null): MediaSource {
+    fun addLocalFolder(folder: Path, displayName: String? = null): FolderAddition {
         val root = folder.toAbsolutePath().normalize()
+        if (!Files.isDirectory(root)) return FolderAddition.NotAFolder(root)
+        val canonical = try {
+            Files.newDirectoryStream(root).use { }
+            root.toRealPath()
+        } catch (_: IOException) {
+            return FolderAddition.Unreadable(root)
+        } catch (_: SecurityException) {
+            return FolderAddition.Unreadable(root)
+        }
+        val folders = library.sources().filter { it.type == LocalFolderSource.TYPE }.associateWith { canonical(Path.of(it.config)) }
+        folders.entries.firstOrNull { (_, existing) -> canonical.startsWith(existing) }?.let { return FolderAddition.AlreadyCovered(it.key) }
+        val narrower = folders.filterValues { it.startsWith(canonical) }.keys.toList()
+        narrower.forEach { removeSource(it.id) }
         val source = LocalFolderSource(root, displayName ?: root.fileName?.toString() ?: root.toString())
         library.addSource(source, root.toString())
         registry.register(source)
-        return source
+        return FolderAddition.Added(source, narrower)
+    }
+
+    /** The real location of a folder source, or its normalized path while it cannot be reached. */
+    private fun canonical(path: Path): Path = try {
+        path.toRealPath()
+    } catch (_: IOException) {
+        path.toAbsolutePath().normalize()
     }
 
     /** Removes a source and what Reflux derived from it. Watch history is kept; files are never touched. */

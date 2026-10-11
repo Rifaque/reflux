@@ -9,6 +9,7 @@ import dev.reflux.core.playback.PlaybackController
 import dev.reflux.core.playback.PlayerStatus
 import dev.reflux.core.playback.TrackPreferences
 import dev.reflux.desktop.engine.DesktopEnvironment
+import dev.reflux.desktop.engine.FolderAddition
 import dev.reflux.library.LibraryEntry
 import dev.reflux.library.SyncingWatchReporter
 import dev.reflux.library.VersionInfo
@@ -74,11 +75,20 @@ fun main(args: Array<String>) {
 }
 
 private suspend fun add(env: DesktopEnvironment, args: List<String>): Boolean {
-    val folder = args.firstOrNull()?.let { Path.of(it).toAbsolutePath().normalize() } ?: return usage("add <folder> [name]")
-    if (!Files.isDirectory(folder)) return fail("Not a folder: $folder")
-    val source = env.addLocalFolder(folder, args.getOrNull(1))
-    println("Added ${source.descriptor.displayName} ($folder). Scanning...")
-    return refresh(env, source.descriptor.id)
+    val folder = args.firstOrNull()?.let { Path.of(it) } ?: return usage("add <folder> [name]")
+    return when (val added = env.addLocalFolder(folder, args.getOrNull(1))) {
+        is FolderAddition.Added -> {
+            added.replaced.forEach { println("${it.displayName} (${it.config}) is inside this folder and was merged into it.") }
+            println("Added ${added.source.descriptor.displayName} (${folder.toAbsolutePath().normalize()}). Scanning...")
+            refresh(env, added.source.descriptor.id)
+        }
+        is FolderAddition.AlreadyCovered -> {
+            println("Already in the library as part of ${added.by.displayName} (${added.by.config}). Scanning...")
+            refresh(env, added.by.id)
+        }
+        is FolderAddition.NotAFolder -> fail("Not a folder: ${added.path}")
+        is FolderAddition.Unreadable -> fail("Cannot read ${added.path} (check its permissions).")
+    }
 }
 
 private suspend fun jellyfin(env: DesktopEnvironment, args: List<String>): Boolean {

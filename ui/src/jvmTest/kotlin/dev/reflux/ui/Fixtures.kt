@@ -31,6 +31,7 @@ import dev.reflux.core.playback.Container
 import dev.reflux.core.playback.DeviceCapabilities
 import dev.reflux.core.playback.DisplayCapabilities
 import dev.reflux.core.playback.DynamicRange
+import dev.reflux.core.playback.PlaybackFailure
 import dev.reflux.core.playback.PlaybackRequest
 import dev.reflux.core.playback.Player
 import dev.reflux.core.playback.PlayerState
@@ -46,6 +47,7 @@ import dev.reflux.library.LibraryPipeline
 import dev.reflux.library.SourceRegistry
 import dev.reflux.sources.local.LocalFolderSource
 import dev.reflux.ui.state.ArtworkLoader
+import dev.reflux.ui.state.FolderChoice
 import dev.reflux.ui.state.Platform
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -237,16 +239,18 @@ class FakePlatform(artwork: Boolean = true) : Platform {
     val players = mutableListOf<FakePlayer>()
     val released = mutableListOf<Player>()
     val removed = mutableListOf<SourceId>()
-    var chooseFolder: suspend () -> SourceId? = { null }
+    val reports = mutableListOf<String>()
+    var chooseFolder: suspend () -> FolderChoice = { FolderChoice.Cancelled }
+    var failToStart = false
 
-    override suspend fun createPlayer(): Player? = FakePlayer(device).also { players += it }
+    override suspend fun createPlayer(): Player? = if (failToStart) null else FakePlayer(device).also { players += it }
 
     override suspend fun releasePlayer(player: Player) {
         released += player
         player.close()
     }
 
-    override suspend fun addMediaFolder(): SourceId? = chooseFolder()
+    override suspend fun addMediaFolder(): FolderChoice = chooseFolder()
 
     override suspend fun removeSource(id: SourceId) {
         removed += id
@@ -257,6 +261,10 @@ class FakePlatform(artwork: Boolean = true) : Platform {
 
     override fun requestFullscreen(fullscreen: Boolean) {
         this.fullscreen = fullscreen
+    }
+
+    override fun report(problem: String, cause: Throwable?) {
+        reports += problem
     }
 }
 
@@ -304,5 +312,6 @@ class FakePlayer(override val capabilities: DeviceCapabilities) : Player {
 
     fun end() = mutable.update { it.copy(status = PlayerStatus.ENDED, positionMs = it.durationMs ?: it.positionMs) }
 
-    fun fail(message: String) = mutable.update { it.copy(status = PlayerStatus.ERROR, error = message) }
+    fun fail(message: String, failure: PlaybackFailure = PlaybackFailure.UNKNOWN) =
+        mutable.update { it.copy(status = PlayerStatus.ERROR, failure = failure, error = message) }
 }

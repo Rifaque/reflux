@@ -31,7 +31,7 @@ Run `./gradlew check`; the wrapper downloads JDK 21 if needed. Installing libmpv
 UI changes should be looked at, not only tested:
 
 - `./gradlew :ui:jvmTest -Preflux.screenshots=<dir>` renders every screen offscreen over a real test library and saves it as a PNG.
-- `./gradlew :desktop:app:test -Preflux.windowTests=true` runs the real desktop shell and plays a generated file in its window. It opens a window on your screen, so it only runs on request; add `-Preflux.screenshots=<dir>` to save what it showed.
+- `./gradlew :desktop:app:test -Preflux.windowTests=true` runs the real desktop shell end to end: first run with the platform's folder dialog, browsing with a mouse and a (scripted) controller, and playback of generated files with the controls operated by a mouse. It opens windows on your screen, so it only runs on request; add `-Preflux.screenshots=<dir>` to save what it showed. The tests act through the application's own event queue and never move your pointer, but your pointer can still reach the test window, so leave it alone while they run. On Linux they need a display with a compositing manager; `Xvfb` with `openbox` and `xcompmgr` is what CI uses.
 
 ## Changes
 

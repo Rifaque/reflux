@@ -7,7 +7,9 @@ import dev.reflux.core.model.SourceId
 import dev.reflux.core.playback.DeviceCapabilities
 import dev.reflux.core.playback.Player
 import dev.reflux.desktop.engine.DesktopEnvironment
+import dev.reflux.desktop.engine.FolderAddition
 import dev.reflux.ui.state.ArtworkLoader
+import dev.reflux.ui.state.FolderChoice
 import dev.reflux.ui.state.Platform
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -17,6 +19,11 @@ import java.util.Locale
 /** The desktop shell's side of the experience layer: Skia artwork, libmpv in a native surface, AWT windows. */
 internal class DesktopPlatform(private val environment: DesktopEnvironment) : Platform {
     val video = VideoSurface()
+
+    /** Present on X11 only; created before any engine so that it sees the toolkit's own error handler. */
+    private val x11Errors = X11ErrorGuard.create().also { guard ->
+        if (guard == null && X11ErrorGuard.needed) report("Xlib could not be loaded: an X11 error after playback may end Reflux")
+    }
 
     /** The main window, once it exists; dialogs are opened relative to it. */
     var window: Window? = null
@@ -30,6 +37,15 @@ internal class DesktopPlatform(private val environment: DesktopEnvironment) : Pl
 
     override val canPlay: Boolean get() = environment.canPlay
 
+    override val playbackSetupHint: String =
+        if (System.getProperty("os.name").startsWith("Windows")) {
+            "Playback needs libmpv (libmpv-2.dll), which this build does not include yet."
+        } else {
+            "Install libmpv with your package manager (libmpv2 on Debian and Ubuntu, mpv-libs on Fedora), then restart Reflux."
+        }
+
+    override fun report(problem: String, cause: Throwable?) = environment.diagnostics.record(problem, cause)
+
     override var fullscreen: Boolean by mutableStateOf(false)
         private set
 
@@ -38,21 +54,48 @@ internal class DesktopPlatform(private val environment: DesktopEnvironment) : Pl
     }
 
     override suspend fun createPlayer(): Player? {
-        val surface = video.show() ?: return null
-        val player = withContext(Dispatchers.IO) { environment.createPlayer(EMBEDDED_OPTIONS + ("wid" to surface.toString())) }
-        if (player == null) video.hide()
+        val surface = video.show() ?: run {
+            report("The video surface was not created in time")
+            return null
+        }
+        x11Errors?.hold()
+        // On X11 the engine keeps its video output until it is destroyed, instead of dropping it whenever
+        // playback stops: every teardown is a moment in which an X error would end the process.
+        val options = EMBEDDED_OPTIONS + ("wid" to surface.toString()) + if (x11Errors != null) mapOf("force-window" to "yes") else emptyMap()
+        val player = try {
+            withContext(Dispatchers.IO) { environment.createPlayer(options) }
+        } catch (e: Throwable) {
+            x11Errors?.release()
+            video.hide()
+            throw e
+        }
+        if (player == null) {
+            report("libmpv was found but could not be initialized")
+            x11Errors?.release()
+            video.hide()
+        }
         return player
     }
 
     override suspend fun releasePlayer(player: Player) {
         // The engine leaves the surface before the surface goes away.
-        withContext(Dispatchers.IO) { player.close() }
-        video.hide()
+        try {
+            withContext(Dispatchers.IO) { player.close() }
+        } finally {
+            x11Errors?.release()
+            video.hide()
+        }
     }
 
-    override suspend fun addMediaFolder(): SourceId? {
-        val folder = FolderPicker.choose(window) ?: return null
-        return withContext(Dispatchers.IO) { environment.addLocalFolder(folder).descriptor.id }
+    override suspend fun addMediaFolder(): FolderChoice {
+        val folder = FolderPicker.choose(window) ?: return FolderChoice.Cancelled
+        val name = folder.fileName?.toString() ?: folder.toString()
+        return when (val added = withContext(Dispatchers.IO) { environment.addLocalFolder(folder) }) {
+            is FolderAddition.Added -> FolderChoice.Added(added.source.descriptor.id)
+            is FolderAddition.AlreadyCovered -> FolderChoice.AlreadyInLibrary(added.by.id, added.by.displayName)
+            is FolderAddition.Unreadable -> FolderChoice.Unreadable(name)
+            is FolderAddition.NotAFolder -> FolderChoice.NotAFolder(name)
+        }
     }
 
     override suspend fun removeSource(id: SourceId) = withContext(Dispatchers.IO) { environment.removeSource(id) }

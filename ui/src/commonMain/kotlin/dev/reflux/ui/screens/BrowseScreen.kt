@@ -14,7 +14,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridScope
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -32,11 +32,15 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.reflux.design.MaterialRole
 import dev.reflux.ui.components.Button
 import dev.reflux.ui.components.Chip
 import dev.reflux.ui.components.Icon
+import dev.reflux.ui.components.IconButton
+import dev.reflux.ui.components.initialFocus
 import dev.reflux.ui.components.PosterCard
 import dev.reflux.ui.state.AppState
 import dev.reflux.ui.state.Destination
@@ -57,7 +61,7 @@ import kotlinx.coroutines.delay
 private fun PosterGrid(app: AppState, cards: List<MediaCard>, header: @Composable () -> Unit) {
     val layout = LocalLayout.current
     LazyVerticalGrid(
-        columns = GridCells.Adaptive(layout.posterWidthDp.dp),
+        columns = EqualColumns(layout.posterWidthDp.dp),
         modifier = Modifier.fillMaxSize(),
         state = rememberLazyGridState(),
         contentPadding = PaddingValues(start = layout.safeMarginDp.dp, end = layout.safeMarginDp.dp, top = ScreenTopInset, bottom = 64.dp),
@@ -65,9 +69,25 @@ private fun PosterGrid(app: AppState, cards: List<MediaCard>, header: @Composabl
         verticalArrangement = Arrangement.spacedBy(22.dp),
     ) {
         fullWidth("header") { header() }
-        items(cards, key = { it.id.value }) { card ->
-            PosterCard(card, { app.navigator.open(Destination.Details(card.detailsId)) }, fill = true)
+        itemsIndexed(cards, key = { _, card -> card.id.value }) { index, card ->
+            PosterCard(
+                card,
+                { app.navigator.open(Destination.Details(card.detailsId)) },
+                if (index == 0) Modifier.initialFocus() else Modifier,
+                fill = true,
+            )
         }
+    }
+}
+
+/**
+ * As many columns of at least [minimum] as fit, every one exactly the same width. Columns that differ by a
+ * pixel make posters of different heights, and the captions under a row no longer line up.
+ */
+private data class EqualColumns(private val minimum: Dp) : GridCells {
+    override fun Density.calculateCrossAxisCellSizes(availableSize: Int, spacing: Int): List<Int> {
+        val count = ((availableSize + spacing) / (minimum.roundToPx() + spacing)).coerceAtLeast(1)
+        return List(count) { (availableSize - spacing * (count - 1)) / count }
     }
 }
 
@@ -124,7 +144,7 @@ internal fun SearchScreen(app: AppState) {
     PosterGrid(app, model?.cards.orEmpty()) {
         Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Row(
-                Modifier.fillMaxWidth().height(56.dp).glass(MaterialRole.ELEVATED, CircleShape).padding(horizontal = 20.dp),
+                Modifier.fillMaxWidth().height(56.dp).glass(MaterialRole.ELEVATED, CircleShape).padding(start = 20.dp, end = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -145,6 +165,12 @@ internal fun SearchScreen(app: AppState) {
                         }
                     },
                 )
+                if (query.isNotEmpty()) {
+                    IconButton(Icon.CLOSE, "Clear search", {
+                        app.searchQuery = ""
+                        field.requestFocus()
+                    }, tint = RefluxColors.textSecondary)
+                }
             }
             val current = model
             when {

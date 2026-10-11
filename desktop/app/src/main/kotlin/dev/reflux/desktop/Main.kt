@@ -31,20 +31,28 @@ import com.sun.jna.Library
 import com.sun.jna.Native
 import com.sun.jna.Pointer
 import com.sun.jna.ptr.IntByReference
+import dev.reflux.core.input.SemanticAction
 import dev.reflux.design.Palette
 import dev.reflux.desktop.engine.DesktopEnvironment
+import dev.reflux.desktop.gamepad.GamepadInput
+import dev.reflux.desktop.gamepad.GamepadReader
 import dev.reflux.ui.RefluxApp
 import dev.reflux.ui.player.PlayerOverlay
 import dev.reflux.ui.state.AppState
 import dev.reflux.ui.theme.RefluxColors
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.launch
+import java.awt.AWTEvent
 import java.awt.Dimension
 import java.awt.KeyEventDispatcher
 import java.awt.KeyboardFocusManager
 import java.awt.Point
 import java.awt.Toolkit
+import java.awt.event.AWTEventListener
 import java.awt.event.KeyEvent
+import java.awt.event.MouseEvent
 import java.awt.image.BufferedImage
+import javax.swing.SwingUtilities
 
 fun main() = runReflux(DesktopEnvironment())
 
@@ -55,12 +63,19 @@ internal class RunningReflux(val app: AppState, val window: ComposeWindow, val e
  * Runs the desktop shell on [environment] until its window is closed.
  *
  * @param exitProcess false keeps the JVM alive afterwards (tests).
+ * @param gamepads where controllers are read from; null on platforms without a reader.
  * @param onStarted called on the UI thread once the window exists.
  */
-internal fun runReflux(environment: DesktopEnvironment, exitProcess: Boolean = true, onStarted: (RunningReflux) -> Unit = {}) {
+internal fun runReflux(
+    environment: DesktopEnvironment,
+    exitProcess: Boolean = true,
+    gamepads: GamepadReader? = GamepadInput.platformReader(),
+    onStarted: (RunningReflux) -> Unit = {},
+) {
     val platform = DesktopPlatform(environment)
     application(exitProcessOnExit = exitProcess) {
-        val scope = rememberCoroutineScope()
+        // The last line of defence: a failure nobody handled is written down instead of ending the app.
+        val scope = rememberCoroutineScope { CoroutineExceptionHandler { _, error -> platform.report("An unexpected error was not handled", error) } }
         val app = remember {
             AppState(environment.library, environment.pipeline, environment.registry::resolve, platform, scope).also { it.start() }
         }
@@ -91,10 +106,24 @@ internal fun runReflux(environment: DesktopEnvironment, exitProcess: Boolean = t
                 val keys = KeyEventDispatcher { event ->
                     event.id == KeyEvent.KEY_PRESSED && event.toRefluxKey()?.let(app::onKey) == true
                 }
-                KeyboardFocusManager.getCurrentKeyboardFocusManager().addKeyEventDispatcher(keys)
+                val focus = KeyboardFocusManager.getCurrentKeyboardFocusManager()
+                focus.addKeyEventDispatcher(keys)
+                // The back button of a mouse is Back, like Escape.
+                val mouse = AWTEventListener { event ->
+                    if (event is MouseEvent && event.isBackButtonPress()) app.dispatch(SemanticAction.BACK)
+                }
+                Toolkit.getDefaultToolkit().addAWTEventListener(mouse, AWTEvent.MOUSE_EVENT_MASK)
+                // Controllers are read system-wide, so they only act while a Reflux window is the active one.
+                val controllers = gamepads?.let { reader ->
+                    GamepadInput(reader, active = { focus.activeWindow != null }) { button, family ->
+                        SwingUtilities.invokeLater { app.onGamepadButton(button, family) }
+                    }
+                }
                 onStarted(RunningReflux(app, window, ::exitApplication))
                 onDispose {
-                    KeyboardFocusManager.getCurrentKeyboardFocusManager().removeKeyEventDispatcher(keys)
+                    controllers?.close()
+                    Toolkit.getDefaultToolkit().removeAWTEventListener(mouse)
+                    focus.removeKeyEventDispatcher(keys)
                     platform.window = null
                 }
             }

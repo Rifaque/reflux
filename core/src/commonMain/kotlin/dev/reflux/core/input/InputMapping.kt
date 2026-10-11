@@ -18,6 +18,8 @@ object InputMapping {
             return if (context == InputContext.PLAYBACK) SemanticAction.PLAY_PAUSE else SemanticAction.SELECT
         }
         if (button == cancelButton(family)) return SemanticAction.BACK
+        // The view/create button toggles fullscreen everywhere, like F on a keyboard.
+        if (button == GamepadButton.SELECT) return SemanticAction.FULLSCREEN
         return when (context) {
             InputContext.BROWSE -> when (button) {
                 GamepadButton.DPAD_UP -> SemanticAction.NAVIGATE_UP

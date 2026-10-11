@@ -2,6 +2,7 @@ package dev.reflux.desktop
 
 import dev.reflux.core.input.Key
 import java.awt.event.KeyEvent
+import java.awt.event.MouseEvent
 
 /**
  * Normalizes an AWT key press into a Reflux [Key], or null for keys Reflux has no meaning for.
@@ -35,3 +36,10 @@ internal fun KeyEvent.toRefluxKey(): Key? {
         else -> null
     }
 }
+
+/**
+ * Whether this is a press of a mouse's back button. Only Windows numbers it reliably (the fourth button);
+ * elsewhere the toolkit's numbering of extra buttons overlaps with scroll wheels, so it is left alone.
+ */
+internal fun MouseEvent.isBackButtonPress(os: String = System.getProperty("os.name")): Boolean =
+    id == MouseEvent.MOUSE_PRESSED && button == 4 && os.startsWith("Windows")
