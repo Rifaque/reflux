@@ -139,6 +139,10 @@ data class DetailsModel(
     val initialSeason: Int,
 )
 
+/**
+ * Everything a details page shows, or null when the work is not in the library: unknown, or remembered only
+ * for its watch history because its last file is gone.
+ */
 internal fun Library.detailsModel(itemId: MediaId, device: DeviceCapabilities): DetailsModel? {
     val entry = entry(itemId) ?: return null
     val card = cards(listOf(entry)).single()
@@ -148,6 +152,7 @@ internal fun Library.detailsModel(itemId: MediaId, device: DeviceCapabilities): 
         is Show -> {
             val detail = showDetail(item.id) ?: return null
             val seasons = detail.seasons.map { SeasonModel(it.season, cards(it.episodes)) }
+            if (seasons.none { it.episodes.isNotEmpty() }) return null
             val next = detail.nextUp ?: (detail.seasons.firstOrNull { it.season.number > 0 } ?: detail.seasons.firstOrNull())
                 ?.episodes?.firstOrNull()?.item as? Episode
             val started = detail.nextUp != null
@@ -172,6 +177,7 @@ internal fun Library.detailsModel(itemId: MediaId, device: DeviceCapabilities): 
         }
         is Movie -> {
             val selection = selectVersion(item.id, device)
+            if (selection.ranked.isEmpty()) return null
             val best = selection.best
             val runtime = metadata?.runtimeMinutes ?: selection.ranked.firstNotNullOfOrNull { it.version.stream.durationMs }?.let { (it / 60_000).toInt() }
             val resumes = WatchRules.resumePosition(entry.watchState) != null

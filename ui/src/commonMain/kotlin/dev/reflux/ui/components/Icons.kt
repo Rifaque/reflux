@@ -26,7 +26,7 @@ enum class Icon {
     PLAY, PAUSE, NEXT, PREVIOUS, REWIND, FORWARD,
     BACK, CHEVRON_RIGHT, CLOSE, CHECK, PLUS, SEARCH,
     HEART, HEART_FILLED, FOLDER, REFRESH, OFFLINE,
-    VOLUME, VOLUME_MUTED, SUBTITLES, AUDIO, FULLSCREEN, FULLSCREEN_EXIT,
+    VOLUME, VOLUME_MUTED, SUBTITLES, AUDIO, CHAPTERS, FULLSCREEN, FULLSCREEN_EXIT,
 }
 
 @Composable
@@ -125,6 +125,11 @@ private fun DrawScope.draw(icon: Icon, color: Color) {
         Icon.AUDIO -> stroke(color) {
             moveTo(5.5f, 10f); lineTo(5.5f, 14f); moveTo(9.8f, 6f); lineTo(9.8f, 18f)
             moveTo(14.2f, 9f); lineTo(14.2f, 15f); moveTo(18.5f, 7.5f); lineTo(18.5f, 16.5f)
+        }
+        Icon.CHAPTERS -> stroke(color) {
+            moveTo(4.5f, 7f); lineTo(5f, 7f); moveTo(9f, 7f); lineTo(19.5f, 7f)
+            moveTo(4.5f, 12f); lineTo(5f, 12f); moveTo(9f, 12f); lineTo(19.5f, 12f)
+            moveTo(4.5f, 17f); lineTo(5f, 17f); moveTo(9f, 17f); lineTo(19.5f, 17f)
         }
         Icon.FULLSCREEN -> stroke(color) {
             moveTo(4.5f, 9f); lineTo(4.5f, 4.5f); lineTo(9f, 4.5f); moveTo(15f, 4.5f); lineTo(19.5f, 4.5f); lineTo(19.5f, 9f)

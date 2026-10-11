@@ -2,6 +2,7 @@ package dev.reflux.playback.mpv
 
 import com.sun.jna.Pointer
 import dev.reflux.core.playback.DeviceCapabilities
+import dev.reflux.core.playback.PlaybackFailure
 import dev.reflux.core.playback.PlaybackRequest
 import dev.reflux.core.playback.Player
 import dev.reflux.core.playback.PlayerState
@@ -89,7 +90,7 @@ class MpvPlayer private constructor(
                     mutableState.update { if (it.status == PlayerStatus.ENDED) it else it.copy(status = PlayerStatus.IDLE) }
                     return
                 }
-                LibMpv.EVENT_START_FILE -> mutableState.update { it.copy(status = PlayerStatus.LOADING, error = null) }
+                LibMpv.EVENT_START_FILE -> mutableState.update { it.copy(status = PlayerStatus.LOADING, failure = null, error = null) }
                 // Read tracks synchronously so external subtitles and status become visible together.
                 LibMpv.EVENT_FILE_LOADED -> {
                     val tracks = MpvTracks.playerTracks(mpv.getString(handle, "track-list"))
@@ -106,7 +107,8 @@ class MpvPlayer private constructor(
         mutableState.update {
             when (end.reason) {
                 LibMpv.END_FILE_REASON_EOF -> it.copy(status = PlayerStatus.ENDED, positionMs = it.durationMs ?: it.positionMs)
-                LibMpv.END_FILE_REASON_ERROR -> it.copy(status = PlayerStatus.ERROR, error = mpv.mpv_error_string(end.error))
+                LibMpv.END_FILE_REASON_ERROR ->
+                    it.copy(status = PlayerStatus.ERROR, failure = failureOf(end.error), error = mpv.mpv_error_string(end.error))
                 // A stop caused by loading the next file is followed by START_FILE; plain stops go idle.
                 else -> it.copy(status = PlayerStatus.IDLE)
             }
@@ -203,6 +205,13 @@ class MpvPlayer private constructor(
                 return null
             }
             return MpvPlayer(mpv, handle, capabilities)
+        }
+
+        internal fun failureOf(error: Int): PlaybackFailure = when (error) {
+            LibMpv.ERROR_LOADING_FAILED -> PlaybackFailure.UNREACHABLE
+            LibMpv.ERROR_UNKNOWN_FORMAT, LibMpv.ERROR_NOTHING_TO_PLAY, LibMpv.ERROR_UNSUPPORTED -> PlaybackFailure.UNSUPPORTED
+            LibMpv.ERROR_AO_INIT_FAILED, LibMpv.ERROR_VO_INIT_FAILED -> PlaybackFailure.OUTPUT
+            else -> PlaybackFailure.UNKNOWN
         }
 
         /** mpv takes plain paths for local files and URLs for everything else. */

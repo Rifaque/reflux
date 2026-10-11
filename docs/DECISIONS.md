@@ -175,4 +175,44 @@ The screens, navigation, playback session logic, and the Compose rendering of th
 
 ## 2026-10-09 — Desktop fullscreen keeps the window
 
-Fullscreen must not recreate the main window, because the playing engine renders into a child of it. On Windows the toolkit's fullscreen leaves the title bar on a decorated window, so the shell removes the frame styles and stretches the same window over its monitor (borderless fullscreen) and restores them afterwards. Elsewhere the toolkit's fullscreen is used. Leaving the player restores the window to how it was when playback started.
+Fullscreen must not recreate the main window, because the playing engine renders into a child of it. On Windows the toolkit's fullscreen leaves the title bar on a decorated window, so the shell removes the frame styles and stretches the same window over its monitor (borderless fullscreen) and restores them afterwards. Elsewhere the toolkit's fullscreen is used; X11 window managers put the window back in a corner afterwards, so the shell restores its place once the manager has settled. Leaving the player restores the window to how it was when playback started.
+
+## 2026-10-11 — Failures are states, worded in one place
+
+Nothing the user asks for may fail silently or end the application.
+
+- **Contracts name the failure.** A playback engine reports *why* it stopped as a `PlaybackFailure` (unreachable, unsupported, output, unknown) next to its own wording; offering a folder yields a `FolderAddition` (added, already covered, not a folder, unreadable); the pipeline exposes whether the metadata provider could be reached.
+- **The experience layer words it.** `Problems` holds what the user is told for every failure, in their terms and with what they can do about it. Engines and shells never put text on screen.
+- **Detail goes to diagnostics.** `Platform.report` receives the cause; on desktop it is appended to `reflux.log` in the data directory. User actions run through one guard that reports and explains, and the shell has a last-resort handler, so an exception cannot take the window down.
+- **The library catches up.** A file that cannot be opened triggers a rescan of its source, and a details page whose work has no files left says so instead of offering a dead Play button.
+
+## 2026-10-11 — One folder, one source
+
+A folder that is already covered by a folder source is not added again, and a folder that contains existing folder sources takes them over. The same file is therefore never two versions of a work. Watch history survives the takeover because it belongs to works, not to files or sources. The rule lives in `desktop:engine`, so the shell and the CLI behave the same.
+
+## 2026-10-11 — Desktop controllers through platform APIs
+
+**Decision.** The desktop shell reads controllers itself, with no input library:
+
+- **Windows:** XInput for Xbox controllers and everything presenting as one; the multimedia joystick API for other HID game controllers (DualShock 4, DualSense, Switch Pro, generic pads). XInput devices also appear as joysticks and are recognized by the `IG_` marker in their raw-input device path, so each controller is read once.
+- **Linux:** the kernel joystick interface (`/dev/input/js*`). Button and axis numbers are resolved through the device's capabilities in sysfs, so the mapping follows event codes (`BTN_SOUTH`, ...) rather than per-driver tables. It needs only read access and no native code.
+
+**Alternatives.** SDL would cover more devices and report families directly, but adds a bundled native library to every distribution for what is a few hundred lines here. JInput is unmaintained. Raw Input with HID parsing, and evdev with ioctls, are more complete but need a message loop or native calls for no benefit to navigation and transport control.
+
+**Consequences.** Readers produce snapshots of buttons *by position*; one translator turns them into presses (with hold-to-repeat and the left stick as a D-pad) for the same semantic path keys use. Controller APIs are system-wide, so input is ignored unless a Reflux window is the active one. Gyro, touchpads, rumble, and per-button remapping are out of scope until a feature needs them. Numbered-button layouts for controllers without a vendor driver follow the common convention and may be wrong for unusual pads.
+
+## 2026-10-11 — The player's menus are session state
+
+Chapters, audio, subtitles, and speed are lists owned by `PlaybackSession`, with a highlighted option moved by navigation actions and chosen by Select. The video's controls live in a window that never takes focus, so toolkit focus cannot drive them; state driven by semantic actions works identically for a pointer, a keyboard, and a controller. While a menu is open the input context is browsing, so directions navigate instead of seeking.
+
+## 2026-10-11 — Real-window tests act through the application's own event queue
+
+End-to-end tests run the real shell in its real window. They find controls through the window's semantics, deliver pointer and key events to the toolkit's event queue, operate the native folder dialog through window messages, and ask the system which window the pointer would hit. They never move the system pointer, so they can run on a machine in use and on a virtual display in CI. What only a physical device can show (a controller in someone's hands) is covered up to the reader, which is injectable.
+
+## 2026-10-12 — Linux: the toolkit's X11 error handler is guarded while libmpv is loaded
+
+Xlib has one error handler per process. The toolkit's tolerates errors, because harmless ones are routine. libmpv installs its own while it has a video output and resets the handler to Xlib's default when the output goes away; the default ends the process on any error. Found by running real playback in a real X11 window: Reflux quit about every other time the player was closed.
+
+The shell remembers the toolkit's handler before any engine exists and puts it back continuously while an engine is alive and for a while after (`X11ErrorGuard`). On X11 the engine also keeps its video output until it is destroyed (`force-window`), so there is one teardown per playback instead of one per stop. Reusing one engine for the life of the application would avoid teardown altogether; it was not needed once the guard was in place, and it would change the surface lifecycle on one platform only.
+
+The player's controls are a translucent window above the video, which on X11 needs a compositing manager. Every current desktop has one; without it the controls window is opaque.

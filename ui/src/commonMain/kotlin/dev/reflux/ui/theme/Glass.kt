@@ -109,6 +109,9 @@ fun Modifier.glass(
             blurred.renderEffect = BlurEffect(radius, radius, TileMode.Clamp)
             val offset = backdrop.origin - position
             blurred.record { translate(offset.x, offset.y) { drawLayer(backdrop.layer) } }
+            // The recording is transparent wherever the page drew nothing, and the page itself is right
+            // beneath this material. Without an opaque base the sharp original would show through the blur.
+            drawRect(RefluxColors.background)
             drawLayer(blurred)
             drawRect(tintColor)
         }

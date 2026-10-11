@@ -9,8 +9,10 @@ import dev.reflux.core.input.SemanticAction
 import dev.reflux.core.model.Episode
 import dev.reflux.core.model.MediaId
 import dev.reflux.core.model.MediaItem
+import dev.reflux.core.model.SourceId
 import dev.reflux.core.playback.AutoplayPolicy
 import dev.reflux.core.playback.PlaybackController
+import dev.reflux.core.playback.PlaybackFailure
 import dev.reflux.core.playback.Player
 import dev.reflux.core.playback.PlayerState
 import dev.reflux.core.playback.PlayerStatus
@@ -22,6 +24,7 @@ import dev.reflux.library.LibraryEntry
 import dev.reflux.library.PlaybackPlan
 import dev.reflux.library.SyncingWatchReporter
 import dev.reflux.library.planPlayback
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -32,9 +35,16 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.plus
 import kotlinx.coroutines.withContext
+import kotlin.math.abs
 
 /** The post-play prompt: a countdown into [entry], or a "still watching?" question when [asks] is set. */
 data class UpNext(val entry: LibraryEntry, val totalMs: Long, val remainingMs: Long, val asks: Boolean)
+
+/** The player's lists, one level below the transport controls. */
+enum class PlayerMenu(val title: String) { CHAPTERS("Chapters"), AUDIO("Audio"), SUBTITLES("Subtitles"), SPEED("Speed") }
+
+/** One line of a [PlayerMenu]; [selected] marks what is in effect now. */
+data class MenuOption(val label: String, val detail: String? = null, val selected: Boolean = false)
 
 /**
  * One visit to the player: the work being played, its neighbours, and what happens when it ends.
@@ -52,6 +62,7 @@ class PlaybackSession internal constructor(
     private val wasFullscreen = app.platform.fullscreen
     private var controller: PlaybackController? = null
     private var reporter: SerialWatchReporter? = null
+    private var sourceId: SourceId? = null
     private var countdown: Job? = null
     private var endHandled = false
     private var closing: Job? = null
@@ -79,8 +90,16 @@ class PlaybackSession internal constructor(
     var upNext: UpNext? by mutableStateOf(null)
         private set
 
-    /** Set when playback failed; the player shows it and offers to close. */
-    var error: String? by mutableStateOf(null)
+    /** Set when playback failed; the player explains it and offers the way back. */
+    var error: PlaybackError? by mutableStateOf(null)
+        private set
+
+    /** The open menu, if any. While one is open, navigation and select act on it instead of on playback. */
+    var menu: PlayerMenu? by mutableStateOf(null)
+        private set
+
+    /** The option of [menu] that Select would choose; moved by navigation, so menus work without a pointer. */
+    var highlighted by mutableIntStateOf(0)
         private set
 
     /** Advances on every user interaction, so the player UI can reveal its controls. */
@@ -103,12 +122,14 @@ class PlaybackSession internal constructor(
         countdown?.cancel()
         upNext = null
         error = null
+        menu = null
         endHandled = false
         entry = details.entry
         title = details.heading.first
         subtitle = details.heading.second
         previous = details.neighbours.first
         next = details.neighbours.second
+        sourceId = plan.version.version.location.sourceId
         val reporter = SerialWatchReporter(
             SyncingWatchReporter(app.library, plan.version.version, plan.source, app.scope + app.background),
             app.scope,
@@ -127,21 +148,40 @@ class PlaybackSession internal constructor(
     /** Handles a semantic action while the player is open. Every action counts as "still watching". */
     fun handle(action: SemanticAction): Boolean {
         touch()
+        val open = menu
         val prompt = upNext
-        when (action) {
-            SemanticAction.BACK, SemanticAction.STOP -> close()
-            SemanticAction.FULLSCREEN -> app.platform.requestFullscreen(!app.platform.fullscreen)
-            SemanticAction.PLAY_PAUSE, SemanticAction.SELECT -> when {
+        when {
+            action == SemanticAction.STOP -> close()
+            action == SemanticAction.FULLSCREEN -> app.platform.requestFullscreen(!app.platform.fullscreen)
+            open != null -> handleInMenu(open, action)
+            error != null -> if (action in LEAVING) close()
+            action == SemanticAction.MENU -> showMenu(menus().let { all -> PlayerMenu.SUBTITLES.takeIf { it in all } ?: all.first() })
+            action == SemanticAction.BACK -> close()
+            action == SemanticAction.PLAY_PAUSE || action == SemanticAction.SELECT -> when {
                 prompt == null -> controller?.handle(SemanticAction.PLAY_PAUSE)
                 prompt.asks -> continueWatching()
                 else -> playNext()
             }
             // Without directional focus in the player, up and down are the volume, as in every desktop player.
-            SemanticAction.NAVIGATE_UP -> controller?.handle(SemanticAction.VOLUME_UP)
-            SemanticAction.NAVIGATE_DOWN -> controller?.handle(SemanticAction.VOLUME_DOWN)
+            action == SemanticAction.NAVIGATE_UP -> controller?.handle(SemanticAction.VOLUME_UP)
+            action == SemanticAction.NAVIGATE_DOWN -> controller?.handle(SemanticAction.VOLUME_DOWN)
             else -> controller?.handle(action)
         }
         return true
+    }
+
+    private fun handleInMenu(open: PlayerMenu, action: SemanticAction) {
+        when (action) {
+            SemanticAction.NAVIGATE_UP -> highlighted = (highlighted - 1).coerceAtLeast(0)
+            SemanticAction.NAVIGATE_DOWN -> highlighted = (highlighted + 1).coerceAtMost(options(open).lastIndex)
+            SemanticAction.NAVIGATE_LEFT, SemanticAction.NAVIGATE_RIGHT -> {
+                val all = menus()
+                all.getOrNull(all.indexOf(open) + if (action == SemanticAction.NAVIGATE_RIGHT) 1 else -1)?.let(::showMenu)
+            }
+            SemanticAction.SELECT, SemanticAction.PLAY_PAUSE -> choose(open, highlighted)
+            SemanticAction.BACK, SemanticAction.MENU -> menu = null
+            else -> controller?.handle(action)
+        }
     }
 
     /** Any user activity in the player that is not a semantic action (pointer movement, scrubbing). */
@@ -149,6 +189,61 @@ class PlaybackSession internal constructor(
         autoplay.onInteraction()
         interactions++
     }
+
+    // Menus --------------------------------------------------------------------------------------
+
+    /** The menus that have something to choose from for what is playing, in the order they are offered. */
+    fun menus(state: PlayerState = player.state.value): List<PlayerMenu> = listOfNotNull(
+        PlayerMenu.CHAPTERS.takeIf { state.chapters.size > 1 },
+        PlayerMenu.AUDIO.takeIf { state.audioTracks.size > 1 },
+        PlayerMenu.SUBTITLES.takeIf { state.subtitleTracks.isNotEmpty() },
+        PlayerMenu.SPEED,
+    )
+
+    fun options(menu: PlayerMenu, state: PlayerState = player.state.value): List<MenuOption> = when (menu) {
+        PlayerMenu.CHAPTERS -> {
+            val current = state.chapters.indexOfLast { it.startMs <= state.positionMs }
+            state.chapters.mapIndexed { index, chapter ->
+                MenuOption(chapter.title?.takeIf { it.isNotBlank() } ?: "Chapter ${index + 1}", Formatting.clock(chapter.startMs), index == current)
+            }
+        }
+        PlayerMenu.AUDIO -> state.audioTracks.map { MenuOption(Formatting.track(it), selected = it.id == state.selectedAudioId) }
+        PlayerMenu.SUBTITLES -> listOf(MenuOption("Off", selected = state.selectedSubtitleId == null)) +
+            state.subtitleTracks.map { MenuOption(Formatting.track(it), selected = it.id == state.selectedSubtitleId) }
+        PlayerMenu.SPEED -> {
+            val current = PlaybackController.SPEEDS.minBy { abs(it - state.speed) }
+            PlaybackController.SPEEDS.map { MenuOption(if (it == 1.0) "Normal" else Formatting.speed(it), selected = it == current) }
+        }
+    }
+
+    /** Opens [menu] on what is in effect now, or closes it when it is already open. */
+    fun toggleMenu(menu: PlayerMenu) {
+        touch()
+        if (this.menu == menu) this.menu = null else showMenu(menu)
+    }
+
+    fun closeMenu() {
+        menu = null
+    }
+
+    private fun showMenu(menu: PlayerMenu) {
+        highlighted = options(menu).indexOfFirst { it.selected }.coerceAtLeast(0)
+        this.menu = menu
+    }
+
+    /** Puts option [index] of [menu] into effect and closes the menu. */
+    fun choose(menu: PlayerMenu, index: Int) {
+        val state = player.state.value
+        when (menu) {
+            PlayerMenu.CHAPTERS -> state.chapters.getOrNull(index)?.let { seekTo(it.startMs) }
+            PlayerMenu.AUDIO -> state.audioTracks.getOrNull(index)?.let { selectAudio(it.id) }
+            PlayerMenu.SUBTITLES -> if (index == 0) selectSubtitle(null) else state.subtitleTracks.getOrNull(index - 1)?.let { selectSubtitle(it.id) }
+            PlayerMenu.SPEED -> PlaybackController.SPEEDS.getOrNull(index)?.let(::setSpeed)
+        }
+        this.menu = null
+    }
+
+    // Direct controls ----------------------------------------------------------------------------
 
     fun seekTo(positionMs: Long) {
         touch()
@@ -169,14 +264,17 @@ class PlaybackSession internal constructor(
         player.setSpeed(speed)
     }
 
+    /** Switches the audio track. A track the engine no longer offers is refused with a word, not silently. */
     fun selectAudio(trackId: String) {
         touch()
+        if (player.state.value.audioTracks.none { it.id == trackId }) return app.notify(Problems.TRACK_GONE)
         player.selectAudio(trackId)
     }
 
     /** Selects a subtitle track, or turns subtitles off with null. */
     fun selectSubtitle(trackId: String?) {
         touch()
+        if (trackId != null && player.state.value.subtitleTracks.none { it.id == trackId }) return app.notify(Problems.TRACK_GONE)
         player.selectSubtitle(trackId)
     }
 
@@ -210,9 +308,18 @@ class PlaybackSession internal constructor(
         app.playbackClosed(this)
         val pending = reporter
         return app.scope.launch {
-            pending?.flush()
-            app.invalidate()
-            app.platform.releasePlayer(player)
+            try {
+                pending?.flush()
+                app.invalidate()
+            } finally {
+                try {
+                    app.platform.releasePlayer(player)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    app.platform.report("Releasing the playback engine failed", e)
+                }
+            }
         }.also { closing = it }
     }
 
@@ -221,13 +328,21 @@ class PlaybackSession internal constructor(
         countdown?.cancel()
         upNext = null
         scope.launch {
-            val plan = app.read { planPlayback(target.item.id, app.platform.device, app.sources) }
-            if (plan == null) {
-                app.notify("The next episode can't be played right now. Its source is offline.")
+            try {
+                val plan = app.read { planPlayback(target.item.id, app.platform.device, app.sources) }
+                if (plan == null) {
+                    app.notify(app.read { unplayableReason(target.item.id, app.platform.device, app.sources) })
+                    close()
+                } else {
+                    reporter?.flush()
+                    load(plan)
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                app.platform.report("Moving to another episode failed", e)
+                app.notify("That episode couldn't be played right now.")
                 close()
-            } else {
-                reporter?.flush()
-                load(plan)
             }
         }
         return true
@@ -239,12 +354,22 @@ class PlaybackSession internal constructor(
                 endHandled = true
                 onEnded()
             }
-            PlayerStatus.ERROR -> error = "This couldn't be played." + (state.error?.let { " ($it)" } ?: "")
+            PlayerStatus.ERROR -> if (error == null) onFailed(state)
             else -> Unit
         }
     }
 
+    private fun onFailed(state: PlayerState) {
+        error = PlaybackError(Problems.playback(state.failure), state.error)
+        menu = null
+        cancelUpNext()
+        app.platform.report("Playback of \"$title\" failed: ${state.failure ?: PlaybackFailure.UNKNOWN} (${state.error ?: "no detail"})")
+        // The library may still describe a file that is gone; a rescan brings it up to date.
+        if (state.failure == PlaybackFailure.UNREACHABLE) sourceId?.let { app.refresh(it) }
+    }
+
     private fun onEnded() {
+        menu = null
         val following = next
         when (val decision = autoplay.onEnded(hasNext = following != null)) {
             is AutoplayPolicy.Decision.Countdown -> {
@@ -278,6 +403,9 @@ class PlaybackSession internal constructor(
 
     private companion object {
         const val COUNTDOWN_TICK_MS = 250L
+
+        /** After a failure the player has one thing left to do, and every "go on" or "go back" does it. */
+        val LEAVING = setOf(SemanticAction.BACK, SemanticAction.SELECT, SemanticAction.PLAY_PAUSE)
     }
 }
 

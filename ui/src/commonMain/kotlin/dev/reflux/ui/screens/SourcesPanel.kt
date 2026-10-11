@@ -1,5 +1,6 @@
 package dev.reflux.ui.screens
 
+import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -7,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -14,6 +16,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.unit.dp
 import dev.reflux.core.model.Availability
 import dev.reflux.core.model.SourceId
@@ -25,8 +30,10 @@ import dev.reflux.ui.components.Button
 import dev.reflux.ui.components.ButtonStyle
 import dev.reflux.ui.components.Icon
 import dev.reflux.ui.components.IconButton
+import dev.reflux.ui.components.absorbsPointer
 import dev.reflux.ui.state.AppState
 import dev.reflux.ui.state.libraryState
+import dev.reflux.ui.theme.LocalLayout
 import dev.reflux.ui.theme.LocalTypography
 import dev.reflux.ui.theme.RefluxColors
 import dev.reflux.ui.theme.Text
@@ -40,9 +47,16 @@ import dev.reflux.ui.theme.glass
 internal fun SourcesPanel(app: AppState) {
     val sources by app.libraryState { sources() }
     val activity by app.activity.collectAsState()
+    val metadataUnreachable by app.metadataUnreachable.collectAsState()
     var removing by remember { mutableStateOf<SourceId?>(null) }
+    val first = remember { FocusRequester() }
+    val showsFocus = LocalLayout.current.showsFocus
+    // Opened without a pointer, the panel takes focus; focus then stays inside it until it is closed.
+    LaunchedEffect(Unit) { if (showsFocus) runCatching { first.requestFocus() } }
     Column(
-        Modifier.width(400.dp).glass(MaterialRole.MODAL).padding(20.dp),
+        Modifier.width(400.dp).glass(MaterialRole.MODAL).absorbsPointer()
+            .focusProperties { onExit = { cancelFocusChange() } }.focusGroup()
+            .padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -75,8 +89,15 @@ internal fun SourcesPanel(app: AppState) {
             }
         }
         Row(Modifier.padding(top = 2.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button("Add folder", { app.addFolder() }, icon = Icon.PLUS, style = ButtonStyle.PRIMARY)
+            Button("Add folder", { app.addFolder() }, Modifier.focusRequester(first), icon = Icon.PLUS, style = ButtonStyle.PRIMARY)
             if (!sources.isNullOrEmpty()) Button("Refresh", { app.refresh() }, icon = Icon.REFRESH, style = ButtonStyle.QUIET, enabled = activity == PipelineActivity.Idle)
+        }
+        if (metadataUnreachable) {
+            Text(
+                "Titles and artwork couldn't be fetched just now. Your library works without them, and Reflux will try again.",
+                style = LocalTypography.current.caption,
+                color = RefluxColors.textTertiary,
+            )
         }
     }
 }

@@ -19,13 +19,16 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -46,10 +49,15 @@ import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import dev.reflux.core.input.ControllerFamily
+import dev.reflux.core.input.GamepadButton
+import dev.reflux.core.input.InputMapping
 import dev.reflux.core.input.SemanticAction
 import dev.reflux.core.model.Episode
-import dev.reflux.core.playback.PlaybackController
 import dev.reflux.core.playback.PlayerState
 import dev.reflux.core.playback.PlayerStatus
 import dev.reflux.core.playback.SkipSegment
@@ -59,14 +67,19 @@ import dev.reflux.design.Materials
 import dev.reflux.design.Motion
 import dev.reflux.ui.RefluxTheme
 import dev.reflux.ui.components.Button
+import dev.reflux.ui.components.ButtonPrompts
 import dev.reflux.ui.components.ButtonStyle
 import dev.reflux.ui.components.Icon
 import dev.reflux.ui.components.IconButton
 import dev.reflux.ui.components.Pressable
 import dev.reflux.ui.components.Slider
+import dev.reflux.ui.components.absorbsPointer
 import dev.reflux.ui.state.AppState
 import dev.reflux.ui.state.Formatting
+import dev.reflux.ui.state.MenuOption
+import dev.reflux.ui.state.PlaybackError
 import dev.reflux.ui.state.PlaybackSession
+import dev.reflux.ui.state.PlayerMenu
 import dev.reflux.ui.state.UpNext
 import dev.reflux.ui.theme.LocalLayout
 import dev.reflux.ui.theme.LocalTypography
@@ -77,17 +90,15 @@ import dev.reflux.ui.theme.toColor
 import dev.reflux.ui.theme.tween
 import dev.reflux.ui.trackPointer
 import kotlinx.coroutines.delay
-import kotlin.math.abs
 import kotlin.math.ceil
-
-private enum class Menu { AUDIO, SUBTITLES, SPEED }
 
 /** The video cannot be sampled for blur, so player glass is a denser tint of the same material. */
 private val playerTint = Materials.spec(MaterialRole.FLOATING).tint.toColor().copy(alpha = 0.78f)
 
 /**
  * The player's controls, drawn over the platform's video surface. Simple by default: a title, a scrubber,
- * and transport controls that fade away while playing; tracks and speed are one click deeper.
+ * and transport controls that fade away while playing; chapters, tracks, and speed are one step deeper, in
+ * menus that work the same with a pointer, a keyboard, or a controller.
  *
  * The background stays transparent so the shell's video shows through.
  *
@@ -97,11 +108,10 @@ private val playerTint = Materials.spec(MaterialRole.FLOATING).tint.toColor().co
 fun PlayerOverlay(app: AppState, session: PlaybackSession, modifier: Modifier = Modifier, hiddenCursor: PointerIcon? = null) {
     RefluxTheme(app, modifier) {
         val state by session.state.collectAsState()
-        var menu by remember { mutableStateOf<Menu?>(null) }
         var visible by remember { mutableStateOf(true) }
-        var lastPointerMs by remember { mutableLongStateOf(0L) }
+        var lastPointerMs by remember { mutableLongStateOf(LONG_AGO) }
         val playing = state.status == PlayerStatus.PLAYING
-        val pinned = menu != null || session.upNext != null || session.error != null
+        val pinned = session.menu != null || session.upNext != null || session.error != null
 
         // Controls appear on any interaction and leave after a pause while the video is playing.
         LaunchedEffect(session.interactions, playing, pinned) {
@@ -119,7 +129,7 @@ fun PlayerOverlay(app: AppState, session: PlaybackSession, modifier: Modifier = 
                     awaitPointerEventScope {
                         while (true) {
                             val event = awaitPointerEvent(PointerEventPass.Initial)
-                            if (event.type != PointerEventType.Move && event.type != PointerEventType.Press) continue
+                            if (event.type != PointerEventType.Move && event.type != PointerEventType.Press && event.type != PointerEventType.Enter) continue
                             // Pointer movement is continuous; a few reports a second are enough to keep controls up.
                             val now = event.changes.firstOrNull()?.uptimeMillis ?: continue
                             if (now - lastPointerMs >= POINTER_REPORT_MS || event.type == PointerEventType.Press) {
@@ -130,12 +140,24 @@ fun PlayerOverlay(app: AppState, session: PlaybackSession, modifier: Modifier = 
                     }
                 }
                 .pointerInput(session) {
-                    var lastTapMs = 0L
+                    // The wheel is the volume, unless a list under the pointer used it to scroll.
+                    awaitPointerEventScope {
+                        while (true) {
+                            val event = awaitPointerEvent(PointerEventPass.Main)
+                            val change = event.changes.firstOrNull() ?: continue
+                            if (event.type != PointerEventType.Scroll || change.isConsumed || change.scrollDelta.y == 0f) continue
+                            session.handle(if (change.scrollDelta.y < 0f) SemanticAction.VOLUME_UP else SemanticAction.VOLUME_DOWN)
+                            change.consume()
+                        }
+                    }
+                }
+                .pointerInput(session) {
+                    var lastTapMs = LONG_AGO
                     detectTapGestures { _ ->
                         val now = lastPointerMs
-                        if (menu != null) {
-                            menu = null
-                        } else {
+                        if (session.menu != null) {
+                            session.closeMenu()
+                        } else if (session.error == null) {
                             // Click toggles playback at once; a second click soon after also toggles fullscreen.
                             session.handle(SemanticAction.PLAY_PAUSE)
                             if (now - lastTapMs <= DOUBLE_CLICK_MS) session.handle(SemanticAction.FULLSCREEN)
@@ -145,24 +167,22 @@ fun PlayerOverlay(app: AppState, session: PlaybackSession, modifier: Modifier = 
                 }
                 .then(if (!visible && hiddenCursor != null) Modifier.pointerHoverIcon(hiddenCursor) else Modifier),
         ) {
-            if (state.status == PlayerStatus.LOADING || state.status == PlayerStatus.BUFFERING) Spinner(Modifier.align(Alignment.Center))
+            val error = session.error
+            if (error == null && (state.status == PlayerStatus.LOADING || state.status == PlayerStatus.BUFFERING)) Spinner(Modifier.align(Alignment.Center))
 
             AnimatedVisibility(visible, enter = fadeIn(Motion.controlsShow.tween()), exit = fadeOut(Motion.controlsHide.tween())) {
-                Controls(app, session, state, menu) { menu = if (menu == it) null else it }
+                Controls(app, session, state)
             }
 
             val layout = LocalLayout.current
             val corner = Modifier.align(Alignment.BottomEnd).padding(end = layout.safeMarginDp.dp, bottom = if (visible) 148.dp else 40.dp)
             val prompt = session.upNext
-            val error = session.error
             val segment = remember(state.chapters, state.durationMs) { SkipSegments.from(state.chapters, state.durationMs) }
                 .let { SkipSegments.at(it, state.positionMs) }
             when {
-                error != null -> Notice(Modifier.align(Alignment.Center), "Playback stopped", error) {
-                    Button("Back to library", { session.close() }, style = ButtonStyle.PRIMARY)
-                }
+                error != null -> Failure(session, error, Modifier.align(Alignment.Center))
                 prompt != null -> UpNextCard(session, prompt, corner)
-                segment != null && menu == null -> Button(skipLabel(segment), { session.skip(segment) }, corner, style = ButtonStyle.PRIMARY)
+                segment != null && session.menu == null -> Button(skipLabel(segment), { session.skip(segment) }, corner, style = ButtonStyle.PRIMARY)
             }
         }
     }
@@ -174,10 +194,20 @@ private fun skipLabel(segment: SkipSegment): String = when (segment.kind) {
     SkipSegment.Kind.CREDITS -> "Skip credits"
 }
 
+private fun menuIcon(menu: PlayerMenu): Icon = when (menu) {
+    PlayerMenu.CHAPTERS -> Icon.CHAPTERS
+    PlayerMenu.AUDIO -> Icon.AUDIO
+    PlayerMenu.SUBTITLES -> Icon.SUBTITLES
+    PlayerMenu.SPEED -> error("speed is a text button")
+}
+
 @Composable
-private fun Controls(app: AppState, session: PlaybackSession, state: PlayerState, menu: Menu?, onMenu: (Menu) -> Unit) {
+private fun Controls(app: AppState, session: PlaybackSession, state: PlayerState) {
     val layout = LocalLayout.current
     val margin = layout.safeMarginDp.dp
+    val menus = session.menus(state)
+    val open = session.menu?.takeIf { it in menus }
+    val failed = session.error != null
     Box(Modifier.fillMaxSize()) {
         // Scrims carry the title and controls over bright scenes.
         Box(Modifier.fillMaxWidth().fillMaxHeight(0.28f).background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.72f), Color.Transparent))))
@@ -195,30 +225,34 @@ private fun Controls(app: AppState, session: PlaybackSession, state: PlayerState
             }
         }
 
+        if (layout.showsButtonPrompts && !failed) {
+            val family = app.input.controllerFamily ?: ControllerFamily.GENERIC
+            ButtonPrompts(
+                if (open != null) {
+                    listOf(InputMapping.confirmButton(family) to "Choose", InputMapping.cancelButton(family) to "Close")
+                } else {
+                    listOfNotNull(
+                        InputMapping.confirmButton(family) to if (state.status == PlayerStatus.PLAYING) "Pause" else "Play",
+                        InputMapping.cancelButton(family) to "Back",
+                        GamepadButton.START to "Options",
+                        (GamepadButton.SHOULDER_RIGHT to "Next").takeIf { session.next != null },
+                    )
+                },
+                family,
+                Modifier.align(Alignment.TopEnd).padding(horizontal = margin, vertical = 24.dp),
+            )
+        }
+
+        if (failed) return@Box
         Column(
             Modifier.align(Alignment.BottomCenter).padding(horizontal = margin).padding(bottom = 24.dp).widthIn(max = 1180.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
             horizontalAlignment = Alignment.End,
         ) {
-            when (menu) {
-                Menu.AUDIO -> TrackMenu("Audio", state.audioTracks.map { it.id to Formatting.track(it) }, state.selectedAudioId) { it?.let(session::selectAudio) }
-                Menu.SUBTITLES -> TrackMenu(
-                    "Subtitles",
-                    listOf<Pair<String?, String>>(null to "Off") + state.subtitleTracks.map { it.id to Formatting.track(it) },
-                    state.selectedSubtitleId,
-                    session::selectSubtitle,
-                )
-                Menu.SPEED -> TrackMenu(
-                    "Speed",
-                    PlaybackController.SPEEDS.map { it.toString() to if (it == 1.0) "Normal" else Formatting.speed(it) },
-                    PlaybackController.SPEEDS.minBy { abs(it - state.speed) }.toString(),
-                ) { it?.toDoubleOrNull()?.let(session::setSpeed) }
-                null -> Unit
-            }
+            if (open != null) MenuPanel(session, menus, open, session.options(open, state))
             Column(
-                Modifier.fillMaxWidth().glass(MaterialRole.FLOATING, RoundedCornerShape(24.dp), tint = playerTint)
-                    // Clicks on the panel itself must not reach the video's click-to-pause.
-                    .pointerInput(Unit) { detectTapGestures { } }
+                // Clicks on the panel itself must not reach the video's click-to-pause.
+                Modifier.fillMaxWidth().glass(MaterialRole.FLOATING, RoundedCornerShape(24.dp), tint = playerTint).absorbsPointer()
                     .padding(horizontal = 18.dp, vertical = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
@@ -238,13 +272,22 @@ private fun Controls(app: AppState, session: PlaybackSession, state: PlayerState
                     IconButton(if (state.muted || state.volume == 0) Icon.VOLUME_MUTED else Icon.VOLUME, if (state.muted) "Unmute" else "Mute", { session.handle(SemanticAction.MUTE) })
                     Slider(
                         fraction = if (state.muted) 0f else state.volume / 100f,
+                        description = "Volume",
                         onChange = { session.setVolume((it * 100).toInt()) },
                         modifier = Modifier.width(96.dp).padding(end = 8.dp),
                     )
-                    Button(if (state.speed == 1.0) "1×" else Formatting.speed(state.speed), { onMenu(Menu.SPEED) }, style = ButtonStyle.QUIET)
-                    if (state.audioTracks.size > 1) IconButton(Icon.AUDIO, "Audio track", { onMenu(Menu.AUDIO) })
-                    if (state.subtitleTracks.isNotEmpty()) {
-                        IconButton(Icon.SUBTITLES, "Subtitles", { onMenu(Menu.SUBTITLES) }, tint = if (state.selectedSubtitleId != null) RefluxColors.textPrimary else RefluxColors.textSecondary)
+                    menus.forEach { menu ->
+                        val tint = if (menu == open || (menu == PlayerMenu.SUBTITLES && state.selectedSubtitleId != null)) RefluxColors.textPrimary else RefluxColors.textSecondary
+                        if (menu == PlayerMenu.SPEED) {
+                            Button(
+                                if (state.speed == 1.0) "1×" else Formatting.speed(state.speed),
+                                { session.toggleMenu(menu) },
+                                Modifier.semantics { contentDescription = "Playback speed" },
+                                style = ButtonStyle.QUIET,
+                            )
+                        } else {
+                            IconButton(menuIcon(menu), menu.title, { session.toggleMenu(menu) }, tint = tint)
+                        }
                     }
                     IconButton(
                         if (app.platform.fullscreen) Icon.FULLSCREEN_EXIT else Icon.FULLSCREEN,
@@ -267,7 +310,11 @@ private fun Timeline(session: PlaybackSession, state: PlayerState) {
         Text(Formatting.clock(position), style = LocalTypography.current.captionStrong, color = RefluxColors.textSecondary, maxLines = 1)
         Slider(
             fraction = if (duration == null) 0f else position.toFloat() / duration,
-            onChange = { preview = it },
+            description = "Timeline",
+            onChange = {
+                preview = it
+                session.touch()
+            },
             onChangeFinished = { fraction ->
                 preview = null
                 duration?.let { session.seekTo((it * fraction).toLong()) }
@@ -285,24 +332,52 @@ private fun Timeline(session: PlaybackSession, state: PlayerState) {
     }
 }
 
+/**
+ * The open menu: its siblings across the top, its options beneath. The highlighted option follows
+ * directional input and is what Select chooses; a pointer just clicks.
+ */
 @Composable
-private fun TrackMenu(title: String, options: List<Pair<String?, String>>, selected: String?, onSelect: (String?) -> Unit) {
-    Column(
-        Modifier.width(300.dp).glass(MaterialRole.MODAL, tint = playerTint.copy(alpha = 0.9f))
-            .pointerInput(Unit) { detectTapGestures { } }
-            .padding(8.dp),
-    ) {
-        Text(title.uppercase(), Modifier.padding(horizontal = 12.dp, vertical = 8.dp), style = LocalTypography.current.label, color = RefluxColors.textTertiary)
-        Column(Modifier.widthIn(max = 300.dp).verticalScroll(rememberScrollState())) {
-            options.forEach { (id, label) ->
-                Pressable({ onSelect(id) }, Modifier.fillMaxWidth(), RoundedCornerShape(10.dp), lift = 0f) { active ->
+private fun MenuPanel(session: PlaybackSession, menus: List<PlayerMenu>, open: PlayerMenu, options: List<MenuOption>) {
+    val showsHighlight = LocalLayout.current.showsFocus
+    val list = rememberLazyListState()
+    LaunchedEffect(open) { list.scrollToItem(session.highlighted.coerceIn(0, options.lastIndex.coerceAtLeast(0))) }
+    LaunchedEffect(session.highlighted) {
+        val visible = list.layoutInfo.visibleItemsInfo
+        if (visible.isNotEmpty() && (session.highlighted <= visible.first().index || session.highlighted >= visible.last().index)) {
+            list.animateScrollToItem((session.highlighted - 2).coerceAtLeast(0))
+        }
+    }
+    Column(Modifier.width(340.dp).glass(MaterialRole.MODAL, tint = playerTint.copy(alpha = 0.92f)).absorbsPointer().padding(8.dp)) {
+        Row(Modifier.padding(horizontal = 4.dp, vertical = 2.dp), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+            menus.forEach { menu ->
+                Pressable({ if (menu != open) session.toggleMenu(menu) }, shape = CircleShape, lift = 0f) { active ->
+                    Text(
+                        menu.title.uppercase(),
+                        Modifier.background(Color.White.copy(alpha = if (active && menu != open) 0.08f else 0f)).padding(horizontal = 9.dp, vertical = 7.dp),
+                        style = LocalTypography.current.label,
+                        color = if (menu == open) RefluxColors.textPrimary else RefluxColors.textTertiary,
+                    )
+                }
+            }
+        }
+        LazyColumn(Modifier.heightIn(max = 312.dp), state = list) {
+            itemsIndexed(options) { index, option ->
+                Pressable(
+                    { session.choose(open, index) },
+                    Modifier.fillMaxWidth().semantics { selected = option.selected },
+                    RoundedCornerShape(10.dp),
+                    lift = 0f,
+                ) { active ->
                     Row(
-                        Modifier.fillMaxWidth().background(Color.White.copy(alpha = if (active) 0.10f else 0f)).padding(horizontal = 12.dp, vertical = 10.dp),
+                        Modifier.fillMaxWidth()
+                            .background(Color.White.copy(alpha = if (active || (showsHighlight && index == session.highlighted)) 0.12f else 0f))
+                            .padding(horizontal = 12.dp, vertical = 10.dp),
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text(label, Modifier.weight(1f), style = LocalTypography.current.bodyStrong, color = if (id == selected) RefluxColors.textPrimary else RefluxColors.textSecondary, maxLines = 1)
-                        if (id == selected) Icon(Icon.CHECK, size = 16.dp)
+                        Text(option.label, Modifier.weight(1f), style = LocalTypography.current.bodyStrong, color = if (option.selected) RefluxColors.textPrimary else RefluxColors.textSecondary, maxLines = 1)
+                        option.detail?.let { Text(it, style = LocalTypography.current.caption, color = RefluxColors.textTertiary, maxLines = 1) }
+                        if (option.selected) Icon(Icon.CHECK, size = 16.dp)
                     }
                 }
             }
@@ -333,16 +408,23 @@ private fun nextHeading(prompt: UpNext): Pair<String, String?> {
     return if (item is Episode) item.title to Formatting.episodeNumber(item) else item.title to null
 }
 
+/** Why playback stopped, in the user's words, with the engine's own wording kept small for bug reports. */
 @Composable
-private fun Notice(modifier: Modifier, title: String, body: String, actions: @Composable () -> Unit) {
+private fun Failure(session: PlaybackSession, error: PlaybackError, modifier: Modifier = Modifier) {
+    Notice(modifier, "Playback stopped", error.message, detail = error.detail) {
+        Button("Back to library", { session.close() }, style = ButtonStyle.PRIMARY)
+    }
+}
+
+@Composable
+private fun Notice(modifier: Modifier, title: String, body: String, detail: String? = null, actions: @Composable () -> Unit) {
     Column(
-        modifier.widthIn(max = 420.dp).glass(MaterialRole.MODAL, tint = playerTint.copy(alpha = 0.9f))
-            .pointerInput(Unit) { detectTapGestures { } }
-            .padding(20.dp),
+        modifier.widthIn(max = 440.dp).glass(MaterialRole.MODAL, tint = playerTint.copy(alpha = 0.92f)).absorbsPointer().padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Text(title.uppercase(), style = LocalTypography.current.label, color = RefluxColors.textSecondary)
-        Text(body, style = LocalTypography.current.title, maxLines = 2)
+        Text(body, style = LocalTypography.current.title, maxLines = 4)
+        if (detail != null) Text("Details: $detail", style = LocalTypography.current.caption, color = RefluxColors.textTertiary, maxLines = 2)
         Row(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) { actions() }
     }
 }
@@ -358,4 +440,7 @@ private fun Spinner(modifier: Modifier = Modifier) {
 }
 
 private const val POINTER_REPORT_MS = 300L
+
+/** Before any pointer event of this session, whatever the platform's event clock starts at. */
+private const val LONG_AGO = Long.MIN_VALUE / 2
 private const val DOUBLE_CLICK_MS = 320L

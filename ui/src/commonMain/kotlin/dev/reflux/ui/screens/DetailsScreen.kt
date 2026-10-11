@@ -40,6 +40,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import dev.reflux.core.metadata.Credit
 import dev.reflux.core.metadata.CreditRole
@@ -60,9 +61,11 @@ import dev.reflux.ui.components.ProgressBar
 import dev.reflux.ui.components.SectionHeader
 import dev.reflux.ui.components.TitleBackdrop
 import dev.reflux.ui.components.TitlePlaceholder
+import dev.reflux.ui.components.initialFocus
 import dev.reflux.ui.components.rememberArtwork
 import dev.reflux.ui.components.titleTones
 import dev.reflux.ui.state.AppState
+import dev.reflux.ui.state.Destination
 import dev.reflux.ui.state.DetailsModel
 import dev.reflux.ui.state.Formatting
 import dev.reflux.ui.state.MediaCard
@@ -83,8 +86,9 @@ import kotlinx.coroutines.withContext
 /** A movie or a show: what it is, what the main button will play, and which versions or episodes exist. */
 @Composable
 internal fun DetailsScreen(app: AppState, itemId: MediaId) {
-    val model by app.libraryState(itemId) { detailsModel(itemId, app.platform.device) }
-    val details = model ?: return
+    val loaded by app.libraryState(itemId) { Loaded(detailsModel(itemId, app.platform.device)) }
+    // Null while loading; a loaded page without details is a work that has left the library.
+    val details = (loaded ?: return).details ?: return Gone(app)
     val layout = LocalLayout.current
     var season by rememberSaveable(itemId) { mutableIntStateOf(details.initialSeason) }
     val episodes = details.seasons.getOrNull(season)?.episodes.orEmpty()
@@ -111,6 +115,25 @@ internal fun DetailsScreen(app: AppState, itemId: MediaId) {
             }
             val cast = details.credits.filter { it.role == CreditRole.ACTOR }.take(16)
             if (cast.isNotEmpty()) item(key = "cast") { Cast(cast, Modifier.padding(top = 28.dp)) }
+        }
+    }
+}
+
+private class Loaded(val details: DetailsModel?)
+
+/** Shown when the open work disappears, e.g. its last file was deleted or its source removed. */
+@Composable
+private fun Gone(app: AppState) {
+    AmbientBackdrop()
+    Box(Modifier.fillMaxSize().padding(top = ScreenTopInset), contentAlignment = Alignment.Center) {
+        Column(Modifier.widthIn(max = 460.dp).padding(24.dp), verticalArrangement = Arrangement.spacedBy(14.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Text("This is no longer in your library", style = LocalTypography.current.headline, align = TextAlign.Center)
+            Text(
+                "Its files were moved or deleted, or its source was removed. If they come back, so does everything you watched.",
+                color = RefluxColors.textSecondary,
+                align = TextAlign.Center,
+            )
+            Button("Back", { if (!app.navigator.back()) app.navigator.show(Destination.Home) }, Modifier.initialFocus(), icon = Icon.BACK, style = ButtonStyle.PRIMARY)
         }
     }
 }
@@ -156,7 +179,7 @@ private fun Header(app: AppState, details: DetailsModel) {
                     credit(details.credits)?.let { Text(it, style = LocalTypography.current.caption, color = RefluxColors.textTertiary, maxLines = 1) }
                     Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
                         val playId = details.playId
-                        Button(details.playLabel, { playId?.let { app.play(it) } }, icon = Icon.PLAY, style = ButtonStyle.PRIMARY, enabled = playId != null && !card.offline)
+                        Button(details.playLabel, { playId?.let { app.play(it) } }, Modifier.initialFocus(), icon = Icon.PLAY, style = ButtonStyle.PRIMARY, enabled = playId != null && !card.offline)
                         if (details.resumes && playId != null) Button("From the start", { app.play(playId, resume = false) })
                         IconButton(
                             Icon.CHECK,

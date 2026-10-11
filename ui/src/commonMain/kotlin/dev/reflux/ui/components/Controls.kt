@@ -5,6 +5,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.drag
 import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.background
@@ -26,11 +27,13 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -41,8 +44,10 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -55,6 +60,25 @@ import dev.reflux.ui.theme.RefluxColors
 import dev.reflux.ui.theme.Text
 import dev.reflux.ui.theme.glass
 import dev.reflux.ui.theme.tween
+
+/**
+ * What a semantic Select activates: the control that has focus. Keys reach a focused control through the
+ * toolkit; a controller button has no key, so the focused [Pressable] offers its action here instead.
+ */
+class FocusedControl {
+    internal var activate: (() -> Unit)? = null
+
+    /** Activates the focused control. Returns false when nothing activatable has focus. */
+    fun activate(): Boolean = activate?.let { it(); true } ?: false
+}
+
+val LocalFocusedControl = staticCompositionLocalOf<FocusedControl?> { null }
+
+/**
+ * Makes a surface solid to the pointer: taps, hovers, and scrolls on it stop here instead of reaching what
+ * is drawn beneath it. Floating chrome needs this, or a click on its background lands on the content below.
+ */
+fun Modifier.absorbsPointer(): Modifier = pointerInput(Unit) { detectTapGestures { } }
 
 /**
  * The base of everything that can be activated: pointer hover and keyboard or controller focus are the
@@ -79,6 +103,15 @@ fun Pressable(
     val focused by interaction.collectIsFocusedAsState()
     val ring = focused && layout.showsFocus
     val active = enabled && (hovered || ring)
+    val focusedControl = LocalFocusedControl.current
+    val click by rememberUpdatedState(onClick)
+    if (focusedControl != null && focused && enabled) {
+        DisposableEffect(focusedControl) {
+            val action = { click() }
+            focusedControl.activate = action
+            onDispose { if (focusedControl.activate === action) focusedControl.activate = null }
+        }
+    }
     val scale by animateFloatAsState(if (active) 1f + (layout.focusScale - 1f) * lift else 1f, Motion.focusChange.tween())
     Box(
         modifier
@@ -192,11 +225,13 @@ fun SectionHeader(title: String, modifier: Modifier = Modifier, action: String? 
  * A horizontal slider for the timeline and the volume. [onChange] follows the pointer while dragging;
  * [onChangeFinished] reports where it was released.
  *
+ * @param description names the slider for accessibility.
  * @param marks positions (0..1) to notch on the track, e.g. chapter starts.
  */
 @Composable
 fun Slider(
     fraction: Float,
+    description: String,
     onChange: (Float) -> Unit,
     modifier: Modifier = Modifier,
     onChangeFinished: (Float) -> Unit = {},
@@ -211,7 +246,12 @@ fun Slider(
     val change by rememberUpdatedState(onChange)
     val finished by rememberUpdatedState(onChangeFinished)
     Canvas(
-        modifier.height(28.dp).hoverable(interaction, enabled).pointerInput(enabled) {
+        modifier.height(28.dp)
+            .semantics {
+                contentDescription = description
+                progressBarRangeInfo = ProgressBarRangeInfo(fraction.coerceIn(0f, 1f), 0f..1f)
+            }
+            .hoverable(interaction, enabled).pointerInput(enabled) {
             if (!enabled) return@pointerInput
             awaitEachGesture {
                 val down = awaitFirstDown()

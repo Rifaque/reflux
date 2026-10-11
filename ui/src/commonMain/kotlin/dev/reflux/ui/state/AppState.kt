@@ -9,6 +9,8 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import dev.reflux.core.input.ControllerFamily
+import dev.reflux.core.input.GamepadButton
 import dev.reflux.core.input.InputContext
 import dev.reflux.core.input.InputMapping
 import dev.reflux.core.input.InputModality
@@ -81,11 +83,15 @@ class AppState(
     /** What the background pipeline is doing, for a quiet progress indicator. */
     val activity: StateFlow<PipelineActivity> get() = pipeline.activity
 
+    /** Whether titles and artwork could not be fetched last time; the library works without them. */
+    val metadataUnreachable: StateFlow<Boolean> get() = pipeline.metadataUnreachable
+
     /** Volume and mute carry over from one playback session to the next. */
     internal var volume = 100
     internal var muted = false
 
     private var starting = false
+    private var choosingFolder = false
     private var noticeJob: Job? = null
     private var watchJob: Job? = null
 
@@ -108,6 +114,21 @@ class AppState(
         revision++
     }
 
+    /**
+     * Runs something the user asked for. If it fails, the user is told [failure] and the cause is reported,
+     * so no action can end the application or fail without a word.
+     */
+    internal fun attempt(failure: String, action: suspend () -> Unit): Job = scope.launch {
+        try {
+            action()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            platform.report(failure, e)
+            notify(failure)
+        }
+    }
+
     // Library actions ----------------------------------------------------------------------------
 
     fun refresh(sourceId: SourceId? = null): Job = scope.launch {
@@ -115,32 +136,48 @@ class AppState(
             withContext(background) { pipeline.refresh(sourceId) }
         } catch (e: CancellationException) {
             throw e
-        } catch (_: Exception) {
-            notify("Couldn't update the library. It will be retried.")
+        } catch (e: Exception) {
+            platform.report("Refreshing the library failed", e)
+            notify(Problems.LIBRARY_NOT_UPDATED)
         }
         invalidate()
     }
 
-    fun addFolder(): Job = scope.launch {
-        val id = platform.addMediaFolder() ?: return@launch
-        invalidate()
-        watchSources()
-        refresh(id).join()
+    /** Asks for a media folder and scans it. Everything after the choice is automatic. */
+    fun addFolder(): Job = attempt(Problems.FOLDER_NOT_ADDED) {
+        if (choosingFolder) return@attempt
+        choosingFolder = true
+        val choice = try {
+            platform.addMediaFolder()
+        } finally {
+            choosingFolder = false
+        }
+        Problems.folder(choice)?.let(::notify)
+        when (choice) {
+            is FolderChoice.Added -> {
+                invalidate()
+                watchSources()
+                refresh(choice.sourceId).join()
+            }
+            // Choosing it again is a fair way to ask for a rescan.
+            is FolderChoice.AlreadyInLibrary -> refresh(choice.sourceId).join()
+            FolderChoice.Cancelled, is FolderChoice.Unreadable, is FolderChoice.NotAFolder -> Unit
+        }
     }
 
-    fun removeSource(id: SourceId): Job = scope.launch {
+    fun removeSource(id: SourceId): Job = attempt("That source couldn't be removed.") {
         platform.removeSource(id)
         watchSources()
         invalidate()
     }
 
-    fun toggleFavorite(entry: LibraryEntry): Job = scope.launch {
+    fun toggleFavorite(entry: LibraryEntry): Job = attempt("Your favorites couldn't be updated.") {
         read { setFavorite(entry.item.id, !entry.favorite) }
         invalidate()
     }
 
     /** Marks a work watched or unwatched here and on every source that keeps its own watch state. */
-    fun setWatched(itemId: MediaId, watched: Boolean): Job = scope.launch {
+    fun setWatched(itemId: MediaId, watched: Boolean): Job = attempt("That couldn't be marked as ${if (watched) "watched" else "unwatched"}.") {
         read { setWatchedEverywhere(itemId, watched, sources) }
         invalidate()
     }
@@ -153,17 +190,25 @@ class AppState(
      * @param versionId a specific version instead of Best Version.
      * @param resume false starts from the beginning.
      */
-    fun play(itemId: MediaId, versionId: VersionId? = null, resume: Boolean = true): Job = scope.launch {
-        if (playback != null || starting) return@launch
+    fun play(itemId: MediaId, versionId: VersionId? = null, resume: Boolean = true): Job = attempt("This couldn't be played right now.") {
+        if (playback != null || starting) return@attempt
         starting = true
         try {
-            val playable = read { playableFor(itemId) } ?: return@launch notify("There is nothing to play here yet.")
+            val playable = read { playableFor(itemId) } ?: return@attempt notify(Problems.NOTHING_TO_PLAY)
             val plan = read { planPlayback(playable, platform.device, sources, versionId, resume) }
-                ?: return@launch notify("This can't be played right now. Its source is offline.")
-            val player = (if (platform.canPlay) platform.createPlayer() else null)
-                ?: return@launch notify("No playback engine was found. Install libmpv to play media.")
+                ?: return@attempt notify(read { unplayableReason(playable, platform.device, sources) })
+            if (!platform.canPlay) return@attempt notify(Problems.noEngine(platform.playbackSetupHint))
+            val player = platform.createPlayer() ?: run {
+                platform.report("The playback engine is installed but could not be started")
+                return@attempt notify(Problems.PLAYBACK_DID_NOT_START)
+            }
             val session = PlaybackSession(this@AppState, player)
-            session.load(plan)
+            try {
+                session.load(plan)
+            } catch (e: Exception) {
+                session.close()
+                throw e
+            }
             playback = session
         } finally {
             starting = false
@@ -186,11 +231,12 @@ class AppState(
         null -> null
     }
 
+    /** Shows [message] briefly; longer messages stay long enough to be read. */
     fun notify(message: String) {
         notice = message
         noticeJob?.cancel()
         noticeJob = scope.launch {
-            delay(NOTICE_MS)
+            delay(NOTICE_MS + NOTICE_MS_PER_CHARACTER * (message.length - NOTICE_SHORT_LENGTH).coerceAtLeast(0))
             notice = null
         }
     }
@@ -206,9 +252,14 @@ class AppState(
     /** Set while a text field has focus, so typing is never taken for shortcuts. */
     var textInputActive by mutableStateOf(false)
 
-    /** Moves toolkit focus for a NAVIGATE_* action. Installed by the root composable. */
+    /** Toolkit focus, as far as semantic actions need it. Installed by the root composable. */
     internal var moveFocus: ((SemanticAction) -> Boolean)? = null
     internal var clearFocus: (() -> Unit)? = null
+    internal var activateFocused: (() -> Boolean)? = null
+
+    /** The player is one context, everything with focus and lists another: browsing, and the player's menus. */
+    private val context: InputContext
+        get() = if (playback?.menu == null && playback != null) InputContext.PLAYBACK else InputContext.BROWSE
 
     /** Reports raw input evidence (pointer travel, touches, controller use) from the shell or the UI. */
     fun onSignal(signal: InputSignal) {
@@ -222,19 +273,18 @@ class AppState(
      */
     fun onKey(key: Key): Boolean {
         onSignal(InputSignal.KeyPress(key))
-        val playing = playback != null
-        if (!playing && textInputActive) {
-            return when (key) {
-                Key.ESCAPE -> {
-                    clearFocus?.invoke()
-                    true
-                }
-                Key.ARROW_DOWN -> dispatch(SemanticAction.NAVIGATE_DOWN)
-                else -> false
-            }
-        }
-        val action = InputMapping.map(key, if (playing) InputContext.PLAYBACK else InputContext.BROWSE) ?: return false
+        val browsing = playback == null
+        if (browsing && textInputActive && key != Key.ESCAPE && key != Key.ARROW_DOWN) return false
+        val action = InputMapping.map(key, context) ?: return false
+        // The toolkit activates the focused control for Enter and Space itself.
+        if (browsing && action == SemanticAction.SELECT) return false
         return dispatch(action)
+    }
+
+    /** Handles a controller button, named by its position so every controller family works alike. */
+    fun onGamepadButton(button: GamepadButton, family: ControllerFamily): Boolean {
+        onSignal(InputSignal.GamepadButtonPress(button, family))
+        return dispatch(InputMapping.map(button, family, context) ?: return false)
     }
 
     /** Performs a semantic action, whichever input device expressed it. */
@@ -243,11 +293,17 @@ class AppState(
         return when (action) {
             SemanticAction.NAVIGATE_UP, SemanticAction.NAVIGATE_DOWN, SemanticAction.NAVIGATE_LEFT, SemanticAction.NAVIGATE_RIGHT ->
                 moveFocus?.invoke(action) ?: false
-            SemanticAction.BACK -> if (sourcesOpen) {
-                sourcesOpen = false
-                true
-            } else {
-                navigator.back()
+            SemanticAction.SELECT -> activateFocused?.invoke() ?: false
+            SemanticAction.BACK -> when {
+                textInputActive -> {
+                    clearFocus?.invoke()
+                    true
+                }
+                sourcesOpen -> {
+                    sourcesOpen = false
+                    true
+                }
+                else -> navigator.back()
             }
             SemanticAction.MENU -> {
                 sourcesOpen = !sourcesOpen
@@ -257,13 +313,14 @@ class AppState(
                 platform.requestFullscreen(!platform.fullscreen)
                 true
             }
-            // SELECT activates the focused control, which the toolkit does itself.
             else -> false
         }
     }
 
     private companion object {
         const val NOTICE_MS = 4_500L
+        const val NOTICE_SHORT_LENGTH = 60
+        const val NOTICE_MS_PER_CHARACTER = 45L
     }
 }
 

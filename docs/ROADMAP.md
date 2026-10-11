@@ -23,13 +23,15 @@
 | Cross-source unification: works sharing a provider ID merge into one work (Best Version across sources) | Implemented and tested |
 | Design system foundations (tokens, materials, motion, adaptive layout, accent extraction) | Implemented and tested; rendered by the experience layer |
 | Developer CLI (scan, search, info, play, doctor) over the real engine | Implemented; verified end to end |
-| Continuous integration (Linux with libmpv, Windows) | Green on both before the desktop shell; not yet run with it |
-| Experience layer (`ui`): first-run, Home, Movies/Shows, smart search, movie and show details, sources, player controls, input-adaptive layout | First vertical slice implemented and tested (state logic and rendered screens) |
-| Desktop shell (`desktop:app`): window, embedded libmpv video with Reflux controls above it, borderless fullscreen, keyboard input, native folder picker | First vertical slice implemented; verified end to end on Windows with real playback; Linux not yet run |
+| Continuous integration (Linux with libmpv, Windows) | The workflow runs the whole check on both and the desktop window tests on Linux under a virtual display. The same steps pass locally (Windows 11, and Ubuntu 24.04 in a container); the workflow itself has not run on GitHub since the desktop shell was added |
+| Experience layer (`ui`): first-run, Home, Movies/Shows, smart search, movie and show details, sources, player controls and menus, input-adaptive layout, failure states | Desktop Vertical Slice 0.2: implemented and tested as state logic, as rendered screens, and under pointer, keyboard, and controller input |
+| Desktop shell (`desktop:app`): window, embedded libmpv video with Reflux controls above it, fullscreen, keyboard, mouse, and controller input, native folder picker, diagnostics log | Desktop Vertical Slice 0.2: verified end to end in the real window on Windows 11 and on Linux (X11 with a compositing manager): first run through the folder dialog, browsing, and real playback operated by a mouse |
+| Desktop controllers (XInput and HID joysticks on Windows, the kernel joystick interface on Linux) | Implemented and tested from the reader upward; the platform APIs load and poll, but no physical controller was connected, so Xbox, PlayStation, and Switch Pro hardware is unverified |
 | Android phone/tablet and Android TV shells (Media3 player, Storage Access Framework source) | Planned — needs the Android SDK |
 | Known gaps | Stacked multi-part files play as separate versions; disc structures (BDMV/VIDEO_TS) are recognized but not playable; credentials are not yet in platform secure storage |
 | Not yet in the experience layer | Identify flow, library diagnostics, user collections, and non-folder sources (Jellyfin, WebDAV, SMB) have engine support but no UI; no settings screen yet |
-| Desktop shell gaps | Controllers are not read yet (the semantic path and the layout morph exist, the gamepad reader does not); libmpv is not bundled and there is no installer; media keys are not captured; the folder picker falls back to the toolkit's chooser outside Windows |
+| Desktop shell gaps | libmpv is not bundled and there is no installer; media keys are not captured; no scrollbars, and focus is not restored to the previous item when going back; the GNOME and KDE folder dialogs are used when their helper is installed but are only unit-tested (the Linux end-to-end run uses the toolkit's chooser); on X11 without a compositing manager the player's controls window is opaque and hides the video; Wayland has only been reached through X11 |
+| Not verified here | TMDB against the live service (no credential on the development machine; the provider is covered by fixtures and the app falls back to file names); a session with physical controllers |
 
 ## Phase 0 — Product and architecture foundation
 

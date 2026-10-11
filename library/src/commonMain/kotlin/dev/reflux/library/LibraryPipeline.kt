@@ -51,6 +51,14 @@ class LibraryPipeline(
     private val mutableActivity = MutableStateFlow<PipelineActivity>(PipelineActivity.Idle)
     val activity: StateFlow<PipelineActivity> = mutableActivity.asStateFlow()
 
+    private val mutableMetadataUnreachable = MutableStateFlow(false)
+
+    /**
+     * Whether the last attempt to fetch titles and artwork could not reach the provider. The library stays
+     * complete without it (file-name identification); the next refresh picks up where this one stopped.
+     */
+    val metadataUnreachable: StateFlow<Boolean> = mutableMetadataUnreachable.asStateFlow()
+
     /** Scans [sourceId] (or every source) and enriches the library. Concurrent calls run one after another. */
     suspend fun refresh(sourceId: SourceId? = null): List<ScanReport> = mutex.withLock {
         try {
@@ -76,6 +84,7 @@ class LibraryPipeline(
             mutableActivity.value = PipelineActivity.FetchingMetadata
             do {
                 val report = library.refreshMetadata(provider, language, limit = BATCH)
+                mutableMetadataUnreachable.value = report.offline
             } while (!report.offline && report.matched + report.ambiguous + report.unmatched == BATCH)
         }
         // Works that turned out to share a provider ID become one work with several versions.

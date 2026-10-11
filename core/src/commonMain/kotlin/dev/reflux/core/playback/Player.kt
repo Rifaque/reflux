@@ -21,6 +21,20 @@ data class PlayerTrack(
     val external: Boolean = false,
 )
 
+/** Why playback failed, in terms the player UI can explain. The engine's own wording goes in [PlayerState.error]. */
+enum class PlaybackFailure {
+    /** The media could not be opened: it is missing, was moved, cannot be read, or its source went away. */
+    UNREACHABLE,
+
+    /** The media was opened but is not something this engine can play. */
+    UNSUPPORTED,
+
+    /** The engine could not start video or audio output on this device. */
+    OUTPUT,
+
+    UNKNOWN,
+}
+
 data class PlayerState(
     val status: PlayerStatus = PlayerStatus.IDLE,
     val positionMs: Long = 0,
@@ -33,6 +47,9 @@ data class PlayerState(
     val selectedAudioId: String? = null,
     val selectedSubtitleId: String? = null,
     val chapters: List<Chapter> = emptyList(),
+    /** Set with [PlayerStatus.ERROR]. */
+    val failure: PlaybackFailure? = null,
+    /** The engine's description of [failure], for diagnostics rather than for display. */
     val error: String? = null,
 ) {
     val audioTracks: List<PlayerTrack> get() = tracks.filter { it.type == TrackType.AUDIO }

@@ -69,6 +69,21 @@ class LibraryPipelineTest {
     }
 
     @Test
+    fun anUnreachableMetadataProviderIsAStateNotAFailure() = runTest {
+        provider.movie("1", "Heat", 1995)
+        source.add("Heat (1995).mkv")
+        provider.offline = true
+        assertEquals(1, pipeline.refresh().single().added, "the library is built from file names regardless")
+        assertEquals(true, pipeline.metadataUnreachable.value)
+        assertEquals("Heat", library.movies().single().item.title)
+
+        provider.offline = false
+        pipeline.refresh()
+        assertEquals(false, pipeline.metadataUnreachable.value, "the next refresh picks up where the last one stopped")
+        assertEquals("About Heat", library.movies().single().metadata?.overview)
+    }
+
+    @Test
     fun refreshRunsTheWholePipeline() = runTest {
         provider.movie("1", "Heat", 1995, artwork = arrayOf(RemoteArtwork(ArtworkKind.POSTER, "https://img/heat.jpg")))
         source.add("Heat (1995).mkv")

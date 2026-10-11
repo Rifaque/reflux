@@ -6,6 +6,7 @@ import dev.reflux.core.playback.Container
 import dev.reflux.core.playback.DisplayCapabilities
 import dev.reflux.core.playback.DynamicRange
 import dev.reflux.core.playback.PlaybackController
+import dev.reflux.core.playback.PlaybackFailure
 import dev.reflux.core.playback.PlaybackRequest
 import dev.reflux.core.playback.PlayerState
 import dev.reflux.core.playback.PlayerStatus
@@ -163,5 +164,37 @@ class MpvEngineTest {
         }
         assertEquals(1, reports.count { it.startsWith("stopped") })
         assertTrue(reports.first().startsWith("progress"))
+    }
+
+    @Test
+    fun failuresSayWhatWentWrong() {
+        // A file that is not there, and a file that is not media: the two failures users actually meet.
+        headless().use { player ->
+            player.load(PlaybackRequest(PlaybackTarget(directory.resolve("gone.mkv").toUri().toString()), "Gone"))
+            val missing = player.await { it.status == PlayerStatus.ERROR }
+            assertEquals(PlaybackFailure.UNREACHABLE, missing.failure)
+            assertNotNull(missing.error, "the engine's own wording is kept for diagnostics")
+        }
+        headless().use { player ->
+            val notMedia = Files.write(directory.resolve("notes.mkv"), ByteArray(4096) { 7 })
+            player.load(PlaybackRequest(PlaybackTarget(notMedia.toUri().toString()), "Notes"))
+            assertEquals(PlaybackFailure.UNSUPPORTED, player.await { it.status == PlayerStatus.ERROR }.failure)
+
+            // A failure is not sticky: the same engine plays the next thing asked of it.
+            player.load(PlaybackRequest(PlaybackTarget(TestMedia.multiTrackMkv(directory).toUri().toString()), "Fine"))
+            val playing = player.await { it.status == PlayerStatus.PLAYING }
+            assertNull(playing.failure)
+            assertNull(playing.error)
+        }
+    }
+
+    @Test
+    fun engineErrorCodesMapToFailures() {
+        assertEquals(PlaybackFailure.UNREACHABLE, MpvPlayer.failureOf(LibMpv.ERROR_LOADING_FAILED))
+        assertEquals(PlaybackFailure.UNSUPPORTED, MpvPlayer.failureOf(LibMpv.ERROR_UNKNOWN_FORMAT))
+        assertEquals(PlaybackFailure.UNSUPPORTED, MpvPlayer.failureOf(LibMpv.ERROR_NOTHING_TO_PLAY))
+        assertEquals(PlaybackFailure.OUTPUT, MpvPlayer.failureOf(LibMpv.ERROR_VO_INIT_FAILED))
+        assertEquals(PlaybackFailure.OUTPUT, MpvPlayer.failureOf(LibMpv.ERROR_AO_INIT_FAILED))
+        assertEquals(PlaybackFailure.UNKNOWN, MpvPlayer.failureOf(-1))
     }
 }
