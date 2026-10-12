@@ -150,8 +150,8 @@ class MpvPlayer private constructor(
 
     /** Playing, paused, or buffering, from mpv's current flags. */
     private fun runningStatus(): PlayerStatus = when {
-        flag("paused-for-cache") || flag("seeking") -> PlayerStatus.BUFFERING
         flag("pause") -> PlayerStatus.PAUSED
+        flag("paused-for-cache") || flag("seeking") -> PlayerStatus.BUFFERING
         else -> PlayerStatus.PLAYING
     }
 

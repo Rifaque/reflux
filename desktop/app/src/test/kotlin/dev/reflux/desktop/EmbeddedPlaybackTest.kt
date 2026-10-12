@@ -61,6 +61,8 @@ class EmbeddedPlaybackTest {
         shell = Shell(environment)
         try {
             shell.awaitShown("Recently Added")
+            // This test checks the screen itself, which a locked or covered desktop does not show.
+            if (isWindows) assertTrue(WindowsHitTest.receivesPointer(shell.window), "the desktop is locked or something covers the Reflux window: this test needs it on screen")
             val windowed = shell.ui { shell.window.bounds }
             shell.capture("window-home")
 
@@ -314,13 +316,13 @@ private object WindowsHitTest {
     private val user32: User32 by lazy { Native.load("user32", User32::class.java) }
     private const val GA_ROOT = 2
 
-    /** Whether pointer input at the middle of [window] is delivered to [window] rather than to what is behind it. */
+    /** Whether pointer input over [window] (a third of the way down its middle) is delivered to it rather than to another window. */
     fun receivesPointer(window: java.awt.Window): Boolean {
         val handle = Native.getWindowPointer(window)
         val rectangle = IntArray(4)
         if (!user32.GetWindowRect(handle, rectangle)) return false
         val x = (rectangle[0] + rectangle[2]) / 2
-        val y = (rectangle[1] + rectangle[3]) / 3
+        val y = rectangle[1] + (rectangle[3] - rectangle[1]) / 3
         // A POINT passed by value is its two 32-bit halves in one register.
         val hit = user32.WindowFromPoint((y.toLong() shl 32) or (x.toLong() and 0xFFFFFFFFL)) ?: return false
         return user32.GetAncestor(hit, GA_ROOT) == handle

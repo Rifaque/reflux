@@ -322,6 +322,9 @@ class FakePlayer(override val capabilities: DeviceCapabilities) : Player {
 
     fun playTo(positionMs: Long) = mutable.update { it.copy(status = PlayerStatus.PLAYING, positionMs = positionMs) }
 
+    /** Playback that wants to run and is waiting: for data, or for a seek to land. */
+    fun buffer() = mutable.update { it.copy(status = PlayerStatus.BUFFERING) }
+
     fun end() = mutable.update { it.copy(status = PlayerStatus.ENDED, positionMs = it.durationMs ?: it.positionMs) }
 
     fun fail(message: String, failure: PlaybackFailure = PlaybackFailure.UNKNOWN) =
