@@ -213,11 +213,11 @@ class PointerTest {
             moveTo(Offset(width * 0.5f, centerY))
             release()
         }
-        await("the seek on release") { abs(playing.state.positionMs - 25 * 60_000L) < 20_000L }
+        await("the seek on release", { playing.state }) { abs(playing.state.positionMs - 25 * 60_000L) < 20_000L }
 
-        // A plain click on the bar seeks too.
-        timeline.performMouseInput { click(Offset(width * 0.8f, centerY)) }
-        await("the click to seek") { abs(playing.state.positionMs - 40 * 60_000L) < 20_000L }
+        // A plain click on the bar seeks too. The bar is as wide as the clocks beside it leave it, and they just changed.
+        timeline.performMouseInput { click(Offset(this.width * 0.8f, centerY)) }
+        await("the click to seek", { playing.state }) { abs(playing.state.positionMs - 40 * 60_000L) < 20_000L }
     }
 
     @Test
@@ -340,6 +340,31 @@ class PointerTest {
             awaitText("Recently Added")
             assertEquals(1, asked)
             onAllNodesWithText("Heat").fetchSemanticsNodes().let { assertTrue(it.isNotEmpty()) }
+        }
+    }
+
+    @Test
+    fun removingTheOnlySourceLeadsBackToTheFirstRun() {
+        val world = populated()
+        val platform = FakePlatform()
+        platform.remove = { id ->
+            world.library.removeSource(id)
+            world.registry.unregister(id)
+        }
+        screen(world, platform) { app ->
+            awaitText("Recently Added")
+            onNodeWithContentDescription("Media sources").mouseClick()
+            onNodeWithContentDescription("Remove Media").mouseClick()
+            awaitText("Remove Media?")
+            // Asking is not removing.
+            onNodeWithText("Keep").mouseClick()
+            assertTrue(platform.removed.isEmpty())
+            onNodeWithContentDescription("Remove Media").mouseClick()
+            onNodeWithText("Remove").mouseClick()
+            awaitText("Point Reflux at your media")
+            assertEquals(listOf(world.source.descriptor.id), platform.removed.toList())
+            assertTrue(app.library.movies().isEmpty())
+            assertEquals(Destination.Home, app.navigator.current)
         }
     }
 }

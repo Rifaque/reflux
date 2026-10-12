@@ -15,6 +15,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
@@ -30,6 +31,7 @@ import dev.reflux.core.input.ControllerFamily
 import dev.reflux.core.input.GamepadButton
 import dev.reflux.core.input.InputMapping
 import dev.reflux.design.MaterialRole
+import dev.reflux.ui.theme.LocalLayout
 import dev.reflux.ui.theme.LocalTypography
 import dev.reflux.ui.theme.RefluxColors
 import dev.reflux.ui.theme.Text
@@ -43,20 +45,31 @@ import dev.reflux.ui.theme.glass
 class FocusEntry {
     internal var hasFocus = false
     private var initial: FocusRequester? = null
+    private var returning: FocusRequester? = null
 
-    internal fun offer(requester: FocusRequester) {
-        initial = requester
+    /** The item the user last went into (see [returnsFocus]), so that coming back can find it again. */
+    internal var left: String? = null
+
+    internal fun offer(requester: FocusRequester, returning: Boolean = false) {
+        if (returning) this.returning = requester else initial = requester
     }
 
     internal fun withdraw(requester: FocusRequester) {
         if (initial === requester) initial = null
+        if (returning === requester) returning = null
     }
 
-    /** Focuses the screen's starting control when nothing has focus. Returns false when focus should just move. */
+    /**
+     * Focuses where the user left off, or else the screen's starting control, when nothing has focus.
+     * Returns false when focus should just move.
+     */
     internal fun enter(): Boolean {
         if (hasFocus) return false
-        return runCatching { initial?.requestFocus(FocusDirection.Enter) }.getOrNull() ?: false
+        return focus(returning) || focus(initial)
     }
+
+    private fun focus(requester: FocusRequester?): Boolean =
+        runCatching { requester?.requestFocus(FocusDirection.Enter) }.getOrNull() ?: false
 }
 
 val LocalFocusEntry = staticCompositionLocalOf<FocusEntry?> { null }
@@ -72,6 +85,30 @@ fun Modifier.initialFocus(): Modifier {
     }
     return focusRequester(requester)
 }
+
+/**
+ * Marks an item that leads somewhere, named by [key]. Call [FocusReturn.leaving] when it is activated; when
+ * its screen is shown again, focus goes back to it, at once for a keyboard or a controller, and on the
+ * first directional press otherwise. Without this, every Back would send a controller to the top of the page.
+ */
+@Composable
+fun rememberFocusReturn(key: String): FocusReturn {
+    val entry = LocalFocusEntry.current
+    val requester = remember { FocusRequester() }
+    val returning = entry != null && entry.left == key
+    if (returning) {
+        val showsFocus = LocalLayout.current.showsFocus
+        DisposableEffect(entry) {
+            entry!!.offer(requester, returning = true)
+            onDispose { entry.withdraw(requester) }
+        }
+        LaunchedEffect(Unit) { if (showsFocus) runCatching { requester.requestFocus() } }
+    }
+    return remember(entry, key) { FocusReturn(Modifier.focusRequester(requester)) { entry?.left = key } }
+}
+
+/** [modifier] goes on the item; [leaving] is called when the user goes into it. */
+class FocusReturn internal constructor(val modifier: Modifier, val leaving: () -> Unit)
 
 /**
  * Keeps a newly focused item [start] and [end] away from the edges of the scrolling containers in

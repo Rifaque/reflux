@@ -43,6 +43,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.plus
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * The state of the Reflux experience: where the user is, what is playing, and how they are interacting.
@@ -91,6 +92,7 @@ class AppState(
     internal var muted = false
 
     private var starting = false
+    private var releasing: Job? = null
     private var choosingFolder = false
     private var noticeJob: Job? = null
     private var watchJob: Job? = null
@@ -194,6 +196,11 @@ class AppState(
         if (playback != null || starting) return@attempt
         starting = true
         try {
+            // One engine and one video surface at a time: the player that was just closed is gone first.
+            // An engine that will not let go is left behind rather than waited for; playing must stay possible.
+            releasing?.let { release ->
+                if (withTimeoutOrNull(RELEASE_PATIENCE_MS) { release.join() } == null) platform.report("The previous playback engine did not shut down in time")
+            }
             val playable = read { playableFor(itemId) } ?: return@attempt notify(Problems.NOTHING_TO_PLAY)
             val plan = read { planPlayback(playable, platform.device, sources, versionId, resume) }
                 ?: return@attempt notify(read { unplayableReason(playable, platform.device, sources) })
@@ -215,8 +222,9 @@ class AppState(
         }
     }
 
-    internal fun playbackClosed(session: PlaybackSession) {
+    internal fun playbackClosed(session: PlaybackSession, release: Job) {
         if (playback === session) playback = null
+        releasing = release
     }
 
     private fun Library.playableFor(itemId: MediaId): MediaId? = when (val item = item(itemId)) {
@@ -319,6 +327,7 @@ class AppState(
 
     private companion object {
         const val NOTICE_MS = 4_500L
+        const val RELEASE_PATIENCE_MS = 5_000L
         const val NOTICE_SHORT_LENGTH = 60
         const val NOTICE_MS_PER_CHARACTER = 45L
     }

@@ -183,13 +183,21 @@ private fun describe(card: MediaCard): String = listOfNotNull(
  * space it is given when [fill] is set (grids).
  */
 @Composable
-fun PosterCard(card: MediaCard, onClick: () -> Unit, modifier: Modifier = Modifier, fill: Boolean = false) {
+fun PosterCard(card: MediaCard, onClick: () -> Unit, modifier: Modifier = Modifier, fill: Boolean = false, focusKey: String = card.id.value) {
+    val focusReturn = rememberFocusReturn(focusKey)
     val layout = LocalLayout.current
     val width = layout.posterWidthDp.dp
     val shape = RoundedCornerShape(12.dp)
     val poster = rememberArtwork(card.poster, width)
     Column(if (fill) modifier.fillMaxWidth() else modifier.width(width), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Pressable(onClick, Modifier.semantics { contentDescription = describe(card) }, shape) { active ->
+        Pressable(
+            {
+                focusReturn.leaving()
+                onClick()
+            },
+            focusReturn.modifier.semantics { contentDescription = describe(card) },
+            shape,
+        ) { active ->
             Box(Modifier.fillMaxWidth().aspectRatio(2f / 3f)) {
                 ArtworkImage(poster, Modifier.fillMaxSize()) { TitlePlaceholder(card.title, null) }
                 if (active) Box(Modifier.fillMaxSize().background(Color.White.copy(alpha = 0.06f)))

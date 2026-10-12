@@ -112,4 +112,21 @@ class DesktopEnvironmentTest {
         assertTrue("the share dropped" in Files.readString(log.file.resolveSibling("reflux.log.1")))
         assertEquals(data.resolve("reflux.log"), DesktopEnvironment(data).diagnostics.file, "the log lives next to the library")
     }
+
+    @Test
+    fun credentialsNeverReachTheLog() {
+        val log = DiagnosticLog(data.resolve("reflux.log"))
+        log.record(
+            "Opening https://ada:hunter2@nas.local/dav/Movies failed",
+            IllegalStateException("GET http://jellyfin.local:8096/Videos/42/stream?static=true&api_key=0123456789abcdef&MediaSourceId=7 returned 401; sent X-Emby-Token: 0123456789abcdef"),
+        )
+        val written = Files.readString(log.file)
+        for (secret in listOf("hunter2", "ada:", "0123456789abcdef")) assertFalse(secret in written, "\"$secret\" was written to the log")
+        // What makes the entry useful is still there: where, what, and which request.
+        assertTrue("nas.local/dav/Movies" in written && "jellyfin.local:8096/Videos/42/stream" in written && "MediaSourceId=7" in written && "401" in written)
+
+        assertEquals("Authorization: <redacted>", DiagnosticLog.redact("Authorization: Bearer abc.def.ghi"))
+        assertEquals("smb://<credentials>@host/share and password=<redacted>", DiagnosticLog.redact("smb://user:p%40ss@host/share and password=p@ss"))
+        assertEquals("Night Drive (2021) at 1:02:03", DiagnosticLog.redact("Night Drive (2021) at 1:02:03"), "ordinary text is left alone")
+    }
 }

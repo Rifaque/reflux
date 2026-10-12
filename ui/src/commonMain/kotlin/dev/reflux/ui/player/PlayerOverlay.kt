@@ -174,6 +174,20 @@ fun PlayerOverlay(app: AppState, session: PlaybackSession, modifier: Modifier = 
                 Controls(app, session, state)
             }
 
+            AnimatedVisibility(
+                visible = app.notice != null,
+                modifier = Modifier.align(Alignment.TopCenter).padding(top = 28.dp),
+                enter = fadeIn(Motion.controlsShow.tween()),
+                exit = fadeOut(Motion.controlsHide.tween()),
+            ) {
+                // The page's own notice is beneath the video, so what is said while playing is said here.
+                var shown by remember { mutableStateOf("") }
+                app.notice?.let { shown = it }
+                Box(Modifier.widthIn(max = 560.dp).glass(MaterialRole.MODAL, CircleShape, tint = playerTint.copy(alpha = 0.92f)).absorbsPointer().padding(horizontal = 22.dp, vertical = 12.dp)) {
+                    Text(shown, style = LocalTypography.current.bodyStrong, maxLines = 2)
+                }
+            }
+
             val layout = LocalLayout.current
             val corner = Modifier.align(Alignment.BottomEnd).padding(end = layout.safeMarginDp.dp, bottom = if (visible) 148.dp else 40.dp)
             val prompt = session.upNext

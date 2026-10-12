@@ -73,12 +73,16 @@ class MpvPlayer private constructor(
         mpv.mpv_terminate_destroy(handle)
     }
 
-    private fun setProperty(name: String, value: String) {
-        if (!closed) mpv.mpv_set_property_string(handle, name, value)
-    }
+    private fun setProperty(name: String, value: String) = command("set", name, value)
 
+    /**
+     * Queues a command for the engine and returns at once; the engine runs them in order and their effect
+     * shows in [state]. Nothing here waits for the engine: callers are usually the UI thread, and an engine
+     * that is busy or stuck (opening a network file, starting its video output) must not take the
+     * interface with it.
+     */
     private fun command(vararg args: String) {
-        if (!closed) mpv.mpv_command(handle, arrayOf(*args, null))
+        if (!closed) mpv.mpv_command_async(handle, 0, arrayOf(*args, null))
     }
 
     private fun eventLoop() {
@@ -118,11 +122,13 @@ class MpvPlayer private constructor(
     private fun onProperty(index: Int, event: MpvEventProperty) {
         val property = Property.entries.getOrNull(index) ?: return
         val data = event.data
-        if (event.format == LibMpv.FORMAT_NONE || data == null) {
-            if (property == Property.DURATION) mutableState.update { it.copy(durationMs = null) }
-            return
-        }
+        // A property without a value is the engine letting go of a file. What was known about that file
+        // stays: the duration in particular is what makes its ending count as watched, and the engine
+        // withdraws it at the same moment it reports the ending. The next load starts from a clean state.
+        if (event.format == LibMpv.FORMAT_NONE || data == null) return
         mutableState.update { state ->
+            // Once a file has ended, its final position and duration are the record of that ending.
+            if (state.status == PlayerStatus.ENDED && (property == Property.TIME_POS || property == Property.DURATION)) return@update state
             when (property) {
                 Property.TIME_POS -> state.copy(positionMs = (data.getDouble(0) * 1000).roundToLong().coerceAtLeast(0))
                 Property.DURATION -> state.copy(durationMs = (data.getDouble(0) * 1000).roundToLong())

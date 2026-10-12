@@ -9,6 +9,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asSkiaBitmap
+import androidx.compose.ui.test.ComposeTimeoutException
 import androidx.compose.ui.test.DesktopComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.onAllNodesWithText
@@ -54,12 +55,25 @@ internal fun screen(
 
 internal fun populated(metadata: Boolean = true) = TestWorld(metadata).also { runBlocking { it.populate() } }
 
-@OptIn(ExperimentalTestApi::class)
-internal fun DesktopComposeUiTest.awaitText(text: String) =
-    waitUntil("\"$text\" to appear", 10_000) { onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty() }
+/**
+ * How long a screen may take to get somewhere. Generous on purpose: these tests render every frame in
+ * software, and a loaded CI machine is many times slower than a desktop. Nothing waits this long when it works.
+ */
+private const val PATIENCE_MS = 30_000L
 
 @OptIn(ExperimentalTestApi::class)
-internal fun DesktopComposeUiTest.await(what: String, condition: () -> Boolean) = waitUntil(what, 10_000, condition)
+internal fun DesktopComposeUiTest.awaitText(text: String) =
+    waitUntil("\"$text\" to appear", PATIENCE_MS) { onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty() }
+
+/** Waits for [condition]; [state] describes what was seen instead, for the failure message. */
+@OptIn(ExperimentalTestApi::class)
+internal fun DesktopComposeUiTest.await(what: String, state: () -> Any? = { null }, condition: () -> Boolean) {
+    try {
+        waitUntil(what, PATIENCE_MS, condition)
+    } catch (e: ComposeTimeoutException) {
+        throw AssertionError("Timed out waiting for $what" + (state()?.let { ". Instead: $it" } ?: ""), e)
+    }
+}
 
 /** Saves what is on screen as `<name>.png` when screenshots were requested. */
 @OptIn(ExperimentalTestApi::class)

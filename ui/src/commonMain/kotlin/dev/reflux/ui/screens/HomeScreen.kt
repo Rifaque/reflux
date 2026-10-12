@@ -154,7 +154,8 @@ private fun RowSection(app: AppState, row: HomeRowModel) {
                         if (row.wide) {
                             WideCard(card, { app.play(card.id) })
                         } else {
-                            PosterCard(card, { app.navigator.open(Destination.Details(card.detailsId)) })
+                            // The same work can be in several rows; focus returns to the one it was opened from.
+                            PosterCard(card, { app.navigator.open(Destination.Details(card.detailsId)) }, focusKey = "${row.id}/${card.id.value}")
                         }
                     }
                 }

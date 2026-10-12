@@ -1,0 +1,10 @@
+libmpv2
+ffmpeg
+xvfb
+openbox
+xcompmgr
+x11-utils
+libgl1-mesa-dri
+libglx-mesa0
+libegl1
+fonts-dejavu-core

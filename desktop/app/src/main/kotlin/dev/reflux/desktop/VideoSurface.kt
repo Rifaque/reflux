@@ -15,6 +15,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 import java.awt.Canvas
 import java.awt.Color
 import java.awt.Component
+import java.awt.Toolkit
 import java.awt.event.ComponentAdapter
 import java.awt.event.ComponentEvent
 import java.awt.event.ComponentListener
@@ -45,10 +46,15 @@ internal class VideoSurface {
             background = Color.BLACK
             isFocusable = false
         }
-        return withTimeoutOrNull(SURFACE_TIMEOUT_MS) { ready.await() } ?: run {
+        val id = withTimeoutOrNull(SURFACE_TIMEOUT_MS) { ready.await() } ?: run {
             hide()
-            null
+            return null
         }
+        // The engine reaches the surface through a connection of its own. The toolkit only queues the
+        // request that creates the native window, so without this the engine can be handed the ID of a
+        // window the display server has not heard of yet, and its video output then never starts.
+        Toolkit.getDefaultToolkit().sync()
+        return id
     }
 
     fun hide() {

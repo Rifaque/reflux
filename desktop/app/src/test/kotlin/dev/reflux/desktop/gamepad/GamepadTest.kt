@@ -11,6 +11,7 @@ import kotlin.io.path.writeBytes
 import kotlin.io.path.writeText
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -23,6 +24,11 @@ class GamepadTest {
         listOf(GamepadState(id, family, buttons.toSet(), x, y))
 
     private fun pressed() = presses.map { it.first }.also { presses.clear() }
+
+    /** Controllers are first seen at rest, as they are when the application starts. */
+    init {
+        translator.update(pad(), -1_000)
+    }
 
     @Test
     fun aButtonIsPressedOnceHoweverLongItIsHeld() {
@@ -82,12 +88,29 @@ class GamepadTest {
 
     @Test
     fun controllersAreTrackedSeparatelyAndForgottenWhenUnplugged() {
+        translator.update(pad(id = "a") + pad(id = "b", family = ControllerFamily.XBOX), -16)
         translator.update(pad(GamepadButton.FACE_SOUTH, id = "a") + pad(id = "b", family = ControllerFamily.XBOX), 0)
         translator.update(pad(GamepadButton.FACE_SOUTH, id = "a") + pad(GamepadButton.FACE_SOUTH, id = "b", family = ControllerFamily.XBOX), 16)
         assertEquals(listOf(ControllerFamily.PLAYSTATION, ControllerFamily.XBOX), presses.map { it.second })
         translator.update(pad(GamepadButton.FACE_SOUTH, id = "a"), 32)
         translator.update(pad(GamepadButton.FACE_SOUTH, id = "a") + pad(GamepadButton.FACE_SOUTH, id = "b", family = ControllerFamily.XBOX), 48)
-        assertEquals(3, presses.size, "a controller that comes back starts fresh")
+        assertEquals(2, presses.size, "a controller that comes back with a button held has not pressed it")
+        translator.update(pad(GamepadButton.FACE_SOUTH, id = "a") + pad(id = "b", family = ControllerFamily.XBOX), 64)
+        translator.update(pad(GamepadButton.FACE_SOUTH, id = "a") + pad(GamepadButton.FACE_SOUTH, id = "b", family = ControllerFamily.XBOX), 80)
+        assertEquals(3, presses.size, "once released, it presses like any other")
+    }
+
+    @Test
+    fun whateverIsHeldWhenAControllerAppearsIsNotAPress() {
+        // Found on real hardware: a device whose resting state reads as "up" navigated upward forever.
+        val stuck = pad(GamepadButton.DPAD_UP, GamepadButton.FACE_SOUTH, x = 1f, id = "new")
+        translator.update(stuck, 0)
+        translator.update(stuck, 500)
+        translator.update(stuck, 5_000)
+        assertTrue(presses.isEmpty(), "neither pressed nor repeated")
+        translator.update(pad(GamepadButton.DPAD_UP, id = "new"), 5_016)
+        translator.update(pad(GamepadButton.DPAD_UP, GamepadButton.FACE_EAST, id = "new"), 5_032)
+        assertEquals(listOf(GamepadButton.FACE_EAST), pressed(), "what is pressed afterwards counts")
     }
 
     @Test
@@ -114,6 +137,12 @@ class GamepadTest {
         assertEquals(setOf(GamepadButton.DPAD_UP, GamepadButton.DPAD_LEFT), Joysticks.decode(0, ControllerFamily.GENERIC, 0, 31500, 0f, 0f).buttons)
         assertEquals(setOf(GamepadButton.DPAD_DOWN), Joysticks.decode(0, ControllerFamily.GENERIC, 0, 18000, 0f, 0f).buttons)
         assertEquals(setOf(GamepadButton.DPAD_UP), Joysticks.decode(0, ControllerFamily.GENERIC, 0, 0, 0f, 0f).buttons)
+        // A device without a hat reports 0 for it, which is also the angle of "up".
+        assertTrue(Joysticks.decode(0, ControllerFamily.GENERIC, 0, pov = null, 0f, 0f).buttons.isEmpty())
+        // Windows lists other HID devices as joysticks with nothing on them; those are not controllers.
+        assertFalse(Joysticks.isGameController(buttons = 0, axes = 0))
+        assertFalse(Joysticks.isGameController(buttons = 2, axes = 3), "a flight-stick throttle is not something to browse with")
+        assertTrue(Joysticks.isGameController(buttons = 14, axes = 6), "a DualSense")
         assertEquals(-1f, Joysticks.normalize(0, 0, 65535))
         assertEquals(1f, Joysticks.normalize(65535, 0, 65535))
         assertEquals(0f, Joysticks.normalize(5, 5, 5), "an axis without a range rests")
@@ -206,6 +235,14 @@ class GamepadTest {
     }
 
     @Test
+    fun aControllersMotionSensorsAreNotAController() {
+        // A DualSense also appears as a second joystick device that has axes (accelerometer, gyroscope) and no buttons.
+        assertFalse(layout(ControllerFamily.PLAYSTATION, keys = "0", abs = "3f").isController)
+        assertTrue(layout(ControllerFamily.PLAYSTATION, dualSenseKeys).isController)
+        assertTrue(layout(ControllerFamily.GENERIC, numberedKeys, abs = "30027").isController)
+    }
+
+    @Test
     fun onAPadWithoutTriggersTheThirdAxesAreNotTriggers() {
         val state = JoystickState("js:js0", layout(ControllerFamily.GENERIC, numberedKeys, abs = "30027"))
         state.apply(32767, JoystickLayout.EVENT_AXIS, 2)
@@ -239,6 +276,8 @@ class GamepadTest {
         devices.resolve("event5").writeBytes(ByteArray(24)) // not a joystick node
         sysfs.resolve("js2").createDirectories() // a node without a description is skipped
         devices.resolve("js2").writeBytes(ByteArray(0))
+        describe("js3", "DualSense Wireless Controller Motion Sensors", "054c", "0") // axes only: not a controller
+        devices.resolve("js3").writeBytes(events(Triple(32767, JoystickLayout.EVENT_AXIS, 0)))
 
         LinuxGamepads(devices, sysfs).use { reader ->
             var states = emptyList<GamepadState>()

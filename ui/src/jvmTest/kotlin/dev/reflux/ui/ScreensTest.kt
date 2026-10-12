@@ -249,4 +249,45 @@ class ScreensTest {
             save("player-error")
         }
     }
+
+    @Test
+    fun whatIsSaidDuringPlaybackIsSaidInThePlayer() {
+        val platform = FakePlatform()
+        screen(populated(), platform) { app ->
+            awaitText("Recently Added")
+            runOnIdle { app.play(app.library.shows().first { it.item.title == "Breaking Bad" }.item.id) }
+            awaitText("S1 · E1 · Pilot")
+            platform.players.single().pause()
+            mainClock.autoAdvance = false
+            runOnUiThread { app.playback?.selectAudio("no such track") }
+            mainClock.advanceTimeBy(600)
+            // Twice: once on the page under the video, once where the viewer can see it.
+            assertEquals(2, onAllNodesWithText("That track is no longer available.").fetchSemanticsNodes().size)
+            save("player-notice")
+        }
+    }
+
+    @Test
+    fun theSmallestWindowStillWorks() {
+        val platform = FakePlatform()
+        screen(populated(), platform, width = 900, height = 600) { app ->
+            awaitText("Recently Added")
+            onNodeWithText("Play").assertIsDisplayed()
+            save("small-home")
+            app.navigator.open(Destination.Details(app.library.movies().first { it.item.title == "Heat" }.item.id))
+            awaitText("Versions")
+            onNodeWithText("Play").assertIsDisplayed()
+            save("small-details")
+            runOnIdle { app.play(app.library.shows().first { it.item.title == "Breaking Bad" }.item.id) }
+            awaitText("S1 · E1 · Pilot")
+            platform.players.single().apply { playTo(95_000) }.pause()
+            waitForIdle()
+            for (control in listOf("Previous", "Play", "Next episode", "Mute", "Volume", "Chapters", "Audio", "Subtitles", "Playback speed", "Fullscreen")) {
+                onNodeWithContentDescription(control).assertIsDisplayed()
+            }
+            onNodeWithContentDescription("Subtitles").performClick()
+            awaitText("Off")
+            save("small-player")
+        }
+    }
 }

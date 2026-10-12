@@ -337,4 +337,39 @@ class PlaybackSessionTest {
         assertNull(playing.app.playback)
         assertEquals("This can't be played right now. Media is offline.", playing.app.notice)
     }
+
+    @Test
+    fun anEngineThatNeverStartsIsNotWaitedForInSilence() = runTest {
+        val playing = playing("Breaking Bad", 0)
+        val session = playing.session
+        val player = playing.player
+        player.starts = false
+        session.playNext()
+        runCurrent()
+        assertEquals(PlayerStatus.LOADING, player.state.value.status)
+        advanceTimeBy(29_000)
+        runCurrent()
+        assertNull(session.error, "starting can take a while")
+
+        advanceTimeBy(2_000)
+        runCurrent()
+        assertTrue("isn't starting" in assertNotNull(session.error).message)
+        assertEquals(1, playing.platform.reports.size)
+        assertNotNull(playing.app.playback, "the player stays, to say so and offer the way back")
+
+        // Late is not never: if it starts after all, the message makes way.
+        player.playTo(1_000)
+        runCurrent()
+        assertNull(session.error)
+
+        // And an engine that stays stuck can be left.
+        player.starts = false
+        session.playNext()
+        runCurrent()
+        advanceTimeBy(31_000)
+        runCurrent()
+        session.handle(SemanticAction.BACK)
+        runCurrent()
+        assertNull(playing.app.playback)
+    }
 }

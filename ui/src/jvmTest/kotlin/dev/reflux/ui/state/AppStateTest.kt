@@ -465,4 +465,49 @@ class AppStateTest {
         assertEquals(1, cleared)
         assertEquals(Destination.Search, app.navigator.current)
     }
+
+    @Test
+    fun aNewPlaybackWaitsUntilThePreviousEngineIsGone() = runTest {
+        val world = TestWorld().apply { populate() }
+        val platform = FakePlatform()
+        val app = appState(world, platform)
+        app.play(world.movie("Heat").item.id)
+        runCurrent()
+
+        // The player is closed, but its engine is still letting go of the video surface.
+        val gate = CompletableDeferred<Unit>()
+        platform.releaseGate = gate
+        app.playback?.close()
+        runCurrent()
+        assertNull(app.playback)
+        app.play(world.movie("Arrival").item.id)
+        runCurrent()
+        assertEquals(1, platform.players.size, "no second engine while the first still holds the surface")
+        assertNull(app.playback)
+
+        gate.complete(Unit)
+        runCurrent()
+        assertEquals(2, platform.players.size)
+        assertEquals("Arrival", app.playback?.title)
+        assertTrue(platform.players.first().closed)
+    }
+
+    @Test
+    fun anEngineThatWillNotLetGoDoesNotBlockPlaybackForever() = runTest {
+        val world = TestWorld().apply { populate() }
+        val platform = FakePlatform()
+        val app = appState(world, platform)
+        app.play(world.movie("Heat").item.id)
+        runCurrent()
+        platform.releaseGate = CompletableDeferred() // never completed: the engine hangs while shutting down
+        app.playback?.close()
+        app.play(world.movie("Arrival").item.id)
+        runCurrent()
+        assertNull(app.playback)
+
+        advanceTimeBy(5_100)
+        runCurrent()
+        assertEquals("Arrival", app.playback?.title, "the stuck engine is left behind")
+        assertTrue(platform.reports.any { "did not shut down" in it })
+    }
 }

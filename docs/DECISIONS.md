@@ -211,8 +211,34 @@ End-to-end tests run the real shell in its real window. They find controls throu
 
 ## 2026-10-12 — Linux: the toolkit's X11 error handler is guarded while libmpv is loaded
 
-Xlib has one error handler per process. The toolkit's tolerates errors, because harmless ones are routine. libmpv installs its own while it has a video output and resets the handler to Xlib's default when the output goes away; the default ends the process on any error. Found by running real playback in a real X11 window: Reflux quit about every other time the player was closed.
+Xlib has one error handler per process. The toolkit's tolerates errors, because harmless ones are routine. libmpv installs its own for every video output it tries and resets the handler to Xlib's default when an output goes away; the default ends the process on any error. Found by running real playback in a real X11 window: Reflux quit about every other time the player was closed. Tracing the handler showed the resets come in two short phases only: at engine start, once per output tried before one works (several under software rendering, none with a working GPU driver), and at engine teardown.
 
-The shell remembers the toolkit's handler before any engine exists and puts it back continuously while an engine is alive and for a while after (`X11ErrorGuard`). On X11 the engine also keeps its video output until it is destroyed (`force-window`), so there is one teardown per playback instead of one per stop. Reusing one engine for the life of the application would avoid teardown altogether; it was not needed once the guard was in place, and it would change the surface lifecycle on one platform only.
+The shell remembers the toolkit's handler before any engine exists and puts it back while an engine is alive and for a while after (`X11ErrorGuard`): without pause during those two phases, every few milliseconds otherwise. This cannot make a reset impossible, only brief (well under a microsecond), which is why the teardown order below matters as well. On X11 the engine also keeps its video output until it is destroyed (`force-window`), so there is one teardown per playback instead of one per stop. Putting the handler back can only narrow the moment in which an error is fatal, so the order of teardown removes the errors from that moment: the controls window lives exactly as long as the video surface, and the surface goes away only after the engine has. The toolkit's routine "that window is gone" errors therefore arrive after the handler is back. Reusing one engine for the life of the application would avoid teardown resets but not the ones at start, and would give one platform its own surface lifecycle; a libmpv build that leaves the handler alone is the real fix and belongs with packaging (see RELEASE.md).
 
 The player's controls are a translucent window above the video, which on X11 needs a compositing manager. Every current desktop has one; without it the controls window is opaque.
+
+## 2026-10-12 — Shared sources are checked for platform APIs
+
+Every shared module compiles only for the JVM today, so `commonMain` code can use JVM and desktop APIs without the compiler objecting; the first Android build would be where that surfaces. `verifySharedSources` runs with `check` and fails on platform-only imports and calls in shared source sets. It is a text check, not a compiler: it holds the boundary until a second target exists, at which point the compiler takes over and the task can go.
+
+## 2026-10-12 — One playback engine at a time
+
+A playback session's engine is released asynchronously, so that leaving the player is instant. Starting playback waits for the previous engine to be gone. Two engines would share one video surface, and the first one's teardown hides the surface the second is using; on Android the same rule keeps two players from competing for a decoder.
+
+## 2026-10-12 — Controllers are taken as they are found
+
+Found with real hardware: Windows lists non-controller HID devices as joysticks with no buttons and no axes, and their idle hat reading is indistinguishable from "up", which made Reflux navigate upward forever. A controller's motion sensors appear on Linux as a second joystick with axes only, which would have turned tilting into navigation.
+
+- A device is a controller only if it has face buttons and a stick (Windows) or buttons Reflux can map (Linux).
+- A hat is only read on devices that report having one.
+- Whatever is held or deflected when a controller first appears is not a press; input counts from the first change.
+
+## 2026-10-12 — CI and local Linux verification share their scripts
+
+The Linux job's package list and its window-test script live in `tools/ci` and are used by the workflow and by a container image (`tools/ci/Dockerfile`) alike. The Linux defects of the desktop shell were all found by running the real window on Linux, which must stay possible from a Windows or macOS machine.
+
+## 2026-10-12 — The engine is never waited for on the UI thread
+
+`MpvPlayer` sends everything to libmpv through its asynchronous command call. The `Player` contract always said that commands return immediately and show their effect in the state; the binding used the synchronous calls, which return when the engine has run the command. Normally that is a millisecond. When the engine's core is busy or stuck (found on Linux: a video output that never started) the caller waited with it, and the caller is the UI thread.
+
+Related, and the cause of that stuck video output: a video surface is handed to the engine only after the toolkit has synchronized with the display server. The engine reaches the surface through its own connection, and the toolkit merely queues the request that creates the native window.

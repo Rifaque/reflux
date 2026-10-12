@@ -16,10 +16,12 @@ import java.time.Instant
 class DiagnosticLog(val file: Path, private val maxBytes: Long = 1_000_000) {
     @Synchronized
     fun record(problem: String, cause: Throwable? = null) {
-        val entry = buildString {
-            append(Instant.now()).append("  ").append(problem).append('\n')
-            if (cause != null) append(StringWriter().also { cause.printStackTrace(PrintWriter(it)) })
-        }
+        val entry = redact(
+            buildString {
+                append(Instant.now()).append("  ").append(problem).append('\n')
+                if (cause != null) append(StringWriter().also { cause.printStackTrace(PrintWriter(it)) })
+            },
+        )
         System.err.print(entry)
         // Diagnostics must never become a problem themselves.
         runCatching {
@@ -29,5 +31,21 @@ class DiagnosticLog(val file: Path, private val maxBytes: Long = 1_000_000) {
             }
             Files.writeString(file, entry, StandardOpenOption.CREATE, StandardOpenOption.APPEND)
         }
+    }
+
+    companion object {
+        private val userInfo = Regex("""://[^/\s:@]+:[^/\s@]+@""")
+        private val secretParameters = Regex("""(?i)\b(api_?key|access_?token|token|password|passwd|pwd|secret)=[^&\s"'<>]+""")
+        private val secretHeaders = Regex("""(?i)\b(authorization|x-emby-token|x-mediabrowser-token|x-emby-authorization)(["']?\s*[:=]\s*)[^\r\n]+""")
+
+        /**
+         * Removes credentials from text that is about to be written down. Sources keep server addresses,
+         * passwords, and tokens, and a log is something people attach to bug reports; errors that quote a
+         * URL or a header must not carry those along.
+         */
+        fun redact(text: String): String = text
+            .replace(userInfo, "://<credentials>@")
+            .replace(secretParameters) { "${it.groupValues[1]}=<redacted>" }
+            .replace(secretHeaders) { "${it.groupValues[1]}${it.groupValues[2]}<redacted>" }
     }
 }
