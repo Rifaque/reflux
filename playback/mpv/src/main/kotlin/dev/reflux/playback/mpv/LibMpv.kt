@@ -20,6 +20,7 @@ internal interface LibMpv : Library {
     fun mpv_set_property_string(ctx: Pointer, name: String, data: String): Int
     fun mpv_get_property_string(ctx: Pointer, name: String): Pointer?
     fun mpv_command(ctx: Pointer, args: Array<String?>): Int
+    fun mpv_command_async(ctx: Pointer, replyUserdata: Long, args: Array<String?>): Int
     fun mpv_observe_property(ctx: Pointer, replyUserdata: Long, name: String, format: Int): Int
     fun mpv_wait_event(ctx: Pointer, timeout: Double): Pointer
     fun mpv_wakeup(ctx: Pointer)

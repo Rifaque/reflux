@@ -167,6 +167,20 @@ Failures are part of the contracts rather than exceptions that escape: engines s
 
 Video is always a platform surface beneath the experience layer's transparent `PlayerOverlay` (a native child window with libmpv on desktop, a `SurfaceView` with Media3 on Android), so the engine keeps its direct path to the display. The layout comes from `AdaptiveLayout` for the window and the current input modality, and is animated when the modality changes.
 
+### What a platform supplies
+
+The shared modules (`core`, `library`, `design`, `ui`, and the platform-free adapters) contain no platform APIs; `./gradlew check` fails if their `commonMain` sources import or call any (`verifySharedSources`), because with one compilation target the compiler would not notice. A new shell, Android first, brings:
+
+| Piece | Desktop today | Notes for the next platform |
+| --- | --- | --- |
+| `Platform` (artwork decoding, device capabilities, player and video surface, adding media, fullscreen, problem reports) | `DesktopPlatform` | The whole contract between `ui` and a shell. |
+| Input normalization into `Key`, `GamepadButton`, and `InputSignal` | AWT keys, controller readers | Android delivers remotes and controllers as key and motion events; the same `AppState` entry points take them. |
+| Playback engine behind `Player`, and a `MediaProber` | libmpv | Media3 and `MediaExtractor`. |
+| Engine wiring (data directory, source factories, pipeline) | `desktop:engine` | An equivalent module; the rule that one folder is one source lives here because it is about paths. |
+| Database driver, HTTP client, artwork cache | `library` `jvmMain` (JDBC SQLite, the JDK HTTP client, files) | Android needs its own driver and `HttpFetcher`; these three files are the only platform code inside `library`. |
+| Local media source | `sources:local` (filesystem paths) | Storage Access Framework trees are not paths and need their own adapter. |
+| Language names for track labels | `Formatting.jvm.kt` | One `expect` function. |
+
 ## File safety
 
 Reflux must not silently rename, move, delete, or modify user media files.

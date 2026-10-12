@@ -150,8 +150,18 @@ class DesktopEnvironment(dataDirectory: Path = AppDirectories.data()) {
         registry.unregister(id)
     }
 
-    /** Creates a playback engine with Reflux's defaults plus [options], or null when libmpv is not installed. */
-    fun createPlayer(options: Map<String, String> = emptyMap()): MpvPlayer? = MpvPlayer.create(deviceCapabilities(), options)
+    /**
+     * Creates a playback engine with Reflux's defaults plus [options], or null when libmpv is not installed.
+     * Setting `REFLUX_MPV_LOG` to a file makes the engine write its own verbose log there, for diagnosing
+     * playback problems that Reflux only sees the outcome of; set to a directory, every engine gets a file.
+     */
+    fun createPlayer(options: Map<String, String> = emptyMap()): MpvPlayer? {
+        val log = System.getenv("REFLUX_MPV_LOG")?.takeIf { it.isNotBlank() }?.let { Path.of(it) }?.let { target ->
+            val file = if (Files.isDirectory(target)) target.resolve("mpv-${System.currentTimeMillis()}.log") else target
+            mapOf("log-file" to file.toString(), "msg-level" to "all=v")
+        }
+        return MpvPlayer.create(deviceCapabilities(), options + log.orEmpty())
+    }
 
     private fun display(): DisplayCapabilities {
         if (GraphicsEnvironment.isHeadless()) return DisplayCapabilities(1920, 1080)

@@ -1,0 +1,6 @@
+# Shell scripts run on Linux and in containers even when the checkout is on Windows.
+*.sh text eol=lf
+gradlew text eol=lf
+tools/ci/linux-packages.txt text eol=lf
+tools/ci/Dockerfile text eol=lf
+*.bat text eol=crlf

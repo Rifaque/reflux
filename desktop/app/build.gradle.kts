@@ -24,8 +24,9 @@ compose.desktop {
 }
 
 tasks.withType<Test>().configureEach {
-    // The end-to-end test opens a real window, so it runs only on request: -Preflux.windowTests=true
-    for (name in listOf("reflux.windowTests", "reflux.screenshots")) {
+    // Tests that open real windows run only on request: -Preflux.windowTests=true (and -Preflux.controller=true
+    // for the one that needs a person holding a controller).
+    for (name in listOf("reflux.windowTests", "reflux.screenshots", "reflux.controller")) {
         providers.gradleProperty(name).orNull?.let { systemProperty(name, it) }
     }
 }

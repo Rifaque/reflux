@@ -153,6 +153,12 @@ internal class JoystickLayout(val family: ControllerFamily, private val keys: Li
         }
     }
 
+    /**
+     * Whether this device has buttons to navigate with. A controller also shows up as devices that only have
+     * axes (its motion sensors); read as sticks, tilting the controller would move the focus.
+     */
+    val isController: Boolean get() = keys.indices.count { button(it) != null } >= 4
+
     /** The axis code of axis [number], when it is one Reflux reads. */
     fun axis(number: Int): Int? = absolutes.getOrNull(number)?.takeIf { it < ABS_COUNT }
 
@@ -215,7 +221,7 @@ internal class JoystickLayout(val family: ControllerFamily, private val keys: Li
                 ControllerFamilies.of(vendor, name),
                 bits(Files.readString(device.resolve("capabilities/key"))),
                 bits(Files.readString(device.resolve("capabilities/abs"))),
-            )
+            ).takeIf { it.isController }
         } catch (_: IOException) {
             null
         } catch (_: NumberFormatException) {

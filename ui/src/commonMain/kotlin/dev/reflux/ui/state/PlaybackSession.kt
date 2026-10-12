@@ -27,6 +27,7 @@ import dev.reflux.library.planPlayback
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
@@ -64,6 +65,8 @@ class PlaybackSession internal constructor(
     private var reporter: SerialWatchReporter? = null
     private var sourceId: SourceId? = null
     private var countdown: Job? = null
+    private var startup: Job? = null
+    private var stalled = false
     private var endHandled = false
     private var closing: Job? = null
     private val closed: Boolean get() = closing != null
@@ -143,6 +146,26 @@ class PlaybackSession internal constructor(
             preferences = TrackPreferences(app.platform.preferredLanguages),
             onSkip = { forward -> switchTo(if (forward) next else previous) },
         ).also { it.start(scope, plan.request) }
+        watchStartup()
+    }
+
+    /**
+     * An engine that cannot start (its video output failed to come up, a source that never answers) reports
+     * nothing at all. After a while that silence is itself the failure, and the viewer is told and offered
+     * the way back. If playback does begin after all, the message makes way for it.
+     */
+    private fun watchStartup() {
+        startup?.cancel()
+        stalled = false
+        startup = scope.launch {
+            delay(STARTUP_PATIENCE_MS)
+            if (error == null && player.state.value.status == PlayerStatus.LOADING) {
+                stalled = true
+                error = PlaybackError(Problems.PLAYBACK_STALLED, null)
+                menu = null
+                app.platform.report("Playback of \"$title\" did not start within ${STARTUP_PATIENCE_MS / 1000} s")
+            }
+        }
     }
 
     /** Handles a semantic action while the player is open. Every action counts as "still watching". */
@@ -305,9 +328,8 @@ class PlaybackSession internal constructor(
         controller?.stop()
         scope.cancel()
         if (app.platform.fullscreen != wasFullscreen) app.platform.requestFullscreen(wasFullscreen)
-        app.playbackClosed(this)
         val pending = reporter
-        return app.scope.launch {
+        val release = app.scope.launch(start = CoroutineStart.LAZY) {
             try {
                 pending?.flush()
                 app.invalidate()
@@ -320,7 +342,11 @@ class PlaybackSession internal constructor(
                     app.platform.report("Releasing the playback engine failed", e)
                 }
             }
-        }.also { closing = it }
+        }
+        closing = release
+        app.playbackClosed(this, release)
+        release.start()
+        return release
     }
 
     private fun switchTo(target: LibraryEntry?): Boolean {
@@ -349,6 +375,10 @@ class PlaybackSession internal constructor(
     }
 
     private fun onState(state: PlayerState) {
+        if (stalled && state.status in STARTED) {
+            stalled = false
+            error = null
+        }
         when (state.status) {
             PlayerStatus.ENDED -> if (!endHandled) {
                 endHandled = true
@@ -403,6 +433,8 @@ class PlaybackSession internal constructor(
 
     private companion object {
         const val COUNTDOWN_TICK_MS = 250L
+        const val STARTUP_PATIENCE_MS = 30_000L
+        val STARTED = setOf(PlayerStatus.PLAYING, PlayerStatus.PAUSED, PlayerStatus.BUFFERING)
 
         /** After a failure the player has one thing left to do, and every "go on" or "go back" does it. */
         val LEAVING = setOf(SemanticAction.BACK, SemanticAction.SELECT, SemanticAction.PLAY_PAUSE)

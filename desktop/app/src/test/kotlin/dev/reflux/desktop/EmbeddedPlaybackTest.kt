@@ -69,6 +69,7 @@ class EmbeddedPlaybackTest {
             fullscreenKeepsPlaying(windowed)
             positionIsRememberedAndResumed(movie)
             episodesFollowEachOther(episodes)
+            theSurfaceFollowsTheWindowAndSurvivesARestart(episodes[0])
             aMissingFileIsExplained(movie)
             closingTheWindowSavesWhatWasPlaying(episodes[0])
         } finally {
@@ -221,6 +222,37 @@ class EmbeddedPlaybackTest {
         shell.drag("Timeline", from = 0.3f, to = 0.9f)
         shell.await("the player to close after the last episode") { shell.app.playback == null }
         shell.await("the last episode to be watched") { environment.library.watchState(episodes[1])?.completed == true }
+    }
+
+    private fun theSurfaceFollowsTheWindowAndSurvivesARestart(episode: MediaId) {
+        shell.ui { shell.app.play(episode) }
+        awaitPlayer("playback to start") { it.status == PlayerStatus.PLAYING }
+        fun covered(): Boolean {
+            val surface = shell.find { it.name == VideoSurface.NAME && it.isShowing } ?: return false
+            val overlay = shell.overlay ?: return false
+            return surface.locationOnScreen == overlay.locationOnScreen && surface.size == overlay.size
+        }
+        shell.await("the controls to cover the video") { covered() }
+
+        // Resizing the window resizes the video and keeps the controls exactly over it.
+        val before = shell.ui { shell.window.size }
+        shell.ui { shell.window.setSize(before.width - 220, before.height - 140) }
+        shell.await("the controls to follow the smaller window") {
+            covered() && shell.overlay!!.width < before.width - 150
+        }
+        shell.ui { shell.window.size = before }
+        shell.await("the controls to follow the window back") { covered() && shell.overlay!!.width > before.width - 60 }
+
+        // Closing and playing again in the same breath: the second playback waits for the first engine to
+        // let go, then gets a surface of its own with the controls over it.
+        shell.ui {
+            shell.app.playback?.close()
+            shell.app.play(episode)
+        }
+        shell.await("the second playback to start") { shell.app.playback?.state?.value?.let { it.status == PlayerStatus.PLAYING && it.positionMs > 300 } == true }
+        shell.await("the controls to cover the new video") { covered() }
+        shell.key(KeyEvent.VK_ESCAPE)
+        shell.await("the player to close") { shell.app.playback == null && shell.find { it.name == VideoSurface.NAME } == null }
     }
 
     private fun aMissingFileIsExplained(movie: MediaId) {

@@ -49,6 +49,7 @@ import dev.reflux.sources.local.LocalFolderSource
 import dev.reflux.ui.state.ArtworkLoader
 import dev.reflux.ui.state.FolderChoice
 import dev.reflux.ui.state.Platform
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -245,15 +246,22 @@ class FakePlatform(artwork: Boolean = true) : Platform {
 
     override suspend fun createPlayer(): Player? = if (failToStart) null else FakePlayer(device).also { players += it }
 
+    /** Completes when the engine may go; lets a test hold a player in the middle of being released. */
+    var releaseGate: CompletableDeferred<Unit>? = null
+
     override suspend fun releasePlayer(player: Player) {
+        releaseGate?.await()
         released += player
         player.close()
     }
 
     override suspend fun addMediaFolder(): FolderChoice = chooseFolder()
 
+    var remove: suspend (SourceId) -> Unit = {}
+
     override suspend fun removeSource(id: SourceId) {
         removed += id
+        remove(id)
     }
 
     override var fullscreen: Boolean by mutableStateOf(false)
@@ -284,8 +292,12 @@ class FakePlayer(override val capabilities: DeviceCapabilities) : Player {
     )
     var chapters = listOf(Chapter("Intro", 60_000), Chapter("Part One", 150_000), Chapter("Part Two", 25 * 60_000L), Chapter("Credits", 47 * 60_000L))
 
+    /** False makes the engine accept a file and then never get anywhere with it. */
+    var starts = true
+
     override fun load(request: PlaybackRequest) {
         requests += request
+        if (!starts) return mutable.update { PlayerState(status = PlayerStatus.LOADING, volume = it.volume, muted = it.muted) }
         mutable.update {
             PlayerState(
                 status = PlayerStatus.PLAYING, positionMs = request.startPositionMs ?: 0, durationMs = durationMs,

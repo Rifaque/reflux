@@ -91,7 +91,13 @@ internal class GamepadTranslator(private val press: (GamepadButton, ControllerFa
     fun update(states: List<GamepadState>, nowMs: Long, active: Boolean = true) {
         held.keys.retainAll(states.mapTo(mutableSetOf()) { it.id })
         for (state in states) {
-            val previous = held.getOrPut(state.id) { Held() }
+            val previous = held[state.id] ?: Held().also { known ->
+                // A controller is taken as it is found: whatever is already held or deflected when it
+                // appears (a button down while plugging in, a worn stick) is not a press.
+                known.stick = stickDirections(state, emptySet())
+                known.buttons = state.buttons + known.stick
+                held[state.id] = known
+            }
             previous.stick = stickDirections(state, previous.stick)
             val down = state.buttons + previous.stick
             for (button in down) {

@@ -20,6 +20,7 @@ internal object Problems {
     const val LIBRARY_NOT_UPDATED = "Couldn't update the library. Reflux will try again."
     const val FOLDER_NOT_ADDED = "That folder couldn't be added."
     const val TRACK_GONE = "That track is no longer available."
+    const val PLAYBACK_STALLED = "Playback isn't starting. The file may be slow to reach, or video couldn't be started on this device."
 
     fun noEngine(hint: String?): String = listOfNotNull("Reflux has no playback engine on this device yet.", hint).joinToString(" ")
 

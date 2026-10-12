@@ -197,4 +197,24 @@ class MpvEngineTest {
         assertEquals(PlaybackFailure.OUTPUT, MpvPlayer.failureOf(LibMpv.ERROR_AO_INIT_FAILED))
         assertEquals(PlaybackFailure.UNKNOWN, MpvPlayer.failureOf(-1))
     }
+
+    @Test
+    fun anEndingKeepsItsDurationSoThatItCountsAsWatched() {
+        // The engine withdraws a file's duration as it unloads the file, around the moment it reports the
+        // ending. Whichever comes first, the ended state must still say how long the file was.
+        repeat(5) {
+            headless().use { player ->
+                player.load(PlaybackRequest(PlaybackTarget(TestMedia.multiTrackMkv(directory).toUri().toString()), "Short"))
+                player.await { it.status == PlayerStatus.PLAYING && it.durationMs != null }
+                player.seekTo(2_600)
+                val ended = player.await { it.status == PlayerStatus.ENDED }
+                assertNotNull(ended.durationMs, "the ended state knows the duration")
+                assertEquals(ended.durationMs, ended.positionMs)
+                Thread.sleep(250) // let the unload notifications arrive
+                val later = player.state.value
+                assertEquals(PlayerStatus.ENDED, later.status)
+                assertEquals(ended.durationMs to ended.positionMs, later.durationMs to later.positionMs, "and nothing that follows takes it away")
+            }
+        }
+    }
 }

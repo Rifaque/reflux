@@ -80,7 +80,7 @@ internal class DesktopPlatform(private val environment: DesktopEnvironment) : Pl
     override suspend fun releasePlayer(player: Player) {
         // The engine leaves the surface before the surface goes away.
         try {
-            withContext(Dispatchers.IO) { player.close() }
+            withContext(Dispatchers.IO) { x11Errors?.closely { player.close() } ?: player.close() }
         } finally {
             x11Errors?.release()
             video.hide()

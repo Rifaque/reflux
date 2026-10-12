@@ -1,14 +1,20 @@
 package dev.reflux.ui
 
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.test.DesktopComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsFocused
+import androidx.compose.ui.test.click
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isFocused
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.performMouseInput
 import dev.reflux.core.input.ControllerFamily
 import dev.reflux.core.input.GamepadButton
 import dev.reflux.core.input.InputModality
@@ -213,5 +219,37 @@ class DirectionalInputTest {
             await("the player to close") { app.playback == null }
             assertFalse(platform.fullscreen, "leaving the player restores the window")
         }
+    }
+
+    @Test
+    fun comingBackPutsFocusWhereTheUserLeft() = screen(populated()) { app ->
+        awaitText("Recently Added")
+        fun focusedName() = onNode(isFocused()).fetchSemanticsNode().config.getOrNull(SemanticsProperties.ContentDescription)?.firstOrNull()
+
+        // Down the page and along a row, then into a title.
+        repeat(3) { press(app, GamepadButton.DPAD_DOWN) }
+        repeat(3) { press(app, GamepadButton.DPAD_RIGHT) }
+        val left = assertNotNull(focusedName())
+        val place = focusedBounds()
+        press(app, GamepadButton.FACE_SOUTH)
+        await("details to open") { app.navigator.current is Destination.Details }
+        press(app, GamepadButton.DPAD_DOWN)
+        press(app, GamepadButton.FACE_EAST)
+        await("Home to return") { app.navigator.current == Destination.Home }
+
+        // Without a press: the page is where it was and the same card has focus.
+        await("focus to return to the card") { runCatching { focusedName() }.getOrNull() == left }
+        val back = focusedBounds()
+        assertTrue(abs(back.left - place.left) < 4f && abs(back.top - place.top) < 4f, "the page did not move ($place, now $back)")
+
+        // A pointer user is not handed a focus ring for coming back.
+        runOnIdle { app.navigator.open(Destination.Details(app.library.movies().first().item.id)) }
+        awaitText("Cast")
+        onRoot().performMouseInput { click(Offset(1420f, 880f)) }
+        waitForIdle()
+        assertEquals(InputModality.POINTER, app.input.modality)
+        runOnIdle { app.navigator.back() }
+        awaitText("Recently Added")
+        assertEquals(0, onAllNodes(isFocused()).fetchSemanticsNodes().size)
     }
 }

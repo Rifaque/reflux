@@ -15,6 +15,7 @@ jobs:
   check:
     name: Check (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
@@ -30,25 +31,19 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
 
       # Real-engine tests (libmpv playback/probing against FFmpeg-generated media) run where libmpv is available
-      # and are skipped elsewhere. The virtual desktop is for the window tests below.
+      # and are skipped elsewhere. The X server, window manager, and compositor are for the window tests below.
       - name: Install libmpv, FFmpeg, and a virtual desktop
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libmpv2 ffmpeg xvfb openbox xcompmgr libgl1-mesa-dri libglx-mesa0 libegl1
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends $(cat tools/ci/linux-packages.txt)
 
       - name: Build and test
         run: ./gradlew check :tools:cli:installDist --stacktrace
 
-      # The real desktop shell in a real window: first run through the folder chooser, browsing with a mouse
-      # and a controller, and playback with libmpv under controls operated by a mouse.
+      # The real desktop shell in a real window, on a virtual display. tools/ci/linux-check.sh runs these same
+      # two steps in a container, for reproducing this job locally.
       - name: Desktop window tests
         if: runner.os == 'Linux'
-        run: |
-          Xvfb :99 -screen 0 1600x1000x24 -nolisten tcp &
-          sleep 2
-          export DISPLAY=:99
-          openbox &
-          xcompmgr &
-          ./gradlew :desktop:app:test -Preflux.windowTests=true --stacktrace
+        run: tools/ci/desktop-window-tests.sh --stacktrace
 
       - name: Upload test reports
         if: failure()

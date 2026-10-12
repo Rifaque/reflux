@@ -135,10 +135,12 @@ internal fun runReflux(
                 }
             }
 
-            val session = app.playback
-            val canvas = platform.video.canvas
-            if (session != null && canvas != null) {
+            // The controls window lives exactly as long as the video surface, not as long as the session:
+            // it must not be torn down while the engine is being torn down (see X11ErrorGuard), and the
+            // surface only goes away once the engine has.
+            platform.video.canvas?.let { canvas ->
                 VideoOverlay(window, canvas) {
+                    val session = app.playback ?: return@VideoOverlay
                     // An almost invisible fill keeps the whole overlay window hit-testable; fully transparent
                     // pixels would let pointer input fall through to the video surface.
                     Box(Modifier.fillMaxSize().background(Color(0x01000000))) {

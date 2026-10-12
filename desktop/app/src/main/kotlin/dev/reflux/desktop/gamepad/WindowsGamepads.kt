@@ -31,7 +31,7 @@ internal class WindowsGamepads : GamepadReader {
     private var joystickScanAt = 0L
     private var connectedJoysticks = emptyList<Joystick>()
 
-    private class Joystick(val id: Int, val family: ControllerFamily, val xMin: Int, val xMax: Int, val yMin: Int, val yMax: Int)
+    private class Joystick(val id: Int, val family: ControllerFamily, val hasHat: Boolean, val xMin: Int, val xMax: Int, val yMin: Int, val yMax: Int)
 
     override fun poll(): List<GamepadState> {
         val now = System.nanoTime() / 1_000_000
@@ -66,7 +66,10 @@ internal class WindowsGamepads : GamepadReader {
             val vendor = caps.getShort(0).toInt() and 0xFFFF
             val product = caps.getShort(2).toInt() and 0xFFFF
             if ((vendor to product) in xinputDevices) return@mapNotNull null // read through XInput instead
-            Joystick(id, ControllerFamilies.of(vendor, caps.getWideString(4)), caps.getInt(68), caps.getInt(72), caps.getInt(76), caps.getInt(80))
+            // Windows also lists keyboards, mice, and headsets with vendor extensions here, as joysticks with nothing on them.
+            if (!Joysticks.isGameController(buttons = caps.getInt(92), axes = caps.getInt(136))) return@mapNotNull null
+            val hasHat = caps.getInt(128) and Joysticks.CAPS_HAS_POV != 0
+            Joystick(id, ControllerFamilies.of(vendor, caps.getWideString(4)), hasHat, caps.getInt(68), caps.getInt(72), caps.getInt(76), caps.getInt(80))
         }
     }
 
@@ -80,7 +83,7 @@ internal class WindowsGamepads : GamepadReader {
         }
         return Joysticks.decode(
             joystick.id, joystick.family,
-            buttons = info.getInt(32), pov = info.getInt(40),
+            buttons = info.getInt(32), pov = info.getInt(40).takeIf { joystick.hasHat },
             x = Joysticks.normalize(info.getInt(8), joystick.xMin, joystick.xMax),
             y = Joysticks.normalize(info.getInt(12), joystick.yMin, joystick.yMax),
         )
@@ -153,6 +156,7 @@ internal interface Joysticks : Library {
         const val INFO_SIZE = 52L // JOYINFOEX
         const val CAPS_SIZE = 728L // JOYCAPSW
         const val RETURN_ALL = 0xFF
+        const val CAPS_HAS_POV = 0x0010
         private const val POV_CENTERED = 0xFFFF
 
         fun load(): Joysticks? = runCatching { Native.load("winmm", Joysticks::class.java) }.getOrNull()
@@ -160,10 +164,16 @@ internal interface Joysticks : Library {
         fun normalize(value: Int, min: Int, max: Int): Float =
             if (max <= min) 0f else ((value.toLong() and 0xFFFFFFFFL) - min).toFloat() / (max - min) * 2f - 1f
 
-        /** `JOYINFOEX` as a [GamepadState]. The hat reports its angle in hundredths of a degree, clockwise from up. */
-        fun decode(id: Int, family: ControllerFamily, buttons: Int, pov: Int, x: Float, y: Float): GamepadState {
+        /** Whether a joystick device is something to navigate with: face buttons and at least one stick. */
+        fun isGameController(buttons: Int, axes: Int): Boolean = buttons >= 4 && axes >= 2
+
+        /**
+         * `JOYINFOEX` as a [GamepadState]. The hat reports its angle in hundredths of a degree, clockwise from
+         * up; [pov] is null for a device without a hat, whose reading of 0 would otherwise mean "up".
+         */
+        fun decode(id: Int, family: ControllerFamily, buttons: Int, pov: Int?, x: Float, y: Float): GamepadState {
             val pressed = NumberedButtons.fromMask(buttons, family).toMutableSet()
-            val angle = pov and 0xFFFF
+            val angle = pov?.and(0xFFFF) ?: POV_CENTERED
             if (angle != POV_CENTERED) {
                 if (angle >= 29250 || angle <= 6750) pressed += GamepadButton.DPAD_UP
                 if (angle in 2250..15750) pressed += GamepadButton.DPAD_RIGHT

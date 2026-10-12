@@ -91,9 +91,10 @@ Touch/pointer/keyboard interaction should still remain possible.
   - Linux: the kernel joystick interface, with button meanings taken from each device's capabilities.
   - A press acts once; a held direction repeats; the left stick is a D-pad once clearly deflected.
   - Buttons act only while a Reflux window is the active window.
-- With a controller in use the navigation bar and the player show what the buttons do, labelled for that controller's family (Cross/Circle, A/B, ...). The first directional press on a screen focuses its main action; focus that scrolls a page stays clear of the navigation bar; the sources panel keeps focus until it is closed.
+  - Only devices with buttons and a stick count as controllers, and whatever is held when one appears is not a press.
+- With a controller in use the navigation bar and the player show what the buttons do, labelled for that controller's family (Cross/Circle, A/B, ...). The first directional press on a screen focuses its main action; coming back to a screen returns focus to the item that was opened from it; focus that scrolls a page stays clear of the navigation bar; the sources panel keeps focus until it is closed.
 - Confirm on a controller activates the focused control through the experience layer, because there is no key for the toolkit to handle.
-- Not yet read on desktop: media keys. Controller support has been exercised through the reader interface and the platform APIs with no controller connected; a session with physical Xbox and PlayStation controllers is still owed.
+- Not yet read on desktop: media keys. Controller support is exercised from the reader interface upward and against the platform APIs; real hardware has so far only supplied devices that are *not* controllers (which found two defects). A session with a physical Xbox or PlayStation controller is still owed, and `PhysicalControllerTest` walks a person through it.
 
 ## Configuration
 
