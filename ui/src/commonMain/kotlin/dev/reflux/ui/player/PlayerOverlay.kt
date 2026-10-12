@@ -202,6 +202,9 @@ fun PlayerOverlay(app: AppState, session: PlaybackSession, modifier: Modifier = 
     }
 }
 
+/** Whether Play/Pause would pause: playback that is waiting for data or for a seek still wants to run. */
+private val PlayerState.pauses: Boolean get() = status == PlayerStatus.PLAYING || status == PlayerStatus.BUFFERING
+
 private fun skipLabel(segment: SkipSegment): String = when (segment.kind) {
     SkipSegment.Kind.INTRO -> "Skip intro"
     SkipSegment.Kind.RECAP -> "Skip recap"
@@ -246,7 +249,7 @@ private fun Controls(app: AppState, session: PlaybackSession, state: PlayerState
                     listOf(InputMapping.confirmButton(family) to "Choose", InputMapping.cancelButton(family) to "Close")
                 } else {
                     listOfNotNull(
-                        InputMapping.confirmButton(family) to if (state.status == PlayerStatus.PLAYING) "Pause" else "Play",
+                        InputMapping.confirmButton(family) to if (state.pauses) "Pause" else "Play",
                         InputMapping.cancelButton(family) to "Back",
                         GamepadButton.START to "Options",
                         (GamepadButton.SHOULDER_RIGHT to "Next").takeIf { session.next != null },
@@ -275,8 +278,8 @@ private fun Controls(app: AppState, session: PlaybackSession, state: PlayerState
                     IconButton(Icon.PREVIOUS, "Previous", { session.handle(SemanticAction.PREVIOUS) })
                     IconButton(Icon.REWIND, "Back 10 seconds", { session.handle(SemanticAction.SEEK_BACKWARD) })
                     IconButton(
-                        if (state.status == PlayerStatus.PLAYING || state.status == PlayerStatus.BUFFERING) Icon.PAUSE else Icon.PLAY,
-                        if (state.status == PlayerStatus.PLAYING) "Pause" else "Play",
+                        if (state.pauses) Icon.PAUSE else Icon.PLAY,
+                        if (state.pauses) "Pause" else "Play",
                         { session.handle(SemanticAction.PLAY_PAUSE) },
                         size = 48.dp,
                     )

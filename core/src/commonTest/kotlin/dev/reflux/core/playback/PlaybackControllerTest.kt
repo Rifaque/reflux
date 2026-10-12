@@ -71,6 +71,17 @@ class PlaybackControllerTest {
     }
 
     @Test
+    fun pauseWorksWhilePlaybackIsWaitingForASeekOrForData() = runTest(UnconfinedTestDispatcher()) {
+        started()
+        playing(5_000)
+        player.state.value = player.state.value.copy(status = PlayerStatus.BUFFERING)
+        controller.handle(SemanticAction.PLAY_PAUSE)
+        assertEquals("pause", player.commands.last(), "buffering playback is playback: the button pauses it")
+        controller.handle(SemanticAction.PLAY_PAUSE)
+        assertEquals("play", player.commands.last())
+    }
+
+    @Test
     fun endReportsCompletionOnce() = runTest(UnconfinedTestDispatcher()) {
         started()
         playing(99_000)

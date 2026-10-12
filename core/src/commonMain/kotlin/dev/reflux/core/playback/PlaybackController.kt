@@ -44,7 +44,9 @@ class PlaybackController(
     fun handle(action: SemanticAction): Boolean {
         val state = player.state.value
         when (action) {
-            SemanticAction.PLAY_PAUSE -> if (state.status == PlayerStatus.PLAYING) player.pause() else player.play()
+            // Buffering is playback that wants to run: pausing must work in the middle of a seek too.
+            SemanticAction.PLAY_PAUSE ->
+                if (state.status == PlayerStatus.PLAYING || state.status == PlayerStatus.BUFFERING) player.pause() else player.play()
             SemanticAction.SEEK_FORWARD -> seekBy(state, SEEK_STEP_MS)
             SemanticAction.SEEK_BACKWARD -> seekBy(state, -SEEK_STEP_MS)
             SemanticAction.SPEED_UP -> player.setSpeed(nextSpeed(state.speed, up = true))

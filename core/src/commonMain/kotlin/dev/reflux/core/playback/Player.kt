@@ -3,6 +3,10 @@ package dev.reflux.core.playback
 import dev.reflux.core.source.PlaybackTarget
 import kotlinx.coroutines.flow.StateFlow
 
+/**
+ * What a player is doing. [BUFFERING] is playback that wants to run and is waiting for data or for a seek to
+ * land; a paused player is [PAUSED] even while it seeks, so the status always says what Play/Pause would do.
+ */
 enum class PlayerStatus { IDLE, LOADING, BUFFERING, PLAYING, PAUSED, ENDED, ERROR }
 
 enum class TrackType { VIDEO, AUDIO, SUBTITLE }

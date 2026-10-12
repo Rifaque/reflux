@@ -275,6 +275,16 @@ class PointerTest {
     }
 
     @Test
+    fun playbackThatIsWaitingCanBePaused() = player { playing ->
+        playing.player.buffer()
+        waitForIdle()
+        assertTrue(exists("Pause") && !exists("Play"), "the button says what it will do")
+        onRoot().performMouseInput { click(Offset(720f, 380f)) }
+        await("the click on the video to pause") { playing.state.status == PlayerStatus.PAUSED }
+        assertTrue(exists("Play"))
+    }
+
+    @Test
     fun controlsLeaveWhilePlayingAndReturnWithThePointer() = player { playing ->
         playing.player.play()
         waitForIdle()

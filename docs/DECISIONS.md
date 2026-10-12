@@ -241,4 +241,6 @@ The Linux job's package list and its window-test script live in `tools/ci` and a
 
 `MpvPlayer` sends everything to libmpv through its asynchronous command call. The `Player` contract always said that commands return immediately and show their effect in the state; the binding used the synchronous calls, which return when the engine has run the command. Normally that is a millisecond. When the engine's core is busy or stuck (found on Linux: a video output that never started) the caller waited with it, and the caller is the UI thread.
 
+An engine that never gets anywhere reports nothing, so silence has a limit: a playback that is still loading after thirty seconds becomes a stated failure with the way back (and makes way if playback starts after all), and a closed engine that will not shut down is left behind after five seconds rather than blocking the next playback.
+
 Related, and the cause of that stuck video output: a video surface is handed to the engine only after the toolkit has synchronized with the display server. The engine reaches the surface through its own connection, and the toolkit merely queues the request that creates the native window.
