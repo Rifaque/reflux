@@ -36,6 +36,8 @@ Controller support is normalized around semantic actions, with first-class PlayS
 
 When otherwise equivalent, local media should be preferred. Best Version logic may also consider resolution, compatibility, HDR, audio, availability, and reliability.
 
+See the 2026-10-13 entry on local-first version selection for what "otherwise equivalent" means.
+
 ## 2026-10-08 — Platform scope
 
 Initial target scope is Android phone/tablet, Android TV / Google TV, Windows, and Linux. iOS/iPadOS is not a v1 commitment.
@@ -246,3 +248,39 @@ Tests that need the engine, FFmpeg, or a display skip themselves where those are
 An engine that never gets anywhere reports nothing, so silence has a limit: a playback that is still loading after thirty seconds becomes a stated failure with the way back (and makes way if playback starts after all), and a closed engine that will not shut down is left behind after five seconds rather than blocking the next playback.
 
 Related, and the cause of that stuck video output: a video surface is handed to the engine only after the toolkit has synchronized with the display server. The engine reaches the surface through its own connection, and the toolkit merely queues the request that creates the native window.
+
+## 2026-10-13 — Playback progress follows the work
+
+**Playback progress follows the media work, not the physical file or source.** A work has one watch state, owned by Reflux. Whichever version plays, progress is recorded for the work; whichever version plays next, it continues from there. A user who starts a film from a local file and continues it from a server does not choose a source and does not seek. The full contract is in [WATCH_STATE.md](WATCH_STATE.md).
+
+The state already belonged to works. What this adds is what makes that safe to rely on across copies:
+
+- **A position has a timeline.** The state records the running time and the cut of the copy the position was measured on, and which version it was. A position without that is only meaningful on the file it came from.
+- **Timelines are compared, not assumed.** Another encode or source of the same cut is the same timeline. Another cut, or a running time that differs by more than 1% (at least 15 seconds), is not. A cut is named only by edition labels that mean a different edit; a label on the transfer or the packaging, and a server's free-text name for a file, are not cuts.
+- **A position is never carried blindly onto a different timeline.** It is moved to the latest point that cannot be past what the user has seen (the same position in a longer copy, earlier by the difference in a shorter one), and the player says so. With nothing to measure the difference by, playback starts at the beginning and the remembered position is kept.
+
+**Alternatives.** Resetting progress when the cut changes is safe and loses the user's place, which is the thing the invariant exists to keep. Carrying the timestamp over unchanged is what most players do and silently skips or repeats minutes between cuts. Scaling the position by the ratio of running times is right only when the difference is spread evenly, and errs in the direction of skipping. Matching content itself (audio or frame fingerprints) would be exact and is far beyond what this needs; the comparison sits behind one function so that it can be replaced.
+
+**Consequences.** Running times matter: a copy that was never probed can only be `UNVERIFIED`, and is trusted rather than held against the user (unknown is not failure). Best Version prefers a copy on the timeline in progress over a better picture of another cut, below playability and above resolution. The database schema gained its first migration; watch state is user state and is carried forward, not rebuilt.
+
+## 2026-10-13 — Sources are reconciled with Reflux's watch state, not obeyed
+
+Reflux's watch state is the canonical one. A source that keeps its own (a media server) is a witness of what the user did, translated by its adapter into a source-independent record. For each of a source's items Reflux remembers what the source last said and when the two last had nothing left to settle, and from that:
+
+- A record that changed while Reflux's state did not is news and is adopted. The exception is a record that has become empty and undated: it cannot be told from a server that was reset, and Reflux's history is not erased on the strength of it.
+- A record that did not change never overwrites anything, however its date compares.
+- When both changed, the later one is where the user is; an undated record cannot show that it is later.
+- What changed in Reflux since the two were last in step is sent to the source, retried while it cannot be delivered, and not repeated once it was accepted.
+- A first comparison adopts what only the source knows and otherwise changes nothing on the source.
+
+**Why not compare timestamps alone.** That was the earlier rule (adopt the source's state when its last-played date is newer). It depends on two clocks agreeing, it cannot see a change that carries no date (marking something unwatched), and it let a server's old "played" return after the user un-marked a work while the server was away.
+
+A position is sent only to a source whose copy is on the timeline it was measured on; that a work was watched is sent whatever the cut. Reflux's own state is always written first and never waits for a source.
+
+## 2026-10-13 — Local-first version selection
+
+**When versions are effectively equivalent in quality and compatibility, the local one is preferred.** Local is a strong tie-breaker, not an override, and "highest resolution wins" is not a rule.
+
+"Equivalent" is judged for the device in front of the user, in this order: whether it can play the version at all, how many compromises that takes (software decoding, tone mapping), and then resolution, dynamic range, and audio *only as far as this display and these outputs reach*. Versions that are the same by all of that are equivalent, and the closest one plays: on the device, then on the local network, then remote. A local 1080p H.264 file beats the same thing streamed. A local 4K HEVC 10-bit file loses to a 1080p H.264 stream on a device that decodes HEVC in software or not at all, and wins on one that decodes it in hardware on a 4K display.
+
+Codec, encoder, and bit depth are not quality in themselves and are never ranked directly: H.264 and HEVC are codecs, x264 and x265 are encoders, 8-bit and 10-bit are bit depths, and each counts only through what the device does with it. A user's pinned version outranks everything while it is playable, and a viewer part-way through one cut stays on that cut.

@@ -147,6 +147,7 @@ class PlaybackSession internal constructor(
             onSkip = { forward -> switchTo(if (forward) next else previous) },
         ).also { it.start(scope, plan.request) }
         watchStartup()
+        Problems.handoff(plan.resume)?.let(app::notify)
     }
 
     /**

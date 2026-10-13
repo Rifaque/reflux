@@ -51,7 +51,7 @@ class WatchRulesTest {
         val watched = WatchRules.markWatched(null, id, nowMs = 5)
         assertTrue(watched.completed)
         assertEquals(1, watched.playCount)
-        assertFalse(WatchRules.markUnwatched(watched, id).completed)
+        assertFalse(WatchRules.markUnwatched(watched, id, nowMs = 3).completed)
     }
 
     private fun episode(season: Int, number: Int) = Episode(

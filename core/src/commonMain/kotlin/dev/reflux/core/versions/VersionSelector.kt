@@ -3,12 +3,15 @@ package dev.reflux.core.versions
 import dev.reflux.core.model.Availability
 import dev.reflux.core.model.MediaVersion
 import dev.reflux.core.model.VersionId
+import dev.reflux.core.model.WatchState
 import dev.reflux.core.playback.DeviceCapabilities
 import dev.reflux.core.playback.DynamicRange
 import dev.reflux.core.playback.PlaybackAssessment
 import dev.reflux.core.playback.PlaybackAssessor
 import dev.reflux.core.playback.PlaybackVerdict
 import dev.reflux.core.source.SourceLocality
+import dev.reflux.core.watch.Handoff
+import dev.reflux.core.watch.TimelineMatch
 
 /** A version together with the state of the source that holds it. */
 data class VersionCandidate(
@@ -23,6 +26,9 @@ enum class SelectionCriterion {
     AVAILABILITY,
     COMPATIBILITY,
     FEWER_COMPROMISES,
+
+    /** The viewer is part-way through one cut; another copy of that cut continues exactly where they are. */
+    CONTINUITY,
     RESOLUTION,
     DYNAMIC_RANGE,
     AUDIO,
@@ -54,17 +60,25 @@ data class VersionSelection(
 /**
  * Best Version: deterministic, explainable ranking of the versions of one work for the current device.
  *
- * Local copies win only when versions are otherwise equivalent (docs/DECISIONS.md). A higher resolution than
- * the display can show is not treated as better.
+ * What decides is what this device can actually show and play: a version it cannot play well loses to one
+ * it can, and resolution, dynamic range, and audio only count as far as the display and outputs reach (a
+ * higher resolution than the display can show is not better). Among versions that are equivalent by those
+ * measures the closest copy wins, so a local file is preferred to the same thing streamed, and never to
+ * something materially better (docs/DECISIONS.md).
  */
 object VersionSelector {
+    /**
+     * @param preferred the version the user pinned for this work.
+     * @param resuming the viewer's progress, when playback is going to continue from it.
+     */
     fun select(
         candidates: List<VersionCandidate>,
         device: DeviceCapabilities,
         preferred: VersionId? = null,
+        resuming: WatchState? = null,
     ): VersionSelection {
         val ranked = candidates.map { RankedVersion(it, PlaybackAssessor.assess(it.version.stream, device)) }
-        val criteria = criteria(device, preferred)
+        val criteria = criteria(device, preferred, resuming)
         val comparator = Comparator<RankedVersion> { a, b ->
             for ((_, compare) in criteria) {
                 val result = compare(a, b)
@@ -85,11 +99,13 @@ object VersionSelector {
     private fun criteria(
         device: DeviceCapabilities,
         preferred: VersionId?,
+        resuming: WatchState?,
     ): List<Pair<SelectionCriterion, (RankedVersion, RankedVersion) -> Int>> = listOf(
         SelectionCriterion.USER_PREFERENCE to { a, b -> better(isPreferred(a, preferred), isPreferred(b, preferred)) },
         SelectionCriterion.AVAILABILITY to { a, b -> availabilityRank(a).compareTo(availabilityRank(b)) },
         SelectionCriterion.COMPATIBILITY to { a, b -> a.assessment.verdict.compareTo(b.assessment.verdict) },
         SelectionCriterion.FEWER_COMPROMISES to { a, b -> a.assessment.compromises.size.compareTo(b.assessment.compromises.size) },
+        SelectionCriterion.CONTINUITY to { a, b -> breaksContinuity(a, resuming).compareTo(breaksContinuity(b, resuming)) },
         SelectionCriterion.RESOLUTION to { a, b -> effectiveHeight(b, device).compareTo(effectiveHeight(a, device)) },
         SelectionCriterion.DYNAMIC_RANGE to { a, b -> shownRange(b, device).compareTo(shownRange(a, device)) },
         SelectionCriterion.AUDIO to { a, b -> audioScore(b, device).compareTo(audioScore(a, device)) },
@@ -102,6 +118,9 @@ object VersionSelector {
 
     private fun isPreferred(version: RankedVersion, preferred: VersionId?): Boolean =
         version.version.id == preferred && version.playable
+
+    private fun breaksContinuity(version: RankedVersion, resuming: WatchState?): Boolean =
+        Handoff.relation(resuming, version.version) == TimelineMatch.DIFFERENT
 
     private fun availabilityRank(version: RankedVersion): Int = when (version.candidate.availability) {
         Availability.AVAILABLE -> 0

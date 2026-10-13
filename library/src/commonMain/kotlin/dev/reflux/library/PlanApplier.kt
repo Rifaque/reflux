@@ -4,12 +4,14 @@ import dev.reflux.core.identify.ConfidenceLevel
 import dev.reflux.core.identify.TitleText
 import dev.reflux.core.model.ArtworkLocator
 import dev.reflux.core.model.Episode
+import dev.reflux.core.model.MediaId
 import dev.reflux.core.model.MediaItem
 import dev.reflux.core.model.MediaVersion
 import dev.reflux.core.model.Season
 import dev.reflux.core.model.StreamInfoOrigin
 import dev.reflux.core.model.VersionId
 import dev.reflux.core.playback.StreamInfo
+import dev.reflux.core.watch.WatchRules
 import dev.reflux.library.db.LibraryQueries
 
 /** Writes scan plans and probe results into the library database. Callers own the transaction. */
@@ -108,9 +110,10 @@ internal class PlanApplier(private val queries: LibraryQueries, private val now:
             queries.upsertArtwork(art.itemId.value, art.kind.name, art.origin, sourceId, locator.location.path)
         }
 
-        // A work whose only file was re-identified carries its watch history to the new identity.
+        // A work whose only file was re-identified carries its watch history to the new identity. Where
+        // that identity has a history of its own (two works turned out to be one), the two become one.
         for ((from, to) in movedItems.distinct()) {
-            if (!queries.itemHasVersions(from).executeAsOne()) queries.moveWatchState(to, from)
+            if (!queries.itemHasVersions(from).executeAsOne()) moveWatchState(from, to)
         }
         queries.deleteOrphanPlayables()
         queries.deleteEmptySeasons()
@@ -130,6 +133,13 @@ internal class PlanApplier(private val queries: LibraryQueries, private val now:
             skipped = plan.skipped,
             lowConfidence = plan.versions.count { it.parsed.confidence.level == ConfidenceLevel.LOW },
         )
+    }
+
+    private fun moveWatchState(from: String, to: String) {
+        val moving = queries.watchStateOf(from).executeAsOneOrNull()?.toModel() ?: return
+        val existing = queries.watchStateOf(to).executeAsOneOrNull()?.toModel()
+        queries.save(if (existing == null) moving.copy(itemId = MediaId(to)) else WatchRules.merge(MediaId(to), existing, moving))
+        queries.deleteWatchState(from)
     }
 
     private fun insertVersion(version: MediaVersion, confidence: Double, signals: String, sourceIdentity: String?, time: Long) {

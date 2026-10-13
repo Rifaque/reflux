@@ -1,0 +1,15 @@
+-- Watch state remembers which timeline its position was measured on and when the user last changed it;
+-- sources that keep their own watch state get a record of what they last said.
+ALTER TABLE watch_state ADD COLUMN updated_at INTEGER;
+ALTER TABLE watch_state ADD COLUMN version_id TEXT;
+ALTER TABLE watch_state ADD COLUMN cut TEXT;
+
+CREATE TABLE watch_sync (
+    source_id TEXT NOT NULL,
+    path TEXT NOT NULL,
+    played INTEGER NOT NULL,
+    position_ms INTEGER NOT NULL,
+    last_played_at INTEGER,
+    reconciled_at INTEGER NOT NULL,
+    PRIMARY KEY (source_id, path)
+);

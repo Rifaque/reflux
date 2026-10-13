@@ -24,7 +24,11 @@ data class CatalogSubtitle(
     val hearingImpaired: Boolean = false,
 )
 
-/** The user's state for a work as the source records it (e.g. a media server's played flag). */
+/**
+ * The user's state for a work as the source records it (e.g. a media server's played flag), translated by
+ * the adapter. [positionMs] is a time in the source's own copy of the work. This is one witness of what the
+ * user did, not Reflux's watch state: `WatchReconciler` decides what it changes.
+ */
 data class SourceUserState(
     val played: Boolean,
     val positionMs: Long,
@@ -55,9 +59,16 @@ interface CatalogSource : MediaSource {
     fun catalog(): Flow<CatalogEntry>
 }
 
-/** A source that keeps its own watch state and accepts updates from Reflux. */
+/**
+ * A source that keeps its own watch state and accepts updates from Reflux. Every call may fail (the source
+ * is away); Reflux's own state never depends on one succeeding.
+ */
 interface WatchStateSyncSource : MediaSource {
     suspend fun reportProgress(path: String, positionMs: Long, paused: Boolean)
+
+    /** Records where playback of [path] stopped; also how Reflux brings a source's position up to date. */
     suspend fun reportStopped(path: String, positionMs: Long)
+
+    /** Marks [path] played or not played. Marking it not played also forgets the source's position in it. */
     suspend fun setPlayed(path: String, played: Boolean)
 }

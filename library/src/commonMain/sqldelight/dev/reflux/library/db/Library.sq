@@ -110,13 +110,31 @@ CREATE TABLE artwork (
 
 CREATE INDEX artwork_source ON artwork(source_id);
 
+-- The canonical watch state: one row per work, whichever copy played.
 CREATE TABLE watch_state (
     item_id TEXT NOT NULL PRIMARY KEY,
     position_ms INTEGER NOT NULL,
     duration_ms INTEGER,
     completed INTEGER NOT NULL,
     play_count INTEGER NOT NULL,
-    last_played_at INTEGER
+    last_played_at INTEGER,
+    -- When the user last changed this state, wherever that happened.
+    updated_at INTEGER,
+    -- The copy the position was measured on (it may be gone) and its cut: the position's timeline.
+    version_id TEXT,
+    cut TEXT
+);
+
+-- What a source said about one of its items when it was last compared with the canonical state.
+CREATE TABLE watch_sync (
+    source_id TEXT NOT NULL,
+    path TEXT NOT NULL,
+    played INTEGER NOT NULL,
+    position_ms INTEGER NOT NULL,
+    last_played_at INTEGER,
+    -- When the source and Reflux last had nothing left to settle for this item.
+    reconciled_at INTEGER NOT NULL,
+    PRIMARY KEY (source_id, path)
 );
 
 CREATE TABLE favorite (
@@ -535,8 +553,24 @@ WHERE show_id = ? AND (
 -- Watch state, favorites, overrides, preferences -------------------------------------------------
 
 upsertWatchState:
-INSERT OR REPLACE INTO watch_state(item_id, position_ms, duration_ms, completed, play_count, last_played_at)
+INSERT OR REPLACE INTO watch_state(item_id, position_ms, duration_ms, completed, play_count, last_played_at, updated_at, version_id, cut)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+deleteWatchState:
+DELETE FROM watch_state WHERE item_id = ?;
+
+watchSyncOf:
+SELECT * FROM watch_sync WHERE source_id = ? AND path = ?;
+
+upsertWatchSync:
+INSERT OR REPLACE INTO watch_sync(source_id, path, played, position_ms, last_played_at, reconciled_at)
 VALUES (?, ?, ?, ?, ?, ?);
+
+markWatchSyncReconciled:
+UPDATE watch_sync SET reconciled_at = :now WHERE source_id = :sourceId AND path = :path;
+
+deleteWatchSyncOfSource:
+DELETE FROM watch_sync WHERE source_id = ?;
 
 watchStateOf:
 SELECT * FROM watch_state WHERE item_id = ?;
@@ -562,10 +596,6 @@ WHERE (item.kind = 'MOVIE' AND EXISTS (SELECT 1 FROM version WHERE version.item_
         SELECT 1 FROM item episode JOIN version ON version.item_id = episode.id WHERE episode.show_id = item.id))
 ORDER BY latest_added_at DESC, item.sort_key
 LIMIT ?;
-
-moveWatchState:
-UPDATE watch_state SET item_id = :toId
-WHERE item_id = :fromId AND NOT EXISTS (SELECT 1 FROM watch_state WHERE item_id = :toId);
 
 insertFavorite:
 INSERT OR IGNORE INTO favorite(item_id, added_at) VALUES (?, ?);

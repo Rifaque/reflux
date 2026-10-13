@@ -2,6 +2,7 @@ package dev.reflux.core.watch
 
 import dev.reflux.core.model.Episode
 import dev.reflux.core.model.MediaId
+import dev.reflux.core.model.MediaVersion
 import dev.reflux.core.model.WatchState
 
 /**
@@ -21,33 +22,76 @@ object WatchRules {
     /**
      * Records a periodic progress report. Never marks a work as watched: that only happens when playback ends,
      * so repeated reports past the threshold cannot inflate the play count.
+     *
+     * @param version the copy that is playing, when the caller knows it. The position is a time on that
+     *   copy's timeline, and the state remembers which.
      */
-    fun onProgress(previous: WatchState?, itemId: MediaId, positionMs: Long, durationMs: Long?, nowMs: Long): WatchState {
+    fun onProgress(
+        previous: WatchState?,
+        itemId: MediaId,
+        positionMs: Long,
+        durationMs: Long?,
+        nowMs: Long,
+        version: MediaVersion? = null,
+    ): WatchState {
         val base = previous ?: WatchState(itemId)
         val position = if (positionMs < MIN_RESUME_MS) 0 else positionMs
+        // The first moments of another cut do not erase where the viewer was in the one they were watching.
+        if (position == 0L && version != null && Handoff.relation(base, version) == TimelineMatch.DIFFERENT) {
+            return base.copy(lastPlayedAtEpochMs = nowMs)
+        }
+        val sameCopy = version == null || base.versionId == null || base.versionId == version.id
         return base.copy(
             positionMs = position,
-            durationMs = durationMs ?: base.durationMs,
+            // A running time describes one copy; it is not carried over to another.
+            durationMs = durationMs ?: version?.stream?.durationMs ?: base.durationMs.takeIf { sameCopy },
             lastPlayedAtEpochMs = nowMs,
+            updatedAtEpochMs = nowMs,
+            versionId = version?.id,
+            cut = Cuts.of(version?.edition),
             // Re-watching a completed work keeps it completed until the user marks it unwatched.
             completed = base.completed,
         )
     }
 
     /** Records the end of a playback session. */
-    fun onStop(previous: WatchState?, itemId: MediaId, positionMs: Long, durationMs: Long?, nowMs: Long): WatchState {
-        val progressed = onProgress(previous, itemId, positionMs, durationMs, nowMs)
+    fun onStop(
+        previous: WatchState?,
+        itemId: MediaId,
+        positionMs: Long,
+        durationMs: Long?,
+        nowMs: Long,
+        version: MediaVersion? = null,
+    ): WatchState {
+        val progressed = onProgress(previous, itemId, positionMs, durationMs, nowMs, version)
         if (!isCompletedAt(positionMs, progressed.durationMs)) return progressed
+        // Watching a work to its end completes it, whichever copy or cut that was.
         return progressed.copy(positionMs = 0, completed = true, playCount = progressed.playCount + 1)
     }
 
     fun markWatched(previous: WatchState?, itemId: MediaId, nowMs: Long): WatchState =
         (previous ?: WatchState(itemId)).let {
-            it.copy(positionMs = 0, completed = true, playCount = maxOf(it.playCount, 1), lastPlayedAtEpochMs = nowMs)
+            it.copy(positionMs = 0, completed = true, playCount = maxOf(it.playCount, 1), lastPlayedAtEpochMs = nowMs, updatedAtEpochMs = nowMs)
         }
 
-    fun markUnwatched(previous: WatchState?, itemId: MediaId): WatchState =
-        (previous ?: WatchState(itemId)).copy(positionMs = 0, completed = false)
+    fun markUnwatched(previous: WatchState?, itemId: MediaId, nowMs: Long): WatchState =
+        (previous ?: WatchState(itemId)).copy(positionMs = 0, completed = false, updatedAtEpochMs = nowMs)
+
+    /** When the user last did something to [state]: the moment synchronization compares. */
+    fun changedAt(state: WatchState): Long? = state.updatedAtEpochMs ?: state.lastPlayedAtEpochMs
+
+    /**
+     * One state for two records of the same work, for when two works turn out to be one. The more recent
+     * activity is where the user is; nothing either record knew about having watched it is lost.
+     */
+    fun merge(itemId: MediaId, a: WatchState, b: WatchState): WatchState {
+        val (recent, other) = if ((changedAt(b) ?: Long.MIN_VALUE) > (changedAt(a) ?: Long.MIN_VALUE)) b to a else a to b
+        return recent.copy(
+            itemId = itemId,
+            playCount = maxOf(recent.playCount, other.playCount),
+            lastPlayedAtEpochMs = listOfNotNull(recent.lastPlayedAtEpochMs, other.lastPlayedAtEpochMs).maxOrNull(),
+        )
+    }
 
     /** Where playback should start, or null to start from the beginning. */
     fun resumePosition(state: WatchState?): Long? {

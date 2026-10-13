@@ -27,7 +27,7 @@ Reflux should be able to:
 2. recognize movies and TV shows from ordinary filenames,
 3. retrieve and cache artwork and metadata,
 4. build a virtual library,
-5. remember watch and resume state,
+5. remember watch and resume state for the work itself, so that it continues from any copy on any source,
 6. select the best available version,
 7. play the media with a serious playback stack,
 8. keep the library useful when a source temporarily disappears.
@@ -62,6 +62,7 @@ The engine (Media Core, sources, metadata, playback) is implemented, and the des
 - [Design direction](docs/DESIGN.md)
 - [Input model](docs/INPUT_MODEL.md)
 - [Metadata and identification](docs/METADATA.md)
+- [Watch state and version handoff](docs/WATCH_STATE.md)
 - [Decision log](docs/DECISIONS.md)
 - [Release readiness](docs/RELEASE.md)
 
