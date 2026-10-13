@@ -237,6 +237,8 @@ Found with real hardware: Windows lists non-controller HID devices as joysticks 
 
 The Linux job's package list and its window-test script live in `tools/ci` and are used by the workflow and by a container image (`tools/ci/Dockerfile`) alike. The Linux defects of the desktop shell were all found by running the real window on Linux, which must stay possible from a Windows or macOS machine.
 
+Tests that need the engine, FFmpeg, or a display skip themselves where those are missing, so that a developer machine without them still builds. Where the environment installs them, that leniency would let a broken installation pass as a green run with nothing tested, so the Linux job sets `REFLUX_REQUIRE_ENGINE_TESTS=true` and a missing engine, tool, or display fails the tests that need it.
+
 ## 2026-10-12 — The engine is never waited for on the UI thread
 
 `MpvPlayer` sends everything to libmpv through its asynchronous command call. The `Player` contract always said that commands return immediately and show their effect in the state; the binding used the synchronous calls, which return when the engine has run the command. Normally that is a millisecond. When the engine's core is busy or stuck (found on Linux: a video output that never started) the caller waited with it, and the caller is the UI thread.

@@ -43,6 +43,8 @@ docker run --rm -v "$PWD:/src:ro" -v reflux-gradle:/home/ubuntu/.gradle reflux-l
 
 With a game controller connected, `./gradlew :desktop:app:test --tests "*PhysicalControllerTest*" -Preflux.windowTests=true -Preflux.controller=true -i` opens the application and asks you to press buttons, checking what each press does.
 
+Tests that need libmpv, FFmpeg, or a display skip themselves on a machine without them. Set `REFLUX_REQUIRE_ENGINE_TESTS=true` (CI and the container do) to have them fail instead, when a green run must mean they ran.
+
 Shared (`commonMain`) code must stay free of platform APIs; `check` fails when it is not, and the message says which lines.
 
 ## Changes

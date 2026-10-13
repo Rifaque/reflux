@@ -23,7 +23,7 @@
 | Cross-source unification: works sharing a provider ID merge into one work (Best Version across sources) | Implemented and tested |
 | Design system foundations (tokens, materials, motion, adaptive layout, accent extraction) | Implemented and tested; rendered by the experience layer |
 | Developer CLI (scan, search, info, play, doctor) over the real engine | Implemented; verified end to end |
-| Continuous integration (Linux with libmpv, Windows) | The workflow runs the whole check on both and the desktop window tests on Linux under a virtual display, from scripts in `tools/ci` that a container image runs identically. Those steps pass locally (Windows 11, and Ubuntu 24.04 in the container); the workflow itself has not run on GitHub since the desktop shell was added |
+| Continuous integration (Linux with libmpv, Windows) | The workflow runs the whole check on both and the desktop window tests on Linux under a virtual display, from scripts in `tools/ci` that a container image runs identically. On Linux, where the job installs the engine and a display, a test that needs them fails rather than skips itself. Those steps pass locally (Windows 11, and Ubuntu 24.04 in the container); the workflow itself has not run on GitHub since the desktop shell was added |
 | Experience layer (`ui`): first-run, Home, Movies/Shows, smart search, movie and show details, sources, player controls and menus, input-adaptive layout, failure states | Desktop Vertical Slice 0.2: implemented and tested as state logic, as rendered screens, and under pointer, keyboard, and controller input |
 | Desktop shell (`desktop:app`): window, embedded libmpv video with Reflux controls above it, fullscreen, keyboard, mouse, and controller input, native folder picker, diagnostics log | Desktop Vertical Slice 0.2: verified end to end in the real window on Windows 11 and on Linux (X11 with a compositing manager): first run through the folder dialog, browsing, and real playback operated by a mouse |
 | Desktop controllers (XInput and HID joysticks on Windows, the kernel joystick interface on Linux) | Implemented and tested from the reader upward, and hardened against the non-controller devices real machines report. No physical controller has been connected during development, so Xbox, PlayStation, and Switch Pro hardware is unverified; `PhysicalControllerTest` is the guided check for it |
@@ -34,6 +34,18 @@
 | Desktop shell gaps | libmpv is not bundled and there is no installer; media keys are not captured; no scrollbars; the GNOME and KDE folder dialogs are used when their helper is installed but are only unit-tested (the Linux end-to-end run uses the toolkit's chooser); on X11 without a compositing manager the player's controls window is opaque and hides the video; Wayland has only been reached through X11 |
 | Not verified here | TMDB against the live service (no credential on the development machine; the provider is covered by fixtures and the app falls back to file names); a session with physical controllers |
 | Release readiness | Tracked in [RELEASE.md](RELEASE.md): libmpv distribution, credential storage, provider attribution, multi-part files, disc structures |
+
+### Desktop Vertical Slice 0.2: what was verified
+
+Verified on 2026-10-13, on the tree that closes the slice.
+
+| Where | What ran | Result |
+| --- | --- | --- |
+| Windows 11 | `./gradlew check` | 358 tests, none failed; 7 skipped (the window tests, which run on request; the physical-controller check; the live SMB test) |
+| Windows 11, real window | `./gradlew :desktop:app:test -Preflux.windowTests=true`: first run through the native folder dialog, browsing with a mouse and with a scripted controller, playback with its controls, seeking, resume, next episode, fullscreen, a deleted file, closing the window | 27 tests, none failed; 1 skipped (physical controller) |
+| Ubuntu 24.04 in the `tools/ci` container (Xvfb, openbox, xcompmgr, software rendering) | the Linux job: `check`, then the real-window tests eight times in a row | 358 tests, none failed; eight rounds without a failure, and every window test ran in every round |
+
+Not verified: the workflow on GitHub (this work has not been pushed); physical controllers (none connected); TMDB against the live service; Jellyfin against a live server; the GNOME and KDE folder dialogs; X11 without a compositing manager; native Wayland. The window tests need the desktop to themselves: a locked desktop, or the test window being moved while they run, fails the playback test.
 
 ## Phase 0 — Product and architecture foundation
 
