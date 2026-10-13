@@ -372,3 +372,27 @@ Considered and rejected: all-files access (far more than a player needs, and res
 ## 2026-10-14 — Sound output is what the output says
 
 Android claimed stereo and no passthrough everywhere. A television is usually wired to something that does more, and says so: the HDMI output's channel count becomes `maxOutputChannels`, and the compressed formats it accepts (AC-3, E-AC-3, DTS, DTS-HD, TrueHD) become `audioPassthrough`, which version selection and the playback assessment already understood. Nothing attached, or an output that reports nothing, is still stereo. As with video, nothing is inferred from the device being a television.
+
+## 2026-10-14 — A download is a version of the work, in a source of Reflux's own
+
+Keeping something for offline does not create a "downloaded movie". The copy is registered as one more version of the work its origin belongs to, located in `DownloadsSource`, and from then on nothing is special about it: Best Version ranks it, the work's watch state resumes on it, and reconciliation with a server happens as for any playback. The alternatives were a parallel list of downloaded things with its own playback path (a second library, and offline-only watch history sooner or later) or a folder Reflux scans like a user's (which would re-identify files by name and could split a work in two).
+
+Copies are not identified. Each records the version it was made from and belongs wherever that version belongs, also after the origin is corrected or merged; scanning and re-identification end by bringing the copies in line. A copy describes the same file as its origin, so it is equal to it in everything a device can show and wins only as the closest copy, which is the existing local-first rule doing its job.
+
+A pin on a version is honored by its copy. The pin says which version the user wants; the copy is that version, nearer.
+
+## 2026-10-14 — What to keep is Best Version, in the room there is
+
+Offline selection is not a second ranking. It is Best Version's order for this device with two differences that only make sense for something kept: among versions the device plays and shows equally, the smallest is taken (streaming prefers the larger), and when the first choice does not fit, the best version of the same cut that does is taken and the user is told. A pinned version is never substituted: it is downloaded, or the work is left out with the reason. A different cut is never a stand-in for the one being watched.
+
+The device is never filled: the larger of 500 MB and 5% of the volume stays free, and what accepted downloads will still write counts as used. Fixed, not a setting.
+
+## 2026-10-14 — Sources say whether their files can be kept
+
+`DOWNLOAD` is a capability a source declares, with `DownloadableSource.downloadTarget` giving the file itself. The planner only considers versions on sources that declare it and are there to be asked. The transport that fetches is generic (HTTP with ranges, or a file), so no source-specific download code exists anywhere, and a source that cannot hand out a file whole (transcode only) simply does not declare the capability.
+
+## 2026-10-14 — Android: copies in private storage, made while Reflux runs
+
+Copies go to the application's internal storage: private by construction, no permission, gone with the application. Choosing removable storage is not offered; it would need the user to grant a location and a story for the card being pulled, for a first version nobody has asked for.
+
+Copies are made while the application's process is alive, and continue from where they were at the next start. Continuing with the application closed would need a foreground service and a notification (and on current Android, the notification permission): the same step that was declined for background playback, and to be decided together with it. A long download on a phone that is put away is the case this leaves open, and it is named in the roadmap.

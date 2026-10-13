@@ -17,6 +17,7 @@ import dev.reflux.core.versions.RankedVersion
 import dev.reflux.core.versions.SelectionCriterion
 import dev.reflux.core.watch.WatchRules
 import dev.reflux.library.Library
+import dev.reflux.library.userSources
 import dev.reflux.library.LibraryEntry
 import dev.reflux.library.SourceRecord
 import dev.reflux.library.credits
@@ -92,7 +93,7 @@ internal fun Library.homeModel(): HomeModel {
     // Home always opens on something: without backdrops (no metadata yet), the first work of the first row.
     val featured = feed.featured?.let { cards(listOf(it)).single() } ?: rows.firstOrNull()?.cards?.firstOrNull()
     val overview = featured?.let { entry(it.detailsId)?.metadata?.overview ?: it.entry.metadata?.overview }
-    return HomeModel(featured, overview, rows, sources())
+    return HomeModel(featured, overview, rows, userSources())
 }
 
 @Immutable

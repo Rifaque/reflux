@@ -13,6 +13,7 @@ import com.hierynomus.smbj.share.DiskShare
 import com.hierynomus.smbj.share.File
 import dev.reflux.core.model.Availability
 import dev.reflux.core.model.StableIds
+import dev.reflux.core.source.DownloadableSource
 import dev.reflux.core.source.FileEnumeratingSource
 import dev.reflux.core.source.PlaybackTarget
 import dev.reflux.core.source.ScanRules
@@ -72,7 +73,7 @@ class SmbSource(
     private val config: SmbShareConfig,
     private val streams: LocalStreamServer,
     displayName: String = "${config.share} on ${config.host}",
-) : FileEnumeratingSource, Closeable {
+) : FileEnumeratingSource, DownloadableSource, Closeable {
     private val client = SMBClient(
         SmbConfig.builder().withTimeout(15, TimeUnit.SECONDS).withSoTimeout(30, TimeUnit.SECONDS).build(),
     )
@@ -85,7 +86,7 @@ class SmbSource(
         type = TYPE,
         displayName = displayName,
         locality = SourceLocality.LOCAL_NETWORK,
-        capabilities = setOf(SourceCapability.ENUMERATE_FILES),
+        capabilities = setOf(SourceCapability.ENUMERATE_FILES, SourceCapability.DOWNLOAD),
     )
 
     override suspend fun availability(): Availability = withContext(Dispatchers.IO) {
@@ -129,6 +130,9 @@ class SmbSource(
             }
         }
     }.flowOn(Dispatchers.IO)
+
+    /** The loopback stream is the file itself, read from the share. */
+    override suspend fun downloadTarget(path: String): PlaybackTarget = playbackTarget(path)
 
     override suspend fun playbackTarget(path: String): PlaybackTarget {
         require(".." !in path.split('/')) { "path escapes the share: $path" }

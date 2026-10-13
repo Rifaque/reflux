@@ -31,7 +31,10 @@ import dev.reflux.ui.components.ButtonStyle
 import dev.reflux.ui.components.Icon
 import dev.reflux.ui.components.IconButton
 import dev.reflux.ui.components.absorbsPointer
+import dev.reflux.ui.components.focusPanel
 import dev.reflux.ui.state.AppState
+import dev.reflux.library.downloads
+import dev.reflux.library.userSources
 import dev.reflux.ui.state.libraryState
 import dev.reflux.ui.theme.LocalLayout
 import dev.reflux.ui.theme.LocalTypography
@@ -45,7 +48,7 @@ import dev.reflux.ui.theme.glass
  */
 @Composable
 internal fun SourcesPanel(app: AppState) {
-    val sources by app.libraryState { sources() }
+    val sources by app.libraryState { userSources() }
     val activity by app.activity.collectAsState()
     val metadataUnreachable by app.metadataUnreachable.collectAsState()
     var removing by remember { mutableStateOf<SourceId?>(null) }
@@ -55,7 +58,7 @@ internal fun SourcesPanel(app: AppState) {
     LaunchedEffect(Unit) { if (showsFocus) runCatching { first.requestFocus() } }
     Column(
         Modifier.widthIn(max = 400.dp).fillMaxWidth().glass(MaterialRole.MODAL).absorbsPointer()
-            .focusProperties { onExit = { cancelFocusChange() } }.focusGroup()
+            .focusPanel().focusProperties { onExit = { cancelFocusChange() } }.focusGroup()
             .padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
@@ -91,6 +94,14 @@ internal fun SourcesPanel(app: AppState) {
         Row(Modifier.padding(top = 2.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Button("Add folder", { app.addFolder() }, Modifier.focusRequester(first), icon = Icon.PLUS, style = ButtonStyle.PRIMARY)
             if (!sources.isNullOrEmpty()) Button("Refresh", { app.refresh() }, icon = Icon.REFRESH, style = ButtonStyle.QUIET, enabled = activity == PipelineActivity.Idle)
+        }
+        // Where the library comes from is also where the question of doing without it belongs.
+        val keeps by app.libraryState { app.platform.offline?.let { it.possible() || downloads().isNotEmpty() } ?: false }
+        if (keeps == true) {
+            Button("Watch offline", {
+                app.sourcesOpen = false
+                app.offlineOpen = true
+            }, icon = Icon.DOWNLOAD, style = ButtonStyle.QUIET)
         }
         if (metadataUnreachable) {
             Text(

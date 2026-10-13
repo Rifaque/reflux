@@ -18,6 +18,7 @@ import dev.reflux.core.playback.VideoCodec
 import dev.reflux.core.playback.VideoStream
 import dev.reflux.core.source.CatalogEntry
 import dev.reflux.core.source.CatalogSource
+import dev.reflux.core.source.DownloadableSource
 import dev.reflux.core.source.CatalogSubtitle
 import dev.reflux.core.source.CatalogVersion
 import dev.reflux.core.source.PlaybackTarget
@@ -50,7 +51,7 @@ class JellyfinSource(
     http: HttpFetcher,
     displayName: String = "Jellyfin",
     deviceName: String = "Reflux",
-) : CatalogSource, WatchStateSyncSource {
+) : CatalogSource, WatchStateSyncSource, DownloadableSource {
     private val api = JellyfinApi(credentials.serverUrl, http, credentials.deviceId, deviceName, credentials.accessToken)
     private val startedSessions = mutableSetOf<String>()
 
@@ -59,7 +60,7 @@ class JellyfinSource(
         type = TYPE,
         displayName = displayName,
         locality = localityOf(credentials.serverUrl),
-        capabilities = setOf(SourceCapability.PROVIDES_CATALOG, SourceCapability.WATCH_STATE_SYNC),
+        capabilities = setOf(SourceCapability.PROVIDES_CATALOG, SourceCapability.WATCH_STATE_SYNC, SourceCapability.DOWNLOAD),
     )
 
     override suspend fun availability(): Availability = try {
@@ -103,6 +104,9 @@ class JellyfinSource(
             if (items.isEmpty() || start >= total) break
         }
     }
+
+    /** The server streams the file itself (`static`), so what plays is also what a copy is made from. */
+    override suspend fun downloadTarget(path: String): PlaybackTarget = playbackTarget(path)
 
     override suspend fun playbackTarget(path: String): PlaybackTarget {
         val segments = path.split('/')

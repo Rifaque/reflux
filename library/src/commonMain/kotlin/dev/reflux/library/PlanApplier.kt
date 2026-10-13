@@ -8,11 +8,15 @@ import dev.reflux.core.model.MediaId
 import dev.reflux.core.model.MediaItem
 import dev.reflux.core.model.MediaVersion
 import dev.reflux.core.model.Season
+import dev.reflux.core.model.SourceId
 import dev.reflux.core.model.StreamInfoOrigin
 import dev.reflux.core.model.VersionId
 import dev.reflux.core.playback.StreamInfo
 import dev.reflux.core.watch.WatchRules
 import dev.reflux.library.db.LibraryQueries
+
+/** A copy is a version of its work by construction, not by inference. */
+private const val COPY_CONFIDENCE = 1.0
 
 /** Writes scan plans and probe results into the library database. Callers own the transaction. */
 internal class PlanApplier(private val queries: LibraryQueries, private val now: () -> Long) {
@@ -133,6 +137,42 @@ internal class PlanApplier(private val queries: LibraryQueries, private val now:
             skipped = plan.skipped,
             lowConfidence = plan.versions.count { it.parsed.confidence.level == ConfidenceLevel.LOW },
         )
+    }
+
+    /**
+     * Makes [versions] the complete contents of a source whose versions are copies Reflux made of versions
+     * elsewhere (downloads). Nothing is identified: each copy already says which work it belongs to, and
+     * no work is created for one. Runs inside the caller's transaction.
+     */
+    fun applyCopies(sourceId: SourceId, versions: List<MediaVersion>) {
+        val time = now()
+        val existing = queries.versionsOfSource(sourceId.value).executeAsList().associateBy { it.path }
+        for (version in versions) {
+            if (existing[version.location.path] == null) insertVersion(version, COPY_CONFIDENCE, "", null, time)
+            else updateVersion(version, COPY_CONFIDENCE, "", null, time)
+        }
+        val kept = versions.map { it.location.path }.toSet()
+        for (row in existing.values.filter { it.path !in kept }) {
+            queries.deleteVersion(row.id)
+            queries.deleteTracksOfVersion(row.id)
+            queries.deleteExternalSubtitlesOfVersion(row.id)
+        }
+        queries.deleteExternalSubtitlesOfSource(sourceId.value)
+        for (version in versions) {
+            for (sub in version.externalSubtitles) {
+                queries.insertExternalSubtitle(
+                    version.id.value, sourceId.value, sub.location.path, sub.format.name, sub.language,
+                    sub.forced.toLong(), sub.hearingImpaired.toLong(),
+                )
+            }
+        }
+        queries.deleteOrphanPlayables()
+        queries.deleteEmptySeasons()
+        queries.deleteEmptyShows()
+        queries.deleteOrphanArtwork()
+        queries.deleteOrphanMetadata()
+        queries.deleteOrphanCredits()
+        queries.deleteOrphanAttempts()
     }
 
     private fun moveWatchState(from: String, to: String) {

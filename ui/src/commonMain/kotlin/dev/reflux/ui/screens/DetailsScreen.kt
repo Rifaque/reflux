@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
@@ -65,6 +66,8 @@ import dev.reflux.ui.state.Destination
 import dev.reflux.ui.state.DetailsModel
 import dev.reflux.ui.state.Formatting
 import dev.reflux.ui.state.MediaCard
+import dev.reflux.ui.state.OfflineStatus
+import dev.reflux.ui.state.offlineStatus
 import dev.reflux.ui.state.VersionRow
 import dev.reflux.ui.state.detailsModel
 import dev.reflux.ui.state.libraryState
@@ -83,11 +86,13 @@ internal fun DetailsScreen(app: AppState, itemId: MediaId) {
     val layout = LocalLayout.current
     var season by rememberSaveable(itemId) { mutableIntStateOf(details.initialSeason) }
     val episodes = details.seasons.getOrNull(season)?.episodes.orEmpty()
+    // Whether it is, or is being, kept on this device; null where the platform keeps nothing.
+    val offline by app.libraryState(itemId) { app.platform.offline?.let { offlineStatus(itemId, it) } }
     val list = rememberLazyListState()
     ReportPageScroll(remember { derivedStateOf { list.firstVisibleItemIndex > 0 || list.firstVisibleItemScrollOffset > 0 } }.value)
     run {
         LazyColumn(Modifier.fillMaxSize(), state = list, contentPadding = PaddingValues(bottom = LocalChromeInsets.current.bottom)) {
-            item(key = "header") { Header(app, details) }
+            item(key = "header") { Header(app, details, offline) }
             if (details.versions.isNotEmpty()) {
                 item(key = "versions") { Versions(app, details, Modifier.padding(horizontal = layout.safeMarginDp.dp).padding(top = 28.dp)) }
             }
@@ -132,7 +137,7 @@ private fun Gone(app: AppState) {
 }
 
 @Composable
-private fun Header(app: AppState, details: DetailsModel) {
+private fun Header(app: AppState, details: DetailsModel, offline: OfflineStatus?) {
     val layout = LocalLayout.current
     val background = RefluxColors.background
     val card = details.card
@@ -182,7 +187,8 @@ private fun Header(app: AppState, details: DetailsModel) {
                             Text(remaining, style = LocalTypography.current.caption, color = RefluxColors.textSecondary, maxLines = 1)
                         }
                     }
-                    Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                    // On a narrow screen the lesser actions go to a second line rather than off the edge.
+                    FlowRow(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp), itemVerticalAlignment = Alignment.CenterVertically) {
                         val playId = details.playId
                         Button(details.playLabel, { playId?.let { app.play(it) } }, Modifier.initialFocus(), icon = Icon.PLAY, style = ButtonStyle.PRIMARY, enabled = playId != null && !card.offline)
                         if (details.resumes && playId != null) Button("From the start", { app.play(playId, resume = false) })
@@ -200,6 +206,29 @@ private fun Header(app: AppState, details: DetailsModel) {
                             glass = true,
                             tint = if (card.entry.favorite) RefluxColors.accent else RefluxColors.textPrimary,
                         )
+                        if (offline?.offered == true) {
+                            val settled = offline.downloaded || offline.busy || offline.failed
+                            IconButton(
+                                Icon.DOWNLOAD,
+                                when {
+                                    offline.downloaded -> "Downloaded"
+                                    offline.busy -> "Downloading"
+                                    offline.failed -> "Download didn't finish"
+                                    else -> "Download"
+                                },
+                                // Once there is a download, what there is to do about it is in the sheet.
+                                { if (settled) app.offlineOpen = true else app.download(card.id) },
+                                glass = true,
+                                tint = if (offline.downloaded || offline.busy) RefluxColors.accent else RefluxColors.textPrimary,
+                            )
+                        }
+                    }
+                    // Said once, quietly, like progress: that it is on this device, or on its way.
+                    offline?.label?.let { label ->
+                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                            offline.progress?.let { ProgressBar(it, Modifier.width(120.dp)) }
+                            Text(label, style = LocalTypography.current.caption, color = if (offline.failed) RefluxColors.unavailable else RefluxColors.textSecondary, maxLines = 1)
+                        }
                     }
                 }
             }

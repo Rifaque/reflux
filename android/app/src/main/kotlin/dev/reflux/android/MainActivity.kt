@@ -71,11 +71,16 @@ import dev.reflux.ui.state.AppState
 import dev.reflux.ui.theme.RefluxColors
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineExceptionHandler
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.plus
 
 /** Holds the engine for the life of the process, so that it outlives any one screen. */
 class RefluxApplication : Application() {
     val environment: AndroidEnvironment by lazy { AndroidEnvironment(this) }
+
+    /** For what must not stop when a screen goes away: a copy being made for offline is one. */
+    val scope = CoroutineScope(SupervisorJob() + CoroutineExceptionHandler { _, error -> environment.report("An unexpected error was not handled", error) })
 }
 
 /**
@@ -101,6 +106,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge(SystemBarStyle.dark(TRANSPARENT), SystemBarStyle.dark(TRANSPARENT))
         super.onCreate(savedInstanceState)
         val environment = (application as RefluxApplication).environment
+        environment.startOffline((application as RefluxApplication).scope)
         platform = AndroidPlatform(environment, television()).also {
             it.pickFolder = ::pickFolder
             it.allowStorage = ::allowStorage

@@ -27,6 +27,9 @@ enum class SourceCapability {
 
     /** Can transcode on the server side. */
     SERVER_TRANSCODE,
+
+    /** Hands out its files whole, so that a copy can be kept on the device (see [DownloadableSource]). */
+    DOWNLOAD,
 }
 
 data class SourceDescriptor(
@@ -54,6 +57,15 @@ interface MediaSource {
 
     /** Resolves a source-relative path into something a player can open. */
     suspend fun playbackTarget(path: String): PlaybackTarget
+}
+
+/**
+ * A source whose files can be fetched whole to keep a copy on the device. A source that can only show a
+ * file (a transcoding stream, a protected service) is not one, and nothing assumes it is.
+ */
+interface DownloadableSource : MediaSource {
+    /** What to fetch to get the file at [path] as it is, byte for byte: never a transcode of it. */
+    suspend fun downloadTarget(path: String): PlaybackTarget
 }
 
 /** A file reported by a file-enumerating source. */

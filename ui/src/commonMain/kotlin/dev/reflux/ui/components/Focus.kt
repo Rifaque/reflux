@@ -27,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
@@ -73,6 +74,9 @@ class FocusEntry {
     /** Whether focus is on the navigation rather than in the page. */
     internal val inChrome: Boolean get() = chrome != null
 
+    /** Whether focus is inside a panel that floats over the page (and will be lost when the panel goes). */
+    internal var inPanel = false
+
     /**
      * Leaves the navigation for the page in direction [action], when that is the way back to it. The
      * toolkit's own search does not find its way from a bar into a scrolling page, and where it would land
@@ -115,6 +119,17 @@ class FocusEntry {
 }
 
 val LocalFocusEntry = staticCompositionLocalOf<FocusEntry?> { null }
+
+/**
+ * Marks a panel that floats over the page and keeps focus while it is open. Focus inside it is not focus
+ * in the page: when the panel closes, the page gets it back where it belongs instead of losing it.
+ */
+@Composable
+fun Modifier.focusPanel(): Modifier {
+    val entry = LocalFocusEntry.current ?: return this
+    DisposableEffect(entry) { onDispose { entry.inPanel = false } }
+    return onFocusChanged { entry.inPanel = it.hasFocus }
+}
 
 /** The page a control belongs to, for [FocusEntry]; null outside the paged part of the application. */
 val LocalFocusScreen = staticCompositionLocalOf<Any?> { null }

@@ -19,6 +19,10 @@ import dev.reflux.core.net.Redaction
 import dev.reflux.core.playback.DeviceCapabilities
 import dev.reflux.core.source.MediaSource
 import dev.reflux.library.ArtworkCache
+import dev.reflux.library.DownloadsSource
+import dev.reflux.library.FileDownloadStore
+import dev.reflux.library.HttpDownloadTransport
+import dev.reflux.library.Offline
 import dev.reflux.library.Library
 import dev.reflux.library.LibraryPipeline
 import dev.reflux.library.SourceRecord
@@ -30,6 +34,9 @@ import dev.reflux.sources.jellyfin.JellyfinCredentials
 import dev.reflux.sources.jellyfin.JellyfinSource
 import dev.reflux.sources.webdav.WebDavConfig
 import dev.reflux.sources.webdav.WebDavSource
+import android.os.LocaleList
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -106,8 +113,15 @@ class AndroidEnvironment(context: Context, dataDirectory: File = context.filesDi
     }
     private val log = dataDirectory.resolve("reflux.log")
 
+    /**
+     * Where copies for offline are kept: the application's own storage, which no other application can
+     * read, needs no permission, and goes when Reflux is uninstalled.
+     */
+    private val downloads = FileDownloadStore(dataDirectory.resolve("downloads"))
+
     val registry = SourceRegistry(
         mapOf(
+            DownloadsSource.TYPE to { _ -> DownloadsSource(downloads) },
             DocumentTreeSource.TYPE to { record -> folderSource(Uri.parse(record.config), record.displayName) },
             // A folder chosen by its path, on devices where Reflux browses storage itself (televisions).
             LocalFolderSource.TYPE to { record -> LocalFolderSource(File(record.config).toPath(), record.displayName) },
@@ -129,6 +143,32 @@ class AndroidEnvironment(context: Context, dataDirectory: File = context.filesDi
     )
 
     val capabilities: DeviceCapabilities by lazy { AndroidCapabilities.of(application) }
+
+    /**
+     * Smart Offline, on this device's storage and network. Copies are made while Reflux is running; one
+     * that was cut short continues from where it was the next time Reflux starts (see [startOffline]).
+     */
+    val offline: Offline by lazy {
+        Offline(
+            library = library,
+            store = downloads,
+            transport = HttpDownloadTransport("Reflux/0.1 (Android)"),
+            sources = registry::resolve,
+            device = { capabilities },
+            preferredLanguages = LocaleList.getDefault().let { locales -> (0 until locales.size()).map { locales[it].language } }.filter { it.isNotBlank() },
+            register = registry::register,
+            dispatcher = Dispatchers.IO,
+            report = ::report,
+        )
+    }
+
+    private var offlineJob: Job? = null
+
+    /** Starts making copies in [scope], once: it should be one that lives as long as the process does. */
+    @Synchronized
+    fun startOffline(scope: CoroutineScope) {
+        if (offlineJob == null) offlineJob = offline.start(scope)
+    }
 
     fun source(id: SourceId): MediaSource? = registry.resolve(id)
 

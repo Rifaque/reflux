@@ -30,6 +30,7 @@ import dev.reflux.core.source.MediaSource
 import dev.reflux.library.Library
 import dev.reflux.library.LibraryEntry
 import dev.reflux.library.LibraryPipeline
+import dev.reflux.library.Offline
 import dev.reflux.library.PipelineActivity
 import dev.reflux.library.planPlayback
 import dev.reflux.library.setWatchedEverywhere
@@ -75,6 +76,9 @@ class AppState(
 
     var sourcesOpen by mutableStateOf(false)
 
+    /** Whether the sheet about what is kept on the device is open. */
+    var offlineOpen by mutableStateOf(false)
+
     /** The folder picker Reflux draws itself, while it is open (see [Platform.folderBrowser]). */
     var folderPicker: FolderPicker? by mutableStateOf(null)
         private set
@@ -104,6 +108,16 @@ class AppState(
     /** Starts keeping the library current: an initial refresh, then change and reconnect watching. */
     fun start() {
         scope.launch { library.changes().collect { revision++ } }
+        // A download's progress is something screens show, like anything else that changes.
+        // Often enough to watch it move, not so often that every screen reloads for every megabyte.
+        platform.offline?.let { offline ->
+            scope.launch {
+                offline.changes.collect {
+                    revision++
+                    delay(DOWNLOAD_PROGRESS_MS)
+                }
+            }
+        }
         refresh()
         watchSources()
     }
@@ -146,6 +160,48 @@ class AppState(
             platform.report("Refreshing the library failed", e)
             notify(Problems.LIBRARY_NOT_UPDATED)
         }
+        // A source that is back is a reason to try what was waiting for it.
+        platform.offline?.let { offline -> withContext(background) { offline.retryWaiting() } }
+        invalidate()
+    }
+
+    // Offline ------------------------------------------------------------------------------------
+
+    /**
+     * Keeps [itemId] for watching without its source: a film or an episode itself, the next few episodes
+     * of a show. Which version is Reflux's to work out; the user is told that it is happening, or why not.
+     */
+    fun download(itemId: MediaId): Job = attempt(Problems.OFFLINE_NOT_PREPARED) {
+        val offline = platform.offline ?: return@attempt
+        val plan = withContext(background) { offline.planFor(listOf(itemId)).also(offline::enqueue) }
+        notify(
+            when {
+                plan.downloads.isEmpty() -> plan.skipped.firstOrNull()?.let { Problems.offlineSkip(it.reason) } ?: Problems.NOTHING_TO_PLAY
+                plan.downloads.any { it.madeToFit } -> Problems.OFFLINE_PREPARING_TO_FIT
+                else -> Problems.OFFLINE_PREPARING
+            },
+        )
+        invalidate()
+    }
+
+    /** Accepts what the offline sheet proposes. */
+    fun prepareOffline(): Job = attempt(Problems.OFFLINE_NOT_PREPARED) {
+        val offline = platform.offline ?: return@attempt
+        val plan = withContext(background) { offline.suggest().also(offline::enqueue) }
+        if (plan.downloads.isNotEmpty()) notify(if (plan.downloads.any { it.madeToFit }) Problems.OFFLINE_PREPARING_TO_FIT else Problems.OFFLINE_PREPARING)
+        invalidate()
+    }
+
+    fun pauseDownload(id: String): Job = changeDownload { it.pause(id) }
+
+    fun resumeDownload(id: String): Job = changeDownload { it.resume(id) }
+
+    /** Removes a download and its copy from the device. The work and what was watched of it stay. */
+    fun removeDownload(id: String): Job = changeDownload { it.remove(id) }
+
+    private fun changeDownload(change: suspend (Offline) -> Unit): Job = attempt(Problems.DOWNLOAD_NOT_CHANGED) {
+        val offline = platform.offline ?: return@attempt
+        withContext(background) { change(offline) }
         invalidate()
     }
 
@@ -343,6 +399,10 @@ class AppState(
                     folderPicker?.back()
                     true
                 }
+                offlineOpen -> {
+                    offlineOpen = false
+                    true
+                }
                 sourcesOpen -> {
                     sourcesOpen = false
                     true
@@ -350,7 +410,7 @@ class AppState(
                 else -> navigator.back()
             }
             SemanticAction.MENU -> {
-                if (folderPicker == null) sourcesOpen = !sourcesOpen
+                if (folderPicker == null && !offlineOpen) sourcesOpen = !sourcesOpen
                 true
             }
             SemanticAction.FULLSCREEN -> {
@@ -363,6 +423,7 @@ class AppState(
 
     private companion object {
         const val NOTICE_MS = 4_500L
+        const val DOWNLOAD_PROGRESS_MS = 500L
         const val RELEASE_PATIENCE_MS = 5_000L
         const val NOTICE_SHORT_LENGTH = 60
         const val NOTICE_MS_PER_CHARACTER = 45L

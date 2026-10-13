@@ -734,3 +734,85 @@ SELECT collection_id, :toId, added_at FROM user_collection_item WHERE item_id = 
 
 deleteCollectionMembershipOf:
 DELETE FROM user_collection_item WHERE item_id = ?;
+
+-- Downloads ---------------------------------------------------------------------------------------
+
+-- A copy of one version, kept on the device. When complete it is registered as a version of the same
+-- work in the downloads source; it is never a work of its own.
+CREATE TABLE download (
+    id TEXT NOT NULL PRIMARY KEY,
+    -- The work the copy belongs to: its origin's while the origin is known, the last one known after.
+    item_id TEXT NOT NULL,
+    origin_version_id TEXT NOT NULL UNIQUE,
+    origin_source_id TEXT NOT NULL,
+    origin_path TEXT NOT NULL,
+    -- Where the copy is, relative to where downloads are kept.
+    path TEXT NOT NULL,
+    state TEXT NOT NULL,
+    failure TEXT,
+    bytes_downloaded INTEGER NOT NULL,
+    total_bytes INTEGER,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    completed_at INTEGER
+);
+
+-- A separate subtitle file kept with a download.
+CREATE TABLE download_subtitle (
+    download_id TEXT NOT NULL,
+    origin_source_id TEXT NOT NULL,
+    origin_path TEXT NOT NULL,
+    path TEXT NOT NULL,
+    format TEXT NOT NULL,
+    language TEXT,
+    forced INTEGER NOT NULL,
+    hearing_impaired INTEGER NOT NULL,
+    fetched INTEGER NOT NULL,
+    PRIMARY KEY (download_id, origin_path)
+);
+
+insertDownload:
+INSERT OR IGNORE INTO download(id, item_id, origin_version_id, origin_source_id, origin_path, path, state, failure, bytes_downloaded, total_bytes, created_at, updated_at, completed_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, NULL, 0, ?, ?, ?, NULL);
+
+allDownloads:
+SELECT * FROM download ORDER BY created_at, id;
+
+downloadById:
+SELECT * FROM download WHERE id = ?;
+
+downloadOfOrigin:
+SELECT * FROM download WHERE origin_version_id = ?;
+
+downloadsOfItem:
+SELECT * FROM download WHERE item_id = ? ORDER BY created_at, id;
+
+setDownloadState:
+UPDATE download SET state = :state, failure = :failure, updated_at = :now,
+    completed_at = CASE WHEN :state = 'COMPLETED' THEN :now ELSE completed_at END
+WHERE id = :id;
+
+setDownloadProgress:
+UPDATE download SET bytes_downloaded = :bytes, total_bytes = :total, updated_at = :now WHERE id = :id;
+
+setDownloadItem:
+UPDATE download SET item_id = ? WHERE id = ?;
+
+deleteDownload:
+DELETE FROM download WHERE id = ?;
+
+insertDownloadSubtitle:
+INSERT OR REPLACE INTO download_subtitle(download_id, origin_source_id, origin_path, path, format, language, forced, hearing_impaired, fetched)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0);
+
+markDownloadSubtitleFetched:
+UPDATE download_subtitle SET fetched = 1 WHERE download_id = ? AND origin_path = ?;
+
+subtitlesOfDownload:
+SELECT * FROM download_subtitle WHERE download_id = ? ORDER BY origin_path;
+
+deleteSubtitlesOfDownload:
+DELETE FROM download_subtitle WHERE download_id = ?;
+
+sourceOfType:
+SELECT * FROM source WHERE type = ? ORDER BY added_at, id LIMIT 1;
