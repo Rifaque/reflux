@@ -8,6 +8,7 @@ import dev.reflux.core.model.Show
 import dev.reflux.core.playback.PlaybackController
 import dev.reflux.core.playback.PlayerStatus
 import dev.reflux.core.playback.TrackPreferences
+import dev.reflux.core.watch.ResumeBasis
 import dev.reflux.desktop.engine.DesktopEnvironment
 import dev.reflux.desktop.engine.FolderAddition
 import dev.reflux.library.LibraryEntry
@@ -240,6 +241,9 @@ private suspend fun play(env: DesktopEnvironment, query: String, resume: Boolean
         mapOf("input-default-bindings" to "yes", "input-vo-keyboard" to "yes", "osc" to "yes", "force-window" to "yes"),
     ) ?: return fail("libmpv is not installed.")
     println("Playing ${plan.request.title}" + (plan.request.startPositionMs?.let { " from ${it / 60_000} min" } ?: ""))
+    if (plan.resume.basis == ResumeBasis.ADJUSTED || plan.resume.basis == ResumeBasis.NOT_TRANSFERABLE) {
+        println("  a different cut from the one in progress (${plan.resume.basis.name.lowercase().replace('_', ' ')})")
+    }
     player.use {
         kotlinx.coroutines.coroutineScope {
             val reporter = SyncingWatchReporter(env.library, plan.version.version, plan.source, this)

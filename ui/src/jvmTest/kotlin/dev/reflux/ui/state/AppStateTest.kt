@@ -510,4 +510,39 @@ class AppStateTest {
         assertEquals("Arrival", app.playback?.title, "the stuck engine is left behind")
         assertTrue(platform.reports.any { "did not shut down" in it })
     }
+
+    @Test
+    fun continuingOnADifferentCutSaysSo() = runTest {
+        val world = TestWorld()
+        world.file("Aliens (1986)/Aliens.1986.1080p.x264.mkv")
+        world.file("Aliens (1986)/Aliens.1986.Extended.1080p.x264.mkv")
+        world.pipeline.refresh()
+        val aliens = world.movie("Aliens").item.id
+        val versions = world.library.versions(aliens).map { it.version }
+        val theatrical = versions.single { it.edition == null }
+        val extended = versions.single { it.edition != null }
+        world.library.recordProbe(theatrical.id, theatrical.stream.copy(durationMs = 137 * 60_000L))
+        world.library.recordProbe(extended.id, extended.stream.copy(durationMs = 154 * 60_000L))
+        // The viewer stopped 100 minutes into the extended cut.
+        fun stopInTheExtendedCut() = world.library.stopped(aliens, 100 * 60_000L, 154 * 60_000L, world.library.version(extended.id)!!.version)
+        stopInTheExtendedCut()
+        val platform = FakePlatform()
+        val app = appState(world, platform)
+
+        // Play continues the cut in progress, exactly where it stopped, and has nothing to explain.
+        app.play(aliens)
+        runCurrent()
+        assertTrue("Extended" in platform.players.single().requests.single().target.uri)
+        assertEquals(100 * 60_000L, platform.players.single().requests.single().startPositionMs)
+        assertNull(app.notice)
+        app.playback?.close()
+        runCurrent()
+        stopInTheExtendedCut() // the fake engine reports a running time of its own when it is closed
+
+        // The other cut, chosen by hand, is not entered at the same timestamp, and the viewer is told why.
+        app.play(aliens, versionId = theatrical.id)
+        runCurrent()
+        assertEquals(83 * 60_000L, platform.players.last().requests.single().startPositionMs)
+        assertTrue("different cut" in assertNotNull(app.notice))
+    }
 }

@@ -13,6 +13,7 @@ import dev.reflux.core.model.MediaId
 import dev.reflux.core.model.MediaItem
 import dev.reflux.core.model.MediaKind
 import dev.reflux.core.model.MediaLocation
+import dev.reflux.core.model.MediaVersion
 import dev.reflux.core.model.Movie
 import dev.reflux.core.model.Season
 import dev.reflux.core.model.Show
@@ -40,6 +41,9 @@ import dev.reflux.core.versions.VersionCandidate
 import dev.reflux.core.versions.VersionSelection
 import dev.reflux.core.versions.VersionSelector
 import dev.reflux.core.watch.NextUp
+import dev.reflux.core.watch.SourceUpdate
+import dev.reflux.core.watch.SyncBaseline
+import dev.reflux.core.watch.WatchReconciler
 import dev.reflux.core.watch.WatchRules
 import dev.reflux.library.db.Item
 import dev.reflux.library.db.RefluxDatabase
@@ -81,6 +85,7 @@ class Library(
     /** Removes a source and everything Reflux derived from it. Watch history of its works is kept. */
     fun removeSource(id: SourceId) = database.transaction {
         writer.apply(ScanPlan(id, emptyList(), emptyList(), emptyList(), emptyMap()))
+        queries.deleteWatchSyncOfSource(id.value)
         queries.deleteSource(id.value)
     }
 
@@ -104,7 +109,11 @@ class Library(
         if (refreshAvailability(source) != Availability.AVAILABLE) return ScanReport(id, ScanReport.Status.UNAVAILABLE)
         return try {
             when (source) {
-                is CatalogSource -> scanCatalog(id, source.catalog().toList())
+                is CatalogSource -> {
+                    val (report, updates) = scanCatalog(id, source.catalog().toList())
+                    deliver(source, updates)
+                    report
+                }
                 is FileEnumeratingSource -> scanFiles(id, source.files().toList())
                 else -> error("unreachable")
             }
@@ -125,19 +134,20 @@ class Library(
         }
     }
 
-    private fun scanCatalog(id: SourceId, entries: List<CatalogEntry>): ScanReport {
-        if (entries.isEmpty() && hasKnownVersions(id)) return keepEmpty(id)
+    /** The report, and what the source has to be told for its watch state to agree with Reflux's. */
+    private fun scanCatalog(id: SourceId, entries: List<CatalogEntry>): Pair<ScanReport, List<PendingSourceUpdate>> {
+        if (entries.isEmpty() && hasKnownVersions(id)) return keepEmpty(id) to emptyList()
         return database.transactionWithResult {
             val plan = planner().planCatalog(id, entries, overrides(id), yearHints(id))
             val report = writer.apply(plan)
-            val itemByPath = plan.versions.associate { it.version.location.path to it.version.itemId }
-            for (entry in entries) {
-                val state = entry.userState ?: continue
-                val itemId = entry.versions.firstNotNullOfOrNull { itemByPath[it.path] } ?: continue
-                importSourceState(itemId, state)
+            val versionByPath = plan.versions.associate { it.version.location.path to it.version }
+            val updates = entries.mapNotNull { entry ->
+                val state = entry.userState ?: return@mapNotNull null
+                val version = entry.versions.firstNotNullOfOrNull { versionByPath[it.path] } ?: return@mapNotNull null
+                reconcile(version, state)?.let { PendingSourceUpdate(version.location.path, it) }
             }
             queries.markSourceScanned(now(), id.value)
-            report
+            report to updates
         }
     }
 
@@ -150,28 +160,21 @@ class Library(
     }
 
     /**
-     * Adopts a source's watch state when it is newer than Reflux's, so watching on the server's own clients is
-     * reflected here. Server favorites are added; local favorites are never removed by a server.
+     * Settles the canonical watch state of a work against what a source says about its own copy of it
+     * (see [WatchReconciler]): what is news from the source is adopted, so watching on a server's own
+     * clients is reflected here, and what the source has not heard of yet is returned for delivery.
+     * Server favorites are added; local favorites are never removed by a server.
      */
-    private fun importSourceState(itemId: MediaId, state: SourceUserState) {
-        val local = watchState(itemId)
-        val sourcePlayed = state.lastPlayedAtEpochMs
-        val localPlayed = local?.lastPlayedAtEpochMs
-        val sourceIsNewer = sourcePlayed != null && (localPlayed == null || sourcePlayed > localPlayed)
-        val playedWithoutDate = state.played && sourcePlayed == null && local == null
-        if (sourceIsNewer || playedWithoutDate) {
-            saveWatchState(
-                WatchState(
-                    itemId = itemId,
-                    positionMs = if (state.played) 0 else state.positionMs,
-                    durationMs = local?.durationMs,
-                    completed = state.played,
-                    playCount = maxOf(local?.playCount ?: 0, state.playCount, if (state.played) 1 else 0),
-                    lastPlayedAtEpochMs = sourcePlayed ?: localPlayed,
-                ),
-            )
-        }
-        if (state.favorite) queries.insertFavorite(itemId.value, now())
+    private fun reconcile(version: MediaVersion, state: SourceUserState): SourceUpdate? {
+        val location = version.location
+        val baseline = queries.watchSyncOf(location.sourceId.value, location.path).executeAsOneOrNull()
+            ?.let { SyncBaseline(it.played != 0L, it.position_ms, it.last_played_at, it.reconciled_at) }
+        val outcome = WatchReconciler.reconcile(version.itemId, watchState(version.itemId), state, baseline, version, now())
+        outcome.state?.let(::saveWatchState)
+        val seen = outcome.baseline
+        queries.upsertWatchSync(location.sourceId.value, location.path, seen.played.toLong(), seen.positionMs, seen.lastPlayedAtEpochMs, seen.reconciledAtEpochMs)
+        if (state.favorite) queries.insertFavorite(version.itemId.value, now())
+        return outcome.update
     }
 
     /**
@@ -301,11 +304,16 @@ class Library(
 
     private fun VersionInfo.withDetails(): VersionInfo = complete(tracks(version.id.value), subtitles(version.id.value))
 
-    /** Best Version for this device, honoring the user's pinned version. */
-    fun selectVersion(itemId: MediaId, device: DeviceCapabilities): VersionSelection {
+    /**
+     * Best Version for this device, honoring the user's pinned version.
+     *
+     * @param resuming false ranks the versions for playing from the start, without regard to which cut
+     *   the user is part-way through.
+     */
+    fun selectVersion(itemId: MediaId, device: DeviceCapabilities, resuming: Boolean = true): VersionSelection {
         val candidates = versions(itemId).map { VersionCandidate(it.version, it.availability, it.locality) }
         val preferred = queries.preferredVersion(itemId.value).executeAsOneOrNull()?.let(::VersionId)
-        return VersionSelector.select(candidates, device, preferred)
+        return VersionSelector.select(candidates, device, preferred, if (resuming) watchState(itemId) else null)
     }
 
     fun setPreferredVersion(itemId: MediaId, versionId: VersionId?) {
@@ -389,19 +397,26 @@ class Library(
 
     fun watchState(itemId: MediaId): WatchState? = queries.watchStateOf(itemId.value).executeAsOneOrNull()?.toModel()
 
-    /** Periodic playback progress (see [WatchRules.onProgress]). */
-    override fun progress(itemId: MediaId, positionMs: Long, durationMs: Long?) =
-        saveWatchState(WatchRules.onProgress(watchState(itemId), itemId, positionMs, durationMs, now()))
+    override fun progress(itemId: MediaId, positionMs: Long, durationMs: Long?) = progress(itemId, positionMs, durationMs, null)
+
+    override fun stopped(itemId: MediaId, positionMs: Long, durationMs: Long?) = stopped(itemId, positionMs, durationMs, null)
+
+    /**
+     * Periodic playback progress (see [WatchRules.onProgress]). The state is the work's; [version] is the
+     * copy that is playing, whose timeline the position is on.
+     */
+    fun progress(itemId: MediaId, positionMs: Long, durationMs: Long?, version: MediaVersion?) =
+        saveWatchState(WatchRules.onProgress(watchState(itemId), itemId, positionMs, durationMs, now(), version))
 
     /** End of a playback session (see [WatchRules.onStop]). */
-    override fun stopped(itemId: MediaId, positionMs: Long, durationMs: Long?) =
-        saveWatchState(WatchRules.onStop(watchState(itemId), itemId, positionMs, durationMs, now()))
+    fun stopped(itemId: MediaId, positionMs: Long, durationMs: Long?, version: MediaVersion?) =
+        saveWatchState(WatchRules.onStop(watchState(itemId), itemId, positionMs, durationMs, now(), version))
 
     /** Marks a work as watched or unwatched. Shows and seasons apply to all their episodes. */
     fun setWatched(itemId: MediaId, watched: Boolean) = database.transaction {
         for (id in playableIdsOf(itemId)) {
             val previous = watchState(id)
-            saveWatchState(if (watched) WatchRules.markWatched(previous, id, now()) else WatchRules.markUnwatched(previous, id))
+            saveWatchState(if (watched) WatchRules.markWatched(previous, id, now()) else WatchRules.markUnwatched(previous, id, now()))
         }
     }
 
@@ -416,12 +431,7 @@ class Library(
         return entries(order.mapNotNull { items[it] })
     }
 
-    internal fun saveWatchState(state: WatchState) {
-        queries.upsertWatchState(
-            state.itemId.value, state.positionMs, state.durationMs, state.completed.toLong(), state.playCount.toLong(),
-            state.lastPlayedAtEpochMs,
-        )
-    }
+    internal fun saveWatchState(state: WatchState) = queries.save(state)
 
     internal fun playableIdsOf(itemId: MediaId): List<MediaId> = when (val item = item(itemId)) {
         is Show -> queries.episodesOfShow(item.id.value).executeAsList().map { MediaId(it.id) }

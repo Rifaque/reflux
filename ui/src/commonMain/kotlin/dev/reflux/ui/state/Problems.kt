@@ -7,6 +7,8 @@ import dev.reflux.core.playback.DeviceCapabilities
 import dev.reflux.core.playback.PlaybackFailure
 import dev.reflux.core.playback.PlaybackVerdict
 import dev.reflux.core.source.MediaSource
+import dev.reflux.core.watch.ResumeBasis
+import dev.reflux.core.watch.ResumePoint
 import dev.reflux.library.Library
 
 /**
@@ -30,6 +32,16 @@ internal object Problems {
         is FolderChoice.Unreadable ->
             "Reflux can't open “${choice.name}”. Check that it is connected and that you are allowed to read it."
         is FolderChoice.NotAFolder -> "“${choice.name}” isn't a folder Reflux can read media from."
+    }
+
+    /**
+     * Said when playback continues on a copy that is not the same edit as the one the viewer was watching,
+     * so that landing somewhere else than where they stopped does not go unexplained.
+     */
+    fun handoff(resume: ResumePoint): String? = when (resume.basis) {
+        ResumeBasis.ADJUSTED -> "This is a different cut from the one you were watching. Playback picks up a little before where you stopped."
+        ResumeBasis.NOT_TRANSFERABLE -> "This is a different cut from the one you were watching, so it starts from the beginning."
+        else -> null
     }
 
     fun playback(failure: PlaybackFailure?): String = when (failure) {

@@ -11,7 +11,8 @@ import dev.reflux.core.playback.SubtitleAttachment
 import dev.reflux.core.source.MediaSource
 import dev.reflux.core.versions.RankedVersion
 import dev.reflux.core.versions.VersionSelection
-import dev.reflux.core.watch.WatchRules
+import dev.reflux.core.watch.Handoff
+import dev.reflux.core.watch.ResumePoint
 
 /** Everything needed to start playing a work, and why this version was chosen. */
 data class PlaybackPlan(
@@ -21,11 +22,16 @@ data class PlaybackPlan(
     val request: PlaybackRequest,
     /** The source holding the version; pass it to [SyncingWatchReporter]. */
     val source: MediaSource,
+    /** Where playback starts and why: the work's progress, carried to this version's timeline. */
+    val resume: ResumePoint = ResumePoint.START,
 )
 
 /**
  * Turns "play this work" into a concrete [PlaybackRequest]: Best Version for [device], the resume position,
  * and external subtitles, resolved through the version's source adapter.
+ *
+ * Progress belongs to the work, so it applies whichever version is chosen: the copy that was playing last
+ * time may be away, and playback continues on another from the same moment ([Handoff]).
  *
  * @param versionId plays a specific version instead of Best Version (from the version picker).
  * @param resume false starts from the beginning ("Play from start").
@@ -38,7 +44,7 @@ suspend fun Library.planPlayback(
     versionId: VersionId? = null,
     resume: Boolean = true,
 ): PlaybackPlan? {
-    val selection = selectVersion(itemId, device)
+    val selection = selectVersion(itemId, device, resuming = resume)
     val chosen = if (versionId != null) {
         selection.ranked.firstOrNull { it.version.id == versionId && it.playable }
     } else {
@@ -55,13 +61,14 @@ suspend fun Library.planPlayback(
             hearingImpaired = subtitle.hearingImpaired,
         )
     }
+    val start = if (resume) Handoff.resume(watchState(itemId), version) else ResumePoint.START
     val request = PlaybackRequest(
         target = source.playbackTarget(version.location.path),
         title = playbackTitle(itemId),
-        startPositionMs = if (resume) WatchRules.resumePosition(watchState(itemId)) else null,
+        startPositionMs = start.positionMs,
         subtitles = subtitles,
     )
-    return PlaybackPlan(itemId, chosen, selection, request, source)
+    return PlaybackPlan(itemId, chosen, selection, request, source, start)
 }
 
 /** "Heat (1995)" or "Breaking Bad · S1 E2 · Grilled". */

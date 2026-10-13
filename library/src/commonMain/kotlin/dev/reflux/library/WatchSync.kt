@@ -6,6 +6,7 @@ import dev.reflux.core.model.SourceId
 import dev.reflux.core.playback.WatchReporter
 import dev.reflux.core.source.MediaSource
 import dev.reflux.core.source.WatchStateSyncSource
+import dev.reflux.core.watch.SourceUpdate
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -22,12 +23,12 @@ class SyncingWatchReporter(
     private val scope: CoroutineScope,
 ) : WatchReporter {
     override fun progress(itemId: MediaId, positionMs: Long, durationMs: Long?) {
-        library.progress(itemId, positionMs, durationMs)
+        library.progress(itemId, positionMs, durationMs, version)
         sync { it.reportProgress(version.location.path, positionMs, paused = false) }
     }
 
     override fun stopped(itemId: MediaId, positionMs: Long, durationMs: Long?) {
-        library.stopped(itemId, positionMs, durationMs)
+        library.stopped(itemId, positionMs, durationMs, version)
         sync { it.reportStopped(version.location.path, positionMs) }
     }
 
@@ -51,6 +52,24 @@ suspend fun Library.setWatchedEverywhere(itemId: MediaId, watched: Boolean, sour
         }
     }
     return failures
+}
+
+/** Something a source has not heard of yet about the item at [path]. */
+internal data class PendingSourceUpdate(val path: String, val update: SourceUpdate)
+
+/**
+ * Tells a source what changed in Reflux while the two were out of step: what was watched or marked on
+ * another copy, or while the source was away. What cannot be delivered stays pending for the next scan.
+ */
+internal suspend fun Library.deliver(source: MediaSource, updates: List<PendingSourceUpdate>) {
+    val syncing = source as? WatchStateSyncSource ?: return
+    for ((path, update) in updates) {
+        val delivered = bestEffort {
+            update.played?.let { syncing.setPlayed(path, it) }
+            update.positionMs?.let { syncing.reportStopped(path, it) }
+        }
+        if (delivered) queries.markWatchSyncReconciled(now(), source.descriptor.id.value, path)
+    }
 }
 
 private suspend fun bestEffort(action: suspend () -> Unit): Boolean = try {

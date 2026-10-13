@@ -190,6 +190,7 @@ object Formatting {
         SelectionCriterion.AVAILABILITY -> "The only one available right now"
         SelectionCriterion.COMPATIBILITY -> "Plays best on this device"
         SelectionCriterion.FEWER_COMPROMISES -> "Plays with fewer compromises"
+        SelectionCriterion.CONTINUITY -> "The cut you are watching"
         SelectionCriterion.RESOLUTION -> "Highest resolution for this display"
         SelectionCriterion.DYNAMIC_RANGE -> "Best HDR format for this display"
         SelectionCriterion.AUDIO -> "Best audio for this device"

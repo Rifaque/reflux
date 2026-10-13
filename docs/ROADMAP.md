@@ -5,8 +5,9 @@
 | Area | State |
 | --- | --- |
 | Media Core contracts (entities, versions, locations, availability, watch state, artwork) | Implemented in `core` |
+| Universal watch state and version handoff: one watch state per work, positions carried between copies by timeline (cut and running time), different cuts never resumed blindly, reconciliation with sources that keep their own watch state | Implemented and tested with source-independent doubles ([WATCH_STATE.md](WATCH_STATE.md)). Verified on Windows 11 (`check`, and the real-window tests); not yet run on Linux, and the exchange with a live Jellyfin server is unverified |
 | Source abstraction and capabilities | Contracts implemented |
-| Playback capability model and Best Version | Implemented and tested |
+| Playback capability model and Best Version (capability-driven, local-first among equivalent versions, continuity of the cut in progress) | Implemented and tested |
 | Input model (semantic actions, mappings, modality tracking) | Implemented and tested |
 | Filename/folder identification, sidecars, confidence | Implemented and tested |
 | Local persistence / offline model (SQLite, offline and unmount safety) | Implemented and tested |
@@ -17,7 +18,7 @@
 | Background pipeline: change watching, debounced rescans, reconnect detection, scan → probe → metadata → artwork | Implemented and tested |
 | Smart search (deterministic query understanding over metadata, credits, stream facts, watch state) | Implemented and tested |
 | Smart library: default Home feed, franchise/manual/smart collections, diagnostics (weak identification, unmatched works, multiple versions, missing episodes and artwork, offline sources) | Implemented and tested |
-| Catalog-source architecture and Jellyfin adapter (sign-in, catalog, multi-version items, direct streams, two-way watch state) | Implemented and tested against API fixtures; needs verification against a live server |
+| Catalog-source architecture and Jellyfin adapter (sign-in, catalog, multi-version items, direct streams, two-way watch state through the source-independent reconciliation) | Implemented and tested against API fixtures; needs verification against a live server, including whether a position sent outside a playback session is taken |
 | WebDAV network source (read-only) | Implemented; tested against fixtures and a live WsgiDAV server |
 | SMB network source (read-only, streamed through a loopback server) | Implemented; tested against a live SMB2 server (impacket), including probing and playback |
 | Cross-source unification: works sharing a provider ID merge into one work (Best Version across sources) | Implemented and tested |
@@ -29,7 +30,7 @@
 | Desktop controllers (XInput and HID joysticks on Windows, the kernel joystick interface on Linux) | Implemented and tested from the reader upward, and hardened against the non-controller devices real machines report. No physical controller has been connected during development, so Xbox, PlayStation, and Switch Pro hardware is unverified; `PhysicalControllerTest` is the guided check for it |
 | Platform boundary | Shared modules are free of platform APIs and `check` enforces it; what a new shell supplies is listed in the architecture document |
 | Android phone/tablet and Android TV shells (Media3 player, Storage Access Framework source) | Planned — needs the Android SDK |
-| Known gaps | Stacked multi-part files play as separate versions; disc structures (BDMV/VIDEO_TS) are recognized but not playable; credentials are not yet in platform secure storage |
+| Known gaps | Watch state is not synchronized between devices except through a source that keeps it; cuts are told apart by edition labels and running times only; stacked multi-part files play as separate versions; disc structures (BDMV/VIDEO_TS) are recognized but not playable; credentials are not yet in platform secure storage |
 | Not yet in the experience layer | Identify flow, library diagnostics, user collections, and non-folder sources (Jellyfin, WebDAV, SMB) have engine support but no UI; no settings screen yet |
 | Desktop shell gaps | libmpv is not bundled and there is no installer; media keys are not captured; no scrollbars; the GNOME and KDE folder dialogs are used when their helper is installed but are only unit-tested (the Linux end-to-end run uses the toolkit's chooser); on X11 without a compositing manager the player's controls window is opaque and hides the video; Wayland has only been reached through X11 |
 | Not verified here | TMDB against the live service (no credential on the development machine; the provider is covered by fixtures and the app falls back to file names); a session with physical controllers |
@@ -153,6 +154,7 @@ Priority is based on product value and platform capability, not feature-count fo
 - Prefer local when quality/compatibility are otherwise equivalent.
 - Consider resolution, HDR, audio, compatibility, reliability, and availability.
 - Allow user overrides.
+- Continue on another version from where the user stopped (implemented: [WATCH_STATE.md](WATCH_STATE.md)).
 
 ## Phase 10 — Native Android
 

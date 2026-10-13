@@ -28,6 +28,7 @@ import dev.reflux.core.playback.VideoStream
 import dev.reflux.core.source.SourceLocality
 import dev.reflux.library.db.External_subtitle
 import dev.reflux.library.db.Item
+import dev.reflux.library.db.LibraryQueries
 import dev.reflux.library.db.Source
 import dev.reflux.library.db.Track
 import dev.reflux.library.db.Watch_state
@@ -78,7 +79,17 @@ internal fun Watch_state.toModel() = WatchState(
     completed = completed != 0L,
     playCount = play_count.toInt(),
     lastPlayedAtEpochMs = last_played_at,
+    updatedAtEpochMs = updated_at,
+    versionId = version_id?.let(::VersionId),
+    cut = cut,
 )
+
+internal fun LibraryQueries.save(state: WatchState) {
+    upsertWatchState(
+        state.itemId.value, state.positionMs, state.durationMs, state.completed.toLong(), state.playCount.toLong(),
+        state.lastPlayedAtEpochMs, state.updatedAtEpochMs, state.versionId?.value, state.cut,
+    )
+}
 
 internal fun External_subtitle.toModel() = ExternalSubtitle(
     location = MediaLocation(SourceId(source_id), path),
