@@ -127,7 +127,7 @@ Home is composed by fixed rules, not configuration: Continue Watching, Recently 
 
 ## 2026-10-08 — Catalog sources share the identity pipeline
 
-Media servers are catalog sources whose items are converted into the same identity description a file-name parse produces, then identified by the same deterministic rules. This keeps one notion of identity: a movie on a Jellyfin server and the same movie in a local folder become one work with two versions. User corrections apply to server items too; to make corrections work offline, each server version stores the server's own description. Server watch state is adopted only when newer than Reflux's; server favorites are added but never remove local ones.
+Media servers are catalog sources whose items are converted into the same identity description a file-name parse produces, then identified by the same deterministic rules. This keeps one notion of identity: a movie on a Jellyfin server and the same movie in a local folder become one work with two versions. User corrections apply to server items too; to make corrections work offline, each server version stores the server's own description. Server watch state is adopted only when newer than Reflux's (replaced on 2026-10-13 by reconciliation against what the server last said); server favorites are added but never remove local ones.
 
 ## 2026-10-08 — Jellyfin adapter
 
@@ -261,7 +261,7 @@ The state already belonged to works. What this adds is what makes that safe to r
 
 **Alternatives.** Resetting progress when the cut changes is safe and loses the user's place, which is the thing the invariant exists to keep. Carrying the timestamp over unchanged is what most players do and silently skips or repeats minutes between cuts. Scaling the position by the ratio of running times is right only when the difference is spread evenly, and errs in the direction of skipping. Matching content itself (audio or frame fingerprints) would be exact and is far beyond what this needs; the comparison sits behind one function so that it can be replaced.
 
-**Consequences.** Running times matter: a copy that was never probed can only be `UNVERIFIED`, and is trusted rather than held against the user (unknown is not failure). Best Version prefers a copy on the timeline in progress over a better picture of another cut, below playability and above resolution. The database schema gained its first migration; watch state is user state and is carried forward, not rebuilt.
+**Consequences.** Running times matter: a copy that was never probed can only be `UNVERIFIED`, and is trusted rather than held against the user (unknown is not failure). Best Version prefers a copy on the timeline in progress over a better picture of another cut: below being playable at all, above everything else. The database schema gained its first migration; watch state is user state and is carried forward, not rebuilt.
 
 ## 2026-10-13 — Sources are reconciled with Reflux's watch state, not obeyed
 
@@ -283,4 +283,14 @@ A position is sent only to a source whose copy is on the timeline it was measure
 
 "Equivalent" is judged for the device in front of the user, in this order: whether it can play the version at all, how many compromises that takes (software decoding, tone mapping), and then resolution, dynamic range, and audio *only as far as this display and these outputs reach*. Versions that are the same by all of that are equivalent, and the closest one plays: on the device, then on the local network, then remote. A local 1080p H.264 file beats the same thing streamed. A local 4K HEVC 10-bit file loses to a 1080p H.264 stream on a device that decodes HEVC in software or not at all, and wins on one that decodes it in hardware on a 4K display.
 
-Codec, encoder, and bit depth are not quality in themselves and are never ranked directly: H.264 and HEVC are codecs, x264 and x265 are encoders, 8-bit and 10-bit are bit depths, and each counts only through what the device does with it. A user's pinned version outranks everything while it is playable, and a viewer part-way through one cut stays on that cut.
+Codec, encoder, and bit depth are not quality in themselves and are never ranked directly: H.264 and HEVC are codecs, x264 and x265 are encoders, 8-bit and 10-bit are bit depths, and each counts only through what the device does with it.
+
+The whole order is: what can be played here (its source is reachable, the device can decode it); the cut the viewer is part-way through; the version the user pinned; quality as this device delivers it (compromises first, then resolution, dynamic range, audio); and the closest copy. Continuity sits above a pin because resuming continues what was being watched, and a pin is a standing preference for starting a work. A pin sits above "plays better" because that is Reflux's judgment and the pin is the user overruling it; it sits below "can play at all" because no preference makes a device decode what it cannot.
+
+## 2026-10-13 — Server behavior is observed, not assumed
+
+The synchronization rules lean on how a server treats its own records, and fixtures can only repeat what their author believed. `JellyfinLiveTest` runs the whole exchange against a real server when one is named in the environment, and `tools/ci/jellyfin-test-server.sh` starts a throwaway one in Docker, so that the beliefs can be checked whenever a server version changes. The automated checks never need a server.
+
+Observed on Jellyfin Server 12.2.0: a stop reported outside any playback session sets the position; marking played clears the position; marking not played clears position, play count, and date. The last one is why an empty, undated record is never adopted: it is what un-marking leaves behind, and equally what a reset server shows.
+
+Found on the way: reports to a server were sent concurrently, so a stop could be overtaken by the progress report before it and leave the server on the earlier position. They now go one at a time, in order.

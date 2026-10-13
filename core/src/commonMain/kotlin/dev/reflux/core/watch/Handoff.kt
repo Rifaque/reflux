@@ -52,20 +52,28 @@ object Handoff {
     /** How [version]'s timeline relates to the one the viewer is part-way through, or null when nothing is in progress. */
     fun relation(state: WatchState?, version: MediaVersion): TimelineMatch? {
         if (state == null || WatchRules.resumePosition(state) == null) return null
-        if (state.versionId == version.id) return TimelineMatch.SAME
-        return Timelines.compare(Timeline.of(state), Timeline.of(version))
+        val match = Timelines.compare(Timeline.of(state), Timeline.of(version))
+        return if (sameVersion(state, version, match)) TimelineMatch.SAME else match
     }
 
     /** Where playing [version] should start for a viewer whose progress is [state]. */
     fun resume(state: WatchState?, version: MediaVersion): ResumePoint {
         val position = WatchRules.resumePosition(state) ?: return ResumePoint.START
-        if (state?.versionId == version.id) return ResumePoint(position, ResumeBasis.SAME_VERSION)
-        return when (relation(state, version)) {
-            TimelineMatch.SAME -> ResumePoint(position, ResumeBasis.SAME_TIMELINE)
-            TimelineMatch.UNVERIFIED -> ResumePoint(position, ResumeBasis.UNVERIFIED)
-            else -> acrossTimelines(position, state?.durationMs, version.stream.durationMs)
+        val match = Timelines.compare(Timeline.of(state!!), Timeline.of(version))
+        return when {
+            sameVersion(state, version, match) -> ResumePoint(position, ResumeBasis.SAME_VERSION)
+            match == TimelineMatch.SAME -> ResumePoint(position, ResumeBasis.SAME_TIMELINE)
+            match == TimelineMatch.UNVERIFIED -> ResumePoint(position, ResumeBasis.UNVERIFIED)
+            else -> acrossTimelines(position, state.durationMs, version.stream.durationMs)
         }
     }
+
+    /**
+     * A version is a location, and what is at a location can be replaced: the same path may hold another
+     * cut tomorrow. The version the position was measured on only counts as that while it still runs as long.
+     */
+    private fun sameVersion(state: WatchState, version: MediaVersion, match: TimelineMatch): Boolean =
+        state.versionId == version.id && match != TimelineMatch.DIFFERENT
 
     /**
      * Cuts of a work differ by material that is in one and not in the other. Going to a longer copy, the

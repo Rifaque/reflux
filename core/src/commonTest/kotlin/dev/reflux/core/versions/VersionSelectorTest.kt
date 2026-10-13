@@ -71,7 +71,9 @@ class VersionSelectorTest {
         val hd = candidate("hd", height = 720)
         val selection = VersionSelector.select(listOf(uhd, hd), Devices.laptop1080)
         assertEquals(hd.version, selection.best?.version)
-        assertEquals(SelectionCriterion.COMPATIBILITY, selection.decidedBy)
+        assertEquals(SelectionCriterion.FEWER_COMPROMISES, selection.decidedBy)
+        // A device that cannot decode it at all is a different matter from one that struggles with it.
+        assertEquals(SelectionCriterion.COMPATIBILITY, VersionSelector.select(listOf(uhd, hd), Devices.oldPhone).decidedBy)
     }
 
     @Test
@@ -110,6 +112,32 @@ class VersionSelectorTest {
 
         val unsupported = VersionSelector.select(listOf(uhd, hd), Devices.oldPhone, preferred = uhd.version.id)
         assertEquals(hd.version, unsupported.best?.version)
+    }
+
+    @Test
+    fun aPinnedVersionIsPlayedEvenWhereAnotherWouldPlayBetter() {
+        // HDR on an SDR laptop with software HEVC: Best Version would not pick it. The user did.
+        val uhd = candidate("uhd", VideoCodec.HEVC, 2160, DynamicRange.HDR10)
+        val hd = candidate("hd")
+        assertEquals(hd.version, VersionSelector.select(listOf(uhd, hd), Devices.laptop1080).best?.version)
+        val pinned = VersionSelector.select(listOf(uhd, hd), Devices.laptop1080, preferred = uhd.version.id)
+        assertEquals(uhd.version, pinned.best?.version)
+        assertEquals(SelectionCriterion.USER_PREFERENCE, pinned.decidedBy)
+    }
+
+    @Test
+    fun theCutInProgressOutranksAPinnedVersion() {
+        val theatrical = candidate("theatrical", minutes = 120)
+        val extended = candidate("extended", minutes = 137, edition = "Extended Edition")
+        val progress = WatchRules.onStop(null, item, 60 * 60_000L, 137 * 60_000L, nowMs = 1, version = extended.version)
+        // Resuming continues what was being watched...
+        val resuming = VersionSelector.select(listOf(theatrical, extended), Devices.tv4kHdr, preferred = theatrical.version.id, resuming = progress)
+        assertEquals(extended.version, resuming.best?.version)
+        assertEquals(SelectionCriterion.CONTINUITY, resuming.decidedBy)
+        // ...and starting over is where the pin applies.
+        val fromStart = VersionSelector.select(listOf(theatrical, extended), Devices.tv4kHdr, preferred = theatrical.version.id)
+        assertEquals(theatrical.version, fromStart.best?.version)
+        assertEquals(SelectionCriterion.USER_PREFERENCE, fromStart.decidedBy)
     }
 
     @Test
@@ -155,7 +183,7 @@ class VersionSelectorTest {
         // HEVC only in software here: the stream that decodes in hardware is the better evening.
         val laptop = VersionSelector.select(listOf(local, server), Devices.laptop1080)
         assertEquals(server.version, laptop.best?.version)
-        assertEquals(SelectionCriterion.COMPATIBILITY, laptop.decidedBy)
+        assertEquals(SelectionCriterion.FEWER_COMPROMISES, laptop.decidedBy)
 
         // No HEVC at all.
         assertEquals(server.version, VersionSelector.select(listOf(local, server), Devices.oldPhone).best?.version)

@@ -156,7 +156,7 @@ Packages in `core` (`dev.reflux.core`):
 - `source` — `MediaSource` / `FileEnumeratingSource` adapter contracts, `SourceCapability`, `SourceLocality`, shared `ScanRules`.
 - `identify` — path parsing (`MediaPathParser`), identity keys and grouping (`Identifier`), user overrides, sidecar subtitle/artwork matching.
 - `playback` — stream description (`StreamInfo`), `DeviceCapabilities`, `PlaybackAssessor` (optimal / degraded / unsupported with reasons), the engine-agnostic `Player` contract, `MediaProber`, default `TrackSelector`, and `PlaybackController` (semantic actions, default tracks, watch reporting).
-- `versions` — Best Version (`VersionSelector`), ranked and explained: what this device can play and show decides, and the closest copy wins among versions that are equivalent by that measure.
+- `versions` — Best Version (`VersionSelector`), ranked and explained: what this device can play, the cut in progress, the user's pinned version, quality as this device delivers it, and the closest copy among versions that are equivalent by all of that.
 - `watch` — the rules around the canonical watch state: completion and resume thresholds (`WatchRules`), timelines and cuts (`Timeline`, `Cuts`), carrying a position to another version (`Handoff`), reconciliation with a source's own records (`WatchReconciler`), and Next Up.
 - `search` — deterministic title search (`SearchMatcher`) and smart query understanding (`SmartQueryParser`).
 - `metadata` — provider contract (`MetadataProvider`), work/season/episode metadata, deterministic `MetadataMatcher`.
