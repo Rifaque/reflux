@@ -1,0 +1,29 @@
+-- Copies of versions kept on the device, and the separate subtitle files kept with them.
+CREATE TABLE download (
+    id TEXT NOT NULL PRIMARY KEY,
+    item_id TEXT NOT NULL,
+    origin_version_id TEXT NOT NULL UNIQUE,
+    origin_source_id TEXT NOT NULL,
+    origin_path TEXT NOT NULL,
+    path TEXT NOT NULL,
+    state TEXT NOT NULL,
+    failure TEXT,
+    bytes_downloaded INTEGER NOT NULL,
+    total_bytes INTEGER,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    completed_at INTEGER
+);
+
+CREATE TABLE download_subtitle (
+    download_id TEXT NOT NULL,
+    origin_source_id TEXT NOT NULL,
+    origin_path TEXT NOT NULL,
+    path TEXT NOT NULL,
+    format TEXT NOT NULL,
+    language TEXT,
+    forced INTEGER NOT NULL,
+    hearing_impaired INTEGER NOT NULL,
+    fetched INTEGER NOT NULL,
+    PRIMARY KEY (download_id, origin_path)
+);

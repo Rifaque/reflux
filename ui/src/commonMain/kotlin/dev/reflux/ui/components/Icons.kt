@@ -25,7 +25,7 @@ import dev.reflux.ui.theme.RefluxColors
 enum class Icon {
     PLAY, PAUSE, NEXT, PREVIOUS, REWIND, FORWARD,
     BACK, CHEVRON_RIGHT, CHEVRON_UP, CHEVRON_DOWN, CLOSE, CHECK, PLUS, SEARCH,
-    HEART, HEART_FILLED, FOLDER, REFRESH, OFFLINE,
+    HEART, HEART_FILLED, FOLDER, REFRESH, OFFLINE, DOWNLOAD,
     VOLUME, VOLUME_MUTED, SUBTITLES, AUDIO, CHAPTERS, FULLSCREEN, FULLSCREEN_EXIT,
 }
 
@@ -86,6 +86,11 @@ private fun DrawScope.draw(icon: Icon, color: Color) {
         Icon.FORWARD -> scale(-1f, 1f, pivot = Offset(12f, 12f)) { turn(color) }
         Icon.BACK -> stroke(color) { moveTo(14.5f, 5.5f); lineTo(8f, 12f); lineTo(14.5f, 18.5f) }
         Icon.CHEVRON_RIGHT -> stroke(color) { moveTo(9.5f, 5.5f); lineTo(16f, 12f); lineTo(9.5f, 18.5f) }
+        Icon.DOWNLOAD -> stroke(color) {
+            moveTo(12f, 4.5f); lineTo(12f, 14.5f)
+            moveTo(7.5f, 10.5f); lineTo(12f, 15f); lineTo(16.5f, 10.5f)
+            moveTo(5.5f, 19f); lineTo(18.5f, 19f)
+        }
         Icon.CHEVRON_UP -> stroke(color) { moveTo(5.5f, 15f); lineTo(12f, 8.5f); lineTo(18.5f, 15f) }
         Icon.CHEVRON_DOWN -> stroke(color) { moveTo(5.5f, 9f); lineTo(12f, 15.5f); lineTo(18.5f, 9f) }
         Icon.CLOSE -> stroke(color) { moveTo(6.5f, 6.5f); lineTo(17.5f, 17.5f); moveTo(17.5f, 6.5f); lineTo(6.5f, 17.5f) }

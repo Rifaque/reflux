@@ -89,6 +89,8 @@ Media work (movie, episode)
            +-- Source B
 ```
 
+A copy kept on the device for watching offline is one more entry under "Version / cut", in a source of Reflux's own. It is never a work of its own ([OFFLINE.md](OFFLINE.md)).
+
 **Playback progress follows the media work, not the physical file or source.** A work has one watch state, owned by Reflux; its position is carried to whichever version plays next, and never blindly onto a different cut. Sources that keep their own watch state are reconciled with it, not obeyed. The contract is in [WATCH_STATE.md](WATCH_STATE.md).
 
 ## Local-first state
@@ -128,6 +130,7 @@ A source is allowed to lack capabilities. The Media Core should represent that e
 Two kinds of sources exist today:
 
 - **File-enumerating sources** (`FileEnumeratingSource`: local folders, WebDAV and SMB shares) list files that Reflux parses and identifies itself.
+- **Downloadable sources** (`DownloadableSource`, capability `DOWNLOAD`) hand out their files whole, so a copy can be kept. Jellyfin, WebDAV, and SMB are; a source that could only show a file would not be, and nothing assumes it is.
 - **Catalog sources** (`CatalogSource`: media servers such as Jellyfin) list works they already identified. Their descriptions use the same shape as a file-name parse, so they pass through the same identity rules and merge with local copies of the same work; the same work on two sources is one item with two versions, and Best Version chooses between them. Server-reported stream data is trusted and not probed. A server's watch records are translated by its adapter into `SourceUserState` and reconciled with Reflux's canonical state (`WatchReconciler`): what is news from the server is adopted, what the server has not heard of is sent to it through `WatchStateSyncSource`, and a record that was already weighed never overwrites anything.
 
 ## Implementation
@@ -137,7 +140,7 @@ Kotlin Multiplatform (see the decision log). Modules:
 | Module | Contents | Depends on |
 | --- | --- | --- |
 | `core` | Media Core contracts and pure logic. No platform APIs. | kotlinx-coroutines |
-| `library` | The local-first library engine: SQLite schema (SQLDelight) and its migrations, scan planning and reconciliation, read models (movies, shows, Continue Watching, search), the canonical watch state and its synchronization with sources, favorites, identity corrections, version preferences, metadata storage and refresh, Identify flow, smart search, collections, the default Home feed, diagnostics, and the background pipeline. JVM: database driver, `JdkHttpFetcher`, `ArtworkCache`. | `core`, SQLDelight |
+| `library` | The local-first library engine: SQLite schema (SQLDelight) and its migrations, scan planning and reconciliation, read models (movies, shows, Continue Watching, search), the canonical watch state and its synchronization with sources, favorites, identity corrections, version preferences, metadata storage and refresh, Identify flow, smart search, collections, the default Home feed, diagnostics, the background pipeline, and Smart Offline (`Offline`: download records, the queue, copying, and registering copies as versions). JVM: database driver, `JdkHttpFetcher`, `ArtworkCache`, `FileDownloadStore`, `HttpDownloadTransport`. | `core`, SQLDelight |
 | `design` | Platform-free design system: color tokens with enforced contrast, liquid-glass material roles, motion specs, adaptive layout profiles (including the controller morph), artwork accent extraction. Consumed by the Compose shells. | `core` |
 | `sources:local` | Read-only local folder adapter for desktop JVMs. | `core` |
 | `sources:webdav` | Read-only WebDAV share source (PROPFIND listing, streamed playback with share credentials). | `core` |
@@ -159,6 +162,7 @@ Packages in `core` (`dev.reflux.core`):
 - `playback` — stream description (`StreamInfo`), `DeviceCapabilities`, `PlaybackAssessor` (optimal / degraded / unsupported with reasons), the engine-agnostic `Player` contract, `MediaProber`, default `TrackSelector`, and `PlaybackController` (semantic actions, default tracks, watch reporting).
 - `versions` — Best Version (`VersionSelector`), ranked and explained: what this device can play, the cut in progress, the user's pinned version, quality as this device delivers it, and the closest copy among versions that are equivalent by all of that.
 - `watch` — the rules around the canonical watch state: completion and resume thresholds (`WatchRules`), timelines and cuts (`Timeline`, `Cuts`), carrying a position to another version (`Handoff`), reconciliation with a source's own records (`WatchReconciler`), and Next Up.
+- `offline` — what a download is and can be (`Download`, its states and failures), how much of the device may be used (`StoragePolicy`), and `OfflinePlanner`: which version to keep for this device in the room there is.
 - `search` — deterministic title search (`SearchMatcher`) and smart query understanding (`SmartQueryParser`).
 - `metadata` — provider contract (`MetadataProvider`), work/season/episode metadata, deterministic `MetadataMatcher`.
 - `net` — `HttpFetcher`, the only network abstraction core-level code sees.
@@ -202,6 +206,7 @@ There are two shells, `desktop:app` and `android:app`. Each supplies what only i
 | Local media source | `sources:local`: a folder as a filesystem path | `DocumentTreeSource`: a folder granted through the Storage Access Framework, which is a tree of documents and a grant that can be revoked, not a path. On a television, whose system has no such picker, the same `sources:local` folder-by-path as on the desktop |
 | Choosing a folder | The system's folder dialog | The system's folder picker; on a television, Reflux's own picker over `StorageFolders` (the mounted volumes and their folders), after the system's permission question |
 | Being a television | Never | What the system reports (`UiModeManager`, the leanback feature): listed in the TV launcher with its own banner, no touchscreen required |
+| Smart Offline (`Platform.offline`) | Not wired; nothing about downloads is shown | `Offline` over the application's internal storage (`FileDownloadStore`) and `HttpURLConnection` (`HttpDownloadTransport`), running in a scope that lives as long as the process |
 | Sound output | What libmpv opens | Stereo unless an HDMI output reports more channels or formats it decodes itself, which become `maxOutputChannels` and `audioPassthrough` |
 | Language names for track labels | `Formatting.jvm.kt` | `Formatting.android.kt` |
 

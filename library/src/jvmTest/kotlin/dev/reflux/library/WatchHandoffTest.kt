@@ -621,10 +621,13 @@ class WatchHandoffTest {
 
     @Test
     fun aLibraryFromBeforeTimelinesWereRecordedIsCarriedForward() = runTest {
-        // A database as the previous schema left it: watch_state without timeline columns, no watch_sync.
+        // A database as the first schema left it: watch_state without timeline columns, no watch_sync, and
+        // nothing about downloads, which came later still.
         val file = Files.createTempDirectory("reflux-migrate").also { it.toFile().deleteOnExit() }.resolve("library.db")
         JdbcSqliteDriver("jdbc:sqlite:$file", Properties()).use { driver ->
             RefluxDatabase.Schema.create(driver)
+            driver.execute(null, "DROP TABLE download", 0)
+            driver.execute(null, "DROP TABLE download_subtitle", 0)
             driver.execute(null, "DROP TABLE watch_sync", 0)
             driver.execute(null, "DROP TABLE watch_state", 0)
             driver.execute(
@@ -646,5 +649,24 @@ class WatchHandoffTest {
         // The old record keeps working and new ones carry their timeline.
         upgraded.stopped(MediaId("m1"), 40 * MINUTE, 170 * MINUTE)
         assertEquals(clock, upgraded.watchState(MediaId("m1"))?.updatedAtEpochMs)
+        // Every step of the way was taken: the library can keep downloads now, and has none.
+        assertTrue(upgraded.downloads().isEmpty())
+    }
+
+    @Test
+    fun aLibraryFromBeforeDownloadsGainsThemAndLosesNothing() = runTest {
+        // The schema as it was one step ago: everything but the download tables, with a library in it.
+        val file = Files.createTempDirectory("reflux-migrate").also { it.toFile().deleteOnExit() }.resolve("library.db")
+        JdbcSqliteDriver("jdbc:sqlite:$file", Properties()).use { driver ->
+            RefluxDatabase.Schema.create(driver)
+            driver.execute(null, "DROP TABLE download", 0)
+            driver.execute(null, "DROP TABLE download_subtitle", 0)
+            driver.execute(null, "INSERT INTO watch_state VALUES ('m1', 1800000, 10200000, 0, 0, 1700000000000, 1700000000000, 'v1', 'extended')", 0)
+            driver.execute(null, "PRAGMA user_version = 2", 0)
+        }
+        val upgraded = Library(LibraryDatabase.open(file)) { clock }
+        assertEquals("extended", upgraded.watchState(MediaId("m1"))?.cut)
+        assertTrue(upgraded.downloads().isEmpty())
+        upgraded.syncDownloads()
     }
 }

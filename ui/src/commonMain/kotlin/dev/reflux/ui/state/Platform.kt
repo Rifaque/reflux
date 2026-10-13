@@ -5,6 +5,7 @@ import dev.reflux.core.model.ArtworkLocator
 import dev.reflux.core.model.SourceId
 import dev.reflux.core.playback.DeviceCapabilities
 import dev.reflux.core.playback.Player
+import dev.reflux.library.Offline
 
 /** Decodes artwork for display. Implemented by the platform shell on top of its disk cache and image decoder. */
 interface ArtworkLoader {
@@ -74,6 +75,12 @@ interface Platform {
      * then offers no volume of its own, and the keys that would have changed it are free for something else.
      */
     val systemVolume: Boolean get() = false
+
+    /**
+     * Keeping copies on the device for watching without their sources, where the platform has it set up;
+     * null where it does not, and then nothing about downloads is offered.
+     */
+    val offline: Offline? get() = null
 
     /** The storage to choose a media folder from, where the platform has no picker of its own; null where it does. */
     val folderBrowser: FolderBrowser? get() = null

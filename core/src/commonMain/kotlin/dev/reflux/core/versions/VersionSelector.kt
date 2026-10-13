@@ -105,6 +105,13 @@ object VersionSelector {
         return VersionSelection(sorted, decidedBy)
     }
 
+    /**
+     * Whether this device would show and play [a] and [b] equally well: nothing sets them apart until
+     * where they are kept and how large they are.
+     */
+    fun equivalent(a: RankedVersion, b: RankedVersion, device: DeviceCapabilities, preferred: VersionId? = null, resuming: WatchState? = null): Boolean =
+        criteria(device, preferred, resuming).takeWhile { it.first != SelectionCriterion.LOCALITY }.all { (_, compare) -> compare(a, b) == 0 }
+
     /** Each criterion returns a negative number when the first argument is better. */
     private fun criteria(
         device: DeviceCapabilities,

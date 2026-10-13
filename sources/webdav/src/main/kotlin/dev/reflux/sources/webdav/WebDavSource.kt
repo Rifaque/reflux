@@ -4,6 +4,7 @@ import dev.reflux.core.model.Availability
 import dev.reflux.core.model.StableIds
 import dev.reflux.core.net.HttpFetcher
 import dev.reflux.core.net.HttpRequest
+import dev.reflux.core.source.DownloadableSource
 import dev.reflux.core.source.FileEnumeratingSource
 import dev.reflux.core.source.PlaybackTarget
 import dev.reflux.core.source.ScanRules
@@ -47,7 +48,7 @@ class WebDavSource(
     private val config: WebDavConfig,
     private val http: HttpFetcher,
     displayName: String = URI(config.url).host ?: "WebDAV",
-) : FileEnumeratingSource {
+) : FileEnumeratingSource, DownloadableSource {
     private val root: URI = URI(config.url.trimEnd('/') + "/")
 
     override val descriptor = SourceDescriptor(
@@ -55,7 +56,7 @@ class WebDavSource(
         type = TYPE,
         displayName = displayName,
         locality = localityOf(root.host.orEmpty()),
-        capabilities = setOf(SourceCapability.ENUMERATE_FILES),
+        capabilities = setOf(SourceCapability.ENUMERATE_FILES, SourceCapability.DOWNLOAD),
     )
 
     private val authHeaders: Map<String, String> = config.username?.let { user ->
@@ -99,6 +100,9 @@ class WebDavSource(
             subdirectories.asReversed().forEach(pending::addLast)
         }
     }
+
+    /** A share serves files as they are. */
+    override suspend fun downloadTarget(path: String): PlaybackTarget = playbackTarget(path)
 
     override suspend fun playbackTarget(path: String): PlaybackTarget {
         val encoded = path.split('/').joinToString("/") { segment -> URI(null, null, segment, null).rawPath }

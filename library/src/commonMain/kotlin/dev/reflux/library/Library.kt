@@ -48,6 +48,7 @@ import dev.reflux.core.watch.WatchRules
 import dev.reflux.library.db.Item
 import dev.reflux.library.db.RefluxDatabase
 import dev.reflux.library.db.Watch_state
+import kotlin.concurrent.Volatile
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.toList
@@ -65,7 +66,11 @@ class Library(
     internal val now: () -> Long,
 ) : WatchReporter {
     internal val queries = database.libraryQueries
-    private val writer = PlanApplier(queries, now)
+    internal val writer = PlanApplier(queries, now)
+
+    /** Where downloads are kept, once something that downloads is running (see [Offline]). */
+    @Volatile
+    internal var downloadStore: DownloadStore? = null
     internal val metadataSync = MetadataSync(database, now)
     private val smartSearch = SmartSearch(database)
     private val parser get() = MediaPathParser(maxYear = yearOf(now()) + 1)
@@ -116,7 +121,7 @@ class Library(
                 }
                 is FileEnumeratingSource -> scanFiles(id, source.files().toList())
                 else -> error("unreachable")
-            }
+            }.also { syncDownloads() } // copies follow the works their origins belong to
         } catch (_: SourceUnavailableException) {
             queries.setSourceAvailability(Availability.UNAVAILABLE.name, now(), id.value)
             ScanReport(id, ScanReport.Status.UNAVAILABLE)
@@ -181,7 +186,15 @@ class Library(
      * Re-identifies a source from the file listing Reflux already knows, without touching the source.
      * Used after identity corrections; works while the source is offline.
      */
-    fun reidentify(sourceId: SourceId): ScanReport {
+    fun reidentify(sourceId: SourceId): ScanReport = if (source(sourceId)?.isDownloads() == true) {
+        // Copies are not identified; they belong where their origins do.
+        syncDownloads()
+        ScanReport(sourceId, ScanReport.Status.COMPLETED)
+    } else {
+        reidentifyFromListing(sourceId).also { syncDownloads() }
+    }
+
+    private fun reidentifyFromListing(sourceId: SourceId): ScanReport {
         val versions = queries.versionsOfSource(sourceId.value).executeAsList()
         if (versions.any { it.source_identity != null }) {
             val entries = versions.mapNotNull { row ->
@@ -312,7 +325,13 @@ class Library(
      */
     fun selectVersion(itemId: MediaId, device: DeviceCapabilities, resuming: Boolean = true): VersionSelection {
         val candidates = versions(itemId).map { VersionCandidate(it.version, it.availability, it.locality) }
-        val preferred = queries.preferredVersion(itemId.value).executeAsOneOrNull()?.let(::VersionId)
+        val pinned = queries.preferredVersion(itemId.value).executeAsOneOrNull()?.let(::VersionId)
+        // A copy on the device is the version it was made from: pinning one is honored by the other, so
+        // a pinned version that was downloaded plays from the device rather than being streamed again.
+        val preferred = pinned?.let { pin ->
+            queries.downloadOfOrigin(pin.value).executeAsOneOrNull()?.toModel()?.let(::copyOf)
+                ?.takeIf { it.availability != Availability.UNAVAILABLE }?.version?.id ?: pin
+        }
         return VersionSelector.select(candidates, device, preferred, if (resuming) watchState(itemId) else null)
     }
 

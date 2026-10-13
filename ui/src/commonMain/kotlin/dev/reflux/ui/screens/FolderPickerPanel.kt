@@ -29,6 +29,7 @@ import dev.reflux.ui.components.ButtonStyle
 import dev.reflux.ui.components.Icon
 import dev.reflux.ui.components.Pressable
 import dev.reflux.ui.components.absorbsPointer
+import dev.reflux.ui.components.focusPanel
 import dev.reflux.ui.state.BrowsedFolder
 import dev.reflux.ui.state.FolderListing
 import dev.reflux.ui.state.FolderPicker
@@ -57,7 +58,7 @@ internal fun FolderPickerPanel(picker: FolderPicker) {
     }
     Column(
         Modifier.widthIn(max = 520.dp).fillMaxWidth().glass(MaterialRole.MODAL).absorbsPointer()
-            .focusProperties { onExit = { cancelFocusChange() } }.focusGroup()
+            .focusPanel().focusProperties { onExit = { cancelFocusChange() } }.focusGroup()
             .padding(22.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {

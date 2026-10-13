@@ -23,6 +23,10 @@ internal object Problems {
     const val FOLDER_NOT_ADDED = "That folder couldn't be added."
     const val STORAGE_NOT_ALLOWED = "Reflux needs your permission to read this device's storage before it can find your media."
     const val FOLDER_NOT_OPENED = "That folder couldn't be opened."
+    const val OFFLINE_PREPARING = "Preparing the best offline version for this device."
+    const val OFFLINE_PREPARING_TO_FIT = "Preparing the best offline version that fits on this device."
+    const val OFFLINE_NOT_PREPARED = "That couldn't be prepared for offline."
+    const val DOWNLOAD_NOT_CHANGED = "That download couldn't be changed."
     const val TRACK_GONE = "That track is no longer available."
     const val PLAYBACK_STALLED = "Playback isn't starting. The file may be slow to reach, or video couldn't be started on this device."
 

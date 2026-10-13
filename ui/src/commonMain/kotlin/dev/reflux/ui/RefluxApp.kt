@@ -80,6 +80,7 @@ import dev.reflux.ui.screens.BrowseScreen
 import dev.reflux.ui.screens.DetailsScreen
 import dev.reflux.ui.screens.FolderPickerPanel
 import dev.reflux.ui.screens.HomeScreen
+import dev.reflux.ui.screens.OfflinePanel
 import dev.reflux.ui.screens.SearchScreen
 import dev.reflux.ui.screens.SourcesPanel
 import dev.reflux.ui.state.AppState
@@ -218,14 +219,14 @@ fun RefluxApp(app: AppState, modifier: Modifier = Modifier) {
             // found first (the navigation above it).
             // The same when a page gains a main action it did not have (a library that just appeared), or a
             // panel over it closes, unless the user has since put focus somewhere in the page themselves.
-            val covered = app.sourcesOpen || app.folderPicker != null
+            val covered = app.sourcesOpen || app.offlineOpen || app.folderPicker != null
             var started by remember { mutableStateOf<Destination?>(null) }
             LaunchedEffect(app.navigator.current, entry.starts, covered) {
                 if (covered) return@LaunchedEffect
                 val arrived = started != app.navigator.current
                 repeat(FOCUS_PATIENCE_FRAMES) {
                     withFrameNanos { }
-                    if (!arrived && entry.hasFocus && !entry.inChrome) return@LaunchedEffect
+                    if (!arrived && entry.hasFocus && !entry.inChrome && !entry.inPanel) return@LaunchedEffect
                     if (entry.start()) {
                         started = app.navigator.current
                         return@LaunchedEffect
@@ -294,7 +295,14 @@ private fun Chrome(app: AppState) {
             if (compact) CompactNavigation(app) else NavigationBar(app, Modifier.align(Alignment.TopCenter).padding(top = 14.dp))
         }
         // A click outside the open panel closes it and goes no further.
-        if (app.sourcesOpen) Box(Modifier.fillMaxSize().pointerInput(app) { detectTapGestures { app.sourcesOpen = false } })
+        if (app.sourcesOpen || app.offlineOpen) {
+            Box(Modifier.fillMaxSize().pointerInput(app) {
+                detectTapGestures {
+                    app.sourcesOpen = false
+                    app.offlineOpen = false
+                }
+            })
+        }
         // Choosing a folder takes the whole screen's attention: the page behind it steps back.
         AnimatedVisibility(app.folderPicker != null, enter = fadeIn(Motion.controlsShow.tween()), exit = fadeOut(Motion.controlsHide.tween())) {
             var shown by remember { mutableStateOf(app.folderPicker) }
@@ -316,6 +324,14 @@ private fun Chrome(app: AppState) {
                 exit = fadeOut(Motion.controlsHide.tween()),
             ) {
                 SourcesPanel(app)
+            }
+            AnimatedVisibility(
+                visible = app.offlineOpen,
+                modifier = Modifier.align(Alignment.TopEnd).padding(top = if (compact) 12.dp + 48.dp + 8.dp else 14.dp + NavigationBarHeight + 10.dp),
+                enter = fadeIn(Motion.controlsShow.tween()) + slideInVertically(Motion.controlsShow.tween()) { -it / 12 },
+                exit = fadeOut(Motion.controlsHide.tween()),
+            ) {
+                OfflinePanel(app)
             }
             AnimatedContent(
                 targetState = app.notice,
