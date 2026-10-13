@@ -23,7 +23,9 @@ Desktop playback and probing use libmpv through its stable client API (decision 
 
 ## Credentials
 
-On Android the app currently allows plain-HTTP connections to any host, because home media servers are usually `http://`. Before release that should be narrowed where it can be (a network security configuration, or asking when a server is added). Android release builds also need what debug builds do not: a signing configuration, shrinking with keep rules for the engine modules, and a look at what the desktop-only classes left in those modules (the JDBC database opener, the JDK HTTP client) do to a shrunk build.
+On Android the app currently allows plain-HTTP connections to any host, because home media servers are usually `http://`. Before release that should be narrowed where it can be (a network security configuration, or asking when a server is added). Reviewed for the Android client so far: no storage permission is requested (folders are granted one at a time through the system picker, read-only, and the grant is given back when a source is removed); backups of app data are switched off, so the library database with its source credentials does not leave the device that way; problem reports are redacted before they reach the system log or the log file; the only exported component is the launcher activity; nothing in the production path is debug-only. Still open: the plain-HTTP policy above, credentials in the database (below), and the media session being available to any media controller on the device, which is the platform's default.
+
+Android release builds also need what debug builds do not: a signing configuration, shrinking with keep rules for the engine modules, and a look at what the desktop-only classes left in those modules (the JDBC database opener, the JDK HTTP client) do to a shrunk build.
 
 Source credentials (Jellyfin access tokens, WebDAV and SMB passwords) are stored with the source configuration in the library database, unencrypted. They belong in the platform's secure storage: Credential Manager on Windows, the Secret Service on Linux, the Keystore on Android.
 

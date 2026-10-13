@@ -99,10 +99,11 @@ internal data class ChromeInsets(val top: Dp, val bottom: Dp)
 
 internal val LocalChromeInsets = staticCompositionLocalOf { ChromeInsets(top = 14.dp + NavigationBarHeight + 22.dp, bottom = 64.dp) }
 
-private fun chromeInsets(compact: Boolean, onSection: Boolean): ChromeInsets = when {
+private fun chromeInsets(compact: Boolean, onSection: Boolean, prompts: Boolean): ChromeInsets = when {
     !compact -> ChromeInsets(top = 14.dp + NavigationBarHeight + 22.dp, bottom = 64.dp)
-    // A page reached from somewhere has a way back in its top corner.
-    else -> ChromeInsets(top = if (onSection) 20.dp else 72.dp, bottom = 10.dp + NavigationBarHeight + 28.dp)
+    // A page reached from somewhere has a way back in its top corner; with a controller in hand, its
+    // button prompts sit above the sections, and the page ends clear of them too.
+    else -> ChromeInsets(top = if (onSection) 20.dp else 72.dp, bottom = 10.dp + NavigationBarHeight + 28.dp + if (prompts) 52.dp else 0.dp)
 }
 
 /**
@@ -172,7 +173,7 @@ fun RefluxApp(app: AppState, modifier: Modifier = Modifier) {
             }
         }
         val screens = rememberSaveableStateHolder()
-        val insets = chromeInsets(LocalLayout.current.formFactor == FormFactor.PHONE, app.navigator.current is Destination.Section)
+        val insets = chromeInsets(LocalLayout.current.formFactor == FormFactor.PHONE, app.navigator.current is Destination.Section, LocalLayout.current.showsButtonPrompts)
         CompositionLocalProvider(LocalFocusEntry provides entry, LocalFocusedControl provides focused, LocalChromeInsets provides insets) {
             GlassScene(
                 Modifier.fillMaxSize().background(RefluxColors.background).trackPointer(app).onFocusChanged { entry.hasFocus = it.hasFocus },

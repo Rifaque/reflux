@@ -191,7 +191,9 @@ There are two shells, `desktop:app` and `android:app`. Each supplies what only i
 | `Platform` (artwork decoding, device capabilities, player and video surface, adding media, fullscreen, problem reports): the whole contract between `ui` and a shell | `DesktopPlatform`: Skia decoding, AWT windows | `AndroidPlatform`: the platform decoder, the system folder picker, system bars and orientation |
 | Hosting the experience layer | A Compose window, with the player's controls in a window above the video | One activity (`MainActivity`), edge to edge, with the controls composed above the video |
 | Input normalization into `Key`, `GamepadButton`, and `InputSignal` | AWT keys; XInput, HID, and joystick readers | Key and motion events (`Input`, `StickDirections`); Back through the system's back dispatcher |
-| Playback engine behind `Player` | libmpv into a native child window | Media3 (ExoPlayer) into a `SurfaceView` (`Media3Player`); subtitles are drawn by the shell |
+| Playback engine behind `Player` | libmpv into a native child window | Media3 (ExoPlayer) into a `SurfaceView` (`Media3Player`); subtitles are drawn by the shell. The same engine is the device's media session, so headset buttons and the system's own controls act on the one playback state |
+| Leaving the app while playing | The window stays where it is | Picture-in-picture: the activity becomes a small window of the picture's shape showing only the picture. Stopped, covered, or with the screen off, playback pauses |
+| Problem reports | `DiagnosticLog`, a file in the data directory | The system log and a file in the app's storage. Both pass through `Redaction` in `core`, so no log carries credentials |
 | `MediaProber` | libmpv | The platform's `MediaExtractor` (`AndroidMediaProber`) |
 | `DeviceCapabilities` | What libmpv decodes, and the display | What the device's own codec list and display report (`AndroidCapabilities`) |
 | Engine wiring (data directory, source factories, pipeline, the rule that one folder is one source) | `desktop:engine` (`DesktopEnvironment`) | `AndroidEnvironment`, in the app's private storage |

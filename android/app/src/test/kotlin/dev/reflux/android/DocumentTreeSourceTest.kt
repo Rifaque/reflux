@@ -154,6 +154,7 @@ class DocumentTreeSourceTest {
                 DecoderDescription("audio/eac3", hardware = false),
             ),
             display,
+            pictureInPicture = true,
         )
         assertEquals(true, device.decoderFor(VideoCodec.H264)?.hardware)
         assertEquals(10, device.decoderFor(VideoCodec.HEVC)?.maxBitDepth)
@@ -164,7 +165,9 @@ class DocumentTreeSourceTest {
         assertFalse(AudioCodec.TRUEHD in device.audioDecoders)
         assertEquals(display, device.display)
         assertFalse(device.display.canToneMap)
-        assertFalse(PlaybackFeature.PICTURE_IN_PICTURE in device.features, "not claimed until it is built")
+        assertTrue(PlaybackFeature.PICTURE_IN_PICTURE in device.features)
+        assertFalse(PlaybackFeature.PICTURE_IN_PICTURE in AndroidCapabilities.of(emptyList(), display, pictureInPicture = false).features, "only where the device has it")
+        assertFalse(PlaybackFeature.BACKGROUND_PLAYBACK in device.features, "not claimed: it is not built")
     }
 
     @Test

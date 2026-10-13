@@ -29,9 +29,9 @@
 | Desktop shell (`desktop:app`): window, embedded libmpv video with Reflux controls above it, fullscreen, keyboard, mouse, and controller input, native folder picker, diagnostics log | Desktop Vertical Slice 0.2: verified end to end in the real window on Windows 11 and on Linux (X11 with a compositing manager): first run through the folder dialog, browsing, and real playback operated by a mouse |
 | Desktop controllers (XInput and HID joysticks on Windows, the kernel joystick interface on Linux) | Implemented and tested from the reader upward, and hardened against the non-controller devices real machines report. No physical controller has been connected during development, so Xbox, PlayStation, and Switch Pro hardware is unverified; `PhysicalControllerTest` is the guided check for it |
 | Platform boundary | Shared modules are free of platform APIs and `check` enforces it; what a new shell supplies is listed in the architecture document |
-| Android phone and tablet client (`android:app`): the shared experience layer with phone and tablet layouts, folders through the Storage Access Framework, Media3 playback, the canonical watch state | First vertical slice implemented and verified on an emulator: first run, choosing a folder, the library, details, playback, resume, and continuity with a real Jellyfin server (see the verification table below) |
+| Android phone and tablet client (`android:app`): the shared experience layer with phone and tablet layouts, folders through the Storage Access Framework, Media3 playback, the canonical watch state | First vertical slice implemented and hardened, verified on an emulator: first run, choosing a folder, storage that goes away and comes back, the library, details, playback, resume, picture-in-picture, the system's media controls, controller input, and continuity with a real Jellyfin server (see the verification table below) |
 | Android TV / Google TV | Planned, after the handheld client |
-| Android gaps | No picture-in-picture, background playback, or media session yet; chapters are not reported by the engine; a folder's changes are picked up at the next refresh rather than as they happen; SMB shares are desktop-only; the Jellyfin, WebDAV, Identify, and collections flows have no UI on any platform yet; release builds (signing, shrinking) are not set up; verified on an emulator only, not on physical phones or tablets |
+| Android gaps | No playback in the background (by decision, for now); chapters are not reported by the engine; a folder's changes are picked up at the next refresh rather than as they happen; SMB shares are desktop-only; the Jellyfin, WebDAV, Identify, and collections flows have no UI on any platform yet; release builds (signing, shrinking) are not set up; verified on an emulator only, not on physical phones or tablets |
 | Known gaps | Watch state is not synchronized between devices except through a source that keeps it; cuts are told apart by edition labels and running times only; stacked multi-part files play as separate versions; disc structures (BDMV/VIDEO_TS) are recognized but not playable; credentials are not yet in platform secure storage |
 | Not yet in the experience layer | Identify flow, library diagnostics, user collections, and non-folder sources (Jellyfin, WebDAV, SMB) have engine support but no UI; no settings screen yet |
 | Desktop shell gaps | libmpv is not bundled and there is no installer; media keys are not captured; no scrollbars; the GNOME and KDE folder dialogs are used when their helper is installed but are only unit-tested (the Linux end-to-end run uses the toolkit's chooser); on X11 without a compositing manager the player's controls window is opaque and hides the video; Wayland has only been reached through X11 |
@@ -65,18 +65,20 @@ Verified on 2026-10-13, on the tree that closes the milestone.
 
 ### Android phone and tablet: what was verified
 
-Verified on 2026-10-13, on the tree that closes the first Android milestone.
+Verified on 2026-10-13, on the tree that closes the Android hardening milestone.
 
 | Level | What | State |
 | --- | --- | --- |
-| Builds | `./gradlew :android:app:assembleDebug`, with the shared `ui` compiled for Android and the engine modules used unchanged | Done; also `./gradlew check` including Android lint |
-| Layouts, offscreen | Phone portrait and landscape, and tablet, rendered and operated by touch (`HandheldLayoutTest`): bottom navigation, the phone player and its gestures, the tablet's bar and denser grid | 4 tests, none failed; the renderings were reviewed |
-| Host tests | The folder source over a document tree, device capabilities, controller sticks | 7 tests, none failed |
-| On an emulator (Android 16, API 36.1, x86_64 phone) | `connectedDebugAndroidTest`: the shared parsing on Android's runtime, a folder becoming a library on Android's SQLite with the platform prober, watch-state continuity between a local folder and a server, real Media3 playback (seek, speed, end, a missing file), and watching then resuming | 8 tests, none failed; the live-server test is skipped unless a server is named |
-| On the emulator, against a real Jellyfin server (12.2.0 in Docker) | A film watched from the device's storage to 00:30:12 resumed at 00:30:12 from the server's stream; watched on from the server, it resumed from the local file; the server heard of the progress | Passed |
-| By hand on the emulator | First run, the system folder picker and its grant, the grant surviving a restart, Home, details, playback with the phone controls, the timeline, and Resume afterwards | Done, with screenshots reviewed |
-| Desktop unaffected | Windows `check` and real-window tests; the Linux job in its container (which has no Android SDK, so it would also show that everything else builds without one) | Windows: `check`, 428 tests, none failed (Android lint and unit tests included); 27 real-window tests, none failed; the build also configures with the Android modules switched off (`-Preflux.android=false`). Linux: **not run on this tree**. The container run was stopped twice by the machine running short of memory, before it produced results |
-| Not verified | Physical phones and tablets; hardware decoding, HDR, and high-resolution playback (an emulator decodes in software); controllers and keyboards on Android beyond the event mapping; removable storage; tablets other than offscreen; release builds | Open |
+| Implemented | The Android shell over the shared experience layer and engine: folders through the system picker, Media3 playback, picture-in-picture, the media session, phone and tablet layouts, the amber accent | Done |
+| Windows verified | `./gradlew check` (Android lint and unit tests included); the desktop real-window tests | 428 tests, none failed; 27 real-window tests, none failed |
+| Linux verified | The Linux job in its container, which has no Android SDK: `check`, then the real-window tests | 421 tests, none failed (the Android unit tests are not part of a build without an SDK); the real-window round without a failure |
+| Layouts, offscreen | Phone portrait and landscape and tablet, rendered and operated by touch (`HandheldLayoutTest`); every rendering reviewed | 4 tests, none failed |
+| Android emulator verified (Android 16, API 36.1, x86_64 phone) | `connectedDebugAndroidTest`: the shared parsing on Android's runtime; a folder becoming a library on Android's SQLite with the platform prober; storage that goes away, comes back empty, and comes back whole; cancelling the picker; continuity between a local folder and a server in both directions, a different cut, and a stale server record; real Media3 playback (seek, speed, end, a missing file); watching, then resuming | 11 tests, none failed; the live-server test is skipped unless a server is named |
+| Android emulator, by hand | First run through the system folder picker; cancelling it; the grant surviving a restart; the folder moved away (the library stays, titles marked offline) and back; details, playback, the timeline, Resume; leaving with Home into picture-in-picture, the system's play/pause key acting on it, and returning; rotation during playback; controller key events (navigation, select, back, play/pause, the layout morph and its prompts); system text at 130% | Done, with screenshots reviewed |
+| Live Jellyfin verified (Jellyfin Server 12.2.0 in Docker) | From the emulator: a film watched from the device's storage to 00:30:12 resumed at 00:30:12 from the server's stream, and back to the local file; the server heard of the progress. From the desktop JVM: the whole watch-state exchange (`JellyfinLiveTest`) | Passed on this tree, both |
+| Physical-device verified | Phones, tablets, and controllers in hand | **Not done.** No Android device was used (the developer's phone was attached and deliberately left alone), and no physical controller was connected; controller input was exercised as key events on the emulator |
+| Not verifiable on an emulator | Hardware decoding, HDR output, high-resolution playback, removable storage, real Bluetooth media buttons | Open |
+| Environment-blocked | The workflow on GitHub (not pushed); TMDB against the live service (no credential) | Open |
 
 ## Phase 0 — Product and architecture foundation
 
@@ -188,7 +190,7 @@ Priority is based on product value and platform capability, not feature-count fo
 
 ## Phase 10 — Native Android
 
-First vertical slice done (see the status and verification tables above). Next on Android: picture-in-picture, background playback and media controls, the remaining flows (network sources, Identify), physical-device verification, and release builds.
+First vertical slice done and hardened (see the status and verification tables above). Next on Android: the remaining flows (network sources, Identify), physical-device verification, and release builds.
 
 - Android phone.
 - Android tablet.

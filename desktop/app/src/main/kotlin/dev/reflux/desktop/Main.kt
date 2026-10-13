@@ -163,7 +163,7 @@ private object AppIcon : Painter() {
     override fun DrawScope.onDraw() {
         val unit = size.minDimension
         drawRoundRect(
-            Brush.linearGradient(listOf(RefluxColors.accent, Color(0xFF2B4C8C)), Offset.Zero, Offset(unit, unit)),
+            Brush.linearGradient(listOf(RefluxColors.accent, Color(0xFFC2511B)), Offset.Zero, Offset(unit, unit)),
             cornerRadius = CornerRadius(unit * 0.24f),
         )
         drawPath(
