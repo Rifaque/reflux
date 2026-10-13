@@ -37,6 +37,7 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
@@ -44,6 +45,9 @@ import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.drawOutline
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.Role
@@ -52,6 +56,7 @@ import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import dev.reflux.core.input.InputModality
 import dev.reflux.design.MaterialRole
 import dev.reflux.design.Motion
 import dev.reflux.ui.theme.LocalLayout
@@ -113,18 +118,35 @@ fun Pressable(
         }
     }
     val scale by animateFloatAsState(if (active) 1f + (layout.focusScale - 1f) * lift else 1f, Motion.focusChange.tween())
+    // From a sofa a hairline is not enough: what a controller or a remote has focus on is also lit from behind.
+    val glow by animateFloatAsState(if (ring && layout.modality == InputModality.DIRECTIONAL) 1f else 0f, Motion.focusChange.tween())
     Box(
         modifier
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
             }
+            .focusGlow(shape, glow)
             .then(if (ring) Modifier.border(2.dp, RefluxColors.focusRing, shape) else Modifier)
             .clip(shape)
             .clickable(interactionSource = interaction, indication = null, enabled = enabled, role = role, onClick = onClick),
         content = { content(active) },
     )
 }
+
+/** A soft light around [shape], fading outwards. Drawn outside the control's own bounds. */
+private fun Modifier.focusGlow(shape: Shape, strength: Float): Modifier = if (strength <= 0f) this else drawBehind {
+    val step = 2.dp.toPx()
+    for (ring in 1..GLOW_RINGS) {
+        val spread = ring * step
+        val outline = shape.createOutline(Size(size.width + spread * 2, size.height + spread * 2), layoutDirection, this)
+        translate(-spread, -spread) {
+            drawOutline(outline, Color.White.copy(alpha = 0.16f * strength * (1f - ring / (GLOW_RINGS + 1f))), style = Stroke(step))
+        }
+    }
+}
+
+private const val GLOW_RINGS = 6
 
 enum class ButtonStyle { PRIMARY, GLASS, QUIET }
 

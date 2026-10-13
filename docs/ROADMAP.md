@@ -30,7 +30,8 @@
 | Desktop controllers (XInput and HID joysticks on Windows, the kernel joystick interface on Linux) | Implemented and tested from the reader upward, and hardened against the non-controller devices real machines report. No physical controller has been connected during development, so Xbox, PlayStation, and Switch Pro hardware is unverified; `PhysicalControllerTest` is the guided check for it |
 | Platform boundary | Shared modules are free of platform APIs and `check` enforces it; what a new shell supplies is listed in the architecture document |
 | Android phone and tablet client (`android:app`): the shared experience layer with phone and tablet layouts, folders through the Storage Access Framework, Media3 playback, the canonical watch state | First vertical slice implemented and hardened, verified on an emulator: first run, choosing a folder, storage that goes away and comes back, the library, details, playback, resume, picture-in-picture, the system's media controls, controller input, and continuity with a real Jellyfin server (see the verification table below) |
-| Android TV / Google TV | Planned, after the handheld client |
+| Android TV / Google TV: the same application and experience layer as a television form factor (10-foot layout, focus that is always somewhere, a remote-driven player, Reflux's own folder picker where the system has none, HDMI audio capabilities) | First milestone implemented, verified on the Google TV emulator: first run, choosing a folder, Home, Movies and Shows, details, search with the system keyboard, playback and its lists, resume, Continue Watching, and continuity with a real Jellyfin server, all with remote keys only (see the verification table below). Not verified on a real television |
+| Television gaps | Subtitle and artwork files next to a video are not visible to Reflux on a television (the system only shows an app the media files); nothing on the launcher beyond the app itself (no Watch Next row); a held seek key repeats at a fixed step; a folder on a drive is only reachable while the drive is mounted where it was; picture-in-picture, 4K, HDR, Dolby Vision, passthrough, and removable drives could not be exercised on an emulator |
 | Android gaps | No playback in the background (by decision, for now); chapters are not reported by the engine; a folder's changes are picked up at the next refresh rather than as they happen; SMB shares are desktop-only; the Jellyfin, WebDAV, Identify, and collections flows have no UI on any platform yet; release builds (signing, shrinking) are not set up; verified on an emulator only, not on physical phones or tablets |
 | Known gaps | Watch state is not synchronized between devices except through a source that keeps it; cuts are told apart by edition labels and running times only; stacked multi-part files play as separate versions; disc structures (BDMV/VIDEO_TS) are recognized but not playable; credentials are not yet in platform secure storage |
 | Not yet in the experience layer | Identify flow, library diagnostics, user collections, and non-folder sources (Jellyfin, WebDAV, SMB) have engine support but no UI; no settings screen yet |
@@ -96,6 +97,28 @@ Verified on 2026-10-13, all of it on the tree that closes the visual refinement 
 | Physical-device verified | A phone or tablet in hand | **Not done.** The developer's phone was attached and deliberately left alone |
 | Physical-controller verified | A controller in hand | **Not done.** None was connected; controller input was scripted on the desktop and sent as key events on the emulator |
 | Environment-blocked | The workflow on GitHub (not pushed); TMDB against the live service (no credential), so artwork in every run was generated placeholders | Open |
+
+### Android TV / Google TV: what was verified
+
+Verified on 2026-10-14, on the tree that closes the first television milestone, unless a row says otherwise.
+
+| Level | What ran | State |
+| --- | --- | --- |
+| Implemented | Television as a form factor of `ui` (layout for a 960 by 540 canvas, automatic and returning focus, focus glow, row-at-a-time Home, remote-driven player with an Episodes list, the folder picker), and in the Android shell: television detection, the TV launcher entry and banner, the storage browser and its permission, path-based folder sources, HDMI audio capabilities | Done |
+| Windows verified | `./gradlew check`, with every screen rendered: 51 renderings, of which the 15 television ones and a sample of the desktop and phone ones were reviewed | 439 tests, none failed. `TelevisionTest` drives the real screens with remote keys: starting focus, rows, details and back, the navigation, Movies, search, the player and its lists, and choosing a folder |
+| Windows verified, real window | `./gradlew :desktop:app:test -Preflux.windowTests=true` | 27 tests, none failed (physical-controller check skipped) |
+| Linux verified (Ubuntu 24.04 container, engine tests required) | The Linux job: the headless `check`, then one real-window round | 430 tests, none failed, in both |
+| Android TV emulator verified (Google TV, Android 16, 1080p) | `connectedDebugAndroidTest`: everything the handheld suite covers, on the television image, and `TelevisionOnDeviceTest`: a folder chosen by path becoming a library, one folder being one source, Android's file watching, real Media3 playback from a path, the source surviving a restart and its storage going away and coming back; and what the device reports it can show and send out | 13 tests, none failed. The emulator reports a 1080p SDR display, stereo output, and no passthrough, and that is what Reflux claimed |
+| Android TV emulator, with remote keys only | First run: the system's permission question, the folder picker down to a folder, the library appearing. Home, a row, details, playback, seeking with the D-pad and with the fast-forward key, the lists, Back; Resume and the progress on details; Continue Watching on Home and resuming from it; where focus is after each step; leaving with Home (playback pauses; this image has no picture-in-picture). Search: the television keyboard, typing, results, Back | Done, with screenshots reviewed. Search and the storage flow were walked on the tree before the last focus fixes; focus and playback on the final one |
+| Android phone emulator verified (Android 16) | `connectedDebugAndroidTest`; first run still opens the system folder picker and the storage permission stays ungranted | 13 tests, none failed |
+| Live Jellyfin verified (Jellyfin Server 12.2.0 in Docker) | From the TV emulator: a film watched from the device's storage to 00:30:12 resumed there from the server's stream, watched on to 00:33:00, and continued from the local file | Passed, on the tree before the last focus fixes (which are in `ui`; the engine and playback code did not change after). The desktop `JellyfinLiveTest` was not rerun for this milestone |
+| Watch-state continuity | The same canonical watch state as every platform; the continuity tests (local to server and back, a different cut, a stale server record) ran on the television image | Passed, as part of the 13 |
+| Physical-device verified | A television or streaming box, and its remote | **Not done.** None was available |
+| Physical-controller verified | A controller in hand, on a television or anywhere | **Not done.** Controller input on a television is covered by the shared tests only |
+| Not verifiable on an emulator | Hardware decoding, 4K, HDR and Dolby Vision output, an HDMI receiver's channels and passthrough formats, drives plugged into the device, picture-in-picture on a television, a real remote's media keys | Open |
+| Environment-blocked | The workflow on GitHub (not pushed); TMDB against the live service (no credential), so artwork in every run was generated placeholders | Open |
+
+The TV emulator stopped by itself twice during this work (the emulator process, not the app) and was restarted; no test result above comes from an interrupted run.
 
 ## Phase 0 — Product and architecture foundation
 
@@ -251,6 +274,8 @@ The first meaningful controller input should trigger a smooth transition into co
 - Future trip mode.
 
 ## Phase 14 — Android TV / Google TV
+
+First milestone done (see the status and verification tables above): the television is a form factor of the shared experience layer inside the one Android application. Next for television: a real device, the flows that have no UI on any platform yet (network sources, Identify), and the launcher's Watch Next row.
 
 - D-pad-first interaction.
 - 10-foot layouts.

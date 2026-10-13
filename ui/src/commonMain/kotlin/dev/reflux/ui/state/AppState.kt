@@ -75,6 +75,10 @@ class AppState(
 
     var sourcesOpen by mutableStateOf(false)
 
+    /** The folder picker Reflux draws itself, while it is open (see [Platform.folderBrowser]). */
+    var folderPicker: FolderPicker? by mutableStateOf(null)
+        private set
+
     var searchQuery by mutableStateOf("")
 
     /** A short, transient message ("Its source is offline"). */
@@ -147,13 +151,33 @@ class AppState(
 
     /** Asks for a media folder and scans it. Everything after the choice is automatic. */
     fun addFolder(): Job = attempt(Problems.FOLDER_NOT_ADDED) {
-        if (choosingFolder) return@attempt
+        if (choosingFolder || folderPicker != null) return@attempt
+        platform.folderBrowser?.let { browser ->
+            // No picker of the platform's to hand over to: Reflux shows its own, over the same storage.
+            choosingFolder = true
+            val roots = try {
+                browser.roots()
+            } finally {
+                choosingFolder = false
+            } ?: return@attempt notify(Problems.STORAGE_NOT_ALLOWED)
+            sourcesOpen = false
+            folderPicker = FolderPicker(this, browser, roots)
+            return@attempt
+        }
         choosingFolder = true
         val choice = try {
             platform.addMediaFolder()
         } finally {
             choosingFolder = false
         }
+        folderChosen(choice)
+    }
+
+    internal fun closeFolderPicker() {
+        folderPicker = null
+    }
+
+    internal suspend fun folderChosen(choice: FolderChoice) {
         Problems.folder(choice)?.let(::notify)
         when (choice) {
             is FolderChoice.Added -> {
@@ -251,11 +275,17 @@ class AppState(
 
     // Input --------------------------------------------------------------------------------------
 
-    private val modality = InputModalityTracker(InputModality.POINTER)
+    private val modality = InputModalityTracker(InputModality.POINTER, platform.television)
 
     /** How the user is interacting right now; the layout follows it (the controller morph). */
     var input: InputState by mutableStateOf(modality.state)
         private set
+
+    /**
+     * Whether to say what the buttons in the user's hand do. A controller's are named for where they sit
+     * and need it; a remote's are named for what they do and do not.
+     */
+    val namesButtons: Boolean get() = input.modality == InputModality.DIRECTIONAL && input.controllerFamily != ControllerFamily.TV_REMOTE
 
     /** Set while a text field has focus, so typing is never taken for shortcuts. */
     var textInputActive by mutableStateOf(false)
@@ -303,8 +333,14 @@ class AppState(
                 moveFocus?.invoke(action) ?: false
             SemanticAction.SELECT -> activateFocused?.invoke() ?: false
             SemanticAction.BACK -> when {
-                textInputActive -> {
+                // With a keyboard, Escape first lets go of the field. A remote's Back has already put the
+                // on-screen keyboard away by the time it gets here, and goes back.
+                textInputActive && !platform.television -> {
                     clearFocus?.invoke()
+                    true
+                }
+                folderPicker != null -> {
+                    folderPicker?.back()
                     true
                 }
                 sourcesOpen -> {
@@ -314,7 +350,7 @@ class AppState(
                 else -> navigator.back()
             }
             SemanticAction.MENU -> {
-                sourcesOpen = !sourcesOpen
+                if (folderPicker == null) sourcesOpen = !sourcesOpen
                 true
             }
             SemanticAction.FULLSCREEN -> {

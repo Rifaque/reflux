@@ -74,6 +74,7 @@ configurations.configureEach {
 
 dependencies {
     implementation(project(":ui"))
+    implementation(project(":sources:local"))
     implementation(project(":sources:jellyfin"))
     implementation(project(":sources:webdav"))
     implementation(project(":metadata:tmdb"))

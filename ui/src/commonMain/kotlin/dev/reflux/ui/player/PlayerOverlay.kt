@@ -206,14 +206,16 @@ fun PlayerOverlay(app: AppState, session: PlaybackSession, modifier: Modifier = 
             }
 
             val layout = LocalLayout.current
+            val remote = app.platform.systemVolume && layout.modality == InputModality.DIRECTIONAL
             val corner = Modifier.align(Alignment.BottomEnd).padding(end = layout.safeMarginDp.dp, bottom = if (visible) 148.dp else 40.dp)
             val prompt = session.upNext
-            val segment = remember(state.chapters, state.durationMs) { SkipSegments.from(state.chapters, state.durationMs) }
-                .let { SkipSegments.at(it, state.positionMs) }
+            val segment = session.skippable(state)
             when {
                 error != null -> Failure(session, error, Modifier.align(Alignment.Center))
                 prompt != null -> UpNextCard(session, prompt, corner)
-                segment != null && session.menu == null -> Button(skipLabel(segment), { session.skip(segment) }, corner, style = ButtonStyle.PRIMARY)
+                // With a remote, up is what takes the offer; the arrow says so.
+                segment != null && session.menu == null ->
+                    Button(skipLabel(segment), { session.skip(segment) }, corner, icon = Icon.CHEVRON_UP.takeIf { remote }, style = ButtonStyle.PRIMARY)
             }
         }
     }
@@ -232,7 +234,7 @@ private fun menuIcon(menu: PlayerMenu): Icon = when (menu) {
     PlayerMenu.CHAPTERS -> Icon.CHAPTERS
     PlayerMenu.AUDIO -> Icon.AUDIO
     PlayerMenu.SUBTITLES -> Icon.SUBTITLES
-    PlayerMenu.SPEED -> error("speed is a text button")
+    PlayerMenu.SPEED, PlayerMenu.EPISODES -> error("not an icon in the bar")
 }
 
 @Composable
@@ -245,6 +247,9 @@ private fun Controls(app: AppState, session: PlaybackSession, state: PlayerState
     // On a phone the transport sits in the middle of the picture, where thumbs are, and the bar along the
     // bottom keeps the timeline and what is used less often. Volume is the device's own buttons.
     val compact = layout.formFactor == FormFactor.PHONE
+    // On a television nothing here is pressed with a pointer: the remote plays, seeks, and opens the lists,
+    // so the bar only says where playback is and what there is beneath it.
+    val television = layout.formFactor == FormFactor.TV
     Box(Modifier.fillMaxSize()) {
         // Scrims carry the title and controls over bright scenes.
         Box(Modifier.fillMaxWidth().fillMaxHeight(0.28f).background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.72f), Color.Transparent))))
@@ -255,14 +260,14 @@ private fun Controls(app: AppState, session: PlaybackSession, state: PlayerState
             horizontalArrangement = Arrangement.spacedBy(14.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            IconButton(Icon.BACK, "Back to library", { session.close() }, glass = true)
+            if (!television) IconButton(Icon.BACK, "Back to library", { session.close() }, glass = true)
             Column {
                 Text(session.title, style = LocalTypography.current.title, maxLines = 1)
                 session.subtitle?.let { Text(it, style = LocalTypography.current.caption, color = RefluxColors.textSecondary, maxLines = 1) }
             }
         }
 
-        if (layout.showsButtonPrompts && !failed) {
+        if (app.namesButtons && !failed) {
             val family = app.input.controllerFamily ?: ControllerFamily.GENERIC
             ButtonPrompts(
                 if (open != null) {
@@ -313,7 +318,16 @@ private fun Controls(app: AppState, session: PlaybackSession, state: PlayerState
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 Timeline(session, state)
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                if (television) {
+                    Row(Modifier.fillMaxWidth().padding(top = 2.dp, bottom = 2.dp), horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text(if (state.pauses) "" else "Paused", Modifier.weight(1f), style = LocalTypography.current.captionStrong, color = RefluxColors.textSecondary, maxLines = 1)
+                        // Down opens these; the one that is open is the one lit.
+                        Icon(Icon.CHEVRON_DOWN, size = 12.dp, tint = RefluxColors.textTertiary)
+                        menus.forEach { menu ->
+                            Text(menu.title, style = LocalTypography.current.captionStrong, color = if (menu == open) RefluxColors.textPrimary else RefluxColors.textSecondary, maxLines = 1)
+                        }
+                    }
+                } else Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
                     IconButton(Icon.PREVIOUS, "Previous", { session.handle(SemanticAction.PREVIOUS) })
                     if (!compact) {
                         IconButton(Icon.REWIND, "Back 10 seconds", { session.handle(SemanticAction.SEEK_BACKWARD) })
@@ -336,7 +350,8 @@ private fun Controls(app: AppState, session: PlaybackSession, state: PlayerState
                             modifier = Modifier.width(96.dp).padding(end = 8.dp),
                         )
                     }
-                    menus.forEach { menu ->
+                    // The bar has its own previous and next; the lists are what is left.
+                    menus.filter { it != PlayerMenu.EPISODES }.forEach { menu ->
                         val tint = if (menu == open || (menu == PlayerMenu.SUBTITLES && state.selectedSubtitleId != null)) RefluxColors.textPrimary else RefluxColors.textSecondary
                         if (menu == PlayerMenu.SPEED) {
                             Button(
@@ -408,7 +423,8 @@ private fun MenuPanel(session: PlaybackSession, menus: List<PlayerMenu>, open: P
             list.animateScrollToItem((session.highlighted - 2).coerceAtLeast(0))
         }
     }
-    Column(Modifier.width(340.dp).glass(MaterialRole.MODAL, tint = playerTint.copy(alpha = 0.92f)).absorbsPointer().padding(8.dp)) {
+    // Five lists across the top need more room than four.
+    Column(Modifier.width(if (menus.size > 4) 430.dp else 340.dp).glass(MaterialRole.MODAL, tint = playerTint.copy(alpha = 0.92f)).absorbsPointer().padding(8.dp)) {
         Row(Modifier.padding(horizontal = 4.dp, vertical = 2.dp), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
             menus.forEach { menu ->
                 Pressable({ if (menu != open) session.toggleMenu(menu) }, shape = CircleShape, lift = 0f) { active ->
@@ -417,6 +433,7 @@ private fun MenuPanel(session: PlaybackSession, menus: List<PlayerMenu>, open: P
                         Modifier.background(Color.White.copy(alpha = if (active && menu != open) 0.08f else 0f)).padding(horizontal = 10.dp, vertical = 7.dp),
                         style = LocalTypography.current.captionStrong,
                         color = if (menu == open) RefluxColors.textPrimary else RefluxColors.textTertiary,
+                        maxLines = 1,
                     )
                 }
             }

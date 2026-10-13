@@ -24,6 +24,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -44,6 +46,7 @@ import dev.reflux.core.versions.SelectionCriterion
 import dev.reflux.design.FormFactor
 import dev.reflux.design.MaterialRole
 import dev.reflux.ui.LocalChromeInsets
+import dev.reflux.ui.ReportPageScroll
 import dev.reflux.ui.components.ArtworkImage
 import dev.reflux.ui.components.Button
 import dev.reflux.ui.components.ButtonStyle
@@ -80,8 +83,10 @@ internal fun DetailsScreen(app: AppState, itemId: MediaId) {
     val layout = LocalLayout.current
     var season by rememberSaveable(itemId) { mutableIntStateOf(details.initialSeason) }
     val episodes = details.seasons.getOrNull(season)?.episodes.orEmpty()
+    val list = rememberLazyListState()
+    ReportPageScroll(remember { derivedStateOf { list.firstVisibleItemIndex > 0 || list.firstVisibleItemScrollOffset > 0 } }.value)
     run {
-        LazyColumn(Modifier.fillMaxSize(), state = rememberLazyListState(), contentPadding = PaddingValues(bottom = LocalChromeInsets.current.bottom)) {
+        LazyColumn(Modifier.fillMaxSize(), state = list, contentPadding = PaddingValues(bottom = LocalChromeInsets.current.bottom)) {
             item(key = "header") { Header(app, details) }
             if (details.versions.isNotEmpty()) {
                 item(key = "versions") { Versions(app, details, Modifier.padding(horizontal = layout.safeMarginDp.dp).padding(top = 28.dp)) }
@@ -133,7 +138,9 @@ private fun Header(app: AppState, details: DetailsModel) {
     val card = details.card
     BoxWithConstraints(Modifier.fillMaxWidth()) {
         val width = maxWidth
-        Box(Modifier.fillMaxWidth().heightIn(min = 520.dp)) {
+        // A television's screen is its whole canvas: the header leaves room for what follows it to show.
+        val television = layout.formFactor == FormFactor.TV
+        Box(Modifier.fillMaxWidth().heightIn(min = if (television) 424.dp else 520.dp)) {
             ArtworkImage(details.backdrop, width, Modifier.matchParentSize(), alignment = Alignment.TopCenter) { TitleBackdrop(card.title) }
             Box(Modifier.matchParentSize().background(Brush.horizontalGradient(0f to background.copy(alpha = 0.9f), 0.6f to background.copy(alpha = 0.45f), 1f to background.copy(alpha = 0.1f))))
             Box(Modifier.matchParentSize().background(Brush.verticalGradient(0f to background.copy(alpha = 0.6f), 0.25f to Color.Transparent, 0.55f to background.copy(alpha = 0.3f), 1f to background)))
@@ -144,8 +151,9 @@ private fun Header(app: AppState, details: DetailsModel) {
             ) {
                 if (width >= 760.dp) {
                     val shape = RoundedCornerShape(14.dp)
-                    Box(Modifier.width(210.dp).aspectRatio(2f / 3f).shadow(24.dp, shape).clip(shape)) {
-                        ArtworkImage(card.poster, 210.dp, Modifier.fillMaxSize()) { TitlePlaceholder(card.title, card.caption) }
+                    val posterWidth = if (television) 164.dp else 210.dp
+                    Box(Modifier.width(posterWidth).aspectRatio(2f / 3f).shadow(24.dp, shape).clip(shape)) {
+                        ArtworkImage(card.poster, posterWidth, Modifier.fillMaxSize()) { TitlePlaceholder(card.title, card.caption) }
                     }
                 }
                 Column(Modifier.weight(1f, fill = false).widthIn(max = 760.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {

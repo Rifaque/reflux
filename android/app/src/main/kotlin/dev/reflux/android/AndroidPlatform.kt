@@ -12,6 +12,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import dev.reflux.android.engine.AndroidEnvironment
 import dev.reflux.android.engine.TreeAddition
 import dev.reflux.android.playback.Media3Player
+import dev.reflux.android.storage.StorageFolders
 import dev.reflux.core.model.ArtworkLocator
 import dev.reflux.core.model.SourceId
 import dev.reflux.core.playback.DeviceCapabilities
@@ -19,6 +20,7 @@ import dev.reflux.core.playback.Player
 import dev.reflux.core.source.MediaSource
 import dev.reflux.library.ArtworkCache
 import dev.reflux.ui.state.ArtworkLoader
+import dev.reflux.ui.state.FolderBrowser
 import dev.reflux.ui.state.FolderChoice
 import dev.reflux.ui.state.Platform
 import kotlinx.coroutines.Dispatchers
@@ -89,9 +91,25 @@ internal class AndroidArtworkLoader(
  * The Android shell's side of the experience layer: platform-decoded artwork, Media3 on a surface the
  * activity shows, the system's folder picker, and the screen's orientation and system bars for fullscreen.
  */
-internal class AndroidPlatform(private val environment: AndroidEnvironment) : Platform {
+internal class AndroidPlatform(private val environment: AndroidEnvironment, override val television: Boolean = false) : Platform {
     /** Opens the system folder picker and returns the granted tree, or null when it was dismissed. Set by the activity. */
     var pickFolder: (suspend () -> Uri?)? = null
+
+    /** Asks for the user's leave to read storage, if it is still needed; false when they refuse. Set by the activity. */
+    var allowStorage: (suspend () -> Boolean)? = null
+
+    /** Loudness belongs to the device: a phone's keys, a television's remote. */
+    override val systemVolume: Boolean get() = true
+
+    /**
+     * A television's system has no folder picker to hand over to, so there Reflux shows the storage itself
+     * and the user walks it with the remote. Everywhere else the system's picker is the way in.
+     */
+    override val folderBrowser: FolderBrowser? = if (!television) null else StorageFolders(
+        volumes = { StorageFolders.volumes(environment.context) },
+        allowed = { allowStorage?.invoke() ?: false },
+        register = environment::addFolder,
+    )
 
     /** The engine whose video the activity should be showing, if any. */
     var player: Media3Player? by mutableStateOf(null)

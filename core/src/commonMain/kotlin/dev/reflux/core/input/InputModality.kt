@@ -38,8 +38,12 @@ data class InputState(
  * Only *meaningful* input switches modality: a stick resting off-center, a nudged mouse, or a media key
  * must not make the UI jump between layouts.
  */
-class InputModalityTracker(initial: InputModality) {
-    var state: InputState = InputState(initial)
+class InputModalityTracker(initial: InputModality, private val television: Boolean = false) {
+    /**
+     * A television starts out directional, with its remote: there is no pointer to assume, and something
+     * has focus from the first frame.
+     */
+    var state: InputState = if (television) InputState(InputModality.DIRECTIONAL, ControllerFamily.TV_REMOTE) else InputState(initial)
         private set
 
     private var pointerTravel = 0f
@@ -72,9 +76,12 @@ class InputModalityTracker(initial: InputModality) {
     }
 
     private fun keyPressed(key: Key): InputState = when (key) {
-        Key.ARROW_UP, Key.ARROW_DOWN, Key.ARROW_LEFT, Key.ARROW_RIGHT, Key.TAB -> state.copy(modality = InputModality.KEYBOARD)
+        // A television's arrows are its remote's; anywhere else they are a keyboard's.
+        Key.ARROW_UP, Key.ARROW_DOWN, Key.ARROW_LEFT, Key.ARROW_RIGHT, Key.TAB ->
+            if (television) InputState(InputModality.DIRECTIONAL, ControllerFamily.TV_REMOTE) else state.copy(modality = InputModality.KEYBOARD)
         // Remote keys arrive as key events on Android TV.
-        Key.DPAD_CENTER, Key.BACK, Key.MENU -> state.copy(modality = InputModality.DIRECTIONAL)
+        Key.DPAD_CENTER, Key.BACK, Key.MENU ->
+            if (television) InputState(InputModality.DIRECTIONAL, ControllerFamily.TV_REMOTE) else state.copy(modality = InputModality.DIRECTIONAL)
         // Media, volume, and shortcut keys do not express a navigation preference.
         else -> state
     }

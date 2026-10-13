@@ -2,7 +2,9 @@ package dev.reflux.android
 
 import android.annotation.SuppressLint
 import android.app.Application
+import android.Manifest
 import android.app.PictureInPictureParams
+import android.app.UiModeManager
 import android.content.pm.ActivityInfo
 import android.content.pm.PackageManager
 import android.content.res.Configuration
@@ -99,7 +101,10 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge(SystemBarStyle.dark(TRANSPARENT), SystemBarStyle.dark(TRANSPARENT))
         super.onCreate(savedInstanceState)
         val environment = (application as RefluxApplication).environment
-        platform = AndroidPlatform(environment).also { it.pickFolder = ::pickFolder }
+        platform = AndroidPlatform(environment, television()).also {
+            it.pickFolder = ::pickFolder
+            it.allowStorage = ::allowStorage
+        }
         // The last line of defence: a failure nobody handled is written down instead of ending the app.
         val scope = lifecycleScope + CoroutineExceptionHandler { _, error -> platform.report("An unexpected error was not handled", error) }
         app = AppState(environment.library, environment.pipeline, environment.registry::resolve, platform, scope).also { it.start() }
@@ -109,6 +114,27 @@ class MainActivity : ComponentActivity() {
             if (!app.dispatch(SemanticAction.BACK)) moveTaskToBack(true)
         }
         setContent { Shell() }
+    }
+
+    /** Whether this device is a television: what the system says it is, not what size its screen happens to be. */
+    private fun television(): Boolean =
+        getSystemService(UiModeManager::class.java)?.currentModeType == Configuration.UI_MODE_TYPE_TELEVISION ||
+            packageManager.hasSystemFeature(PackageManager.FEATURE_LEANBACK)
+
+    private var pendingStorage: CompletableDeferred<Boolean>? = null
+    private val storagePermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        pendingStorage?.complete(granted)
+        pendingStorage = null
+    }
+
+    /** The system's own question, asked when the user first goes to choose a folder on a television. */
+    private suspend fun allowStorage(): Boolean {
+        val permission = if (Build.VERSION.SDK_INT >= 33) Manifest.permission.READ_MEDIA_VIDEO else Manifest.permission.READ_EXTERNAL_STORAGE
+        if (checkSelfPermission(permission) == PackageManager.PERMISSION_GRANTED) return true
+        pendingStorage?.complete(false)
+        val result = CompletableDeferred<Boolean>().also { pendingStorage = it }
+        storagePermission.launch(permission)
+        return result.await()
     }
 
     private suspend fun pickFolder(): Uri? {
@@ -154,8 +180,8 @@ class MainActivity : ComponentActivity() {
             if (playing) window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
             onDispose { window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON) }
         }
-        // Fullscreen on a handheld is the picture across the long side of the screen.
-        LaunchedEffect(platform.fullscreen) {
+        // Fullscreen on a handheld is the picture across the long side of the screen. A television has one side.
+        if (!platform.television) LaunchedEffect(platform.fullscreen) {
             requestedOrientation = if (platform.fullscreen) ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE else ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
         }
     }

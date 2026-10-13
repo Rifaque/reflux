@@ -102,7 +102,14 @@ object InputMapping {
             GamepadButton.SELECT -> "−"
             else -> neutralGlyph(button)
         }
-        ControllerFamily.XBOX, ControllerFamily.GENERIC, ControllerFamily.TV_REMOTE -> when (button) {
+        // A remote's keys are named for what they do; it has no face buttons.
+        ControllerFamily.TV_REMOTE -> when (button) {
+            GamepadButton.FACE_SOUTH -> "OK"
+            GamepadButton.FACE_EAST -> "Back"
+            GamepadButton.START -> "Menu"
+            else -> neutralGlyph(button)
+        }
+        ControllerFamily.XBOX, ControllerFamily.GENERIC -> when (button) {
             GamepadButton.FACE_SOUTH -> "A"
             GamepadButton.FACE_EAST -> "B"
             GamepadButton.FACE_WEST -> "X"

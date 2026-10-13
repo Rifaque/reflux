@@ -52,7 +52,7 @@ UI and playback features should consume normalized media entities and source cap
 
 ## Project status
 
-The engine (Media Core, sources, metadata, playback) is implemented, and the desktop app is a working vertical slice on top of it: point it at a folder, browse, search, and play, with a mouse, a keyboard, or a controller. The Android phone and tablet client is the same experience layer and engine in an Android shell, with its first vertical slice working: choose a folder, browse, play, and resume. See the status section of [docs/ROADMAP.md](docs/ROADMAP.md).
+The engine (Media Core, sources, metadata, playback) is implemented, and the desktop app is a working vertical slice on top of it: point it at a folder, browse, search, and play, with a mouse, a keyboard, or a controller. The Android phone and tablet client is the same experience layer and engine in an Android shell, with its first vertical slice working: choose a folder, browse, play, and resume. The same application is the Android TV and Google TV client: the experience laid out for a television and operated with a remote alone, so far verified on an emulator. See the status section of [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## Documentation
 

@@ -75,8 +75,12 @@ class LayoutTest {
     fun televisionKeepsContentInsideTheSafeArea() {
         val tv = AdaptiveLayout.profile(960f, 540f, true, InputModality.DIRECTIONAL)
         assertTrue(tv.safeMarginDp >= 960f * 0.05f)
-        assertEquals(1.5f, tv.textScale)
-        assertTrue(tv.minTargetDp >= 56f)
+        // A television's canvas is already scaled for the distance: type is a step up, not half again,
+        // and six titles fit across.
+        assertEquals(1.1f, tv.textScale)
+        assertEquals(6, tv.columns)
+        assertTrue(tv.minTargetDp >= 44f)
+        assertTrue(tv.showsFocus && tv.focusScale > 1f)
     }
 
     @Test

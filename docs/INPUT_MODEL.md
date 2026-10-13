@@ -79,6 +79,18 @@ Touch/pointer/keyboard interaction should still remain possible.
 - The view/create button (`SELECT`) toggles fullscreen in every context; start/options (or north) is Menu: the sources panel while browsing, the player's menus while playing.
 - Keyboard: arrows, Enter, Space, Escape/Backspace, `F` fullscreen, `M` mute, `J`/`K`/`L` seek and pause, `,`/`.` speed. Media and remote keys map directly.
 - Modality tracking: a controller button or a stick deflection of at least 50% switches to `DIRECTIONAL`; pointer input must travel 24 dp continuously to leave it; media keys never switch modality. The last controller family is remembered for glyphs.
+- A television starts out `DIRECTIONAL` with the `TV_REMOTE` family, and its arrow keys are its remote's (they never make it a keyboard). A controller used on a television is still told apart from the remote, in both directions.
+- A remote's keys are named for what they do (OK, Back, Menu), so prompts are only shown for controllers.
+- Where loudness is the device's own (`Platform.systemVolume`: Android's volume keys, a television's remote), up and down in the player are not the volume: down opens the player's lists, and up takes what is offered on screen (skip intro, recap, credits).
+
+## Television remote
+
+A remote has a D-pad, OK, Back, and sometimes play/pause, rewind, and fast-forward. Everything is reachable with the first three.
+
+- Browsing: the D-pad moves focus, OK activates, Back goes back one step and leaves the app from Home. Down from the navigation returns to where focus was in the page.
+- Player: OK plays and pauses (or accepts the next episode, or answers "still watching?"); left and right seek; down opens the lists, where left and right change list, up and down move, OK chooses, and Back closes; up skips an offered intro; Back leaves. The episode before and after are in the first list, since a remote has no key for them. Media keys do what they say.
+- Search: the field has focus on arrival and opens the system's television keyboard; Back puts the keyboard away, down reaches the results, and Back from the field goes back.
+- Choosing a folder: OK goes into a folder or uses the open one, Back goes up one folder and out from the top.
 
 ## Desktop shell
 
