@@ -84,7 +84,7 @@ internal fun HomeScreen(app: AppState) {
             Modifier.fillMaxSize(),
             state = rememberLazyListState(),
             contentPadding = PaddingValues(bottom = LocalChromeInsets.current.bottom),
-            verticalArrangement = Arrangement.spacedBy(22.dp),
+            verticalArrangement = Arrangement.spacedBy(30.dp),
         ) {
             home.featured?.let { featured -> item(key = "featured") { Hero(app, featured, home.featuredOverview, width, heroHeight) } }
             items(home.rows, key = { it.id }) { row -> RowSection(app, row) }
@@ -107,11 +107,8 @@ private fun Hero(app: AppState, card: MediaCard, overview: String?, width: Dp, h
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             val inProgress = card.entry.watchState?.inProgress == true
-            Text(
-                if (inProgress) "CONTINUE WATCHING" else "IN YOUR LIBRARY",
-                style = LocalTypography.current.label,
-                color = RefluxColors.textSecondary,
-            )
+            // The title speaks for itself; only something worth knowing is said above it, in the accent.
+            if (inProgress) Text("Continue watching", style = LocalTypography.current.captionStrong, color = RefluxColors.accent)
             Text(card.title, style = LocalTypography.current.display, maxLines = 2)
             val facts = (listOfNotNull("Offline".takeIf { card.offline }, card.caption.takeIf { card.detailsId != card.id }) + Formatting.facts(card.entry) +
                 listOfNotNull(Formatting.remaining(card.entry.watchState))).distinct()
@@ -183,8 +180,8 @@ internal fun AmbientBackdrop() {
     val accent = RefluxColors.accent
     Box(
         Modifier.fillMaxSize().drawBehind {
-            drawRect(Brush.radialGradient(listOf(accent.copy(alpha = 0.22f), Color.Transparent), Offset(size.width * 0.5f, 0f), size.maxDimension * 0.6f))
-            drawRect(Brush.radialGradient(listOf(Color(0xFF8A6CFF).copy(alpha = 0.10f), Color.Transparent), Offset(size.width, size.height), size.maxDimension * 0.5f))
+            drawRect(Brush.radialGradient(listOf(accent.copy(alpha = 0.13f), Color.Transparent), Offset(size.width * 0.5f, 0f), size.maxDimension * 0.6f))
+            drawRect(Brush.radialGradient(listOf(Color(0xFFB3541E).copy(alpha = 0.07f), Color.Transparent), Offset(size.width, size.height), size.maxDimension * 0.5f))
         },
     )
 }

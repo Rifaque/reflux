@@ -10,7 +10,7 @@ Reflux should combine:
 
 The goal is not to copy Apple, Netflix, Infuse, Plex, or any other product. Those products are references for principles, not visual templates. What Reflux takes from the best of them is restraint: media is the hero, artwork carries the color and the energy, and the interface stays quiet around it.
 
-In one line: premium, cinematic, restrained, liquid glass, with one warm amber accent.
+In one line: premium, cinematic, restrained, liquid glass, with one warm amber accent. Powerful underneath, calm on the surface.
 
 ## Material system
 
@@ -81,7 +81,9 @@ Not from forcing identical layouts onto every screen.
 
 ## Implemented foundations (`design`)
 
-- **Palette:** dark cinematic base; text tokens are tested to meet WCAG AA on every surface, and glass materials raise their tint over bright artwork until text stays at 4.5:1. The interface brings one color of its own, a warm amber, for the primary action and for what is switched on. Every other color on screen comes from artwork.
+- **Palette:** a very dark, neutral base (no tint of its own), so that artwork is the color on screen; text tokens are tested to meet WCAG AA on every surface, and glass materials raise their tint over bright artwork until text stays at 4.5:1. The interface brings one color of its own, a warm amber.
+- **Where the amber goes:** the primary action; the section the user is in; progress, on a poster and on the player's timeline; what is switched on or selected (a favorite, a watched mark, the chosen option in a menu); and the little that is worth pointing out (that something is being continued, that a version is the best one here). Nowhere else: a setting like volume is neutral, technical badges are neutral, and the focus ring stays white because it has to show on amber too.
+- **Type carries the hierarchy:** size and tone, not capitals, boxes, or rules. A title needs no label above it; labels are sentence case; metadata and supporting text are quieter than what they describe.
 - **Materials:** Base, Elevated, Floating, Interactive, Focused, and Modal, each with tint, backdrop blur, highlight, shadow, and corner radius. Blur applies to what is behind a material, never to its content.
 - **Motion:** standard, emphasized, and exit curves; focus changes 140 ms, navigation 320 ms, poster-to-details 420 ms, input morph 360 ms; player controls auto-hide after 3.5 s.
 - **Adaptive layout:** form factor (phone, tablet, desktop, TV) comes from the window and device; input modality only changes density, focus scale, target size, and button prompts. That is what makes the controller morph a transition rather than a mode. TVs keep a 5% overscan-safe margin and a 1.5× type scale.

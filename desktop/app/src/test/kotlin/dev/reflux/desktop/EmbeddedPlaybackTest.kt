@@ -262,7 +262,7 @@ class EmbeddedPlaybackTest {
         shell.awaitShown("Resume")
         Files.delete(movieFile)
         shell.click("Resume")
-        shell.awaitShown("PLAYBACK STOPPED")
+        shell.awaitShown("Playback stopped")
         assertTrue(shell.shows("moved or deleted", exact = false), "the failure is explained in the user's terms")
         assertTrue(shell.shows("Details:", exact = false), "with the engine's own words for diagnostics")
         shell.capture("window-playback-error")

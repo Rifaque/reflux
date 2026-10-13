@@ -332,17 +332,17 @@ private fun NavigationBar(app: AppState, modifier: Modifier = Modifier) {
     }
 }
 
-private fun tabColor(selected: Boolean): Color = if (selected) RefluxColors.textPrimary else RefluxColors.textSecondary
+private fun tabColor(selected: Boolean): Color = if (selected) RefluxColors.accent else RefluxColors.textSecondary
 
 @Composable
 private fun Tab(label: String, selected: Boolean, onClick: () -> Unit) {
     Pressable(onClick, shape = CircleShape, lift = 0f) { active ->
         Box(
-            Modifier.background(Color.White.copy(alpha = if (selected) 0.14f else if (active) 0.07f else 0f))
+            Modifier.background(Color.White.copy(alpha = if (selected) 0.09f else if (active) 0.06f else 0f))
                 .height(36.dp).padding(horizontal = 16.dp),
             contentAlignment = Alignment.Center,
         ) {
-            Text(label, style = LocalTypography.current.bodyStrong, color = tabColor(selected || active), maxLines = 1)
+            Text(label, style = LocalTypography.current.bodyStrong, color = if (selected) RefluxColors.accent else if (active) RefluxColors.textPrimary else RefluxColors.textSecondary, maxLines = 1)
         }
     }
 }

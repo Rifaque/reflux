@@ -229,7 +229,7 @@ class PointerTest {
         assertNull(playing.app.playback?.menu, "choosing closes the menu")
 
         onNodeWithContentDescription("Audio").mouseClick()
-        awaitText("AUDIO")
+        awaitText("Audio")
         onNode(hasText("French", substring = true)).mouseClick()
         await("the audio track to change") { playing.state.selectedAudioId == "2" }
 
@@ -245,9 +245,9 @@ class PointerTest {
         onNodeWithContentDescription("Playback speed").mouseClick()
         awaitText("1.5×")
         // The menu's siblings are one click away, without going back to the bar.
-        onNodeWithText("CHAPTERS").mouseClick()
+        onNodeWithText("Chapters").mouseClick()
         awaitText("Part Two")
-        onNodeWithText("SPEED").mouseClick()
+        onNodeWithText("Speed").mouseClick()
         onNodeWithText("1.5×").mouseClick()
         await("the speed to change") { playing.state.speed == 1.5 }
 
@@ -323,7 +323,7 @@ class PointerTest {
     @Test
     fun aPlaybackFailureIsExplainedAndTheWayBackIsOneClick() = player { playing ->
         playing.player.fail("loading failed", PlaybackFailure.UNREACHABLE)
-        awaitText("PLAYBACK STOPPED")
+        awaitText("Playback stopped")
         onNode(hasText("moved or deleted", substring = true)).assertExists()
         onNodeWithText("Details: loading failed").assertExists()
         assertFalse(exists("Timeline"), "controls for something that is not playing are not offered")

@@ -40,6 +40,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.graphics.Shape
@@ -143,7 +144,8 @@ fun Button(
     val height = maxOf(40f, layout.minTargetDp).dp
     Pressable(onClick, modifier, shape, enabled, lift = 0.6f) { active ->
         val surface = when (style) {
-            ButtonStyle.PRIMARY -> Modifier.background(if (active) Color.White else accent)
+            // Active is the accent lit up, not a different color.
+            ButtonStyle.PRIMARY -> Modifier.background(if (active) lerp(accent, Color.White, 0.28f) else accent)
             ButtonStyle.GLASS -> Modifier.glass(MaterialRole.INTERACTIVE, shape).background(Color.White.copy(alpha = if (active) 0.12f else 0f))
             ButtonStyle.QUIET -> Modifier.background(Color.White.copy(alpha = if (active) 0.10f else 0f))
         }
@@ -195,11 +197,10 @@ fun Chip(text: String, modifier: Modifier = Modifier, emphasized: Boolean = fals
     val shape = RoundedCornerShape(8.dp)
     Box(
         modifier.clip(shape)
-            .background(if (emphasized) Color.White.copy(alpha = 0.92f) else Color.White.copy(alpha = 0.10f))
-            .then(if (emphasized) Modifier else Modifier.border(1.dp, Color.White.copy(alpha = 0.10f), shape))
+            .background(if (emphasized) RefluxColors.accent.copy(alpha = 0.16f) else Color.White.copy(alpha = 0.08f))
             .padding(horizontal = 9.dp, vertical = 4.dp),
     ) {
-        Text(text, style = LocalTypography.current.label, color = if (emphasized) RefluxColors.onAccent else RefluxColors.textSecondary, maxLines = 1)
+        Text(text, style = LocalTypography.current.label, color = if (emphasized) RefluxColors.accent else RefluxColors.textSecondary, maxLines = 1)
     }
 }
 
@@ -226,6 +227,7 @@ fun SectionHeader(title: String, modifier: Modifier = Modifier, action: String? 
  *
  * @param description names the slider for accessibility.
  * @param marks positions (0..1) to notch on the track, e.g. chapter starts.
+ * @param color of the filled part: the accent for progress through a work, white for a plain setting.
  */
 @Composable
 fun Slider(
@@ -236,6 +238,7 @@ fun Slider(
     onChangeFinished: (Float) -> Unit = {},
     marks: List<Float> = emptyList(),
     enabled: Boolean = true,
+    color: Color = Color.White,
 ) {
     val interaction = remember { MutableInteractionSource() }
     val hovered by interaction.collectIsHoveredAsState()
@@ -272,7 +275,7 @@ fun Slider(
         val stroke = thickness.toPx()
         val x = size.width * fraction.coerceIn(0f, 1f)
         drawLine(Color.White.copy(alpha = 0.26f), Offset(0f, y), Offset(size.width, y), stroke, StrokeCap.Round)
-        if (x > 0f) drawLine(Color.White, Offset(0f, y), Offset(x, y), stroke, StrokeCap.Round)
+        if (x > 0f) drawLine(color, Offset(0f, y), Offset(x, y), stroke, StrokeCap.Round)
         marks.forEach { mark ->
             drawRect(Color.Black.copy(alpha = 0.6f), Offset(size.width * mark - 1.dp.toPx(), y - stroke / 2), Size(2.dp.toPx(), stroke))
         }

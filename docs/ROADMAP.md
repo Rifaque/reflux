@@ -80,6 +80,19 @@ Verified on 2026-10-13, on the tree that closes the Android hardening milestone.
 | Not verifiable on an emulator | Hardware decoding, HDR output, high-resolution playback, removable storage, real Bluetooth media buttons | Open |
 | Environment-blocked | The workflow on GitHub (not pushed); TMDB against the live service (no credential) | Open |
 
+### Visual refinement: what was verified
+
+Verified on 2026-10-13, on the tree of the visual refinement pass (colors, type, and accent use in the shared experience layer; no layout, navigation, or engine change).
+
+| Where | What ran | Result |
+| --- | --- | --- |
+| Windows 11 | `./gradlew check`, with every screen rendered and the renderings reviewed (desktop, phone, tablet, player, empty and error states) | 428 tests, none failed |
+| Windows 11, real window | First run, browsing with a mouse and with a scripted controller | Passed. The playback window test **did not run**: the desktop was locked |
+| Ubuntu 24.04 container | The headless `check` | 421 tests, none failed. The real-window round **did not run**: the container was stopped when the machine ran short of memory |
+| Android emulator | `connectedDebugAndroidTest`; first run, details, and the player by hand | 11 tests, none failed |
+
+So the desktop playback test in a real window has not run on this tree on either system. What changed under it is one string it waits for (a notice title that is no longer in capitals), which the headless tests check in the same composable.
+
 ## Phase 0 — Product and architecture foundation
 
 - Define universal media entities.
