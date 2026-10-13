@@ -23,6 +23,8 @@ Desktop playback and probing use libmpv through its stable client API (decision 
 
 ## Credentials
 
+On Android the app currently allows plain-HTTP connections to any host, because home media servers are usually `http://`. Before release that should be narrowed where it can be (a network security configuration, or asking when a server is added). Android release builds also need what debug builds do not: a signing configuration, shrinking with keep rules for the engine modules, and a look at what the desktop-only classes left in those modules (the JDBC database opener, the JDK HTTP client) do to a shrunk build.
+
 Source credentials (Jellyfin access tokens, WebDAV and SMB passwords) are stored with the source configuration in the library database, unencrypted. They belong in the platform's secure storage: Credential Manager on Windows, the Secret Service on Linux, the Keystore on Android.
 
 - The database column should end up holding a reference to the secret, not the secret.

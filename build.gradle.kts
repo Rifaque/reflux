@@ -4,6 +4,8 @@ plugins {
     alias(libs.plugins.sqldelight) apply false
     alias(libs.plugins.kotlin.compose) apply false
     alias(libs.plugins.compose.multiplatform) apply false
+    alias(libs.plugins.android.application) apply false
+    alias(libs.plugins.android.kmp.library) apply false
 }
 
 // Developers can drop libmpv into .reflux/native (ignored by Git) instead of installing it system-wide.
@@ -11,9 +13,10 @@ plugins {
 // that need an engine skip themselves where none can be loaded.
 val developmentNatives = rootDir.resolve(".reflux/native").takeIf { it.isDirectory }?.absolutePath
 
-// The shared source sets (`commonMain`) are meant for every platform, but while the JVM is their only
-// target the compiler accepts JVM and desktop APIs in them. This check holds the line until a second
-// target does: it fails on imports and calls that only exist on one platform.
+// The shared source sets (`commonMain`) are meant for every platform. The engine modules are compiled once,
+// for the JVM, and Android uses them as they are, so the compiler accepts JVM and desktop APIs in them.
+// This check holds the line: it fails on imports and calls that only exist on one platform. (`ui` is
+// compiled for Android as well, where an Android SDK is installed, and there the compiler does it.)
 val sharedSources = fileTree(rootDir) {
     include("*/src/commonMain/**/*.kt", "*/*/src/commonMain/**/*.kt")
     exclude("**/build/**")

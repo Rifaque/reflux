@@ -43,6 +43,8 @@ docker run --rm -v "$PWD:/src:ro" -v reflux-gradle:/home/ubuntu/.gradle reflux-l
 
 With a game controller connected, `./gradlew :desktop:app:test --tests "*PhysicalControllerTest*" -Preflux.windowTests=true -Preflux.controller=true -i` opens the application and asks you to press buttons, checking what each press does.
 
+The Android client (`android:app`) is part of the build wherever an Android SDK is installed (`ANDROID_HOME`, or `sdk.dir` in `local.properties`); without one, everything else builds and tests as usual, and `-Preflux.android=false` leaves it out on purpose. `./gradlew :android:app:assembleDebug` builds it, and `./gradlew :android:app:connectedDebugAndroidTest` runs the on-device tests (they need FFmpeg on the build machine, for the test clip) on **every** connected device: set `ANDROID_SERIAL` to the one you mean, for example `ANDROID_SERIAL=emulator-5554`. Phone and tablet layouts are rendered offscreen by the `ui` tests like every other screen, so most layout work needs no device.
+
 The exchange with a real Jellyfin server has a test of its own, which runs when a server is named: `tools/ci/jellyfin-test-server.sh <scratch-dir>` starts a throwaway server in Docker, and the comment at its top gives the command that runs `JellyfinLiveTest` against it. The test rewrites its user's watch state, so do not point it at a server you care about.
 
 Tests that need libmpv, FFmpeg, or a display skip themselves on a machine without them. Set `REFLUX_REQUIRE_ENGINE_TESTS=true` (CI and the container do) to have them fail instead, when a green run must mean they ran.

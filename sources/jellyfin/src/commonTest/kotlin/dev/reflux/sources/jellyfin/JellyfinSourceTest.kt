@@ -158,6 +158,19 @@ class JellyfinSourceTest {
     }
 
     @Test
+    fun anUnmatchedItemsFolderNameIsNotItsTitle() {
+        // Seen on a real server: an item no provider matched is called what its folder is called.
+        assertEquals("Night Drive" to 2021, JellyfinSource.titleAndYear("Night Drive (2021)", 2021))
+        assertEquals("Night Drive" to 2021, JellyfinSource.titleAndYear("Night Drive (2021)", null))
+        assertEquals("Heat" to 1995, JellyfinSource.titleAndYear("Heat", 1995))
+        assertEquals("Heat" to null, JellyfinSource.titleAndYear("Heat", null))
+        // A year that is part of the title, or disagrees with the server's, stays.
+        assertEquals("Blade Runner 2049" to 2017, JellyfinSource.titleAndYear("Blade Runner 2049", 2017))
+        assertEquals("Dune (1984)" to 2021, JellyfinSource.titleAndYear("Dune (1984)", 2021))
+        assertEquals("(500) Days of Summer" to 2009, JellyfinSource.titleAndYear("(500) Days of Summer", 2009))
+    }
+
+    @Test
     fun offlineServer() = runTest {
         online = false
         assertEquals(Availability.UNAVAILABLE, source.availability())

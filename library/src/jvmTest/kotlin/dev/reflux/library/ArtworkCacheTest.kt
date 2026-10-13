@@ -52,6 +52,18 @@ class ArtworkCacheTest {
     }
 
     @Test
+    fun aCacheWhoseDirectoryWasTakenAwayStartsAgain() = runTest {
+        val cache = ArtworkCache(directory.resolve("art"), http)
+        val poster = ArtworkLocator.Remote("https://img/poster.jpg")
+        assertNotNull(cache.get(poster) { null })
+        // Seen on Android: a system short of space clears directories behind a running app.
+        directory.resolve("art").toFile().deleteRecursively()
+        cache.trim()
+        assertEquals(1, cache.prefetch(listOf(poster), { null }))
+        assertNotNull(cache.cached(poster))
+    }
+
+    @Test
     fun sourceImagesAreCopiedSoTheyOutliveTheDrive() = runTest {
         val source = LocalFolderSource(media)
         media.resolve("Heat (1995)").createDirectories()

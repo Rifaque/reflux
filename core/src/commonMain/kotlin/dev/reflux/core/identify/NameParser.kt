@@ -43,8 +43,8 @@ internal class NameParser(private val maxYear: Int) {
         """[\[{]\s*(tmdb|imdb|tvdb)(?:id)?\s*[-=:]\s*([a-z0-9]+)\s*[\]}]""",
         RegexOption.IGNORE_CASE,
     )
-    private val plexEditionPattern = Regex("""\{\s*edition-([^}]+)}""", RegexOption.IGNORE_CASE)
-    private val bracketPattern = Regex("""\[([^\]]*)]|\{([^}]*)}""")
+    private val plexEditionPattern = Regex("""\{\s*edition-([^{}]+)\}""", RegexOption.IGNORE_CASE)
+    private val bracketPattern = Regex("""\[([^\]]*)\]|\{([^{}]*)\}""")
     private val bracketYear = Regex("""^\s*((?:18|19|20)\d{2})\s*$""")
 
     private val standardMarker = Regex(

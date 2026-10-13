@@ -4,9 +4,20 @@ plugins {
     alias(libs.plugins.compose.multiplatform)
 }
 
+// The Android variant exists where there is an Android SDK to build it with (see settings.gradle.kts).
+val refluxAndroid: Boolean by extra
+if (refluxAndroid) apply(plugin = "com.android.kotlin.multiplatform.library")
+
 kotlin {
     jvmToolchain(21)
     jvm()
+    if (refluxAndroid) {
+        extensions.configure<com.android.build.api.dsl.KotlinMultiplatformAndroidLibraryTarget> {
+            namespace = "dev.reflux.ui"
+            compileSdk = 37
+            minSdk = 26
+        }
+    }
 
     sourceSets {
         commonMain.dependencies {

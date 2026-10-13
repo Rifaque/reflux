@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.reflux.design.MaterialRole
+import dev.reflux.ui.LocalChromeInsets
 import dev.reflux.ui.components.Button
 import dev.reflux.ui.components.Chip
 import dev.reflux.ui.components.Icon
@@ -64,7 +65,7 @@ private fun PosterGrid(app: AppState, cards: List<MediaCard>, header: @Composabl
         columns = EqualColumns(layout.posterWidthDp.dp),
         modifier = Modifier.fillMaxSize(),
         state = rememberLazyGridState(),
-        contentPadding = PaddingValues(start = layout.safeMarginDp.dp, end = layout.safeMarginDp.dp, top = ScreenTopInset, bottom = 64.dp),
+        contentPadding = PaddingValues(start = layout.safeMarginDp.dp, end = layout.safeMarginDp.dp, top = LocalChromeInsets.current.top, bottom = LocalChromeInsets.current.bottom),
         horizontalArrangement = Arrangement.spacedBy(layout.gutterDp.dp),
         verticalArrangement = Arrangement.spacedBy(22.dp),
     ) {

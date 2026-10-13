@@ -145,9 +145,10 @@ Kotlin Multiplatform (see the decision log). Modules:
 | `sources:jellyfin` | Jellyfin catalog source (platform-free): sign-in, catalog paging, direct-stream playback targets, watch-state reporting. | `core`, kotlinx-serialization-json |
 | `metadata:tmdb` | TMDB v3 metadata provider over the core `HttpFetcher` (platform-free). | `core`, kotlinx-serialization-json |
 | `playback:mpv` | Desktop playback engine and media probe on libmpv (JNA binding), desktop capability profile. | `core`, JNA, kotlinx-serialization-json |
-| `ui` | The experience layer, shared by every shell: navigation and playback state, screens, player controls, and the design system rendered with Compose. No platform APIs; shells implement its `Platform` interface. | `core`, `library`, `design`, Compose runtime/foundation/ui |
+| `ui` | The experience layer, shared by every shell: navigation and playback state, screens, player controls, phone, tablet, and desktop layouts, and the design system rendered with Compose. No platform APIs; shells implement its `Platform` interface. Built for the desktop JVM and for Android. | `core`, `library`, `design`, Compose runtime/foundation/ui |
 | `desktop:engine` | The engine wired for a desktop machine (data directories, source factories, metadata, probing, pipeline, the rule for adding folders, the diagnostics log). No UI. | everything except `ui` |
 | `desktop:app` | The Windows/Linux shell: window, native video surface with the player overlay above it, fullscreen, keyboard and controller input, folder picker, artwork decoding. | `ui`, `desktop:engine`, Compose Desktop, JNA |
+| `android:app` | The Android phone and tablet shell and the engine wired for Android: the activity, the folder source over the Storage Access Framework, Media3 playback, the platform prober and capabilities, Android's SQLite driver. Part of the build only where an Android SDK is installed. | `ui`, the engine modules, Media3, AndroidX Activity |
 | `tools:cli` | Developer and diagnostic CLI over the same `desktop:engine` wiring as the shell. | `desktop:engine` |
 
 Packages in `core` (`dev.reflux.core`):
@@ -179,21 +180,41 @@ A shell supplies what only a platform can, through `Platform`: decoded artwork, 
 
 Failures are part of the contracts rather than exceptions that escape: engines say why playback stopped, adding a folder has explicit outcomes, and the experience layer turns each into words in one place (`Problems`) while the cause goes to the shell's diagnostics (decision log, "Failures are states").
 
-Video is always a platform surface beneath the experience layer's transparent `PlayerOverlay` (a native child window with libmpv on desktop, a `SurfaceView` with Media3 on Android), so the engine keeps its direct path to the display. The layout comes from `AdaptiveLayout` for the window and the current input modality, and is animated when the modality changes.
+Video is always a platform surface beneath the experience layer's transparent `PlayerOverlay` (a native child window with libmpv on desktop, a `SurfaceView` with Media3 on Android, laid out to the picture's own shape), so the engine keeps its direct path to the display. The layout comes from `AdaptiveLayout` for the window and the current input modality, and is animated when the modality changes.
 
 ### What a platform supplies
 
-The shared modules (`core`, `library`, `design`, `ui`, and the platform-free adapters) contain no platform APIs; `./gradlew check` fails if their `commonMain` sources import or call any (`verifySharedSources`), because with one compilation target the compiler would not notice. A new shell, Android first, brings:
+There are two shells, `desktop:app` and `android:app`. Each supplies what only its platform can, behind the same contracts, and nothing of either reaches the shared modules.
 
-| Piece | Desktop today | Notes for the next platform |
+| Piece | Desktop | Android |
 | --- | --- | --- |
-| `Platform` (artwork decoding, device capabilities, player and video surface, adding media, fullscreen, problem reports) | `DesktopPlatform` | The whole contract between `ui` and a shell. |
-| Input normalization into `Key`, `GamepadButton`, and `InputSignal` | AWT keys, controller readers | Android delivers remotes and controllers as key and motion events; the same `AppState` entry points take them. |
-| Playback engine behind `Player`, and a `MediaProber` | libmpv | Media3 and `MediaExtractor`. |
-| Engine wiring (data directory, source factories, pipeline) | `desktop:engine` | An equivalent module; the rule that one folder is one source lives here because it is about paths. |
-| Database driver, HTTP client, artwork cache | `library` `jvmMain` (JDBC SQLite, the JDK HTTP client, files) | Android needs its own driver and `HttpFetcher`; these three files are the only platform code inside `library`. |
-| Local media source | `sources:local` (filesystem paths) | Storage Access Framework trees are not paths and need their own adapter. |
-| Language names for track labels | `Formatting.jvm.kt` | One `expect` function. |
+| `Platform` (artwork decoding, device capabilities, player and video surface, adding media, fullscreen, problem reports): the whole contract between `ui` and a shell | `DesktopPlatform`: Skia decoding, AWT windows | `AndroidPlatform`: the platform decoder, the system folder picker, system bars and orientation |
+| Hosting the experience layer | A Compose window, with the player's controls in a window above the video | One activity (`MainActivity`), edge to edge, with the controls composed above the video |
+| Input normalization into `Key`, `GamepadButton`, and `InputSignal` | AWT keys; XInput, HID, and joystick readers | Key and motion events (`Input`, `StickDirections`); Back through the system's back dispatcher |
+| Playback engine behind `Player` | libmpv into a native child window | Media3 (ExoPlayer) into a `SurfaceView` (`Media3Player`); subtitles are drawn by the shell |
+| `MediaProber` | libmpv | The platform's `MediaExtractor` (`AndroidMediaProber`) |
+| `DeviceCapabilities` | What libmpv decodes, and the display | What the device's own codec list and display report (`AndroidCapabilities`) |
+| Engine wiring (data directory, source factories, pipeline, the rule that one folder is one source) | `desktop:engine` (`DesktopEnvironment`) | `AndroidEnvironment`, in the app's private storage |
+| Database driver | JDBC SQLite | Android's SQLite, through the same generated schema and migrations |
+| HTTP | The JDK client (`JdkHttpFetcher`) | `HttpURLConnection` (`AndroidFetcher`), which also reads `content:` addresses |
+| Local media source | `sources:local`: a folder as a filesystem path | `DocumentTreeSource`: a folder granted through the Storage Access Framework, which is a tree of documents and a grant that can be revoked, not a path |
+| Language names for track labels | `Formatting.jvm.kt` | `Formatting.android.kt` |
+
+How the shared code reaches each platform:
+
+- The engine (`core`, `library`, `design`, the platform-free adapters, the metadata provider) is compiled once, to JVM bytecode, and both shells use it as it is. Android brings its own database driver and leaves the desktop one out of the application.
+- `ui` is compiled twice, because Compose is a different artifact on each platform: for the desktop JVM and, where an Android SDK is installed, for Android.
+- Without an Android SDK (`ANDROID_HOME`, or `sdk.dir` in `local.properties`), the Android variant of `ui` and the `android` modules are simply not part of the build. Everything else builds and tests as before.
+
+Two things keep the shared code honest about platform APIs. The compiler does for `ui`, which no longer has a single target. For the engine modules, `./gradlew check` still fails when `commonMain` sources import or call platform-only APIs (`verifySharedSources`), and the on-device tests run the engine on a real Android runtime, which is where differences in behavior rather than in API show up: Android's regular expressions are a stricter engine than the JDK's, and that was found there.
+
+### Layout by form factor
+
+The experience and its information architecture are the same everywhere; where things sit follows the form factor and the input in use (`AdaptiveLayout`).
+
+- **Phone.** The sections (Home, Movies, Shows, Search) are along the bottom, in reach of a thumb. The top carries only what a page needs there: the way back, the media sources, a sign of the library being updated. The player puts play, back, and ahead in the middle of the picture and keeps the timeline, track menus, speed, and fullscreen in a bar beneath; volume is the device's own buttons. A tap shows or hides the controls, and two taps on a side of the picture skip that way.
+- **Tablet and desktop.** One floating bar along the top, more titles in a row, and details pages with the poster beside the description. A tablet is the same experience as a desktop window of its size, not a larger phone.
+- **Controller in hand**, on any of them: larger targets, visible focus, and button prompts, without a separate mode.
 
 ## File safety
 

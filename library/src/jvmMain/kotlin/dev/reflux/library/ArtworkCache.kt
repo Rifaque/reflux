@@ -82,6 +82,8 @@ class ArtworkCache(
 
     /** Evicts least recently used files until the cache fits in [maxBytes]. */
     fun trim() {
+        // A cache directory can be taken away while Reflux runs (a system short of space, a user tidying up).
+        if (!Files.isDirectory(directory)) return
         val files = Files.list(directory).use { stream -> stream.filter { it.isRegularFile() }.toList() }
             .map { it to Files.readAttributes(it, java.nio.file.attribute.BasicFileAttributes::class.java) }
             .sortedBy { it.second.lastModifiedTime() }
@@ -94,6 +96,7 @@ class ArtworkCache(
     }
 
     private fun write(target: Path, bytes: ByteArray) {
+        Files.createDirectories(directory)
         val temporary = Files.createTempFile(directory, "download", ".part")
         try {
             Files.write(temporary, bytes)

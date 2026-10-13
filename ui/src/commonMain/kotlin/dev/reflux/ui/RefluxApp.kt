@@ -12,7 +12,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -31,6 +33,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
@@ -43,6 +46,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.reflux.core.input.ControllerFamily
 import dev.reflux.core.input.GamepadButton
@@ -50,6 +54,7 @@ import dev.reflux.core.input.InputMapping
 import dev.reflux.core.input.InputSignal
 import dev.reflux.core.input.SemanticAction
 import dev.reflux.design.AdaptiveLayout
+import dev.reflux.design.FormFactor
 import dev.reflux.design.MaterialRole
 import dev.reflux.design.Motion
 import dev.reflux.library.PipelineActivity
@@ -67,7 +72,6 @@ import dev.reflux.ui.components.absorbsPointer
 import dev.reflux.ui.screens.BrowseScreen
 import dev.reflux.ui.screens.DetailsScreen
 import dev.reflux.ui.screens.HomeScreen
-import dev.reflux.ui.screens.ScreenTopInset
 import dev.reflux.ui.screens.SearchScreen
 import dev.reflux.ui.screens.SourcesPanel
 import dev.reflux.ui.state.AppState
@@ -81,8 +85,25 @@ import dev.reflux.ui.theme.Typography
 import dev.reflux.ui.theme.glass
 import dev.reflux.ui.theme.tween
 
-/** The height of the floating navigation bar; screens leave this much room above their first content. */
+/** The height of the floating navigation bar. */
 internal val NavigationBarHeight = 56.dp
+
+/**
+ * How much of a screen's top and bottom the floating navigation occupies. Screens start their content
+ * below [top] and let it scroll out from under [bottom].
+ *
+ * On a phone the navigation is at the bottom, within reach of a thumb, and the top only carries what a page
+ * needs there; everywhere else it is one bar along the top.
+ */
+internal data class ChromeInsets(val top: Dp, val bottom: Dp)
+
+internal val LocalChromeInsets = staticCompositionLocalOf { ChromeInsets(top = 14.dp + NavigationBarHeight + 22.dp, bottom = 64.dp) }
+
+private fun chromeInsets(compact: Boolean, onSection: Boolean): ChromeInsets = when {
+    !compact -> ChromeInsets(top = 14.dp + NavigationBarHeight + 22.dp, bottom = 64.dp)
+    // A page reached from somewhere has a way back in its top corner.
+    else -> ChromeInsets(top = if (onSection) 20.dp else 72.dp, bottom = 10.dp + NavigationBarHeight + 28.dp)
+}
 
 /**
  * Provides the adaptive layout and design tokens to [content]. The layout follows the window and the input
@@ -151,13 +172,14 @@ fun RefluxApp(app: AppState, modifier: Modifier = Modifier) {
             }
         }
         val screens = rememberSaveableStateHolder()
-        CompositionLocalProvider(LocalFocusEntry provides entry, LocalFocusedControl provides focused) {
+        val insets = chromeInsets(LocalLayout.current.formFactor == FormFactor.PHONE, app.navigator.current is Destination.Section)
+        CompositionLocalProvider(LocalFocusEntry provides entry, LocalFocusedControl provides focused, LocalChromeInsets provides insets) {
             GlassScene(
                 Modifier.fillMaxSize().background(RefluxColors.background).trackPointer(app).onFocusChanged { entry.hasFocus = it.hasFocus },
                 overlay = { Chrome(app) },
             ) {
-                // Focus that scrolls a page stops short of the floating navigation bar.
-                FocusScrollInsets(start = ScreenTopInset, end = 72.dp) {
+                // Focus that scrolls a page stops short of the floating navigation.
+                FocusScrollInsets(start = insets.top, end = insets.bottom + 8.dp) {
                     AnimatedContent(
                         targetState = app.navigator.current,
                         transitionSpec = {
@@ -186,15 +208,18 @@ fun RefluxApp(app: AppState, modifier: Modifier = Modifier) {
 @Composable
 private fun Chrome(app: AppState) {
     val layout = LocalLayout.current
+    val compact = layout.formFactor == FormFactor.PHONE
     val margin = Modifier.fillMaxSize().padding(horizontal = layout.safeMarginDp.dp)
     Box(Modifier.fillMaxSize()) {
-        Box(margin) { NavigationBar(app, Modifier.align(Alignment.TopCenter).padding(top = 14.dp)) }
+        Box(margin) {
+            if (compact) CompactNavigation(app) else NavigationBar(app, Modifier.align(Alignment.TopCenter).padding(top = 14.dp))
+        }
         // A click outside the open panel closes it and goes no further.
         if (app.sourcesOpen) Box(Modifier.fillMaxSize().pointerInput(app) { detectTapGestures { app.sourcesOpen = false } })
         Box(margin) {
             AnimatedVisibility(
                 visible = app.sourcesOpen,
-                modifier = Modifier.align(Alignment.TopEnd).padding(top = 14.dp + NavigationBarHeight + 10.dp),
+                modifier = Modifier.align(Alignment.TopEnd).padding(top = if (compact) 12.dp + 48.dp + 8.dp else 14.dp + NavigationBarHeight + 10.dp),
                 enter = fadeIn(Motion.controlsShow.tween()) + slideInVertically(Motion.controlsShow.tween()) { -it / 12 },
                 exit = fadeOut(Motion.controlsHide.tween()),
             ) {
@@ -202,7 +227,7 @@ private fun Chrome(app: AppState) {
             }
             AnimatedContent(
                 targetState = app.notice,
-                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 32.dp),
+                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = if (compact) 10.dp + NavigationBarHeight + 14.dp else 32.dp),
                 transitionSpec = {
                     (fadeIn(Motion.controlsShow.tween()) + slideInVertically(Motion.controlsShow.tween()) { it / 3 }) togetherWith
                         (fadeOut(Motion.controlsHide.tween()) + slideOutVertically(Motion.controlsHide.tween()) { it / 3 })
@@ -217,6 +242,47 @@ private fun Chrome(app: AppState) {
                     }
                 }
             }
+        }
+    }
+}
+
+/**
+ * Navigation on a phone: the sections along the bottom, where a thumb reaches them, and only what a page
+ * needs at the top (the way back, the media sources, a sign of the library being updated).
+ */
+@Composable
+private fun BoxScope.CompactNavigation(app: AppState) {
+    val navigator = app.navigator
+    val activity by app.activity.collectAsState()
+    Row(Modifier.align(Alignment.TopStart).fillMaxWidth().padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+        if (navigator.current !is Destination.Section) IconButton(Icon.BACK, "Back", { navigator.back() }, size = 44.dp, glass = true)
+        Spacer(Modifier.weight(1f))
+        ActivityIndicator(activity)
+        if (navigator.current is Destination.Section) {
+            IconButton(Icon.FOLDER, "Media sources", { app.sourcesOpen = !app.sourcesOpen }, size = 44.dp, glass = true, tint = tabColor(app.sourcesOpen))
+        }
+    }
+    Column(Modifier.align(Alignment.BottomCenter).padding(bottom = 10.dp), horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        // With a controller in hand, what its buttons do here, in that controller's own terms.
+        AnimatedVisibility(LocalLayout.current.showsButtonPrompts, enter = fadeIn(Motion.inputMorph.tween()), exit = fadeOut(Motion.controlsHide.tween())) {
+            val family = app.input.controllerFamily ?: ControllerFamily.GENERIC
+            ButtonPrompts(
+                listOfNotNull(
+                    InputMapping.confirmButton(family) to "Select",
+                    (InputMapping.cancelButton(family) to if (app.sourcesOpen) "Close" else "Back").takeIf { app.sourcesOpen || navigator.canGoBack },
+                ),
+                family,
+            )
+        }
+        Row(
+            Modifier.fillMaxWidth().widthIn(max = 420.dp).height(NavigationBarHeight).glass(MaterialRole.FLOATING, CircleShape).absorbsPointer().padding(horizontal = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Tab("Home", navigator.section == Destination.Home) { navigator.show(Destination.Home) }
+            Tab("Movies", navigator.section == Destination.Movies) { navigator.show(Destination.Movies) }
+            Tab("Shows", navigator.section == Destination.Shows) { navigator.show(Destination.Shows) }
+            IconButton(Icon.SEARCH, "Search", { navigator.show(Destination.Search) }, tint = tabColor(navigator.section == Destination.Search))
         }
     }
 }
