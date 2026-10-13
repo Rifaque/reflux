@@ -165,6 +165,15 @@ private fun Header(app: AppState, details: DetailsModel) {
                     if (details.genres.isNotEmpty()) Text(details.genres.joinToString("  ·  "), style = LocalTypography.current.caption, color = RefluxColors.textTertiary, maxLines = 1)
                     details.overview?.takeIf { it.isNotBlank() }?.let { Text(it, color = RefluxColors.textSecondary, maxLines = 5) }
                     credit(details.credits)?.let { Text(it, style = LocalTypography.current.caption, color = RefluxColors.textTertiary, maxLines = 1) }
+                    // Whether it has been started, and how much is left, said once and quietly.
+                    val progress = Formatting.progress(card.entry.watchState)
+                    val remaining = Formatting.remaining(card.entry.watchState)
+                    if (progress != null && remaining != null) {
+                        Row(Modifier.padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                            ProgressBar(progress, Modifier.width(200.dp))
+                            Text(remaining, style = LocalTypography.current.caption, color = RefluxColors.textSecondary, maxLines = 1)
+                        }
+                    }
                     Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
                         val playId = details.playId
                         Button(details.playLabel, { playId?.let { app.play(it) } }, Modifier.initialFocus(), icon = Icon.PLAY, style = ButtonStyle.PRIMARY, enabled = playId != null && !card.offline)
@@ -228,7 +237,7 @@ private fun VersionItem(row: VersionRow, bestReason: SelectionCriterion?, onPlay
             }
             if (reason != null) {
                 if (!narrow) Text(reason, style = LocalTypography.current.caption, color = RefluxColors.textSecondary, maxLines = 1)
-                Chip("Best here", emphasized = true)
+                Chip("Recommended", emphasized = true)
             }
         }
     }

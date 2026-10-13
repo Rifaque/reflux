@@ -74,7 +74,7 @@ class ScreensTest {
         val world = app.library
         app.navigator.open(Destination.Details(world.movies().first { it.item.title == "Heat" }.item.id))
         awaitText("Versions")
-        onNodeWithText("Best here").assertExists()
+        onNodeWithText("Recommended").assertExists()
         onNodeWithText("Directed by Michael Mann").assertExists()
         onNodeWithText("Play").assertExists()
         save("details-movie")
