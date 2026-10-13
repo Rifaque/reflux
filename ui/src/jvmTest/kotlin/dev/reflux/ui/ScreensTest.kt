@@ -244,7 +244,7 @@ class ScreensTest {
             onNodeWithText("Cancel").performClick()
 
             player.fail("unrecognized file format", PlaybackFailure.UNSUPPORTED)
-            awaitText("PLAYBACK STOPPED")
+            awaitText("Playback stopped")
             onNodeWithText("This file isn't in a format Reflux can play.").assertExists()
             save("player-error")
         }

@@ -58,8 +58,8 @@ class Typography(private val scale: Float) {
     val caption = style(13f, FontWeight.Normal, 1.35f)
     val captionStrong = style(13f, FontWeight.SemiBold, 1.35f)
 
-    /** Small tracked labels: section eyebrows, badges, button prompts. */
-    val label = style(11f, FontWeight.SemiBold, 1.3f, 0.09f)
+    /** Small labels: badges, button prompts, the titles of menus and notices. Sentence case, lightly tracked. */
+    val label = style(12f, FontWeight.SemiBold, 1.3f, 0.01f)
 }
 
 val LocalTypography = staticCompositionLocalOf { Typography(1f) }

@@ -371,6 +371,7 @@ private fun Timeline(session: PlaybackSession, state: PlayerState) {
         Slider(
             fraction = if (duration == null) 0f else position.toFloat() / duration,
             description = "Timeline",
+            color = RefluxColors.progress,
             onChange = {
                 preview = it
                 session.touch()
@@ -412,9 +413,9 @@ private fun MenuPanel(session: PlaybackSession, menus: List<PlayerMenu>, open: P
             menus.forEach { menu ->
                 Pressable({ if (menu != open) session.toggleMenu(menu) }, shape = CircleShape, lift = 0f) { active ->
                     Text(
-                        menu.title.uppercase(),
-                        Modifier.background(Color.White.copy(alpha = if (active && menu != open) 0.08f else 0f)).padding(horizontal = 9.dp, vertical = 7.dp),
-                        style = LocalTypography.current.label,
+                        menu.title,
+                        Modifier.background(Color.White.copy(alpha = if (active && menu != open) 0.08f else 0f)).padding(horizontal = 10.dp, vertical = 7.dp),
+                        style = LocalTypography.current.captionStrong,
                         color = if (menu == open) RefluxColors.textPrimary else RefluxColors.textTertiary,
                     )
                 }
@@ -437,7 +438,7 @@ private fun MenuPanel(session: PlaybackSession, menus: List<PlayerMenu>, open: P
                     ) {
                         Text(option.label, Modifier.weight(1f), style = LocalTypography.current.bodyStrong, color = if (option.selected) RefluxColors.textPrimary else RefluxColors.textSecondary, maxLines = 1)
                         option.detail?.let { Text(it, style = LocalTypography.current.caption, color = RefluxColors.textTertiary, maxLines = 1) }
-                        if (option.selected) Icon(Icon.CHECK, size = 16.dp)
+                        if (option.selected) Icon(Icon.CHECK, size = 16.dp, tint = RefluxColors.accent)
                     }
                 }
             }
@@ -482,7 +483,7 @@ private fun Notice(modifier: Modifier, title: String, body: String, detail: Stri
         modifier.widthIn(max = 440.dp).glass(MaterialRole.MODAL, tint = playerTint.copy(alpha = 0.92f)).absorbsPointer().padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Text(title.uppercase(), style = LocalTypography.current.label, color = RefluxColors.textSecondary)
+        Text(title, style = LocalTypography.current.captionStrong, color = RefluxColors.textSecondary)
         Text(body, style = LocalTypography.current.title, maxLines = 4)
         if (detail != null) Text("Details: $detail", style = LocalTypography.current.caption, color = RefluxColors.textTertiary, maxLines = 2)
         Row(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) { actions() }

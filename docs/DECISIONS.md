@@ -334,3 +334,15 @@ The interface's own color is a warm amber, and it is the same on every page. Det
 ## 2026-10-13 — Credentials never reach a log
 
 What a shell writes down about a problem passes through `Redaction` (in `core`): addresses with user names and passwords, token and password parameters, and authorization headers are replaced before the text reaches a file, the system log, or the screen. It was a desktop function; with a second shell writing logs it is shared.
+
+## 2026-10-13 — Visual refinement: calm on the surface
+
+A pass over the whole interface against one test: does this element earn the attention it takes from the artwork? Decided, for every platform at once since the experience layer is shared:
+
+- The base is darker and neutral. The earlier base had a blue cast, which tinted every page before any artwork did.
+- Amber means something each time it appears: the primary action, where the user is, how far they are, what is selected, and the rare thing worth pointing out. Progress used to be white, the active section a white pill, and technical badges white chips; all three competed with artwork for no reason.
+- Hierarchy is typographic. Uppercase tracked labels are gone (the eyebrow over Home's title, menu and notice titles); a featured title stands alone, and "Continue watching" is said only when it is true.
+- An active primary button is its own color lit up, not white.
+- The player's timeline is the one amber line on the screen; volume is a neutral setting next to it.
+
+Not changed: layouts, navigation structure, the material roles, and motion timings, which the earlier slices had already settled and tested; and the focus ring, which stays white so that it shows on the accent.

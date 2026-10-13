@@ -5,9 +5,9 @@ package dev.reflux.design
  * WCAG AA on every surface they are used on (verified by tests), including through glass materials.
  */
 object Palette {
-    val background = Argb(0xFF0B0C0FL)
-    val surface = Argb(0xFF15171CL)
-    val surfaceRaised = Argb(0xFF1E2128L)
+    val background = Argb(0xFF09090BL)
+    val surface = Argb(0xFF131316L)
+    val surfaceRaised = Argb(0xFF1C1C21L)
     val textPrimary = Argb(0xFFF4F5F7L)
     val textSecondary = Argb(0xFFB4B9C4L)
     val textTertiary = Argb(0xFF8A909CL)
@@ -15,7 +15,8 @@ object Palette {
     val accent = Argb(0xFFFFA63DL)
     val onAccent = Argb(0xFF1C1003L)
     val focusRing = Argb(0xFFFFFFFFL)
-    val progress = Argb(0xFFE8EAEEL)
+    /** How far the user is: the accent, wherever progress is drawn. */
+    val progress = Argb(0xFFFFA63DL)
     val unavailable = Argb(0xFF7A7F8AL)
     val error = Argb(0xFFFF7A7AL)
 }

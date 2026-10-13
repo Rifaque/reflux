@@ -159,7 +159,7 @@ private fun Header(app: AppState, details: DetailsModel) {
                         if (details.facts.isNotEmpty()) {
                             Text(details.facts.joinToString("   ·   "), style = LocalTypography.current.bodyStrong, color = RefluxColors.textSecondary, maxLines = 1)
                         }
-                        details.badges.forEach { Chip(it, emphasized = true) }
+                        details.badges.forEach { Chip(it) }
                         if (card.offline) Chip("Offline")
                     }
                     if (details.genres.isNotEmpty()) Text(details.genres.joinToString("  ·  "), style = LocalTypography.current.caption, color = RefluxColors.textTertiary, maxLines = 1)
