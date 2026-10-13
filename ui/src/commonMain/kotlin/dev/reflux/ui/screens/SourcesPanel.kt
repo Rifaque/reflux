@@ -6,7 +6,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -54,7 +54,7 @@ internal fun SourcesPanel(app: AppState) {
     // Opened without a pointer, the panel takes focus; focus then stays inside it until it is closed.
     LaunchedEffect(Unit) { if (showsFocus) runCatching { first.requestFocus() } }
     Column(
-        Modifier.width(400.dp).glass(MaterialRole.MODAL).absorbsPointer()
+        Modifier.widthIn(max = 400.dp).fillMaxWidth().glass(MaterialRole.MODAL).absorbsPointer()
             .focusProperties { onExit = { cancelFocusChange() } }.focusGroup()
             .padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),

@@ -172,7 +172,8 @@ class JellyfinSource(
         ).obj() ?: return emptyMap()
         return response.array("Items").mapNotNull { item ->
             val id = item.string("Id") ?: return@mapNotNull null
-            id to Series(item.string("Name") ?: return@mapNotNull null, item.int("ProductionYear"), providerIds(item), artwork(item, episode = false))
+            val (title, year) = titleAndYear(item.string("Name") ?: return@mapNotNull null, item.int("ProductionYear"))
+            id to Series(title, year, providerIds(item), artwork(item, episode = false))
         }.toMap()
     }
 
@@ -181,12 +182,10 @@ class JellyfinSource(
         val versions = item.array("MediaSources").mapNotNull { version(id, item, it) }
         if (versions.isEmpty()) return null
         val identity = when (item.string("Type")) {
-            "Movie" -> ParsedMedia(
-                kind = ParsedKind.MOVIE,
-                title = item.string("Name") ?: return null,
-                year = item.int("ProductionYear") ?: dateOf(item.string("PremiereDate"))?.year,
-                externalIds = providerIds(item),
-            )
+            "Movie" -> {
+                val (title, year) = titleAndYear(item.string("Name") ?: return null, item.int("ProductionYear") ?: dateOf(item.string("PremiereDate"))?.year)
+                ParsedMedia(kind = ParsedKind.MOVIE, title = title, year = year, externalIds = providerIds(item))
+            }
             "Episode" -> {
                 val show = item.string("SeriesId")?.let(series::get)
                 ParsedMedia(
@@ -378,6 +377,20 @@ class JellyfinSource(
                 accessToken = auth.string("AccessToken") ?: throw JellyfinException("missing access token"),
                 deviceId = deviceId,
             )
+        }
+
+        private val trailingYear = Regex("""^(.*\S)\s*\(((?:18|19|20)\d{2})\)$""")
+
+        /**
+         * A title as a work is known by, and its year. A server names an item it found no metadata for after
+         * its folder, year and all ("Night Drive (2021)"); that year is not part of the title, and with it
+         * left in, the server's copy would not be recognized as the work a local file of the same film is.
+         * A year in the name that contradicts the one the server reports is left alone.
+         */
+        internal fun titleAndYear(name: String, year: Int?): Pair<String, Int?> {
+            val match = trailingYear.matchEntire(name.trim()) ?: return name to year
+            val named = match.groupValues[2].toInt()
+            return if (year == null || year == named) match.groupValues[1] to named else name to year
         }
 
         /** Accepts `host`, `host:8096`, or full URLs; defaults to http. */

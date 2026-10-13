@@ -42,7 +42,7 @@ import androidx.compose.ui.unit.dp
 import dev.reflux.core.model.Availability
 import dev.reflux.design.Motion
 import dev.reflux.library.SourceRecord
-import dev.reflux.ui.NavigationBarHeight
+import dev.reflux.ui.LocalChromeInsets
 import dev.reflux.ui.activityLabel
 import dev.reflux.ui.components.ArtworkImage
 import dev.reflux.ui.components.Button
@@ -70,7 +70,6 @@ import dev.reflux.ui.theme.tween
 import kotlinx.coroutines.launch
 
 /** Room a screen leaves above its first content so it starts below the floating navigation bar. */
-internal val ScreenTopInset: Dp = 14.dp + NavigationBarHeight + 22.dp
 
 @Composable
 internal fun HomeScreen(app: AppState) {
@@ -84,7 +83,7 @@ internal fun HomeScreen(app: AppState) {
         LazyColumn(
             Modifier.fillMaxSize(),
             state = rememberLazyListState(),
-            contentPadding = PaddingValues(bottom = 64.dp),
+            contentPadding = PaddingValues(bottom = LocalChromeInsets.current.bottom),
             verticalArrangement = Arrangement.spacedBy(22.dp),
         ) {
             home.featured?.let { featured -> item(key = "featured") { Hero(app, featured, home.featuredOverview, width, heroHeight) } }
@@ -198,7 +197,7 @@ internal fun AmbientBackdrop() {
 internal fun EmptyLibrary(app: AppState, sources: List<SourceRecord>) {
     val activity by app.activity.collectAsState()
     AmbientBackdrop()
-    Box(Modifier.fillMaxSize().padding(top = ScreenTopInset), contentAlignment = Alignment.Center) {
+    Box(Modifier.fillMaxSize().padding(top = LocalChromeInsets.current.top, bottom = LocalChromeInsets.current.bottom), contentAlignment = Alignment.Center) {
         Column(
             Modifier.widthIn(max = 520.dp).padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),

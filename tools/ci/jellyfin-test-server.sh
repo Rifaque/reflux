@@ -5,6 +5,7 @@
 #   tools/ci/jellyfin-test-server.sh <scratch-dir>
 #   REFLUX_JELLYFIN_TEST=http://127.0.0.1:8096 REFLUX_JELLYFIN_TEST_USER=reflux \
 #       REFLUX_JELLYFIN_TEST_PASSWORD=reflux-test ./gradlew :desktop:engine:test --tests "*JellyfinLiveTest*"
+#   ./gradlew :android:app:connectedDebugAndroidTest -Preflux.jellyfin=http://10.0.2.2:8096   (on an emulator)
 #   docker rm -f reflux-jellyfin-test
 #
 # Needs Docker, FFmpeg, curl, and Python. The image tag can be set with JELLYFIN_IMAGE to test a
@@ -20,8 +21,9 @@ TOKEN=
 mkdir -p "$MEDIA/movies/Night Drive (2021)"
 MOVIE="$MEDIA/movies/Night Drive (2021)/Night Drive (2021).mkv"
 if [ ! -f "$MOVIE" ]; then
-    # Twenty-five minutes: a server keeps no resume position in anything only a few minutes long.
-    ffmpeg -loglevel error -y -f lavfi -i "testsrc=size=320x180:rate=5" -f lavfi -i "sine=frequency=440" -t 1500 \
+    # Forty minutes: a server keeps no resume position in anything only a few minutes long, and the
+    # continuity tests stop half an hour in.
+    ffmpeg -loglevel error -y -f lavfi -i "testsrc=size=320x180:rate=5" -f lavfi -i "sine=frequency=440" -t 2400 \
         -c:v libx264 -preset ultrafast -crf 40 -pix_fmt yuv420p -c:a aac -b:a 32k "$MOVIE"
 fi
 

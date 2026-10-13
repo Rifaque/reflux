@@ -56,12 +56,14 @@ import androidx.compose.ui.unit.dp
 import dev.reflux.core.input.ControllerFamily
 import dev.reflux.core.input.GamepadButton
 import dev.reflux.core.input.InputMapping
+import dev.reflux.core.input.InputModality
 import dev.reflux.core.input.SemanticAction
 import dev.reflux.core.model.Episode
 import dev.reflux.core.playback.PlayerState
 import dev.reflux.core.playback.PlayerStatus
 import dev.reflux.core.playback.SkipSegment
 import dev.reflux.core.playback.SkipSegments
+import dev.reflux.design.FormFactor
 import dev.reflux.design.MaterialRole
 import dev.reflux.design.Materials
 import dev.reflux.design.Motion
@@ -109,6 +111,7 @@ fun PlayerOverlay(app: AppState, session: PlaybackSession, modifier: Modifier = 
     RefluxTheme(app, modifier) {
         val state by session.state.collectAsState()
         var visible by remember { mutableStateOf(true) }
+        var visibleAtPress by remember { mutableStateOf(true) }
         var lastPointerMs by remember { mutableLongStateOf(LONG_AGO) }
         val playing = state.status == PlayerStatus.PLAYING
         val pinned = session.menu != null || session.upNext != null || session.error != null
@@ -132,6 +135,7 @@ fun PlayerOverlay(app: AppState, session: PlaybackSession, modifier: Modifier = 
                             if (event.type != PointerEventType.Move && event.type != PointerEventType.Press && event.type != PointerEventType.Enter) continue
                             // Pointer movement is continuous; a few reports a second are enough to keep controls up.
                             val now = event.changes.firstOrNull()?.uptimeMillis ?: continue
+                            if (event.type == PointerEventType.Press) visibleAtPress = visible
                             if (now - lastPointerMs >= POINTER_REPORT_MS || event.type == PointerEventType.Press) {
                                 lastPointerMs = now
                                 session.touch()
@@ -153,14 +157,26 @@ fun PlayerOverlay(app: AppState, session: PlaybackSession, modifier: Modifier = 
                 }
                 .pointerInput(session) {
                     var lastTapMs = LONG_AGO
-                    detectTapGestures { _ ->
+                    detectTapGestures { position ->
                         val now = lastPointerMs
+                        val again = now - lastTapMs <= DOUBLE_CLICK_MS
                         if (session.menu != null) {
                             session.closeMenu()
-                        } else if (session.error == null) {
+                        } else if (session.error != null) {
+                            // Only the failure's own buttons act.
+                        } else if (app.input.modality == InputModality.TOUCH) {
+                            // A finger covers what it taps: a tap shows the controls or puts them away, and
+                            // a second tap on a side of the picture skips back or ahead.
+                            val side = position.x / size.width
+                            when {
+                                again && side < 1f / 3 -> session.handle(SemanticAction.SEEK_BACKWARD)
+                                again && side > 2f / 3 -> session.handle(SemanticAction.SEEK_FORWARD)
+                                visibleAtPress -> visible = false
+                            }
+                        } else {
                             // Click toggles playback at once; a second click soon after also toggles fullscreen.
                             session.handle(SemanticAction.PLAY_PAUSE)
-                            if (now - lastTapMs <= DOUBLE_CLICK_MS) session.handle(SemanticAction.FULLSCREEN)
+                            if (again) session.handle(SemanticAction.FULLSCREEN)
                         }
                         lastTapMs = now
                     }
@@ -168,7 +184,8 @@ fun PlayerOverlay(app: AppState, session: PlaybackSession, modifier: Modifier = 
                 .then(if (!visible && hiddenCursor != null) Modifier.pointerHoverIcon(hiddenCursor) else Modifier),
         ) {
             val error = session.error
-            if (error == null && (state.status == PlayerStatus.LOADING || state.status == PlayerStatus.BUFFERING)) Spinner(Modifier.align(Alignment.Center))
+            val waiting = state.status == PlayerStatus.LOADING || state.status == PlayerStatus.BUFFERING
+            if (error == null && waiting) Spinner(Modifier.align(Alignment.Center))
 
             AnimatedVisibility(visible, enter = fadeIn(Motion.controlsShow.tween()), exit = fadeOut(Motion.controlsHide.tween())) {
                 Controls(app, session, state)
@@ -225,6 +242,9 @@ private fun Controls(app: AppState, session: PlaybackSession, state: PlayerState
     val menus = session.menus(state)
     val open = session.menu?.takeIf { it in menus }
     val failed = session.error != null
+    // On a phone the transport sits in the middle of the picture, where thumbs are, and the bar along the
+    // bottom keeps the timeline and what is used less often. Volume is the device's own buttons.
+    val compact = layout.formFactor == FormFactor.PHONE
     Box(Modifier.fillMaxSize()) {
         // Scrims carry the title and controls over bright scenes.
         Box(Modifier.fillMaxWidth().fillMaxHeight(0.28f).background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.72f), Color.Transparent))))
@@ -261,8 +281,27 @@ private fun Controls(app: AppState, session: PlaybackSession, state: PlayerState
         }
 
         if (failed) return@Box
+        if (compact) {
+            val waiting = state.status == PlayerStatus.LOADING || state.status == PlayerStatus.BUFFERING
+            Row(Modifier.align(Alignment.Center), horizontalArrangement = Arrangement.spacedBy(30.dp), verticalAlignment = Alignment.CenterVertically) {
+                IconButton(Icon.REWIND, "Back 10 seconds", { session.handle(SemanticAction.SEEK_BACKWARD) }, size = 54.dp, glass = true)
+                // While playback is waiting, the spinner is here instead.
+                Box(Modifier.size(72.dp), contentAlignment = Alignment.Center) {
+                    if (!waiting) {
+                        IconButton(
+                            if (state.pauses) Icon.PAUSE else Icon.PLAY,
+                            if (state.pauses) "Pause" else "Play",
+                            { session.handle(SemanticAction.PLAY_PAUSE) },
+                            size = 72.dp,
+                            glass = true,
+                        )
+                    }
+                }
+                IconButton(Icon.FORWARD, "Forward 10 seconds", { session.handle(SemanticAction.SEEK_FORWARD) }, size = 54.dp, glass = true)
+            }
+        }
         Column(
-            Modifier.align(Alignment.BottomCenter).padding(horizontal = margin).padding(bottom = 24.dp).widthIn(max = 1180.dp),
+            Modifier.align(Alignment.BottomCenter).padding(horizontal = margin).padding(bottom = if (compact) 12.dp else 24.dp).widthIn(max = 1180.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
             horizontalAlignment = Alignment.End,
         ) {
@@ -276,23 +315,27 @@ private fun Controls(app: AppState, session: PlaybackSession, state: PlayerState
                 Timeline(session, state)
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
                     IconButton(Icon.PREVIOUS, "Previous", { session.handle(SemanticAction.PREVIOUS) })
-                    IconButton(Icon.REWIND, "Back 10 seconds", { session.handle(SemanticAction.SEEK_BACKWARD) })
-                    IconButton(
-                        if (state.pauses) Icon.PAUSE else Icon.PLAY,
-                        if (state.pauses) "Pause" else "Play",
-                        { session.handle(SemanticAction.PLAY_PAUSE) },
-                        size = 48.dp,
-                    )
-                    IconButton(Icon.FORWARD, "Forward 10 seconds", { session.handle(SemanticAction.SEEK_FORWARD) })
+                    if (!compact) {
+                        IconButton(Icon.REWIND, "Back 10 seconds", { session.handle(SemanticAction.SEEK_BACKWARD) })
+                        IconButton(
+                            if (state.pauses) Icon.PAUSE else Icon.PLAY,
+                            if (state.pauses) "Pause" else "Play",
+                            { session.handle(SemanticAction.PLAY_PAUSE) },
+                            size = 48.dp,
+                        )
+                        IconButton(Icon.FORWARD, "Forward 10 seconds", { session.handle(SemanticAction.SEEK_FORWARD) })
+                    }
                     if (session.next != null) IconButton(Icon.NEXT, "Next episode", { session.playNext() })
                     Spacer(Modifier.weight(1f))
-                    IconButton(if (state.muted || state.volume == 0) Icon.VOLUME_MUTED else Icon.VOLUME, if (state.muted) "Unmute" else "Mute", { session.handle(SemanticAction.MUTE) })
-                    Slider(
-                        fraction = if (state.muted) 0f else state.volume / 100f,
-                        description = "Volume",
-                        onChange = { session.setVolume((it * 100).toInt()) },
-                        modifier = Modifier.width(96.dp).padding(end = 8.dp),
-                    )
+                    if (!compact) {
+                        IconButton(if (state.muted || state.volume == 0) Icon.VOLUME_MUTED else Icon.VOLUME, if (state.muted) "Unmute" else "Mute", { session.handle(SemanticAction.MUTE) })
+                        Slider(
+                            fraction = if (state.muted) 0f else state.volume / 100f,
+                            description = "Volume",
+                            onChange = { session.setVolume((it * 100).toInt()) },
+                            modifier = Modifier.width(96.dp).padding(end = 8.dp),
+                        )
+                    }
                     menus.forEach { menu ->
                         val tint = if (menu == open || (menu == PlayerMenu.SUBTITLES && state.selectedSubtitleId != null)) RefluxColors.textPrimary else RefluxColors.textSecondary
                         if (menu == PlayerMenu.SPEED) {

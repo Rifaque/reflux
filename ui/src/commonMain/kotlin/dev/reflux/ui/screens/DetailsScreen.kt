@@ -48,8 +48,10 @@ import dev.reflux.core.model.ArtworkLocator
 import dev.reflux.core.model.MediaId
 import dev.reflux.core.versions.SelectionCriterion
 import dev.reflux.design.ArtworkAccent
+import dev.reflux.design.FormFactor
 import dev.reflux.design.MaterialRole
 import dev.reflux.design.Motion
+import dev.reflux.ui.LocalChromeInsets
 import dev.reflux.ui.components.ArtworkImage
 import dev.reflux.ui.components.Button
 import dev.reflux.ui.components.ButtonStyle
@@ -93,7 +95,7 @@ internal fun DetailsScreen(app: AppState, itemId: MediaId) {
     var season by rememberSaveable(itemId) { mutableIntStateOf(details.initialSeason) }
     val episodes = details.seasons.getOrNull(season)?.episodes.orEmpty()
     CompositionLocalProvider(LocalAccent provides rememberAccent(details.card.poster)) {
-        LazyColumn(Modifier.fillMaxSize(), state = rememberLazyListState(), contentPadding = PaddingValues(bottom = 64.dp)) {
+        LazyColumn(Modifier.fillMaxSize(), state = rememberLazyListState(), contentPadding = PaddingValues(bottom = LocalChromeInsets.current.bottom)) {
             item(key = "header") { Header(app, details) }
             if (details.versions.isNotEmpty()) {
                 item(key = "versions") { Versions(app, details, Modifier.padding(horizontal = layout.safeMarginDp.dp).padding(top = 28.dp)) }
@@ -125,7 +127,7 @@ private class Loaded(val details: DetailsModel?)
 @Composable
 private fun Gone(app: AppState) {
     AmbientBackdrop()
-    Box(Modifier.fillMaxSize().padding(top = ScreenTopInset), contentAlignment = Alignment.Center) {
+    Box(Modifier.fillMaxSize().padding(top = LocalChromeInsets.current.top), contentAlignment = Alignment.Center) {
         Column(Modifier.widthIn(max = 460.dp).padding(24.dp), verticalArrangement = Arrangement.spacedBy(14.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Text("This is no longer in your library", style = LocalTypography.current.headline, align = TextAlign.Center)
             Text(
@@ -150,7 +152,7 @@ private fun Header(app: AppState, details: DetailsModel) {
             Box(Modifier.matchParentSize().background(Brush.horizontalGradient(0f to background.copy(alpha = 0.9f), 0.6f to background.copy(alpha = 0.45f), 1f to background.copy(alpha = 0.1f))))
             Box(Modifier.matchParentSize().background(Brush.verticalGradient(0f to background.copy(alpha = 0.6f), 0.25f to Color.Transparent, 0.55f to background.copy(alpha = 0.3f), 1f to background)))
             Row(
-                Modifier.align(Alignment.BottomStart).padding(horizontal = layout.safeMarginDp.dp).padding(top = ScreenTopInset + 24.dp),
+                Modifier.align(Alignment.BottomStart).padding(horizontal = layout.safeMarginDp.dp).padding(top = LocalChromeInsets.current.top + 24.dp),
                 horizontalArrangement = Arrangement.spacedBy(32.dp),
                 verticalAlignment = Alignment.Bottom,
             ) {
@@ -230,12 +232,16 @@ private fun VersionItem(row: VersionRow, bestReason: SelectionCriterion?, onPlay
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(Icon.PLAY, size = 16.dp, tint = if (row.ranked.playable) RefluxColors.textPrimary else RefluxColors.textTertiary)
+            // Where there is no room beside the facts, the reason this version is the best one goes beneath them.
+            val narrow = LocalLayout.current.formFactor == FormFactor.PHONE
+            val reason = bestReason?.takeIf { row.best }?.let(Formatting::criterion)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(row.facts.joinToString("  ·  "), style = LocalTypography.current.bodyStrong, color = if (row.ranked.playable) RefluxColors.textPrimary else RefluxColors.textTertiary, maxLines = 1)
                 Text((listOf(row.sourceName) + row.notes).joinToString("  ·  "), style = LocalTypography.current.caption, color = RefluxColors.textTertiary, maxLines = 1)
+                if (narrow && reason != null) Text(reason, style = LocalTypography.current.caption, color = RefluxColors.textSecondary, maxLines = 1)
             }
-            if (row.best && bestReason != null) {
-                Text(Formatting.criterion(bestReason), style = LocalTypography.current.caption, color = RefluxColors.textSecondary, maxLines = 1)
+            if (reason != null) {
+                if (!narrow) Text(reason, style = LocalTypography.current.caption, color = RefluxColors.textSecondary, maxLines = 1)
                 Chip("Best here", emphasized = true)
             }
         }

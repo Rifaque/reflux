@@ -62,7 +62,7 @@ The design language combines restrained premium ergonomics, cinematic media pres
 
 **Why.** Android and Android TV are the first targets and their serious-playback features (HDR display modes, Dolby Vision, frame-rate matching, tunneled playback, audio passthrough) are only reached reliably from native Android code. Kotlin is native there, runs on the desktop JVM, and lets the Media Core be shared without an FFI boundary. One language keeps the system small.
 
-**Consequences.** The core must not use JVM-only APIs; platform facilities (filesystem walking, SQLite drivers, HTTP, decoders) sit behind interfaces. Builds use Gradle with a version catalog. The Android SDK is not required to build or test the core.
+**Consequences.** The core must not use JVM-only APIs; platform facilities (filesystem walking, SQLite drivers, HTTP, decoders) sit behind interfaces. Builds use Gradle with a version catalog. The Android SDK is not required to build or test the core (still so with the Android client in the tree: see 2026-10-13).
 
 ## 2026-10-08 — Playback engines
 
@@ -223,6 +223,8 @@ The player's controls are a translucent window above the video, which on X11 nee
 
 Every shared module compiles only for the JVM today, so `commonMain` code can use JVM and desktop APIs without the compiler objecting; the first Android build would be where that surfaces. `verifySharedSources` runs with `check` and fails on platform-only imports and calls in shared source sets. It is a text check, not a compiler: it holds the boundary until a second target exists, at which point the compiler takes over and the task can go.
 
+Since the Android client (2026-10-13) the compiler does take over for `ui`, which is built for both platforms. The engine modules are still compiled once, for the JVM, and used by Android as they are, so the check stays for them.
+
 ## 2026-10-12 — One playback engine at a time
 
 A playback session's engine is released asynchronously, so that leaving the player is instant. Starting playback waits for the previous engine to be gone. Two engines would share one video surface, and the first one's teardown hides the surface the second is using; on Android the same rule keeps two players from competing for a decoder.
@@ -294,3 +296,23 @@ The synchronization rules lean on how a server treats its own records, and fixtu
 Observed on Jellyfin Server 12.2.0: a stop reported outside any playback session sets the position; marking played clears the position; marking not played clears position, play count, and date. The last one is why an empty, undated record is never adopted: it is what un-marking leaves behind, and equally what a reset server shows.
 
 Found on the way: reports to a server were sent concurrently, so a stop could be overtaken by the progress report before it and leave the server on the earlier position. They now go one at a time, in order.
+
+## 2026-10-13 — Android: one more shell over the same engine
+
+The Android phone and tablet client is the shared experience layer and the shared engine in an Android shell. Nothing was reimplemented for it, and the Media Core did not change shape.
+
+**How the shared code is built for Android.** The engine modules stay what they were, Kotlin compiled to JVM bytecode, and the Android application uses those same artifacts. Only `ui` gained an Android variant, because Compose is a different library there. The alternatives were an Android target on every shared module (several times the build configuration, for code that contains no platform API by rule) or an Android-only copy of the UI (a second product). The Android variant and the `android` modules exist only where an Android SDK is installed, so building and testing the engine and the desktop still needs none.
+
+**Playback: Media3, into a surface.** ExoPlayer decodes with MediaCodec, in hardware where the device has it, straight to a `SurfaceView` beneath Reflux's own controls; libmpv was not brought to Android. The engine is driven through the same `Player` contract and the same `PlaybackController` as libmpv, so resume, next episode, track defaults, and watch reporting are the same code. What the device can play is read from the device (its codec list and display), never assumed from its Android version. Subtitles are drawn by the shell from the engine's cues. Not there on Android yet, and therefore not claimed: chapters (the engine does not report Matroska chapters), picture-in-picture, playback in the background, and a tone-mapping guarantee for HDR on SDR panels.
+
+**Storage: folders the user grants.** Media is reached through the system folder picker (Storage Access Framework), with a read grant that is kept across restarts and given back when the source is removed. Such a folder is a tree of documents, not a path: `DocumentTreeSource` lists it by display name so that its paths identify like any other source's, and finds documents again by walking those names. A revoked grant or an ejected card is the source being *unavailable*, which keeps the library, and never an empty listing, which would read as "everything was deleted". The rule that one folder is one source holds on Android through document IDs. No storage permission is requested and no file path is assumed.
+
+**Phone and tablet.** A phone is not a small desktop: navigation is at the bottom, the player's transport is under the thumbs, touch shows and hides controls instead of pausing. A tablet keeps the desktop arrangement at its size. These are layouts of the one experience layer, chosen by `AdaptiveLayout`; there is no Android screen in the Android shell.
+
+**Plain HTTP is allowed.** Media servers on a home network are usually `http://`, and which ones to connect to is the user's decision, so the app does not refuse cleartext traffic wholesale. Tracked with the other release questions.
+
+**What the first Android run found in shared code.**
+
+- Android's regular expressions (ICU) reject an unescaped literal `}`, which the JDK accepts: parsing failed on the first scan. The patterns are fixed, and the engine now has tests that run on a device.
+- A real Jellyfin server names an item it has no metadata for after its folder, year included ("Night Drive (2021)"), which kept the server's copy from being recognized as the same work as a local file. The adapter takes a trailing year that agrees with the server's off the title.
+- The artwork cache assumed its directory could not disappear while Reflux runs. A device short of space clears directories behind a running app.
