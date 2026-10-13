@@ -82,16 +82,14 @@ Verified on 2026-10-13, on the tree that closes the Android hardening milestone.
 
 ### Visual refinement: what was verified
 
-Verified on 2026-10-13, on the tree of the visual refinement pass (colors, type, and accent use in the shared experience layer; no layout, navigation, or engine change).
+Verified on 2026-10-13, on the tree that closes the visual refinement (colors, type, and accent use in the shared experience layer, and the details page's progress and recommendation; no navigation or engine change).
 
 | Where | What ran | Result |
 | --- | --- | --- |
-| Windows 11 | `./gradlew check`, with every screen rendered and the renderings reviewed (desktop, phone, tablet, player, empty and error states) | 428 tests, none failed |
-| Windows 11, real window | First run, browsing with a mouse and with a scripted controller | Passed. The playback window test **did not run**: the desktop was locked |
-| Ubuntu 24.04 container | The headless `check` | 421 tests, none failed. The real-window round **did not run**: the container was stopped when the machine ran short of memory |
-| Android emulator | `connectedDebugAndroidTest`; first run, details, and the player by hand | 11 tests, none failed |
-
-So the desktop playback test in a real window has not run on this tree on either system. What changed under it is one string it waits for (a notice title that is no longer in capitals), which the headless tests check in the same composable.
+| Windows 11 | `./gradlew check`, with every screen rendered and all of the renderings reviewed (desktop, phone, tablet, player, controller focus, empty, search, and error states) | 428 tests, none failed |
+| Windows 11, real window | `./gradlew :desktop:app:test -Preflux.windowTests=true`, playback included | 27 tests, none failed (physical-controller check skipped). One run in between failed in two steps while the machine was in use; the run after it passed |
+| Ubuntu 24.04 container | The headless `check`, on the tree before the last details-page changes | 421 tests, none failed. The real-window round did not run there: the container was stopped when the machine ran short of memory |
+| Android emulator | `connectedDebugAndroidTest` and the refined screens by hand, on the tree before the last details-page changes | 11 tests, none failed |
 
 ## Phase 0 — Product and architecture foundation
 

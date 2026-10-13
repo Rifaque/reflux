@@ -259,7 +259,8 @@ private fun BoxScope.CompactNavigation(app: AppState) {
         if (navigator.current !is Destination.Section) IconButton(Icon.BACK, "Back", { navigator.back() }, size = 44.dp, glass = true)
         Spacer(Modifier.weight(1f))
         ActivityIndicator(activity)
-        if (navigator.current is Destination.Section) {
+        // Search has its field across the top; the sources are a tap away from any other section.
+        if (navigator.current is Destination.Section && navigator.current != Destination.Search) {
             IconButton(Icon.FOLDER, "Media sources", { app.sourcesOpen = !app.sourcesOpen }, size = 44.dp, glass = true, tint = tabColor(app.sourcesOpen))
         }
     }

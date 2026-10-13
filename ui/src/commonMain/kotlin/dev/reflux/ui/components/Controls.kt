@@ -145,7 +145,8 @@ fun Button(
     Pressable(onClick, modifier, shape, enabled, lift = 0.6f) { active ->
         val surface = when (style) {
             // Active is the accent lit up, not a different color.
-            ButtonStyle.PRIMARY -> Modifier.background(if (active) lerp(accent, Color.White, 0.28f) else accent)
+            // What cannot be done right now does not wear the accent.
+            ButtonStyle.PRIMARY -> Modifier.background(if (!enabled) Color.White.copy(alpha = 0.08f) else if (active) lerp(accent, Color.White, 0.28f) else accent)
             ButtonStyle.GLASS -> Modifier.glass(MaterialRole.INTERACTIVE, shape).background(Color.White.copy(alpha = if (active) 0.12f else 0f))
             ButtonStyle.QUIET -> Modifier.background(Color.White.copy(alpha = if (active) 0.10f else 0f))
         }
