@@ -82,14 +82,20 @@ Verified on 2026-10-13, on the tree that closes the Android hardening milestone.
 
 ### Visual refinement: what was verified
 
-Verified on 2026-10-13, on the tree that closes the visual refinement (colors, type, and accent use in the shared experience layer, and the details page's progress and recommendation; no navigation or engine change).
+Verified on 2026-10-13, all of it on the tree that closes the visual refinement (`2b7a21f`: colors, type, and accent use in the shared experience layer, and the details page's progress and recommendation; no navigation or engine change).
 
-| Where | What ran | Result |
+| Level | What ran | State |
 | --- | --- | --- |
-| Windows 11 | `./gradlew check`, with every screen rendered and all of the renderings reviewed (desktop, phone, tablet, player, controller focus, empty, search, and error states) | 428 tests, none failed |
-| Windows 11, real window | `./gradlew :desktop:app:test -Preflux.windowTests=true`, playback included | 27 tests, none failed (physical-controller check skipped). One run in between failed in two steps while the machine was in use; the run after it passed |
-| Ubuntu 24.04 container | The headless `check`, on the tree before the last details-page changes | 421 tests, none failed. The real-window round did not run there: the container was stopped when the machine ran short of memory |
-| Android emulator | `connectedDebugAndroidTest` and the refined screens by hand, on the tree before the last details-page changes | 11 tests, none failed |
+| Implemented | The refined look across desktop, phone, and tablet: neutral dark base, one amber accent, sentence-case type, quiet chips, progress on details pages | Done |
+| Windows verified | `./gradlew check`, with every screen rendered and all 36 renderings reviewed (desktop, phone, tablet, player, controller focus, empty, search, and error states) | 428 tests, none failed |
+| Windows verified, real window | `./gradlew :desktop:app:test -Preflux.windowTests=true`, playback included | 27 tests, none failed. One run in between failed in two steps while the machine was in use; the run after it passed |
+| Linux verified (Ubuntu 24.04 container, engine tests required) | The Linux job: the headless `check`, then one round with the real-window tests (first run, browsing by mouse and by scripted controller, playback in the window) | 421 tests, none failed, in both |
+| Android emulator verified (Android 16, API 36.1) | `connectedDebugAndroidTest` | 11 tests, none failed; the live-server test ran separately, below |
+| Android emulator, by hand | First run through the system folder picker, Home, details, playback, the timeline, leaving at 00:30, Resume and the progress on details, Continue Watching on Home, resuming from there, and leaving into picture-in-picture | Done, with screenshots reviewed |
+| Live Jellyfin verified (Jellyfin Server 12.2.0 in Docker) | From the emulator: a film watched from the device's storage to 00:30:12 resumed there from the server's stream, and back to the local file. From the desktop JVM: `JellyfinLiveTest` | Passed, both |
+| Physical-device verified | A phone or tablet in hand | **Not done.** The developer's phone was attached and deliberately left alone |
+| Physical-controller verified | A controller in hand | **Not done.** None was connected; controller input was scripted on the desktop and sent as key events on the emulator |
+| Environment-blocked | The workflow on GitHub (not pushed); TMDB against the live service (no credential), so artwork in every run was generated placeholders | Open |
 
 ## Phase 0 — Product and architecture foundation
 
