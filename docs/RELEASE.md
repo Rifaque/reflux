@@ -25,6 +25,8 @@ Desktop playback and probing use libmpv through its stable client API (decision 
 
 On Android the app currently allows plain-HTTP connections to any host, because home media servers are usually `http://`. Before release that should be narrowed where it can be (a network security configuration, or asking when a server is added). Reviewed for the Android client so far: no storage permission is requested (folders are granted one at a time through the system picker, read-only, and the grant is given back when a source is removed); backups of app data are switched off, so the library database with its source credentials does not leave the device that way; problem reports are redacted before they reach the system log or the log file; the only exported component is the launcher activity; nothing in the production path is debug-only. Still open: the plain-HTTP policy above, credentials in the database (below), and the media session being available to any media controller on the device, which is the platform's default.
 
+For televisions: the application declares the TV launcher category and a banner, and requires neither a touchscreen nor the leanback feature, so one package serves handhelds and televisions. It declares `READ_MEDIA_VIDEO` (and `READ_EXTERNAL_STORAGE` up to Android 12), requested only on a television, where there is no system folder picker; a store listing will show that permission for every device, which is worth a line of explanation there. Not looked at yet for a television release: the store's TV quality checklist beyond the manifest, a recommendations or Watch Next channel on the launcher (not built, and not needed to play), and behavior on devices that do offer picture-in-picture on a television.
+
 Android release builds also need what debug builds do not: a signing configuration, shrinking with keep rules for the engine modules, and a look at what the desktop-only classes left in those modules (the JDBC database opener, the JDK HTTP client) do to a shrunk build.
 
 Source credentials (Jellyfin access tokens, WebDAV and SMB passwords) are stored with the source configuration in the library database, unencrypted. They belong in the platform's secure storage: Credential Manager on Windows, the Secret Service on Linux, the Keystore on Android.
@@ -50,6 +52,7 @@ Known, deliberate, and visible in the library rather than silent:
 
 - Verified: Windows 11, and Linux on X11 with a compositing manager (Ubuntu 24.04). Wayland has only been reached through XWayland; X11 without a compositor shows the player's controls window opaque.
 - Controllers: the readers and everything above them are tested; a session with physical Xbox and PlayStation controllers is still owed (`PhysicalControllerTest` is the script for it).
+- Television: verified on the Google TV emulator only. A real television or streaming box is still owed, and with it everything an emulator cannot show: hardware decoding, 4K, HDR and Dolby Vision, an HDMI receiver's audio formats, drives plugged into the device, and a real remote in the hand.
 - Media keys are not captured on desktop.
 
 ## Project

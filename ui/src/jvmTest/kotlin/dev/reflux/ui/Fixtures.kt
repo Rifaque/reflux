@@ -47,6 +47,7 @@ import dev.reflux.library.LibraryPipeline
 import dev.reflux.library.SourceRegistry
 import dev.reflux.sources.local.LocalFolderSource
 import dev.reflux.ui.state.ArtworkLoader
+import dev.reflux.ui.state.FolderBrowser
 import dev.reflux.ui.state.FolderChoice
 import dev.reflux.ui.state.Platform
 import kotlinx.coroutines.CompletableDeferred
@@ -231,7 +232,12 @@ val testDevice = DeviceCapabilities(
     subtitleFormats = SubtitleFormat.entries.toSet(),
 )
 
-class FakePlatform(artwork: Boolean = true) : Platform {
+class FakePlatform(
+    artwork: Boolean = true,
+    override val television: Boolean = false,
+    override val systemVolume: Boolean = television,
+    override val folderBrowser: FolderBrowser? = null,
+) : Platform {
     override val artwork: ArtworkLoader = FakeArtwork(artwork)
     override val device: DeviceCapabilities = testDevice
     override val preferredLanguages: List<String> = listOf("en")

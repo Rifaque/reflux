@@ -25,6 +25,7 @@ import dev.reflux.library.SourceRecord
 import dev.reflux.library.SourceRegistry
 import dev.reflux.library.db.RefluxDatabase
 import dev.reflux.metadata.tmdb.TmdbProvider
+import dev.reflux.sources.local.LocalFolderSource
 import dev.reflux.sources.jellyfin.JellyfinCredentials
 import dev.reflux.sources.jellyfin.JellyfinSource
 import dev.reflux.sources.webdav.WebDavConfig
@@ -108,6 +109,8 @@ class AndroidEnvironment(context: Context, dataDirectory: File = context.filesDi
     val registry = SourceRegistry(
         mapOf(
             DocumentTreeSource.TYPE to { record -> folderSource(Uri.parse(record.config), record.displayName) },
+            // A folder chosen by its path, on devices where Reflux browses storage itself (televisions).
+            LocalFolderSource.TYPE to { record -> LocalFolderSource(File(record.config).toPath(), record.displayName) },
             JellyfinSource.TYPE to { record -> JellyfinCredentials.decode(record.config)?.let { JellyfinSource(it, http, record.displayName) } },
             WebDavSource.TYPE to { record -> WebDavConfig.decode(record.config)?.let { WebDavSource(it, http, record.displayName) } },
         ),
@@ -151,6 +154,25 @@ class AndroidEnvironment(context: Context, dataDirectory: File = context.filesDi
 
         val source = DocumentTreeSource(tree, treeUri.toString(), name)
         library.addSource(source, treeUri.toString())
+        registry.register(source)
+        return TreeAddition.Added(source, narrower)
+    }
+
+    /**
+     * Offers a folder chosen by its path as a media source, under the same rule as [addFolder]: one folder
+     * is one source, a folder inside one that is already a source is not added again, and a folder that
+     * contains others takes them over.
+     */
+    fun addFolder(folder: File, name: String): TreeAddition {
+        if (!folder.isDirectory || !folder.canRead()) return TreeAddition.Unreadable(name)
+        val root = folder.toPath().toAbsolutePath().normalize()
+        val folders = library.sources().filter { it.type == LocalFolderSource.TYPE }.associateWith { File(it.config).toPath() }
+        folders.entries.firstOrNull { (_, existing) -> root.startsWith(existing) }?.let { return TreeAddition.AlreadyCovered(it.key) }
+        val narrower = folders.filterValues { it.startsWith(root) }.keys.toList()
+        narrower.forEach { removeSource(it.id) }
+
+        val source = LocalFolderSource(root, name)
+        library.addSource(source, root.toString())
         registry.register(source)
         return TreeAddition.Added(source, narrower)
     }

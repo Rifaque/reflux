@@ -77,6 +77,28 @@ class InputModalityTrackerTest {
     }
 
     @Test
+    fun aTelevisionIsDirectionalFromTheStartAndItsArrowsAreItsRemote() {
+        val tracker = InputModalityTracker(InputModality.POINTER, television = true)
+        assertEquals(InputState(InputModality.DIRECTIONAL, ControllerFamily.TV_REMOTE), tracker.state)
+        assertEquals(InputModality.DIRECTIONAL, tracker.onSignal(InputSignal.KeyPress(Key.ARROW_DOWN)).modality)
+        assertEquals(InputModality.DIRECTIONAL, tracker.onSignal(InputSignal.KeyPress(Key.MEDIA_PLAY_PAUSE)).modality)
+
+        // A controller is still told apart from the remote, in both directions.
+        assertEquals(ControllerFamily.PLAYSTATION, tracker.onSignal(InputSignal.GamepadButtonPress(GamepadButton.FACE_SOUTH, ControllerFamily.PLAYSTATION)).controllerFamily)
+        assertEquals(ControllerFamily.TV_REMOTE, tracker.onSignal(InputSignal.KeyPress(Key.DPAD_CENTER)).controllerFamily)
+        // And a mouse plugged into it is a mouse.
+        assertEquals(InputModality.POINTER, tracker.onSignal(InputSignal.PointerClick).modality)
+        assertEquals(InputModality.DIRECTIONAL, tracker.onSignal(InputSignal.KeyPress(Key.ARROW_LEFT)).modality)
+    }
+
+    @Test
+    fun aRemotesKeysAreNamedForWhatTheyDo() {
+        assertEquals("OK", InputMapping.glyph(InputMapping.confirmButton(ControllerFamily.TV_REMOTE), ControllerFamily.TV_REMOTE))
+        assertEquals("Back", InputMapping.glyph(InputMapping.cancelButton(ControllerFamily.TV_REMOTE), ControllerFamily.TV_REMOTE))
+        assertEquals("Menu", InputMapping.glyph(GamepadButton.START, ControllerFamily.TV_REMOTE))
+    }
+
+    @Test
     fun keysOnlySwitchForNavigation() {
         val tracker = InputModalityTracker(InputModality.POINTER)
         assertEquals(InputModality.POINTER, tracker.onSignal(InputSignal.KeyPress(Key.MEDIA_PLAY_PAUSE)).modality)

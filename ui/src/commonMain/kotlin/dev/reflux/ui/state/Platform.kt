@@ -33,6 +33,26 @@ sealed interface FolderChoice {
     data class NotAFolder(val name: String) : FolderChoice
 }
 
+/** A folder as a platform's storage shows it. [id] is the platform's own way of finding it again. */
+data class BrowsedFolder(val id: String, val name: String)
+
+/** What is directly inside a folder: the folders to go further into, and how many videos lie in it. */
+data class FolderListing(val folders: List<BrowsedFolder>, val videos: Int)
+
+/**
+ * The device's storage, for platforms that have no folder picker of their own to offer (televisions). The
+ * experience layer draws the picker over it, so choosing a folder works with whatever is in the user's hand.
+ */
+interface FolderBrowser {
+    /** Where browsing starts: the device's storage and each drive connected to it. Null when the user did not let Reflux read them. */
+    suspend fun roots(): List<BrowsedFolder>?
+
+    suspend fun list(folder: BrowsedFolder): FolderListing
+
+    /** Registers [folder] as a read-only source. */
+    suspend fun add(folder: BrowsedFolder): FolderChoice
+}
+
 /**
  * What the experience layer needs from a platform shell. Everything here is a platform capability; the
  * experience layer checks it instead of assuming it (docs/ARCHITECTURE.md).
@@ -46,8 +66,17 @@ interface Platform {
     /** Preferred audio and subtitle languages as ISO 639 codes, most preferred first (from the system locale). */
     val preferredLanguages: List<String>
 
-    /** Whether this is a television: 10-foot type scale and overscan-safe margins. */
+    /** Whether this is a television: a 10-foot layout inside overscan-safe margins, driven by a remote. */
     val television: Boolean get() = false
+
+    /**
+     * Whether loudness is the device's own business (its volume keys, a television's remote). The player
+     * then offers no volume of its own, and the keys that would have changed it are free for something else.
+     */
+    val systemVolume: Boolean get() = false
+
+    /** The storage to choose a media folder from, where the platform has no picker of its own; null where it does. */
+    val folderBrowser: FolderBrowser? get() = null
 
     /** Whether a playback engine is installed. Browsing never depends on it. */
     val canPlay: Boolean
@@ -64,7 +93,7 @@ interface Platform {
     /** Closes a player from [createPlayer] and hides the video surface. */
     suspend fun releasePlayer(player: Player)
 
-    /** Lets the user choose a media folder with the platform's picker and registers it as a read-only source. */
+    /** Lets the user choose a media folder with the platform's picker and registers it as a read-only source. Not used where there is a [folderBrowser]. */
     suspend fun addMediaFolder(): FolderChoice
 
     /** Removes a source and what Reflux derived from it. The user's files are never touched. */

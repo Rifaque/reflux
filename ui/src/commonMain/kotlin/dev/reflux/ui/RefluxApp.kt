@@ -29,6 +29,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -38,7 +42,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.PointerType
@@ -66,11 +72,13 @@ import dev.reflux.ui.components.Icon
 import dev.reflux.ui.components.IconButton
 import dev.reflux.ui.components.LocalArtworkLoader
 import dev.reflux.ui.components.LocalFocusEntry
+import dev.reflux.ui.components.LocalFocusScreen
 import dev.reflux.ui.components.LocalFocusedControl
 import dev.reflux.ui.components.Pressable
 import dev.reflux.ui.components.absorbsPointer
 import dev.reflux.ui.screens.BrowseScreen
 import dev.reflux.ui.screens.DetailsScreen
+import dev.reflux.ui.screens.FolderPickerPanel
 import dev.reflux.ui.screens.HomeScreen
 import dev.reflux.ui.screens.SearchScreen
 import dev.reflux.ui.screens.SourcesPanel
@@ -85,6 +93,9 @@ import dev.reflux.ui.theme.Typography
 import dev.reflux.ui.theme.glass
 import dev.reflux.ui.theme.tween
 
+/** How many frames a television waits for a new screen to have something to focus. */
+private const val FOCUS_PATIENCE_FRAMES = 30
+
 /** The height of the floating navigation bar. */
 internal val NavigationBarHeight = 56.dp
 
@@ -96,6 +107,31 @@ internal val NavigationBarHeight = 56.dp
  * needs there; everywhere else it is one bar along the top.
  */
 internal data class ChromeInsets(val top: Dp, val bottom: Dp)
+
+/**
+ * Whether the page on screen has moved from its top, as its main list reports it. Where pages move a row
+ * at a time (a television), what has gone up under the navigation is faded out rather than left half showing.
+ */
+internal class PageScroll {
+    var scrolled by mutableStateOf(false)
+
+    /** The page that said so last; one that is on its way out does not speak for the one that replaced it. */
+    internal var page: Any? = null
+}
+
+internal val LocalPageScroll = staticCompositionLocalOf<PageScroll?> { null }
+
+/** Reports whether [scrolled] to the page's chrome while the caller is on screen. */
+@Composable
+internal fun ReportPageScroll(scrolled: Boolean) {
+    val page = LocalPageScroll.current ?: return
+    val self = remember { Any() }
+    DisposableEffect(page, scrolled) {
+        page.page = self
+        page.scrolled = scrolled
+        onDispose { if (page.page === self) page.scrolled = false }
+    }
+}
 
 internal val LocalChromeInsets = staticCompositionLocalOf { ChromeInsets(top = 14.dp + NavigationBarHeight + 22.dp, bottom = 64.dp) }
 
@@ -155,7 +191,7 @@ fun RefluxApp(app: AppState, modifier: Modifier = Modifier) {
         val focused = remember { FocusedControl() }
         DisposableEffect(app, focus) {
             app.moveFocus = { action ->
-                entry.enter() || focus.moveFocus(
+                entry.enter() || entry.leaveChrome(action) || focus.moveFocus(
                     when (action) {
                         SemanticAction.NAVIGATE_UP -> FocusDirection.Up
                         SemanticAction.NAVIGATE_DOWN -> FocusDirection.Down
@@ -173,8 +209,40 @@ fun RefluxApp(app: AppState, modifier: Modifier = Modifier) {
             }
         }
         val screens = rememberSaveableStateHolder()
-        val insets = chromeInsets(LocalLayout.current.formFactor == FormFactor.PHONE, app.navigator.current is Destination.Section, LocalLayout.current.showsButtonPrompts)
-        CompositionLocalProvider(LocalFocusEntry provides entry, LocalFocusedControl provides focused, LocalChromeInsets provides insets) {
+        entry.screen = app.navigator.current
+        val insets = chromeInsets(LocalLayout.current.formFactor == FormFactor.PHONE, app.navigator.current is Destination.Section, app.namesButtons)
+        // A television is only ever operated through focus, so something always has it: when a screen
+        // appears, or what had focus goes away, it lands where the user left off or on the main action.
+        if (LocalLayout.current.formFactor == FormFactor.TV) {
+            // A screen that has just appeared starts on its own main action, not on whatever the toolkit
+            // found first (the navigation above it).
+            // The same when a page gains a main action it did not have (a library that just appeared), or a
+            // panel over it closes, unless the user has since put focus somewhere in the page themselves.
+            val covered = app.sourcesOpen || app.folderPicker != null
+            var started by remember { mutableStateOf<Destination?>(null) }
+            LaunchedEffect(app.navigator.current, entry.starts, covered) {
+                if (covered) return@LaunchedEffect
+                val arrived = started != app.navigator.current
+                repeat(FOCUS_PATIENCE_FRAMES) {
+                    withFrameNanos { }
+                    if (!arrived && entry.hasFocus && !entry.inChrome) return@LaunchedEffect
+                    if (entry.start()) {
+                        started = app.navigator.current
+                        return@LaunchedEffect
+                    }
+                }
+            }
+            val adrift = !entry.hasFocus && !covered
+            LaunchedEffect(adrift, app.revision) {
+                if (!adrift) return@LaunchedEffect
+                repeat(FOCUS_PATIENCE_FRAMES) {
+                    withFrameNanos { }
+                    if (entry.hasFocus || entry.enter()) return@LaunchedEffect
+                }
+            }
+        }
+        val page = remember { PageScroll() }
+        CompositionLocalProvider(LocalFocusEntry provides entry, LocalFocusedControl provides focused, LocalChromeInsets provides insets, LocalPageScroll provides page) {
             GlassScene(
                 Modifier.fillMaxSize().background(RefluxColors.background).trackPointer(app).onFocusChanged { entry.hasFocus = it.hasFocus },
                 overlay = { Chrome(app) },
@@ -189,16 +257,26 @@ fun RefluxApp(app: AppState, modifier: Modifier = Modifier) {
                         },
                     ) { destination ->
                         screens.SaveableStateProvider(destination.toString()) {
-                            when (destination) {
-                                Destination.Home -> HomeScreen(app)
-                                Destination.Movies -> BrowseScreen(app, "Movies", query = null, shows = false)
-                                Destination.Shows -> BrowseScreen(app, "TV Shows", query = null, shows = true)
-                                Destination.Search -> SearchScreen(app)
-                                is Destination.Listing -> BrowseScreen(app, destination.title, destination.query, shows = false)
-                                is Destination.Details -> DetailsScreen(app, destination.itemId)
+                            CompositionLocalProvider(LocalFocusScreen provides destination) {
+                                when (destination) {
+                                    Destination.Home -> HomeScreen(app)
+                                    Destination.Movies -> BrowseScreen(app, "Movies", query = null, shows = false)
+                                    Destination.Shows -> BrowseScreen(app, "TV Shows", query = null, shows = true)
+                                    Destination.Search -> SearchScreen(app)
+                                    is Destination.Listing -> BrowseScreen(app, destination.title, destination.query, shows = false)
+                                    is Destination.Details -> DetailsScreen(app, destination.itemId)
+                                }
                             }
                         }
                     }
+                }
+                if (LocalLayout.current.formFactor == FormFactor.TV) {
+                    val fade by animateFloatAsState(if (page.scrolled) 1f else 0f, Motion.navigation.tween())
+                    val background = RefluxColors.background
+                    Box(
+                        Modifier.fillMaxWidth().height(insets.top).graphicsLayer { alpha = fade }
+                            .background(Brush.verticalGradient(0f to background, 0.72f to background.copy(alpha = 0.94f), 1f to Color.Transparent)),
+                    )
                 }
             }
         }
@@ -217,6 +295,19 @@ private fun Chrome(app: AppState) {
         }
         // A click outside the open panel closes it and goes no further.
         if (app.sourcesOpen) Box(Modifier.fillMaxSize().pointerInput(app) { detectTapGestures { app.sourcesOpen = false } })
+        // Choosing a folder takes the whole screen's attention: the page behind it steps back.
+        AnimatedVisibility(app.folderPicker != null, enter = fadeIn(Motion.controlsShow.tween()), exit = fadeOut(Motion.controlsHide.tween())) {
+            var shown by remember { mutableStateOf(app.folderPicker) }
+            app.folderPicker?.let { shown = it }
+            shown?.let { picker ->
+                Box(
+                    Modifier.fillMaxSize().background(RefluxColors.background.copy(alpha = 0.72f)).pointerInput(picker) { detectTapGestures { picker.close() } },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    FolderPickerPanel(picker)
+                }
+            }
+        }
         Box(margin) {
             AnimatedVisibility(
                 visible = app.sourcesOpen,
@@ -254,6 +345,7 @@ private fun Chrome(app: AppState) {
 @Composable
 private fun BoxScope.CompactNavigation(app: AppState) {
     val navigator = app.navigator
+    val entry = LocalFocusEntry.current
     val activity by app.activity.collectAsState()
     Row(Modifier.align(Alignment.TopStart).fillMaxWidth().padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
         if (navigator.current !is Destination.Section) IconButton(Icon.BACK, "Back", { navigator.back() }, size = 44.dp, glass = true)
@@ -266,7 +358,7 @@ private fun BoxScope.CompactNavigation(app: AppState) {
     }
     Column(Modifier.align(Alignment.BottomCenter).padding(bottom = 10.dp), horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(8.dp)) {
         // With a controller in hand, what its buttons do here, in that controller's own terms.
-        AnimatedVisibility(LocalLayout.current.showsButtonPrompts, enter = fadeIn(Motion.inputMorph.tween()), exit = fadeOut(Motion.controlsHide.tween())) {
+        AnimatedVisibility(app.namesButtons, enter = fadeIn(Motion.inputMorph.tween()), exit = fadeOut(Motion.controlsHide.tween())) {
             val family = app.input.controllerFamily ?: ControllerFamily.GENERIC
             ButtonPrompts(
                 listOfNotNull(
@@ -277,7 +369,8 @@ private fun BoxScope.CompactNavigation(app: AppState) {
             )
         }
         Row(
-            Modifier.fillMaxWidth().widthIn(max = 420.dp).height(NavigationBarHeight).glass(MaterialRole.FLOATING, CircleShape).absorbsPointer().padding(horizontal = 8.dp),
+            Modifier.fillMaxWidth().widthIn(max = 420.dp).height(NavigationBarHeight).glass(MaterialRole.FLOATING, CircleShape).absorbsPointer()
+                .onFocusChanged { entry?.chrome = SemanticAction.NAVIGATE_UP.takeIf { _ -> it.hasFocus } }.padding(horizontal = 8.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -292,9 +385,11 @@ private fun BoxScope.CompactNavigation(app: AppState) {
 @Composable
 private fun NavigationBar(app: AppState, modifier: Modifier = Modifier) {
     val navigator = app.navigator
+    val entry = LocalFocusEntry.current
     val activity by app.activity.collectAsState()
     Row(
-        modifier.fillMaxWidth().height(NavigationBarHeight).glass(MaterialRole.FLOATING, CircleShape).absorbsPointer().padding(horizontal = 10.dp),
+        modifier.fillMaxWidth().height(NavigationBarHeight).glass(MaterialRole.FLOATING, CircleShape).absorbsPointer()
+            .onFocusChanged { entry?.chrome = SemanticAction.NAVIGATE_DOWN.takeIf { _ -> it.hasFocus } }.padding(horizontal = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (navigator.current !is Destination.Section) {
@@ -311,7 +406,7 @@ private fun NavigationBar(app: AppState, modifier: Modifier = Modifier) {
         Spacer(Modifier.weight(1f))
         // With a controller in hand, the bar says what its buttons do here, in that controller's own terms.
         AnimatedVisibility(
-            visible = LocalLayout.current.showsButtonPrompts,
+            visible = app.namesButtons,
             enter = fadeIn(Motion.inputMorph.tween()),
             exit = fadeOut(Motion.controlsHide.tween()),
         ) {

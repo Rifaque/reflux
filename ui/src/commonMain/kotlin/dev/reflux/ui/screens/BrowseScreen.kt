@@ -20,6 +20,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -37,6 +38,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.reflux.design.MaterialRole
 import dev.reflux.ui.LocalChromeInsets
+import dev.reflux.ui.ReportPageScroll
 import dev.reflux.ui.components.Button
 import dev.reflux.ui.components.Chip
 import dev.reflux.ui.components.Icon
@@ -59,12 +61,14 @@ import kotlinx.coroutines.delay
 
 /** A grid of posters with a header above it. The grid's density follows the adaptive layout. */
 @Composable
-private fun PosterGrid(app: AppState, cards: List<MediaCard>, header: @Composable () -> Unit) {
+private fun PosterGrid(app: AppState, cards: List<MediaCard>, startsOnFirst: Boolean = true, header: @Composable () -> Unit) {
     val layout = LocalLayout.current
+    val grid = rememberLazyGridState()
+    ReportPageScroll(remember { derivedStateOf { grid.firstVisibleItemIndex > 0 || grid.firstVisibleItemScrollOffset > 0 } }.value)
     LazyVerticalGrid(
         columns = EqualColumns(layout.posterWidthDp.dp),
         modifier = Modifier.fillMaxSize(),
-        state = rememberLazyGridState(),
+        state = grid,
         contentPadding = PaddingValues(start = layout.safeMarginDp.dp, end = layout.safeMarginDp.dp, top = LocalChromeInsets.current.top, bottom = LocalChromeInsets.current.bottom),
         horizontalArrangement = Arrangement.spacedBy(layout.gutterDp.dp),
         verticalArrangement = Arrangement.spacedBy(22.dp),
@@ -74,7 +78,7 @@ private fun PosterGrid(app: AppState, cards: List<MediaCard>, header: @Composabl
             PosterCard(
                 card,
                 { app.navigator.open(Destination.Details(card.detailsId)) },
-                if (index == 0) Modifier.initialFocus() else Modifier,
+                if (index == 0 && startsOnFirst) Modifier.initialFocus() else Modifier,
                 fill = true,
             )
         }
@@ -142,7 +146,7 @@ internal fun SearchScreen(app: AppState) {
     LaunchedEffect(Unit) { field.requestFocus() }
     DisposableEffect(Unit) { onDispose { app.textInputActive = false } }
 
-    PosterGrid(app, model?.cards.orEmpty()) {
+    PosterGrid(app, model?.cards.orEmpty(), startsOnFirst = false) {
         Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Row(
                 Modifier.fillMaxWidth().height(56.dp).glass(MaterialRole.ELEVATED, CircleShape).padding(start = 20.dp, end = 8.dp),
@@ -153,7 +157,8 @@ internal fun SearchScreen(app: AppState) {
                 BasicTextField(
                     value = query,
                     onValueChange = { app.searchQuery = it },
-                    modifier = Modifier.weight(1f).focusRequester(field).onFocusChanged { app.textInputActive = it.isFocused },
+                    // Searching starts in the field, with a remote as with a keyboard.
+                    modifier = Modifier.weight(1f).focusRequester(field).initialFocus().onFocusChanged { app.textInputActive = it.isFocused },
                     singleLine = true,
                     textStyle = LocalTypography.current.title.copy(color = RefluxColors.textPrimary),
                     cursorBrush = SolidColor(RefluxColors.accent),

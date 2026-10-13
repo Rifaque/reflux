@@ -17,7 +17,7 @@ data class LayoutProfile(
     val focusScale: Float,
     /** Minimum interactive target size. */
     val minTargetDp: Float,
-    /** Multiplier for the type scale (10-foot UI on TVs). */
+    /** Multiplier for the type scale (a step up on TVs). */
     val textScale: Float,
     /** Whether button-glyph prompts are shown (controller/remote). */
     val showsButtonPrompts: Boolean,
@@ -49,7 +49,8 @@ object AdaptiveLayout {
             FormFactor.PHONE -> 112f
             FormFactor.TABLET -> 148f
             FormFactor.DESKTOP -> 168f
-            FormFactor.TV -> 196f
+            // A television's canvas is 960 by 540 whatever its resolution: six titles across.
+            FormFactor.TV -> 124f
         }
         // Controller and remote targets are larger and fewer, so focus travel stays short.
         val posterWidth = if (directional && formFactor != FormFactor.TV) basePoster * 1.15f else basePoster
@@ -61,7 +62,7 @@ object AdaptiveLayout {
         }
         val gutter = when (formFactor) {
             FormFactor.PHONE -> 10f
-            FormFactor.TV -> 24f
+            FormFactor.TV -> 18f
             else -> 16f
         }
         val usable = widthDp - 2 * margin
@@ -79,11 +80,16 @@ object AdaptiveLayout {
                 else -> 1.04f
             },
             minTargetDp = when {
-                formFactor == FormFactor.TV || directional -> 56f
+                // Focus needs no finger-sized target, and a television's canvas is small: its controls
+                // are sized to be read, not to be hit.
+                formFactor == FormFactor.TV -> 46f
+                directional -> 56f
                 modality == InputModality.TOUCH -> 48f
                 else -> 32f
             },
-            textScale = if (formFactor == FormFactor.TV) 1.5f else 1f,
+            // The 10-foot scale is already in a television's density (1080p is 960 by 540); type is
+            // only a step larger than at a desk.
+            textScale = if (formFactor == FormFactor.TV) 1.1f else 1f,
             showsButtonPrompts = directional,
             showsFocus = directional || modality == InputModality.KEYBOARD,
         )

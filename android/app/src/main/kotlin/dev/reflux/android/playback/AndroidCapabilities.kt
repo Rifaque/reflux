@@ -3,6 +3,9 @@ package dev.reflux.android.playback
 import android.content.Context
 import android.content.pm.PackageManager
 import android.hardware.display.DisplayManager
+import android.media.AudioDeviceInfo
+import android.media.AudioFormat
+import android.media.AudioManager
 import android.media.MediaCodecInfo
 import android.media.MediaCodecInfo.CodecProfileLevel
 import android.media.MediaCodecList
@@ -26,6 +29,12 @@ data class DecoderDescription(
     val maxHeight: Int = 0,
     val tenBit: Boolean = false,
 )
+
+/** One audio output as the device lists it: how many channels it takes, and which encodings (`AudioFormat.ENCODING_*`). */
+data class AudioOutputDescription(val maxChannels: Int, val encodings: List<Int>)
+
+/** What can be sent out of the device: channels of decoded sound, and compressed audio passed through untouched. */
+data class AudioOutputCapabilities(val channels: Int = 2, val passthrough: Set<AudioCodec> = emptySet())
 
 /**
  * What this device can play, as the device itself reports it. Nothing is assumed from the Android version
@@ -66,7 +75,29 @@ object AndroidCapabilities {
         "audio/vorbis" to AudioCodec.VORBIS,
     )
 
-    fun of(decoders: List<DecoderDescription>, display: DisplayCapabilities, pictureInPicture: Boolean): DeviceCapabilities = DeviceCapabilities(
+    /** The compressed audio an output takes as it is, to decode itself (a receiver or soundbar behind HDMI). */
+    private val passthroughEncodings = mapOf(
+        AudioFormat.ENCODING_AC3 to AudioCodec.AC3,
+        AudioFormat.ENCODING_E_AC3 to AudioCodec.EAC3,
+        AudioFormat.ENCODING_E_AC3_JOC to AudioCodec.EAC3,
+        AudioFormat.ENCODING_DTS to AudioCodec.DTS,
+        AudioFormat.ENCODING_DTS_HD to AudioCodec.DTS_HD_MA,
+        AudioFormat.ENCODING_DOLBY_TRUEHD to AudioCodec.TRUEHD,
+    )
+
+    /** What the outputs that carry sound out of the device (HDMI) report. Nothing attached reports nothing. */
+    fun audioOutput(outputs: List<AudioOutputDescription>): AudioOutputCapabilities = AudioOutputCapabilities(
+        // Stereo is what every device can do by itself; more is claimed only when an output says so.
+        channels = maxOf(2, outputs.maxOfOrNull { it.maxChannels } ?: 2),
+        passthrough = outputs.flatMap { it.encodings }.mapNotNull(passthroughEncodings::get).toSet(),
+    )
+
+    fun of(
+        decoders: List<DecoderDescription>,
+        display: DisplayCapabilities,
+        pictureInPicture: Boolean,
+        audio: AudioOutputCapabilities = AudioOutputCapabilities(),
+    ): DeviceCapabilities = DeviceCapabilities(
         videoDecoders = decoders.mapNotNull { decoder ->
             val codec = videoCodecs[decoder.mimeType.lowercase()] ?: return@mapNotNull null
             if (decoder.maxWidth <= 0 || decoder.maxHeight <= 0) return@mapNotNull null
@@ -74,8 +105,9 @@ object AndroidCapabilities {
         }.distinct(),
         // Uncompressed audio needs no decoder.
         audioDecoders = decoders.mapNotNull { audioCodecs[it.mimeType.lowercase()] }.toSet() + AudioCodec.PCM,
-        // A phone's own speakers and most headphones are stereo; more is only claimed once the output is known.
-        maxOutputChannels = 2,
+        // A device's own speakers and most headphones are stereo; more is what a connected output reports.
+        audioPassthrough = audio.passthrough,
+        maxOutputChannels = audio.channels,
         display = display,
         containers = containers,
         subtitleFormats = subtitles,
@@ -83,12 +115,18 @@ object AndroidCapabilities {
         features = setOfNotNull(
             PlaybackFeature.EXTERNAL_SUBTITLES,
             PlaybackFeature.NETWORK_STREAMING,
+            PlaybackFeature.AUDIO_PASSTHROUGH.takeIf { audio.passthrough.isNotEmpty() },
             PlaybackFeature.PICTURE_IN_PICTURE.takeIf { pictureInPicture },
         ),
     )
 
     fun of(context: Context): DeviceCapabilities =
-        of(decoders(), display(context), context.packageManager.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE))
+        of(decoders(), display(context), context.packageManager.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE), audioOutput(outputs(context)))
+
+    private fun outputs(context: Context): List<AudioOutputDescription> =
+        context.getSystemService(AudioManager::class.java)?.getDevices(AudioManager.GET_DEVICES_OUTPUTS).orEmpty()
+            .filter { it.type == AudioDeviceInfo.TYPE_HDMI || it.type == AudioDeviceInfo.TYPE_HDMI_ARC || (Build.VERSION.SDK_INT >= 31 && it.type == AudioDeviceInfo.TYPE_HDMI_EARC) }
+            .map { AudioOutputDescription(it.channelCounts.maxOrNull() ?: 0, it.encodings.toList()) }
 
     private fun decoders(): List<DecoderDescription> = MediaCodecList(MediaCodecList.REGULAR_CODECS).codecInfos
         .filter { !it.isEncoder }

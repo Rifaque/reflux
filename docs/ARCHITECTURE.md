@@ -145,10 +145,10 @@ Kotlin Multiplatform (see the decision log). Modules:
 | `sources:jellyfin` | Jellyfin catalog source (platform-free): sign-in, catalog paging, direct-stream playback targets, watch-state reporting. | `core`, kotlinx-serialization-json |
 | `metadata:tmdb` | TMDB v3 metadata provider over the core `HttpFetcher` (platform-free). | `core`, kotlinx-serialization-json |
 | `playback:mpv` | Desktop playback engine and media probe on libmpv (JNA binding), desktop capability profile. | `core`, JNA, kotlinx-serialization-json |
-| `ui` | The experience layer, shared by every shell: navigation and playback state, screens, player controls, phone, tablet, and desktop layouts, and the design system rendered with Compose. No platform APIs; shells implement its `Platform` interface. Built for the desktop JVM and for Android. | `core`, `library`, `design`, Compose runtime/foundation/ui |
+| `ui` | The experience layer, shared by every shell: navigation and playback state, screens, player controls, phone, tablet, desktop, and television layouts, and the design system rendered with Compose. No platform APIs; shells implement its `Platform` interface. Built for the desktop JVM and for Android. | `core`, `library`, `design`, Compose runtime/foundation/ui |
 | `desktop:engine` | The engine wired for a desktop machine (data directories, source factories, metadata, probing, pipeline, the rule for adding folders, the diagnostics log). No UI. | everything except `ui` |
 | `desktop:app` | The Windows/Linux shell: window, native video surface with the player overlay above it, fullscreen, keyboard and controller input, folder picker, artwork decoding. | `ui`, `desktop:engine`, Compose Desktop, JNA |
-| `android:app` | The Android phone and tablet shell and the engine wired for Android: the activity, the folder source over the Storage Access Framework, Media3 playback, the platform prober and capabilities, Android's SQLite driver. Part of the build only where an Android SDK is installed. | `ui`, the engine modules, Media3, AndroidX Activity |
+| `android:app` | The Android shell for phones, tablets, and televisions (one application), and the engine wired for Android: the activity, the folder source over the Storage Access Framework, the storage browser for televisions, Media3 playback, the platform prober and capabilities, Android's SQLite driver. Part of the build only where an Android SDK is installed. | `ui`, the engine modules, `sources:local`, Media3, AndroidX Activity |
 | `tools:cli` | Developer and diagnostic CLI over the same `desktop:engine` wiring as the shell. | `desktop:engine` |
 
 Packages in `core` (`dev.reflux.core`):
@@ -176,7 +176,7 @@ Contracts follow three rules: unknown is not failure, capabilities are explicit,
 
 `ui` is the experience layer. `AppState` holds where the user is, what is playing, and how they are interacting; screens read the library through it off the UI thread and reload when it changes. A `PlaybackSession` is one visit to the player: it plans playback through the library, drives the core `PlaybackController`, and decides what follows an ending (next-episode countdown, "still watching?", or leaving the player). Everything the UI says about a work goes through one pure `Formatting` object.
 
-A shell supplies what only a platform can, through `Platform`: decoded artwork, device capabilities, a playback engine attached to a video surface, a way to add a media folder, fullscreen, and somewhere to report problems. It also normalizes raw input into core `Key`s, gamepad buttons by position, and `InputSignal`s and hands them to `AppState`, which maps them to semantic actions for the current context; the UI never sees physical keys or controller brands.
+A shell supplies what only a platform can, through `Platform`: decoded artwork, device capabilities, a playback engine attached to a video surface, a way to add a media folder (its own picker, or its storage for the experience layer to draw one over), whether it is a television, whether loudness is the device's own, fullscreen, and somewhere to report problems. It also normalizes raw input into core `Key`s, gamepad buttons by position, and `InputSignal`s and hands them to `AppState`, which maps them to semantic actions for the current context; the UI never sees physical keys or controller brands.
 
 Failures are part of the contracts rather than exceptions that escape: engines say why playback stopped, adding a folder has explicit outcomes, and the experience layer turns each into words in one place (`Problems`) while the cause goes to the shell's diagnostics (decision log, "Failures are states").
 
@@ -184,7 +184,7 @@ Video is always a platform surface beneath the experience layer's transparent `P
 
 ### What a platform supplies
 
-There are two shells, `desktop:app` and `android:app`. Each supplies what only its platform can, behind the same contracts, and nothing of either reaches the shared modules.
+There are two shells, `desktop:app` and `android:app`. Each supplies what only its platform can, behind the same contracts, and nothing of either reaches the shared modules. A television is not a third shell: it is the Android shell on a device that says it is a television, and the television layout of the one experience layer (below).
 
 | Piece | Desktop | Android |
 | --- | --- | --- |
@@ -199,7 +199,10 @@ There are two shells, `desktop:app` and `android:app`. Each supplies what only i
 | Engine wiring (data directory, source factories, pipeline, the rule that one folder is one source) | `desktop:engine` (`DesktopEnvironment`) | `AndroidEnvironment`, in the app's private storage |
 | Database driver | JDBC SQLite | Android's SQLite, through the same generated schema and migrations |
 | HTTP | The JDK client (`JdkHttpFetcher`) | `HttpURLConnection` (`AndroidFetcher`), which also reads `content:` addresses |
-| Local media source | `sources:local`: a folder as a filesystem path | `DocumentTreeSource`: a folder granted through the Storage Access Framework, which is a tree of documents and a grant that can be revoked, not a path |
+| Local media source | `sources:local`: a folder as a filesystem path | `DocumentTreeSource`: a folder granted through the Storage Access Framework, which is a tree of documents and a grant that can be revoked, not a path. On a television, whose system has no such picker, the same `sources:local` folder-by-path as on the desktop |
+| Choosing a folder | The system's folder dialog | The system's folder picker; on a television, Reflux's own picker over `StorageFolders` (the mounted volumes and their folders), after the system's permission question |
+| Being a television | Never | What the system reports (`UiModeManager`, the leanback feature): listed in the TV launcher with its own banner, no touchscreen required |
+| Sound output | What libmpv opens | Stereo unless an HDMI output reports more channels or formats it decodes itself, which become `maxOutputChannels` and `audioPassthrough` |
 | Language names for track labels | `Formatting.jvm.kt` | `Formatting.android.kt` |
 
 How the shared code reaches each platform:
@@ -217,6 +220,7 @@ The experience and its information architecture are the same everywhere; where t
 - **Phone.** The sections (Home, Movies, Shows, Search) are along the bottom, in reach of a thumb. The top carries only what a page needs there: the way back, the media sources, a sign of the library being updated. The player puts play, back, and ahead in the middle of the picture and keeps the timeline, track menus, speed, and fullscreen in a bar beneath; volume is the device's own buttons. A tap shows or hides the controls, and two taps on a side of the picture skip that way.
 - **Tablet and desktop.** One floating bar along the top, more titles in a row, and details pages with the poster beside the description. A tablet is the same experience as a desktop window of its size, not a larger phone.
 - **Controller in hand**, on any of them: larger targets, visible focus, and button prompts, without a separate mode.
+- **Television.** The same bar along the top and the same pages, laid out for a canvas of 960 by 540 inside a 5% safe margin and operated through focus alone. Something always has focus: a page starts on its main action and comes back to the item it was left from. Home moves a row at a time, the row with focus under the navigation with its title showing. The player shows where playback is and nothing to point at: OK plays and pauses, left and right seek, down opens the lists (episodes, chapters, audio, subtitles, speed), up takes an offer on screen such as skipping an intro, and Back closes a list and then the player. Choosing a media folder is a walk through storage with the remote.
 
 ## File safety
 

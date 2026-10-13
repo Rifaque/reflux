@@ -346,3 +346,29 @@ A pass over the whole interface against one test: does this element earn the att
 - The player's timeline is the one amber line on the screen; volume is a neutral setting next to it.
 
 Not changed: layouts, navigation structure, the material roles, and motion timings, which the earlier slices had already settled and tested; and the focus ring, which stays white so that it shows on the accent.
+
+## 2026-10-14 — Television: a form factor of the one experience, in the one Android app
+
+**Not a separate application, and not a mode.** Android TV and Google TV run the same application as phones and tablets. The shell asks the system whether the device is a television and says so through `Platform.television`; `AdaptiveLayout` already had that form factor, and the experience layer lays its existing pages out for it. There is no TV screen in the Android shell and no leanback UI library: the alternative, a second front end, would have been a second product to keep in step. A phone with a controller still morphs as before; a television simply starts where that morph ends.
+
+**The canvas is 960 by 540.** A television reports a density that already accounts for the distance (1080p and 4K are both 960 by 540), so the earlier assumption of a 1.5× type scale was wrong: it would have doubled the scaling. Type is one step up (1.1×), six titles fit across, and controls are sized to be read, since focus needs no finger-sized target.
+
+**Something always has focus, and it is the right thing.** A television has no pointer, so a page takes focus when it appears: the item it was left from when coming back, its main action otherwise, and the same again when a library appears on an empty page or a panel closes. Offers of focus are tied to the page that makes them, because during a transition two pages exist at once and focus given to the one that is leaving is lost with it. Found on the way, and true on the desktop too: the toolkit's directional search does not find its way from the navigation bar down into a scrolling page, so a keyboard or controller that went up to the bar could not come back. Leaving the bar toward the page now goes to where focus was, or the main action.
+
+**Rows, not pixels.** On a television Home places the row that has focus under the navigation, by row, instead of scrolling just far enough to show the focused card. What moves up under the bar fades out. Other pages keep the ordinary bring-into-view.
+
+**The remote drives the player through the session, as controllers do.** Player lists were already session state rather than toolkit focus (2026-10-11), which is what a remote needs: no focusable buttons were added. Two things were missing for hands holding only a D-pad. First, a way into the lists without a menu button: where loudness is the device's own (`Platform.systemVolume`, true on Android), up and down are free, so down opens the lists and up accepts an on-screen offer to skip. On the desktop they remain the volume. Second, a way to the neighbouring episodes without shoulder buttons: an Episodes list, first among the lists, on every platform. Back during the next-episode countdown still leaves the player; OK is "play now".
+
+**No prompts for a remote.** Its keys are labelled with what they do. Prompts stay for controllers, whose buttons are named by position.
+
+## 2026-10-14 — Television: choosing a folder without a system picker
+
+Google TV answers the system's "choose a folder" request with a stub: there is no document picker to hand over to (observed on the Google TV image for Android 16). First run must still be possible with a remote alone, so where a platform offers `Platform.folderBrowser`, the experience layer draws its own picker over it: storage, then one folder at a time, "Use this folder", Back to go up. It lists names and counts videos; it creates and changes nothing.
+
+On Android that browser is `StorageFolders` over the mounted volumes, and it needs the system's permission to read video files (`READ_MEDIA_VIDEO`; `READ_EXTERNAL_STORAGE` before Android 13), asked when the user first goes to choose a folder. The permission is declared for the one application but only ever requested on a television; a phone or tablet keeps the system picker, which grants a single folder and needs no permission. The chosen folder is a source by path, the same `LocalFolderSource` the desktop uses, under the same rule that one folder is one source.
+
+Considered and rejected: all-files access (far more than a player needs, and restricted by store policy), and asking the user to type a path (not a thing to do with a remote). A known cost of the narrower permission: on Android 11 and later the system shows an app only the media files in shared storage, so subtitle and artwork files lying next to a video are not visible to Reflux on a television. Embedded subtitles are unaffected.
+
+## 2026-10-14 — Sound output is what the output says
+
+Android claimed stereo and no passthrough everywhere. A television is usually wired to something that does more, and says so: the HDMI output's channel count becomes `maxOutputChannels`, and the compressed formats it accepts (AC-3, E-AC-3, DTS, DTS-HD, TrueHD) become `audioPassthrough`, which version selection and the playback assessment already understood. Nothing attached, or an output that reports nothing, is still stereo. As with video, nothing is inferred from the device being a television.

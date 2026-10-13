@@ -16,7 +16,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -30,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import dev.reflux.core.input.ControllerFamily
 import dev.reflux.core.input.GamepadButton
 import dev.reflux.core.input.InputMapping
+import dev.reflux.core.input.SemanticAction
 import dev.reflux.design.MaterialRole
 import dev.reflux.ui.theme.LocalLayout
 import dev.reflux.ui.theme.LocalTypography
@@ -43,20 +48,54 @@ import dev.reflux.ui.theme.glass
  * whatever happens to be nearest a window corner.
  */
 class FocusEntry {
-    internal var hasFocus = false
-    private var initial: FocusRequester? = null
-    private var returning: FocusRequester? = null
+    /** Whether anything on the screen has focus. Observable, so a television can notice when nothing does. */
+    internal var hasFocus by mutableStateOf(false)
+    private var initial: Offer? = null
+    private var returning: Offer? = null
+
+    /**
+     * The page on screen. While one page gives way to another both exist for a moment, and only what the
+     * arriving one offers counts: focus put on the page that is leaving is lost when it goes.
+     */
+    internal var screen: Any? = null
+
+    private class Offer(val requester: FocusRequester, val screen: Any?)
 
     /** The item the user last went into (see [returnsFocus]), so that coming back can find it again. */
     internal var left: String? = null
 
-    internal fun offer(requester: FocusRequester, returning: Boolean = false) {
-        if (returning) this.returning = requester else initial = requester
+    /**
+     * While focus is on the navigation rather than in the page: the direction that leads back to the page
+     * (down from a bar along the top, up from one along the bottom).
+     */
+    internal var chrome: SemanticAction? = null
+
+    /** Whether focus is on the navigation rather than in the page. */
+    internal val inChrome: Boolean get() = chrome != null
+
+    /**
+     * Leaves the navigation for the page in direction [action], when that is the way back to it. The
+     * toolkit's own search does not find its way from a bar into a scrolling page, and where it would land
+     * is less use than where the user was: the item they came from, or the page's main action.
+     */
+    internal fun leaveChrome(action: SemanticAction): Boolean = action == chrome && start()
+
+    /** Advances whenever a screen names a new main action, so a television can start there. */
+    internal var starts by mutableIntStateOf(0)
+        private set
+
+    internal fun offer(requester: FocusRequester, screen: Any?, returning: Boolean = false) {
+        if (returning) {
+            this.returning = Offer(requester, screen)
+        } else {
+            initial = Offer(requester, screen)
+            starts++
+        }
     }
 
     internal fun withdraw(requester: FocusRequester) {
-        if (initial === requester) initial = null
-        if (returning === requester) returning = null
+        if (initial?.requester === requester) initial = null
+        if (returning?.requester === requester) returning = null
     }
 
     /**
@@ -65,22 +104,29 @@ class FocusEntry {
      */
     internal fun enter(): Boolean {
         if (hasFocus) return false
-        return focus(returning) || focus(initial)
+        return start()
     }
 
-    private fun focus(requester: FocusRequester?): Boolean =
-        runCatching { requester?.requestFocus(FocusDirection.Enter) }.getOrNull() ?: false
+    /** Puts focus where a screen starts, wherever it is now. Returns false while the screen has nowhere yet. */
+    internal fun start(): Boolean = focus(returning) || focus(initial)
+
+    private fun focus(offer: Offer?): Boolean =
+        runCatching { offer?.takeIf { it.screen == screen }?.requester?.requestFocus(FocusDirection.Enter) }.getOrNull() ?: false
 }
 
 val LocalFocusEntry = staticCompositionLocalOf<FocusEntry?> { null }
+
+/** The page a control belongs to, for [FocusEntry]; null outside the paged part of the application. */
+val LocalFocusScreen = staticCompositionLocalOf<Any?> { null }
 
 /** Marks the control the first directional input on this screen focuses: its main action or first item. */
 @Composable
 fun Modifier.initialFocus(): Modifier {
     val entry = LocalFocusEntry.current ?: return this
+    val screen = LocalFocusScreen.current
     val requester = remember { FocusRequester() }
-    DisposableEffect(entry) {
-        entry.offer(requester)
+    DisposableEffect(entry, screen) {
+        entry.offer(requester, screen)
         onDispose { entry.withdraw(requester) }
     }
     return focusRequester(requester)
@@ -95,14 +141,16 @@ fun Modifier.initialFocus(): Modifier {
 fun rememberFocusReturn(key: String): FocusReturn {
     val entry = LocalFocusEntry.current
     val requester = remember { FocusRequester() }
+    val screen = LocalFocusScreen.current
     val returning = entry != null && entry.left == key
     if (returning) {
         val showsFocus = LocalLayout.current.showsFocus
-        DisposableEffect(entry) {
-            entry!!.offer(requester, returning = true)
+        DisposableEffect(entry, screen) {
+            entry!!.offer(requester, screen, returning = true)
             onDispose { entry.withdraw(requester) }
         }
-        LaunchedEffect(Unit) { if (showsFocus) runCatching { requester.requestFocus() } }
+        // Only on the page being come back to: the same item on the page being left has just been activated.
+        LaunchedEffect(Unit) { if (showsFocus && entry!!.screen == screen) runCatching { requester.requestFocus() } }
     }
     return remember(entry, key) { FocusReturn(Modifier.focusRequester(requester)) { entry?.left = key } }
 }
@@ -122,6 +170,19 @@ fun FocusScrollInsets(start: Dp, end: Dp, content: @Composable () -> Unit) {
         with(density) { InsetBringIntoViewSpec(start.toPx(), end.toPx()) }
     }
     CompositionLocalProvider(LocalBringIntoViewSpec provides spec, content = content)
+}
+
+/**
+ * Leaves the scrolling containers in [content] where they are when focus moves inside them, for pages that
+ * place the focused row themselves. Containers nested deeper can still bring their own items into view.
+ */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun FocusScrollsNothing(content: @Composable () -> Unit) = CompositionLocalProvider(LocalBringIntoViewSpec provides StillBringIntoViewSpec, content = content)
+
+@OptIn(ExperimentalFoundationApi::class)
+private object StillBringIntoViewSpec : BringIntoViewSpec {
+    override fun calculateScrollDistance(offset: Float, size: Float, containerSize: Float): Float = 0f
 }
 
 @OptIn(ExperimentalFoundationApi::class)

@@ -23,8 +23,10 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -32,6 +34,10 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.platform.LocalDensity
+import dev.reflux.design.FormFactor
+import dev.reflux.ui.components.FocusScrollsNothing
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -43,6 +49,7 @@ import dev.reflux.core.model.Availability
 import dev.reflux.design.Motion
 import dev.reflux.library.SourceRecord
 import dev.reflux.ui.LocalChromeInsets
+import dev.reflux.ui.ReportPageScroll
 import dev.reflux.ui.activityLabel
 import dev.reflux.ui.components.ArtworkImage
 import dev.reflux.ui.components.Button
@@ -80,14 +87,34 @@ internal fun HomeScreen(app: AppState) {
         // The hero leaves the first row in view, so Home never opens on artwork alone.
         val heroHeight = (maxHeight * 0.56f).coerceIn(340.dp, 660.dp)
         val width = maxWidth
-        LazyColumn(
-            Modifier.fillMaxSize(),
-            state = rememberLazyListState(),
-            contentPadding = PaddingValues(bottom = LocalChromeInsets.current.bottom),
-            verticalArrangement = Arrangement.spacedBy(30.dp),
-        ) {
-            home.featured?.let { featured -> item(key = "featured") { Hero(app, featured, home.featuredOverview, width, heroHeight) } }
-            items(home.rows, key = { it.id }) { row -> RowSection(app, row) }
+        val list = rememberLazyListState()
+        ReportPageScroll(remember { derivedStateOf { list.firstVisibleItemIndex > 0 || list.firstVisibleItemScrollOffset > 0 } }.value)
+        val rows: @Composable (place: (index: Int) -> Modifier) -> Unit = { place ->
+            LazyColumn(
+                Modifier.fillMaxSize(),
+                state = list,
+                contentPadding = PaddingValues(bottom = LocalChromeInsets.current.bottom),
+                verticalArrangement = Arrangement.spacedBy(30.dp),
+            ) {
+                home.featured?.let { featured -> item(key = "featured") { Box(place(0)) { Hero(app, featured, home.featuredOverview, width, heroHeight) } } }
+                val first = if (home.featured == null) 0 else 1
+                itemsIndexed(home.rows, key = { _, row -> row.id }) { index, row -> Box(place(first + index)) { RowSection(app, row) } }
+            }
+        }
+        if (LocalLayout.current.formFactor == FormFactor.TV) {
+            // A television's page moves a row at a time: the row with focus sits under the navigation, its
+            // title showing, and the one after it is in view. Nothing stops half way under the bar.
+            val scope = rememberCoroutineScope()
+            val under = with(LocalDensity.current) { LocalChromeInsets.current.top.roundToPx() }
+            FocusScrollsNothing {
+                rows { index ->
+                    Modifier.onFocusChanged { focus ->
+                        if (focus.hasFocus) scope.launch { list.animateScrollToItem(index, if (index == 0) 0 else -under) }
+                    }
+                }
+            }
+        } else {
+            rows { Modifier }
         }
     }
 }

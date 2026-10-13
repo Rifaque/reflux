@@ -21,6 +21,8 @@ internal object Problems {
     const val PLAYBACK_DID_NOT_START = "Playback couldn't start. Try again, or restart Reflux."
     const val LIBRARY_NOT_UPDATED = "Couldn't update the library. Reflux will try again."
     const val FOLDER_NOT_ADDED = "That folder couldn't be added."
+    const val STORAGE_NOT_ALLOWED = "Reflux needs your permission to read this device's storage before it can find your media."
+    const val FOLDER_NOT_OPENED = "That folder couldn't be opened."
     const val TRACK_GONE = "That track is no longer available."
     const val PLAYBACK_STALLED = "Playback isn't starting. The file may be slow to reach, or video couldn't be started on this device."
 

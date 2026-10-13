@@ -4,6 +4,8 @@ import dev.reflux.core.input.Key
 import dev.reflux.core.input.SemanticAction
 import dev.reflux.core.playback.PlaybackFailure
 import dev.reflux.core.playback.PlayerStatus
+import dev.reflux.core.playback.TrackType
+import dev.reflux.core.playback.SkipSegment
 import dev.reflux.ui.FakePlatform
 import dev.reflux.ui.TestWorld
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -25,9 +27,8 @@ class PlaybackSessionTest {
         val player get() = platform.players.last()
     }
 
-    private suspend fun TestScope.playing(show: String, episode: Int): Playing {
+    private suspend fun TestScope.playing(show: String, episode: Int, platform: FakePlatform = FakePlatform()): Playing {
         val world = TestWorld().apply { populate() }
-        val platform = FakePlatform()
         val app = appState(world, platform)
         app.play(world.episodes(show)[episode].item.id)
         runCurrent()
@@ -233,11 +234,69 @@ class PlaybackSessionTest {
     }
 
     @Test
+    fun whereLoudnessIsTheDevicesOwnDownOpensTheListsAndUpTakesTheOffer() = runTest {
+        val playing = playing("Breaking Bad", 0, FakePlatform(systemVolume = true))
+        val session = playing.session
+        val player = playing.player
+
+        // Nothing on offer: up does nothing to playback, and never touches the volume.
+        session.handle(SemanticAction.NAVIGATE_UP)
+        assertEquals(100, player.state.value.volume)
+        assertEquals(0L, player.state.value.positionMs)
+
+        // Inside the intro, up is the skip that is offered on screen.
+        player.playTo(95_000)
+        assertEquals(SkipSegment.Kind.INTRO, session.skippable()?.kind)
+        session.handle(SemanticAction.NAVIGATE_UP)
+        assertEquals(150_000L, player.state.value.positionMs)
+        assertNull(session.skippable())
+
+        // Down opens the lists where a controller's menu button would.
+        session.handle(SemanticAction.NAVIGATE_DOWN)
+        assertEquals(PlayerMenu.SUBTITLES, session.menu)
+        assertEquals(100, player.state.value.volume)
+        session.handle(SemanticAction.BACK)
+        assertNull(session.menu)
+
+        // Without subtitles it opens on the first list about what is playing, not on the episodes.
+        player.tracks = player.tracks.filter { it.type != TrackType.SUBTITLE }
+        player.load(player.requests.last())
+        session.handle(SemanticAction.NAVIGATE_DOWN)
+        assertEquals(PlayerMenu.CHAPTERS, session.menu)
+    }
+
+    @Test
+    fun theEpisodesListLeadsToTheOnesEitherSide() = runTest {
+        val playing = playing("Breaking Bad", 1)
+        val session = playing.session
+        assertEquals(PlayerMenu.EPISODES, session.menus().first())
+        assertEquals(
+            listOf("S1 · E3 · ...And the Bag's in the River" to "Next", "S1 · E1 · Pilot" to "Previous"),
+            session.options(PlayerMenu.EPISODES).map { it.label to it.detail },
+        )
+        session.toggleMenu(PlayerMenu.EPISODES)
+        assertEquals(0, session.highlighted, "the next one is the one usually wanted")
+        session.handle(SemanticAction.NAVIGATE_DOWN)
+        session.handle(SemanticAction.SELECT)
+        runCurrent()
+        assertEquals("S1 · E1 · Pilot", session.subtitle)
+        assertNull(session.menu)
+        // The first episode has nothing before it.
+        assertEquals(listOf("Next"), session.options(PlayerMenu.EPISODES).map { it.detail })
+
+        // A film has no neighbours, and no such list.
+        val film = appState(playing.world, playing.platform)
+        film.play(playing.world.library.movies().first { it.item.title == "Heat" }.item.id)
+        runCurrent()
+        assertFalse(PlayerMenu.EPISODES in film.playback!!.menus())
+    }
+
+    @Test
     fun menusAreDrivenBySemanticActions() = runTest {
         val playing = playing("Breaking Bad", 0)
         val session = playing.session
         val player = playing.player
-        assertEquals(listOf(PlayerMenu.CHAPTERS, PlayerMenu.AUDIO, PlayerMenu.SUBTITLES, PlayerMenu.SPEED), session.menus())
+        assertEquals(listOf(PlayerMenu.EPISODES, PlayerMenu.CHAPTERS, PlayerMenu.AUDIO, PlayerMenu.SUBTITLES, PlayerMenu.SPEED), session.menus())
 
         session.handle(SemanticAction.MENU)
         assertEquals(PlayerMenu.SUBTITLES, session.menu)

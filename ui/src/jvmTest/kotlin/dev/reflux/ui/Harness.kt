@@ -3,17 +3,20 @@ package dev.reflux.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asSkiaBitmap
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.ComposeTimeoutException
 import androidx.compose.ui.test.DesktopComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.v2.runDesktopComposeUiTest
+import androidx.compose.ui.unit.Density
 import dev.reflux.ui.player.PlayerOverlay
 import dev.reflux.ui.state.AppState
 import kotlinx.coroutines.runBlocking
@@ -35,17 +38,21 @@ internal fun screen(
     platform: FakePlatform = FakePlatform(),
     width: Int = 1440,
     height: Int = 900,
+    density: Float = 1f,
     block: DesktopComposeUiTest.(AppState) -> Unit,
-) = runDesktopComposeUiTest(width, height) {
+) = runDesktopComposeUiTest((width * density).toInt(), (height * density).toInt()) {
     var app: AppState? = null
     setContent {
         val scope = rememberCoroutineScope()
         val state = remember { AppState(world.library, world.pipeline, world.registry::resolve, platform, scope).also { app = it } }
-        Box(Modifier.fillMaxSize()) {
-            RefluxApp(state)
-            state.playback?.let { session ->
-                Box(Modifier.fillMaxSize().background(Brush.linearGradient(listOf(Color(0xFF5A3E2B), Color(0xFF0E1A2B)))))
-                PlayerOverlay(state, session)
+        // [width] and [height] are the canvas the layout sees; a denser screen only draws it with more pixels.
+        CompositionLocalProvider(LocalDensity provides Density(density)) {
+            Box(Modifier.fillMaxSize()) {
+                RefluxApp(state)
+                state.playback?.let { session ->
+                    Box(Modifier.fillMaxSize().background(Brush.linearGradient(listOf(Color(0xFF5A3E2B), Color(0xFF0E1A2B)))))
+                    PlayerOverlay(state, session)
+                }
             }
         }
     }

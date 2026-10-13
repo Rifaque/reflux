@@ -17,6 +17,7 @@ import dev.reflux.core.playback.Player
 import dev.reflux.core.playback.PlayerState
 import dev.reflux.core.playback.PlayerStatus
 import dev.reflux.core.playback.SkipSegment
+import dev.reflux.core.playback.SkipSegments
 import dev.reflux.core.playback.TrackPreferences
 import dev.reflux.core.playback.WatchReporter
 import dev.reflux.library.Library
@@ -41,8 +42,11 @@ import kotlin.math.abs
 /** The post-play prompt: a countdown into [entry], or a "still watching?" question when [asks] is set. */
 data class UpNext(val entry: LibraryEntry, val totalMs: Long, val remainingMs: Long, val asks: Boolean)
 
-/** The player's lists, one level below the transport controls. */
-enum class PlayerMenu(val title: String) { CHAPTERS("Chapters"), AUDIO("Audio"), SUBTITLES("Subtitles"), SPEED("Speed") }
+/**
+ * The player's lists, one level below the transport controls. [EPISODES] is the way to the episode before
+ * and after for hands that hold nothing with a next button on it.
+ */
+enum class PlayerMenu(val title: String) { EPISODES("Episodes"), CHAPTERS("Chapters"), AUDIO("Audio"), SUBTITLES("Subtitles"), SPEED("Speed") }
 
 /** One line of a [PlayerMenu]; [selected] marks what is in effect now. */
 data class MenuOption(val label: String, val detail: String? = null, val selected: Boolean = false)
@@ -179,14 +183,19 @@ class PlaybackSession internal constructor(
             action == SemanticAction.FULLSCREEN -> app.platform.requestFullscreen(!app.platform.fullscreen)
             open != null -> handleInMenu(open, action)
             error != null -> if (action in LEAVING) close()
-            action == SemanticAction.MENU -> showMenu(menus().let { all -> PlayerMenu.SUBTITLES.takeIf { it in all } ?: all.first() })
+            action == SemanticAction.MENU -> showMenu(defaultMenu())
             action == SemanticAction.BACK -> close()
             action == SemanticAction.PLAY_PAUSE || action == SemanticAction.SELECT -> when {
                 prompt == null -> controller?.handle(SemanticAction.PLAY_PAUSE)
                 prompt.asks -> continueWatching()
                 else -> playNext()
             }
-            // Without directional focus in the player, up and down are the volume, as in every desktop player.
+            // Where loudness is the device's own (a television's remote, a phone's keys), down is the way
+            // to everything the player offers beyond play and seek, and up takes what is on offer above
+            // the controls (skipping an intro), or just brings the controls back.
+            action == SemanticAction.NAVIGATE_DOWN && app.platform.systemVolume -> showMenu(defaultMenu())
+            action == SemanticAction.NAVIGATE_UP && app.platform.systemVolume -> skippable()?.let(::skip)
+            // Otherwise, without directional focus in the player, up and down are the volume, as in every desktop player.
             action == SemanticAction.NAVIGATE_UP -> controller?.handle(SemanticAction.VOLUME_UP)
             action == SemanticAction.NAVIGATE_DOWN -> controller?.handle(SemanticAction.VOLUME_DOWN)
             else -> controller?.handle(action)
@@ -208,6 +217,13 @@ class PlaybackSession internal constructor(
         }
     }
 
+    /** The menu a button opens: subtitles, the one most often wanted, when there are any. */
+    private fun defaultMenu(): PlayerMenu = menus().let { all -> PlayerMenu.SUBTITLES.takeIf { it in all } ?: all.first { it != PlayerMenu.EPISODES } }
+
+    /** The intro, recap, or credits the position is in, which the player offers to skip. */
+    fun skippable(state: PlayerState = player.state.value): SkipSegment? =
+        SkipSegments.at(SkipSegments.from(state.chapters, state.durationMs), state.positionMs)
+
     /** Any user activity in the player that is not a semantic action (pointer movement, scrubbing). */
     fun touch() {
         autoplay.onInteraction()
@@ -218,6 +234,7 @@ class PlaybackSession internal constructor(
 
     /** The menus that have something to choose from for what is playing, in the order they are offered. */
     fun menus(state: PlayerState = player.state.value): List<PlayerMenu> = listOfNotNull(
+        PlayerMenu.EPISODES.takeIf { next != null || previous != null },
         PlayerMenu.CHAPTERS.takeIf { state.chapters.size > 1 },
         PlayerMenu.AUDIO.takeIf { state.audioTracks.size > 1 },
         PlayerMenu.SUBTITLES.takeIf { state.subtitleTracks.isNotEmpty() },
@@ -225,6 +242,7 @@ class PlaybackSession internal constructor(
     )
 
     fun options(menu: PlayerMenu, state: PlayerState = player.state.value): List<MenuOption> = when (menu) {
+        PlayerMenu.EPISODES -> neighbours().map { (entry, forward) -> MenuOption(episodeLabel(entry), if (forward) "Next" else "Previous") }
         PlayerMenu.CHAPTERS -> {
             val current = state.chapters.indexOfLast { it.startMs <= state.positionMs }
             state.chapters.mapIndexed { index, chapter ->
@@ -250,6 +268,11 @@ class PlaybackSession internal constructor(
         menu = null
     }
 
+    /** The episodes either side of this one, the next one first: it is the one usually wanted. */
+    private fun neighbours(): List<Pair<LibraryEntry, Boolean>> = listOfNotNull(next?.let { it to true }, previous?.let { it to false })
+
+    private fun episodeLabel(entry: LibraryEntry): String = (entry.item as? Episode)?.let { "${Formatting.episodeNumber(it)} · ${it.title}" } ?: entry.item.title
+
     private fun showMenu(menu: PlayerMenu) {
         highlighted = options(menu).indexOfFirst { it.selected }.coerceAtLeast(0)
         this.menu = menu
@@ -259,6 +282,7 @@ class PlaybackSession internal constructor(
     fun choose(menu: PlayerMenu, index: Int) {
         val state = player.state.value
         when (menu) {
+            PlayerMenu.EPISODES -> neighbours().getOrNull(index)?.let { (_, forward) -> if (forward) playNext() else playPrevious() }
             PlayerMenu.CHAPTERS -> state.chapters.getOrNull(index)?.let { seekTo(it.startMs) }
             PlayerMenu.AUDIO -> state.audioTracks.getOrNull(index)?.let { selectAudio(it.id) }
             PlayerMenu.SUBTITLES -> if (index == 0) selectSubtitle(null) else state.subtitleTracks.getOrNull(index - 1)?.let { selectSubtitle(it.id) }
