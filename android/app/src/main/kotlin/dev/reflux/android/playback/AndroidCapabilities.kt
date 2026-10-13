@@ -1,6 +1,7 @@
 package dev.reflux.android.playback
 
 import android.content.Context
+import android.content.pm.PackageManager
 import android.hardware.display.DisplayManager
 import android.media.MediaCodecInfo
 import android.media.MediaCodecInfo.CodecProfileLevel
@@ -65,7 +66,7 @@ object AndroidCapabilities {
         "audio/vorbis" to AudioCodec.VORBIS,
     )
 
-    fun of(decoders: List<DecoderDescription>, display: DisplayCapabilities): DeviceCapabilities = DeviceCapabilities(
+    fun of(decoders: List<DecoderDescription>, display: DisplayCapabilities, pictureInPicture: Boolean): DeviceCapabilities = DeviceCapabilities(
         videoDecoders = decoders.mapNotNull { decoder ->
             val codec = videoCodecs[decoder.mimeType.lowercase()] ?: return@mapNotNull null
             if (decoder.maxWidth <= 0 || decoder.maxHeight <= 0) return@mapNotNull null
@@ -78,12 +79,16 @@ object AndroidCapabilities {
         display = display,
         containers = containers,
         subtitleFormats = subtitles,
-        // Picture-in-picture and background playback are the platform's to offer but not built here yet,
-        // so they are not claimed.
-        features = setOf(PlaybackFeature.EXTERNAL_SUBTITLES, PlaybackFeature.NETWORK_STREAMING),
+        // Playing on with the screen off or the app gone is not built, so it is not claimed.
+        features = setOfNotNull(
+            PlaybackFeature.EXTERNAL_SUBTITLES,
+            PlaybackFeature.NETWORK_STREAMING,
+            PlaybackFeature.PICTURE_IN_PICTURE.takeIf { pictureInPicture },
+        ),
     )
 
-    fun of(context: Context): DeviceCapabilities = of(decoders(), display(context))
+    fun of(context: Context): DeviceCapabilities =
+        of(decoders(), display(context), context.packageManager.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE))
 
     private fun decoders(): List<DecoderDescription> = MediaCodecList(MediaCodecList.REGULAR_CODECS).codecInfos
         .filter { !it.isEncoder }

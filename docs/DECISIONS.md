@@ -303,7 +303,7 @@ The Android phone and tablet client is the shared experience layer and the share
 
 **How the shared code is built for Android.** The engine modules stay what they were, Kotlin compiled to JVM bytecode, and the Android application uses those same artifacts. Only `ui` gained an Android variant, because Compose is a different library there. The alternatives were an Android target on every shared module (several times the build configuration, for code that contains no platform API by rule) or an Android-only copy of the UI (a second product). The Android variant and the `android` modules exist only where an Android SDK is installed, so building and testing the engine and the desktop still needs none.
 
-**Playback: Media3, into a surface.** ExoPlayer decodes with MediaCodec, in hardware where the device has it, straight to a `SurfaceView` beneath Reflux's own controls; libmpv was not brought to Android. The engine is driven through the same `Player` contract and the same `PlaybackController` as libmpv, so resume, next episode, track defaults, and watch reporting are the same code. What the device can play is read from the device (its codec list and display), never assumed from its Android version. Subtitles are drawn by the shell from the engine's cues. Not there on Android yet, and therefore not claimed: chapters (the engine does not report Matroska chapters), picture-in-picture, playback in the background, and a tone-mapping guarantee for HDR on SDR panels.
+**Playback: Media3, into a surface.** ExoPlayer decodes with MediaCodec, in hardware where the device has it, straight to a `SurfaceView` beneath Reflux's own controls; libmpv was not brought to Android. The engine is driven through the same `Player` contract and the same `PlaybackController` as libmpv, so resume, next episode, track defaults, and watch reporting are the same code. What the device can play is read from the device (its codec list and display), never assumed from its Android version. Subtitles are drawn by the shell from the engine's cues. Not there on Android, and therefore not claimed: chapters (the engine does not report them), playback in the background, and a tone-mapping guarantee for HDR on SDR panels. Picture-in-picture came with the next entry.
 
 **Storage: folders the user grants.** Media is reached through the system folder picker (Storage Access Framework), with a read grant that is kept across restarts and given back when the source is removed. Such a folder is a tree of documents, not a path: `DocumentTreeSource` lists it by display name so that its paths identify like any other source's, and finds documents again by walking those names. A revoked grant or an ejected card is the source being *unavailable*, which keeps the library, and never an empty listing, which would read as "everything was deleted". The rule that one folder is one source holds on Android through document IDs. No storage permission is requested and no file path is assumed.
 
@@ -316,3 +316,21 @@ The Android phone and tablet client is the shared experience layer and the share
 - Android's regular expressions (ICU) reject an unescaped literal `}`, which the JDK accepts: parsing failed on the first scan. The patterns are fixed, and the engine now has tests that run on a device.
 - A real Jellyfin server names an item it has no metadata for after its folder, year included ("Night Drive (2021)"), which kept the server's copy from being recognized as the same work as a local file. The adapter takes a trailing year that agrees with the server's off the title.
 - The artwork cache assumed its directory could not disappear while Reflux runs. A device short of space clears directories behind a running app.
+
+## 2026-10-13 — Android: leaving the app, and the system's controls
+
+**Picture-in-picture is how video goes on when the app is left.** While something plays, leaving the app turns the activity into a floating window of the picture's shape that shows the picture and nothing else; Reflux's controls come back with the full window. An activity that is stopped (closed, covered, or the screen off) pauses.
+
+**No playback in the background.** Keeping a film's sound going with nothing on screen would need a foreground service and a permanent notification, for something a video player rarely wants. It is not built and not claimed as a capability. Audio-only content would change that.
+
+**One engine, one session.** The engine is published as the device's media session, which is the platform's standard way in: headset and Bluetooth buttons, and the buttons of the floating window, act on that engine directly, so there is exactly one playback state however it is controlled, and it is the one the watch state is recorded from. Moving to the next or previous work is not the engine's to decide (it holds one item), so those two controls are routed to the same semantic actions the on-screen buttons use.
+
+**Chapters are not there on Android.** The shared playback model has them and the player shows them wherever an engine reports them; Media3 does not report a file's chapters, and nothing is faked.
+
+## 2026-10-13 — One accent
+
+The interface's own color is a warm amber, and it is the same on every page. Details pages used to take the color of their primary action from the poster; that made the controls compete with the artwork they sat on, and left Reflux with no color of its own. Artwork still colors the page behind the controls. The extraction of an accent from artwork stays in `design` for ambient use.
+
+## 2026-10-13 — Credentials never reach a log
+
+What a shell writes down about a problem passes through `Redaction` (in `core`): addresses with user names and passwords, token and password parameters, and authorization headers are replaced before the text reaches a file, the system log, or the screen. It was a desktop function; with a second shell writing logs it is shared.

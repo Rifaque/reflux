@@ -1,6 +1,5 @@
 package dev.reflux.ui.screens
 
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -25,21 +24,16 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import dev.reflux.core.metadata.Credit
@@ -47,10 +41,8 @@ import dev.reflux.core.metadata.CreditRole
 import dev.reflux.core.model.ArtworkLocator
 import dev.reflux.core.model.MediaId
 import dev.reflux.core.versions.SelectionCriterion
-import dev.reflux.design.ArtworkAccent
 import dev.reflux.design.FormFactor
 import dev.reflux.design.MaterialRole
-import dev.reflux.design.Motion
 import dev.reflux.ui.LocalChromeInsets
 import dev.reflux.ui.components.ArtworkImage
 import dev.reflux.ui.components.Button
@@ -64,7 +56,6 @@ import dev.reflux.ui.components.SectionHeader
 import dev.reflux.ui.components.TitleBackdrop
 import dev.reflux.ui.components.TitlePlaceholder
 import dev.reflux.ui.components.initialFocus
-import dev.reflux.ui.components.rememberArtwork
 import dev.reflux.ui.components.titleTones
 import dev.reflux.ui.state.AppState
 import dev.reflux.ui.state.Destination
@@ -74,16 +65,11 @@ import dev.reflux.ui.state.MediaCard
 import dev.reflux.ui.state.VersionRow
 import dev.reflux.ui.state.detailsModel
 import dev.reflux.ui.state.libraryState
-import dev.reflux.ui.theme.LocalAccent
 import dev.reflux.ui.theme.LocalLayout
 import dev.reflux.ui.theme.LocalTypography
 import dev.reflux.ui.theme.RefluxColors
 import dev.reflux.ui.theme.Text
 import dev.reflux.ui.theme.glass
-import dev.reflux.ui.theme.toColor
-import dev.reflux.ui.theme.tween
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 
 /** A movie or a show: what it is, what the main button will play, and which versions or episodes exist. */
 @Composable
@@ -94,7 +80,7 @@ internal fun DetailsScreen(app: AppState, itemId: MediaId) {
     val layout = LocalLayout.current
     var season by rememberSaveable(itemId) { mutableIntStateOf(details.initialSeason) }
     val episodes = details.seasons.getOrNull(season)?.episodes.orEmpty()
-    CompositionLocalProvider(LocalAccent provides rememberAccent(details.card.poster)) {
+    run {
         LazyColumn(Modifier.fillMaxSize(), state = rememberLazyListState(), contentPadding = PaddingValues(bottom = LocalChromeInsets.current.bottom)) {
             item(key = "header") { Header(app, details) }
             if (details.versions.isNotEmpty()) {
@@ -188,14 +174,14 @@ private fun Header(app: AppState, details: DetailsModel) {
                             if (card.watched) "Mark as unwatched" else "Mark as watched",
                             { app.setWatched(card.id, !card.watched) },
                             glass = true,
-                            tint = if (card.watched) LocalAccent.current else RefluxColors.textPrimary,
+                            tint = if (card.watched) RefluxColors.accent else RefluxColors.textPrimary,
                         )
                         IconButton(
                             if (card.entry.favorite) Icon.HEART_FILLED else Icon.HEART,
                             if (card.entry.favorite) "Remove from favorites" else "Add to favorites",
                             { app.toggleFavorite(card.entry) },
                             glass = true,
-                            tint = if (card.entry.favorite) LocalAccent.current else RefluxColors.textPrimary,
+                            tint = if (card.entry.favorite) RefluxColors.accent else RefluxColors.textPrimary,
                         )
                     }
                 }
@@ -309,28 +295,3 @@ private fun Cast(cast: List<Credit>, modifier: Modifier = Modifier) {
 private fun initials(name: String): String =
     name.split(' ').filter { it.isNotBlank() }.let { parts -> listOfNotNull(parts.firstOrNull(), parts.drop(1).lastOrNull()) }
         .joinToString("") { it.first().uppercase() }
-
-/** The page accent follows the poster (docs/DESIGN.md), animated so pages do not flash between colors. */
-@Composable
-private fun rememberAccent(poster: ArtworkLocator?): Color {
-    val image = rememberArtwork(poster, 160.dp)
-    var accent by remember(poster) { mutableStateOf(RefluxColors.accent) }
-    LaunchedEffect(image) {
-        if (image != null) accent = withContext(Dispatchers.Default) { ArtworkAccent.from(sample(image)).toColor() }
-    }
-    return animateColorAsState(accent, Motion.navigation.tween()).value
-}
-
-/** A coarse grid of pixels from [image], as 0xAARRGGBB values. */
-private fun sample(image: ImageBitmap): LongArray {
-    val step = maxOf(1, maxOf(image.width, image.height) / 48)
-    val columns = image.width / step
-    val rows = image.height / step
-    val line = IntArray(image.width)
-    val pixels = LongArray(columns * rows)
-    for (y in 0 until rows) {
-        image.readPixels(line, startX = 0, startY = y * step, width = image.width, height = 1)
-        for (x in 0 until columns) pixels[y * columns + x] = line[x * step].toLong() and 0xFFFFFFFFL
-    }
-    return pixels
-}

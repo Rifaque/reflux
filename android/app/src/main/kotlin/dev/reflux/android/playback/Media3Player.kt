@@ -8,7 +8,9 @@ import android.os.Looper
 import android.view.SurfaceView
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
+import androidx.media3.common.ForwardingPlayer
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaMetadata
 import androidx.media3.common.MimeTypes
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.PlaybackParameters
@@ -21,6 +23,7 @@ import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import androidx.media3.session.MediaSession
 import dev.reflux.core.playback.DeviceCapabilities
 import dev.reflux.core.playback.PlaybackFailure
 import dev.reflux.core.playback.PlaybackRequest
@@ -42,6 +45,11 @@ import androidx.media3.common.Player as EnginePlayer
  * The engine lives on the main thread. Commands may come from anywhere and return at once; their effect
  * shows in [state]. Subtitles are delivered as [cues] for the shell to draw, since Reflux brings its own
  * player interface rather than the engine's.
+ *
+ * While something is loaded the engine is also the device's media session, which is how the system's own
+ * controls reach it: headset and Bluetooth buttons, and the buttons of a picture-in-picture window. They
+ * act on this same engine, so there is one playback state however it is controlled. Next and previous
+ * are not the engine's to decide (it holds one item) and go to [onSkip].
  */
 class Media3Player(context: Context, override val capabilities: DeviceCapabilities) : Player {
     private val application = context.applicationContext
@@ -59,6 +67,11 @@ class Media3Player(context: Context, override val capabilities: DeviceCapabiliti
     /** The shape of the picture (width over height) once known. The surface is laid out to it; the engine fills whatever it is given. */
     val videoAspect: StateFlow<Float?> = mutableAspect.asStateFlow()
 
+    /** Called for the system's next (true) and previous (false) controls. Set by the shell. */
+    @Volatile
+    var onSkip: ((forward: Boolean) -> Unit)? = null
+
+    private var session: MediaSession? = null
     private var engine: ExoPlayer? = null
     private var surface: SurfaceView? = null
     private var started = false
@@ -130,6 +143,7 @@ class Media3Player(context: Context, override val capabilities: DeviceCapabiliti
 
         val item = MediaItem.Builder()
             .setUri(request.target.uri)
+            .setMediaMetadata(MediaMetadata.Builder().setTitle(request.title).build())
             .setSubtitleConfigurations(
                 request.subtitles.mapIndexed { index, subtitle ->
                     MediaItem.SubtitleConfiguration.Builder(android.net.Uri.parse(subtitle.target.uri))
@@ -202,6 +216,8 @@ class Media3Player(context: Context, override val capabilities: DeviceCapabiliti
         if (closed) return@onMain
         closed = true
         main.removeCallbacks(ticker)
+        session?.release()
+        session = null
         engine?.let {
             it.removeListener(listener)
             it.setVideoSurfaceView(null)
@@ -223,7 +239,27 @@ class Media3Player(context: Context, override val capabilities: DeviceCapabiliti
             player.setVideoSurfaceView(surface)
             player.volume = if (muted) 0f else volume / 100f
             main.post(ticker)
+            session = runCatching { MediaSession.Builder(application, SystemControls(player)).setId("reflux-${System.identityHashCode(this)}").build() }.getOrNull()
         }
+
+    /** The engine as the system's controls see it: everything is the engine's, except moving between works. */
+    private inner class SystemControls(player: ExoPlayer) : ForwardingPlayer(player) {
+        private val skipping = intArrayOf(
+            EnginePlayer.COMMAND_SEEK_TO_NEXT, EnginePlayer.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM,
+            EnginePlayer.COMMAND_SEEK_TO_PREVIOUS, EnginePlayer.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM,
+        )
+
+        override fun getAvailableCommands(): EnginePlayer.Commands = super.getAvailableCommands().buildUpon().addAll(*skipping).build()
+        override fun isCommandAvailable(command: Int): Boolean = command in skipping || super.isCommandAvailable(command)
+        override fun seekToNext() = skip(true)
+        override fun seekToNextMediaItem() = skip(true)
+        override fun seekToPrevious() = skip(false)
+        override fun seekToPreviousMediaItem() = skip(false)
+
+        private fun skip(forward: Boolean) {
+            onSkip?.invoke(forward)
+        }
+    }
 
     private fun applyVolume() {
         engine?.volume = if (muted) 0f else volume / 100f

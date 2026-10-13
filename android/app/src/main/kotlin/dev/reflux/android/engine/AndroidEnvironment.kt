@@ -15,6 +15,7 @@ import dev.reflux.core.model.SourceId
 import dev.reflux.core.net.HttpFetcher
 import dev.reflux.core.net.HttpRequest
 import dev.reflux.core.net.HttpResult
+import dev.reflux.core.net.Redaction
 import dev.reflux.core.playback.DeviceCapabilities
 import dev.reflux.core.source.MediaSource
 import dev.reflux.library.ArtworkCache
@@ -166,10 +167,12 @@ class AndroidEnvironment(context: Context, dataDirectory: File = context.filesDi
 
     /** Records a problem for developers: in the system log, and next to the library for bug reports. */
     fun report(problem: String, cause: Throwable? = null) {
-        Log.w("Reflux", problem, cause)
+        // Errors quote addresses, and addresses carry credentials: neither log gets those.
+        val entry = Redaction.redact(problem + cause?.let { ": ${Log.getStackTraceString(it)}" }.orEmpty())
+        Log.w("Reflux", entry)
         runCatching {
             if (log.length() > MAX_LOG_BYTES) log.delete()
-            log.appendText("${System.currentTimeMillis()} $problem${cause?.let { ": $it" }.orEmpty()}\n")
+            log.appendText("${System.currentTimeMillis()} $entry\n")
         }
     }
 

@@ -27,12 +27,12 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -53,7 +53,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.reflux.design.MaterialRole
 import dev.reflux.design.Motion
-import dev.reflux.ui.theme.LocalAccent
 import dev.reflux.ui.theme.LocalLayout
 import dev.reflux.ui.theme.LocalTypography
 import dev.reflux.ui.theme.RefluxColors
@@ -140,7 +139,7 @@ fun Button(
 ) {
     val layout = LocalLayout.current
     val shape = CircleShape
-    val accent = LocalAccent.current
+    val accent = RefluxColors.accent
     val height = maxOf(40f, layout.minTargetDp).dp
     Pressable(onClick, modifier, shape, enabled, lift = 0.6f) { active ->
         val surface = when (style) {

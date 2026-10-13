@@ -81,6 +81,7 @@ dependencies {
     implementation(libs.sqldelight.android.driver)
     implementation(libs.androidx.activity.compose)
     implementation(libs.media3.exoplayer)
+    implementation(libs.media3.session)
 
     testImplementation(kotlin("test-junit"))
     testImplementation(libs.kotlinx.coroutines.test)

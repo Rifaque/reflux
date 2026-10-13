@@ -67,8 +67,6 @@ val LocalTypography = staticCompositionLocalOf { Typography(1f) }
 /** The current adaptive layout: recomputed when the window or the input modality changes. */
 val LocalLayout = compositionLocalOf<LayoutProfile> { error("No layout profile provided") }
 
-/** The accent of the surrounding page; follows artwork on details pages. */
-val LocalAccent = compositionLocalOf { RefluxColors.accent }
 
 fun <T> MotionSpec.tween(): TweenSpec<T> =
     tween(durationMillis = durationMs, easing = CubicBezierEasing(easing.x1, easing.y1, easing.x2, easing.y2))

@@ -11,8 +11,9 @@ object Palette {
     val textPrimary = Argb(0xFFF4F5F7L)
     val textSecondary = Argb(0xFFB4B9C4L)
     val textTertiary = Argb(0xFF8A909CL)
-    val accent = Argb(0xFF6EA8FFL)
-    val onAccent = Argb(0xFF06101FL)
+    /** Warm amber: the one color the interface itself brings. Everything else comes from the artwork. */
+    val accent = Argb(0xFFFFA63DL)
+    val onAccent = Argb(0xFF1C1003L)
     val focusRing = Argb(0xFFFFFFFFL)
     val progress = Argb(0xFFE8EAEEL)
     val unavailable = Argb(0xFF7A7F8AL)

@@ -2,10 +2,15 @@ package dev.reflux.android
 
 import android.annotation.SuppressLint
 import android.app.Application
+import android.app.PictureInPictureParams
 import android.content.pm.ActivityInfo
+import android.content.pm.PackageManager
+import android.content.res.Configuration
 import android.graphics.Color.TRANSPARENT
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.util.Rational
 import android.view.InputDevice
 import android.view.KeyEvent
 import android.view.MotionEvent
@@ -34,6 +39,8 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -79,6 +86,9 @@ class MainActivity : ComponentActivity() {
     private lateinit var app: AppState
     private val sticks = StickDirections()
 
+    /** Whether the activity is the small floating window: then it shows the picture and nothing else. */
+    private var inPictureInPicture by mutableStateOf(false)
+
     private var pendingFolder: CompletableDeferred<Uri?>? = null
     private val folderPicker = registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { tree ->
         pendingFolder?.complete(tree)
@@ -116,8 +126,19 @@ class MainActivity : ComponentActivity() {
             RefluxApp(app, Modifier.windowInsetsPadding(WindowInsets.safeDrawing))
             // Video is a platform surface beneath the controls: the engine keeps its direct path to the display.
             if (player != null) VideoLayer(player)
-            if (session != null) PlayerOverlay(app, session, Modifier.windowInsetsPadding(WindowInsets.safeDrawing))
+            // A picture-in-picture window is the picture; its controls are the system's own.
+            if (session != null && !inPictureInPicture) PlayerOverlay(app, session, Modifier.windowInsetsPadding(WindowInsets.safeDrawing))
         }
+
+        // The system's next and previous controls are the same semantic actions as everyone else's.
+        DisposableEffect(player) {
+            player?.onSkip = { forward -> runOnUiThread { app.dispatch(if (forward) SemanticAction.NEXT else SemanticAction.PREVIOUS) } }
+            onDispose { player?.onSkip = null }
+        }
+        // Leaving the app while something plays keeps it on screen in a small window, shaped like the picture.
+        val aspect = player?.videoAspect?.collectAsState()?.value
+        val leavesToWindow = session != null && session.error == null && session.state.collectAsState().value.status.let { it == PlayerStatus.PLAYING || it == PlayerStatus.BUFFERING }
+        LaunchedEffect(leavesToWindow, aspect) { continuesInWindow(leavesToWindow, aspect) }
 
         // While the player is up the system bars are away and the screen stays on while something plays.
         val playing = session?.state?.collectAsState()?.value?.status.let { it == PlayerStatus.PLAYING || it == PlayerStatus.BUFFERING || it == PlayerStatus.LOADING }
@@ -163,9 +184,41 @@ class MainActivity : ComponentActivity() {
         return super.dispatchGenericMotionEvent(event)
     }
 
+    private var windowOnLeave = false
+    private var windowShape: Rational? = null
+
+    /** Tells the system whether leaving the app should shrink it into a floating window, and of what shape. */
+    private fun continuesInWindow(enabled: Boolean, aspect: Float?) {
+        if (!packageManager.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE)) return
+        windowOnLeave = enabled
+        // The system accepts shapes between about 1:2.39 and 2.39:1.
+        windowShape = aspect?.takeIf { it.isFinite() && it > 0f }?.coerceIn(0.42f, 2.39f)?.let { Rational((it * 1000).toInt(), 1000) }
+        runCatching { setPictureInPictureParams(pictureInPictureParams()) }
+    }
+
+    private fun pictureInPictureParams(): PictureInPictureParams = PictureInPictureParams.Builder().apply {
+        windowShape?.let(::setAspectRatio)
+        if (Build.VERSION.SDK_INT >= 31) {
+            setAutoEnterEnabled(windowOnLeave)
+            setSeamlessResizeEnabled(true)
+        }
+    }.build()
+
+    override fun onUserLeaveHint() {
+        super.onUserLeaveHint()
+        // Newer systems enter by themselves (the gesture animates into the window); older ones are asked here.
+        if (windowOnLeave && Build.VERSION.SDK_INT < 31) runCatching { enterPictureInPictureMode(pictureInPictureParams()) }
+    }
+
+    override fun onPictureInPictureModeChanged(isInPictureInPictureMode: Boolean, newConfig: Configuration) {
+        super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
+        inPictureInPicture = isInPictureInPictureMode
+    }
+
     override fun onStop() {
         super.onStop()
-        // Nothing keeps playing unseen.
+        // Nothing keeps playing unseen: an activity in a floating window is not stopped, one that was
+        // closed, covered, or left with the screen off is.
         platform.player?.pause()
     }
 
