@@ -36,7 +36,16 @@ import kotlin.concurrent.thread
 
 /** Whether tests that open real windows were asked for (`-Preflux.windowTests=true`) and can run here. */
 internal val windowTestsRequested: Boolean
-    get() = System.getProperty("reflux.windowTests") == "true" && !GraphicsEnvironment.isHeadless()
+    get() = System.getProperty("reflux.windowTests") == "true" && needs("a display for the window tests", !GraphicsEnvironment.isHeadless())
+
+/**
+ * Whether something a test depends on is [present]. Where the environment promises an engine and a display
+ * (`REFLUX_REQUIRE_ENGINE_TESTS=true`, as in CI), its absence fails the test instead of letting it be skipped.
+ */
+internal fun needs(what: String, present: Boolean): Boolean {
+    if (!present && System.getenv("REFLUX_REQUIRE_ENGINE_TESTS") == "true") throw AssertionError("Missing: $what")
+    return present
+}
 
 internal val isWindows: Boolean = System.getProperty("os.name").startsWith("Windows")
 

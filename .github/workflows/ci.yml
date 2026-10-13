@@ -20,6 +20,10 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-24.04, windows-2022]
+    env:
+      # Linux installs the engine and a display below, so tests that need them must run there rather than
+      # skip themselves. Windows runners have no libmpv; its engine tests are skipped and say so.
+      REFLUX_REQUIRE_ENGINE_TESTS: ${{ startsWith(matrix.os, 'ubuntu') }}
     steps:
       - uses: actions/checkout@v4
 

@@ -19,6 +19,8 @@ if [ "$(id -u)" = "0" ]; then
 fi
 
 export HOME=/home/ubuntu
+# As in CI: with the engine and a display installed, tests that need them must run, not skip themselves.
+export REFLUX_REQUIRE_ENGINE_TESTS=true
 cd /work
 
 results() {

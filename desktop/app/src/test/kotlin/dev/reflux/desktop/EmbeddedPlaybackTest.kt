@@ -47,7 +47,7 @@ class EmbeddedPlaybackTest {
     @Test
     fun playsInsideTheWindowAndAnswersToTheMouse() {
         assumeTrue("window tests not requested", windowTestsRequested)
-        assumeTrue("libmpv and ffmpeg are needed", SampleMedia.available)
+        assumeTrue("libmpv and ffmpeg are needed", needs("libmpv and ffmpeg", SampleMedia.available))
         SampleMedia.video(movieFile, seconds = 150)
         SampleMedia.video(episodeFiles[0], seconds = 14)
         Files.copy(episodeFiles[0], episodeFiles[1])

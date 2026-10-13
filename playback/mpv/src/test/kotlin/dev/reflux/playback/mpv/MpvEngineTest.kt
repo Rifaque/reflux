@@ -32,16 +32,23 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-/** Exercises the real libmpv engine headlessly. Skipped where libmpv or FFmpeg is not installed. */
+/**
+ * Exercises the real libmpv engine headlessly. Skipped where libmpv or FFmpeg is not installed, except where
+ * the environment promises them (`REFLUX_REQUIRE_ENGINE_TESTS=true`, as in CI): there their absence fails.
+ */
 class MpvEngineTest {
     private lateinit var directory: Path
     private val capabilities = DesktopCapabilities.of(DisplayCapabilities(1920, 1080))
 
     @BeforeTest
     fun setUp() {
-        assumeTrue("libmpv not installed", MpvPlayer.isAvailable)
-        assumeTrue("ffmpeg not installed", TestMedia.ffmpegAvailable)
+        needs("libmpv not installed", MpvPlayer.isAvailable)
+        needs("ffmpeg not installed", TestMedia.ffmpegAvailable)
         directory = Files.createTempDirectory("reflux-mpv")
+    }
+
+    private fun needs(what: String, present: Boolean) {
+        if (System.getenv("REFLUX_REQUIRE_ENGINE_TESTS") == "true") assertTrue(present, what) else assumeTrue(what, present)
     }
 
     @AfterTest

@@ -142,7 +142,7 @@ class BrowsingWindowTest {
                 // Controllers act only on the application in use; the test window has to be that application.
                 shell.ui { shell.window.requestFocus() }
                 val active = runCatching { shell.await("the window to become active", 5_000) { KeyboardFocusManager.getCurrentKeyboardFocusManager().activeWindow != null } }.isSuccess
-                assumeTrue("the test window could not become the active window", active)
+                assumeTrue("the test window could not become the active window", needs("the test window as the active window", active))
 
                 // The first press morphs the layout and puts focus on the main action; no mode was switched.
                 assertFalse(shell.shows("Cross"))
