@@ -43,6 +43,8 @@ docker run --rm -v "$PWD:/src:ro" -v reflux-gradle:/home/ubuntu/.gradle reflux-l
 
 With a game controller connected, `./gradlew :desktop:app:test --tests "*PhysicalControllerTest*" -Preflux.windowTests=true -Preflux.controller=true -i` opens the application and asks you to press buttons, checking what each press does.
 
+The exchange with a real Jellyfin server has a test of its own, which runs when a server is named: `tools/ci/jellyfin-test-server.sh <scratch-dir>` starts a throwaway server in Docker, and the comment at its top gives the command that runs `JellyfinLiveTest` against it. The test rewrites its user's watch state, so do not point it at a server you care about.
+
 Tests that need libmpv, FFmpeg, or a display skip themselves on a machine without them. Set `REFLUX_REQUIRE_ENGINE_TESTS=true` (CI and the container do) to have them fail instead, when a green run must mean they ran.
 
 Shared (`commonMain`) code must stay free of platform APIs; `check` fails when it is not, and the message says which lines.

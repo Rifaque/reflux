@@ -5,7 +5,7 @@
 | Area | State |
 | --- | --- |
 | Media Core contracts (entities, versions, locations, availability, watch state, artwork) | Implemented in `core` |
-| Universal watch state and version handoff: one watch state per work, positions carried between copies by timeline (cut and running time), different cuts never resumed blindly, reconciliation with sources that keep their own watch state | Implemented and tested with source-independent doubles ([WATCH_STATE.md](WATCH_STATE.md)). Verified on Windows 11 (`check`, and the real-window tests); not yet run on Linux, and the exchange with a live Jellyfin server is unverified |
+| Universal watch state and version handoff: one watch state per work, positions carried between copies by timeline (cut and running time), different cuts never resumed blindly, reconciliation with sources that keep their own watch state | Implemented and tested with source-independent doubles ([WATCH_STATE.md](WATCH_STATE.md)); verified on Windows and Linux, and the exchange verified against a real Jellyfin server (see the verification table below) |
 | Source abstraction and capabilities | Contracts implemented |
 | Playback capability model and Best Version (capability-driven, local-first among equivalent versions, continuity of the cut in progress) | Implemented and tested |
 | Input model (semantic actions, mappings, modality tracking) | Implemented and tested |
@@ -18,7 +18,7 @@
 | Background pipeline: change watching, debounced rescans, reconnect detection, scan → probe → metadata → artwork | Implemented and tested |
 | Smart search (deterministic query understanding over metadata, credits, stream facts, watch state) | Implemented and tested |
 | Smart library: default Home feed, franchise/manual/smart collections, diagnostics (weak identification, unmatched works, multiple versions, missing episodes and artwork, offline sources) | Implemented and tested |
-| Catalog-source architecture and Jellyfin adapter (sign-in, catalog, multi-version items, direct streams, two-way watch state through the source-independent reconciliation) | Implemented and tested against API fixtures; needs verification against a live server, including whether a position sent outside a playback session is taken |
+| Catalog-source architecture and Jellyfin adapter (sign-in, catalog, multi-version items, direct streams, two-way watch state through the source-independent reconciliation) | Implemented and tested against API fixtures. Sign-in, the catalog, the direct stream, and the watch-state exchange are verified against a real Jellyfin Server 12.2.0 with one movie; episodes, multi-version items, large libraries, other server versions, and playback of a server stream in the engine are not |
 | WebDAV network source (read-only) | Implemented; tested against fixtures and a live WsgiDAV server |
 | SMB network source (read-only, streamed through a loopback server) | Implemented; tested against a live SMB2 server (impacket), including probing and playback |
 | Cross-source unification: works sharing a provider ID merge into one work (Best Version across sources) | Implemented and tested |
@@ -46,7 +46,20 @@ Verified on 2026-10-13, on the tree that closes the slice.
 | Windows 11, real window | `./gradlew :desktop:app:test -Preflux.windowTests=true`: first run through the native folder dialog, browsing with a mouse and with a scripted controller, playback with its controls, seeking, resume, next episode, fullscreen, a deleted file, closing the window | 27 tests, none failed; 1 skipped (physical controller) |
 | Ubuntu 24.04 in the `tools/ci` container (Xvfb, openbox, xcompmgr, software rendering) | the Linux job: `check`, then the real-window tests eight times in a row | 358 tests, none failed; eight rounds without a failure, and every window test ran in every round |
 
-Not verified: the workflow on GitHub (this work has not been pushed); physical controllers (none connected); TMDB against the live service; Jellyfin against a live server; the GNOME and KDE folder dialogs; X11 without a compositing manager; native Wayland. The window tests need the desktop to themselves: a locked desktop, or the test window being moved while they run, fails the playback test.
+Not verified: the workflow on GitHub (this work has not been pushed); physical controllers (none connected); TMDB against the live service; the GNOME and KDE folder dialogs; X11 without a compositing manager; native Wayland. The window tests need the desktop to themselves: a locked desktop, the test window being moved, or another window taking focus while they run fails them.
+
+### Watch state and version handoff: what was verified
+
+Verified on 2026-10-13, on the tree that closes the milestone.
+
+| Level | What | State |
+| --- | --- | --- |
+| Implemented | Canonical watch state, timelines and cuts, handoff, reconciliation with sources, Best Version order, schema migration | Done |
+| Verified on Windows 11 | `./gradlew check`; the real-window tests | 415 tests, none failed; 27 real-window tests, none failed (physical-controller check skipped) |
+| Verified on Linux (Ubuntu 24.04 in the `tools/ci` container) | The Linux job: `check`, then the real-window tests | 415 tests, none failed; two real-window rounds without a failure. With `REFLUX_REQUIRE_ENGINE_TESTS=true`, every engine, watch-state, migration, and source suite ran; only the Windows-only, physical-controller, and live-server tests were skipped |
+| Verified against a live service | `JellyfinLiveTest` against Jellyfin Server 12.2.0 in Docker: sign-in, catalog, direct stream, and the watch-state exchange in both directions, including the stale-value case | Passed, repeatedly, against freshly created servers |
+| Not verified | Jellyfin with episodes, multi-version items, a real library, or another server version; playing a server's stream in the engine; watch state with WebDAV and SMB sources beyond the shared tests (they keep no watch state of their own) | Open |
+| Blocked by the environment | The workflow on GitHub (not pushed); TMDB against the live service (no credential) | Open |
 
 ## Phase 0 — Product and architecture foundation
 

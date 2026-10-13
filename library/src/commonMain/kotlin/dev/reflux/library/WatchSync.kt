@@ -9,12 +9,16 @@ import dev.reflux.core.source.WatchStateSyncSource
 import dev.reflux.core.watch.SourceUpdate
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
 /**
  * Reports playback to the library and, when the playing version lives on a source that keeps its own watch
  * state (a media server), to that source as well. The library is always updated first and synchronously;
- * source reports are best-effort and never block or fail playback.
+ * source reports are best-effort and never block or fail playback. They reach the source one at a time and
+ * in the order they were made, so that a stop is never overtaken by the progress report before it.
+ *
+ * Like any [WatchReporter], it is called by one caller at a time.
  */
 class SyncingWatchReporter(
     private val library: Library,
@@ -32,9 +36,15 @@ class SyncingWatchReporter(
         sync { it.reportStopped(version.location.path, positionMs) }
     }
 
+    private var lastReport: Job? = null
+
     private fun sync(action: suspend (WatchStateSyncSource) -> Unit) {
         val syncing = source as? WatchStateSyncSource ?: return
-        scope.launch { bestEffort { action(syncing) } }
+        val previous = lastReport
+        lastReport = scope.launch {
+            previous?.join()
+            bestEffort { action(syncing) }
+        }
     }
 }
 

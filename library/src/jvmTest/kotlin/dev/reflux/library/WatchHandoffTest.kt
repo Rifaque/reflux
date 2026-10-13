@@ -34,6 +34,7 @@ import dev.reflux.core.watch.ResumeBasis
 import dev.reflux.core.watch.ResumePoint
 import dev.reflux.library.db.RefluxDatabase
 import dev.reflux.sources.local.LocalFolderSource
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.flow
@@ -71,6 +72,9 @@ private class HomeServer : CatalogSource, WatchStateSyncSource {
     private val entries = linkedMapOf<String, CatalogEntry>()
     var reachable = true
     var acceptsUpdates = true
+
+    /** How long the server takes to answer a progress report. */
+    var progressLatencyMs = 0L
     val told = mutableListOf<String>()
 
     override val descriptor = SourceDescriptor(
@@ -82,7 +86,10 @@ private class HomeServer : CatalogSource, WatchStateSyncSource {
     override suspend fun playbackTarget(path: String) = PlaybackTarget("https://home.example/$path")
     override fun catalog(): Flow<CatalogEntry> = if (reachable) entries.values.toList().asFlow() else flow { throw SourceUnavailableException(descriptor.id) }
 
-    override suspend fun reportProgress(path: String, positionMs: Long, paused: Boolean) = tell("progress $path ${positionMs / MINUTE}")
+    override suspend fun reportProgress(path: String, positionMs: Long, paused: Boolean) {
+        delay(progressLatencyMs)
+        tell("progress $path ${positionMs / MINUTE}")
+    }
     override suspend fun reportStopped(path: String, positionMs: Long) = tell("position $path ${positionMs / MINUTE}")
     override suspend fun setPlayed(path: String, played: Boolean) = tell("played $path $played")
 
@@ -256,6 +263,21 @@ class WatchHandoffTest {
         val plan = plan(heat)
         assertEquals(local.descriptor.id, plan.version.version.location.sourceId)
         assertEquals(48 * MINUTE, plan.request.startPositionMs)
+    }
+
+    @Test
+    fun reportsReachTheServerInTheOrderTheyWereMade() = runTest {
+        server.movie("heat", "Heat", 1995, stream(170.0))
+        library.scan(server)
+        val heat = movie("Heat")
+        // The server is slow to take a progress report, and playback stops right after it.
+        server.progressLatencyMs = 2_000
+        val reporter = SyncingWatchReporter(library, copyOn(server, heat), server, this)
+        reporter.progress(heat, 47 * MINUTE, 170 * MINUTE)
+        reporter.stopped(heat, 48 * MINUTE, 170 * MINUTE)
+        testScheduler.advanceUntilIdle()
+        assertEquals(listOf("progress items/heat 47", "position items/heat 48"), server.told, "the stop is the server's last word")
+        assertEquals(48 * MINUTE, library.watchState(heat)?.positionMs, "and Reflux's own state never waited for it")
     }
 
     @Test

@@ -87,6 +87,18 @@ class HandoffTest {
     }
 
     @Test
+    fun aFileReplacedInPlaceByAnotherCutIsNotTheSameVersionAnymore() {
+        val state = watched(local, 100)
+        // The same path, and so the same version identity, now holds a copy seventeen minutes shorter.
+        val replaced = local.copy(stream = local.stream.copy(durationMs = 103 * MINUTE))
+        assertEquals(local.id, replaced.id)
+        assertEquals(ResumePoint(83 * MINUTE, ResumeBasis.ADJUSTED), Handoff.resume(state, replaced))
+        assertEquals(TimelineMatch.DIFFERENT, Handoff.relation(state, replaced))
+        // A running time the probe has not delivered yet changes nothing.
+        assertEquals(ResumeBasis.SAME_VERSION, Handoff.resume(state, local.copy(stream = local.stream.copy(durationMs = null))).basis)
+    }
+
+    @Test
     fun anEquivalentCopyResumesAtTheSameMoment() {
         val state = watched(local, 30)
         assertEquals(ResumePoint(30 * MINUTE, ResumeBasis.SAME_TIMELINE), Handoff.resume(state, copy("server-1080p", 120.0, source = "server")))

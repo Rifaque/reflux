@@ -188,8 +188,8 @@ object Formatting {
     fun criterion(criterion: SelectionCriterion): String = when (criterion) {
         SelectionCriterion.USER_PREFERENCE -> "Your choice"
         SelectionCriterion.AVAILABILITY -> "The only one available right now"
-        SelectionCriterion.COMPATIBILITY -> "Plays best on this device"
-        SelectionCriterion.FEWER_COMPROMISES -> "Plays with fewer compromises"
+        SelectionCriterion.COMPATIBILITY -> "The one this device can play"
+        SelectionCriterion.FEWER_COMPROMISES -> "Plays best on this device"
         SelectionCriterion.CONTINUITY -> "The cut you are watching"
         SelectionCriterion.RESOLUTION -> "Highest resolution for this display"
         SelectionCriterion.DYNAMIC_RANGE -> "Best HDR format for this display"

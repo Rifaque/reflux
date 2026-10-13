@@ -22,13 +22,20 @@ data class VersionCandidate(
 
 /** The criteria Best Version uses, in priority order. The first one that differs decides. */
 enum class SelectionCriterion {
-    USER_PREFERENCE,
+    /** Its source can be reached. */
     AVAILABILITY,
+
+    /** This device can play it at all. */
     COMPATIBILITY,
-    FEWER_COMPROMISES,
 
     /** The viewer is part-way through one cut; another copy of that cut continues exactly where they are. */
     CONTINUITY,
+
+    /** The version the user pinned for this work. */
+    USER_PREFERENCE,
+
+    /** How well this device plays it: without software decoding, tone mapping, and the like. */
+    FEWER_COMPROMISES,
     RESOLUTION,
     DYNAMIC_RANGE,
     AUDIO,
@@ -60,11 +67,14 @@ data class VersionSelection(
 /**
  * Best Version: deterministic, explainable ranking of the versions of one work for the current device.
  *
- * What decides is what this device can actually show and play: a version it cannot play well loses to one
- * it can, and resolution, dynamic range, and audio only count as far as the display and outputs reach (a
- * higher resolution than the display can show is not better). Among versions that are equivalent by those
- * measures the closest copy wins, so a local file is preferred to the same thing streamed, and never to
- * something materially better (docs/DECISIONS.md).
+ * In order: what can be played here at all; the cut the viewer is part-way through; the version the user
+ * pinned; how well and in what quality this device plays it; and, among versions that are equivalent by all
+ * of that, the closest copy.
+ *
+ * Quality is what this device can actually show and play: a version it plays with compromises loses to one
+ * it plays cleanly, and resolution, dynamic range, and audio only count as far as the display and outputs
+ * reach (a higher resolution than the display can show is not better). A local file is therefore preferred
+ * to the same thing streamed, and never to something materially better (docs/WATCH_STATE.md).
  */
 object VersionSelector {
     /**
@@ -101,11 +111,13 @@ object VersionSelector {
         preferred: VersionId?,
         resuming: WatchState?,
     ): List<Pair<SelectionCriterion, (RankedVersion, RankedVersion) -> Int>> = listOf(
-        SelectionCriterion.USER_PREFERENCE to { a, b -> better(isPreferred(a, preferred), isPreferred(b, preferred)) },
         SelectionCriterion.AVAILABILITY to { a, b -> availabilityRank(a).compareTo(availabilityRank(b)) },
-        SelectionCriterion.COMPATIBILITY to { a, b -> a.assessment.verdict.compareTo(b.assessment.verdict) },
-        SelectionCriterion.FEWER_COMPROMISES to { a, b -> a.assessment.compromises.size.compareTo(b.assessment.compromises.size) },
+        SelectionCriterion.COMPATIBILITY to { a, b -> better(supported(a), supported(b)) },
         SelectionCriterion.CONTINUITY to { a, b -> breaksContinuity(a, resuming).compareTo(breaksContinuity(b, resuming)) },
+        SelectionCriterion.USER_PREFERENCE to { a, b -> better(isPreferred(a, preferred), isPreferred(b, preferred)) },
+        SelectionCriterion.FEWER_COMPROMISES to { a, b ->
+            compareValuesBy(a, b, { it.assessment.verdict }, { it.assessment.compromises.size })
+        },
         SelectionCriterion.RESOLUTION to { a, b -> effectiveHeight(b, device).compareTo(effectiveHeight(a, device)) },
         SelectionCriterion.DYNAMIC_RANGE to { a, b -> shownRange(b, device).compareTo(shownRange(a, device)) },
         SelectionCriterion.AUDIO to { a, b -> audioScore(b, device).compareTo(audioScore(a, device)) },
@@ -115,6 +127,8 @@ object VersionSelector {
     )
 
     private fun better(a: Boolean, b: Boolean): Int = b.compareTo(a)
+
+    private fun supported(version: RankedVersion): Boolean = version.assessment.verdict != PlaybackVerdict.UNSUPPORTED
 
     private fun isPreferred(version: RankedVersion, preferred: VersionId?): Boolean =
         version.version.id == preferred && version.playable
