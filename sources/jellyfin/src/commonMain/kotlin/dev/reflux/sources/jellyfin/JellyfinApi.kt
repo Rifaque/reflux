@@ -22,9 +22,11 @@ data class JellyfinCredentials(
     val userId: String,
     val accessToken: String,
     val deviceId: String,
+    /** The name the user signs in with, for showing who is signed in. Never needed to talk to the server. */
+    val userName: String? = null,
 ) {
     /** Compact persisted form (`key=value` lines). The access token is a secret; see SECURITY.md. */
-    fun encode(): String = listOf("server=$serverUrl", "serverId=$serverId", "user=$userId", "token=$accessToken", "device=$deviceId")
+    fun encode(): String = listOfNotNull("server=$serverUrl", "serverId=$serverId", "user=$userId", "token=$accessToken", "device=$deviceId", userName?.let { "name=$it" })
         .joinToString("\n")
 
     companion object {
@@ -36,6 +38,7 @@ data class JellyfinCredentials(
                 userId = pairs["user"] ?: return null,
                 accessToken = pairs["token"] ?: return null,
                 deviceId = pairs["device"] ?: return null,
+                userName = pairs["name"],
             )
         }
     }

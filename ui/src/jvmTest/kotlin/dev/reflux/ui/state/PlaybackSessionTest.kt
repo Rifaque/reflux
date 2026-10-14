@@ -394,7 +394,7 @@ class PlaybackSessionTest {
         playing.session.playNext()
         runCurrent()
         assertNull(playing.app.playback)
-        assertEquals("This can't be played right now. Media is offline.", playing.app.notice)
+        assertEquals("This can't be played right now. Media isn't connected.", playing.app.notice)
     }
 
     @Test

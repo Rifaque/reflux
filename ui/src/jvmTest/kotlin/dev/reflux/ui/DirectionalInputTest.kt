@@ -125,21 +125,22 @@ class DirectionalInputTest {
     }
 
     @Test
-    fun theSourcesPanelTakesAndKeepsFocus() = screen(populated()) { app ->
+    fun theSourcesPageIsAButtonAwayAndBackIsTheWayOut() = screen(populated()) { app ->
         awaitText("Recently Added")
         press(app, GamepadButton.DPAD_DOWN)
         assertTrue(press(app, GamepadButton.START))
-        awaitText("Add folder")
-        onNodeWithText("Add folder").assertIsFocused()
-        val panel = onNodeWithText("Media sources").fetchSemanticsNode().boundsInRoot
-        for (button in listOf(GamepadButton.DPAD_DOWN, GamepadButton.DPAD_LEFT, GamepadButton.DPAD_DOWN, GamepadButton.DPAD_LEFT, GamepadButton.DPAD_UP, GamepadButton.DPAD_UP)) {
-            press(app, button)
-            val bounds = focusedBounds()
-            assertTrue(bounds.left >= panel.left - 24f && bounds.top >= panel.top - 24f, "focus stays in the panel after $button ($bounds)")
-        }
+        awaitText("Add media")
+        assertEquals(Destination.Sources, app.navigator.current)
+        press(app, GamepadButton.DPAD_DOWN)
+        onNodeWithText("Add media").assertIsFocused()
+        // Down to the folder's card, Select opens it, and its actions are reachable below it.
+        press(app, GamepadButton.DPAD_DOWN)
+        press(app, GamepadButton.FACE_SOUTH)
+        awaitText("Refresh")
+        press(app, GamepadButton.DPAD_DOWN)
+        onNodeWithText("Refresh").assertIsFocused()
         assertTrue(press(app, GamepadButton.FACE_EAST))
-        assertFalse(app.sourcesOpen)
-        assertEquals(Destination.Home, app.navigator.current, "Back closed the panel, not the page")
+        assertEquals(Destination.Home, app.navigator.current)
     }
 
     @Test

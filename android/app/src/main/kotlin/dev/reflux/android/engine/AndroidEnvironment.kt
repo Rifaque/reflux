@@ -25,14 +25,17 @@ import dev.reflux.library.HttpDownloadTransport
 import dev.reflux.library.Offline
 import dev.reflux.library.Library
 import dev.reflux.library.LibraryPipeline
+import dev.reflux.library.SourceConnections
 import dev.reflux.library.SourceRecord
 import dev.reflux.library.SourceRegistry
 import dev.reflux.library.db.RefluxDatabase
 import dev.reflux.metadata.tmdb.TmdbProvider
 import dev.reflux.sources.local.LocalFolderSource
+import dev.reflux.sources.jellyfin.JellyfinConnector
 import dev.reflux.sources.jellyfin.JellyfinCredentials
 import dev.reflux.sources.jellyfin.JellyfinSource
 import dev.reflux.sources.webdav.WebDavConfig
+import dev.reflux.sources.webdav.WebDavConnector
 import dev.reflux.sources.webdav.WebDavSource
 import android.os.LocaleList
 import kotlinx.coroutines.CoroutineScope
@@ -129,6 +132,12 @@ class AndroidEnvironment(context: Context, dataDirectory: File = context.filesDi
             WebDavSource.TYPE to { record -> WebDavConfig.decode(record.config)?.let { WebDavSource(it, http, record.displayName) } },
         ),
     ).apply { load(library.sources()) }
+
+    /** Servers and shares, added by their address. Windows and NAS shares are not offered on Android yet. */
+    val connections: SourceConnections by lazy {
+        val device = listOfNotNull(android.os.Build.MANUFACTURER?.replaceFirstChar { it.uppercase() }, android.os.Build.MODEL).joinToString(" ").ifBlank { "Android" }
+        SourceConnections(library, registry, listOf(JellyfinConnector(http, deviceId, deviceName = "Reflux on $device"), WebDavConnector(http)), report = ::report)
+    }
 
     /** TMDB is enabled when the build provides an application credential; without one, names come from files. */
     val metadata: MetadataProvider? = tmdbToken(application)?.let { TmdbProvider(it, http) }

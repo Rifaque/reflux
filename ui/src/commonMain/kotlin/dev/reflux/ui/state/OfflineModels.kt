@@ -3,10 +3,13 @@ package dev.reflux.ui.state
 import androidx.compose.runtime.Immutable
 import dev.reflux.core.model.Availability
 import dev.reflux.core.model.MediaId
+import dev.reflux.core.model.MediaVersion
 import dev.reflux.core.model.Movie
+import dev.reflux.core.model.SourceId
 import dev.reflux.core.offline.Download
 import dev.reflux.core.offline.DownloadFailure
 import dev.reflux.core.offline.DownloadState
+import dev.reflux.core.offline.OfflineChoice
 import dev.reflux.core.offline.OfflinePlan
 import dev.reflux.core.offline.OfflineReason
 import dev.reflux.core.offline.OfflineSkipReason
@@ -40,10 +43,14 @@ data class OfflineLine(
     val detail: String,
     val state: DownloadState? = null,
     val progress: Float? = null,
+    /** Why this version, for something proposed: one short sentence, or nothing when there was no choice to make. */
+    val note: String? = null,
 )
 
 @Immutable
 data class OfflineModel(
+    /** The work being reviewed before it is downloaded; null for the general sheet. */
+    val reviewing: MediaId? = null,
     /** What Reflux would keep if asked now; null when there is nothing to propose. */
     val proposal: OfflinePlan?,
     val proposed: List<OfflineLine>,
@@ -81,31 +88,67 @@ internal fun Library.offlineStatus(itemId: MediaId, offline: Offline): OfflineSt
     )
 }
 
-internal fun Library.offlineModel(offline: Offline): OfflineModel {
-    val plan = offline.suggest()
+internal fun Library.offlineModel(offline: Offline, reviewing: MediaId? = null): OfflineModel {
+    val plan = if (reviewing != null) offline.planFor(listOf(reviewing)) else offline.suggest()
     fun line(download: Download): OfflineLine {
         val (title, caption) = lineTitle(download.itemId)
         return OfflineLine(download.id, title, caption, Formatting.downloadDetail(download), download.state, download.progress.takeIf { download.state != DownloadState.COMPLETED })
     }
+    val names = mutableMapOf<SourceId, String?>()
     return OfflineModel(
+        reviewing = reviewing,
         proposal = plan.takeUnless { it.empty },
         proposed = plan.downloads.map { planned ->
             val (title, caption) = lineTitle(planned.itemId)
-            val why = if (planned.reason == OfflineReason.NEXT_EPISODE) "Next episode" else "Continue watching"
-            OfflineLine(planned.itemId.value, title, listOfNotNull(caption, why).joinToString("  ·  "), (if (planned.sizeKnown) "" else "about ") + Formatting.size(planned.bytes))
+            val why = when (planned.reason) {
+                OfflineReason.NEXT_EPISODE -> "Next episode"
+                OfflineReason.IN_PROGRESS -> "Continue watching"
+                OfflineReason.CHOSEN -> null
+            }
+            val from = names.getOrPut(planned.version.location.sourceId) { source(planned.version.location.sourceId)?.displayName }
+            OfflineLine(
+                id = planned.itemId.value,
+                title = title,
+                caption = listOfNotNull(caption, why).joinToString("  ·  ").ifEmpty { null },
+                detail = (Formatting.offlineVersion(planned.version) + ((if (planned.sizeKnown) "" else "about ") + Formatting.size(planned.bytes)) + listOfNotNull(from?.let { "from $it" }))
+                    .joinToString("  ·  "),
+                note = Formatting.offlineChoice(planned.choice),
+            )
         },
-        // Only what the user could not have guessed: that something is already here needs no saying.
-        leftOut = plan.skipped.filter { it.reason != OfflineSkipReason.ALREADY_ON_DEVICE && it.reason != OfflineSkipReason.ALREADY_DOWNLOADING }.map { skip ->
-            val (title, caption) = lineTitle(skip.itemId)
-            listOfNotNull(title, caption).joinToString(" · ") + ": " + Problems.offlineSkipShort(skip.reason)
+        leftOut = if (reviewing != null) {
+            // Asked about one thing, every reason it is not being downloaded is worth saying in full.
+            plan.skipped.map { Problems.offlineSkip(it.reason) }.distinct()
+        } else {
+            // Only what the user could not have guessed: that something is already here needs no saying.
+            plan.skipped.filter { it.reason != OfflineSkipReason.ALREADY_ON_DEVICE && it.reason != OfflineSkipReason.ALREADY_DOWNLOADING }.map { skip ->
+                val (title, caption) = lineTitle(skip.itemId)
+                listOfNotNull(title, caption).joinToString(" · ") + ": " + Problems.offlineSkipShort(skip.reason)
+            }
         },
-        room = plan.takeUnless { it.empty }?.let { "${Formatting.size(it.requiredBytes)} needed  ·  room for ${Formatting.size(it.usableBytes)}" },
-        downloads = downloads().sortedByDescending { it.createdAtEpochMs }.map(::line),
+        room = plan.takeUnless { it.empty }?.let { "${Formatting.size(it.requiredBytes)} needed  ·  ${Formatting.size(it.usableBytes)} available" },
+        downloads = if (reviewing != null) emptyList() else downloads().sortedByDescending { it.createdAtEpochMs }.map(::line),
     )
 }
 
+/** A version in the words of someone keeping it: how it looks, never what it is encoded with. */
+internal fun Formatting.offlineVersion(version: MediaVersion): List<String> = listOfNotNull(
+    resolution(version.stream.video?.nominalHeight),
+    version.stream.video?.dynamicRange?.let(::dynamicRange),
+    version.edition,
+)
+
+/** Why a version was the one to keep, said briefly; nothing when there was only one to keep. */
+internal fun Formatting.offlineChoice(choice: OfflineChoice): String? = when (choice) {
+    OfflineChoice.ONLY_VERSION -> null
+    OfflineChoice.BEST_HERE -> "Chosen because it plays best on this device."
+    OfflineChoice.SMALLER_EQUIVALENT -> "Chosen because it looks the same here in less space."
+    OfflineChoice.MADE_TO_FIT -> "The best version that fits in the space on this device."
+    OfflineChoice.PINNED -> "The version you chose for this."
+}
+
 internal fun Formatting.downloadState(download: Download): String = when (download.state) {
-    DownloadState.QUEUED, DownloadState.PREPARING -> "Waiting to download"
+    DownloadState.QUEUED -> "Waiting to download"
+    DownloadState.PREPARING -> "Preparing"
     DownloadState.DOWNLOADING -> download.progress?.let { "Downloading  ·  ${(it * 100).toInt()}%" } ?: "Downloading"
     DownloadState.PAUSED -> "Download paused"
     DownloadState.COMPLETED -> "On this device"
@@ -124,7 +167,7 @@ internal fun Problems.offlineSkip(reason: OfflineSkipReason): String = when (rea
     OfflineSkipReason.ALREADY_ON_DEVICE -> "This is already on this device."
     OfflineSkipReason.ALREADY_DOWNLOADING -> "This is already being downloaded."
     OfflineSkipReason.NOT_ENOUGH_STORAGE -> "There isn't enough room on this device to keep this."
-    OfflineSkipReason.SOURCE_UNAVAILABLE -> "This can't be downloaded right now. Its source is offline."
+    OfflineSkipReason.SOURCE_UNAVAILABLE -> "This can't be downloaded right now. Its source isn't connected."
     OfflineSkipReason.NOT_DOWNLOADABLE -> "Its source doesn't allow keeping a copy."
     OfflineSkipReason.NOT_PLAYABLE_HERE -> "No version of this plays on this device."
 }
@@ -133,7 +176,7 @@ internal fun Problems.offlineSkipShort(reason: OfflineSkipReason): String = when
     OfflineSkipReason.ALREADY_ON_DEVICE -> "already on this device"
     OfflineSkipReason.ALREADY_DOWNLOADING -> "already downloading"
     OfflineSkipReason.NOT_ENOUGH_STORAGE -> "not enough room"
-    OfflineSkipReason.SOURCE_UNAVAILABLE -> "its source is offline"
+    OfflineSkipReason.SOURCE_UNAVAILABLE -> "its source isn't connected"
     OfflineSkipReason.NOT_DOWNLOADABLE -> "its source doesn't allow copies"
     OfflineSkipReason.NOT_PLAYABLE_HERE -> "no version plays on this device"
 }

@@ -3,6 +3,8 @@ package dev.reflux.ui.state
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.mutableStateListOf
 import dev.reflux.core.model.MediaId
+import dev.reflux.core.model.SourceId
+import dev.reflux.core.source.ConnectionKind
 
 /** A place in the browsing experience. Playback is not a destination: it sits above whatever is open. */
 sealed interface Destination {
@@ -18,6 +20,15 @@ sealed interface Destination {
 
     /** The complete contents of a Home row: the results of a smart search, under the row's title. */
     data class Listing(val title: String, val query: String) : Destination
+
+    /** Where the library comes from: every source, whether it can be reached, and what can be done about it. */
+    data object Sources : Destination
+
+    /** Choosing what kind of media to add: a folder, a server, a network share. */
+    data object AddSource : Destination
+
+    /** Connecting a server or a share; with [editing], signing in again or changing where it is. */
+    data class Connect(val kind: ConnectionKind, val editing: SourceId? = null) : Destination
 }
 
 /**
@@ -45,6 +56,11 @@ class Navigator {
         stack.clear()
         stack += Destination.Home
         if (section != Destination.Home) stack += section
+    }
+
+    /** Goes back past every destination that is part of a flow the user has just finished. */
+    fun leave(flow: (Destination) -> Boolean) {
+        while (canGoBack && flow(current)) stack.removeAt(stack.lastIndex)
     }
 
     /** Returns false at the root, where there is nothing to go back to. */

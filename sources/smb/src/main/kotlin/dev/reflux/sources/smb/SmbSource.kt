@@ -98,6 +98,20 @@ class SmbSource(
         }
     }
 
+    /**
+     * Connects, signs in, and opens the share and the folder in it, throwing what went wrong: the server's
+     * own refusal ([com.hierynomus.mssmb2.SMBApiException]), or a connection that could not be made. A
+     * folder that is not there is [java.io.FileNotFoundException].
+     */
+    internal fun probe() {
+        try {
+            share().use { if (!it.folderExists(root)) throw java.io.FileNotFoundException(config.path) }
+        } catch (e: Exception) {
+            reset()
+            throw e
+        }
+    }
+
     override fun files(): Flow<SourceFile> = flow {
         val share = try {
             share()

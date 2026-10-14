@@ -245,6 +245,17 @@ VALUES (?, ?, ?, ?, ?, ?, ?);
 renameSource:
 UPDATE source SET display_name = ? WHERE id = ?;
 
+updateSourceConnection:
+UPDATE source SET display_name = :displayName, locality = :locality, config = :config WHERE id = :id;
+
+-- How many movies and shows a source holds, for saying what is on it.
+sourceContents:
+SELECT
+  (SELECT COUNT(DISTINCT version.item_id) FROM version JOIN item ON item.id = version.item_id
+     WHERE version.source_id = :id AND item.kind = 'MOVIE') AS movies,
+  (SELECT COUNT(DISTINCT item.show_id) FROM version JOIN item ON item.id = version.item_id
+     WHERE version.source_id = :id AND item.kind = 'EPISODE') AS shows;
+
 sourceById:
 SELECT * FROM source WHERE id = ?;
 

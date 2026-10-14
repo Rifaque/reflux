@@ -74,10 +74,23 @@ class AppState(
     var playback: PlaybackSession? by mutableStateOf(null)
         private set
 
-    var sourcesOpen by mutableStateOf(false)
+    private var offlineShown by mutableStateOf(false)
 
     /** Whether the sheet about what is kept on the device is open. */
-    var offlineOpen by mutableStateOf(false)
+    var offlineOpen: Boolean
+        get() = offlineShown
+        set(value) {
+            offlineShown = value
+            if (!value) offlineReview = null
+        }
+
+    /** The work the offline sheet is proposing to keep, while it is reviewing one before it is downloaded. */
+    var offlineReview: MediaId? by mutableStateOf(null)
+        private set
+
+    /** Sources being checked or scanned because the user asked, so that their rows can say so. */
+    var checking: Set<SourceId> by mutableStateOf(emptySet())
+        private set
 
     /** The folder picker Reflux draws itself, while it is open (see [Platform.folderBrowser]). */
     var folderPicker: FolderPicker? by mutableStateOf(null)
@@ -85,7 +98,7 @@ class AppState(
 
     var searchQuery by mutableStateOf("")
 
-    /** A short, transient message ("Its source is offline"). */
+    /** A short, transient message ("Its source isn't connected"). */
     var notice: String? by mutableStateOf(null)
         private set
 
@@ -165,7 +178,45 @@ class AppState(
         invalidate()
     }
 
+    /** Checks a source again and rescans it: "Refresh" on a source that is there, "Try again" on one that is not. */
+    fun checkSource(id: SourceId): Job = scope.launch {
+        if (id in checking) return@launch
+        checking = checking + id
+        try {
+            refresh(id).join()
+        } finally {
+            checking = checking - id
+        }
+    }
+
+    // Sources ------------------------------------------------------------------------------------
+
+    /** Opens the page about where the library comes from, or leaves it when it is what is open. */
+    fun toggleSources() {
+        if (navigator.current == Destination.Sources) navigator.back() else navigator.open(Destination.Sources)
+    }
+
+    /**
+     * A source was connected or signed in again: the flow that did it is left, the user is told, and the
+     * library catches up by itself.
+     */
+    internal fun sourceConnected(id: SourceId, name: String, updated: Boolean) {
+        navigator.leave(::partOfAdding)
+        notify(if (updated) "$name is connected again." else "$name is connected. Your library is being updated.")
+        invalidate()
+        watchSources()
+        refresh(id)
+    }
+
+    private fun partOfAdding(destination: Destination) = destination is Destination.AddSource || destination is Destination.Connect
+
     // Offline ------------------------------------------------------------------------------------
+
+    /** Opens the offline sheet on what Reflux would keep of [itemId], for the user to confirm. */
+    fun reviewDownload(itemId: MediaId) {
+        offlineOpen = true
+        offlineReview = itemId
+    }
 
     /**
      * Keeps [itemId] for watching without its source: a film or an episode itself, the next few episodes
@@ -216,7 +267,6 @@ class AppState(
             } finally {
                 choosingFolder = false
             } ?: return@attempt notify(Problems.STORAGE_NOT_ALLOWED)
-            sourcesOpen = false
             folderPicker = FolderPicker(this, browser, roots)
             return@attempt
         }
@@ -237,6 +287,7 @@ class AppState(
         Problems.folder(choice)?.let(::notify)
         when (choice) {
             is FolderChoice.Added -> {
+                navigator.leave(::partOfAdding)
                 invalidate()
                 watchSources()
                 refresh(choice.sourceId).join()
@@ -368,7 +419,8 @@ class AppState(
     fun onKey(key: Key): Boolean {
         onSignal(InputSignal.KeyPress(key))
         val browsing = playback == null
-        if (browsing && textInputActive && key != Key.ESCAPE && key != Key.ARROW_DOWN) return false
+        // A field is one line: up and down move between fields, everything else is typing.
+        if (browsing && textInputActive && key != Key.ESCAPE && key != Key.ARROW_DOWN && key != Key.ARROW_UP) return false
         val action = InputMapping.map(key, context) ?: return false
         // The toolkit activates the focused control for Enter and Space itself.
         if (browsing && action == SemanticAction.SELECT) return false
@@ -403,14 +455,10 @@ class AppState(
                     offlineOpen = false
                     true
                 }
-                sourcesOpen -> {
-                    sourcesOpen = false
-                    true
-                }
                 else -> navigator.back()
             }
             SemanticAction.MENU -> {
-                if (folderPicker == null && !offlineOpen) sourcesOpen = !sourcesOpen
+                if (folderPicker == null && !offlineOpen) toggleSources()
                 true
             }
             SemanticAction.FULLSCREEN -> {

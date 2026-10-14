@@ -87,6 +87,8 @@ class OfflinePlannerTest {
         val hd = version("hd", 1080, VideoCodec.H264, 8, bytes = 8 * GB)
         // A 1080p SDR screen with software HEVC shows nothing more of the 4K file, and plays it worse.
         assertEquals("hd", plan(request(remote(uhd), remote(hd)), device = Devices.laptop1080).downloads.single().version.id.value)
+        assertEquals(OfflineChoice.BEST_HERE, plan(request(remote(uhd), remote(hd)), device = Devices.laptop1080).downloads.single().choice)
+        assertEquals(OfflineChoice.ONLY_VERSION, plan(request(remote(hd)), device = Devices.laptop1080).downloads.single().choice)
         // The same two on a device that shows 4K HDR: the other way round.
         assertEquals("uhd", plan(request(remote(uhd), remote(hd)), device = Devices.tv4kHdr).downloads.single().version.id.value)
         // And a phone that cannot decode HEVC at all is never handed it, however much room there is.
@@ -103,6 +105,7 @@ class OfflinePlannerTest {
         val download = plan(request(remote(fat), remote(lean))).downloads.single()
         assertEquals("encode", download.version.id.value)
         assertFalse(download.madeToFit, "it is the first choice, not a compromise")
+        assertEquals(OfflineChoice.SMALLER_EQUIVALENT, download.choice, "and the reason it is not the larger one can be told")
         assertEquals(6 * GB, download.bytes)
         assertTrue(download.sizeKnown)
     }
@@ -114,6 +117,7 @@ class OfflinePlannerTest {
         val fits = plan(request(remote(hd), remote(sd)), usable = 4 * GB)
         assertEquals("sd", fits.downloads.single().version.id.value)
         assertTrue(fits.downloads.single().madeToFit)
+        assertEquals(OfflineChoice.MADE_TO_FIT, fits.downloads.single().choice)
         assertEquals(2 * GB, fits.requiredBytes)
 
         val nothing = plan(request(remote(hd), remote(sd)), usable = 1 * GB)
@@ -127,6 +131,7 @@ class OfflinePlannerTest {
         val hd = version("hd", 1080, bytes = 8 * GB)
         // The user chose the 4K file for this work. That is what is kept, although it is not what Reflux would pick here.
         assertEquals("uhd", plan(request(remote(uhd), remote(hd), pinned = "uhd")).downloads.single().version.id.value)
+        assertEquals(OfflineChoice.PINNED, plan(request(remote(uhd), remote(hd), pinned = "uhd")).downloads.single().choice)
         // Without the room for it, nothing is put in its place behind the user's back.
         val tight = plan(request(remote(uhd), remote(hd), pinned = "uhd"), usable = 10 * GB)
         assertTrue(tight.empty)

@@ -368,19 +368,32 @@ class JellyfinSource(
             http: HttpFetcher,
             deviceId: String,
             deviceName: String = "Reflux",
-        ): JellyfinCredentials {
+        ): JellyfinCredentials = signIn(serverUrl, username, password, http, deviceId, deviceName).first
+
+        /** Signs in, and also says what the server calls itself. */
+        internal suspend fun signIn(
+            serverUrl: String,
+            username: String,
+            password: String,
+            http: HttpFetcher,
+            deviceId: String,
+            deviceName: String,
+        ): Pair<JellyfinCredentials, String?> {
             val url = normalizeUrl(serverUrl)
             val api = JellyfinApi(url, http, deviceId, deviceName)
             val info = api.get("System/Info/Public").obj() ?: throw JellyfinException("not a Jellyfin server")
+            if (info.string("Id") == null && info.string("Version") == null) throw JellyfinException("not a Jellyfin server")
             val body = JsonObject(mapOf("Username" to JsonPrimitive(username), "Pw" to JsonPrimitive(password)))
             val auth = api.post("Users/AuthenticateByName", body).obj() ?: throw JellyfinException("empty login response")
-            return JellyfinCredentials(
+            val credentials = JellyfinCredentials(
                 serverUrl = url,
                 serverId = auth.string("ServerId") ?: info.string("Id") ?: throw JellyfinException("missing server id"),
                 userId = auth.obj("User")?.string("Id") ?: throw JellyfinException("missing user id"),
                 accessToken = auth.string("AccessToken") ?: throw JellyfinException("missing access token"),
                 deviceId = deviceId,
+                userName = auth.obj("User")?.string("Name") ?: username,
             )
+            return credentials to info.string("ServerName")?.takeIf { it.isNotBlank() }
         }
 
         private val trailingYear = Regex("""^(.*\S)\s*\(((?:18|19|20)\d{2})\)$""")

@@ -114,7 +114,7 @@ class ScreensTest {
     fun sourcesPanelListsSourcesAndOffersToAddOne() = screen(populated()) { app ->
         awaitText("Recently Added")
         onNodeWithContentDescription("Media sources").performClick()
-        awaitText("Add folder")
+        awaitText("Add media")
         onNodeWithText("Media").assertExists()
         save("sources")
     }
@@ -169,7 +169,7 @@ class ScreensTest {
         },
     ) { app ->
         awaitText("Recently Added")
-        onAllNodesWithText("Offline").fetchSemanticsNodes().let { assertTrue(it.isNotEmpty(), "cards say they cannot be played right now") }
+        onAllNodesWithText("Not connected").fetchSemanticsNodes().let { assertTrue(it.isNotEmpty(), "cards say they cannot be played right now") }
         save("home-offline")
         app.navigator.open(Destination.Details(app.library.movies().first { it.item.title == "Heat" }.item.id))
         awaitText("Versions")

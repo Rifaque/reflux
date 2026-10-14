@@ -172,7 +172,27 @@ data class PlannedDownload(
     val sizeKnown: Boolean,
     /** Whether a lesser version was taken because the first choice does not fit in the room there is. */
     val madeToFit: Boolean = false,
+    /** Why this version and not another, for telling the user in a sentence. */
+    val choice: OfflineChoice = if (madeToFit) OfflineChoice.MADE_TO_FIT else OfflineChoice.BEST_HERE,
 )
+
+/** Why the planner took the version it took. */
+enum class OfflineChoice {
+    /** It is the only copy that can be kept. */
+    ONLY_VERSION,
+
+    /** Of the copies that can be kept, it plays best on this device. */
+    BEST_HERE,
+
+    /** It looks and plays the same here as a larger copy, in less room. */
+    SMALLER_EQUIVALENT,
+
+    /** The first choice does not fit; this is the best one that does. */
+    MADE_TO_FIT,
+
+    /** It is the version the user chose for this work. */
+    PINNED,
+}
 
 data class OfflineSkip(val itemId: MediaId, val reason: OfflineSkipReason)
 
@@ -243,14 +263,14 @@ object OfflinePlanner {
         val reachable = downloadable.filter { it.playable }
         if (reachable.isEmpty()) return Outcome.Skip(OfflineSkipReason.SOURCE_UNAVAILABLE)
 
-        fun planned(version: RankedVersion, madeToFit: Boolean): PlannedDownload {
+        fun planned(version: RankedVersion, madeToFit: Boolean, choice: OfflineChoice): PlannedDownload {
             val (bytes, known) = sizeOf(version.version)
-            return PlannedDownload(request.itemId, request.reason, version.version, bytes, known, madeToFit)
+            return PlannedDownload(request.itemId, request.reason, version.version, bytes, known, madeToFit, choice)
         }
 
         // What the user pinned is what they get, or nothing: never something else in its place.
         reachable.firstOrNull { it.version.id == request.pinned }?.let { pinned ->
-            val download = planned(pinned, madeToFit = false)
+            val download = planned(pinned, madeToFit = false, OfflineChoice.PINNED)
             return if (download.bytes <= remaining) Outcome.Take(download) else Outcome.Skip(OfflineSkipReason.NOT_ENOUGH_STORAGE)
         }
 
@@ -269,7 +289,14 @@ object OfflinePlanner {
             }
         }
         val choice = ordered.firstOrNull { sizeOf(it.version).first <= remaining } ?: return Outcome.Skip(OfflineSkipReason.NOT_ENOUGH_STORAGE)
-        return Outcome.Take(planned(choice, madeToFit = choice.version.id != ordered.first().version.id))
+        val madeToFit = choice.version.id != ordered.first().version.id
+        val why = when {
+            madeToFit -> OfflineChoice.MADE_TO_FIT
+            reachable.size == 1 -> OfflineChoice.ONLY_VERSION
+            choice.version.id != first.version.id -> OfflineChoice.SMALLER_EQUIVALENT
+            else -> OfflineChoice.BEST_HERE
+        }
+        return Outcome.Take(planned(choice, madeToFit, why))
     }
 
     /** A copy on the device only stands for the work if it does not put the viewer on a different cut from the one they are in. */

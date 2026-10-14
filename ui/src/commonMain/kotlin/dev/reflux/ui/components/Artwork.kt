@@ -6,6 +6,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -157,7 +158,7 @@ private fun StateBadges(card: MediaCard, modifier: Modifier = Modifier) {
     Box(modifier.fillMaxSize()) {
         if (card.offline) {
             Box(Modifier.fillMaxSize().background(RefluxColors.background.copy(alpha = 0.55f)))
-            Chip("Offline", Modifier.align(Alignment.TopStart).padding(8.dp))
+            Chip("Not connected", Modifier.align(Alignment.TopStart).padding(8.dp))
         }
         if (card.watched) {
             Box(
@@ -175,7 +176,8 @@ private fun describe(card: MediaCard): String = listOfNotNull(
     card.title,
     card.caption,
     "watched".takeIf { card.watched },
-    "offline".takeIf { card.offline },
+    "not connected".takeIf { card.offline },
+    "on this device".takeIf { card.downloaded },
 ).joinToString(", ")
 
 /**
@@ -207,9 +209,18 @@ fun PosterCard(card: MediaCard, onClick: () -> Unit, modifier: Modifier = Modifi
         // Two lines are always reserved so rows line up; a placeholder already says the title, so only the caption follows it.
         Column(Modifier.padding(horizontal = 2.dp)) {
             if (poster != null) Text(card.title, style = LocalTypography.current.captionStrong, maxLines = 1)
-            Text(card.caption ?: " ", style = LocalTypography.current.caption, color = RefluxColors.textTertiary, maxLines = 1)
+            Caption(card.caption, card.downloaded)
             if (poster == null) Text(" ", style = LocalTypography.current.captionStrong, maxLines = 1)
         }
+    }
+}
+
+/** A card's line beneath its title, with a small mark when a copy is kept on this device. */
+@Composable
+private fun Caption(text: String?, downloaded: Boolean) {
+    Row(horizontalArrangement = Arrangement.spacedBy(5.dp), verticalAlignment = Alignment.CenterVertically) {
+        if (downloaded) Icon(Icon.DOWNLOADED, size = 12.dp, tint = RefluxColors.textSecondary)
+        Text(text ?: " ", style = LocalTypography.current.caption, color = RefluxColors.textTertiary, maxLines = 1)
     }
 }
 

@@ -2,7 +2,17 @@
 
 Reflux can keep the right copy of something on the device, so that it plays without its source. The user says *that* they want it; which version, from which source, and whether it fits is Reflux's to work out.
 
-This is not a download manager. There is no list of files to administer and no question about codecs. There is one action on a details page, one sheet that proposes what to keep, and the copies that exist.
+This is not a download manager. There is no list of files to administer and no question about codecs. There is one action on a details page, one sheet that proposes what to keep and is confirmed, and the copies that exist.
+
+## In the application
+
+1. A details page offers Download next to the other secondary actions, never larger than Play.
+2. Selecting it opens the sheet on what Reflux would keep: "Preparing the best offline version for this device.", then the work, the version in plain terms (`1080p · HDR10 · 4.3 GB · from Living Room`), why that one when there was a choice ("Chosen because it plays best on this device.", "…looks the same here in less space.", "The best version that fits in the space on this device.", "The version you chose for this."), what it needs and what is available. If nothing can be kept, the sheet says why instead (already on this device, its source is not connected, no room).
+3. Download confirms; Not now (or Back) does nothing.
+4. The details page then says how far it is in one quiet line, with a thin progress bar. The action becomes "Downloading", then a lit "Downloaded"; selecting it again opens the sheet with every copy and what can be done about each: pause, try again, cancel (at once) or remove (asked first).
+5. The work's card carries a small mark before its caption; the copy is listed among the work's versions as the closest one.
+
+Why a version was chosen comes from the planner itself (`PlannedDownload.choice`), so the sheet explains the decision rather than guessing at it.
 
 ## A download is a version, not a work
 
@@ -94,4 +104,3 @@ The desktop has the engine and none of the interface: nothing is wired there yet
 - Downloads do not continue with the application closed.
 - A server that only offers a transcoded stream for a file is not a download source.
 - A copy made from a file whose identity the user corrected follows it; a merge of two works while the origin is permanently gone does not move the copy.
-- The application has no screen for adding a server or share yet, so today the feature is reachable only for sources added another way (see the roadmap).

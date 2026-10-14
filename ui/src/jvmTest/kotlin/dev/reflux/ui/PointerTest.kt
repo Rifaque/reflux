@@ -105,22 +105,14 @@ class PointerTest {
     }
 
     @Test
-    fun theSourcesPanelKeepsClicksToItselfAndClosesOnAnOutsideClick() = screen(populated()) { app ->
+    fun theSourcesAreAPageThatTheNavigationOpensAndCloses() = screen(populated()) { app ->
         awaitText("Recently Added")
         onNodeWithContentDescription("Media sources").mouseClick()
-        awaitText("Add folder")
-
-        // The panel's own background is not a way through to the posters behind it.
-        val panel = onNodeWithText("Media sources").fetchSemanticsNode().boundsInRoot
-        onRoot().performMouseInput { click(Offset(panel.left + 300f, panel.top + 6f)) }
+        awaitText("Add media")
+        assertEquals(Destination.Sources, app.navigator.current)
+        onNodeWithContentDescription("Media sources").mouseClick()
         waitForIdle()
-        assertTrue(app.sourcesOpen)
         assertEquals(Destination.Home, app.navigator.current)
-
-        onRoot().performMouseInput { click(Offset(300f, 700f)) }
-        waitForIdle()
-        assertFalse(app.sourcesOpen)
-        assertEquals(Destination.Home, app.navigator.current, "the click that closed the panel did not also open a poster")
     }
 
     @Test
@@ -364,13 +356,19 @@ class PointerTest {
         screen(world, platform) { app ->
             awaitText("Recently Added")
             onNodeWithContentDescription("Media sources").mouseClick()
-            onNodeWithContentDescription("Remove Media").mouseClick()
+            awaitText("Add media")
+            onNodeWithText("Media").mouseClick()
+            awaitText("Remove")
+            onNodeWithText("Remove").mouseClick()
             awaitText("Remove Media?")
             // Asking is not removing.
             onNodeWithText("Keep").mouseClick()
             assertTrue(platform.removed.isEmpty())
-            onNodeWithContentDescription("Remove Media").mouseClick()
             onNodeWithText("Remove").mouseClick()
+            awaitText("Remove Media?")
+            onNodeWithText("Remove").mouseClick()
+            await("the empty list") { onAllNodesWithText("Nothing has been added yet", substring = true).fetchSemanticsNodes().isNotEmpty() }
+            runOnIdle { app.navigator.back() }
             awaitText("Point Reflux at your media")
             assertEquals(listOf(world.source.descriptor.id), platform.removed.toList())
             assertTrue(app.library.movies().isEmpty())

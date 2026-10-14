@@ -4,6 +4,7 @@ import androidx.compose.ui.test.DesktopComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.click
 import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isFocused
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
@@ -152,7 +153,13 @@ class OfflineUiTest {
             save("offline-details-before")
             offline.server.hold = CompletableDeferred()
             onNodeWithContentDescription("Download").performClick()
+            // What would be kept is shown first, and nothing happens until the user says so.
             awaitText("Preparing the best offline version for this device.")
+            await("the plan") { shows("1080p") && shows("from Home Server") && shows("available") }
+            assertTrue(app.library.downloads().isEmpty())
+            save("offline-review")
+            onNodeWithText("Download").performClick()
+            await("the sheet to close") { !app.offlineOpen }
             await("the download to be under way") { has("Downloading") && shows("Downloading") }
             save("offline-details-downloading")
             assertEquals(1, app.library.downloads().size)
@@ -168,7 +175,7 @@ class OfflineUiTest {
             // With the server away the film is still there, and still plays.
             offline.server.reachable = false
             runOnIdle { app.refresh() }
-            await("the server to be seen as away") { shows("Offline") }
+            await("the server to be seen as away") { shows("Not connected") }
             onNodeWithText("Play").performClick()
             await("playback from the device") { app.playback != null && offline.platform.players.isNotEmpty() }
             assertTrue(offline.platform.players.single().requests.single().target.uri.startsWith("file:"))
@@ -194,8 +201,8 @@ class OfflineUiTest {
             onNodeWithText("Watch offline").performClick()
             awaitText("Ready to keep")
             assertTrue(shows("Ronin") && shows("Continue watching"))
-            assertTrue(shows("4.2 GB needed") && shows("room for"), "what it costs and what there is")
-            assertFalse(shows("H.264") || shows("1080p") || shows("Home Server"), "nothing technical is asked or told")
+            assertTrue(shows("4.2 GB needed") && shows("available"), "what it costs and what there is")
+            assertFalse(shows("H.264"), "nothing technical is asked or told")
             save("offline-sheet-proposal")
 
             onNodeWithText("Download").performClick()
@@ -223,7 +230,7 @@ class OfflineUiTest {
         awaitText("Versions")
         assertFalse(has("Download"))
         onNodeWithContentDescription("Media sources").performClick()
-        awaitText("Add folder")
+        awaitText("Add media")
         assertFalse(shows("Watch offline"))
     }
 
@@ -236,10 +243,13 @@ class OfflineUiTest {
             runOnIdle { app.navigator.open(Destination.Details(phone.movie("Sicario"))) }
             await("the action") { has("Download") }
             onNodeWithContentDescription("Download").performTouchInput { click() }
+            awaitText("Not now")
+            save("offline-phone-review")
+            onNodeWithText("Download").performTouchInput { click() }
             await("the copy to be here") { has("Downloaded") }
             save("offline-phone-details")
             onNodeWithContentDescription("Downloaded").performTouchInput { click() }
-            awaitText("Watch offline")
+            await("the sheet", { "open=${app.offlineOpen} review=${app.offlineReview}" }) { onAllNodesWithText("Watch offline").fetchSemanticsNodes().isNotEmpty() }
             val sheet = onNodeWithText("Watch offline").fetchSemanticsNode().boundsInRoot
             assertTrue(sheet.left >= 0f && sheet.right <= 412f)
             save("offline-phone-sheet")
@@ -255,7 +265,21 @@ class OfflineUiTest {
             remote(app, Key.ARROW_RIGHT, 3)
             await("focus on Download") { onAllNodes(isFocused() and hasContentDescription("Download")).fetchSemanticsNodes().isNotEmpty() }
             remote(app, Key.DPAD_CENTER)
+            // The plan, with focus on its confirmation: OK again is "yes, keep it".
+            awaitText("Not now")
+            await("focus on Download in the sheet") { onAllNodes(isFocused() and hasText("Download")).fetchSemanticsNodes().isNotEmpty() }
+            save("offline-tv-review")
+            tv.server.hold = CompletableDeferred()
+            remote(app, Key.DPAD_CENTER)
+            await("focus back on the action while it downloads", { onAllNodes(isFocused()).fetchSemanticsNodes().map { it.config.filter { e -> e.key.name == "ContentDescription" || e.key.name == "Text" }.joinToString { e -> e.key.name + "=" + e.value } + " offlineOpen=" + app.offlineOpen + " " + it.boundsInRoot } }) {
+                onAllNodes(isFocused() and hasContentDescription("Downloading")).fetchSemanticsNodes().isNotEmpty()
+            }
+            tv.server.hold?.complete(Unit)
             await("the copy to be here") { has("Downloaded") }
+            // Focus is back on the action that opened the sheet, not sent to the top of the page.
+            await("focus back on the action", { onAllNodes(isFocused()).fetchSemanticsNodes().map { it.config.toString() } }) {
+                onAllNodes(isFocused() and hasContentDescription("Downloaded")).fetchSemanticsNodes().isNotEmpty()
+            }
             save("offline-tv-details")
             // OK on it again opens the sheet, with focus inside; Back closes it.
             remote(app, Key.DPAD_CENTER)

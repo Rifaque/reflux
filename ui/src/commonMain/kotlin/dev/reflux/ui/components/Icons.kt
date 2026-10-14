@@ -25,7 +25,7 @@ import dev.reflux.ui.theme.RefluxColors
 enum class Icon {
     PLAY, PAUSE, NEXT, PREVIOUS, REWIND, FORWARD,
     BACK, CHEVRON_RIGHT, CHEVRON_UP, CHEVRON_DOWN, CLOSE, CHECK, PLUS, SEARCH,
-    HEART, HEART_FILLED, FOLDER, REFRESH, OFFLINE, DOWNLOAD,
+    HEART, HEART_FILLED, FOLDER, REFRESH, OFFLINE, DOWNLOAD, DOWNLOADED, SERVER, NETWORK,
     VOLUME, VOLUME_MUTED, SUBTITLES, AUDIO, CHAPTERS, FULLSCREEN, FULLSCREEN_EXIT,
 }
 
@@ -90,6 +90,22 @@ private fun DrawScope.draw(icon: Icon, color: Color) {
             moveTo(12f, 4.5f); lineTo(12f, 14.5f)
             moveTo(7.5f, 10.5f); lineTo(12f, 15f); lineTo(16.5f, 10.5f)
             moveTo(5.5f, 19f); lineTo(18.5f, 19f)
+        }
+        Icon.DOWNLOADED -> stroke(color) {
+            moveTo(6f, 10.5f); lineTo(10.2f, 14.7f); lineTo(18f, 6.5f)
+            moveTo(5.5f, 19f); lineTo(18.5f, 19f)
+        }
+        Icon.SERVER -> {
+            drawRoundRect(color, Offset(4f, 4.5f), Size(16f, 6.5f), CornerRadius(2f), style = line)
+            drawRoundRect(color, Offset(4f, 13f), Size(16f, 6.5f), CornerRadius(2f), style = line)
+            drawCircle(color, radius = 1.1f, center = Offset(7.6f, 7.75f))
+            drawCircle(color, radius = 1.1f, center = Offset(7.6f, 16.25f))
+        }
+        Icon.NETWORK -> {
+            drawRoundRect(color, Offset(8.5f, 3.5f), Size(7f, 5.5f), CornerRadius(1.5f), style = line)
+            drawRoundRect(color, Offset(3f, 15f), Size(7f, 5.5f), CornerRadius(1.5f), style = line)
+            drawRoundRect(color, Offset(14f, 15f), Size(7f, 5.5f), CornerRadius(1.5f), style = line)
+            stroke(color) { moveTo(12f, 9f); lineTo(12f, 12f); moveTo(6.5f, 15f); lineTo(6.5f, 12f); lineTo(17.5f, 12f); lineTo(17.5f, 15f) }
         }
         Icon.CHEVRON_UP -> stroke(color) { moveTo(5.5f, 15f); lineTo(12f, 8.5f); lineTo(18.5f, 15f) }
         Icon.CHEVRON_DOWN -> stroke(color) { moveTo(5.5f, 9f); lineTo(12f, 15.5f); lineTo(18.5f, 9f) }

@@ -75,7 +75,8 @@ class FirstRunTest {
 
             // Choosing the same folder again says so instead of adding it twice.
             shell.click("Media sources")
-            shell.click("Add folder")
+            shell.click("Add media")
+            shell.click("A folder on this device")
             NativeDialogs.answer(FolderPicker.TITLE, media)
             shell.await("the duplicate to be explained") { shell.app.notice?.contains("already in your library") == true }
             assertEquals(1, environment.library.sources().size)
@@ -101,13 +102,13 @@ class FirstRunTest {
             shell.click("Media sources")
             shell.awaitShown("Not connected", exact = false)
             assertEquals(3, environment.library.movies().size + environment.library.shows().size, "the library is still there")
-            shell.awaitShown("Offline")
             shell.capture("first-run-source-missing")
 
             // Something that cannot be played says why instead of doing nothing.
-            shell.clickSurface(0.3f, 0.9f) // closes the panel
+            shell.ui { shell.app.navigator.back() }
+            shell.awaitShown("Not connected")
             shell.ui { shell.app.play(environment.library.movies().first().item.id) }
-            shell.await("the offline source to be named") { shell.app.notice?.contains("My Media is offline") == true }
+            shell.await("the source to be named") { shell.app.notice?.contains("My Media isn't connected") == true }
         }
     }
 }

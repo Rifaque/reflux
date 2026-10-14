@@ -25,6 +25,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -54,6 +56,7 @@ import dev.reflux.ui.components.ButtonStyle
 import dev.reflux.ui.components.Chip
 import dev.reflux.ui.components.Icon
 import dev.reflux.ui.components.IconButton
+import dev.reflux.ui.components.LocalFocusEntry
 import dev.reflux.ui.components.Pressable
 import dev.reflux.ui.components.ProgressBar
 import dev.reflux.ui.components.SectionHeader
@@ -131,7 +134,7 @@ private fun Gone(app: AppState) {
                 color = RefluxColors.textSecondary,
                 align = TextAlign.Center,
             )
-            Button("Back", { if (!app.navigator.back()) app.navigator.show(Destination.Home) }, Modifier.initialFocus(), icon = Icon.BACK, style = ButtonStyle.PRIMARY)
+            Button("Back", { if (!app.navigator.back()) app.navigator.show(Destination.Home) }, Modifier.initialFocus(), icon = Icon.BACK, style = ButtonStyle.SOLID)
         }
     }
 }
@@ -173,7 +176,7 @@ private fun Header(app: AppState, details: DetailsModel, offline: OfflineStatus?
                             Text(details.facts.joinToString("   ·   "), style = LocalTypography.current.bodyStrong, color = RefluxColors.textSecondary, maxLines = 1)
                         }
                         details.badges.forEach { Chip(it) }
-                        if (card.offline) Chip("Offline")
+                        if (card.offline) Chip("Not connected")
                     }
                     if (details.genres.isNotEmpty()) Text(details.genres.joinToString("  ·  "), style = LocalTypography.current.caption, color = RefluxColors.textTertiary, maxLines = 1)
                     details.overview?.takeIf { it.isNotBlank() }?.let { Text(it, color = RefluxColors.textSecondary, maxLines = 5) }
@@ -197,29 +200,35 @@ private fun Header(app: AppState, details: DetailsModel, offline: OfflineStatus?
                             if (card.watched) "Mark as unwatched" else "Mark as watched",
                             { app.setWatched(card.id, !card.watched) },
                             glass = true,
-                            tint = if (card.watched) RefluxColors.accent else RefluxColors.textPrimary,
+                            selected = card.watched,
                         )
                         IconButton(
                             if (card.entry.favorite) Icon.HEART_FILLED else Icon.HEART,
                             if (card.entry.favorite) "Remove from favorites" else "Add to favorites",
                             { app.toggleFavorite(card.entry) },
                             glass = true,
-                            tint = if (card.entry.favorite) RefluxColors.accent else RefluxColors.textPrimary,
                         )
                         if (offline?.offered == true) {
                             val settled = offline.downloaded || offline.busy || offline.failed
+                            // The sheet this opens takes focus; when it closes, focus comes back here, not to Play.
+                            val download = remember { FocusRequester() }
+                            val entry = LocalFocusEntry.current
                             IconButton(
-                                Icon.DOWNLOAD,
+                                if (offline.downloaded) Icon.DOWNLOADED else Icon.DOWNLOAD,
                                 when {
                                     offline.downloaded -> "Downloaded"
                                     offline.busy -> "Downloading"
                                     offline.failed -> "Download didn't finish"
                                     else -> "Download"
                                 },
-                                // Once there is a download, what there is to do about it is in the sheet.
-                                { if (settled) app.offlineOpen = true else app.download(card.id) },
+                                // First what Reflux would keep, to confirm; once there is a download, what there is to do about it.
+                                {
+                                    entry?.afterPanel = download
+                                    if (settled) app.offlineOpen = true else app.reviewDownload(card.id)
+                                },
+                                Modifier.focusRequester(download),
                                 glass = true,
-                                tint = if (offline.downloaded || offline.busy) RefluxColors.accent else RefluxColors.textPrimary,
+                                selected = offline.downloaded,
                             )
                         }
                     }
@@ -296,7 +305,7 @@ private fun EpisodeRow(app: AppState, episode: MediaCard, modifier: Modifier = M
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 Text(episode.caption ?: episode.title, style = LocalTypography.current.bodyStrong, color = if (episode.offline) RefluxColors.textTertiary else RefluxColors.textPrimary, maxLines = 1)
                 val facts = listOfNotNull(
-                    "Offline".takeIf { episode.offline },
+                    "Not connected".takeIf { episode.offline },
                     Formatting.remaining(episode.entry.watchState) ?: episode.entry.metadata?.runtimeMinutes?.takeIf { it > 0 }?.let(Formatting::runtime),
                 )
                 if (facts.isNotEmpty()) Text(facts.joinToString("  ·  "), style = LocalTypography.current.caption, color = RefluxColors.textTertiary, maxLines = 1)
