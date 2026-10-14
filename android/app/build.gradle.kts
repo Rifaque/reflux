@@ -77,6 +77,7 @@ dependencies {
     implementation(project(":sources:local"))
     implementation(project(":sources:jellyfin"))
     implementation(project(":sources:webdav"))
+    implementation(project(":sources:smb"))
     implementation(project(":metadata:tmdb"))
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.sqldelight.android.driver)

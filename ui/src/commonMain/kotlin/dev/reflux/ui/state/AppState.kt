@@ -193,7 +193,8 @@ class AppState(
 
     /** Opens the page about where the library comes from, or leaves it when it is what is open. */
     fun toggleSources() {
-        if (navigator.current == Destination.Sources) navigator.back() else navigator.open(Destination.Sources)
+        // From anywhere about the sources, back to where the user was before them.
+        if (navigator.current.aboutSources) navigator.leave { it.aboutSources } else navigator.open(Destination.Sources)
     }
 
     /**
@@ -206,6 +207,20 @@ class AppState(
         invalidate()
         watchSources()
         refresh(id)
+    }
+
+    /**
+     * Includes only what is not in [excluded] from a source made of parts, then reads it again. The
+     * library catches up as the scan runs; nothing about the connection changes.
+     */
+    fun chooseSections(id: SourceId, excluded: Set<String>, all: List<dev.reflux.core.source.SourceSection>, name: String): Job = attempt("That couldn't be changed. Try again.") {
+        val connections = platform.connections ?: return@attempt
+        val changed = withContext(background) { connections.setExcludedSections(id, excluded, all) }
+        if (!changed) return@attempt notify("That couldn't be changed. Try again.")
+        if (navigator.current is Destination.SourceSections) navigator.back()
+        notify("$name is being updated with your choice.")
+        invalidate()
+        checkSource(id)
     }
 
     private fun partOfAdding(destination: Destination) = destination is Destination.AddSource || destination is Destination.Connect

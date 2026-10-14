@@ -405,7 +405,7 @@ Shares are one choice for the user, not one per protocol: an address that starts
 
 **Alternatives.** A form per adapter in the experience layer would have been quicker and would have put adapter knowledge (fields, error codes, URL rules) in the UI, which is what the Media Core exists to prevent. A generic form described by each adapter (fields, labels, validation) would have moved text onto the screen from engines, which "Failures are states, worded in one place" rules out, for a flexibility no source needs yet: every source reached by address so far needs an address and optionally a name and password.
 
-**Consequences.** The Jellyfin password is used for the one request that signs in, and only the server's access token is kept; WebDAV and SMB passwords are still kept with the source configuration, unencrypted, until platform secure storage (RELEASE.md). Diagnostics get a connector's own detail (an HTTP status, an SMB status name), never the request. Jellyfin credentials now also keep the user's name, to show who is signed in and to fill the name in when signing in again. Choosing which of a server's libraries to include is not offered: the adapter reads the whole catalog the account can see.
+**Consequences.** The Jellyfin password is used for the one request that signs in, and only the server's access token is kept; WebDAV and SMB passwords are still kept with the source configuration, unencrypted, until platform secure storage (RELEASE.md). Diagnostics get a connector's own detail (an HTTP status, an SMB status name), never the request. Jellyfin credentials now also keep the user's name, to show who is signed in and to fill the name in when signing in again. Choosing which of a server's libraries to include came with the next milestone (below).
 
 ## 2026-10-14 — The media sources are a page, and adding media is a short flow
 
@@ -424,3 +424,28 @@ The earlier refinement made amber the primary action, the section the user is in
 - Amber is what is playing or about to: the Play and Resume button, progress on posters, on details pages, and on the player's timeline, the "Recommended" mark on a version, and the one call to action of first run.
 - Everything else is neutral. The section the user is in is white on a soft pill. Switched-on toggles (watched, downloaded) are a lit surface; a favorite is a filled heart. The main action of a form, a sheet, or a player prompt is solid white (`ButtonStyle.SOLID`). Text never takes the accent, and the focus ring stays white.
 - Empty states sit on a neutral light from above with only a trace of warmth in a corner.
+
+## 2026-10-14 — A source can be made of parts the user chooses between
+
+A media server is several libraries, and a household's server often has one the user does not want in Reflux (the children's, someone else's). A source that is made of parts says so (`SectionedSource`: its parts, and which are left out) and its connector can rewrite a stored configuration to leave parts out (`SourceConnector.withExcludedSections`). The experience layer offers "Libraries" for such a source, and nothing about Jellyfin reaches it. Jellyfin's parts are the account's libraries that can hold films or series; music, books, photos, playlists, and live television are not offered.
+
+- **What is stored is what is left out**, by the server's id for the library. A library that appears later is included, which is the automatic default; a renamed library keeps its choice; one that is deleted simply stops mattering.
+- **The connection stays.** Narrowing a source rescans it, and the scan, as always, makes the library match the source: what was left out leaves the library, its watch history stays with its works and comes back with them. Copies kept for offline stay, as when any origin goes away.
+- **Leaving everything out is not a choice.** A source that is reachable and lists nothing, while the library knows media on it, is treated as storage that went away (2026-10-08): the library is kept and the source marked unavailable. Letting a user produce that state on purpose would look like a failure. The last included library cannot be unticked, and the page says that removing the source is how to include nothing.
+- **Signing in again keeps the choice.**
+
+## 2026-10-14 — SMB on Android, and connection secrets sealed there
+
+SMB had been desktop-only. Nothing about it was desktop-specific: smbj runs on Android's runtime, and the loopback stream server uses plain sockets. It is now offered on Android through the same adapter, connector, and stream server; the Media Core and the domain model did not change, and no storage permission is involved (a share is a network connection, not a folder on the device).
+
+Adding it would have put a share's password in the library database in the open, next to the web share passwords and server tokens already there. On Android, what a connection stores is now sealed with an AES-GCM key that lives in the Android keystore and never leaves it (`ConfigSeal` in `library`, `KeystoreSeal` in the shell), and whatever an earlier version stored in the open is sealed when the engine starts. Adapters only ever see the opened form, so no adapter changed. This is not the whole secure-storage work (RELEASE.md): the desktop still stores connections as they are, and the column holds the sealed secret rather than a reference to a keychain entry.
+
+Found by running it on an Android device, and fixed in the shared adapter:
+
+- **The stream server listened where nobody called.** Its URLs name `127.0.0.1`; it bound to the platform's "loopback address", which on Android is the IPv6 one. Every player was refused. It now binds to `127.0.0.1` by address.
+- **One reader closed the share under another.** smbj hands every caller the same share object for a share name, and each use closed "its" share when it was done; a probe finishing closed the share the player was reading. The share now lives as long as the connection; only files are closed per use.
+- **A failing stream ended the application.** smbj reports a broken share with an unchecked exception, and on Android an exception escaping a thread ends the process. Each stream connection now catches its own failure, and the player is told the source is unreachable.
+
+## 2026-10-14 — The navigation says where the user is, or nothing
+
+The sources pages belong to no section of the library, so no tab is lit while one of them is open; the media sources button is, on every form factor. The same button leaves them, back to where the user was before (`Navigator.highlighted`, `Destination.aboutSources`).

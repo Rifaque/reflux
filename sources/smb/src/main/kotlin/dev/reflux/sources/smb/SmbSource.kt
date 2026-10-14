@@ -91,7 +91,7 @@ class SmbSource(
 
     override suspend fun availability(): Availability = withContext(Dispatchers.IO) {
         try {
-            share().use { if (it.folderExists(root)) Availability.AVAILABLE else Availability.UNAVAILABLE }
+            if (share().folderExists(root)) Availability.AVAILABLE else Availability.UNAVAILABLE
         } catch (_: Exception) {
             reset()
             Availability.UNAVAILABLE
@@ -105,7 +105,7 @@ class SmbSource(
      */
     internal fun probe() {
         try {
-            share().use { if (!it.folderExists(root)) throw java.io.FileNotFoundException(config.path) }
+            if (!share().folderExists(root)) throw java.io.FileNotFoundException(config.path)
         } catch (e: Exception) {
             reset()
             throw e
@@ -119,7 +119,7 @@ class SmbSource(
             reset()
             throw SourceUnavailableException(descriptor.id, e)
         }
-        share.use {
+        run {
             val pending = ArrayDeque(listOf(""))
             while (pending.isNotEmpty()) {
                 val relative = pending.removeLast()
@@ -174,7 +174,6 @@ class SmbSource(
             override fun read(offset: Long, buffer: ByteArray, count: Int): Int = file.read(buffer, offset, 0, count)
             override fun close() {
                 file.close()
-                share.close()
             }
         }
     }

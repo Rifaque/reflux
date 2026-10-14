@@ -79,4 +79,25 @@ interface SourceConnector {
 
     /** What a stored [config] connects to, for showing it and for changing it. Never the password or a token. */
     fun describe(config: String): ConnectionRequest?
+
+    /** [config] with [excluded] parts left out, for sources made of parts ([SectionedSource]); null for the rest. */
+    fun withExcludedSections(config: String, excluded: Set<String>): String? = null
+}
+
+/** What a part of a source holds, in the user's terms. */
+enum class SectionKind { MOVIES, SHOWS, MIXED }
+
+/** A part of a source that can be included or left out on its own, such as one of a media server's libraries. */
+data class SourceSection(val id: String, val name: String, val kind: SectionKind)
+
+/**
+ * A source made of parts the user can choose between. What is left out is not read at all; leaving
+ * everything out is not a choice (removing the source is), so a source always includes at least one part.
+ */
+interface SectionedSource : MediaSource {
+    /** The parts there are now. Throws [SourceUnavailableException] when the source cannot be reached. */
+    suspend fun sections(): List<SourceSection>
+
+    /** The parts left out, by id. A part that appears later is included until the user says otherwise. */
+    val excludedSections: Set<String>
 }

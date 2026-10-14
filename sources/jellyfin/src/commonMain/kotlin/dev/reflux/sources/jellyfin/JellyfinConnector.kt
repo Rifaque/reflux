@@ -41,6 +41,9 @@ class JellyfinConnector(
         return Connection.Established(JellyfinSource(credentials, http, nameOf(serverName), deviceName), credentials.encode())
     }
 
+    override fun withExcludedSections(config: String, excluded: Set<String>): String? =
+        JellyfinCredentials.decode(config)?.copy(excludedLibraries = excluded)?.encode()
+
     override fun describe(config: String): ConnectionRequest? =
         JellyfinCredentials.decode(config)?.let { ConnectionRequest(it.serverUrl, it.userName) }
 

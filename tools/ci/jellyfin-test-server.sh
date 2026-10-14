@@ -55,6 +55,16 @@ TOKEN=$(post Users/AuthenticateByName '{"Username":"reflux","Pw":"reflux-test"}'
 post "Library/VirtualFolders?name=Movies&collectionType=movies&paths=%2Fmedia%2Fmovies&refreshLibrary=true" \
     '{"LibraryOptions":{"EnableInternetProviders":false,"PathInfos":[{"Path":"/media/movies"}]}}'
 
+# With REFLUX_JELLYFIN_KIDS=1, a second library with a second film, for choosing between libraries.
+if [ "${REFLUX_JELLYFIN_KIDS:-}" = "1" ]; then
+    mkdir -p "$MEDIA/kids/Little Engine (2019)"
+    KIDS="$MEDIA/kids/Little Engine (2019)/Little Engine (2019).mkv"
+    [ -f "$KIDS" ] || ffmpeg -loglevel error -y -f lavfi -i "testsrc2=size=320x180:rate=5" -f lavfi -i "sine=frequency=660" -t 1200 \
+        -c:v libx264 -preset ultrafast -crf 40 -pix_fmt yuv420p -c:a aac -b:a 32k "$KIDS"
+    post "Library/VirtualFolders?name=Kids&collectionType=movies&paths=%2Fmedia%2Fkids&refreshLibrary=true" \
+        '{"LibraryOptions":{"EnableInternetProviders":false,"PathInfos":[{"Path":"/media/kids"}]}}'
+fi
+
 # The scan that adding a library asks for can be swallowed by the one the wizard just started, so it is
 # asked for again until the movie is listed.
 COUNT=0

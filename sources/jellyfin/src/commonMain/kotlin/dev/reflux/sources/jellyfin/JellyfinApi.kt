@@ -24,10 +24,14 @@ data class JellyfinCredentials(
     val deviceId: String,
     /** The name the user signs in with, for showing who is signed in. Never needed to talk to the server. */
     val userName: String? = null,
+    /** The server's libraries the user left out, by id. Empty: everything the account can see. */
+    val excludedLibraries: Set<String> = emptySet(),
 ) {
     /** Compact persisted form (`key=value` lines). The access token is a secret; see SECURITY.md. */
-    fun encode(): String = listOfNotNull("server=$serverUrl", "serverId=$serverId", "user=$userId", "token=$accessToken", "device=$deviceId", userName?.let { "name=$it" })
-        .joinToString("\n")
+    fun encode(): String = listOfNotNull(
+        "server=$serverUrl", "serverId=$serverId", "user=$userId", "token=$accessToken", "device=$deviceId", userName?.let { "name=$it" },
+        excludedLibraries.takeIf { it.isNotEmpty() }?.sorted()?.joinToString(",")?.let { "exclude=$it" },
+    ).joinToString("\n")
 
     companion object {
         fun decode(value: String): JellyfinCredentials? {
@@ -39,6 +43,7 @@ data class JellyfinCredentials(
                 accessToken = pairs["token"] ?: return null,
                 deviceId = pairs["device"] ?: return null,
                 userName = pairs["name"],
+                excludedLibraries = pairs["exclude"]?.split(',')?.filter { it.isNotBlank() }?.toSet().orEmpty(),
             )
         }
     }

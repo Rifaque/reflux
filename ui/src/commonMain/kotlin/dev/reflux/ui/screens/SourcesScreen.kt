@@ -6,6 +6,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -28,6 +29,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -40,6 +42,13 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.dp
 import dev.reflux.core.model.SourceId
 import dev.reflux.core.source.ConnectionKind
+import dev.reflux.core.source.SectionKind
+import dev.reflux.core.source.SourceSection
+import dev.reflux.library.SectionChoice
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
+import kotlinx.coroutines.withContext
 import dev.reflux.design.FormFactor
 import dev.reflux.design.MaterialRole
 import dev.reflux.design.Motion
@@ -105,7 +114,8 @@ internal fun SourcesScreen(app: AppState) {
     val activity by app.activity.collectAsState()
     val metadataUnreachable by app.metadataUnreachable.collectAsState()
     val keeps by app.libraryState { app.platform.offline?.let { it.possible() || downloads().isNotEmpty() } ?: false }
-    var open by remember { mutableStateOf<SourceId?>(null) }
+    // Kept across a visit to a page it leads to (its libraries, signing in again), so coming back finds it open.
+    var open by rememberSaveable { mutableStateOf<String?>(null) }
     Page {
         item(key = "heading") { Heading("Media sources", "Reflux only reads from these. Your files are never renamed, moved, or changed.") }
         item(key = "actions") {
@@ -121,9 +131,9 @@ internal fun SourcesScreen(app: AppState) {
             SourceItem(
                 app,
                 row,
-                expanded = open == row.id,
+                expanded = open == row.id.value,
                 scanning = row.id in app.checking || (activity as? PipelineActivity.Scanning)?.sourceName == row.name,
-                onToggle = { open = if (open == row.id) null else row.id },
+                onToggle = { open = if (open == row.id.value) null else row.id.value },
             )
         }
         if (metadataUnreachable) {
@@ -184,7 +194,17 @@ private fun SourceItem(app: AppState, row: SourceRow, expanded: Boolean, scannin
         }
         AnimatedVisibility(expanded, enter = fadeIn(Motion.controlsShow.tween()) + expandVertically(Motion.controlsShow.tween()), exit = fadeOut(Motion.controlsHide.tween()) + shrinkVertically(Motion.controlsHide.tween())) {
             Column(Modifier.fillMaxWidth().padding(start = 70.dp, end = 16.dp, bottom = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                val facts = listOfNotNull(row.address, row.account?.let { "Signed in as $it" }, row.updated)
+                val facts = listOfNotNull(
+                    row.address,
+                    row.account?.let { "Signed in as $it" },
+                    when {
+                        !row.sectioned -> null
+                        row.excluded == 0 -> "All libraries"
+                        row.excluded == 1 -> "1 library left out"
+                        else -> "${row.excluded} libraries left out"
+                    },
+                    row.updated,
+                )
                 if (facts.isNotEmpty()) {
                     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                         facts.forEach { Text(it, style = LocalTypography.current.caption, color = RefluxColors.textTertiary, maxLines = 1) }
@@ -220,6 +240,7 @@ private fun SourceItem(app: AppState, row: SourceRow, expanded: Boolean, scannin
                 } else {
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Button(if (row.connected) "Refresh" else "Try again", { app.checkSource(row.id) }, Modifier.focusRequester(firstAction), icon = Icon.REFRESH, enabled = !scanning)
+                        if (row.sectioned) Button("Libraries", { app.navigator.open(Destination.SourceSections(row.id)) })
                         row.kind?.let { kind ->
                             Button(if (kind == ConnectionKind.SERVER) "Sign in again" else "Change", { app.navigator.open(Destination.Connect(kind, row.id)) })
                         }
@@ -360,6 +381,112 @@ internal fun ConnectScreen(app: AppState, destination: Destination.Connect) {
             Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Button(if (setup.connecting) "Connecting…" else if (setup.editing != null && server) "Sign in" else "Connect", { setup.connect() }, Modifier.focusRequester(submit), style = ButtonStyle.SOLID, enabled = !setup.connecting)
                 Button("Cancel", { app.navigator.back() }, style = ButtonStyle.QUIET)
+            }
+        }
+    }
+}
+
+/**
+ * Which of a server's libraries Reflux includes. Everything is included until the user says otherwise;
+ * what is left out stays on the server and leaves Reflux's library, and at least one library stays in.
+ */
+@Composable
+internal fun SourceSectionsScreen(app: AppState, sourceId: SourceId) {
+    val connections = app.platform.connections ?: return
+    val record by app.libraryState(sourceId) { source(sourceId) }
+    val name = record?.displayName ?: return
+    var choice by remember(sourceId) { mutableStateOf<SectionChoice?>(null) }
+    var unreachable by remember(sourceId) { mutableStateOf(false) }
+    var included by remember(sourceId) { mutableStateOf<Set<String>>(emptySet()) }
+    val save = remember { FocusRequester() }
+    LaunchedEffect(sourceId) {
+        val loaded = runCatching { withContext(app.background) { connections.sections(sourceId) } }.getOrNull()
+        if (loaded == null) {
+            unreachable = true
+        } else {
+            choice = loaded
+            included = loaded.sections.map { it.id }.toSet() - loaded.excluded
+        }
+    }
+    Page {
+        item(key = "heading") { Heading("Libraries on $name", "Choose what Reflux includes. What you leave out stays on the server, and you can add it back at any time.") }
+        val loaded = choice
+        when {
+            unreachable -> item(key = "away") {
+                Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                    Text("$name isn't connected, so its libraries can't be listed right now. Try again when it's back.", color = RefluxColors.textSecondary)
+                    Button("Back", { app.navigator.back() }, Modifier.initialFocus(), icon = Icon.BACK, style = ButtonStyle.SOLID)
+                }
+            }
+            loaded == null -> item(key = "loading") { Text("Asking $name for its libraries…", color = RefluxColors.textTertiary) }
+            else -> {
+                items(loaded.sections, key = { it.id }) { section ->
+                    val on = section.id in included
+                    val last = on && included.size == 1
+                    SectionRow(
+                        section,
+                        on,
+                        when (section) {
+                            loaded.sections.first() -> Modifier.initialFocus()
+                            // Down from the last library is the way to Save, not whichever button is nearer.
+                            loaded.sections.last() -> Modifier.focusProperties { down = save }
+                            else -> Modifier
+                        },
+                    ) { if (!last) included = if (on) included - section.id else included + section.id }
+                }
+                item(key = "note") {
+                    if (included.size == 1) {
+                        Text(
+                            "One library always stays included. To include nothing from $name, remove it from your sources instead.",
+                            Modifier.padding(top = 4.dp),
+                            style = LocalTypography.current.caption,
+                            color = RefluxColors.textTertiary,
+                        )
+                    }
+                }
+                item(key = "actions") {
+                    val excluded = loaded.sections.map { it.id }.toSet() - included
+                    val changed = excluded != loaded.excludedPresent
+                    Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Button("Save", { app.chooseSections(sourceId, excluded, loaded.sections, name) }, Modifier.focusRequester(save), style = ButtonStyle.SOLID, enabled = changed && included.isNotEmpty())
+                        Button("Cancel", { app.navigator.back() }, style = ButtonStyle.QUIET)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SectionRow(section: SourceSection, on: Boolean, modifier: Modifier, onToggle: () -> Unit) {
+    val shape = RoundedCornerShape(16.dp)
+    Pressable(onToggle, modifier.fillMaxWidth().semantics { stateDescription = if (on) "Included" else "Left out" }, shape, lift = 0f, role = Role.Checkbox) { active ->
+        Row(
+            Modifier.fillMaxWidth().glass(MaterialRole.ELEVATED, shape).background(Color.White.copy(alpha = if (active) 0.07f else 0f))
+                .padding(horizontal = 18.dp, vertical = 14.dp),
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(section.name, style = LocalTypography.current.bodyStrong, color = if (on) RefluxColors.textPrimary else RefluxColors.textSecondary, maxLines = 1)
+                Text(
+                    when (section.kind) {
+                        SectionKind.MOVIES -> "Movies"
+                        SectionKind.SHOWS -> "Shows"
+                        SectionKind.MIXED -> "Movies and shows"
+                    } + if (on) "" else "  ·  Left out",
+                    style = LocalTypography.current.caption,
+                    color = RefluxColors.textTertiary,
+                    maxLines = 1,
+                )
+            }
+            // Included is a filled white mark; left out, an empty ring. No color is needed to tell them apart.
+            Box(
+                Modifier.size(26.dp).background(if (on) Color.White.copy(alpha = 0.92f) else Color.Transparent, CircleShape)
+                    .border(1.5.dp, Color.White.copy(alpha = if (on) 0f else 0.35f), CircleShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                if (on) Icon(Icon.CHECK, size = 16.dp, tint = RefluxColors.background)
             }
         }
     }

@@ -59,6 +59,15 @@ class LocalStreamServerTest {
     }
 
     @Test
+    fun listensWhereItsAddressesPoint() {
+        // The URLs say 127.0.0.1, so that is where the server must be: an IPv6-only loopback (Android's
+        // default) would refuse every player.
+        val url = server.register("b", "b.mkv") { reader() }
+        java.net.Socket("127.0.0.1", server.port).use { assertTrue(it.isConnected) }
+        assertTrue(url.startsWith("http://127.0.0.1:"))
+    }
+
+    @Test
     fun rejectsUnknownTokensAndBadRanges() {
         val url = server.register("a", "a.mkv") { reader() }
         assertEquals(404, get("http://127.0.0.1:${server.port}/0123456789abcdef/a.mkv").first.responseCode)

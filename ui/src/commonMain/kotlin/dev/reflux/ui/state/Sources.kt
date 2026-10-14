@@ -37,6 +37,10 @@ data class SourceRow(
     /** Where it is, as it would be typed, without any password. */
     val address: String?,
     val account: String?,
+    /** Made of parts the user chooses between (a server's libraries). */
+    val sectioned: Boolean = false,
+    /** How many of those parts are left out. */
+    val excluded: Int = 0,
 )
 
 /** Every source, in the order they were added, and whether anything can be connected by address here. */
@@ -67,6 +71,8 @@ internal fun Library.sourcesModel(connections: SourceConnections?): SourcesModel
                 },
                 address = info?.request?.address,
                 account = info?.request?.username,
+                sectioned = connections?.sectioned(record.id) == true,
+                excluded = connections?.excludedCount(record.id) ?: 0,
             )
         },
         canConnect = connections?.kinds?.isNotEmpty() == true,
