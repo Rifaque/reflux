@@ -3,13 +3,15 @@ package dev.reflux.design
 import dev.reflux.core.input.InputModality
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class ColorTest {
     @Test
     fun contrastFollowsWcag() {
         assertEquals(21.0, Argb(0xFFFFFFFFL).contrast(Argb(0xFF000000L)), 0.01)
-        assertEquals(1.0, Palette.accent.contrast(Palette.accent), 0.0001)
+        assertEquals(1.0, Palette.textPrimary.contrast(Palette.textPrimary), 0.0001)
     }
 
     @Test
@@ -29,7 +31,19 @@ class TokenTest {
             assertTrue(Palette.textSecondary.contrast(surface) >= 4.5, "secondary on $surface")
             assertTrue(Palette.textTertiary.contrast(surface) >= 3.0, "tertiary (large text only) on $surface")
         }
-        assertTrue(Palette.onAccent.contrast(Palette.accent) >= 4.5)
+        assertTrue(Palette.onPrimaryAction.contrast(Palette.primaryAction) >= 7.0)
+    }
+
+    @Test
+    fun theInterfaceBringsNoColorOfItsOwn() {
+        // Artwork is the color on screen; a hue creeping into a chrome token is a regression of the design.
+        for (token in Palette.chrome) assertTrue(Hsl.of(token).saturation <= 0.06, "$token has a hue")
+    }
+
+    @Test
+    fun progressReadsOnTheBase() {
+        assertTrue(Palette.progress.contrast(Palette.background) >= 7.0)
+        assertTrue(Palette.focusRing.contrast(Palette.surfaceRaised) >= 7.0)
     }
 
     @Test
@@ -99,28 +113,30 @@ class LayoutTest {
     }
 }
 
-class ArtworkAccentTest {
+class ArtworkAtmosphereTest {
     private fun image(vararg colors: Pair<Argb, Int>): LongArray = colors.flatMap { (c, n) -> List(n) { c.value } }.toLongArray()
 
     @Test
     fun dominantVividHueWins() {
-        val accent = ArtworkAccent.from(image(Argb(20, 20, 20) to 600, Argb(220, 60, 40) to 300, Argb(40, 90, 200) to 100))
-        val hue = Hsl.of(accent).hue
-        assertTrue(hue < 25 || hue > 340, "red-orange expected, got $hue ($accent)")
-        assertTrue(Palette.onAccent.contrast(accent) >= 4.5)
+        val atmosphere = assertNotNull(ArtworkAtmosphere.from(image(Argb(20, 20, 20) to 600, Argb(220, 60, 40) to 300, Argb(40, 90, 200) to 100)))
+        val hue = Hsl.of(atmosphere).hue
+        assertTrue(hue < 25 || hue > 340, "red-orange expected, got $hue ($atmosphere)")
     }
 
     @Test
-    fun greyArtworkKeepsTheDefault() {
-        assertEquals(Palette.accent, ArtworkAccent.from(image(Argb(30, 30, 30) to 500, Argb(200, 200, 200) to 500)))
-        assertEquals(Palette.accent, ArtworkAccent.from(LongArray(0)))
+    fun greyArtworkHasNoAtmosphere() {
+        assertNull(ArtworkAtmosphere.from(image(Argb(30, 30, 30) to 500, Argb(200, 200, 200) to 500)))
+        assertNull(ArtworkAtmosphere.from(LongArray(0)))
     }
 
     @Test
-    fun accentsAreAlwaysReadable() {
+    fun atmosphereIsAlwaysABackground() {
+        // Deep and muted whatever the artwork: primary text reads on it at 7:1, and it never outshines the chrome.
         for (hue in 0 until 360 step 15) {
-            val accent = ArtworkAccent.from(image(Hsl(hue.toDouble(), 0.9, 0.35).toArgb() to 100))
-            assertTrue(Palette.onAccent.contrast(accent) >= 4.5, "hue $hue -> $accent")
+            val atmosphere = assertNotNull(ArtworkAtmosphere.from(image(Hsl(hue.toDouble(), 0.9, 0.5).toArgb() to 100)))
+            assertTrue(Palette.textPrimary.contrast(atmosphere) >= 7.0, "hue $hue -> $atmosphere")
+            assertTrue(Hsl.of(atmosphere).saturation <= 0.5, "hue $hue -> $atmosphere")
         }
+        assertEquals(ArtworkAtmosphere.ofHue(30.0), ArtworkAtmosphere.ofHue(390.0))
     }
 }

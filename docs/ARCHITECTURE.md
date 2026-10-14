@@ -142,7 +142,7 @@ Kotlin Multiplatform (see the decision log). Modules:
 | --- | --- | --- |
 | `core` | Media Core contracts and pure logic. No platform APIs. | kotlinx-coroutines |
 | `library` | The local-first library engine: SQLite schema (SQLDelight) and its migrations, scan planning and reconciliation, read models (movies, shows, Continue Watching, search), the canonical watch state and its synchronization with sources, favorites, identity corrections, version preferences, metadata storage and refresh, Identify flow, smart search, collections, the default Home feed, diagnostics, the background pipeline, Smart Offline (`Offline`: download records, the queue, copying, and registering copies as versions), and adding sources by address (`SourceConnections`). JVM: database driver, `JdkHttpFetcher`, `ArtworkCache`, `FileDownloadStore`, `HttpDownloadTransport`. | `core`, SQLDelight |
-| `design` | Platform-free design system: color tokens with enforced contrast, liquid-glass material roles, motion specs, adaptive layout profiles (including the controller morph), artwork accent extraction. Consumed by the Compose shells. | `core` |
+| `design` | Platform-free design system: color tokens with enforced contrast, liquid-glass material roles, motion specs, adaptive layout profiles (including the controller morph), artwork atmosphere extraction. Consumed by the Compose shells. | `core` |
 | `sources:local` | Read-only local folder adapter for desktop JVMs. | `core` |
 | `sources:webdav` | Read-only WebDAV share source (PROPFIND listing, streamed playback with share credentials) and its connector. | `core` |
 | `sources:smb` | Read-only SMB share source (smbj), its connector, and a loopback range-capable stream server that lets any player open share files. | `core`, smbj |

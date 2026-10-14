@@ -73,7 +73,7 @@ internal fun FolderPickerPanel(picker: FolderPicker) {
             )
         }
         if (current != null) {
-            Button("Use this folder", { picker.choose() }, Modifier.focusRequester(main), icon = Icon.CHECK, style = ButtonStyle.SOLID, enabled = !picker.busy)
+            Button("Use this folder", { picker.choose() }, Modifier.focusRequester(main), icon = Icon.CHECK, style = ButtonStyle.PRIMARY, enabled = !picker.busy)
         }
         if (folders.isNotEmpty()) {
             LazyColumn(Modifier.heightIn(max = 236.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {

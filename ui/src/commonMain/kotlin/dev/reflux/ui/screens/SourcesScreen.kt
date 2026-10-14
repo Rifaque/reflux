@@ -120,7 +120,7 @@ internal fun SourcesScreen(app: AppState) {
         item(key = "heading") { Heading("Media sources", "Reflux only reads from these. Your files are never renamed, moved, or changed.") }
         item(key = "actions") {
             FlowRow(Modifier.padding(bottom = 8.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Button("Add media", { app.navigator.open(Destination.AddSource) }, Modifier.initialFocus(), icon = Icon.PLUS, style = ButtonStyle.SOLID)
+                Button("Add media", { app.navigator.open(Destination.AddSource) }, Modifier.initialFocus(), icon = Icon.PLUS, style = ButtonStyle.PRIMARY)
                 if (keeps == true) Button("Watch offline", { app.offlineOpen = true }, icon = Icon.DOWNLOAD)
             }
         }
@@ -379,7 +379,7 @@ internal fun ConnectScreen(app: AppState, destination: Destination.Connect) {
         }
         item(key = "actions") {
             Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Button(if (setup.connecting) "Connecting…" else if (setup.editing != null && server) "Sign in" else "Connect", { setup.connect() }, Modifier.focusRequester(submit), style = ButtonStyle.SOLID, enabled = !setup.connecting)
+                Button(if (setup.connecting) "Connecting…" else if (setup.editing != null && server) "Sign in" else "Connect", { setup.connect() }, Modifier.focusRequester(submit), style = ButtonStyle.PRIMARY, enabled = !setup.connecting)
                 Button("Cancel", { app.navigator.back() }, style = ButtonStyle.QUIET)
             }
         }
@@ -415,7 +415,7 @@ internal fun SourceSectionsScreen(app: AppState, sourceId: SourceId) {
             unreachable -> item(key = "away") {
                 Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
                     Text("$name isn't connected, so its libraries can't be listed right now. Try again when it's back.", color = RefluxColors.textSecondary)
-                    Button("Back", { app.navigator.back() }, Modifier.initialFocus(), icon = Icon.BACK, style = ButtonStyle.SOLID)
+                    Button("Back", { app.navigator.back() }, Modifier.initialFocus(), icon = Icon.BACK, style = ButtonStyle.PRIMARY)
                 }
             }
             loaded == null -> item(key = "loading") { Text("Asking $name for its libraries…", color = RefluxColors.textTertiary) }
@@ -448,7 +448,7 @@ internal fun SourceSectionsScreen(app: AppState, sourceId: SourceId) {
                     val excluded = loaded.sections.map { it.id }.toSet() - included
                     val changed = excluded != loaded.excludedPresent
                     Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Button("Save", { app.chooseSections(sourceId, excluded, loaded.sections, name) }, Modifier.focusRequester(save), style = ButtonStyle.SOLID, enabled = changed && included.isNotEmpty())
+                        Button("Save", { app.chooseSections(sourceId, excluded, loaded.sections, name) }, Modifier.focusRequester(save), style = ButtonStyle.PRIMARY, enabled = changed && included.isNotEmpty())
                         Button("Cancel", { app.navigator.back() }, style = ButtonStyle.QUIET)
                     }
                 }

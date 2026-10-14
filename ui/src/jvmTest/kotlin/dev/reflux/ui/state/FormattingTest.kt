@@ -1,6 +1,14 @@
 package dev.reflux.ui.state
 
 import dev.reflux.core.model.Episode
+import dev.reflux.core.model.MediaLocation
+import dev.reflux.core.model.MediaVersion
+import dev.reflux.core.model.SourceId
+import dev.reflux.core.model.StreamInfoOrigin
+import dev.reflux.core.model.VersionId
+import dev.reflux.core.playback.StreamInfo
+import dev.reflux.core.playback.VideoCodec
+import dev.reflux.core.playback.VideoStream
 import dev.reflux.core.model.MediaId
 import dev.reflux.core.model.WatchState
 import dev.reflux.core.playback.AudioCodec
@@ -15,6 +23,27 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
 class FormattingTest {
+    private fun version(stream: StreamInfo, edition: String? = null) = MediaVersion(
+        VersionId("v"), MediaId("m"), MediaLocation(SourceId("s"), "a.mkv"), 0, 0, stream, StreamInfoOrigin.PROBE, edition,
+    )
+
+    @Test
+    fun versionsLeadWithWhatTheyAreChosenBy() {
+        val uhd = version(
+            StreamInfo(
+                video = VideoStream(VideoCodec.HEVC, 3840, 2160, dynamicRange = DynamicRange.DOLBY_VISION),
+                audio = listOf(AudioStream(AudioCodec.TRUEHD, 8, atmos = true)),
+            ),
+            edition = "Extended",
+        )
+        assertEquals(listOf("4K", "Dolby Vision", "Extended"), Formatting.versionQuality(uhd))
+        assertEquals("HEVC", Formatting.versionTechnical(uhd).first())
+        // A copy known only by its codec still says something first.
+        val unknown = version(StreamInfo(video = VideoStream(VideoCodec.H264)))
+        assertEquals(listOf("H.264"), Formatting.versionQuality(unknown))
+        assertEquals(emptyList(), Formatting.versionTechnical(unknown))
+    }
+
     @Test
     fun clockShowsHoursOnlyWhenNeeded() {
         assertEquals("0:00", Formatting.clock(0))

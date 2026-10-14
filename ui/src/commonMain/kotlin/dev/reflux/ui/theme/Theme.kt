@@ -31,17 +31,24 @@ object RefluxColors {
     val textPrimary = Palette.textPrimary.toColor()
     val textSecondary = Palette.textSecondary.toColor()
     val textTertiary = Palette.textTertiary.toColor()
-    val accent = Palette.accent.toColor()
-    val onAccent = Palette.onAccent.toColor()
+    val primaryAction = Palette.primaryAction.toColor()
+    val onPrimaryAction = Palette.onPrimaryAction.toColor()
     val focusRing = Palette.focusRing.toColor()
     val progress = Palette.progress.toColor()
+    val hairline = Palette.hairline.toColor()
     val unavailable = Palette.unavailable.toColor()
     val error = Palette.error.toColor()
 }
 
-/** The type scale. Sizes are multiplied by [LayoutProfile.textScale] (10-foot UI on TVs). */
+/**
+ * The type scale. Sizes are multiplied by [LayoutProfile.textScale] (10-foot UI on TVs); [displaySize] lets a
+ * phone set its featured titles smaller than a wide window does.
+ *
+ * Type carries the hierarchy: a title is large and tight, what describes it is a step down in size, weight,
+ * and tone, so it supports the title rather than competing with it.
+ */
 @Immutable
-class Typography(private val scale: Float) {
+class Typography(private val scale: Float, displaySize: Float = 52f) {
     private fun style(size: Float, weight: FontWeight, lineHeight: Float, tracking: Float = 0f) = TextStyle(
         fontSize = (size * scale).sp,
         fontWeight = weight,
@@ -50,16 +57,19 @@ class Typography(private val scale: Float) {
     )
 
     /** Featured titles on Home and details pages. */
-    val display = style(46f, FontWeight.Bold, 1.08f, -0.02f)
-    val headline = style(28f, FontWeight.SemiBold, 1.15f, -0.015f)
-    val title = style(19f, FontWeight.SemiBold, 1.25f, -0.005f)
-    val body = style(15f, FontWeight.Normal, 1.5f)
+    val display = style(displaySize, FontWeight.Bold, 1.04f, -0.028f)
+    val headline = style(30f, FontWeight.SemiBold, 1.12f, -0.02f)
+    val title = style(20f, FontWeight.SemiBold, 1.25f, -0.01f)
+    val body = style(15f, FontWeight.Normal, 1.55f)
     val bodyStrong = style(15f, FontWeight.SemiBold, 1.4f)
+
+    /** What describes a title (year, runtime, rating, how much is left): quieter than the title, not tiny. */
+    val metadata = style(14f, FontWeight.Medium, 1.35f, 0.01f)
     val caption = style(13f, FontWeight.Normal, 1.35f)
     val captionStrong = style(13f, FontWeight.SemiBold, 1.35f)
 
     /** Small labels: badges, button prompts, the titles of menus and notices. Sentence case, lightly tracked. */
-    val label = style(12f, FontWeight.SemiBold, 1.3f, 0.01f)
+    val label = style(12f, FontWeight.SemiBold, 1.3f, 0.02f)
 }
 
 val LocalTypography = staticCompositionLocalOf { Typography(1f) }

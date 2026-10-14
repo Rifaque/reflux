@@ -75,6 +75,7 @@ import dev.reflux.ui.components.Icon
 import dev.reflux.ui.components.IconButton
 import dev.reflux.ui.components.Pressable
 import dev.reflux.ui.components.Slider
+import dev.reflux.ui.components.Tab
 import dev.reflux.ui.components.absorbsPointer
 import dev.reflux.ui.state.AppState
 import dev.reflux.ui.state.Formatting
@@ -95,7 +96,7 @@ import kotlinx.coroutines.delay
 import kotlin.math.ceil
 
 /** The video cannot be sampled for blur, so player glass is a denser tint of the same material. */
-private val playerTint = Materials.spec(MaterialRole.FLOATING).tint.toColor().copy(alpha = 0.78f)
+private val playerTint = Materials.spec(MaterialRole.FLOATING).tint.toColor().copy(alpha = 0.72f)
 
 /**
  * The player's controls, drawn over the platform's video surface. Simple by default: a title, a scrubber,
@@ -215,7 +216,7 @@ fun PlayerOverlay(app: AppState, session: PlaybackSession, modifier: Modifier = 
                 prompt != null -> UpNextCard(session, prompt, corner)
                 // With a remote, up is what takes the offer; the arrow says so.
                 segment != null && session.menu == null ->
-                    Button(skipLabel(segment), { session.skip(segment) }, corner, icon = Icon.CHEVRON_UP.takeIf { remote }, style = ButtonStyle.SOLID)
+                    Button(skipLabel(segment), { session.skip(segment) }, corner, icon = Icon.CHEVRON_UP.takeIf { remote }, style = ButtonStyle.PRIMARY)
             }
         }
     }
@@ -251,20 +252,19 @@ private fun Controls(app: AppState, session: PlaybackSession, state: PlayerState
     // so the bar only says where playback is and what there is beneath it.
     val television = layout.formFactor == FormFactor.TV
     Box(Modifier.fillMaxSize()) {
-        // Scrims carry the title and controls over bright scenes.
-        Box(Modifier.fillMaxWidth().fillMaxHeight(0.28f).background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.72f), Color.Transparent))))
-        Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().fillMaxHeight(0.36f).background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.78f)))))
+        // Scrims carry the title and controls over bright scenes; the picture between them is left alone.
+        Box(Modifier.fillMaxWidth().fillMaxHeight(0.24f).background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.66f), Color.Transparent))))
+        Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().fillMaxHeight(0.46f).background(Brush.verticalGradient(0f to Color.Transparent, 0.45f to Color.Black.copy(alpha = 0.42f), 1f to Color.Black.copy(alpha = 0.84f))))
 
+        // What is playing belongs with where it is: above the timeline. A phone keeps it at the top, beside the
+        // way back, where it stays clear of the transport in the middle of the picture.
         Row(
             Modifier.align(Alignment.TopStart).padding(horizontal = margin, vertical = 22.dp),
             horizontalArrangement = Arrangement.spacedBy(14.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             if (!television) IconButton(Icon.BACK, "Back to library", { session.close() }, glass = true)
-            Column {
-                Text(session.title, style = LocalTypography.current.title, maxLines = 1)
-                session.subtitle?.let { Text(it, style = LocalTypography.current.caption, color = RefluxColors.textSecondary, maxLines = 1) }
-            }
+            if (compact) NowPlaying(session, compact = true)
         }
 
         if (app.namesButtons && !failed) {
@@ -285,8 +285,7 @@ private fun Controls(app: AppState, session: PlaybackSession, state: PlayerState
             )
         }
 
-        if (failed) return@Box
-        if (compact) {
+        if (compact && !failed) {
             val waiting = state.status == PlayerStatus.LOADING || state.status == PlayerStatus.BUFFERING
             Row(Modifier.align(Alignment.Center), horizontalArrangement = Arrangement.spacedBy(30.dp), verticalAlignment = Alignment.CenterVertically) {
                 IconButton(Icon.REWIND, "Back 10 seconds", { session.handle(SemanticAction.SEEK_BACKWARD) }, size = 54.dp, glass = true)
@@ -307,13 +306,17 @@ private fun Controls(app: AppState, session: PlaybackSession, state: PlayerState
         }
         Column(
             Modifier.align(Alignment.BottomCenter).padding(horizontal = margin).padding(bottom = if (compact) 12.dp else 24.dp).widthIn(max = 1180.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
             horizontalAlignment = Alignment.End,
         ) {
-            if (open != null) MenuPanel(session, menus, open, session.options(open, state))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(24.dp), verticalAlignment = Alignment.Bottom) {
+                if (!compact) NowPlaying(session, compact = false, Modifier.weight(1f).padding(start = 6.dp)) else Spacer(Modifier.weight(1f))
+                if (open != null && !failed) MenuPanel(session, menus, open, session.options(open, state))
+            }
+            if (failed) return@Column
             Column(
                 // Clicks on the panel itself must not reach the video's click-to-pause.
-                Modifier.fillMaxWidth().glass(MaterialRole.FLOATING, RoundedCornerShape(24.dp), tint = playerTint).absorbsPointer()
+                Modifier.fillMaxWidth().glass(MaterialRole.FLOATING, RoundedCornerShape(26.dp), tint = playerTint).absorbsPointer()
                     .padding(horizontal = 18.dp, vertical = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
@@ -375,6 +378,15 @@ private fun Controls(app: AppState, session: PlaybackSession, state: PlayerState
     }
 }
 
+/** The title of what is playing, with the episode or year beneath it. */
+@Composable
+private fun NowPlaying(session: PlaybackSession, compact: Boolean, modifier: Modifier = Modifier) {
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(if (compact) 0.dp else 4.dp)) {
+        Text(session.title, style = if (compact) LocalTypography.current.title else LocalTypography.current.headline, maxLines = 1)
+        session.subtitle?.let { Text(it, style = if (compact) LocalTypography.current.caption else LocalTypography.current.metadata, color = RefluxColors.textSecondary, maxLines = 1) }
+    }
+}
+
 /** Position, scrubber with chapter marks, and time remaining. Dragging previews the time before seeking. */
 @Composable
 private fun Timeline(session: PlaybackSession, state: PlayerState) {
@@ -425,18 +437,8 @@ private fun MenuPanel(session: PlaybackSession, menus: List<PlayerMenu>, open: P
     }
     // Five lists across the top need more room than four.
     Column(Modifier.width(if (menus.size > 4) 430.dp else 340.dp).glass(MaterialRole.MODAL, tint = playerTint.copy(alpha = 0.92f)).absorbsPointer().padding(8.dp)) {
-        Row(Modifier.padding(horizontal = 4.dp, vertical = 2.dp), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-            menus.forEach { menu ->
-                Pressable({ if (menu != open) session.toggleMenu(menu) }, shape = CircleShape, lift = 0f) { active ->
-                    Text(
-                        menu.title,
-                        Modifier.background(Color.White.copy(alpha = if (active && menu != open) 0.08f else 0f)).padding(horizontal = 10.dp, vertical = 7.dp),
-                        style = LocalTypography.current.captionStrong,
-                        color = if (menu == open) RefluxColors.textPrimary else RefluxColors.textTertiary,
-                        maxLines = 1,
-                    )
-                }
-            }
+        Row(Modifier.padding(horizontal = 2.dp, vertical = 2.dp), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+            menus.forEach { menu -> Tab(menu.title, menu == open, compact = true) { if (menu != open) session.toggleMenu(menu) } }
         }
         LazyColumn(Modifier.heightIn(max = 312.dp), state = list) {
             itemsIndexed(options) { index, option ->
@@ -472,10 +474,10 @@ private fun UpNextCard(session: PlaybackSession, prompt: UpNext, modifier: Modif
         listOfNotNull(caption, title).joinToString(" · "),
     ) {
         if (prompt.asks) {
-            Button("Keep watching", { session.continueWatching() }, icon = Icon.PLAY, style = ButtonStyle.SOLID)
+            Button("Keep watching", { session.continueWatching() }, icon = Icon.PLAY, style = ButtonStyle.PRIMARY)
             Button("Stop", { session.close() })
         } else {
-            Button("Play now", { session.playNext() }, icon = Icon.PLAY, style = ButtonStyle.SOLID)
+            Button("Play now", { session.playNext() }, icon = Icon.PLAY, style = ButtonStyle.PRIMARY)
             Button("Cancel", { session.cancelUpNext() })
         }
     }
@@ -490,7 +492,7 @@ private fun nextHeading(prompt: UpNext): Pair<String, String?> {
 @Composable
 private fun Failure(session: PlaybackSession, error: PlaybackError, modifier: Modifier = Modifier) {
     Notice(modifier, "Playback stopped", error.message, detail = error.detail) {
-        Button("Back to library", { session.close() }, style = ButtonStyle.SOLID)
+        Button("Back to library", { session.close() }, style = ButtonStyle.PRIMARY)
     }
 }
 

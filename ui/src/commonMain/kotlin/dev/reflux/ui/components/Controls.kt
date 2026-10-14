@@ -41,7 +41,7 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.lerp
+
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.graphics.Shape
@@ -53,6 +53,7 @@ import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.progressBarRangeInfo
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -127,18 +128,34 @@ fun Pressable(
                 scaleY = scale
             }
             .focusGlow(shape, glow)
-            .then(if (ring) Modifier.border(2.dp, RefluxColors.focusRing, shape) else Modifier)
+            .then(if (ring) Modifier.focusRing(shape) else Modifier)
             .clip(shape)
             .clickable(interactionSource = interaction, indication = null, enabled = enabled, role = role, onClick = onClick),
         content = { content(active) },
     )
 }
 
-/** A soft light around [shape], fading outwards. Drawn outside the control's own bounds. */
+/**
+ * A white ring set just outside [shape], with a sliver of the page between them, so it reads the same around
+ * a white button as around a poster or a dark row.
+ */
+private fun Modifier.focusRing(shape: Shape): Modifier = drawBehind {
+    val gap = RING_GAP.toPx()
+    val stroke = RING_WIDTH.toPx()
+    val spread = gap + stroke / 2
+    val outline = shape.createOutline(Size(size.width + spread * 2, size.height + spread * 2), layoutDirection, this)
+    translate(-spread, -spread) { drawOutline(outline, RefluxColors.focusRing, style = Stroke(stroke)) }
+}
+
+private val RING_GAP = 3.dp
+private val RING_WIDTH = 2.dp
+
+/** A soft light around [shape], fading outwards from the focus ring. Drawn outside the control's own bounds. */
 private fun Modifier.focusGlow(shape: Shape, strength: Float): Modifier = if (strength <= 0f) this else drawBehind {
     val step = 2.dp.toPx()
+    val start = (RING_GAP + RING_WIDTH).toPx()
     for (ring in 1..GLOW_RINGS) {
-        val spread = ring * step
+        val spread = start + ring * step
         val outline = shape.createOutline(Size(size.width + spread * 2, size.height + spread * 2), layoutDirection, this)
         translate(-spread, -spread) {
             drawOutline(outline, Color.White.copy(alpha = 0.16f * strength * (1f - ring / (GLOW_RINGS + 1f))), style = Stroke(step))
@@ -149,10 +166,11 @@ private fun Modifier.focusGlow(shape: Shape, strength: Float): Modifier = if (st
 private const val GLOW_RINGS = 6
 
 /**
- * [PRIMARY] is the accent, for the one thing a screen exists to do: play. [SOLID] is the main action of
- * everything else (connect, download, choose this folder), in white. [GLASS] and [QUIET] are the rest.
+ * [PRIMARY] is the one thing a screen exists to do (play, connect, use this folder): bright and neutral, so it
+ * leads without a color of its own. A screen has at most one. [GLASS] is a frosted secondary action that holds
+ * its own over artwork; [QUIET] is text that lights up when it is pointed at.
  */
-enum class ButtonStyle { PRIMARY, SOLID, GLASS, QUIET }
+enum class ButtonStyle { PRIMARY, GLASS, QUIET }
 
 /** A text button. Its height follows the layout's minimum target size, so it grows for controllers and TVs. */
 @Composable
@@ -166,25 +184,23 @@ fun Button(
 ) {
     val layout = LocalLayout.current
     val shape = CircleShape
-    val accent = RefluxColors.accent
     val height = maxOf(40f, layout.minTargetDp).dp
     Pressable(onClick, modifier, shape, enabled, lift = 0.6f) { active ->
         val surface = when (style) {
-            // Active is the accent lit up, not a different color.
-            // What cannot be done right now does not wear the accent.
-            ButtonStyle.PRIMARY -> Modifier.background(if (!enabled) Color.White.copy(alpha = 0.08f) else if (active) lerp(accent, Color.White, 0.28f) else accent)
-            ButtonStyle.SOLID -> Modifier.background(if (!enabled) Color.White.copy(alpha = 0.08f) else if (active) Color.White else Color.White.copy(alpha = 0.9f))
-            ButtonStyle.GLASS -> Modifier.glass(MaterialRole.INTERACTIVE, shape).background(Color.White.copy(alpha = if (active) 0.12f else 0f))
+            // Active is the same surface lit fully; what cannot be done right now is not lit at all.
+            ButtonStyle.PRIMARY -> Modifier.background(
+                if (!enabled) Color.White.copy(alpha = 0.08f) else if (active) RefluxColors.primaryAction else RefluxColors.primaryAction.copy(alpha = 0.9f),
+            )
+            ButtonStyle.GLASS -> Modifier.glass(MaterialRole.INTERACTIVE, shape).background(Color.White.copy(alpha = if (active) 0.14f else 0f))
             ButtonStyle.QUIET -> Modifier.background(Color.White.copy(alpha = if (active) 0.10f else 0f))
         }
         val color = when {
             !enabled -> RefluxColors.textTertiary
-            style == ButtonStyle.PRIMARY -> RefluxColors.onAccent
-            style == ButtonStyle.SOLID -> RefluxColors.background
+            style == ButtonStyle.PRIMARY -> RefluxColors.onPrimaryAction
             else -> RefluxColors.textPrimary
         }
         Row(
-            Modifier.then(surface).height(height).padding(horizontal = if (style == ButtonStyle.QUIET) 14.dp else 20.dp),
+            Modifier.then(surface).height(height).padding(horizontal = if (style == ButtonStyle.QUIET) 14.dp else 22.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -222,31 +238,62 @@ fun IconButton(
     }
 }
 
-/** A small, non-interactive label: genres, quality badges, how a search was understood. */
+/**
+ * A small, non-interactive label: quality badges, how a search was understood, what is not connected. Drawn
+ * as a hairline outline so it describes without competing; [emphasized] fills it, for the one label on a
+ * screen that matters more than the others (the version Play will use).
+ */
 @Composable
-fun Chip(text: String, modifier: Modifier = Modifier, emphasized: Boolean = false) {
-    val shape = RoundedCornerShape(8.dp)
-    Box(
+fun Chip(text: String, modifier: Modifier = Modifier, emphasized: Boolean = false, icon: Icon? = null) {
+    val shape = RoundedCornerShape(7.dp)
+    val color = if (emphasized) RefluxColors.textPrimary else RefluxColors.textSecondary
+    Row(
         modifier.clip(shape)
-            .background(if (emphasized) RefluxColors.accent.copy(alpha = 0.16f) else Color.White.copy(alpha = 0.08f))
-            .padding(horizontal = 9.dp, vertical = 4.dp),
+            .background(Color.White.copy(alpha = if (emphasized) 0.14f else 0.04f))
+            .border(1.dp, if (emphasized) Color.Transparent else RefluxColors.hairline, shape)
+            .padding(horizontal = 8.dp, vertical = 3.dp),
+        horizontalArrangement = Arrangement.spacedBy(5.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(text, style = LocalTypography.current.label, color = if (emphasized) RefluxColors.accent else RefluxColors.textSecondary, maxLines = 1)
+        if (icon != null) Icon(icon, size = 12.dp, tint = color)
+        Text(text, style = LocalTypography.current.label, color = color, maxLines = 1)
     }
 }
 
 /** Progress through a work: a hairline that reads at a glance without competing with artwork. */
 @Composable
 fun ProgressBar(fraction: Float, modifier: Modifier = Modifier, height: Dp = 3.dp, color: Color = RefluxColors.progress) {
-    Box(modifier.fillMaxWidth().height(height).clip(CircleShape).background(Color.White.copy(alpha = 0.24f))) {
-        Box(Modifier.fillMaxHeight().fillMaxWidth(fraction.coerceIn(0f, 1f)).background(color))
+    Box(modifier.fillMaxWidth().height(height).clip(CircleShape).background(Color.White.copy(alpha = 0.22f))) {
+        Box(Modifier.fillMaxHeight().fillMaxWidth(fraction.coerceIn(0f, 1f)).clip(CircleShape).background(color))
+    }
+}
+
+/**
+ * One of a set of places to be: a section of the library, a season, a list in the player. The one that is
+ * selected is white on a soft pill; the rest are grey until pointed at. [compact] is for small panels.
+ */
+@Composable
+fun Tab(label: String, selected: Boolean, modifier: Modifier = Modifier, compact: Boolean = false, onClick: () -> Unit) {
+    Pressable(onClick, modifier.semantics { this.selected = selected }, CircleShape, lift = 0f, role = Role.Tab) { active ->
+        Box(
+            Modifier.background(Color.White.copy(alpha = if (selected) 0.12f else if (active) 0.06f else 0f))
+                .then(if (compact) Modifier.padding(horizontal = 11.dp, vertical = 7.dp) else Modifier.height(36.dp).padding(horizontal = 16.dp)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                label,
+                style = if (compact) LocalTypography.current.captionStrong else LocalTypography.current.bodyStrong,
+                color = if (selected || active) RefluxColors.textPrimary else RefluxColors.textSecondary,
+                maxLines = 1,
+            )
+        }
     }
 }
 
 /** A section title with an optional trailing action ("See all"). */
 @Composable
 fun SectionHeader(title: String, modifier: Modifier = Modifier, action: String? = null, onAction: () -> Unit = {}) {
-    Row(modifier.fillMaxWidth().defaultMinSize(minHeight = 40.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(modifier.fillMaxWidth().defaultMinSize(minHeight = 44.dp), verticalAlignment = Alignment.CenterVertically) {
         Text(title, Modifier.weight(1f), style = LocalTypography.current.title, maxLines = 1)
         if (action != null) Button(action, onAction, style = ButtonStyle.QUIET)
     }
@@ -258,7 +305,7 @@ fun SectionHeader(title: String, modifier: Modifier = Modifier, action: String? 
  *
  * @param description names the slider for accessibility.
  * @param marks positions (0..1) to notch on the track, e.g. chapter starts.
- * @param color of the filled part: the accent for progress through a work, white for a plain setting.
+ * @param color of the filled part.
  */
 @Composable
 fun Slider(
