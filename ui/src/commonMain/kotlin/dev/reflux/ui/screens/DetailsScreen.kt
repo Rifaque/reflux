@@ -46,6 +46,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.foundation.border
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.reflux.core.metadata.Credit
 import dev.reflux.core.metadata.CreditRole
@@ -103,8 +104,10 @@ internal fun DetailsScreen(app: AppState, itemId: MediaId) {
     ReportPageScroll(remember { derivedStateOf { list.firstVisibleItemIndex > 0 || list.firstVisibleItemScrollOffset > 0 } }.value)
     BoxWithConstraints(Modifier.fillMaxSize()) {
         // The page takes the backdrop's atmosphere down to the end of the header, then fades to the plain base.
+        // Without a backdrop the page takes the poster's, so it agrees with the artwork shown on it.
         val backdrop = rememberArtwork(details.backdrop, maxWidth)
-        val atmosphere = rememberPageTone(backdrop, details.card.title)
+        val poster = rememberArtwork(details.card.poster, 220.dp)
+        val atmosphere = rememberPageTone(backdrop ?: poster, details.card.title)
         var headerHeight by remember { mutableStateOf(520.dp) }
         val density = LocalDensity.current
         // The atmosphere recedes as the header scrolls away; versions, episodes, and cast below sit on the plain base.
@@ -113,7 +116,7 @@ internal fun DetailsScreen(app: AppState, itemId: MediaId) {
         val section = if (layout.formFactor == FormFactor.PHONE) 28.dp else 40.dp
         LazyColumn(Modifier.fillMaxSize(), state = list, contentPadding = PaddingValues(bottom = LocalChromeInsets.current.bottom)) {
             item(key = "header") {
-                Header(app, details, offline, backdrop, tone, Modifier.onSizeChanged { headerHeight = with(density) { it.height.toDp() } })
+                Header(app, details, offline, backdrop, poster, tone, maxHeight, Modifier.onSizeChanged { headerHeight = with(density) { it.height.toDp() } })
             }
             if (details.versions.isNotEmpty()) {
                 item(key = "versions") { Versions(app, details, Modifier.padding(horizontal = layout.safeMarginDp.dp).padding(top = section)) }
@@ -157,15 +160,18 @@ private fun Gone(app: AppState) {
 }
 
 @Composable
-private fun Header(app: AppState, details: DetailsModel, offline: OfflineStatus?, backdrop: ImageBitmap?, tone: () -> Color, modifier: Modifier = Modifier) {
+private fun Header(app: AppState, details: DetailsModel, offline: OfflineStatus?, backdrop: ImageBitmap?, poster: ImageBitmap?, tone: () -> Color, viewport: Dp, modifier: Modifier = Modifier) {
     val layout = LocalLayout.current
     val card = details.card
     BoxWithConstraints(modifier.fillMaxWidth()) {
         val width = maxWidth
         // A television's screen is its whole canvas: the header leaves room for what follows it to show.
         val television = layout.formFactor == FormFactor.TV
-        Box(Modifier.fillMaxWidth().heightIn(min = if (television) 424.dp else 560.dp)) {
-            ArtworkImage(backdrop, Modifier.matchParentSize(), alignment = Alignment.TopCenter) { TitleBackdrop(card.title) }
+        // The title and Play are in the first view however short the window (a phone on its side): the header
+        // never asks for more than the screen leaves above the bottom chrome.
+        val tallest = viewport - LocalChromeInsets.current.bottom - 16.dp
+        Box(Modifier.fillMaxWidth().heightIn(min = minOf(if (television) 424.dp else 560.dp, tallest))) {
+            ArtworkImage(backdrop, Modifier.matchParentSize(), alignment = Alignment.TopCenter) { TitleBackdrop(card.title, poster = poster) }
             // Scrims keep the text readable and dissolve the backdrop into the page's own tone.
             Box(Modifier.matchParentSize().artworkScrims(tone, left = 0.92f, right = 0.08f))
             Row(
@@ -173,7 +179,8 @@ private fun Header(app: AppState, details: DetailsModel, offline: OfflineStatus?
                 horizontalArrangement = Arrangement.spacedBy(36.dp),
                 verticalAlignment = Alignment.Bottom,
             ) {
-                if (width >= 760.dp) {
+                // The poster beside the title needs height as well as width.
+                if (width >= 760.dp && (television || viewport >= 600.dp)) {
                     val shape = RoundedCornerShape(14.dp)
                     val posterWidth = if (television) 164.dp else 220.dp
                     Box(Modifier.width(posterWidth).aspectRatio(2f / 3f).shadow(32.dp, shape).clip(shape)) {
@@ -195,9 +202,11 @@ private fun Header(app: AppState, details: DetailsModel, offline: OfflineStatus?
                         details.badges.forEach { Chip(it) }
                         if (card.offline) Chip("Not connected")
                     }
-                    if (details.genres.isNotEmpty()) Text(details.genres.joinToString("  ·  "), style = LocalTypography.current.caption, color = RefluxColors.textTertiary, maxLines = 1)
-                    details.overview?.takeIf { it.isNotBlank() }?.let { Text(it, Modifier.widthIn(max = 680.dp).padding(top = 2.dp), color = RefluxColors.textSecondary, maxLines = 5) }
-                    credit(details.credits)?.let { Text(it, style = LocalTypography.current.caption, color = RefluxColors.textTertiary, maxLines = 1) }
+                    // A short screen keeps what it takes to choose and play; the quietest lines wait for a taller one.
+                    val short = viewport < 600.dp
+                    if (details.genres.isNotEmpty() && !short) Text(details.genres.joinToString("  ·  "), style = LocalTypography.current.caption, color = RefluxColors.textTertiary, maxLines = 1)
+                    details.overview?.takeIf { it.isNotBlank() }?.let { Text(it, Modifier.widthIn(max = 680.dp).padding(top = 2.dp), color = RefluxColors.textSecondary, maxLines = if (short) 2 else 5) }
+                    credit(details.credits)?.takeUnless { short }?.let { Text(it, style = LocalTypography.current.caption, color = RefluxColors.textTertiary, maxLines = 1) }
                     // Whether it has been started, and how much is left, said once and quietly.
                     val progress = Formatting.progress(card.entry.watchState)
                     val remaining = Formatting.remaining(card.entry.watchState)

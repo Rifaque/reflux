@@ -53,6 +53,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -265,24 +266,28 @@ class MainActivity : ComponentActivity() {
 private fun VideoLayer(player: Media3Player) {
     val aspect by player.videoAspect.collectAsState()
     val cues by player.cues.collectAsState()
+    val clearance by player.subtitleClearance.collectAsState()
     BoxWithConstraints(Modifier.fillMaxSize().background(Color.Black), contentAlignment = Alignment.Center) {
         val container = maxWidth / maxHeight
         val shape = aspect ?: container
         val textSize = (minOf(maxWidth, maxHeight).value / 19f).coerceIn(14f, 30f)
+        // While the controls show, text stays above them: their share of the window, less the band below the picture.
+        val picture = if (shape < container) maxHeight else maxWidth / shape
+        val lift = maxHeight * clearance - (maxHeight - picture) / 2
         Box(Modifier.aspectRatio(shape, matchHeightConstraintsFirst = shape < container)) {
             AndroidView(
                 factory = { context -> SurfaceView(context).also(player::attach) },
                 modifier = Modifier.fillMaxSize(),
                 onRelease = { player.attach(null) },
             )
-            Subtitles(cues, textSize)
+            Subtitles(cues, textSize, lift)
         }
     }
 }
 
 /** Subtitle text along the bottom of the picture, and image subtitles where their stream places them. */
 @Composable
-private fun Subtitles(cues: List<Cue>, textSize: Float) {
+private fun Subtitles(cues: List<Cue>, textSize: Float, lift: Dp) {
     BoxWithConstraints(Modifier.fillMaxSize()) {
         for (cue in cues) {
             val image = cue.bitmap ?: continue
@@ -300,7 +305,7 @@ private fun Subtitles(cues: List<Cue>, textSize: Float) {
         if (text.isNotEmpty()) {
             BasicText(
                 text,
-                Modifier.align(Alignment.BottomCenter).padding(horizontal = 24.dp).padding(bottom = maxHeight * 0.07f),
+                Modifier.align(Alignment.BottomCenter).padding(horizontal = 24.dp).padding(bottom = maxOf(maxHeight * 0.07f, lift)),
                 style = TextStyle(
                     color = Color.White,
                     fontSize = textSize.sp,

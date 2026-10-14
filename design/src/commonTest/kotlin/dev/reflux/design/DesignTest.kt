@@ -127,6 +127,16 @@ class ArtworkAtmosphereTest {
     fun greyArtworkHasNoAtmosphere() {
         assertNull(ArtworkAtmosphere.from(image(Argb(30, 30, 30) to 500, Argb(200, 200, 200) to 500)))
         assertNull(ArtworkAtmosphere.from(LongArray(0)))
+        assertNull(ArtworkAtmosphere.dominantHue(image(Argb(30, 30, 30) to 500, Argb(200, 200, 200) to 500)))
+    }
+
+    @Test
+    fun theAtmosphereIsMadeFromTheDominantHue() {
+        // A poster-only work's generated backdrop takes this hue, so it has to agree with the page's wash.
+        val yellow = image(Argb(25, 25, 25) to 400, Argb(235, 200, 60) to 400, Argb(60, 70, 200) to 60)
+        val hue = assertNotNull(ArtworkAtmosphere.dominantHue(yellow))
+        assertTrue(hue in 35.0..60.0, "yellow expected, got $hue")
+        assertEquals(ArtworkAtmosphere.ofHue(hue), ArtworkAtmosphere.from(yellow))
     }
 
     @Test

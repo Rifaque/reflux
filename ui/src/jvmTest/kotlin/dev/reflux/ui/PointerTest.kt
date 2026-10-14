@@ -280,10 +280,13 @@ class PointerTest {
     fun controlsLeaveWhilePlayingAndReturnWithThePointer() = player { playing ->
         playing.player.play()
         waitForIdle()
+        // While the bar shows, subtitles are kept above it rather than read through it.
+        assertTrue(playing.player.clearance in 0.08f..0.4f, "clearance ${playing.player.clearance}")
         // The test's clock, not the machine's speed, decides how long "a few seconds" takes.
         mainClock.advanceTimeBy(5_000)
         waitForIdle()
         assertFalse(exists("Pause") || exists("Play"), "the controls are away after a few seconds of playback")
+        assertEquals(0f, playing.player.clearance, "subtitles return to their place with the controls away")
         mainClock.autoAdvance = false
         onRoot().performMouseInput {
             moveTo(Offset(600f, 300f))

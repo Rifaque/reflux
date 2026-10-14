@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -33,10 +34,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.layout.findRootCoordinates
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -71,6 +76,7 @@ import dev.reflux.ui.RefluxTheme
 import dev.reflux.ui.components.Button
 import dev.reflux.ui.components.ButtonPrompts
 import dev.reflux.ui.components.ButtonStyle
+import dev.reflux.ui.components.FocusRingReach
 import dev.reflux.ui.components.Icon
 import dev.reflux.ui.components.IconButton
 import dev.reflux.ui.components.Pressable
@@ -188,8 +194,12 @@ fun PlayerOverlay(app: AppState, session: PlaybackSession, modifier: Modifier = 
             val waiting = state.status == PlayerStatus.LOADING || state.status == PlayerStatus.BUFFERING
             if (error == null && waiting) Spinner(Modifier.align(Alignment.Center))
 
+            // Subtitles move above the bar while it shows, rather than being read through it.
+            var bar by remember { mutableFloatStateOf(0f) }
+            val clearance = if (visible && session.error == null) bar else 0f
+            LaunchedEffect(clearance) { session.keepSubtitlesClear(clearance) }
             AnimatedVisibility(visible, enter = fadeIn(Motion.controlsShow.tween()), exit = fadeOut(Motion.controlsHide.tween())) {
-                Controls(app, session, state)
+                Controls(app, session, state) { bar = it }
             }
 
             AnimatedVisibility(
@@ -239,7 +249,7 @@ private fun menuIcon(menu: PlayerMenu): Icon = when (menu) {
 }
 
 @Composable
-private fun Controls(app: AppState, session: PlaybackSession, state: PlayerState) {
+private fun Controls(app: AppState, session: PlaybackSession, state: PlayerState, onBar: (Float) -> Unit) {
     val layout = LocalLayout.current
     val margin = layout.safeMarginDp.dp
     val menus = session.menus(state)
@@ -305,7 +315,13 @@ private fun Controls(app: AppState, session: PlaybackSession, state: PlayerState
             }
         }
         Column(
-            Modifier.align(Alignment.BottomCenter).padding(horizontal = margin).padding(bottom = if (compact) 12.dp else 24.dp).widthIn(max = 1180.dp),
+            Modifier.align(Alignment.BottomCenter).padding(horizontal = margin).padding(bottom = if (compact) 12.dp else 24.dp).widthIn(max = 1180.dp)
+                .onGloballyPositioned { bottom ->
+                    // The share of the window this block covers (what is playing, the bar, an open list), and a
+                    // little air: subtitles are kept above it.
+                    val window = bottom.findRootCoordinates().size.height.toFloat()
+                    if (window > 0f) onBar(((window - bottom.positionInRoot().y) / window + 0.02f).coerceIn(0f, 1f))
+                },
             verticalArrangement = Arrangement.spacedBy(14.dp),
             horizontalAlignment = Alignment.End,
         ) {
@@ -440,7 +456,7 @@ private fun MenuPanel(session: PlaybackSession, menus: List<PlayerMenu>, open: P
         Row(Modifier.padding(horizontal = 2.dp, vertical = 2.dp), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
             menus.forEach { menu -> Tab(menu.title, menu == open, compact = true) { if (menu != open) session.toggleMenu(menu) } }
         }
-        LazyColumn(Modifier.heightIn(max = 312.dp), state = list) {
+        LazyColumn(Modifier.heightIn(max = 312.dp), state = list, contentPadding = PaddingValues(vertical = FocusRingReach)) {
             itemsIndexed(options) { index, option ->
                 Pressable(
                     { session.choose(open, index) },

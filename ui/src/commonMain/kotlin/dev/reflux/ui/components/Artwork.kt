@@ -110,10 +110,12 @@ fun ArtworkImage(
 fun titleHue(title: String): Float = (title.fold(7) { hash, char -> hash * 31 + char.code }.absoluteValue % 360).toFloat()
 
 /** The two tones of a generated backdrop for [title]: deep and muted, like a dimly lit poster. */
-fun titleTones(title: String): Pair<Color, Color> {
-    val hue = titleHue(title)
-    return Color.hsl(hue, 0.34f, 0.25f) to Color.hsl((hue + 38f) % 360f, 0.40f, 0.085f)
-}
+fun titleTones(title: String): Pair<Color, Color> = backdropTones(titleHue(title))
+
+/** The two tones of a generated backdrop of [hue]; without a hue (colorless artwork), graphite. */
+fun backdropTones(hue: Float?): Pair<Color, Color> =
+    if (hue == null) Color.hsl(0f, 0f, 0.2f) to Color.hsl(0f, 0f, 0.07f)
+    else Color.hsl(hue, 0.34f, 0.25f) to Color.hsl((hue + 38f) % 360f, 0.40f, 0.085f)
 
 /** How much of an artwork's atmosphere tints the page around it: a wash, never a color scheme. */
 private const val ATMOSPHERE_STRENGTH = 0.22f
@@ -158,10 +160,17 @@ fun rememberPageTone(image: ImageBitmap?, title: String): Color {
  * What a work looks like before (or without) artwork: its title set on a color derived from the title.
  * Deliberately designed rather than a grey box, because a fresh library is all placeholders.
  */
-/** A full-bleed generated backdrop for [title], for heroes and headers of works without artwork. */
+/**
+ * A full-bleed generated backdrop for [title], for heroes and headers of works without a backdrop. A work
+ * that has a [poster] gets the poster's color, so the page agrees with the artwork on it; one without any
+ * artwork gets its title's.
+ */
 @Composable
-fun TitleBackdrop(title: String, modifier: Modifier = Modifier) {
-    val (light, dark) = titleTones(title)
+fun TitleBackdrop(title: String, modifier: Modifier = Modifier, poster: ImageBitmap? = null) {
+    val hue = remember(title, poster) {
+        if (poster == null) titleHue(title) else runCatching { ArtworkAtmosphere.dominantHue(sample(poster))?.toFloat() }.getOrNull()
+    }
+    val (light, dark) = backdropTones(hue)
     Box(
         modifier.fillMaxSize()
             .background(Brush.linearGradient(listOf(dark, light, dark), start = Offset.Zero, end = Offset.Infinite))

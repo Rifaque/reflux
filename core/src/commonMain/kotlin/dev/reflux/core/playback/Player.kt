@@ -98,6 +98,12 @@ interface Player : AutoCloseable {
     /** Selects a subtitle track, or turns subtitles off with null. */
     fun selectSubtitle(trackId: String?)
 
+    /**
+     * Keeps subtitles above the bottom [fraction] (0–1) of the window, where the player's controls are
+     * showing; 0 returns them to their usual place. An engine that cannot move its subtitles ignores it.
+     */
+    fun setSubtitleClearance(fraction: Float) {}
+
     /** Stops playback and unloads the current media. The player can be reused. */
     fun stop()
 }

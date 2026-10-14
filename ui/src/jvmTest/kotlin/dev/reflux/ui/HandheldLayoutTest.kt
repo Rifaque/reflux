@@ -34,6 +34,18 @@ class HandheldLayoutTest {
     private fun DesktopComposeUiTest.tap(text: String) = onNodeWithText(text).performTouchInput { click() }
 
     @Test
+    fun aPhoneOnItsSideStillOpensDetailsOnTheTitleAndPlay() = screen(populated(), width = phoneHeight, height = phoneWidth) { app ->
+        awaitText("Recently Added")
+        app.navigator.open(Destination.Details(app.library.movies().first { it.item.title == "Heat" }.item.id))
+        awaitText("Versions")
+        save("phone-landscape-details")
+        // A header taller than the screen would open on artwork alone, with the title and Play below the fold.
+        val title = onAllNodesWithText("Heat").fetchSemanticsNodes().maxBy { it.boundsInRoot.height }.boundsInRoot
+        val play = onNodeWithText("Play").fetchSemanticsNode().boundsInRoot
+        assertTrue(title.top >= 0f && play.bottom < phoneWidth - 60f, "title $title and Play $play are in the first view")
+    }
+
+    @Test
     fun aPhoneNavigatesFromTheBottomOfTheScreen() = screen(populated(), width = phoneWidth, height = phoneHeight) { app ->
         awaitText("Recently Added")
         // The sections are within reach of a thumb, and there is no bar along the top.
