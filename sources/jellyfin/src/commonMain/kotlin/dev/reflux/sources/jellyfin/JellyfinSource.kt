@@ -21,6 +21,9 @@ import dev.reflux.core.source.CatalogSource
 import dev.reflux.core.source.DownloadableSource
 import dev.reflux.core.source.CatalogSubtitle
 import dev.reflux.core.source.CatalogVersion
+import dev.reflux.core.source.SectionKind
+import dev.reflux.core.source.SectionedSource
+import dev.reflux.core.source.SourceSection
 import dev.reflux.core.source.PlaybackTarget
 import dev.reflux.core.source.SourceCapability
 import dev.reflux.core.source.SourceDescriptor
@@ -51,7 +54,7 @@ class JellyfinSource(
     http: HttpFetcher,
     displayName: String = "Jellyfin",
     deviceName: String = "Reflux",
-) : CatalogSource, WatchStateSyncSource, DownloadableSource {
+) : CatalogSource, WatchStateSyncSource, DownloadableSource, SectionedSource {
     private val api = JellyfinApi(credentials.serverUrl, http, credentials.deviceId, deviceName, credentials.accessToken)
     private val startedSessions = mutableSetOf<String>()
 
@@ -78,30 +81,74 @@ class JellyfinSource(
         } catch (e: JellyfinException) {
             throw SourceUnavailableException(descriptor.id, e)
         }
-        var start = 0
-        while (true) {
-            val page = try {
-                api.get(
-                    "Items",
-                    mapOf(
-                        "userId" to credentials.userId,
-                        "Recursive" to "true",
-                        "IncludeItemTypes" to "Movie,Episode",
-                        "Fields" to "ProviderIds,MediaSources,DateCreated,PremiereDate",
-                        "EnableUserData" to "true",
-                        "SortBy" to "SortName",
-                        "StartIndex" to start.toString(),
-                        "Limit" to PAGE_SIZE.toString(),
-                    ),
-                ).obj()
+        // Everything the account sees, unless libraries were left out: then each included one in turn. An
+        // item in two libraries is listed once.
+        val parents: List<String?> = if (credentials.excludedLibraries.isEmpty()) {
+            listOf(null)
+        } else {
+            sections().map { it.id }.filter { it !in credentials.excludedLibraries }
+        }
+        val seen = HashSet<String>()
+        for (parent in parents) {
+            var start = 0
+            while (true) {
+                val page = try {
+                    api.get(
+                        "Items",
+                        listOfNotNull(
+                            "userId" to credentials.userId,
+                            parent?.let { "ParentId" to it },
+                            "Recursive" to "true",
+                            "IncludeItemTypes" to "Movie,Episode",
+                            "Fields" to "ProviderIds,MediaSources,DateCreated,PremiereDate",
+                            "EnableUserData" to "true",
+                            "SortBy" to "SortName",
+                            "StartIndex" to start.toString(),
+                            "Limit" to PAGE_SIZE.toString(),
+                        ).toMap(),
+                    ).obj()
+                } catch (e: JellyfinException) {
+                    throw SourceUnavailableException(descriptor.id, e)
+                } ?: break
+                val items = page.array("Items")
+                for (item in items) {
+                    if (item.string("Id")?.let(seen::add) == false) continue
+                    entry(item, series)?.let { emit(it) }
+                }
+                start += items.size
+                val total = page.int("TotalRecordCount") ?: start
+                if (items.isEmpty() || start >= total) break
+            }
+        }
+    }
+
+    override val excludedSections: Set<String> get() = credentials.excludedLibraries
+
+    /**
+     * The account's libraries that can hold films and series. Music, books, photos, playlists, and live
+     * television are not listed: Reflux would find nothing to play in them.
+     */
+    override suspend fun sections(): List<SourceSection> {
+        val views = try {
+            api.get("UserViews", mapOf("userId" to credentials.userId))
+        } catch (e: JellyfinException) {
+            // Servers before 10.9 only answer the older address.
+            if (e.status != 404) throw SourceUnavailableException(descriptor.id, e)
+            try {
+                api.get("Users/${credentials.userId}/Views")
             } catch (e: JellyfinException) {
                 throw SourceUnavailableException(descriptor.id, e)
-            } ?: break
-            val items = page.array("Items")
-            for (item in items) entry(item, series)?.let { emit(it) }
-            start += items.size
-            val total = page.int("TotalRecordCount") ?: start
-            if (items.isEmpty() || start >= total) break
+            }
+        }.obj() ?: return emptyList()
+        return views.array("Items").mapNotNull { view ->
+            val id = view.string("Id") ?: return@mapNotNull null
+            val kind = when (view.string("CollectionType")?.lowercase()) {
+                "movies" -> SectionKind.MOVIES
+                "tvshows" -> SectionKind.SHOWS
+                null, "", "mixed", "folders" -> SectionKind.MIXED
+                else -> return@mapNotNull null
+            }
+            SourceSection(id, view.string("Name") ?: id, kind)
         }
     }
 

@@ -8,7 +8,9 @@ import androidx.compose.ui.test.isFocused
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.performTouchInput
@@ -34,7 +36,10 @@ import dev.reflux.core.source.ConnectionRequest
 import dev.reflux.core.source.PlaybackTarget
 import dev.reflux.core.source.SourceCapability
 import dev.reflux.core.source.SourceConnector
+import dev.reflux.core.source.SectionKind
+import dev.reflux.core.source.SectionedSource
 import dev.reflux.core.source.SourceDescriptor
+import dev.reflux.core.source.SourceSection
 import dev.reflux.core.source.SourceLocality
 import dev.reflux.core.source.SourceUnavailableException
 import dev.reflux.library.SourceConnections
@@ -50,8 +55,16 @@ import kotlin.test.assertTrue
 
 private const val MINUTE = 60_000L
 
-/** A media server on the home network, with two films of its own, that lets in alex with "secret". */
-private class HomeServer(val address: String) : CatalogSource {
+/**
+ * A media server on the home network that lets in alex with "secret": a Movies library with two films of
+ * its own and a copy of one the local folder has too, and a Kids library.
+ */
+private class HomeServer(val address: String, override val excludedSections: Set<String> = emptySet()) : CatalogSource, SectionedSource {
+    override suspend fun sections(): List<SourceSection> {
+        if (!HomeNetwork.serverUp) throw SourceUnavailableException(descriptor.id)
+        return listOf(SourceSection("lib-m", "Films", SectionKind.MOVIES), SourceSection("lib-k", "Kids", SectionKind.MOVIES))
+    }
+
     override val descriptor = SourceDescriptor(StableIds.sourceId("home", address), "home", "Living Room", SourceLocality.LOCAL_NETWORK, setOf(SourceCapability.PROVIDES_CATALOG))
     override suspend fun availability() = if (HomeNetwork.serverUp) Availability.AVAILABLE else Availability.UNAVAILABLE
     override suspend fun playbackTarget(path: String) = PlaybackTarget("http://home.local/$path")
@@ -61,8 +74,12 @@ private class HomeServer(val address: String) : CatalogSource {
         listOf(CatalogVersion("items/${title.lowercase()}", 3_000_000_000, 1, StreamInfo(Container.MATROSKA, VideoStream(VideoCodec.H264, 1920, 1080, 8), listOf(AudioStream(AudioCodec.AAC, 2, "eng")), durationMs = 120 * MINUTE))),
     )
 
-    override fun catalog(): Flow<CatalogEntry> =
-        if (HomeNetwork.serverUp) listOf(film("Ronin", 1998), film("Sicario", 2015)).asFlow() else flow { throw SourceUnavailableException(descriptor.id) }
+    override fun catalog(): Flow<CatalogEntry> = if (!HomeNetwork.serverUp) {
+        flow { throw SourceUnavailableException(descriptor.id) }
+    } else {
+        (listOf(film("Ronin", 1998), film("Sicario", 2015), film("Heat", 1995)).takeIf { "lib-m" !in excludedSections }.orEmpty() +
+            listOf(film("Paddington", 2014)).takeIf { "lib-k" !in excludedSections }.orEmpty()).asFlow()
+    }
 }
 
 /** The network the tests' sources live on: a server that can be switched off, and a share that is never there. */
@@ -83,6 +100,14 @@ private object HomeNetwork {
             else -> Connection.Established(HomeServer(request.address), "address=${request.address}\nuser=${request.username}\ntoken=t0k")
         }
         override fun describe(config: String) = config.lines().associate { it.substringBefore('=') to it.substringAfter('=') }.let { ConnectionRequest(it.getValue("address"), it["user"]) }
+        override fun withExcludedSections(config: String, excluded: Set<String>) =
+            (config.lines().filterNot { it.startsWith("exclude=") } + listOfNotNull(excluded.takeIf { it.isNotEmpty() }?.sorted()?.joinToString(",")?.let { "exclude=$it" })).joinToString("\n")
+    }
+
+    /** How a restart recreates the server from what was stored. */
+    fun recreate(config: String): HomeServer {
+        val pairs = config.lines().associate { it.substringBefore('=') to it.substringAfter('=') }
+        return HomeServer(pairs.getValue("address"), pairs["exclude"]?.split(',')?.toSet().orEmpty())
     }
 
     val share = object : SourceConnector {
@@ -108,15 +133,17 @@ class SourcesUiTest {
     private fun world(empty: Boolean = false): Pair<TestWorld, FakePlatform> {
         HomeNetwork.serverUp = true
         val world = if (empty) TestWorld().also { it.library.removeSource(it.source.descriptor.id); it.registry.unregister(it.source.descriptor.id) } else populated()
+        world.factories["home"] = { record -> HomeNetwork.recreate(record.config) }
         val connections = SourceConnections(world.library, world.registry, listOf(HomeNetwork.server, HomeNetwork.share))
         return world to FakePlatform(connections = connections)
     }
 
-    private fun DesktopComposeUiTest.signIn(password: String) {
+    /** Fills the form and connects; a television has no pointer, so there the button is activated as such. */
+    private fun DesktopComposeUiTest.signIn(password: String, byPointer: Boolean = true) {
         onNodeWithContentDescription("Server address").performTextReplacement("http://home.local:8096")
         onNodeWithContentDescription("User name").performTextReplacement("alex")
         onNodeWithContentDescription("Password").performTextReplacement(password)
-        onNodeWithText("Connect").performClick()
+        if (byPointer) onNodeWithText("Connect").performClick() else onNodeWithText("Connect").performSemanticsAction(SemanticsActions.OnClick)
     }
 
     @Test
@@ -187,7 +214,7 @@ class SourcesUiTest {
 
             onNodeWithContentDescription("Media sources").performClick()
             awaitText("Living Room")
-            await("what is on it") { shows("1 movie") || shows("2 movies") }
+            await("what is on it") { shows("4 movies") }
             save("sources")
 
             // The server goes away: nothing is removed, and the page says so plainly.
@@ -296,6 +323,101 @@ class SourcesUiTest {
             // Back, step by step, all the way out.
             remote(app, Key.BACK)
             await("home") { app.navigator.current == Destination.Home }
+        }
+    }
+
+    @Test
+    fun aServersLibrariesAreChosenAndTheConnectionStays() {
+        val (world, platform) = world()
+        screen(world, platform) { app ->
+            awaitText("Recently Added")
+            runOnIdle { app.navigator.open(Destination.Connect(ConnectionKind.SERVER)) }
+            awaitText("Connect to Jellyfin")
+            signIn("secret")
+            await("the server's films") { world.library.movies().any { it.item.title == "Paddington" } }
+
+            // The same film on the server and in the folder is one film, with a version on each.
+            assertEquals(1, world.library.movies().count { it.item.title == "Heat" })
+            assertEquals(3, world.library.versions(world.movie("Heat").item.id).size)
+
+            runOnIdle { app.navigator.open(Destination.Sources) }
+            awaitText("Living Room")
+            // Looking after sources is not a section of the library: no tab claims it.
+            assertEquals(null, app.navigator.highlighted)
+            onNodeWithText("Living Room").performClick()
+            awaitText("All libraries")
+            onNodeWithText("Libraries").performClick()
+            awaitText("Libraries on Living Room")
+            await("the libraries") { shows("Kids") }
+            save("library-selection")
+            onNodeWithText("Kids").performClick()
+            await("Kids left out") { shows("Left out") }
+            // The last one cannot be left out too.
+            onNodeWithText("Films").performClick()
+            await("the explanation") { shows("One library always stays included") }
+            assertEquals(1, onAllNodesWithText("Left out", substring = true).fetchSemanticsNodes().size, "Films is still included")
+            save("library-selection-changed")
+            onNodeWithText("Save").performClick()
+
+            await("back on the sources") { app.navigator.current == Destination.Sources }
+            await("Paddington to leave the library") { world.library.movies().none { it.item.title == "Paddington" } }
+            assertTrue(world.library.movies().any { it.item.title == "Ronin" }, "the rest of the server stays")
+            assertEquals(2, world.library.sources().size, "the connection stays")
+            await("the choice on the card") { shows("1 library left out") }
+            assertFalse("Kids" in world.library.sources().single { it.type == "home" }.config.substringAfter("exclude=", ""), "kept by id")
+            assertTrue("lib-k" in world.library.sources().single { it.type == "home" }.config)
+
+            // And back again.
+            onNodeWithText("Libraries").performClick()
+            await("the libraries") { shows("Kids") }
+            onNodeWithText("Kids").performClick()
+            onNodeWithText("Save").performClick()
+            await("Paddington again") { world.library.movies().any { it.item.title == "Paddington" } }
+        }
+    }
+
+    @Test
+    fun aServerThatIsAwayCannotBeAskedForItsLibraries() {
+        val (world, platform) = world()
+        screen(world, platform) { app ->
+            awaitText("Recently Added")
+            runOnIdle { app.navigator.open(Destination.Connect(ConnectionKind.SERVER)) }
+            awaitText("Connect to Jellyfin")
+            signIn("secret")
+            await("connected") { world.library.sources().any { it.type == "home" } }
+            HomeNetwork.serverUp = false
+            val id = world.library.sources().single { it.type == "home" }.id
+            runOnIdle { app.navigator.open(Destination.SourceSections(id)) }
+            await("the explanation") { shows("isn't connected, so its libraries can't be listed") }
+        }
+    }
+
+    @Test
+    fun theRemoteChoosesLibrariesToo() {
+        val (world, _) = world()
+        val tv = FakePlatform(television = true, connections = SourceConnections(world.library, world.registry, listOf(HomeNetwork.server, HomeNetwork.share)))
+        television(world, tv) { app ->
+            awaitText("Recently Added")
+            runOnIdle { app.navigator.open(Destination.Connect(ConnectionKind.SERVER)) }
+            awaitText("Connect to Jellyfin")
+            signIn("secret", byPointer = false)
+            await("connected") { world.library.movies().any { it.item.title == "Paddington" } }
+            val id = world.library.sources().single { it.type == "home" }.id
+            runOnIdle { app.navigator.open(Destination.SourceSections(id)) }
+            await("focus on the first library") { focusedIs("Films") }
+            save("tv-library-selection")
+            remote(app, Key.ARROW_DOWN)
+            await("focus on Kids") { focusedIs("Kids") }
+            remote(app, Key.DPAD_CENTER)
+            await("Kids left out") { shows("Left out") }
+            remote(app, Key.ARROW_DOWN)
+            await("focus on Save") { focusedIs("Save") }
+            remote(app, Key.DPAD_CENTER)
+            // Saved, and back where the page was opened from (here, Home), with a tab that says so again.
+            await("back where it was opened from") { app.navigator.current == Destination.Home }
+            await("Paddington to leave") { world.library.movies().none { it.item.title == "Paddington" } }
+            assertEquals(Destination.Home, app.navigator.highlighted)
+            await("focus somewhere on the page") { onAllNodes(isFocused()).fetchSemanticsNodes().isNotEmpty() }
         }
     }
 

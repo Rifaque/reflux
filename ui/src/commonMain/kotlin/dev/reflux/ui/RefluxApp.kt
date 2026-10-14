@@ -84,7 +84,9 @@ import dev.reflux.ui.screens.OfflinePanel
 import dev.reflux.ui.screens.SearchScreen
 import dev.reflux.ui.screens.AddSourceScreen
 import dev.reflux.ui.screens.ConnectScreen
+import dev.reflux.ui.screens.SourceSectionsScreen
 import dev.reflux.ui.screens.SourcesScreen
+import dev.reflux.ui.state.aboutSources
 import dev.reflux.ui.state.AppState
 import dev.reflux.ui.state.Destination
 import dev.reflux.ui.theme.GlassScene
@@ -271,6 +273,7 @@ fun RefluxApp(app: AppState, modifier: Modifier = Modifier) {
                                     Destination.Sources -> SourcesScreen(app)
                                     Destination.AddSource -> AddSourceScreen(app)
                                     is Destination.Connect -> ConnectScreen(app, destination)
+                                    is Destination.SourceSections -> SourceSectionsScreen(app, destination.sourceId)
                                 }
                             }
                         }
@@ -367,6 +370,9 @@ private fun BoxScope.CompactNavigation(app: AppState) {
         // Search has its field across the top; the sources are a tap away from any other section.
         if (navigator.current is Destination.Section && navigator.current != Destination.Search) {
             IconButton(Icon.FOLDER, "Media sources", { app.toggleSources() }, size = 44.dp, glass = true)
+        } else if (navigator.current.aboutSources) {
+            // Where the user is, said by the one control that leads here.
+            IconButton(Icon.FOLDER, "Media sources", { app.toggleSources() }, size = 44.dp, glass = true, selected = true)
         }
     }
     // While typing, the keyboard owns the bottom of the screen: the sections step aside rather than sit on
@@ -390,10 +396,10 @@ private fun BoxScope.CompactNavigation(app: AppState) {
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Tab("Home", navigator.section == Destination.Home) { navigator.show(Destination.Home) }
-                Tab("Movies", navigator.section == Destination.Movies) { navigator.show(Destination.Movies) }
-                Tab("Shows", navigator.section == Destination.Shows) { navigator.show(Destination.Shows) }
-                IconButton(Icon.SEARCH, "Search", { navigator.show(Destination.Search) }, tint = tabColor(navigator.section == Destination.Search))
+                Tab("Home", navigator.highlighted == Destination.Home) { navigator.show(Destination.Home) }
+                Tab("Movies", navigator.highlighted == Destination.Movies) { navigator.show(Destination.Movies) }
+                Tab("Shows", navigator.highlighted == Destination.Shows) { navigator.show(Destination.Shows) }
+                IconButton(Icon.SEARCH, "Search", { navigator.show(Destination.Search) }, tint = tabColor(navigator.highlighted == Destination.Search))
             }
         }
     }
@@ -416,9 +422,9 @@ private fun NavigationBar(app: AppState, modifier: Modifier = Modifier) {
         }
         Text("Reflux", Modifier.padding(start = 4.dp, end = 20.dp), style = LocalTypography.current.title)
         Row(horizontalArrangement = Arrangement.spacedBy(2.dp), verticalAlignment = Alignment.CenterVertically) {
-            Tab("Home", navigator.section == Destination.Home) { navigator.show(Destination.Home) }
-            Tab("Movies", navigator.section == Destination.Movies) { navigator.show(Destination.Movies) }
-            Tab("Shows", navigator.section == Destination.Shows) { navigator.show(Destination.Shows) }
+            Tab("Home", navigator.highlighted == Destination.Home) { navigator.show(Destination.Home) }
+            Tab("Movies", navigator.highlighted == Destination.Movies) { navigator.show(Destination.Movies) }
+            Tab("Shows", navigator.highlighted == Destination.Shows) { navigator.show(Destination.Shows) }
         }
         Spacer(Modifier.weight(1f))
         // With a controller in hand, the bar says what its buttons do here, in that controller's own terms.
@@ -440,8 +446,8 @@ private fun NavigationBar(app: AppState, modifier: Modifier = Modifier) {
             )
         }
         ActivityIndicator(activity)
-        IconButton(Icon.SEARCH, "Search", { navigator.show(Destination.Search) }, tint = tabColor(navigator.section == Destination.Search))
-        IconButton(Icon.FOLDER, "Media sources", { app.toggleSources() }, tint = tabColor(navigator.current == Destination.Sources))
+        IconButton(Icon.SEARCH, "Search", { navigator.show(Destination.Search) }, tint = tabColor(navigator.highlighted == Destination.Search))
+        IconButton(Icon.FOLDER, "Media sources", { app.toggleSources() }, tint = tabColor(navigator.current.aboutSources), selected = navigator.current.aboutSources)
     }
 }
 

@@ -61,7 +61,7 @@ class SourceConnectionsTest {
     private val library = Library(testDatabase()) { 1_790_000_000_000L }
     private val registry = SourceRegistry(mapOf("shelf" to { record -> Shelf(record.config.lines().first().substringAfter('='), "") }))
     private val reports = mutableListOf<String>()
-    private val connections = SourceConnections(library, registry, listOf(ShelfConnector)) { problem, _ -> reports += problem }
+    private val connections = SourceConnections(library, registry, listOf(ShelfConnector), report = { problem, _ -> reports += problem })
 
     @Test
     fun anAddressBecomesASourceThatIsKeptAndCanBeScanned() = runTest {

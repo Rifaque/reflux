@@ -158,7 +158,7 @@ Kotlin Multiplatform (see the decision log). Modules:
 Packages in `core` (`dev.reflux.core`):
 
 - `model` — `MediaItem` (Movie, Show, Season, Episode), `MediaVersion`, `MediaLocation`, `Artwork`, `WatchState`, `Availability`, deterministic `StableIds`.
-- `source` — `MediaSource` / `FileEnumeratingSource` adapter contracts, `SourceCapability`, `SourceLocality`, shared `ScanRules`, and `SourceConnector` with its connection kinds, requests, and problems.
+- `source` — `MediaSource` / `FileEnumeratingSource` adapter contracts, `SourceCapability`, `SourceLocality`, shared `ScanRules`, `SourceConnector` with its connection kinds, requests, and problems, and `SectionedSource` for sources made of parts the user chooses between (a server's libraries).
 - `identify` — path parsing (`MediaPathParser`), identity keys and grouping (`Identifier`), user overrides, sidecar subtitle/artwork matching.
 - `playback` — stream description (`StreamInfo`), `DeviceCapabilities`, `PlaybackAssessor` (optimal / degraded / unsupported with reasons), the engine-agnostic `Player` contract, `MediaProber`, default `TrackSelector`, and `PlaybackController` (semantic actions, default tracks, watch reporting).
 - `versions` — Best Version (`VersionSelector`), ranked and explained: what this device can play, the cut in progress, the user's pinned version, quality as this device delivers it, and the closest copy among versions that are equivalent by all of that.
@@ -170,6 +170,8 @@ Packages in `core` (`dev.reflux.core`):
 - `input` — semantic actions, default mappings, glyphs, and input-modality tracking.
 
 Playing a work: `Library.planPlayback` picks the version (Best Version or the user's choice), resolves it and its external subtitles through the source adapter, and carries the work's watch position onto that version's timeline (`Handoff`). A `PlaybackController` then drives the platform `Player` and reports progress back to the library, which records it for the work together with the timeline it was measured on. None of this differs by kind of source. Probing (`Library.probePending` with a `MediaProber`) replaces file-name hints with real stream data in the background; failures are not retried until the file changes.
+
+A source's life: it is added by a connector (or a folder rule) and kept as a record; scanned while reachable; marked unavailable, never emptied, while it is not; checked again periodically and on request; changed by signing in again or narrowing what it includes, which keeps its identity; and removed only when the user removes it, which takes its versions out of the library and keeps every work's watch history and every copy kept for offline. Adapters that are replaced or removed are closed (`SourceRegistry`). Adding the same source again is the same source: identity comes from what the source is (server and account, share and folder), not from when it was added.
 
 `LibraryPipeline` keeps the library current without user involvement: scan → probe → metadata → artwork prefetch, run on demand, on debounced source change signals, and when a periodic availability check sees an offline source come back. A `SourceRegistry` recreates adapters from persisted source records through per-platform factories.
 
@@ -207,7 +209,8 @@ There are two shells, `desktop:app` and `android:app`. Each supplies what only i
 | Local media source | `sources:local`: a folder as a filesystem path | `DocumentTreeSource`: a folder granted through the Storage Access Framework, which is a tree of documents and a grant that can be revoked, not a path. On a television, whose system has no such picker, the same `sources:local` folder-by-path as on the desktop |
 | Choosing a folder | The system's folder dialog | The system's folder picker; on a television, Reflux's own picker over `StorageFolders` (the mounted volumes and their folders), after the system's permission question |
 | Being a television | Never | What the system reports (`UiModeManager`, the leanback feature): listed in the TV launcher with its own banner, no touchscreen required |
-| Servers and shares (`Platform.connections`) | Jellyfin, Windows and NAS shares (SMB), web shares (WebDAV) | Jellyfin and web shares; SMB is not wired on Android yet, so a `\\nas\Movies` address is not offered there |
+| Servers and shares (`Platform.connections`) | Jellyfin, Windows and NAS shares (SMB), web shares (WebDAV) | The same three; SMB through the same adapter and loopback stream server as the desktop |
+| What a connection stores (`ConfigSeal`) | Stored as it is (see RELEASE.md) | Sealed with an AES key held in the Android keystore (`KeystoreSeal`); what an earlier version stored in the open is sealed at start |
 | Smart Offline (`Platform.offline`) | Not wired; nothing about downloads is shown | `Offline` over the application's internal storage (`FileDownloadStore`) and `HttpURLConnection` (`HttpDownloadTransport`), running in a scope that lives as long as the process |
 | Sound output | What libmpv opens | Stereo unless an HDMI output reports more channels or formats it decodes itself, which become `maxOutputChannels` and `audioPassthrough` |
 | Language names for track labels | `Formatting.jvm.kt` | `Formatting.android.kt` |

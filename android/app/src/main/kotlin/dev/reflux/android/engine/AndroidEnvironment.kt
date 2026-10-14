@@ -34,6 +34,10 @@ import dev.reflux.sources.local.LocalFolderSource
 import dev.reflux.sources.jellyfin.JellyfinConnector
 import dev.reflux.sources.jellyfin.JellyfinCredentials
 import dev.reflux.sources.jellyfin.JellyfinSource
+import dev.reflux.sources.smb.LocalStreamServer
+import dev.reflux.sources.smb.SmbConnector
+import dev.reflux.sources.smb.SmbShareConfig
+import dev.reflux.sources.smb.SmbSource
 import dev.reflux.sources.webdav.WebDavConfig
 import dev.reflux.sources.webdav.WebDavConnector
 import dev.reflux.sources.webdav.WebDavSource
@@ -122,21 +126,39 @@ class AndroidEnvironment(context: Context, dataDirectory: File = context.filesDi
      */
     private val downloads = FileDownloadStore(dataDirectory.resolve("downloads"))
 
+    /** What source connections store is sealed with a key in the Android keystore. */
+    private val seal = KeystoreSeal()
+
+    /** Streams files on Windows and NAS shares to the player over loopback HTTP. */
+    private val streams by lazy { LocalStreamServer() }
+
     val registry = SourceRegistry(
         mapOf(
             DownloadsSource.TYPE to { _ -> DownloadsSource(downloads) },
             DocumentTreeSource.TYPE to { record -> folderSource(Uri.parse(record.config), record.displayName) },
             // A folder chosen by its path, on devices where Reflux browses storage itself (televisions).
             LocalFolderSource.TYPE to { record -> LocalFolderSource(File(record.config).toPath(), record.displayName) },
-            JellyfinSource.TYPE to { record -> JellyfinCredentials.decode(record.config)?.let { JellyfinSource(it, http, record.displayName) } },
-            WebDavSource.TYPE to { record -> WebDavConfig.decode(record.config)?.let { WebDavSource(it, http, record.displayName) } },
+            JellyfinSource.TYPE to { record -> JellyfinCredentials.decode(seal.open(record.config))?.let { JellyfinSource(it, http, record.displayName) } },
+            WebDavSource.TYPE to { record -> WebDavConfig.decode(seal.open(record.config))?.let { WebDavSource(it, http, record.displayName) } },
+            SmbSource.TYPE to { record -> SmbShareConfig.decode(seal.open(record.config))?.let { SmbSource(it, streams, record.displayName) } },
         ),
     ).apply { load(library.sources()) }
 
-    /** Servers and shares, added by their address. Windows and NAS shares are not offered on Android yet. */
+    /** Servers and shares, added by their address: Jellyfin, Windows and NAS shares, and web shares. */
     val connections: SourceConnections by lazy {
         val device = listOfNotNull(android.os.Build.MANUFACTURER?.replaceFirstChar { it.uppercase() }, android.os.Build.MODEL).joinToString(" ").ifBlank { "Android" }
-        SourceConnections(library, registry, listOf(JellyfinConnector(http, deviceId, deviceName = "Reflux on $device"), WebDavConnector(http)), report = ::report)
+        SourceConnections(
+            library,
+            registry,
+            listOf(JellyfinConnector(http, deviceId, deviceName = "Reflux on $device"), SmbConnector(streams), WebDavConnector(http)),
+            report = ::report,
+            seal = seal,
+        )
+    }
+
+    init {
+        // Whatever an earlier version stored in the open is sealed before anything else reads it.
+        connections.sealStored()
     }
 
     /** TMDB is enabled when the build provides an application credential; without one, names come from files. */

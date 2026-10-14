@@ -70,7 +70,9 @@ class TestWorld(metadata: Boolean = true) {
     var clock = 1_790_000_000_000L
     val library = Library(LibraryDatabase.open(root.resolve("data/library.db"))) { clock }
     val source = LocalFolderSource(media, "Media")
-    val registry = SourceRegistry(emptyMap()).apply { register(source) }
+    /** How sources are recreated from what the library stored; tests add the kinds they connect. */
+    val factories = mutableMapOf<String, (dev.reflux.library.SourceRecord) -> dev.reflux.core.source.MediaSource?>()
+    val registry = SourceRegistry(factories).apply { register(source) }
     val pipeline = LibraryPipeline(library, registry, metadata = FakeCatalog.takeIf { metadata })
 
     init {

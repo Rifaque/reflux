@@ -28,7 +28,9 @@ interface RangeReader {
  * it runs on Android as well as desktop JVMs.
  */
 class LocalStreamServer : Closeable {
-    private val server = ServerSocket(0, 50, InetAddress.getLoopbackAddress())
+    // The IPv4 loopback by address: the URLs handed out name 127.0.0.1, and Android's "loopback address"
+    // is the IPv6 one, which a player dialling 127.0.0.1 never reaches (found on an Android device).
+    private val server = ServerSocket(0, 50, InetAddress.getByAddress(byteArrayOf(127, 0, 0, 1)))
     private val executor = Executors.newCachedThreadPool { runnable -> Thread(runnable, "reflux-stream").apply { isDaemon = true } }
     private val streams = ConcurrentHashMap<String, () -> RangeReader>()
     private val tokens = ConcurrentHashMap<String, String>()
@@ -80,7 +82,8 @@ class LocalStreamServer : Closeable {
                 val open = streams[token] ?: return respond(output, 404, "Not Found")
                 val reader = try {
                     open()
-                } catch (_: IOException) {
+                } catch (_: Exception) {
+                    // The share went away, refused, or its connection was reset: the player is told, not the process.
                     return respond(output, 502, "Bad Gateway")
                 }
                 (reader as? Closeable).use { _ -> send(output, reader, headers["range"], head = parts[0] == "HEAD") }
@@ -88,6 +91,9 @@ class LocalStreamServer : Closeable {
             }
         } catch (_: IOException) {
             // client went away (seeking closes connections)
+        } catch (_: RuntimeException) {
+            // The share failed part-way (smbj reports that unchecked). One connection ends; on Android an
+            // exception escaping this thread would end the whole application.
         }
     }
 
