@@ -34,6 +34,7 @@ import dev.reflux.ui.components.absorbsPointer
 import dev.reflux.ui.components.focusPanel
 import dev.reflux.ui.state.AppState
 import dev.reflux.ui.state.OfflineLine
+import dev.reflux.ui.state.Problems
 import dev.reflux.ui.state.libraryState
 import dev.reflux.ui.state.offlineModel
 import dev.reflux.ui.theme.LocalLayout
@@ -50,14 +51,18 @@ import dev.reflux.ui.theme.glass
 @Composable
 internal fun OfflinePanel(app: AppState) {
     val offline = app.platform.offline ?: return
-    val loaded by app.libraryState { offlineModel(offline) }
+    // While the sheet closes it keeps showing what it showed, rather than turning into the general sheet on its way out.
+    var shown by remember { mutableStateOf(app.offlineReview) }
+    if (app.offlineOpen) shown = app.offlineReview
+    val reviewing = shown
+    val loaded by app.libraryState(reviewing) { offlineModel(offline, reviewing) }
     val model = loaded
     var removing by remember { mutableStateOf<String?>(null) }
     val first = remember { FocusRequester() }
     val showsFocus = LocalLayout.current.showsFocus
     // Opened without a pointer, the panel takes focus once it has something to give it to, and keeps it.
     LaunchedEffect(model != null) {
-        if (!showsFocus || model == null) return@LaunchedEffect
+        if (!showsFocus || model == null || !app.offlineOpen) return@LaunchedEffect
         withFrameNanos { }
         runCatching { first.requestFocus() }
     }
@@ -70,7 +75,7 @@ internal fun OfflinePanel(app: AppState) {
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text("Watch offline", style = LocalTypography.current.title)
             Text(
-                "Reflux keeps a copy on this device, in the version that plays best here. Where you are in it carries over, both ways.",
+                if (reviewing != null) Problems.OFFLINE_PREPARING else "Reflux keeps a copy on this device, in the version that plays best here. Where you are in it carries over, both ways.",
                 style = LocalTypography.current.caption,
                 color = RefluxColors.textSecondary,
             )
@@ -79,12 +84,12 @@ internal fun OfflinePanel(app: AppState) {
         Column(Modifier.heightIn(max = 300.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             if (model.proposal != null) {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Ready to keep", style = LocalTypography.current.captionStrong, color = RefluxColors.accent)
+                    if (reviewing == null) Text("Ready to keep", style = LocalTypography.current.captionStrong, color = RefluxColors.textSecondary)
                     model.proposed.forEach { Line(it) }
                     model.room?.let { Text(it, style = LocalTypography.current.caption, color = RefluxColors.textSecondary) }
                 }
             }
-            model.leftOut.forEach { Text(it, style = LocalTypography.current.caption, color = RefluxColors.textTertiary) }
+            model.leftOut.forEach { Text(it, style = LocalTypography.current.caption, color = if (reviewing != null) RefluxColors.textSecondary else RefluxColors.textTertiary) }
             if (model.downloads.isNotEmpty()) {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("On this device", style = LocalTypography.current.captionStrong, color = RefluxColors.textSecondary)
@@ -107,16 +112,21 @@ internal fun OfflinePanel(app: AppState) {
                                     DownloadState.QUEUED, DownloadState.PREPARING, DownloadState.DOWNLOADING ->
                                         IconButton(Icon.PAUSE, "Pause the download of ${line.title}", { app.pauseDownload(line.id) }, size = 32.dp, tint = RefluxColors.textSecondary)
                                     DownloadState.PAUSED, DownloadState.FAILED, DownloadState.UNAVAILABLE ->
-                                        IconButton(Icon.REFRESH, "Continue the download of ${line.title}", { app.resumeDownload(line.id) }, size = 32.dp, tint = RefluxColors.textSecondary)
+                                        IconButton(Icon.REFRESH, "Try the download of ${line.title} again", { app.resumeDownload(line.id) }, size = 32.dp, tint = RefluxColors.textSecondary)
                                     else -> Unit
                                 }
-                                IconButton(Icon.CLOSE, "Remove ${line.title} from this device", { removing = line.id }, size = 32.dp, tint = RefluxColors.textSecondary)
+                                // A copy that is not finished goes at once; one that is asks first.
+                                if (line.state == DownloadState.COMPLETED || line.state == DownloadState.UNAVAILABLE) {
+                                    IconButton(Icon.CLOSE, "Remove ${line.title} from this device", { removing = line.id }, size = 32.dp, tint = RefluxColors.textSecondary)
+                                } else {
+                                    IconButton(Icon.CLOSE, "Cancel the download of ${line.title}", { app.removeDownload(line.id) }, size = 32.dp, tint = RefluxColors.textSecondary)
+                                }
                             }
                         }
                     }
                 }
             }
-            if (model.proposal == null && model.downloads.isEmpty()) {
+            if (model.proposal == null && model.downloads.isEmpty() && reviewing == null) {
                 Text(
                     "Nothing you are part-way through needs keeping right now. Use Download on any movie or show to keep it for later.",
                     style = LocalTypography.current.caption,
@@ -128,12 +138,19 @@ internal fun OfflinePanel(app: AppState) {
             if (model.proposal != null) {
                 Button(
                     if (model.proposed.size == 1) "Download" else "Download ${model.proposed.size}",
-                    { app.prepareOffline() },
+                    {
+                        if (reviewing != null) {
+                            app.download(reviewing)
+                            app.offlineOpen = false
+                        } else {
+                            app.prepareOffline()
+                        }
+                    },
                     Modifier.focusRequester(first),
                     icon = Icon.DOWNLOAD,
-                    style = ButtonStyle.PRIMARY,
+                    style = ButtonStyle.SOLID,
                 )
-                Button("Done", { app.offlineOpen = false }, style = ButtonStyle.QUIET)
+                Button(if (reviewing != null) "Not now" else "Done", { app.offlineOpen = false }, style = ButtonStyle.QUIET)
             } else {
                 Button("Done", { app.offlineOpen = false }, Modifier.focusRequester(first))
             }
@@ -148,6 +165,7 @@ private fun Line(line: OfflineLine, actions: @Composable () -> Unit = {}) {
             Text(line.title, style = LocalTypography.current.bodyStrong, maxLines = 1)
             line.caption?.let { Text(it, style = LocalTypography.current.caption, color = RefluxColors.textTertiary, maxLines = 1) }
             Text(line.detail, style = LocalTypography.current.caption, color = if (line.state == DownloadState.FAILED) RefluxColors.unavailable else RefluxColors.textSecondary, maxLines = 1)
+            line.note?.let { Text(it, style = LocalTypography.current.caption, color = RefluxColors.textSecondary, maxLines = 2) }
             line.progress?.let { ProgressBar(it, Modifier.padding(top = 3.dp)) }
         }
         actions()

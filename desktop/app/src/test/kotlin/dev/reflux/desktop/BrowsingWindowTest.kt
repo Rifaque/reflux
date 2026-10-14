@@ -93,13 +93,23 @@ class BrowsingWindowTest {
                 shell.awaitShown("Try")
                 assertEquals("", shell.ui { app.searchQuery })
 
-                // The sources panel opens on a click and closes on a click outside it, which goes no further.
+                // The sources are a page of their own, and the same button leaves it.
                 shell.click("Media sources")
-                shell.awaitShown("Add folder")
+                shell.awaitShown("Add media")
                 shell.capture("window-sources")
-                shell.clickSurface(0.25f, 0.8f)
-                shell.await("the panel to close") { !app.sourcesOpen }
-                assertEquals(Destination.Search, shell.ui { app.navigator.current })
+                shell.click("Add media")
+                shell.awaitShown("A folder on this device")
+                shell.capture("window-add-media")
+                shell.click("Network share")
+                shell.awaitShown("Add a network share")
+                shell.capture("window-connect")
+                shell.click("Cancel")
+                shell.await("the choice again") { app.navigator.current == Destination.AddSource }
+                shell.click("Back")
+                shell.await("the sources again") { app.navigator.current == Destination.Sources }
+                // The page's title says "Media sources" too; Back is the unambiguous way out.
+                shell.click("Back")
+                shell.await("the page to be left") { app.navigator.current == Destination.Search }
 
                 shell.click("Home")
                 shell.awaitShown("Recently Added")
@@ -171,11 +181,11 @@ class BrowsingWindowTest {
                 pad.stick(1f, 0f, holdMs = 1_200)
                 assertEquals(start, shell.ui { app.revision }, "navigation alone changes nothing in the library")
 
-                // Options opens the sources panel, which takes focus; Circle closes it.
+                // Options opens the sources page; Circle goes back.
                 pad.press(GamepadButton.START)
-                shell.await("the sources panel to open") { app.sourcesOpen }
+                shell.await("the sources page") { app.navigator.current == Destination.Sources }
                 pad.press(GamepadButton.FACE_EAST)
-                shell.await("the sources panel to close") { !app.sourcesOpen }
+                shell.await("back from the sources page") { app.navigator.current == Destination.Home }
 
                 // Create toggles fullscreen, in the real window.
                 pad.press(GamepadButton.SELECT)

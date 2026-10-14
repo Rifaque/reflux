@@ -52,7 +52,7 @@ UI and playback features should consume normalized media entities and source cap
 
 ## Project status
 
-The engine (Media Core, sources, metadata, playback) is implemented, and the desktop app is a working vertical slice on top of it: point it at a folder, browse, search, and play, with a mouse, a keyboard, or a controller. The Android phone and tablet client is the same experience layer and engine in an Android shell, with its first vertical slice working: choose a folder, browse, play, and resume. On Android it can also keep the right version of something on the device and play it with its source away ([Smart Offline](docs/OFFLINE.md)). The same application is the Android TV and Google TV client: the experience laid out for a television and operated with a remote alone, so far verified on an emulator. See the status section of [docs/ROADMAP.md](docs/ROADMAP.md).
+The engine (Media Core, sources, metadata, playback) is implemented, and the desktop app is a working vertical slice on top of it: point it at a folder, browse, search, and play, with a mouse, a keyboard, or a controller. The Android phone and tablet client is the same experience layer and engine in an Android shell, with its first vertical slice working: choose a folder, browse, play, and resume. Servers and shares are added from the application as well as folders: a Jellyfin server, a Windows or NAS share, or a web share, each by its address. On Android it can also keep the right version of something on the device and play it with its source away ([Smart Offline](docs/OFFLINE.md)). The same application is the Android TV and Google TV client: the experience laid out for a television and operated with a remote alone, so far verified on an emulator. See the status section of [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## Documentation
 
@@ -83,7 +83,7 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#implementation) for the module l
 ./gradlew :desktop:app:run
 ```
 
-Choose a media folder on first run; everything else is automatic. Mouse, keyboard, and game controllers (Xbox, PlayStation, Switch Pro, and generic pads) all work without setup; picking up a controller reshapes the interface for it. Playback needs libmpv (below); without it the library is still fully browsable. Titles, artwork, and details come from TMDB when `REFLUX_TMDB_TOKEN` is set; without it Reflux shows what it identified from file names. Library state lives in the platform data directory (override with `REFLUX_HOME`), never in your media folders; problems are written to `reflux.log` there.
+Choose a media folder on first run, or connect a Jellyfin server or a network share from the same screen; everything else is automatic. Mouse, keyboard, and game controllers (Xbox, PlayStation, Switch Pro, and generic pads) all work without setup; picking up a controller reshapes the interface for it. Playback needs libmpv (below); without it the library is still fully browsable. Titles, artwork, and details come from TMDB when `REFLUX_TMDB_TOKEN` is set; without it Reflux shows what it identified from file names. Library state lives in the platform data directory (override with `REFLUX_HOME`), never in your media folders; problems are written to `reflux.log` there.
 
 ### Developer CLI
 

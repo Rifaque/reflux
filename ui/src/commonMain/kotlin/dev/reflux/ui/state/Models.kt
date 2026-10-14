@@ -21,6 +21,8 @@ import dev.reflux.library.userSources
 import dev.reflux.library.LibraryEntry
 import dev.reflux.library.SourceRecord
 import dev.reflux.library.credits
+import dev.reflux.library.downloads
+import dev.reflux.core.offline.DownloadState
 import dev.reflux.library.home
 
 /**
@@ -37,6 +39,8 @@ data class MediaCard(
     val wide: ArtworkLocator?,
     /** Where selecting the card leads: the work itself, or the show of an episode. */
     val detailsId: MediaId,
+    /** A copy of it (or, for a show, of one of its episodes) is kept on this device. */
+    val downloaded: Boolean = false,
 ) {
     val id: MediaId get() = entry.item.id
     val watched: Boolean get() = entry.watchState?.completed == true
@@ -46,6 +50,9 @@ data class MediaCard(
 
 internal fun Library.cards(entries: List<LibraryEntry>): List<MediaCard> {
     val shows = mutableMapOf<MediaId, LibraryEntry?>()
+    val kept = downloads().filter { it.state == DownloadState.COMPLETED }.flatMap { download ->
+        listOfNotNull(download.itemId, (item(download.itemId) as? Episode)?.showId)
+    }.toSet()
     return entries.map { entry ->
         when (val item = entry.item) {
             is Episode -> {
@@ -57,6 +64,7 @@ internal fun Library.cards(entries: List<LibraryEntry>): List<MediaCard> {
                     poster = show?.artwork?.get(ArtworkKind.POSTER),
                     wide = entry.artwork[ArtworkKind.THUMBNAIL] ?: show?.artwork?.get(ArtworkKind.BACKDROP),
                     detailsId = item.showId,
+                    downloaded = item.id in kept,
                 )
             }
             else -> MediaCard(
@@ -66,6 +74,7 @@ internal fun Library.cards(entries: List<LibraryEntry>): List<MediaCard> {
                 poster = entry.artwork[ArtworkKind.POSTER],
                 wide = entry.artwork[ArtworkKind.BACKDROP],
                 detailsId = if (item is Season) item.showId else item.id,
+                downloaded = item.id in kept,
             )
         }
     }
@@ -201,7 +210,7 @@ internal fun Library.detailsModel(itemId: MediaId, device: DeviceCapabilities): 
                         sourceName = names.getOrPut(sourceId) { source(sourceId)?.displayName ?: "Unknown source" },
                         facts = Formatting.version(ranked.version) + Formatting.size(ranked.version.sizeBytes),
                         notes = if (ranked.candidate.availability == Availability.UNAVAILABLE) {
-                            listOf("Offline")
+                            listOf("Not connected")
                         } else {
                             ranked.assessment.compromises.map(Formatting::issue)
                         },

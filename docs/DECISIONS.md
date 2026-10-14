@@ -396,3 +396,31 @@ The device is never filled: the larger of 500 MB and 5% of the volume stays free
 Copies go to the application's internal storage: private by construction, no permission, gone with the application. Choosing removable storage is not offered; it would need the user to grant a location and a story for the card being pulled, for a first version nobody has asked for.
 
 Copies are made while the application's process is alive, and continue from where they were at the next start. Continuing with the application closed would need a foreground service and a notification (and on current Android, the notification permission): the same step that was declined for background playback, and to be decided together with it. A long download on a phone that is put away is the case this leaves open, and it is named in the roadmap.
+
+## 2026-10-14 — Servers and shares are added through connectors, not through adapters
+
+A user adds a server or a share by typing an address, and the experience layer must set that up without knowing Jellyfin, WebDAV, or SMB. Each adapter that is reached over a network offers a `SourceConnector` (in `core/source`): what kind of thing it is in the user's terms (`ConnectionKind`: a server, a share), whether it needs a name and password, whether an address is of its form, how to connect (validate, contact, sign in), and how to describe a stored connection without its secrets. Every failure a user can cause is a `ConnectionProblem` (invalid address, unreachable, nothing of that kind there, sign-in required, wrong name or password, not allowed, a failing server), never an exception; the experience layer words it. `SourceConnections` (in `library`) routes an address to a connector, turns a connection into a source the library keeps and the registry runs, and handles signing in again and a changed address. A platform offers the connectors it has; one that is not offered is a kind of source that cannot be added there, and the interface does not mention it.
+
+Shares are one choice for the user, not one per protocol: an address that starts with `https://` is a web share, `\\nas\Movies` or `nas/Movies` is a Windows or NAS share, and the connector that accepts the address is the one used. Nobody is asked whether their NAS speaks WebDAV or SMB.
+
+**Alternatives.** A form per adapter in the experience layer would have been quicker and would have put adapter knowledge (fields, error codes, URL rules) in the UI, which is what the Media Core exists to prevent. A generic form described by each adapter (fields, labels, validation) would have moved text onto the screen from engines, which "Failures are states, worded in one place" rules out, for a flexibility no source needs yet: every source reached by address so far needs an address and optionally a name and password.
+
+**Consequences.** The Jellyfin password is used for the one request that signs in, and only the server's access token is kept; WebDAV and SMB passwords are still kept with the source configuration, unencrypted, until platform secure storage (RELEASE.md). Diagnostics get a connector's own detail (an HTTP status, an SMB status name), never the request. Jellyfin credentials now also keep the user's name, to show who is signed in and to fill the name in when signing in again. Choosing which of a server's libraries to include is not offered: the adapter reads the whole catalog the account can see.
+
+## 2026-10-14 — The media sources are a page, and adding media is a short flow
+
+The sources were a small panel under the navigation. With servers and shares, each needs to say whether it is there, what is on it, and offer trying again, signing in again, and removing; a form for an address and a password does not belong in a panel that floats over a page, least of all on a phone with its keyboard up or on a television. The sources became a page (`Destination.Sources`), and adding media is two more (`AddSource`: a folder, a server, a network share; `Connect`: the form). They are pages like any other, so Back, the controller's Menu button, focus on a television, and the phone's way back all work as they do everywhere else, with no new focus or input model.
+
+- A source is a quiet card: its name, what kind it is, and whether it is there, with how much is on it. Selecting it reveals where it is, who is signed in, when it was last updated, why it is not connected and what to do, and its actions. Nothing technical (types, capabilities, identifiers) is on the page.
+- A source that cannot be reached stays on the list and in the library, and says so. "Try again" checks it now; it also reconnects by itself.
+- A folder stays the fastest way in: first run still has one main action, "Choose a folder", and a quiet "Connect a server or share" beneath it.
+- After a connection the flow is left, back to where it started, and the library fills in by itself.
+- The same column is used on every form factor. A tablet gets no split view: there is never more than one thing to look at on these pages.
+
+## 2026-10-14 — Amber is a signature, not the color of the interface
+
+The earlier refinement made amber the primary action, the section the user is in, progress, and what is switched on. In use that was too much amber: a selected tab, a favorite, a watched mark, a downloaded copy, and a player's buttons all in the same warm color made screens orange-leaning and took the accent's meaning away. Decided:
+
+- Amber is what is playing or about to: the Play and Resume button, progress on posters, on details pages, and on the player's timeline, the "Recommended" mark on a version, and the one call to action of first run.
+- Everything else is neutral. The section the user is in is white on a soft pill. Switched-on toggles (watched, downloaded) are a lit surface; a favorite is a filled heart. The main action of a form, a sheet, or a player prompt is solid white (`ButtonStyle.SOLID`). Text never takes the accent, and the focus ring stays white.
+- Empty states sit on a neutral light from above with only a trace of warmth in a corner.

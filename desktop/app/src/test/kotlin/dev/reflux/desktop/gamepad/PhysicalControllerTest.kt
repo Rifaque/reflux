@@ -73,8 +73,8 @@ class PhysicalControllerTest {
 
                 step("move to any poster and press $confirm") { app.navigator.current is Destination.Details }
                 step("press $cancel to go back") { app.navigator.current == Destination.Home }
-                step("press ${name(GamepadButton.START)} to open the sources panel") { app.sourcesOpen }
-                step("press $cancel to close it") { !app.sourcesOpen }
+                step("press ${name(GamepadButton.START)} to open the media sources") { app.navigator.current == Destination.Sources }
+                step("press $cancel to go back") { app.navigator.current == Destination.Home }
                 step("press ${name(GamepadButton.SELECT)} for fullscreen") { app.platform.fullscreen }
                 step("press ${name(GamepadButton.SELECT)} again to leave fullscreen") { !app.platform.fullscreen }
 

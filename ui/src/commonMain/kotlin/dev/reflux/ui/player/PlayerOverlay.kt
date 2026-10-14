@@ -215,7 +215,7 @@ fun PlayerOverlay(app: AppState, session: PlaybackSession, modifier: Modifier = 
                 prompt != null -> UpNextCard(session, prompt, corner)
                 // With a remote, up is what takes the offer; the arrow says so.
                 segment != null && session.menu == null ->
-                    Button(skipLabel(segment), { session.skip(segment) }, corner, icon = Icon.CHEVRON_UP.takeIf { remote }, style = ButtonStyle.PRIMARY)
+                    Button(skipLabel(segment), { session.skip(segment) }, corner, icon = Icon.CHEVRON_UP.takeIf { remote }, style = ButtonStyle.SOLID)
             }
         }
     }
@@ -455,7 +455,7 @@ private fun MenuPanel(session: PlaybackSession, menus: List<PlayerMenu>, open: P
                     ) {
                         Text(option.label, Modifier.weight(1f), style = LocalTypography.current.bodyStrong, color = if (option.selected) RefluxColors.textPrimary else RefluxColors.textSecondary, maxLines = 1)
                         option.detail?.let { Text(it, style = LocalTypography.current.caption, color = RefluxColors.textTertiary, maxLines = 1) }
-                        if (option.selected) Icon(Icon.CHECK, size = 16.dp, tint = RefluxColors.accent)
+                        if (option.selected) Icon(Icon.CHECK, size = 16.dp, tint = RefluxColors.textPrimary)
                     }
                 }
             }
@@ -472,10 +472,10 @@ private fun UpNextCard(session: PlaybackSession, prompt: UpNext, modifier: Modif
         listOfNotNull(caption, title).joinToString(" · "),
     ) {
         if (prompt.asks) {
-            Button("Keep watching", { session.continueWatching() }, icon = Icon.PLAY, style = ButtonStyle.PRIMARY)
+            Button("Keep watching", { session.continueWatching() }, icon = Icon.PLAY, style = ButtonStyle.SOLID)
             Button("Stop", { session.close() })
         } else {
-            Button("Play now", { session.playNext() }, icon = Icon.PLAY, style = ButtonStyle.PRIMARY)
+            Button("Play now", { session.playNext() }, icon = Icon.PLAY, style = ButtonStyle.SOLID)
             Button("Cancel", { session.cancelUpNext() })
         }
     }
@@ -490,7 +490,7 @@ private fun nextHeading(prompt: UpNext): Pair<String, String?> {
 @Composable
 private fun Failure(session: PlaybackSession, error: PlaybackError, modifier: Modifier = Modifier) {
     Notice(modifier, "Playback stopped", error.message, detail = error.detail) {
-        Button("Back to library", { session.close() }, style = ButtonStyle.PRIMARY)
+        Button("Back to library", { session.close() }, style = ButtonStyle.SOLID)
     }
 }
 

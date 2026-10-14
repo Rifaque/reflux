@@ -31,6 +31,8 @@ For televisions: the application declares the TV launcher category and a banner,
 
 Android release builds also need what debug builds do not: a signing configuration, shrinking with keep rules for the engine modules, and a look at what the desktop-only classes left in those modules (the JDBC database opener, the JDK HTTP client) do to a shrunk build.
 
+Servers and shares are now added in the application. What that changed, and what it did not: the password typed for a Jellyfin server is sent once, to sign in, and is not kept anywhere; the form holds a password only while it is open, shows it masked, and clears it after connecting; a failed connection is reported to diagnostics as its kind and the connector's own detail (an HTTP status, an SMB status name), never with the request, the address's credentials, or the password; an address with a name and password written into it is refused, so they cannot end up in a stored or logged address; and the sources page shows an address and a user name, never a password or a token. Plain `http://` addresses are accepted for home servers, as before (the plain-HTTP question above is unchanged).
+
 Source credentials (Jellyfin access tokens, WebDAV and SMB passwords) are stored with the source configuration in the library database, unencrypted. They belong in the platform's secure storage: Credential Manager on Windows, the Secret Service on Linux, the Keystore on Android.
 
 - The database column should end up holding a reference to the secret, not the secret.

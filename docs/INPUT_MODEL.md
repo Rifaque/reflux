@@ -91,6 +91,8 @@ A remote has a D-pad, OK, Back, and sometimes play/pause, rewind, and fast-forwa
 - Player: OK plays and pauses (or accepts the next episode, or answers "still watching?"); left and right seek; down opens the lists, where left and right change list, up and down move, OK chooses, and Back closes; up skips an offered intro; Back leaves. The episode before and after are in the first list, since a remote has no key for them. Media keys do what they say.
 - Search: the field has focus on arrival and opens the system's television keyboard; Back puts the keyboard away, down reaches the results, and Back from the field goes back.
 - Choosing a folder: OK goes into a folder or uses the open one, Back goes up one folder and out from the top.
+- Connecting a server or a share: a page arrives on its first field. Up and down move between the fields and down from the last one goes to Connect; a field's keyboard opens only when OK is pressed on it (on release, so the keyboard never receives the press), and Back puts it away. The keyboard's own action key goes on to the next field, or connects from the last.
+- The media sources: Menu opens them from anywhere while browsing. Down from an open source goes to its first action, never straight to Remove.
 
 ## Desktop shell
 

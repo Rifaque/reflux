@@ -9,6 +9,7 @@ import dev.reflux.library.ArtworkCache
 import dev.reflux.library.Library
 import dev.reflux.library.LibraryDatabase
 import dev.reflux.library.LibraryPipeline
+import dev.reflux.library.SourceConnections
 import dev.reflux.library.SourceRecord
 import dev.reflux.library.SourceRegistry
 import dev.reflux.library.net.JdkHttpFetcher
@@ -16,13 +17,16 @@ import dev.reflux.metadata.tmdb.TmdbProvider
 import dev.reflux.playback.mpv.DesktopCapabilities
 import dev.reflux.playback.mpv.MpvPlayer
 import dev.reflux.playback.mpv.MpvProbe
+import dev.reflux.sources.jellyfin.JellyfinConnector
 import dev.reflux.sources.jellyfin.JellyfinCredentials
 import dev.reflux.sources.jellyfin.JellyfinSource
 import dev.reflux.sources.local.LocalFolderSource
 import dev.reflux.sources.smb.LocalStreamServer
+import dev.reflux.sources.smb.SmbConnector
 import dev.reflux.sources.smb.SmbShareConfig
 import dev.reflux.sources.smb.SmbSource
 import dev.reflux.sources.webdav.WebDavConfig
+import dev.reflux.sources.webdav.WebDavConnector
 import dev.reflux.sources.webdav.WebDavSource
 import java.awt.GraphicsEnvironment
 import java.io.IOException
@@ -87,6 +91,16 @@ class DesktopEnvironment(dataDirectory: Path = AppDirectories.data()) {
             SmbSource.TYPE to { record -> SmbShareConfig.decode(record.config)?.let { SmbSource(it, streams, record.displayName) } },
         ),
     ).apply { load(library.sources()) }
+
+    /** Servers and shares, added by their address: a Jellyfin server, a web share, a Windows or NAS share. */
+    val connections: SourceConnections by lazy {
+        SourceConnections(
+            library,
+            registry,
+            listOf(JellyfinConnector(http, deviceId, deviceName = "Reflux on ${hostName()}"), SmbConnector(streams), WebDavConnector(http)),
+            report = diagnostics::record,
+        )
+    }
 
     /** TMDB is enabled when the build or environment provides an application credential. */
     val metadata: MetadataProvider? = (System.getenv("REFLUX_TMDB_TOKEN") ?: System.getProperty("reflux.tmdb.token"))
@@ -162,6 +176,8 @@ class DesktopEnvironment(dataDirectory: Path = AppDirectories.data()) {
         }
         return MpvPlayer.create(deviceCapabilities(), options + log.orEmpty())
     }
+
+    private fun hostName(): String = runCatching { java.net.InetAddress.getLocalHost().hostName }.getOrNull()?.takeIf { it.isNotBlank() } ?: "desktop"
 
     private fun display(): DisplayCapabilities {
         if (GraphicsEnvironment.isHeadless()) return DisplayCapabilities(1920, 1080)

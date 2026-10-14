@@ -75,7 +75,7 @@ class JellyfinSourceTest {
     @Test
     fun connectSignsInWithoutKeepingThePassword() = runTest {
         val connected = JellyfinSource.connect("https://jf.example.com/", "alex", "secret", http, "dev1")
-        assertEquals(credentials, connected)
+        assertEquals(credentials.copy(userName = "alex"), connected)
         val login = requests.single { it.url.endsWith("Users/AuthenticateByName") }
         assertEquals("POST", login.method)
         assertTrue("\"Pw\":\"secret\"" in login.body!!.decodeToString())

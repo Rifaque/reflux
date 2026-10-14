@@ -8,6 +8,7 @@ import dev.reflux.core.playback.DeviceCapabilities
 import dev.reflux.core.playback.Player
 import dev.reflux.desktop.engine.DesktopEnvironment
 import dev.reflux.desktop.engine.FolderAddition
+import dev.reflux.library.SourceConnections
 import dev.reflux.ui.state.ArtworkLoader
 import dev.reflux.ui.state.FolderChoice
 import dev.reflux.ui.state.Platform
@@ -36,6 +37,8 @@ internal class DesktopPlatform(private val environment: DesktopEnvironment) : Pl
         listOf(Locale.getDefault().language).filter { it.isNotBlank() }.ifEmpty { listOf("en") }
 
     override val canPlay: Boolean get() = environment.canPlay
+
+    override val connections: SourceConnections get() = environment.connections
 
     override val playbackSetupHint: String =
         if (System.getProperty("os.name").startsWith("Windows")) {

@@ -6,6 +6,7 @@ import dev.reflux.core.model.SourceId
 import dev.reflux.core.playback.DeviceCapabilities
 import dev.reflux.core.playback.Player
 import dev.reflux.library.Offline
+import dev.reflux.library.SourceConnections
 
 /** Decodes artwork for display. Implemented by the platform shell on top of its disk cache and image decoder. */
 interface ArtworkLoader {
@@ -81,6 +82,12 @@ interface Platform {
      * null where it does not, and then nothing about downloads is offered.
      */
     val offline: Offline? get() = null
+
+    /**
+     * Connecting servers and network shares by their address, with the kinds this platform has; null where
+     * it has none, and then only folders can be added.
+     */
+    val connections: SourceConnections? get() = null
 
     /** The storage to choose a media folder from, where the platform has no picker of its own; null where it does. */
     val folderBrowser: FolderBrowser? get() = null

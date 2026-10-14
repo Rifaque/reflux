@@ -134,10 +134,10 @@ private fun Hero(app: AppState, card: MediaCard, overview: String?, width: Dp, h
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             val inProgress = card.entry.watchState?.inProgress == true
-            // The title speaks for itself; only something worth knowing is said above it, in the accent.
-            if (inProgress) Text("Continue watching", style = LocalTypography.current.captionStrong, color = RefluxColors.accent)
+            // The title speaks for itself; only something worth knowing is said above it, quietly.
+            if (inProgress) Text("Continue watching", style = LocalTypography.current.captionStrong, color = RefluxColors.textSecondary)
             Text(card.title, style = LocalTypography.current.display, maxLines = 2)
-            val facts = (listOfNotNull("Offline".takeIf { card.offline }, card.caption.takeIf { card.detailsId != card.id }) + Formatting.facts(card.entry) +
+            val facts = (listOfNotNull("Not connected".takeIf { card.offline }, card.caption.takeIf { card.detailsId != card.id }) + Formatting.facts(card.entry) +
                 listOfNotNull(Formatting.remaining(card.entry.watchState))).distinct()
             if (facts.isNotEmpty()) Text(facts.joinToString("   ·   "), style = LocalTypography.current.bodyStrong, color = RefluxColors.textSecondary, maxLines = 1)
             if (!overview.isNullOrBlank()) Text(overview, color = RefluxColors.textSecondary, maxLines = 3)
@@ -201,14 +201,17 @@ private fun RowPager(visible: Boolean, icon: Icon, description: String, modifier
     }
 }
 
-/** A quiet glow behind screens that have no artwork of their own, so an empty state still has depth. */
+/**
+ * A quiet light behind screens that have no artwork of their own, so an empty state still has depth: a
+ * neutral glow from above, and the faintest warmth from a corner.
+ */
 @Composable
 internal fun AmbientBackdrop() {
     val accent = RefluxColors.accent
     Box(
         Modifier.fillMaxSize().drawBehind {
-            drawRect(Brush.radialGradient(listOf(accent.copy(alpha = 0.13f), Color.Transparent), Offset(size.width * 0.5f, 0f), size.maxDimension * 0.6f))
-            drawRect(Brush.radialGradient(listOf(Color(0xFFB3541E).copy(alpha = 0.07f), Color.Transparent), Offset(size.width, size.height), size.maxDimension * 0.5f))
+            drawRect(Brush.radialGradient(listOf(Color.White.copy(alpha = 0.07f), Color.Transparent), Offset(size.width * 0.5f, 0f), size.maxDimension * 0.6f))
+            drawRect(Brush.radialGradient(listOf(accent.copy(alpha = 0.045f), Color.Transparent), Offset(size.width, size.height), size.maxDimension * 0.5f))
         },
     )
 }
@@ -249,6 +252,12 @@ internal fun EmptyLibrary(app: AppState, sources: List<SourceRecord>) {
                 icon = Icon.FOLDER,
                 style = ButtonStyle.PRIMARY,
             )
+            // The fastest way in is a folder; a server or a share is one step aside, not in the way.
+            when {
+                sources.isEmpty() && app.platform.connections?.kinds?.isNotEmpty() == true ->
+                    Button("Connect a server or share", { app.navigator.open(Destination.AddSource) }, style = ButtonStyle.QUIET)
+                sources.isNotEmpty() -> Button("Media sources", { app.navigator.open(Destination.Sources) }, style = ButtonStyle.QUIET)
+            }
         }
     }
 }

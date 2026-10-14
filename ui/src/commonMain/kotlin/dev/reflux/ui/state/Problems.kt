@@ -27,7 +27,10 @@ internal object Problems {
     const val OFFLINE_PREPARING_TO_FIT = "Preparing the best offline version that fits on this device."
     const val OFFLINE_NOT_PREPARED = "That couldn't be prepared for offline."
     const val DOWNLOAD_NOT_CHANGED = "That download couldn't be changed."
-    const val TRACK_GONE = "That track is no longer available."
+    const val ENTER_ADDRESS = "Enter the address first."
+    const val ENTER_USERNAME = "Enter the user name you use for this server."
+    const val SOURCE_NOT_REMOVED = "That source couldn't be removed."
+    const val TRACK_GONE ="That track is no longer available."
     const val PLAYBACK_STALLED = "Playback isn't starting. The file may be slow to reach, or video couldn't be started on this device."
 
     fun noEngine(hint: String?): String = listOfNotNull("Reflux has no playback engine on this device yet.", hint).joinToString(" ")
@@ -69,9 +72,9 @@ internal fun Library.unplayableReason(itemId: MediaId, device: DeviceCapabilitie
     if (reachable.isEmpty()) {
         val names = ranked.mapNotNull { source(it.version.location.sourceId)?.displayName }.distinct()
         return when (names.size) {
-            0 -> "This can't be played right now. Its source is offline."
-            1 -> "This can't be played right now. ${names.single()} is offline."
-            else -> "This can't be played right now. ${names.joinToString(" and ")} are offline."
+            0 -> "This can't be played right now. Its source isn't connected."
+            1 -> "This can't be played right now. ${names.single()} isn't connected."
+            else -> "This can't be played right now. ${names.joinToString(" and ")} aren't connected."
         }
     }
     val blocking = reachable.first().assessment.issues.firstOrNull { it.verdict == PlaybackVerdict.UNSUPPORTED }

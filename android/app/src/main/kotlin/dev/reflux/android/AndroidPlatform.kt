@@ -20,6 +20,7 @@ import dev.reflux.core.playback.Player
 import dev.reflux.core.source.MediaSource
 import dev.reflux.library.ArtworkCache
 import dev.reflux.library.Offline
+import dev.reflux.library.SourceConnections
 import dev.reflux.ui.state.ArtworkLoader
 import dev.reflux.ui.state.FolderBrowser
 import dev.reflux.ui.state.FolderChoice
@@ -100,6 +101,8 @@ internal class AndroidPlatform(private val environment: AndroidEnvironment, over
     var allowStorage: (suspend () -> Boolean)? = null
 
     override val offline: Offline get() = environment.offline
+
+    override val connections: SourceConnections get() = environment.connections
 
     /** Loudness belongs to the device: a phone's keys, a television's remote. */
     override val systemVolume: Boolean get() = true

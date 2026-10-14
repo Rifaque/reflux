@@ -32,11 +32,12 @@
 | Android phone and tablet client (`android:app`): the shared experience layer with phone and tablet layouts, folders through the Storage Access Framework, Media3 playback, the canonical watch state | First vertical slice implemented and hardened, verified on an emulator: first run, choosing a folder, storage that goes away and comes back, the library, details, playback, resume, picture-in-picture, the system's media controls, controller input, and continuity with a real Jellyfin server (see the verification table below) |
 | Android TV / Google TV: the same application and experience layer as a television form factor (10-foot layout, focus that is always somewhere, a remote-driven player, Reflux's own folder picker where the system has none, HDMI audio capabilities) | First milestone implemented, verified on the Google TV emulator: first run, choosing a folder, Home, Movies and Shows, details, search with the system keyboard, playback and its lists, resume, Continue Watching, and continuity with a real Jellyfin server, all with remote keys only (see the verification table below). Not verified on a real television |
 | Smart Offline: a copy of a version kept on the device as one more version of the same work, chosen by Best Version for this device in the room there is, played and resumed like any version ([OFFLINE.md](OFFLINE.md)) | Engine implemented and tested in `core` and `library` for every platform; in the experience layer a Download action, its status, and the "Watch offline" sheet; wired on Android (phone, tablet, television). Verified on emulators, including a real download from a Jellyfin server and playback with the server stopped (see the verification table below) |
-| Smart Offline gaps | The application has no screen for adding a server or share yet, so on a device today nothing downloadable can be added by the user and the feature does not show; it was exercised with a server connected through a test helper. Downloads stop when the application is closed and continue at its next start. No choosing of single episodes or whole seasons. Not wired on the desktop. Removable storage is not offered. Verified on emulators only |
+| Source onboarding and management: adding a folder, a Jellyfin server, or a network share (SMB or WebDAV, told apart by the address) from the application; a sources page with each source's state, contents, and actions (refresh or try again, sign in again or change, remove); sources that are away stay listed and in the library; Smart Offline reached from a details page through a sheet that shows and explains what would be kept before anything is downloaded; a neutral, restrained pass over the interface's use of amber | Implemented and tested (see the verification table below). Connectors are platform-free contracts in `core`, wired on the desktop (Jellyfin, SMB, WebDAV) and on Android (Jellyfin, WebDAV) |
+| Smart Offline gaps | Downloads stop when the application is closed and continue at its next start. No choosing of single episodes or whole seasons. Not wired on the desktop. Removable storage is not offered. Verified on emulators only |
 | Television gaps | Subtitle and artwork files next to a video are not visible to Reflux on a television (the system only shows an app the media files); nothing on the launcher beyond the app itself (no Watch Next row); a held seek key repeats at a fixed step; a folder on a drive is only reachable while the drive is mounted where it was; picture-in-picture, 4K, HDR, Dolby Vision, passthrough, and removable drives could not be exercised on an emulator |
-| Android gaps | No playback in the background (by decision, for now); chapters are not reported by the engine; a folder's changes are picked up at the next refresh rather than as they happen; SMB shares are desktop-only; the Jellyfin, WebDAV, Identify, and collections flows have no UI on any platform yet; release builds (signing, shrinking) are not set up; verified on an emulator only, not on physical phones or tablets |
+| Android gaps | No playback in the background (by decision, for now); chapters are not reported by the engine; a folder's changes are picked up at the next refresh rather than as they happen; SMB shares are desktop-only (not offered on Android); the Identify and collections flows have no UI on any platform yet; release builds (signing, shrinking) are not set up; verified on an emulator only, not on physical phones or tablets |
 | Known gaps | Watch state is not synchronized between devices except through a source that keeps it; cuts are told apart by edition labels and running times only; stacked multi-part files play as separate versions; disc structures (BDMV/VIDEO_TS) are recognized but not playable; credentials are not yet in platform secure storage |
-| Not yet in the experience layer | Identify flow, library diagnostics, user collections, and non-folder sources (Jellyfin, WebDAV, SMB) have engine support but no UI; no settings screen yet |
+| Not yet in the experience layer | Identify flow, library diagnostics, and user collections have engine support but no UI; no settings screen yet; choosing which of a server's libraries to include (the whole catalog the account sees is read); browsing one source's media on its own |
 | Desktop shell gaps | libmpv is not bundled and there is no installer; media keys are not captured; no scrollbars; the GNOME and KDE folder dialogs are used when their helper is installed but are only unit-tested (the Linux end-to-end run uses the toolkit's chooser); on X11 without a compositing manager the player's controls window is opaque and hides the video; Wayland has only been reached through X11 |
 | Not verified here | TMDB against the live service (no credential on the development machine; the provider is covered by fixtures and the app falls back to file names); a session with physical controllers |
 | Release readiness | Tracked in [RELEASE.md](RELEASE.md): libmpv distribution, credential storage, provider attribution, multi-part files, disc structures |
@@ -140,6 +141,23 @@ Verified on 2026-10-14, on the tree that closes the Smart Offline milestone, unl
 | By hand on the TV emulator, remote keys only | Download from the details page, the sheet, Back, and playing the copy with the server stopped | Done |
 | Physical-device verified | A phone, tablet, or television in hand | **Not done** |
 | Not verified | Large files and slow or metered networks; a download interrupted by the system killing the application (the restart path is covered by tests, not by a real kill); WebDAV and SMB as download sources beyond the shared tests (SMB does not exist on Android); a server whose reported size differs from the file's | Open |
+| Environment-blocked | The workflow on GitHub (not pushed); TMDB against the live service (no credential) | Open |
+
+### Source onboarding and management: what was verified
+
+Verified on 2026-10-14, on the tree that closes the milestone.
+
+| Level | What ran | State |
+| --- | --- | --- |
+| Implemented | Connectors for Jellyfin, WebDAV, and SMB behind `SourceConnector`; `SourceConnections` in `library`; the Media sources, Add media, and connect pages; the offline sheet's review step with the planner's own reason; download marks on cards; the amber restraint pass | Done |
+| Engine, with fixtures | `JellyfinConnectorTest`, `WebDavConnectorTest`, `SmbConnectorTest` (addresses as people type them, every failure told apart, nothing secret kept or logged), `SourceConnectionsTest` (routing, persistence, signing in again, a changed address, nothing added on failure), `OfflinePlannerTest` (why each version was chosen) | Part of the checks below; none failed |
+| Windows verified | `./gradlew check`, with every screen rendered; the source, connect, offline review, phone, tablet, and television renderings reviewed. `SourcesUiTest` drives the real screens: first run with a folder first and a server one step aside, a wrong password and then the right one, a share that is not there, a server that goes away (still listed, still in the library), trying again, signing in again, a phone, a tablet, and the whole flow with remote keys | 488 tests, none failed |
+| Windows verified, real window | `./gradlew :desktop:app:test -Preflux.windowTests=true`: first run, the media sources page, Add media, the share form, Back out of it, the controller's Menu button, playback | 27 tests, none failed (physical-controller check skipped) |
+| Linux verified (Ubuntu 24.04 container, engine tests required) | The Linux job: the headless `check`, then a real-window round | Passed, both. The first window round failed in the test itself (a click meant for the navigation's "Media sources" landed on the page title of the same name); the test was corrected and the round rerun |
+| Live Jellyfin, phone emulator (Android 16, Jellyfin Server 12.2.0 in Docker), by hand in the installed application | First run, Connect a server or share, Jellyfin, the address typed with the phone keyboard and Next between fields, a wrong password ("That user name or password wasn't accepted.") and the right one; the library with the server's artwork; details, Download, the review sheet (`SD · 16 MB · from …`, room available), Download, "On this device", the copy as the recommended version; the server stopped, the source "Not connected" with its explanation, its address and account, Try again, Sign in again; the film played from the device | Done, with screenshots reviewed |
+| Live Jellyfin, television emulator (Google TV, Android 16), remote keys only | The same from first run: the form reached and filled with the D-pad and the television keyboard, connecting with OK, Home, details, Download, the sheet with focus on its confirmation, focus back on the action afterwards, the server stopped and the film played from the device; Menu opens the media sources | Done, with screenshots reviewed |
+| Found by the device runs and fixed | On a phone the bottom navigation sat on top of the keyboard and covered Connect (it now steps aside while typing); a field's label did not focus its field; on a television the keyboard opened as soon as a field had focus and took over the remote, and OK's release typed a letter into it (it now opens on OK, when OK is let go); a server in a container was named by its generated host name | Fixed and rerun |
+| Not verified | SMB and WebDAV connections against live servers from the application (their connectors are covered by fixtures and a closed port, and the adapters by the earlier live tests); physical devices; a real television's keyboard | Open |
 | Environment-blocked | The workflow on GitHub (not pushed); TMDB against the live service (no credential) | Open |
 
 ## Phase 0 — Product and architecture foundation
@@ -252,7 +270,7 @@ Priority is based on product value and platform capability, not feature-count fo
 
 ## Phase 10 — Native Android
 
-First vertical slice done and hardened (see the status and verification tables above). Next on Android: the remaining flows (network sources, Identify), physical-device verification, and release builds.
+First vertical slice done and hardened (see the status and verification tables above); servers and web shares can be added in the application. Next on Android: SMB shares, the Identify flow, physical-device verification, and release builds.
 
 - Android phone.
 - Android tablet.
@@ -290,7 +308,7 @@ The first meaningful controller input should trigger a smooth transition into co
 
 ## Phase 13 — Smart Offline
 
-First milestone done (see the status and verification tables above, and [OFFLINE.md](OFFLINE.md)). Next: a way to add servers and shares in the application, which is what makes this reachable; continuing with the application closed, if that product decision is made; episode and season selection; the desktop.
+First milestone done (see the status and verification tables above, and [OFFLINE.md](OFFLINE.md)); reachable from the application since servers and shares can be added there. Next: continuing with the application closed, if that product decision is made; episode and season selection; the desktop.
 
 - Download media.
 - "Prepare for offline".
@@ -299,7 +317,7 @@ First milestone done (see the status and verification tables above, and [OFFLINE
 
 ## Phase 14 — Android TV / Google TV
 
-First milestone done (see the status and verification tables above): the television is a form factor of the shared experience layer inside the one Android application. Next for television: a real device, the flows that have no UI on any platform yet (network sources, Identify), and the launcher's Watch Next row.
+First milestone done (see the status and verification tables above): the television is a form factor of the shared experience layer inside the one Android application. Next for television: a real device, the Identify flow, and the launcher's Watch Next row. Servers and shares are added with the remote and the television's keyboard.
 
 - D-pad-first interaction.
 - 10-foot layouts.

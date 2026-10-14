@@ -148,7 +148,11 @@ private fun Modifier.focusGlow(shape: Shape, strength: Float): Modifier = if (st
 
 private const val GLOW_RINGS = 6
 
-enum class ButtonStyle { PRIMARY, GLASS, QUIET }
+/**
+ * [PRIMARY] is the accent, for the one thing a screen exists to do: play. [SOLID] is the main action of
+ * everything else (connect, download, choose this folder), in white. [GLASS] and [QUIET] are the rest.
+ */
+enum class ButtonStyle { PRIMARY, SOLID, GLASS, QUIET }
 
 /** A text button. Its height follows the layout's minimum target size, so it grows for controllers and TVs. */
 @Composable
@@ -169,12 +173,14 @@ fun Button(
             // Active is the accent lit up, not a different color.
             // What cannot be done right now does not wear the accent.
             ButtonStyle.PRIMARY -> Modifier.background(if (!enabled) Color.White.copy(alpha = 0.08f) else if (active) lerp(accent, Color.White, 0.28f) else accent)
+            ButtonStyle.SOLID -> Modifier.background(if (!enabled) Color.White.copy(alpha = 0.08f) else if (active) Color.White else Color.White.copy(alpha = 0.9f))
             ButtonStyle.GLASS -> Modifier.glass(MaterialRole.INTERACTIVE, shape).background(Color.White.copy(alpha = if (active) 0.12f else 0f))
             ButtonStyle.QUIET -> Modifier.background(Color.White.copy(alpha = if (active) 0.10f else 0f))
         }
         val color = when {
             !enabled -> RefluxColors.textTertiary
             style == ButtonStyle.PRIMARY -> RefluxColors.onAccent
+            style == ButtonStyle.SOLID -> RefluxColors.background
             else -> RefluxColors.textPrimary
         }
         Row(
@@ -199,6 +205,8 @@ fun IconButton(
     glass: Boolean = false,
     tint: Color = RefluxColors.textPrimary,
     enabled: Boolean = true,
+    /** Switched on (a favorite, a watched mark): shown by a lit surface rather than by a color. */
+    selected: Boolean = false,
 ) {
     val layout = LocalLayout.current
     val target = maxOf(size.value, minOf(layout.minTargetDp, 56f)).dp
@@ -206,7 +214,7 @@ fun IconButton(
         Box(
             Modifier.size(target)
                 .then(if (glass) Modifier.glass(MaterialRole.INTERACTIVE, CircleShape) else Modifier)
-                .background(Color.White.copy(alpha = if (active) 0.14f else 0f)),
+                .background(Color.White.copy(alpha = (if (selected) 0.18f else 0f) + (if (active) 0.14f else 0f))),
             contentAlignment = Alignment.Center,
         ) {
             Icon(icon, size = (target.value * 0.5f).dp, tint = if (enabled) tint else RefluxColors.textTertiary)

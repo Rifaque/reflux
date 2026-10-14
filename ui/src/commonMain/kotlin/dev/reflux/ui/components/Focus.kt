@@ -111,8 +111,22 @@ class FocusEntry {
         return start()
     }
 
+    /**
+     * The control that opened a panel, for focus to come back to once the panel closes, instead of going to
+     * the top of the page. Used once.
+     */
+    internal var afterPanel: FocusRequester? = null
+
     /** Puts focus where a screen starts, wherever it is now. Returns false while the screen has nowhere yet. */
-    internal fun start(): Boolean = focus(returning) || focus(initial)
+    internal fun start(): Boolean {
+        afterPanel?.let { requester ->
+            // Not while the panel is still going: what has focus then is on its way out with it.
+            if (inPanel) return false
+            afterPanel = null
+            if (runCatching { requester.requestFocus(FocusDirection.Enter) }.getOrNull() == true) return true
+        }
+        return focus(returning) || focus(initial)
+    }
 
     private fun focus(offer: Offer?): Boolean =
         runCatching { offer?.takeIf { it.screen == screen }?.requester?.requestFocus(FocusDirection.Enter) }.getOrNull() ?: false

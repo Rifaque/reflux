@@ -4,6 +4,7 @@ import dev.reflux.core.model.Availability
 import dev.reflux.core.model.StableIds
 import dev.reflux.core.net.HttpFetcher
 import dev.reflux.core.net.HttpRequest
+import dev.reflux.core.net.HttpResult
 import dev.reflux.core.source.DownloadableSource
 import dev.reflux.core.source.FileEnumeratingSource
 import dev.reflux.core.source.PlaybackTarget
@@ -111,15 +112,20 @@ class WebDavSource(
 
     private data class Entry(val href: URI, val collection: Boolean, val size: Long, val modifiedAtEpochMs: Long)
 
+    /** How the share answers a question about its root: 207 when it is a share that can be read. Throws when nothing answers. */
+    internal suspend fun probe(): Int = request(root, depth = 0).status
+
+    private suspend fun request(uri: URI, depth: Int): HttpResult = http.send(
+        HttpRequest(
+            url = uri.toString(),
+            method = "PROPFIND",
+            headers = authHeaders + mapOf("Depth" to depth.toString(), "Content-Type" to "application/xml; charset=utf-8"),
+            body = PROPFIND_BODY.toByteArray(StandardCharsets.UTF_8),
+        ),
+    )
+
     private suspend fun propfind(uri: URI, depth: Int): List<Entry> {
-        val result = http.send(
-            HttpRequest(
-                url = uri.toString(),
-                method = "PROPFIND",
-                headers = authHeaders + mapOf("Depth" to depth.toString(), "Content-Type" to "application/xml; charset=utf-8"),
-                body = PROPFIND_BODY.toByteArray(StandardCharsets.UTF_8),
-            ),
-        )
+        val result = request(uri, depth)
         if (result.status != 207) throw IllegalStateException("PROPFIND ${uri.path}: HTTP ${result.status}")
         return parseMultistatus(result.body, uri)
     }

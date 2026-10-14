@@ -161,7 +161,7 @@ internal fun SearchScreen(app: AppState) {
                     modifier = Modifier.weight(1f).focusRequester(field).initialFocus().onFocusChanged { app.textInputActive = it.isFocused },
                     singleLine = true,
                     textStyle = LocalTypography.current.title.copy(color = RefluxColors.textPrimary),
-                    cursorBrush = SolidColor(RefluxColors.accent),
+                    cursorBrush = SolidColor(RefluxColors.textPrimary),
                     decorationBox = { inner ->
                         Box(contentAlignment = Alignment.CenterStart) {
                             if (query.isEmpty()) {

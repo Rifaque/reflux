@@ -82,7 +82,9 @@ import dev.reflux.ui.screens.FolderPickerPanel
 import dev.reflux.ui.screens.HomeScreen
 import dev.reflux.ui.screens.OfflinePanel
 import dev.reflux.ui.screens.SearchScreen
-import dev.reflux.ui.screens.SourcesPanel
+import dev.reflux.ui.screens.AddSourceScreen
+import dev.reflux.ui.screens.ConnectScreen
+import dev.reflux.ui.screens.SourcesScreen
 import dev.reflux.ui.state.AppState
 import dev.reflux.ui.state.Destination
 import dev.reflux.ui.theme.GlassScene
@@ -219,7 +221,7 @@ fun RefluxApp(app: AppState, modifier: Modifier = Modifier) {
             // found first (the navigation above it).
             // The same when a page gains a main action it did not have (a library that just appeared), or a
             // panel over it closes, unless the user has since put focus somewhere in the page themselves.
-            val covered = app.sourcesOpen || app.offlineOpen || app.folderPicker != null
+            val covered = app.offlineOpen || app.folderPicker != null
             var started by remember { mutableStateOf<Destination?>(null) }
             LaunchedEffect(app.navigator.current, entry.starts, covered) {
                 if (covered) return@LaunchedEffect
@@ -266,6 +268,9 @@ fun RefluxApp(app: AppState, modifier: Modifier = Modifier) {
                                     Destination.Search -> SearchScreen(app)
                                     is Destination.Listing -> BrowseScreen(app, destination.title, destination.query, shows = false)
                                     is Destination.Details -> DetailsScreen(app, destination.itemId)
+                                    Destination.Sources -> SourcesScreen(app)
+                                    Destination.AddSource -> AddSourceScreen(app)
+                                    is Destination.Connect -> ConnectScreen(app, destination)
                                 }
                             }
                         }
@@ -284,7 +289,7 @@ fun RefluxApp(app: AppState, modifier: Modifier = Modifier) {
     }
 }
 
-/** Everything that floats above the screens: navigation, the sources panel, button prompts, and notices. */
+/** Everything that floats above the screens: navigation, the offline sheet, button prompts, and notices. */
 @Composable
 private fun Chrome(app: AppState) {
     val layout = LocalLayout.current
@@ -295,13 +300,8 @@ private fun Chrome(app: AppState) {
             if (compact) CompactNavigation(app) else NavigationBar(app, Modifier.align(Alignment.TopCenter).padding(top = 14.dp))
         }
         // A click outside the open panel closes it and goes no further.
-        if (app.sourcesOpen || app.offlineOpen) {
-            Box(Modifier.fillMaxSize().pointerInput(app) {
-                detectTapGestures {
-                    app.sourcesOpen = false
-                    app.offlineOpen = false
-                }
-            })
+        if (app.offlineOpen) {
+            Box(Modifier.fillMaxSize().pointerInput(app) { detectTapGestures { app.offlineOpen = false } })
         }
         // Choosing a folder takes the whole screen's attention: the page behind it steps back.
         AnimatedVisibility(app.folderPicker != null, enter = fadeIn(Motion.controlsShow.tween()), exit = fadeOut(Motion.controlsHide.tween())) {
@@ -317,18 +317,15 @@ private fun Chrome(app: AppState) {
             }
         }
         Box(margin) {
-            AnimatedVisibility(
-                visible = app.sourcesOpen,
-                modifier = Modifier.align(Alignment.TopEnd).padding(top = if (compact) 12.dp + 48.dp + 8.dp else 14.dp + NavigationBarHeight + 10.dp),
-                enter = fadeIn(Motion.controlsShow.tween()) + slideInVertically(Motion.controlsShow.tween()) { -it / 12 },
-                exit = fadeOut(Motion.controlsHide.tween()),
-            ) {
-                SourcesPanel(app)
-            }
+            // On a phone the sheet rises from the bottom, under the thumb; elsewhere it hangs from the navigation.
             AnimatedVisibility(
                 visible = app.offlineOpen,
-                modifier = Modifier.align(Alignment.TopEnd).padding(top = if (compact) 12.dp + 48.dp + 8.dp else 14.dp + NavigationBarHeight + 10.dp),
-                enter = fadeIn(Motion.controlsShow.tween()) + slideInVertically(Motion.controlsShow.tween()) { -it / 12 },
+                modifier = if (compact) {
+                    Modifier.align(Alignment.BottomCenter).padding(bottom = 10.dp + NavigationBarHeight + 12.dp)
+                } else {
+                    Modifier.align(Alignment.TopEnd).padding(top = 14.dp + NavigationBarHeight + 10.dp)
+                },
+                enter = fadeIn(Motion.controlsShow.tween()) + slideInVertically(Motion.controlsShow.tween()) { if (compact) it / 8 else -it / 12 },
                 exit = fadeOut(Motion.controlsHide.tween()),
             ) {
                 OfflinePanel(app)
@@ -369,31 +366,35 @@ private fun BoxScope.CompactNavigation(app: AppState) {
         ActivityIndicator(activity)
         // Search has its field across the top; the sources are a tap away from any other section.
         if (navigator.current is Destination.Section && navigator.current != Destination.Search) {
-            IconButton(Icon.FOLDER, "Media sources", { app.sourcesOpen = !app.sourcesOpen }, size = 44.dp, glass = true, tint = tabColor(app.sourcesOpen))
+            IconButton(Icon.FOLDER, "Media sources", { app.toggleSources() }, size = 44.dp, glass = true)
         }
     }
-    Column(Modifier.align(Alignment.BottomCenter).padding(bottom = 10.dp), horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        // With a controller in hand, what its buttons do here, in that controller's own terms.
-        AnimatedVisibility(app.namesButtons, enter = fadeIn(Motion.inputMorph.tween()), exit = fadeOut(Motion.controlsHide.tween())) {
-            val family = app.input.controllerFamily ?: ControllerFamily.GENERIC
-            ButtonPrompts(
-                listOfNotNull(
-                    InputMapping.confirmButton(family) to "Select",
-                    (InputMapping.cancelButton(family) to if (app.sourcesOpen) "Close" else "Back").takeIf { app.sourcesOpen || navigator.canGoBack },
-                ),
-                family,
-            )
-        }
-        Row(
-            Modifier.fillMaxWidth().widthIn(max = 420.dp).height(NavigationBarHeight).glass(MaterialRole.FLOATING, CircleShape).absorbsPointer()
-                .onFocusChanged { entry?.chrome = SemanticAction.NAVIGATE_UP.takeIf { _ -> it.hasFocus } }.padding(horizontal = 8.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Tab("Home", navigator.section == Destination.Home) { navigator.show(Destination.Home) }
-            Tab("Movies", navigator.section == Destination.Movies) { navigator.show(Destination.Movies) }
-            Tab("Shows", navigator.section == Destination.Shows) { navigator.show(Destination.Shows) }
-            IconButton(Icon.SEARCH, "Search", { navigator.show(Destination.Search) }, tint = tabColor(navigator.section == Destination.Search))
+    // While typing, the keyboard owns the bottom of the screen: the sections step aside rather than sit on
+    // top of the keyboard and cover what is being typed into, or the button that comes after it.
+    AnimatedVisibility(!app.textInputActive, Modifier.align(Alignment.BottomCenter), enter = fadeIn(Motion.controlsShow.tween()), exit = fadeOut(Motion.controlsHide.tween())) {
+        Column(Modifier.padding(bottom = 10.dp), horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            // With a controller in hand, what its buttons do here, in that controller's own terms.
+            AnimatedVisibility(app.namesButtons, enter = fadeIn(Motion.inputMorph.tween()), exit = fadeOut(Motion.controlsHide.tween())) {
+                val family = app.input.controllerFamily ?: ControllerFamily.GENERIC
+                ButtonPrompts(
+                    listOfNotNull(
+                        InputMapping.confirmButton(family) to "Select",
+                        (InputMapping.cancelButton(family) to if (app.offlineOpen) "Close" else "Back").takeIf { app.offlineOpen || navigator.canGoBack },
+                    ),
+                    family,
+                )
+            }
+            Row(
+                Modifier.fillMaxWidth().widthIn(max = 420.dp).height(NavigationBarHeight).glass(MaterialRole.FLOATING, CircleShape).absorbsPointer()
+                    .onFocusChanged { entry?.chrome = SemanticAction.NAVIGATE_UP.takeIf { _ -> it.hasFocus } }.padding(horizontal = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Tab("Home", navigator.section == Destination.Home) { navigator.show(Destination.Home) }
+                Tab("Movies", navigator.section == Destination.Movies) { navigator.show(Destination.Movies) }
+                Tab("Shows", navigator.section == Destination.Shows) { navigator.show(Destination.Shows) }
+                IconButton(Icon.SEARCH, "Search", { navigator.show(Destination.Search) }, tint = tabColor(navigator.section == Destination.Search))
+            }
         }
     }
 }
@@ -430,8 +431,8 @@ private fun NavigationBar(app: AppState, modifier: Modifier = Modifier) {
             ButtonPrompts(
                 listOfNotNull(
                     InputMapping.confirmButton(family) to "Select",
-                    (InputMapping.cancelButton(family) to if (app.sourcesOpen) "Close" else "Back").takeIf { app.sourcesOpen || navigator.canGoBack },
-                    (GamepadButton.START to "Sources").takeIf { !app.sourcesOpen },
+                    (InputMapping.cancelButton(family) to if (app.offlineOpen) "Close" else "Back").takeIf { app.offlineOpen || navigator.canGoBack },
+                    (GamepadButton.START to "Sources").takeIf { navigator.current != Destination.Sources },
                 ),
                 family,
                 Modifier.padding(end = 14.dp),
@@ -440,11 +441,12 @@ private fun NavigationBar(app: AppState, modifier: Modifier = Modifier) {
         }
         ActivityIndicator(activity)
         IconButton(Icon.SEARCH, "Search", { navigator.show(Destination.Search) }, tint = tabColor(navigator.section == Destination.Search))
-        IconButton(Icon.FOLDER, "Media sources", { app.sourcesOpen = !app.sourcesOpen }, tint = tabColor(app.sourcesOpen))
+        IconButton(Icon.FOLDER, "Media sources", { app.toggleSources() }, tint = tabColor(navigator.current == Destination.Sources))
     }
 }
 
-private fun tabColor(selected: Boolean): Color = if (selected) RefluxColors.accent else RefluxColors.textSecondary
+/** Where the user is shows as white against grey, not in the accent: the accent is for what is playing. */
+private fun tabColor(selected: Boolean): Color = if (selected) RefluxColors.textPrimary else RefluxColors.textSecondary
 
 @Composable
 private fun Tab(label: String, selected: Boolean, onClick: () -> Unit) {
@@ -454,7 +456,7 @@ private fun Tab(label: String, selected: Boolean, onClick: () -> Unit) {
                 .height(36.dp).padding(horizontal = 16.dp),
             contentAlignment = Alignment.Center,
         ) {
-            Text(label, style = LocalTypography.current.bodyStrong, color = if (selected) RefluxColors.accent else if (active) RefluxColors.textPrimary else RefluxColors.textSecondary, maxLines = 1)
+            Text(label, style = LocalTypography.current.bodyStrong, color = if (selected || active) RefluxColors.textPrimary else RefluxColors.textSecondary, maxLines = 1)
         }
     }
 }
@@ -468,7 +470,7 @@ private fun ActivityIndicator(activity: PipelineActivity) {
     ) { label ->
         if (label != null) {
             Row(Modifier.padding(end = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.size(6.dp).background(RefluxColors.accent, CircleShape))
+                Box(Modifier.size(6.dp).background(RefluxColors.textSecondary, CircleShape))
                 Text(label, style = LocalTypography.current.caption, color = RefluxColors.textSecondary, maxLines = 1)
             }
         }

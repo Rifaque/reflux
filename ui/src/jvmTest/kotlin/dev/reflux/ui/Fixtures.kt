@@ -47,6 +47,7 @@ import dev.reflux.library.LibraryPipeline
 import dev.reflux.library.SourceRegistry
 import dev.reflux.sources.local.LocalFolderSource
 import dev.reflux.library.Offline
+import dev.reflux.library.SourceConnections
 import dev.reflux.ui.state.ArtworkLoader
 import dev.reflux.ui.state.FolderBrowser
 import dev.reflux.ui.state.FolderChoice
@@ -239,6 +240,7 @@ class FakePlatform(
     override val systemVolume: Boolean = television,
     override val folderBrowser: FolderBrowser? = null,
     override val offline: Offline? = null,
+    override val connections: SourceConnections? = null,
 ) : Platform {
     override val artwork: ArtworkLoader = FakeArtwork(artwork)
     override val device: DeviceCapabilities = testDevice

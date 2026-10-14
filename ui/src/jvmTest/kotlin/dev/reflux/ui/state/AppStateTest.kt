@@ -63,9 +63,9 @@ class AppStateTest {
         assertTrue(platform.fullscreen)
         assertFalse(app.onKey(Key.ENTER), "activating the focused control is the toolkit's job")
 
-        app.sourcesOpen = true
+        app.offlineOpen = true
         assertTrue(app.onKey(Key.BACKSPACE))
-        assertFalse(app.sourcesOpen)
+        assertFalse(app.offlineOpen, "Back closes what floats over the page first")
     }
 
     @Test
@@ -184,7 +184,7 @@ class AppStateTest {
         runCurrent()
         assertNull(app.playback)
         assertTrue(platform.players.isEmpty(), "no video surface is shown for something that cannot play")
-        assertTrue(assertNotNull(app.notice).contains("offline"))
+        assertTrue(assertNotNull(app.notice).contains("isn't connected"))
         advanceTimeBy(5_000)
         runCurrent()
         assertNull(app.notice, "notices clear themselves")
@@ -401,7 +401,7 @@ class AppStateTest {
 
         app.play(world.movie("Heat").item.id)
         runCurrent()
-        assertEquals("This can't be played right now. Media is offline.", app.notice)
+        assertEquals("This can't be played right now. Media isn't connected.", app.notice)
     }
 
     @Test
@@ -441,9 +441,12 @@ class AppStateTest {
         assertTrue(app.onGamepadButton(GamepadButton.FACE_EAST, pad))
         assertEquals(Destination.Home, app.navigator.current)
         assertTrue(app.onGamepadButton(GamepadButton.START, pad))
-        assertTrue(app.sourcesOpen)
+        assertEquals(Destination.Sources, app.navigator.current, "Menu opens where the library comes from")
+        assertTrue(app.onGamepadButton(GamepadButton.START, pad))
+        assertEquals(Destination.Home, app.navigator.current, "and pressed again, leaves it")
+        assertTrue(app.onGamepadButton(GamepadButton.START, pad))
         assertTrue(app.onGamepadButton(GamepadButton.FACE_EAST, pad))
-        assertFalse(app.sourcesOpen)
+        assertEquals(Destination.Home, app.navigator.current)
         assertTrue(app.onGamepadButton(GamepadButton.SELECT, pad))
         assertTrue(platform.fullscreen)
         assertFalse(app.onGamepadButton(GamepadButton.STICK_LEFT, pad), "buttons without a meaning are ignored")
