@@ -62,6 +62,15 @@ class Media3Player(context: Context, override val capabilities: DeviceCapabiliti
     /** The subtitle lines and images to show right now. */
     val cues: StateFlow<List<Cue>> = mutableCues.asStateFlow()
 
+    private val mutableClearance = MutableStateFlow(0f)
+
+    /** The bottom share of the window (0–1) that subtitle text keeps above, while the controls show there. */
+    val subtitleClearance: StateFlow<Float> = mutableClearance.asStateFlow()
+
+    override fun setSubtitleClearance(fraction: Float) {
+        mutableClearance.value = fraction.coerceIn(0f, 1f)
+    }
+
     private val mutableAspect = MutableStateFlow<Float?>(null)
 
     /** The shape of the picture (width over height) once known. The surface is laid out to it; the engine fills whatever it is given. */

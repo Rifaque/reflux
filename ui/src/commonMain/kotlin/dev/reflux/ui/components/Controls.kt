@@ -150,6 +150,9 @@ private fun Modifier.focusRing(shape: Shape): Modifier = drawBehind {
 private val RING_GAP = 3.dp
 private val RING_WIDTH = 2.dp
 
+/** How far a focus ring reaches outside its control. A list that clips leaves this much room at its ends. */
+val FocusRingReach = RING_GAP + RING_WIDTH + 1.dp
+
 /** A soft light around [shape], fading outwards from the focus ring. Drawn outside the control's own bounds. */
 private fun Modifier.focusGlow(shape: Shape, strength: Float): Modifier = if (strength <= 0f) this else drawBehind {
     val step = 2.dp.toPx()

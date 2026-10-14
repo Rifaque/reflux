@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -26,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import dev.reflux.design.MaterialRole
 import dev.reflux.ui.components.Button
 import dev.reflux.ui.components.ButtonStyle
+import dev.reflux.ui.components.FocusRingReach
 import dev.reflux.ui.components.Icon
 import dev.reflux.ui.components.Pressable
 import dev.reflux.ui.components.absorbsPointer
@@ -76,7 +78,8 @@ internal fun FolderPickerPanel(picker: FolderPicker) {
             Button("Use this folder", { picker.choose() }, Modifier.focusRequester(main), icon = Icon.CHECK, style = ButtonStyle.PRIMARY, enabled = !picker.busy)
         }
         if (folders.isNotEmpty()) {
-            LazyColumn(Modifier.heightIn(max = 236.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            // The list clips; the first and last rows keep room for their focus ring.
+            LazyColumn(Modifier.heightIn(max = 236.dp), contentPadding = PaddingValues(vertical = FocusRingReach), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 itemsIndexed(folders, key = { _, folder -> folder.id }) { index, folder ->
                     FolderRow(folder, if (current == null && index == 0) Modifier.focusRequester(main) else Modifier, enabled = !picker.busy) { picker.open(folder) }
                 }

@@ -2,6 +2,7 @@ package dev.reflux.ui.state
 
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -324,6 +325,18 @@ class PlaybackSession internal constructor(
         touch()
         if (trackId != null && player.state.value.subtitleTracks.none { it.id == trackId }) return app.notify(Problems.TRACK_GONE)
         player.selectSubtitle(trackId)
+    }
+
+    /** How much of the bottom of the window (0–1) the controls cover; subtitles are kept above it. */
+    var subtitleClearance by mutableFloatStateOf(0f)
+        private set
+
+    /** Keeps subtitles above the bottom [fraction] of the window while the controls show there; 0 when they do not. */
+    fun keepSubtitlesClear(fraction: Float) {
+        val clearance = fraction.coerceIn(0f, 1f)
+        if (clearance == subtitleClearance) return
+        subtitleClearance = clearance
+        player.setSubtitleClearance(clearance)
     }
 
     fun playNext() = switchTo(next)

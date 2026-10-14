@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import java.net.URI
 import java.nio.file.Path
+import kotlin.math.roundToInt
 import kotlin.math.roundToLong
 
 /**
@@ -60,6 +61,9 @@ class MpvPlayer private constructor(
     override fun setMuted(muted: Boolean) = setProperty("mute", if (muted) "yes" else "no")
     override fun selectAudio(trackId: String) = setProperty("aid", trackId)
     override fun selectSubtitle(trackId: String?) = setProperty("sid", trackId ?: "no")
+
+    // sub-pos is where the bottom of a subtitle sits, in percent of the window's height from the top.
+    override fun setSubtitleClearance(fraction: Float) = setProperty("sub-pos", subtitlePosition(fraction).toString())
 
     override fun stop() {
         command("stop")
@@ -223,5 +227,8 @@ class MpvPlayer private constructor(
         /** mpv takes plain paths for local files and URLs for everything else. */
         internal fun mpvPath(uri: String): String =
             if (uri.startsWith("file:")) Path.of(URI(uri)).toString() else uri
+
+        /** The `sub-pos` that keeps subtitles above the bottom [clearance] of the window (100 is mpv's own place). */
+        internal fun subtitlePosition(clearance: Float): Int = 100 - (clearance.coerceIn(0f, 0.6f) * 100).roundToInt()
     }
 }

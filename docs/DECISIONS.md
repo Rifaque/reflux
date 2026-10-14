@@ -477,3 +477,15 @@ Reflux uses a neutral-first cinematic interface with selective frosted glass. Ar
 - **The marks follow:** the desktop window icon, the Android launcher icon, and the TV banner are a white play mark on a graphite tile.
 
 Not changed: layouts and navigation structure, the material roles, motion timings, the controller morph, and every playback, source, and library behavior. The change is confined to `design`, the experience layer (`ui`), and the shells' icons.
+
+## 2026-10-15 — Real-world validation of the visual reset: the baseline holds, with targeted corrections
+
+The 2026-10-14 reset was checked with real film artwork (Blender open movies and public-domain posters: dark, bright, saturated, high-contrast, text-heavy, letterboxed) on desktop real windows (Windows, and Linux under the CI container), the phone emulator in both orientations, a tablet-sized display, and the Google TV emulator driven by remote keys. The direction holds: chrome stays neutral, the atmosphere stays a wash, glass stays on what floats, and no accent came back. What it exposed was fixed where it stood:
+
+- **Subtitles move above the player's controls while they show.** They were drawn under the frosted bar and read through it. `Player.setSubtitleClearance` (a default no-op, so an engine that cannot move its subtitles simply does not) carries the share of the window the controls cover: libmpv applies it as `sub-pos`, and the Android shell lifts its own subtitle text by it. The overlay reports it, and 0 when the controls leave.
+- **A work with a poster but no backdrop takes its color from the poster**, for the page and for the backdrop generated behind it (graphite for a grey poster). It took its title's hue before, which set a yellow poster on a purple page. `ArtworkAtmosphere.dominantHue` is the hue both are made from.
+- **Artwork scrims overlap the page by a pixel**, because at fractional densities (2.625x) the scrim's antialiased bottom row let a sliver of the artwork show; and a band of fixed height keeps the navigation legible over bright artwork at the top of Home and details (its icons measured 1.3:1 over a bright sky, now 3.5:1).
+- **A details page opens on its title and Play on a short screen** (a phone on its side). Below 600 dp of height the header leaves out the poster, the genres, and the credit, and keeps the overview to two lines.
+- **Lists that clip leave room for the focus ring** (`FocusRingReach`), which now sits outside the control and was cut off at a list's first and last rows.
+
+Not changed: palette, type, materials, motion, layouts elsewhere, and every source and library behavior.

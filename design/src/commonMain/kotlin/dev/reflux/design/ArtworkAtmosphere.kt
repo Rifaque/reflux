@@ -16,7 +16,10 @@ object ArtworkAtmosphere {
     private const val LIGHTNESS = 0.20
 
     /** [pixels] are 0xAARRGGBB values, typically a sparse sample of the image. Null for colorless artwork. */
-    fun from(pixels: LongArray): Argb? {
+    fun from(pixels: LongArray): Argb? = dominantHue(pixels)?.let(::ofHue)
+
+    /** The hue (0–360) the atmosphere of [pixels] is made from; null for colorless artwork. */
+    fun dominantHue(pixels: LongArray): Double? {
         val weights = DoubleArray(BUCKETS)
         val hueSums = DoubleArray(BUCKETS)
         var total = 0.0
@@ -37,7 +40,7 @@ object ArtworkAtmosphere {
         val smoothed = DoubleArray(BUCKETS) { i -> weights[i] + 0.5 * (weights[(i + 1) % BUCKETS] + weights[(i + BUCKETS - 1) % BUCKETS]) }
         val best = smoothed.indices.maxBy { smoothed[it] }
         if (weights[best] / total < 0.04) return null // not colorful enough to have a color of its own
-        return ofHue(hueSums[best] / weights[best])
+        return hueSums[best] / weights[best]
     }
 
     /** The atmosphere of a [hue] (0–360), for generated artwork that is known by its hue. */

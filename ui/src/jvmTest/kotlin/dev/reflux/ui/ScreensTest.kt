@@ -1,6 +1,9 @@
 package dev.reflux.ui
 
+import androidx.compose.ui.graphics.toAwtImage
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -19,11 +22,15 @@ import dev.reflux.core.input.InputSignal
 import dev.reflux.core.model.Availability
 import dev.reflux.core.playback.PlaybackFailure
 import dev.reflux.core.source.MediaSource
+import dev.reflux.design.ArtworkAtmosphere
+import dev.reflux.ui.components.titleHue
 import dev.reflux.ui.state.Destination
 import kotlinx.coroutines.runBlocking
 import java.nio.file.Files
 import kotlin.test.Test
+import kotlin.math.abs
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 /**
@@ -78,6 +85,30 @@ class ScreensTest {
         onNodeWithText("Directed by Michael Mann").assertExists()
         onNodeWithText("Play").assertExists()
         save("details-movie")
+    }
+
+    @Test
+    fun aWorkWithOnlyAPosterTakesItsColorFromThePoster() {
+        val platform = FakePlatform(backdrops = false)
+        screen(populated(), platform) { app ->
+            app.navigator.open(Destination.Details(app.library.movies().first { it.item.title == "Arrival" }.item.id))
+            awaitText("Directed by Denis Villeneuve")
+            await("the poster to load") { platform.artwork.painted("poster/Arrival") != null }
+            waitForIdle()
+            Thread.sleep(600) // the page tone animates to its artwork's
+            waitForIdle()
+            save("details-poster-only")
+            val poster = platform.artwork.painted("poster/Arrival")!!
+            val pixels = IntArray(poster.width * poster.height).also { poster.readPixels(it) }
+            val expected = assertNotNull(ArtworkAtmosphere.dominantHue(LongArray(pixels.size) { pixels[it].toLong() and 0xFFFFFFFFL }))
+            // The generated backdrop behind the header, where its light is: the poster's hue, not the title's.
+            val page = onRoot().captureToImage().toAwtImage()
+            val rgb = page.getRGB((page.width * 0.78).toInt(), (page.height * 0.22).toInt())
+            val hue = java.awt.Color.RGBtoHSB(rgb shr 16 and 0xFF, rgb shr 8 and 0xFF, rgb and 0xFF, null)[0] * 360.0
+            fun distance(a: Double, b: Double) = abs(a - b).let { minOf(it, 360 - it) }
+            assertTrue(distance(expected, titleHue("Arrival").toDouble()) > 40, "the poster and the title are told apart by hue")
+            assertTrue(distance(hue, expected) < 25, "header hue $hue, poster hue $expected, title hue ${titleHue("Arrival")}")
+        }
     }
 
     @Test

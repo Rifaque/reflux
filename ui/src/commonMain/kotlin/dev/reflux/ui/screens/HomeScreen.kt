@@ -39,6 +39,7 @@ import androidx.compose.ui.platform.LocalDensity
 import dev.reflux.design.FormFactor
 import dev.reflux.ui.components.FocusScrollsNothing
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
@@ -94,7 +95,9 @@ internal fun HomeScreen(app: AppState) {
         val width = maxWidth
         val featured = home.featured
         val heroImage = rememberArtwork(featured?.wide, width)
-        val atmosphere = if (featured != null) rememberPageTone(heroImage, featured.title) else RefluxColors.background
+        // Without wide artwork the hero is generated, in the color of the poster where there is one.
+        val heroPoster = rememberArtwork(featured?.poster, 220.dp)
+        val atmosphere = if (featured != null) rememberPageTone(heroImage ?: heroPoster, featured.title) else RefluxColors.background
         val list = rememberLazyListState()
         val heroPx = with(LocalDensity.current) { heroHeight.toPx() }
         // The atmosphere belongs to the hero: it recedes as the hero scrolls away, and the library beneath is plain.
@@ -108,7 +111,7 @@ internal fun HomeScreen(app: AppState) {
                 contentPadding = PaddingValues(bottom = LocalChromeInsets.current.bottom),
                 verticalArrangement = Arrangement.spacedBy(if (LocalLayout.current.formFactor == FormFactor.PHONE) 26.dp else 36.dp),
             ) {
-                featured?.let { featured -> item(key = "featured") { Box(place(0)) { Hero(app, featured, heroImage, tone, home.featuredOverview, heroHeight) } } }
+                featured?.let { featured -> item(key = "featured") { Box(place(0)) { Hero(app, featured, heroImage, heroPoster, tone, home.featuredOverview, heroHeight) } } }
                 val first = if (home.featured == null) 0 else 1
                 itemsIndexed(home.rows, key = { _, row -> row.id }) { index, row -> Box(place(first + index)) { RowSection(app, row) } }
             }
@@ -160,18 +163,28 @@ internal fun Modifier.artworkScrims(tone: () -> Color, left: Float, right: Float
     val color = tone()
     drawRect(Brush.horizontalGradient(0f to color.copy(alpha = left), 0.58f to color.copy(alpha = left * 0.4f), 1f to color.copy(alpha = right)))
     drawRect(Brush.verticalGradient(0f to color.copy(alpha = 0.55f), 0.23f to Color.Transparent, 0.55f to color.copy(alpha = 0.2f), 1f to color))
+    // Where the navigation sits over the artwork, before the page scrolls and it turns to glass: a band of
+    // fixed height, whatever the artwork's, so its labels and icons hold 3:1 over a bright sky.
+    val band = NAVIGATION_SCRIM.toPx()
+    drawRect(Brush.verticalGradient(0f to color.copy(alpha = 0.72f), 1f to Color.Transparent, endY = band), size = Size(size.width, band))
+    // The page goes on in this tone. Overlapping it by a pixel keeps an edge that falls between pixels (as at
+    // 2.625x) from leaving a sliver of the artwork showing through the antialiased bottom row.
+    drawRect(color, Offset(0f, size.height - 1f), Size(size.width, 2f))
 }
+
+/** The band at the top of artwork that keeps the navigation over it legible. */
+private val NAVIGATION_SCRIM = 160.dp
 
 /** How far below the artwork its atmosphere reaches before the page is plain again. */
 private val ATMOSPHERE_FADE = 520.dp
 
-/** The work Home opens on, over its backdrop (or a backdrop generated from its title). */
+/** The work Home opens on, over its backdrop (or one generated in the color of its poster, or its title). */
 @Composable
-private fun Hero(app: AppState, card: MediaCard, image: ImageBitmap?, tone: () -> Color, overview: String?, height: Dp) {
+private fun Hero(app: AppState, card: MediaCard, image: ImageBitmap?, poster: ImageBitmap?, tone: () -> Color, overview: String?, height: Dp) {
     val layout = LocalLayout.current
     val compact = layout.formFactor == FormFactor.PHONE
     Box(Modifier.fillMaxWidth().height(height)) {
-        ArtworkImage(image, Modifier.fillMaxSize(), alignment = Alignment.TopCenter) { TitleBackdrop(card.title) }
+        ArtworkImage(image, Modifier.fillMaxSize(), alignment = Alignment.TopCenter) { TitleBackdrop(card.title, poster = poster) }
         Box(Modifier.fillMaxSize().artworkScrims(tone, left = 0.9f, right = 0f))
         Column(
             Modifier.align(Alignment.BottomStart).padding(horizontal = layout.safeMarginDp.dp).padding(bottom = 4.dp).widthIn(max = 600.dp),

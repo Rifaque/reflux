@@ -141,6 +141,13 @@ class MpvEngineTest {
             player.await { it.selectedSubtitleId == null }
             player.setSpeed(1.5)
             player.await { it.speed == 1.5 }
+            // Subtitles can be lifted clear of the player's controls and put back.
+            assertEquals(100, MpvPlayer.subtitlePosition(0f))
+            assertEquals(82, MpvPlayer.subtitlePosition(0.18f))
+            player.setSubtitleClearance(0.18f)
+            player.setSubtitleClearance(0f)
+            player.setSpeed(1.0)
+            player.await { it.speed == 1.0 && it.failure == null }
 
             player.stop()
             player.await { it.status == PlayerStatus.IDLE }
