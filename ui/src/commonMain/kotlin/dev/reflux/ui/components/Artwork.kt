@@ -1,8 +1,10 @@
 package dev.reflux.ui.components
 
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -30,6 +32,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
@@ -38,6 +41,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.reflux.core.model.ArtworkLocator
+import dev.reflux.design.ArtworkAtmosphere
 import dev.reflux.design.Motion
 import dev.reflux.ui.state.ArtworkLoader
 import dev.reflux.ui.state.Formatting
@@ -46,6 +50,7 @@ import dev.reflux.ui.theme.LocalLayout
 import dev.reflux.ui.theme.LocalTypography
 import dev.reflux.ui.theme.RefluxColors
 import dev.reflux.ui.theme.Text
+import dev.reflux.ui.theme.toColor
 import dev.reflux.ui.theme.tween
 import kotlin.math.absoluteValue
 import kotlin.math.ceil
@@ -104,10 +109,49 @@ fun ArtworkImage(
 /** A stable hue for a title, so a work without artwork always gets the same color. */
 fun titleHue(title: String): Float = (title.fold(7) { hash, char -> hash * 31 + char.code }.absoluteValue % 360).toFloat()
 
-/** The two tones of a generated backdrop for [title]. */
+/** The two tones of a generated backdrop for [title]: deep and muted, like a dimly lit poster. */
 fun titleTones(title: String): Pair<Color, Color> {
     val hue = titleHue(title)
-    return Color.hsl(hue, 0.42f, 0.24f) to Color.hsl((hue + 38f) % 360f, 0.50f, 0.09f)
+    return Color.hsl(hue, 0.34f, 0.25f) to Color.hsl((hue + 38f) % 360f, 0.40f, 0.085f)
+}
+
+/** How much of an artwork's atmosphere tints the page around it: a wash, never a color scheme. */
+private const val ATMOSPHERE_STRENGTH = 0.22f
+
+/** A sparse sample of [image]: rows spread over its height, a pixel in every few. Enough to know its color. */
+private fun sample(image: ImageBitmap): LongArray {
+    val width = image.width
+    val height = image.height
+    if (width <= 0 || height <= 0) return LongArray(0)
+    val row = IntArray(width)
+    val step = (width / 96).coerceAtLeast(1)
+    val pixels = ArrayList<Long>(ATMOSPHERE_ROWS * (width / step + 1))
+    for (i in 0 until ATMOSPHERE_ROWS) {
+        val y = ((i + 0.5f) / ATMOSPHERE_ROWS * height).toInt().coerceIn(0, height - 1)
+        image.readPixels(row, startX = 0, startY = y, width = width, height = 1)
+        for (x in 0 until width step step) pixels += row[x].toLong() and 0xFFFFFFFFL
+    }
+    return pixels.toLongArray()
+}
+
+private const val ATMOSPHERE_ROWS = 24
+
+/**
+ * The tone of the page around a work: the background, washed with the atmosphere of its [image] or, while
+ * there is none, of the backdrop generated for [title]. Grey artwork leaves the page neutral. Only ever a
+ * background: controls, navigation, and focus stay neutral whatever the artwork (docs/DESIGN.md).
+ */
+@Composable
+fun rememberPageTone(image: ImageBitmap?, title: String): Color {
+    val tone = remember(image, title) {
+        val atmosphere = if (image == null) {
+            ArtworkAtmosphere.ofHue(titleHue(title).toDouble())
+        } else {
+            runCatching { ArtworkAtmosphere.from(sample(image)) }.getOrNull()
+        }
+        atmosphere?.toColor()?.copy(alpha = ATMOSPHERE_STRENGTH)?.compositeOver(RefluxColors.background) ?: RefluxColors.background
+    }
+    return animateColorAsState(tone, Motion.navigation.tween()).value
 }
 
 /**
@@ -203,7 +247,13 @@ fun PosterCard(card: MediaCard, onClick: () -> Unit, modifier: Modifier = Modifi
             Box(Modifier.fillMaxWidth().aspectRatio(2f / 3f)) {
                 ArtworkImage(poster, Modifier.fillMaxSize()) { TitlePlaceholder(card.title, null) }
                 if (active) Box(Modifier.fillMaxSize().background(Color.White.copy(alpha = 0.06f)))
+                // Progress sits on a short shadow, so it reads on the brightest poster.
+                if (card.progress != null) {
+                    Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.78f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.55f))))
+                }
                 StateBadges(card)
+                // A hairline edge defines the poster against the black without framing it.
+                Box(Modifier.fillMaxSize().border(1.dp, Color.White.copy(alpha = 0.07f), shape))
             }
         }
         // Two lines are always reserved so rows line up; a placeholder already says the title, so only the caption follows it.
@@ -242,6 +292,7 @@ fun WideCard(card: MediaCard, onClick: () -> Unit, modifier: Modifier = Modifier
                     ),
                 )
                 if (active) Box(Modifier.fillMaxSize().background(Color.White.copy(alpha = 0.06f)))
+                Box(Modifier.fillMaxSize().border(1.dp, Color.White.copy(alpha = 0.07f), shape))
                 if (card.wide != null || card.poster != null) {
                     Text(
                         card.title,

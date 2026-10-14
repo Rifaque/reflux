@@ -1,24 +1,34 @@
 package dev.reflux.design
 
 /**
- * The default palette: a dark, cinematic base so artwork carries the color. Text tokens are chosen to meet
- * WCAG AA on every surface they are used on (verified by tests), including through glass materials.
+ * The default palette: neutral and dark, so artwork carries all of the color. Let the media be colorful; let
+ * the interface be calm. No token here has a hue of its own (verified by tests) except [error], which has to
+ * be told apart from everything else. Text tokens meet WCAG AA on every surface they are used on, including
+ * through glass materials.
  */
 object Palette {
-    val background = Argb(0xFF09090BL)
-    val surface = Argb(0xFF131316L)
-    val surfaceRaised = Argb(0xFF1C1C21L)
-    val textPrimary = Argb(0xFFF4F5F7L)
-    val textSecondary = Argb(0xFFB4B9C4L)
-    val textTertiary = Argb(0xFF8A909CL)
-    /** Warm amber: the one color the interface itself brings. Everything else comes from the artwork. */
-    val accent = Argb(0xFFFFA63DL)
-    val onAccent = Argb(0xFF1C1003L)
+    val background = Argb(0xFF0A0A0BL)
+    val surface = Argb(0xFF141416L)
+    val surfaceRaised = Argb(0xFF1D1D20L)
+    val textPrimary = Argb(0xFFF5F5F6L)
+    val textSecondary = Argb(0xFFB2B2B8L)
+    val textTertiary = Argb(0xFF85858CL)
+    /** The one action a screen exists for (Play, Connect, Use this folder): bright and neutral, not a hue. */
+    val primaryAction = Argb(0xFFF5F5F6L)
+    val onPrimaryAction = Argb(0xFF0A0A0BL)
     val focusRing = Argb(0xFFFFFFFFL)
-    /** How far the user is: the accent, wherever progress is drawn. */
-    val progress = Argb(0xFFFFA63DL)
-    val unavailable = Argb(0xFF7A7F8AL)
-    val error = Argb(0xFFFF7A7AL)
+    /** How far the user is, wherever progress is drawn. */
+    val progress = Argb(0xFFF5F5F6L)
+    /** The edge of a surface or a badge: enough to define a shape on black, never enough to be noticed. */
+    val hairline = Argb(0x24FFFFFFL)
+    val unavailable = Argb(0xFF7C7C84L)
+    val error = Argb(0xFFF08080L)
+
+    /** Every token the interface's own chrome is drawn in: all of them neutral. */
+    val chrome: List<Argb> get() = listOf(
+        background, surface, surfaceRaised, textPrimary, textSecondary, textTertiary,
+        primaryAction, onPrimaryAction, focusRing, progress, hairline, unavailable,
+    )
 }
 
 /** Liquid-glass material roles (docs/DESIGN.md). Each role communicates depth and interaction, not decoration. */
@@ -41,10 +51,11 @@ object Materials {
     fun spec(role: MaterialRole): MaterialSpec = when (role) {
         MaterialRole.BASE -> MaterialSpec(Palette.background, 1f, 0f, 0f, 0f, 0f)
         MaterialRole.ELEVATED -> MaterialSpec(Palette.surface, 0.72f, 24f, 0.06f, 2f, 16f)
-        MaterialRole.FLOATING -> MaterialSpec(Palette.surface, 0.62f, 40f, 0.10f, 12f, 20f)
-        MaterialRole.INTERACTIVE -> MaterialSpec(Palette.surfaceRaised, 0.66f, 28f, 0.12f, 4f, 14f)
-        MaterialRole.FOCUSED -> MaterialSpec(Palette.surfaceRaised, 0.80f, 28f, 0.35f, 16f, 14f)
-        MaterialRole.MODAL -> MaterialSpec(Palette.surface, 0.86f, 56f, 0.08f, 24f, 24f)
+        // Frosted rather than tinted: the blur does the separating, so the tint can stay light.
+        MaterialRole.FLOATING -> MaterialSpec(Palette.surface, 0.56f, 48f, 0.09f, 12f, 20f)
+        MaterialRole.INTERACTIVE -> MaterialSpec(Palette.surfaceRaised, 0.60f, 28f, 0.11f, 4f, 14f)
+        MaterialRole.FOCUSED -> MaterialSpec(Palette.surfaceRaised, 0.80f, 28f, 0.30f, 16f, 14f)
+        MaterialRole.MODAL -> MaterialSpec(Palette.surface, 0.84f, 60f, 0.08f, 24f, 24f)
     }
 
     /** Text over glass that sits on bright artwork gets an extra scrim so it always stays readable. */

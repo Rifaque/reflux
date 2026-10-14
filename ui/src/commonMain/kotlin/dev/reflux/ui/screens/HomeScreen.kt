@@ -41,6 +41,9 @@ import dev.reflux.ui.components.FocusScrollsNothing
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.coerceIn
@@ -52,6 +55,8 @@ import dev.reflux.ui.LocalChromeInsets
 import dev.reflux.ui.ReportPageScroll
 import dev.reflux.ui.activityLabel
 import dev.reflux.ui.components.ArtworkImage
+import dev.reflux.ui.components.rememberArtwork
+import dev.reflux.ui.components.rememberPageTone
 import dev.reflux.ui.components.Button
 import dev.reflux.ui.components.ButtonStyle
 import dev.reflux.ui.components.FocusScrollInsets
@@ -85,18 +90,25 @@ internal fun HomeScreen(app: AppState) {
     if (home.empty) return EmptyLibrary(app, home.sources)
     BoxWithConstraints(Modifier.fillMaxSize()) {
         // The hero leaves the first row in view, so Home never opens on artwork alone.
-        val heroHeight = (maxHeight * 0.56f).coerceIn(340.dp, 660.dp)
+        val heroHeight = (maxHeight * 0.62f).coerceIn(340.dp, 720.dp)
         val width = maxWidth
+        val featured = home.featured
+        val heroImage = rememberArtwork(featured?.wide, width)
+        val atmosphere = if (featured != null) rememberPageTone(heroImage, featured.title) else RefluxColors.background
         val list = rememberLazyListState()
+        val heroPx = with(LocalDensity.current) { heroHeight.toPx() }
+        // The atmosphere belongs to the hero: it recedes as the hero scrolls away, and the library beneath is plain.
+        val tone = { lerp(RefluxColors.background, atmosphere, list.artworkPresence(heroPx)) }
+        PageAtmosphere(tone, heroHeight)
         ReportPageScroll(remember { derivedStateOf { list.firstVisibleItemIndex > 0 || list.firstVisibleItemScrollOffset > 0 } }.value)
         val rows: @Composable (place: (index: Int) -> Modifier) -> Unit = { place ->
             LazyColumn(
                 Modifier.fillMaxSize(),
                 state = list,
                 contentPadding = PaddingValues(bottom = LocalChromeInsets.current.bottom),
-                verticalArrangement = Arrangement.spacedBy(30.dp),
+                verticalArrangement = Arrangement.spacedBy(if (LocalLayout.current.formFactor == FormFactor.PHONE) 26.dp else 36.dp),
             ) {
-                home.featured?.let { featured -> item(key = "featured") { Box(place(0)) { Hero(app, featured, home.featuredOverview, width, heroHeight) } } }
+                featured?.let { featured -> item(key = "featured") { Box(place(0)) { Hero(app, featured, heroImage, tone, home.featuredOverview, heroHeight) } } }
                 val first = if (home.featured == null) 0 else 1
                 itemsIndexed(home.rows, key = { _, row -> row.id }) { index, row -> Box(place(first + index)) { RowSection(app, row) } }
             }
@@ -119,29 +131,61 @@ internal fun HomeScreen(app: AppState) {
     }
 }
 
+/**
+ * How much of the artwork that opens this list (its first item, [heightPx] tall) is still on screen: 1 at the
+ * top, 0 once it has gone.
+ */
+internal fun LazyListState.artworkPresence(heightPx: Float): Float =
+    if (firstVisibleItemIndex > 0 || heightPx <= 0f) 0f else 1f - (firstVisibleItemScrollOffset / heightPx).coerceIn(0f, 1f)
+
+/**
+ * The page behind a work's artwork: [tone] (the background washed with the artwork's atmosphere) down to the
+ * bottom of the artwork, [heroHeight], then fading to the plain background. The artwork's own scrims end in
+ * the same tone, so the image dissolves into the page with no seam wherever it has scrolled to. [tone] is read
+ * as the page draws, so scrolling repaints the wash without recomposing anything.
+ */
+@Composable
+internal fun PageAtmosphere(tone: () -> Color, heroHeight: Dp) {
+    val background = RefluxColors.background
+    Box(
+        Modifier.fillMaxSize().drawBehind {
+            val start = heroHeight.toPx()
+            drawRect(Brush.verticalGradient(0f to tone(), 1f to background, startY = start, endY = start + ATMOSPHERE_FADE.toPx()))
+        },
+    )
+}
+
+/** Scrims that keep text readable over artwork and dissolve it into the page's [tone]. */
+internal fun Modifier.artworkScrims(tone: () -> Color, left: Float, right: Float): Modifier = drawBehind {
+    val color = tone()
+    drawRect(Brush.horizontalGradient(0f to color.copy(alpha = left), 0.58f to color.copy(alpha = left * 0.4f), 1f to color.copy(alpha = right)))
+    drawRect(Brush.verticalGradient(0f to color.copy(alpha = 0.55f), 0.23f to Color.Transparent, 0.55f to color.copy(alpha = 0.2f), 1f to color))
+}
+
+/** How far below the artwork its atmosphere reaches before the page is plain again. */
+private val ATMOSPHERE_FADE = 520.dp
+
 /** The work Home opens on, over its backdrop (or a backdrop generated from its title). */
 @Composable
-private fun Hero(app: AppState, card: MediaCard, overview: String?, width: Dp, height: Dp) {
+private fun Hero(app: AppState, card: MediaCard, image: ImageBitmap?, tone: () -> Color, overview: String?, height: Dp) {
     val layout = LocalLayout.current
-    val background = RefluxColors.background
+    val compact = layout.formFactor == FormFactor.PHONE
     Box(Modifier.fillMaxWidth().height(height)) {
-        ArtworkImage(card.wide, width, Modifier.fillMaxSize(), alignment = Alignment.TopCenter) { TitleBackdrop(card.title) }
-        // Scrims keep the title readable on any artwork and blend the image into the page.
-        Box(Modifier.fillMaxSize().background(Brush.horizontalGradient(0f to background.copy(alpha = 0.88f), 0.5f to background.copy(alpha = 0.3f), 1f to Color.Transparent)))
-        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0f to background.copy(alpha = 0.6f), 0.24f to Color.Transparent, 0.6f to Color.Transparent, 1f to background)))
+        ArtworkImage(image, Modifier.fillMaxSize(), alignment = Alignment.TopCenter) { TitleBackdrop(card.title) }
+        Box(Modifier.fillMaxSize().artworkScrims(tone, left = 0.9f, right = 0f))
         Column(
-            Modifier.align(Alignment.BottomStart).padding(horizontal = layout.safeMarginDp.dp).padding(bottom = 8.dp).widthIn(max = 580.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            Modifier.align(Alignment.BottomStart).padding(horizontal = layout.safeMarginDp.dp).padding(bottom = 4.dp).widthIn(max = 600.dp),
+            verticalArrangement = Arrangement.spacedBy(if (compact) 10.dp else 14.dp),
         ) {
             val inProgress = card.entry.watchState?.inProgress == true
             // The title speaks for itself; only something worth knowing is said above it, quietly.
-            if (inProgress) Text("Continue watching", style = LocalTypography.current.captionStrong, color = RefluxColors.textSecondary)
+            if (inProgress) Text("Continue watching", style = LocalTypography.current.metadata, color = RefluxColors.textSecondary)
             Text(card.title, style = LocalTypography.current.display, maxLines = 2)
             val facts = (listOfNotNull("Not connected".takeIf { card.offline }, card.caption.takeIf { card.detailsId != card.id }) + Formatting.facts(card.entry) +
                 listOfNotNull(Formatting.remaining(card.entry.watchState))).distinct()
-            if (facts.isNotEmpty()) Text(facts.joinToString("   ·   "), style = LocalTypography.current.bodyStrong, color = RefluxColors.textSecondary, maxLines = 1)
-            if (!overview.isNullOrBlank()) Text(overview, color = RefluxColors.textSecondary, maxLines = 3)
-            Row(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            if (facts.isNotEmpty()) Text(facts.joinToString("  ·  "), style = LocalTypography.current.metadata, color = RefluxColors.textSecondary, maxLines = 1)
+            if (!overview.isNullOrBlank()) Text(overview, Modifier.widthIn(max = 540.dp), color = RefluxColors.textSecondary, maxLines = if (compact) 2 else 3)
+            Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Button(if (inProgress) "Resume" else "Play", { app.play(card.id) }, Modifier.initialFocus(), icon = Icon.PLAY, style = ButtonStyle.PRIMARY, enabled = !card.offline)
                 Button("Details", { app.navigator.open(Destination.Details(card.detailsId)) })
             }
@@ -169,8 +213,8 @@ private fun RowSection(app: AppState, row: HomeRowModel) {
             FocusScrollInsets(start = margin, end = margin) {
                 LazyRow(
                     state = state,
-                    // Vertical padding leaves room for the focus lift, which would otherwise be clipped.
-                    contentPadding = PaddingValues(horizontal = margin, vertical = 10.dp),
+                    // Vertical padding leaves room for the focus lift and ring, which would otherwise be clipped.
+                    contentPadding = PaddingValues(horizontal = margin, vertical = 14.dp),
                     horizontalArrangement = Arrangement.spacedBy(layout.gutterDp.dp),
                 ) {
                     items(row.cards, key = { it.id.value }) { card ->
@@ -203,15 +247,14 @@ private fun RowPager(visible: Boolean, icon: Icon, description: String, modifier
 
 /**
  * A quiet light behind screens that have no artwork of their own, so an empty state still has depth: a
- * neutral glow from above, and the faintest warmth from a corner.
+ * neutral glow from above, as if from a screen just out of view, and nothing else.
  */
 @Composable
 internal fun AmbientBackdrop() {
-    val accent = RefluxColors.accent
     Box(
         Modifier.fillMaxSize().drawBehind {
-            drawRect(Brush.radialGradient(listOf(Color.White.copy(alpha = 0.07f), Color.Transparent), Offset(size.width * 0.5f, 0f), size.maxDimension * 0.6f))
-            drawRect(Brush.radialGradient(listOf(accent.copy(alpha = 0.045f), Color.Transparent), Offset(size.width, size.height), size.maxDimension * 0.5f))
+            drawRect(Brush.radialGradient(listOf(Color.White.copy(alpha = 0.075f), Color.Transparent), Offset(size.width * 0.5f, 0f), size.maxDimension * 0.6f))
+            drawRect(Brush.radialGradient(listOf(Color.White.copy(alpha = 0.025f), Color.Transparent), Offset(size.width * 0.5f, size.height), size.maxDimension * 0.45f))
         },
     )
 }

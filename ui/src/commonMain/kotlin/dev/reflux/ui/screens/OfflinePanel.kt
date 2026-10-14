@@ -148,7 +148,7 @@ internal fun OfflinePanel(app: AppState) {
                     },
                     Modifier.focusRequester(first),
                     icon = Icon.DOWNLOAD,
-                    style = ButtonStyle.SOLID,
+                    style = ButtonStyle.PRIMARY,
                 )
                 Button(if (reviewing != null) "Not now" else "Done", { app.offlineOpen = false }, style = ButtonStyle.QUIET)
             } else {

@@ -39,6 +39,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.foundation.border
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import dev.reflux.core.metadata.Credit
@@ -47,10 +53,13 @@ import dev.reflux.core.model.ArtworkLocator
 import dev.reflux.core.model.MediaId
 import dev.reflux.core.versions.SelectionCriterion
 import dev.reflux.design.FormFactor
-import dev.reflux.design.MaterialRole
 import dev.reflux.ui.LocalChromeInsets
 import dev.reflux.ui.ReportPageScroll
 import dev.reflux.ui.components.ArtworkImage
+import dev.reflux.ui.components.Tab
+import androidx.compose.ui.graphics.lerp
+import dev.reflux.ui.components.rememberArtwork
+import dev.reflux.ui.components.rememberPageTone
 import dev.reflux.ui.components.Button
 import dev.reflux.ui.components.ButtonStyle
 import dev.reflux.ui.components.Chip
@@ -78,7 +87,6 @@ import dev.reflux.ui.theme.LocalLayout
 import dev.reflux.ui.theme.LocalTypography
 import dev.reflux.ui.theme.RefluxColors
 import dev.reflux.ui.theme.Text
-import dev.reflux.ui.theme.glass
 
 /** A movie or a show: what it is, what the main button will play, and which versions or episodes exist. */
 @Composable
@@ -93,21 +101,30 @@ internal fun DetailsScreen(app: AppState, itemId: MediaId) {
     val offline by app.libraryState(itemId) { app.platform.offline?.let { offlineStatus(itemId, it) } }
     val list = rememberLazyListState()
     ReportPageScroll(remember { derivedStateOf { list.firstVisibleItemIndex > 0 || list.firstVisibleItemScrollOffset > 0 } }.value)
-    run {
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        // The page takes the backdrop's atmosphere down to the end of the header, then fades to the plain base.
+        val backdrop = rememberArtwork(details.backdrop, maxWidth)
+        val atmosphere = rememberPageTone(backdrop, details.card.title)
+        var headerHeight by remember { mutableStateOf(520.dp) }
+        val density = LocalDensity.current
+        // The atmosphere recedes as the header scrolls away; versions, episodes, and cast below sit on the plain base.
+        val tone = { lerp(RefluxColors.background, atmosphere, list.artworkPresence(with(density) { headerHeight.toPx() })) }
+        PageAtmosphere(tone, headerHeight)
+        val section = if (layout.formFactor == FormFactor.PHONE) 28.dp else 40.dp
         LazyColumn(Modifier.fillMaxSize(), state = list, contentPadding = PaddingValues(bottom = LocalChromeInsets.current.bottom)) {
-            item(key = "header") { Header(app, details, offline) }
+            item(key = "header") {
+                Header(app, details, offline, backdrop, tone, Modifier.onSizeChanged { headerHeight = with(density) { it.height.toDp() } })
+            }
             if (details.versions.isNotEmpty()) {
-                item(key = "versions") { Versions(app, details, Modifier.padding(horizontal = layout.safeMarginDp.dp).padding(top = 28.dp)) }
+                item(key = "versions") { Versions(app, details, Modifier.padding(horizontal = layout.safeMarginDp.dp).padding(top = section)) }
             }
             if (details.seasons.isNotEmpty()) {
                 item(key = "seasons") {
                     Row(
-                        Modifier.padding(top = 28.dp, bottom = 6.dp).horizontalScroll(rememberScrollState()).padding(horizontal = layout.safeMarginDp.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        Modifier.padding(top = section, bottom = 10.dp).horizontalScroll(rememberScrollState()).padding(horizontal = layout.safeMarginDp.dp, vertical = 6.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
                     ) {
-                        details.seasons.forEachIndexed { index, model ->
-                            Button(model.season.title, { season = index }, style = if (index == season) ButtonStyle.GLASS else ButtonStyle.QUIET)
-                        }
+                        details.seasons.forEachIndexed { index, model -> Tab(model.season.title, index == season) { season = index } }
                     }
                 }
                 items(episodes, key = { it.id.value }) { episode ->
@@ -115,7 +132,7 @@ internal fun DetailsScreen(app: AppState, itemId: MediaId) {
                 }
             }
             val cast = details.credits.filter { it.role == CreditRole.ACTOR }.take(16)
-            if (cast.isNotEmpty()) item(key = "cast") { Cast(cast, Modifier.padding(top = 28.dp)) }
+            if (cast.isNotEmpty()) item(key = "cast") { Cast(cast, Modifier.padding(top = section)) }
         }
     }
 }
@@ -134,52 +151,52 @@ private fun Gone(app: AppState) {
                 color = RefluxColors.textSecondary,
                 align = TextAlign.Center,
             )
-            Button("Back", { if (!app.navigator.back()) app.navigator.show(Destination.Home) }, Modifier.initialFocus(), icon = Icon.BACK, style = ButtonStyle.SOLID)
+            Button("Back", { if (!app.navigator.back()) app.navigator.show(Destination.Home) }, Modifier.initialFocus(), icon = Icon.BACK, style = ButtonStyle.PRIMARY)
         }
     }
 }
 
 @Composable
-private fun Header(app: AppState, details: DetailsModel, offline: OfflineStatus?) {
+private fun Header(app: AppState, details: DetailsModel, offline: OfflineStatus?, backdrop: ImageBitmap?, tone: () -> Color, modifier: Modifier = Modifier) {
     val layout = LocalLayout.current
-    val background = RefluxColors.background
     val card = details.card
-    BoxWithConstraints(Modifier.fillMaxWidth()) {
+    BoxWithConstraints(modifier.fillMaxWidth()) {
         val width = maxWidth
         // A television's screen is its whole canvas: the header leaves room for what follows it to show.
         val television = layout.formFactor == FormFactor.TV
-        Box(Modifier.fillMaxWidth().heightIn(min = if (television) 424.dp else 520.dp)) {
-            ArtworkImage(details.backdrop, width, Modifier.matchParentSize(), alignment = Alignment.TopCenter) { TitleBackdrop(card.title) }
-            Box(Modifier.matchParentSize().background(Brush.horizontalGradient(0f to background.copy(alpha = 0.9f), 0.6f to background.copy(alpha = 0.45f), 1f to background.copy(alpha = 0.1f))))
-            Box(Modifier.matchParentSize().background(Brush.verticalGradient(0f to background.copy(alpha = 0.6f), 0.25f to Color.Transparent, 0.55f to background.copy(alpha = 0.3f), 1f to background)))
+        Box(Modifier.fillMaxWidth().heightIn(min = if (television) 424.dp else 560.dp)) {
+            ArtworkImage(backdrop, Modifier.matchParentSize(), alignment = Alignment.TopCenter) { TitleBackdrop(card.title) }
+            // Scrims keep the text readable and dissolve the backdrop into the page's own tone.
+            Box(Modifier.matchParentSize().artworkScrims(tone, left = 0.92f, right = 0.08f))
             Row(
                 Modifier.align(Alignment.BottomStart).padding(horizontal = layout.safeMarginDp.dp).padding(top = LocalChromeInsets.current.top + 24.dp),
-                horizontalArrangement = Arrangement.spacedBy(32.dp),
+                horizontalArrangement = Arrangement.spacedBy(36.dp),
                 verticalAlignment = Alignment.Bottom,
             ) {
                 if (width >= 760.dp) {
                     val shape = RoundedCornerShape(14.dp)
-                    val posterWidth = if (television) 164.dp else 210.dp
-                    Box(Modifier.width(posterWidth).aspectRatio(2f / 3f).shadow(24.dp, shape).clip(shape)) {
+                    val posterWidth = if (television) 164.dp else 220.dp
+                    Box(Modifier.width(posterWidth).aspectRatio(2f / 3f).shadow(32.dp, shape).clip(shape)) {
                         ArtworkImage(card.poster, posterWidth, Modifier.fillMaxSize()) { TitlePlaceholder(card.title, card.caption) }
+                        Box(Modifier.matchParentSize().border(1.dp, Color.White.copy(alpha = 0.08f), shape))
                     }
                 }
                 Column(Modifier.weight(1f, fill = false).widthIn(max = 760.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text(card.title, style = LocalTypography.current.display, maxLines = 2)
-                    details.tagline?.takeIf { it.isNotBlank() }?.let { Text(it, style = LocalTypography.current.title, color = RefluxColors.textSecondary, maxLines = 1) }
+                    details.tagline?.takeIf { it.isNotBlank() }?.let { Text(it, style = LocalTypography.current.title.copy(fontWeight = FontWeight.Normal), color = RefluxColors.textSecondary, maxLines = 1) }
                     Row(
                         Modifier.horizontalScroll(rememberScrollState()),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         if (details.facts.isNotEmpty()) {
-                            Text(details.facts.joinToString("   ·   "), style = LocalTypography.current.bodyStrong, color = RefluxColors.textSecondary, maxLines = 1)
+                            Text(details.facts.joinToString("  ·  "), Modifier.padding(end = 4.dp), style = LocalTypography.current.metadata, color = RefluxColors.textSecondary, maxLines = 1)
                         }
                         details.badges.forEach { Chip(it) }
                         if (card.offline) Chip("Not connected")
                     }
                     if (details.genres.isNotEmpty()) Text(details.genres.joinToString("  ·  "), style = LocalTypography.current.caption, color = RefluxColors.textTertiary, maxLines = 1)
-                    details.overview?.takeIf { it.isNotBlank() }?.let { Text(it, color = RefluxColors.textSecondary, maxLines = 5) }
+                    details.overview?.takeIf { it.isNotBlank() }?.let { Text(it, Modifier.widthIn(max = 680.dp).padding(top = 2.dp), color = RefluxColors.textSecondary, maxLines = 5) }
                     credit(details.credits)?.let { Text(it, style = LocalTypography.current.caption, color = RefluxColors.textTertiary, maxLines = 1) }
                     // Whether it has been started, and how much is left, said once and quietly.
                     val progress = Formatting.progress(card.entry.watchState)
@@ -191,7 +208,7 @@ private fun Header(app: AppState, details: DetailsModel, offline: OfflineStatus?
                         }
                     }
                     // On a narrow screen the lesser actions go to a second line rather than off the edge.
-                    FlowRow(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp), itemVerticalAlignment = Alignment.CenterVertically) {
+                    FlowRow(Modifier.padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp), itemVerticalAlignment = Alignment.CenterVertically) {
                         val playId = details.playId
                         Button(details.playLabel, { playId?.let { app.play(it) } }, Modifier.initialFocus(), icon = Icon.PLAY, style = ButtonStyle.PRIMARY, enabled = playId != null && !card.offline)
                         if (details.resumes && playId != null) Button("From the start", { app.play(playId, resume = false) })
@@ -253,38 +270,76 @@ private fun credit(credits: List<Credit>): String? {
     return if (creators.isNotEmpty()) "Created by ${creators.take(3).joinToString()}" else null
 }
 
-/** Every version of a movie, best first, with why the first one is the one Play uses. */
+/**
+ * Every version of a movie, best first. The question this answers is "which one should I watch?": each copy
+ * leads with what it is chosen by (resolution, HDR, edition), the one Play will use says so and why, and
+ * where it lives and how it is encoded follow quietly beneath.
+ */
 @Composable
 private fun Versions(app: AppState, details: DetailsModel, modifier: Modifier = Modifier) {
-    Column(modifier.widthIn(max = 880.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        SectionHeader(if (details.versions.size > 1) "Versions" else "Version")
+    val several = details.versions.size > 1
+    Column(modifier.widthIn(max = 880.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Column(Modifier.padding(bottom = 2.dp)) {
+            SectionHeader(if (several) "Versions" else "Version")
+            if (several) Text("Play picks the best copy for this device. Choose another to play it instead.", style = LocalTypography.current.caption, color = RefluxColors.textTertiary)
+        }
         details.versions.forEach { version -> VersionItem(version, details.bestReason) { app.play(details.card.id, version.ranked.version.id) } }
     }
 }
 
 @Composable
 private fun VersionItem(row: VersionRow, bestReason: SelectionCriterion?, onPlay: () -> Unit) {
-    val shape = RoundedCornerShape(14.dp)
-    Pressable(onPlay, Modifier.fillMaxWidth(), shape, enabled = row.ranked.playable, lift = 0.15f) { active ->
+    val shape = RoundedCornerShape(16.dp)
+    val playable = row.ranked.playable
+    // The one Play uses is lifted out of the list; the rest are outlines of the same shape.
+    val chosen = row.best && bestReason != null
+    val pinned = chosen && bestReason == SelectionCriterion.USER_PREFERENCE
+    Pressable(onPlay, Modifier.fillMaxWidth(), shape, enabled = playable, lift = 0.15f) { active ->
         Row(
-            Modifier.fillMaxWidth().glass(MaterialRole.ELEVATED, shape).background(Color.White.copy(alpha = if (active) 0.06f else 0f))
-                .padding(horizontal = 18.dp, vertical = 14.dp),
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            Modifier.fillMaxWidth()
+                .background(Color.White.copy(alpha = (if (chosen) 0.06f else 0f) + (if (active) 0.06f else 0f)))
+                .border(1.dp, Color.White.copy(alpha = if (chosen) 0.14f else 0.07f), shape)
+                .padding(horizontal = 18.dp, vertical = 15.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(Icon.PLAY, size = 16.dp, tint = if (row.ranked.playable) RefluxColors.textPrimary else RefluxColors.textTertiary)
-            // Where there is no room beside the facts, the reason this version is the best one goes beneath them.
+            Box(
+                Modifier.size(34.dp).background(if (chosen && playable) RefluxColors.primaryAction else Color.White.copy(alpha = 0.08f), CircleShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    Icon.PLAY,
+                    size = 14.dp,
+                    tint = when {
+                        !playable -> RefluxColors.textTertiary
+                        chosen -> RefluxColors.onPrimaryAction
+                        else -> RefluxColors.textPrimary
+                    },
+                )
+            }
+            // On a phone the mark goes above the quality, leaving the reason the whole width beneath it.
             val narrow = LocalLayout.current.formFactor == FormFactor.PHONE
-            val reason = bestReason?.takeIf { row.best }?.let(Formatting::criterion)
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(row.facts.joinToString("  ·  "), style = LocalTypography.current.bodyStrong, color = if (row.ranked.playable) RefluxColors.textPrimary else RefluxColors.textTertiary, maxLines = 1)
-                Text((listOf(row.sourceName) + row.notes).joinToString("  ·  "), style = LocalTypography.current.caption, color = RefluxColors.textTertiary, maxLines = 1)
-                if (narrow && reason != null) Text(reason, style = LocalTypography.current.caption, color = RefluxColors.textSecondary, maxLines = 1)
+            val mark: @Composable () -> Unit = { Chip(if (pinned) "Your choice" else "Recommended", emphasized = true, icon = if (pinned) null else Icon.CHECK) }
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                if (chosen && narrow) Box(Modifier.padding(bottom = 4.dp)) { mark() }
+                Text(row.quality.joinToString("  ·  "), style = LocalTypography.current.title, color = if (playable) RefluxColors.textPrimary else RefluxColors.textTertiary, maxLines = 1)
+                // Why this is the one: a user's own choice says so in their terms, Best Version gives its reason.
+                if (chosen) {
+                    Text(
+                        if (pinned) "Play always uses this one" else Formatting.criterion(bestReason!!),
+                        style = LocalTypography.current.metadata,
+                        color = RefluxColors.textSecondary,
+                        maxLines = 1,
+                    )
+                }
+                // Where it comes from matters more than how it is encoded.
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(row.sourceName, style = LocalTypography.current.captionStrong, color = RefluxColors.textSecondary, maxLines = 1)
+                    val rest = row.technical + row.notes
+                    if (rest.isNotEmpty()) Text("·  " + rest.joinToString("  ·  "), style = LocalTypography.current.caption, color = RefluxColors.textTertiary, maxLines = 1)
+                }
             }
-            if (reason != null) {
-                if (!narrow) Text(reason, style = LocalTypography.current.caption, color = RefluxColors.textSecondary, maxLines = 1)
-                Chip("Recommended", emphasized = true)
-            }
+            if (chosen && !narrow) mark()
         }
     }
 }
@@ -298,11 +353,16 @@ private fun EpisodeRow(app: AppState, episode: MediaCard, modifier: Modifier = M
             horizontalArrangement = Arrangement.spacedBy(16.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Box(Modifier.width(176.dp).aspectRatio(16f / 9f).clip(RoundedCornerShape(10.dp))) {
+            val thumbnail = RoundedCornerShape(10.dp)
+            Box(Modifier.width(176.dp).aspectRatio(16f / 9f).clip(thumbnail)) {
                 ArtworkImage(episode.wide, 176.dp, Modifier.fillMaxSize()) { EpisodePlaceholder(episode) }
-                episode.progress?.let { ProgressBar(it, Modifier.align(Alignment.BottomCenter).padding(6.dp)) }
+                episode.progress?.let {
+                    Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.6f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.55f))))
+                    ProgressBar(it, Modifier.align(Alignment.BottomCenter).padding(6.dp))
+                }
+                Box(Modifier.matchParentSize().border(1.dp, Color.White.copy(alpha = 0.07f), thumbnail))
             }
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(episode.caption ?: episode.title, style = LocalTypography.current.bodyStrong, color = if (episode.offline) RefluxColors.textTertiary else RefluxColors.textPrimary, maxLines = 1)
                 val facts = listOfNotNull(
                     "Not connected".takeIf { episode.offline },

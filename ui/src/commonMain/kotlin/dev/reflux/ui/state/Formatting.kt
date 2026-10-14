@@ -147,16 +147,18 @@ object Formatting {
         listOfNotNull(audioCodec(stream.codec), channels(stream.channels), "Atmos".takeIf { stream.atmos })
             .joinToString(" ").takeIf { it.isNotEmpty() }
 
-    /** What makes a version distinct: `4K · HEVC · Dolby Vision · TrueHD 7.1 Atmos · Extended`. */
-    fun version(version: MediaVersion): List<String> {
+
+    /** What a person tells copies apart by: `4K · Dolby Vision · Extended`. Never empty. */
+    fun versionQuality(version: MediaVersion): List<String> {
         val video = version.stream.video
-        return listOfNotNull(
-            resolution(video?.nominalHeight),
-            video?.codec?.let(::videoCodec),
-            video?.dynamicRange?.let(::dynamicRange),
-            version.stream.audio.firstOrNull()?.let(::audio),
-            version.edition,
-        )
+        return listOfNotNull(resolution(video?.nominalHeight), video?.dynamicRange?.let(::dynamicRange), version.edition)
+            .ifEmpty { listOf(video?.codec?.let(::videoCodec) ?: "Unknown quality") }
+    }
+
+    /** What explains a copy's quality without being the reason to pick it: `HEVC · TrueHD 7.1 Atmos`. */
+    fun versionTechnical(version: MediaVersion): List<String> {
+        val quality = versionQuality(version)
+        return listOfNotNull(version.stream.video?.codec?.let(::videoCodec), version.stream.audio.firstOrNull()?.let(::audio)).filter { it !in quality }
     }
 
     /** The quality badges shown on a details page: the best the library has, e.g. `4K`, `Dolby Vision`. */

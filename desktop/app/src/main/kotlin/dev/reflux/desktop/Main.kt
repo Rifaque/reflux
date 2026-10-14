@@ -156,14 +156,17 @@ private val HiddenCursor = PointerIcon(
     Toolkit.getDefaultToolkit().createCustomCursor(BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB), Point(0, 0), "hidden"),
 )
 
-/** The window and taskbar icon: a play mark on the accent color. */
+/**
+ * The window and taskbar icon: a white play mark on a graphite tile, lit from the top-left like the glass
+ * materials. Neutral, like the interface; the same mark as the Android launcher icon and TV banner.
+ */
 private object AppIcon : Painter() {
     override val intrinsicSize = Size(256f, 256f)
 
     override fun DrawScope.onDraw() {
         val unit = size.minDimension
         drawRoundRect(
-            Brush.linearGradient(listOf(RefluxColors.accent, Color(0xFFC2511B)), Offset.Zero, Offset(unit, unit)),
+            Brush.linearGradient(listOf(Color(0xFF34343A), Color(0xFF0E0E10)), Offset.Zero, Offset(unit, unit)),
             cornerRadius = CornerRadius(unit * 0.24f),
         )
         drawPath(
@@ -173,7 +176,7 @@ private object AppIcon : Painter() {
                 lineTo(unit * 0.38f, unit * 0.72f)
                 close()
             },
-            RefluxColors.onAccent,
+            RefluxColors.textPrimary,
         )
     }
 }

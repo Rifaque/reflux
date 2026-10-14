@@ -54,6 +54,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
 import dev.reflux.core.input.ControllerFamily
 import dev.reflux.core.input.GamepadButton
 import dev.reflux.core.input.InputMapping
@@ -74,7 +75,7 @@ import dev.reflux.ui.components.LocalArtworkLoader
 import dev.reflux.ui.components.LocalFocusEntry
 import dev.reflux.ui.components.LocalFocusScreen
 import dev.reflux.ui.components.LocalFocusedControl
-import dev.reflux.ui.components.Pressable
+import dev.reflux.ui.components.Tab
 import dev.reflux.ui.components.absorbsPointer
 import dev.reflux.ui.screens.BrowseScreen
 import dev.reflux.ui.screens.DetailsScreen
@@ -162,11 +163,18 @@ fun RefluxTheme(app: AppState, modifier: Modifier = Modifier, content: @Composab
         val layout = target.copy(posterWidthDp = posterWidth, focusScale = focusScale, minTargetDp = minTarget)
         CompositionLocalProvider(
             LocalLayout provides layout,
-            LocalTypography provides remember(target.textScale) { Typography(target.textScale) },
+            LocalTypography provides remember(target.textScale, target.formFactor) { Typography(target.textScale, displaySize(target.formFactor)) },
             LocalArtworkLoader provides app.platform.artwork,
             content = content,
         )
     }
+}
+
+/** A featured title fills a wide window; on a phone it stays large without breaking every word. */
+private fun displaySize(formFactor: FormFactor): Float = when (formFactor) {
+    FormFactor.PHONE -> 40f
+    FormFactor.TV -> 48f
+    else -> 54f
 }
 
 /** Reports pointer activity to the modality tracker without consuming it. */
@@ -250,7 +258,7 @@ fun RefluxApp(app: AppState, modifier: Modifier = Modifier) {
         CompositionLocalProvider(LocalFocusEntry provides entry, LocalFocusedControl provides focused, LocalChromeInsets provides insets, LocalPageScroll provides page) {
             GlassScene(
                 Modifier.fillMaxSize().background(RefluxColors.background).trackPointer(app).onFocusChanged { entry.hasFocus = it.hasFocus },
-                overlay = { Chrome(app) },
+                overlay = { Chrome(app, page) },
             ) {
                 // Focus that scrolls a page stops short of the floating navigation.
                 FocusScrollInsets(start = insets.top, end = insets.bottom + 8.dp) {
@@ -294,13 +302,17 @@ fun RefluxApp(app: AppState, modifier: Modifier = Modifier) {
 
 /** Everything that floats above the screens: navigation, the offline sheet, button prompts, and notices. */
 @Composable
-private fun Chrome(app: AppState) {
+private fun Chrome(app: AppState, page: PageScroll) {
     val layout = LocalLayout.current
     val compact = layout.formFactor == FormFactor.PHONE
     val margin = Modifier.fillMaxSize().padding(horizontal = layout.safeMarginDp.dp)
+    // Over a page that opens on artwork the bar is just its labels, so the artwork reaches the top of the
+    // window; it frosts over once the page moves under it, and everywhere else it always is.
+    val current = app.navigator.current
+    val clear = (current == Destination.Home || current is Destination.Details) && !page.scrolled
     Box(Modifier.fillMaxSize()) {
         Box(margin) {
-            if (compact) CompactNavigation(app) else NavigationBar(app, Modifier.align(Alignment.TopCenter).padding(top = 14.dp))
+            if (compact) CompactNavigation(app) else NavigationBar(app, clear, Modifier.align(Alignment.TopCenter).padding(top = 14.dp))
         }
         // A click outside the open panel closes it and goes no further.
         if (app.offlineOpen) {
@@ -406,21 +418,27 @@ private fun BoxScope.CompactNavigation(app: AppState) {
 }
 
 @Composable
-private fun NavigationBar(app: AppState, modifier: Modifier = Modifier) {
-    val navigator = app.navigator
+private fun NavigationBar(app: AppState, clear: Boolean, modifier: Modifier = Modifier) {
     val entry = LocalFocusEntry.current
     val activity by app.activity.collectAsState()
-    Row(
-        modifier.fillMaxWidth().height(NavigationBarHeight).glass(MaterialRole.FLOATING, CircleShape).absorbsPointer()
-            .onFocusChanged { entry?.chrome = SemanticAction.NAVIGATE_DOWN.takeIf { _ -> it.hasFocus } }.padding(horizontal = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
+    val frost by animateFloatAsState(if (clear) 0f else 1f, Motion.navigation.tween())
+    Box(modifier.fillMaxWidth().height(NavigationBarHeight)) {
+        Box(Modifier.matchParentSize().graphicsLayer { alpha = frost }.glass(MaterialRole.FLOATING, CircleShape))
+        NavigationBarContent(app, activity, Modifier.matchParentSize().absorbsPointer()
+            .onFocusChanged { entry?.chrome = SemanticAction.NAVIGATE_DOWN.takeIf { _ -> it.hasFocus } }.padding(horizontal = 10.dp))
+    }
+}
+
+@Composable
+private fun NavigationBarContent(app: AppState, activity: PipelineActivity, modifier: Modifier) {
+    val navigator = app.navigator
+    Row(modifier, verticalAlignment = Alignment.CenterVertically) {
         if (navigator.current !is Destination.Section) {
             IconButton(Icon.BACK, "Back", { navigator.back() })
         } else {
             Spacer(Modifier.width(12.dp))
         }
-        Text("Reflux", Modifier.padding(start = 4.dp, end = 20.dp), style = LocalTypography.current.title)
+        Text("Reflux", Modifier.padding(start = 4.dp, end = 22.dp), style = LocalTypography.current.title.copy(letterSpacing = (-0.02).em))
         Row(horizontalArrangement = Arrangement.spacedBy(2.dp), verticalAlignment = Alignment.CenterVertically) {
             Tab("Home", navigator.highlighted == Destination.Home) { navigator.show(Destination.Home) }
             Tab("Movies", navigator.highlighted == Destination.Movies) { navigator.show(Destination.Movies) }
@@ -451,21 +469,8 @@ private fun NavigationBar(app: AppState, modifier: Modifier = Modifier) {
     }
 }
 
-/** Where the user is shows as white against grey, not in the accent: the accent is for what is playing. */
+/** Where the user is shows as white against grey: the navigation never takes a color. */
 private fun tabColor(selected: Boolean): Color = if (selected) RefluxColors.textPrimary else RefluxColors.textSecondary
-
-@Composable
-private fun Tab(label: String, selected: Boolean, onClick: () -> Unit) {
-    Pressable(onClick, shape = CircleShape, lift = 0f) { active ->
-        Box(
-            Modifier.background(Color.White.copy(alpha = if (selected) 0.09f else if (active) 0.06f else 0f))
-                .height(36.dp).padding(horizontal = 16.dp),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(label, style = LocalTypography.current.bodyStrong, color = if (selected || active) RefluxColors.textPrimary else RefluxColors.textSecondary, maxLines = 1)
-        }
-    }
-}
 
 /** A quiet sign that the library is being updated; it never blocks anything. */
 @Composable

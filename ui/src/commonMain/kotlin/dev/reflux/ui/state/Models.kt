@@ -114,12 +114,17 @@ internal fun Library.searchModel(query: String): SearchModel {
     return SearchModel(if (understood.structured) Formatting.interpretation(understood) else emptyList(), cards(result.results))
 }
 
-/** One playable version on a details page, with where it lives and how it will play here. */
+/**
+ * One playable version on a details page, with where it lives and how it will play here. What a person
+ * chooses a copy by ([quality]: resolution, HDR, edition) is kept apart from the technical facts that only
+ * explain it ([technical]: codecs, size), so the page can lead with the first.
+ */
 @Immutable
 data class VersionRow(
     val ranked: RankedVersion,
     val sourceName: String,
-    val facts: List<String>,
+    val quality: List<String>,
+    val technical: List<String>,
     val notes: List<String>,
     val best: Boolean,
 )
@@ -208,7 +213,8 @@ internal fun Library.detailsModel(itemId: MediaId, device: DeviceCapabilities): 
                     VersionRow(
                         ranked = ranked,
                         sourceName = names.getOrPut(sourceId) { source(sourceId)?.displayName ?: "Unknown source" },
-                        facts = Formatting.version(ranked.version) + Formatting.size(ranked.version.sizeBytes),
+                        quality = Formatting.versionQuality(ranked.version),
+                        technical = Formatting.versionTechnical(ranked.version) + Formatting.size(ranked.version.sizeBytes),
                         notes = if (ranked.candidate.availability == Availability.UNAVAILABLE) {
                             listOf("Not connected")
                         } else {

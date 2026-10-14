@@ -2,5 +2,5 @@
 <!-- A play mark, inside the safe zone of an adaptive icon. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
-    <path android:fillColor="#FF1C1003" android:pathData="M45,38 L72,54 L45,70 Z" />
+    <path android:fillColor="#FFF5F5F6" android:pathData="M45,38 L72,54 L45,70 Z" />
 </vector>
