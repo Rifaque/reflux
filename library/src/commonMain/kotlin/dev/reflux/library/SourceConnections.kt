@@ -22,22 +22,31 @@ sealed interface ConnectResult {
 data class SourceConnectionInfo(val kind: ConnectionKind, val product: String?, val request: ConnectionRequest?)
 
 /**
- * Protects what a connection stores (tokens, passwords) before it reaches the library database, where the
- * platform can: on Android, a key in the system's keystore. [open] also accepts what was stored before
- * sealing existed, so nothing has to be migrated. Adapters only ever see the opened form.
+ * Keeps what a connection needs (tokens, passwords) out of the library database, where the platform can:
+ * on Android, encrypted with a key in the system's keystore; on a desktop, in the system's own credential
+ * store, with only a reference left in the database. [open] also accepts what was stored before sealing
+ * existed, and [ConfigSeal.sealStored] moves that into the seal. Adapters only ever see the opened form, and
+ * nothing in the Media Core sees either.
+ *
+ * Failing to seal throws: a connection is then not kept at all, rather than kept in the open.
  */
 interface ConfigSeal {
-    fun seal(config: String): String
+    /** Keeps [config], the connection of source [id], and returns what the database stores in its place. */
+    fun seal(id: SourceId, config: String): String
 
-    fun open(stored: String): String
+    /** The connection [stored] stands for. Something that can no longer be opened opens as nothing. */
+    fun open(id: SourceId, stored: String): String
 
     /** Whether [stored] is already sealed, as opposed to kept from before sealing existed. */
     fun sealed(stored: String): Boolean
 
-    /** Stored as it is; used where the platform has nothing better yet (see docs/RELEASE.md). */
+    /** Lets go of whatever was kept for [id], when the source is removed. */
+    fun forget(id: SourceId) {}
+
+    /** Stored as it is; used where the platform has nothing better (see docs/RELEASE.md). */
     object None : ConfigSeal {
-        override fun seal(config: String) = config
-        override fun open(stored: String) = stored
+        override fun seal(id: SourceId, config: String) = config
+        override fun open(id: SourceId, stored: String) = stored
         override fun sealed(stored: String) = true
     }
 }
@@ -82,13 +91,31 @@ class SourceConnections(
 
     /** Null for sources that are not connected by address (folders, downloads). */
     fun describe(record: SourceRecord): SourceConnectionInfo? =
-        connector(record.type)?.let { SourceConnectionInfo(it.kind, it.product, runCatching { it.describe(seal.open(record.config)) }.getOrNull()) }
+        connector(record.type)?.let { SourceConnectionInfo(it.kind, it.product, runCatching { it.describe(seal.open(record.id, record.config)) }.getOrNull()) }
 
-    /** Seals what was stored before sealing existed, so no secret stays in the open. Run once at start. */
+    /**
+     * Moves what was stored before sealing existed into the seal, so no secret stays in the open. Run once at
+     * start. A connection the seal will not take is left as it was, working, and the problem reported: it is
+     * never thrown away.
+     */
     fun sealStored() {
         library.sources().filter { connector(it.type) != null && !seal.sealed(it.config) }.forEach { record ->
-            library.queries.updateSourceConnection(record.displayName, record.locality.name, seal.seal(record.config), record.id.value)
+            val stored = try {
+                seal.seal(record.id, record.config)
+            } catch (e: Exception) {
+                report("The connection of a ${record.type} source could not be moved to secure storage; it is kept as it was", e)
+                return@forEach
+            }
+            library.queries.updateSourceConnection(record.displayName, record.locality.name, stored, record.id.value)
         }
+    }
+
+    /** What [record] connects with, opened. For the platform's source factories. */
+    fun open(record: SourceRecord): String = seal.open(record.id, record.config)
+
+    /** Lets go of what was kept for a source that is being removed. */
+    fun forget(id: SourceId) {
+        runCatching { seal.forget(id) }.onFailure { report("Secure storage did not let go of a removed source's connection", it) }
     }
 
     /** Whether [id] is made of parts the user can choose between (a server's libraries). */
@@ -115,9 +142,10 @@ class SourceConnections(
         require(all.any { it.id !in excluded }) { "at least one part of a source is included" }
         val record = library.source(id) ?: return false
         val connector = connector(record.type) ?: return false
-        val config = connector.withExcludedSections(seal.open(record.config), excluded) ?: return false
-        library.queries.updateSourceConnection(record.displayName, record.locality.name, seal.seal(config), id.value)
-        registry.reload(record.copy(config = seal.seal(config)))
+        val config = connector.withExcludedSections(seal.open(id, record.config), excluded) ?: return false
+        val stored = seal.seal(id, config)
+        library.queries.updateSourceConnection(record.displayName, record.locality.name, stored, id.value)
+        registry.reload(record.copy(config = stored))
         return true
     }
 
@@ -153,20 +181,29 @@ class SourceConnections(
         // Signing in again keeps what the user chose to leave out.
         val kept = (registry.resolve(id) as? SectionedSource)?.excludedSections.orEmpty()
         val config = kept.takeIf { it.isNotEmpty() }?.let { connector.withExcludedSections(established.config, it) } ?: established.config
+        // Kept securely or not at all: a connection is never written down in the open because the seal failed.
+        val stored = try {
+            seal.seal(id, config)
+        } catch (e: Exception) {
+            report("Secure storage refused the connection of a ${connector.type} source", e)
+            (source as? AutoCloseable)?.let { runCatching { it.close() } }
+            return ConnectResult.Failed(ConnectionProblem.UNKNOWN)
+        }
         if (kept.isNotEmpty() && config != established.config) {
-            registry.reload(SourceRecord(id, connector.type, name, source.descriptor.locality, seal.seal(config), dev.reflux.core.model.Availability.UNKNOWN, null, null))
+            registry.reload(SourceRecord(id, connector.type, name, source.descriptor.locality, stored, dev.reflux.core.model.Availability.UNKNOWN, null, null))
         } else {
             registry.register(source)
         }
         if (existing != null) {
-            library.queries.updateSourceConnection(name, source.descriptor.locality.name, seal.seal(config), id.value)
+            library.queries.updateSourceConnection(name, source.descriptor.locality.name, stored, id.value)
         } else {
-            library.addSource(source, seal.seal(config))
+            library.addSource(source, stored)
             if (name != source.descriptor.displayName) library.queries.renameSource(name, id.value)
         }
         if (replacing != null && replacing != id) {
             library.removeSource(replacing)
             registry.unregister(replacing)
+            forget(replacing)
         }
         return ConnectResult.Connected(id, name, updated = existing != null || previous != null)
     }

@@ -65,8 +65,9 @@ private object ShelvesConnector : SourceConnector {
 
 /** Reverses the text: enough to show that what is stored is not what the adapter reads. */
 private object MirrorSeal : ConfigSeal {
-    override fun seal(config: String) = "sealed:" + config.reversed()
-    override fun open(stored: String) = if (stored.startsWith("sealed:")) stored.removePrefix("sealed:").reversed() else stored
+    override fun seal(id: dev.reflux.core.model.SourceId, config: String) = "sealed:" + config.reversed()
+    override fun open(id: dev.reflux.core.model.SourceId, stored: String) = open(stored)
+    fun open(stored: String) = if (stored.startsWith("sealed:")) stored.removePrefix("sealed:").reversed() else stored
     override fun sealed(stored: String) = stored.startsWith("sealed:")
 }
 

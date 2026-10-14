@@ -16,6 +16,7 @@ dependencies {
     implementation(project(":sources:smb"))
     implementation(project(":metadata:tmdb"))
     implementation(libs.kotlinx.coroutines.core)
+    implementation(libs.jna) // the Windows Credential Manager, for source connections
     runtimeOnly(libs.slf4j.nop) // smbj logs through SLF4J; shells report problems themselves
     testImplementation(kotlin("test"))
     testImplementation(libs.kotlinx.coroutines.test)

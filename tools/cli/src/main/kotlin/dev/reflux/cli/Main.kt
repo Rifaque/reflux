@@ -16,11 +16,9 @@ import dev.reflux.library.SyncingWatchReporter
 import dev.reflux.library.VersionInfo
 import dev.reflux.library.diagnostics
 import dev.reflux.library.planPlayback
-import dev.reflux.sources.jellyfin.JellyfinSource
-import dev.reflux.sources.smb.SmbShareConfig
-import dev.reflux.sources.smb.SmbSource
-import dev.reflux.sources.webdav.WebDavConfig
-import dev.reflux.sources.webdav.WebDavSource
+import dev.reflux.core.source.ConnectionKind
+import dev.reflux.core.source.ConnectionRequest
+import dev.reflux.library.ConnectResult
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import java.nio.file.Files
@@ -92,63 +90,39 @@ private suspend fun add(env: DesktopEnvironment, args: List<String>): Boolean {
     }
 }
 
+/** Connects through the same connectors and the same secure storage as the application. */
+private suspend fun connect(env: DesktopEnvironment, kind: ConnectionKind, request: ConnectionRequest): Boolean =
+    when (val result = env.connections.connect(kind, request)) {
+        is ConnectResult.Failed -> fail("Could not connect: ${result.problem.name.lowercase().replace('_', ' ')}.")
+        is ConnectResult.Connected -> {
+            println("Connected ${result.name}. Reading it...")
+            refresh(env, result.sourceId)
+        }
+    }
+
+private fun secret(variable: String, prompt: String): String? =
+    System.getenv(variable) ?: System.console()?.readPassword(prompt)?.concatToString()
+
 private suspend fun jellyfin(env: DesktopEnvironment, args: List<String>): Boolean {
     if (args.size < 2) return usage("jellyfin <server> <user>")
-    val password = System.getenv("REFLUX_JELLYFIN_PASSWORD")
-        ?: System.console()?.readPassword("Password for ${args[1]}: ")?.concatToString()
+    val password = secret("REFLUX_JELLYFIN_PASSWORD", "Password for ${args[1]}: ")
         ?: return fail("No password: set REFLUX_JELLYFIN_PASSWORD or run in a terminal.")
-    val credentials = try {
-        JellyfinSource.connect(args[0], args[1], password, env.http, env.deviceId, deviceName = "Reflux CLI")
-    } catch (e: Exception) {
-        return fail("Could not sign in: ${e.message}")
-    }
-    val source = JellyfinSource(credentials, env.http, "Jellyfin (${args[1]})")
-    env.library.addSource(source, credentials.encode())
-    env.registry.register(source)
-    println("Signed in to ${credentials.serverUrl}. Reading the catalog...")
-    return refresh(env, source.descriptor.id)
+    return connect(env, ConnectionKind.SERVER, ConnectionRequest(args[0], args[1], password))
 }
 
 private suspend fun webdav(env: DesktopEnvironment, args: List<String>): Boolean {
     val url = args.firstOrNull() ?: return usage("webdav <url> [user]")
     val user = args.getOrNull(1)
-    val password = user?.let {
-        System.getenv("REFLUX_WEBDAV_PASSWORD") ?: System.console()?.readPassword("Password for $it: ")?.concatToString()
-            ?: return fail("No password: set REFLUX_WEBDAV_PASSWORD or run in a terminal.")
-    }
-    val config = WebDavConfig(url, user, password)
-    val source = WebDavSource(config, env.http)
-    if (source.availability() != Availability.AVAILABLE) return fail("Cannot reach $url (check the address and credentials).")
-    env.library.addSource(source, config.encode())
-    env.registry.register(source)
-    println("Added ${source.descriptor.displayName}. Scanning...")
-    return refresh(env, source.descriptor.id)
+    val password = user?.let { secret("REFLUX_WEBDAV_PASSWORD", "Password for $it: ") ?: return fail("No password: set REFLUX_WEBDAV_PASSWORD or run in a terminal.") }
+    return connect(env, ConnectionKind.SHARE, ConnectionRequest(url, user, password))
 }
 
 private suspend fun smb(env: DesktopEnvironment, args: List<String>): Boolean {
-    val location = args.firstOrNull()?.removePrefix("smb://") ?: return usage("smb <host[:port]/share[/folder]> [user]")
-    val hostPart = location.substringBefore('/')
-    val segments = location.substringAfter('/', "").split('/').filter { it.isNotEmpty() }
-    if (segments.isEmpty()) return usage("smb <host[:port]/share[/folder]> [user]")
+    val location = args.firstOrNull() ?: return usage("smb <host[:port]/share[/folder]> [user]")
     val user = args.getOrNull(1)
-    val password = user?.let {
-        System.getenv("REFLUX_SMB_PASSWORD") ?: System.console()?.readPassword("Password for $it: ")?.concatToString()
-            ?: return fail("No password: set REFLUX_SMB_PASSWORD or run in a terminal.")
-    }
-    val config = SmbShareConfig(
-        host = hostPart.substringBefore(':'),
-        share = segments.first(),
-        path = segments.drop(1).joinToString("/"),
-        username = user,
-        password = password,
-        port = hostPart.substringAfter(':', "445").toIntOrNull() ?: 445,
-    )
-    val source = SmbSource(config, env.streams)
-    if (source.availability() != Availability.AVAILABLE) return fail("Cannot reach $location (check the address and credentials).")
-    env.library.addSource(source, config.encode())
-    env.registry.register(source)
-    println("Added ${source.descriptor.displayName}. Scanning...")
-    return refresh(env, source.descriptor.id)
+    val password = user?.let { secret("REFLUX_SMB_PASSWORD", "Password for $it: ") ?: return fail("No password: set REFLUX_SMB_PASSWORD or run in a terminal.") }
+    val address = if (location.startsWith("smb://", ignoreCase = true) || location.startsWith("\\\\")) location else "smb://$location"
+    return connect(env, ConnectionKind.SHARE, ConnectionRequest(address, user, password))
 }
 
 private fun sources(env: DesktopEnvironment): Boolean {
