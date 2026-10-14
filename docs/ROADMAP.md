@@ -37,7 +37,7 @@
 | Smart Offline gaps | Downloads stop when the application is closed and continue at its next start. No choosing of single episodes or whole seasons. Not wired on the desktop. Removable storage is not offered. Verified on emulators only |
 | Television gaps | Subtitle and artwork files next to a video are not visible to Reflux on a television (the system only shows an app the media files); nothing on the launcher beyond the app itself (no Watch Next row); a held seek key repeats at a fixed step; a folder on a drive is only reachable while the drive is mounted where it was; picture-in-picture, 4K, HDR, Dolby Vision, passthrough, and removable drives could not be exercised on an emulator |
 | Android gaps | No playback in the background (by decision, for now); chapters are not reported by the engine; a folder's changes are picked up at the next refresh rather than as they happen; the Identify and collections flows have no UI on any platform yet; release builds (signing, shrinking) are not set up; verified on an emulator only, not on physical phones or tablets |
-| Known gaps | Watch state is not synchronized between devices except through a source that keeps it; cuts are told apart by edition labels and running times only; stacked multi-part files play as separate versions; disc structures (BDMV/VIDEO_TS) are recognized but not playable; credentials are not yet in platform secure storage |
+| Known gaps | Watch state is not synchronized between devices except through a source that keeps it; cuts are told apart by edition labels and running times only; stacked multi-part files play as separate versions; disc structures (BDMV/VIDEO_TS) are recognized but not playable; credentials are kept in the open on Linux desktops without a Secret Service |
 | Not yet in the experience layer | Identify flow, library diagnostics, and user collections have engine support but no UI; no settings screen yet; browsing one source's media on its own |
 | Desktop shell gaps | libmpv is not bundled and there is no installer; media keys are not captured; no scrollbars; the GNOME and KDE folder dialogs are used when their helper is installed but are only unit-tested (the Linux end-to-end run uses the toolkit's chooser); on X11 without a compositing manager the player's controls window is opaque and hides the video; Wayland has only been reached through X11 |
 | Not verified here | TMDB against the live service (no credential on the development machine; the provider is covered by fixtures and the app falls back to file names); a session with physical controllers |
@@ -160,6 +160,17 @@ Verified on 2026-10-14, on the tree that closes the milestone.
 | Found by the device runs and fixed | On a phone the bottom navigation sat on top of the keyboard and covered Connect (it now steps aside while typing); a field's label did not focus its field; on a television the keyboard opened as soon as a field had focus and took over the remote, and OK's release typed a letter into it (it now opens on OK, when OK is let go); a server in a container was named by its generated host name | Fixed and rerun |
 | Not verified | SMB and WebDAV connections against live servers from the application (their connectors are covered by fixtures and a closed port, and the adapters by the earlier live tests); physical devices; a real television's keyboard | Open |
 | Environment-blocked | The workflow on GitHub (not pushed); TMDB against the live service (no credential) | Open |
+
+### Desktop credential storage: what was verified
+
+Verified on 2026-10-14. The real Jellyfin server integration this was planned alongside has not been run: it waits for a dedicated test account on that server.
+
+| Level | What ran | State |
+| --- | --- | --- |
+| Implemented | Source connections in the system credential store on the desktop (Windows Credential Manager; the Secret Service on Linux where one runs), a reference in the database, migration of connections stored in the open, removal of a source's entry, the developer CLI connecting through the same path; redaction of quoted Jellyfin tokens and stream-server tokens | Done |
+| Fixture-tested | `CredentialStorageTest` (migration at start, a store that refuses, removal, an entry the store lost, two libraries on one account, the Secret Service protocol never putting a secret in arguments), `SourceSectionsTest` (the per-source seal), `RedactionTest` | Part of the check below; none failed |
+| Windows verified | `./gradlew check`, including a real round trip through Windows Credential Manager | 513 tests, none failed |
+| Not verified | The Secret Service on a Linux desktop with a running keyring; the real Jellyfin server (no test account yet) | Open |
 
 ### Source parity and library controls: what was verified
 

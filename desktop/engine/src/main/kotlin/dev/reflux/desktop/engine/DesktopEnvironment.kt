@@ -6,6 +6,7 @@ import dev.reflux.core.playback.DeviceCapabilities
 import dev.reflux.core.playback.DisplayCapabilities
 import dev.reflux.core.source.MediaSource
 import dev.reflux.library.ArtworkCache
+import dev.reflux.library.ConfigSeal
 import dev.reflux.library.Library
 import dev.reflux.library.LibraryDatabase
 import dev.reflux.library.LibraryPipeline
@@ -65,7 +66,11 @@ sealed interface FolderAddition {
  * probing, and the background pipeline. Shared by the desktop shell and the developer CLI, so both exercise
  * exactly the same engine.
  */
-class DesktopEnvironment(dataDirectory: Path = AppDirectories.data()) {
+class DesktopEnvironment(
+    dataDirectory: Path = AppDirectories.data(),
+    /** Where source connections are kept; by default the system's credential store (see [DesktopSecrets]). */
+    sealFor: (Path, (String) -> Unit) -> ConfigSeal = { directory, report -> DesktopSecrets.seal(directory, report = report) },
+) {
     val http = JdkHttpFetcher(userAgent = "Reflux/0.1")
 
     /** Problems worth a developer's attention, kept next to the library. */
@@ -78,6 +83,9 @@ class DesktopEnvironment(dataDirectory: Path = AppDirectories.data()) {
         else java.util.UUID.randomUUID().toString().also { Files.writeString(file, it) }
     }
 
+    /** Keeps source connections out of the library database: the database holds only a reference. */
+    private val seal: ConfigSeal = sealFor(dataDirectory) { diagnostics.record(it) }
+
     /** Streams SMB files to players over loopback HTTP. */
     val streams by lazy { LocalStreamServer() }
 
@@ -85,10 +93,10 @@ class DesktopEnvironment(dataDirectory: Path = AppDirectories.data()) {
         mapOf(
             LocalFolderSource.TYPE to { record -> LocalFolderSource.fromConfig(record.config, record.displayName) },
             JellyfinSource.TYPE to { record ->
-                JellyfinCredentials.decode(record.config)?.let { JellyfinSource(it, http, record.displayName) }
+                JellyfinCredentials.decode(seal.open(record.id, record.config))?.let { JellyfinSource(it, http, record.displayName) }
             },
-            WebDavSource.TYPE to { record -> WebDavConfig.decode(record.config)?.let { WebDavSource(it, http, record.displayName) } },
-            SmbSource.TYPE to { record -> SmbShareConfig.decode(record.config)?.let { SmbSource(it, streams, record.displayName) } },
+            WebDavSource.TYPE to { record -> WebDavConfig.decode(seal.open(record.id, record.config))?.let { WebDavSource(it, http, record.displayName) } },
+            SmbSource.TYPE to { record -> SmbShareConfig.decode(seal.open(record.id, record.config))?.let { SmbSource(it, streams, record.displayName) } },
         ),
     ).apply { load(library.sources()) }
 
@@ -99,7 +107,13 @@ class DesktopEnvironment(dataDirectory: Path = AppDirectories.data()) {
             registry,
             listOf(JellyfinConnector(http, deviceId, deviceName = "Reflux on ${hostName()}"), SmbConnector(streams), WebDavConnector(http)),
             report = diagnostics::record,
+            seal = seal,
         )
+    }
+
+    init {
+        // A connection an earlier version wrote into the database is moved into the credential store first.
+        connections.sealStored()
     }
 
     /** TMDB is enabled when the build or environment provides an application credential. */
@@ -162,6 +176,7 @@ class DesktopEnvironment(dataDirectory: Path = AppDirectories.data()) {
     fun removeSource(id: SourceId) {
         library.removeSource(id)
         registry.unregister(id)
+        connections.forget(id)
     }
 
     /**

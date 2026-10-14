@@ -33,11 +33,22 @@ Android release builds also need what debug builds do not: a signing configurati
 
 Servers and shares are now added in the application. What that changed, and what it did not: the password typed for a Jellyfin server is sent once, to sign in, and is not kept anywhere; the form holds a password only while it is open, shows it masked, and clears it after connecting; a failed connection is reported to diagnostics as its kind and the connector's own detail (an HTTP status, an SMB status name), never with the request, the address's credentials, or the password; an address with a name and password written into it is refused, so they cannot end up in a stored or logged address; and the sources page shows an address and a user name, never a password or a token. Plain `http://` addresses are accepted for home servers, as before (the plain-HTTP question above is unchanged).
 
-Source credentials (Jellyfin access tokens, WebDAV and SMB passwords) are stored with the source configuration in the library database. On Android that configuration is sealed with an AES key held in the Android keystore (decision log, 2026-10-14), including what earlier versions stored; on the desktop it is still unencrypted. They belong in the platform's secure storage: Credential Manager on Windows, the Secret Service on Linux, the Keystore on Android.
+Source credentials (Jellyfin access tokens, WebDAV and SMB passwords) are kept out of the library database where the platform allows (decision log, 2026-10-14):
 
-- The database column should end up holding a reference to the secret, not the secret.
-- Nothing outside the source adapters reads the configuration, which keeps that change local.
-- The diagnostics log redacts credentials in URLs, query parameters, and headers, because logs get attached to bug reports.
+| Platform | Where a connection is kept | What the database holds |
+| --- | --- | --- |
+| Windows | Credential Manager, as a generic credential of the signed-in user (`Reflux/<library>/<source id>`) | A reference, `keychain:v1:<source id>` |
+| Linux with a running Secret Service (GNOME Keyring, KWallet, KeePassXC) | The Secret Service, through `secret-tool` | A reference |
+| Linux without one (a bare window manager, a container) | The library database, as it is; the diagnostics log says so at start | The connection |
+| Android | The library database, encrypted with an AES key held in the Android keystore | Ciphertext |
+
+- A connection stored in the open by an earlier version is moved at start, and keeps working; if the store refuses it, it is left as it was and the problem is logged. A new connection that cannot be kept securely where secure storage exists is not kept at all.
+- Removing a source removes its entry from the store.
+- Nothing outside the source adapters reads a connection, and nothing in the Media Core sees one.
+- Verified: the Windows store with a real round trip, and the migration and failure paths with a store in memory. The Linux Secret Service path is tested through its command protocol only; no Linux desktop with a running keyring was available, and the Linux container has none, so there the fallback is what ran.
+- Still open: Linux desktops without a Secret Service keep connections in the open; on Android the database holds ciphertext rather than a reference.
+
+The diagnostics log, the Android system log, and Reflux's own log file pass everything through `Redaction`: credentials in addresses, query parameters, and headers, a Jellyfin token quoted on its own (`Token="..."`), and the per-file tokens of the SMB stream server's loopback addresses. One developer switch is outside it: `REFLUX_MPV_LOG` makes libmpv write its own verbose log, and libmpv records the request headers it was given, which for a Jellyfin stream include the server's authorization. It is never on by default.
 
 ## Metadata provider
 

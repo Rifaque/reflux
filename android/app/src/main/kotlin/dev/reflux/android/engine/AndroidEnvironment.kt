@@ -138,9 +138,9 @@ class AndroidEnvironment(context: Context, dataDirectory: File = context.filesDi
             DocumentTreeSource.TYPE to { record -> folderSource(Uri.parse(record.config), record.displayName) },
             // A folder chosen by its path, on devices where Reflux browses storage itself (televisions).
             LocalFolderSource.TYPE to { record -> LocalFolderSource(File(record.config).toPath(), record.displayName) },
-            JellyfinSource.TYPE to { record -> JellyfinCredentials.decode(seal.open(record.config))?.let { JellyfinSource(it, http, record.displayName) } },
-            WebDavSource.TYPE to { record -> WebDavConfig.decode(seal.open(record.config))?.let { WebDavSource(it, http, record.displayName) } },
-            SmbSource.TYPE to { record -> SmbShareConfig.decode(seal.open(record.config))?.let { SmbSource(it, streams, record.displayName) } },
+            JellyfinSource.TYPE to { record -> JellyfinCredentials.decode(seal.open(record.id, record.config))?.let { JellyfinSource(it, http, record.displayName) } },
+            WebDavSource.TYPE to { record -> WebDavConfig.decode(seal.open(record.id, record.config))?.let { WebDavSource(it, http, record.displayName) } },
+            SmbSource.TYPE to { record -> SmbShareConfig.decode(seal.open(record.id, record.config))?.let { SmbSource(it, streams, record.displayName) } },
         ),
     ).apply { load(library.sources()) }
 
@@ -253,6 +253,7 @@ class AndroidEnvironment(context: Context, dataDirectory: File = context.filesDi
         val record = library.source(id)
         library.removeSource(id)
         registry.unregister(id)
+        connections.forget(id)
         if (record?.type == DocumentTreeSource.TYPE) {
             runCatching { application.contentResolver.releasePersistableUriPermission(Uri.parse(record.config), Intent.FLAG_GRANT_READ_URI_PERMISSION) }
         }

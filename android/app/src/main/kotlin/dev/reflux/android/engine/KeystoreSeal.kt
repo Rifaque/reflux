@@ -3,6 +3,7 @@ package dev.reflux.android.engine
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.util.Base64
+import dev.reflux.core.model.SourceId
 import dev.reflux.library.ConfigSeal
 import java.security.KeyStore
 import javax.crypto.Cipher
@@ -20,14 +21,14 @@ import javax.crypto.spec.GCMParameterSpec
  * again replaces it. Nothing else is lost.
  */
 class KeystoreSeal(private val alias: String = "reflux-sources") : ConfigSeal {
-    override fun seal(config: String): String {
+    override fun seal(id: SourceId, config: String): String {
         val cipher = Cipher.getInstance(TRANSFORMATION)
         cipher.init(Cipher.ENCRYPT_MODE, key())
         val sealed = cipher.doFinal(config.encodeToByteArray())
         return PREFIX + encode(cipher.iv) + ":" + encode(sealed)
     }
 
-    override fun open(stored: String): String {
+    override fun open(id: SourceId, stored: String): String {
         if (!sealed(stored)) return stored
         return runCatching {
             val (iv, sealed) = stored.removePrefix(PREFIX).split(':', limit = 2).map { Base64.decode(it, Base64.NO_WRAP) }

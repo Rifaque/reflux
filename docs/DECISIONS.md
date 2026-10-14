@@ -449,3 +449,14 @@ Found by running it on an Android device, and fixed in the shared adapter:
 ## 2026-10-14 — The navigation says where the user is, or nothing
 
 The sources pages belong to no section of the library, so no tab is lit while one of them is open; the media sources button is, on every form factor. The same button leaves them, back to where the user was before (`Navigator.highlighted`, `Destination.aboutSources`).
+
+## 2026-10-14 — Desktop source connections live in the system's credential store
+
+A desktop kept server tokens and share passwords in the library database as they were. They now go to the store the operating system keeps for the signed-in user, and the database keeps a reference (`keychain:v1:<source id>`), so a copy of the database or of a backup carries no secret.
+
+- **One contract for every platform.** `ConfigSeal` (in `library`) became per source: it keeps a source's connection and returns what the database stores in its place, opens it again, and forgets it when the source is removed. Android's keystore seal and the desktop's `KeychainSeal` implement it; adapters and the Media Core see neither.
+- **Windows: Credential Manager**, bound directly through JNA (already a dependency for libmpv); the four calls it needs did not justify the platform library. **Linux: the Secret Service** through `secret-tool`, which ships with libsecret on GNOME and KDE desktops, with the secret on its standard input and never in arguments. A D-Bus binding was the alternative: more code to own, for the same store. Where no Secret Service answers (a bare window manager, a container), connections stay in the database and the diagnostics log says so once at start, rather than refusing to connect anything.
+- **Entries are named after the library as well as the source**, so a second Reflux library on the same account (a test run) never shares an entry with the real one.
+- **Migration is at start and never destructive.** A connection stored in the open is moved into the store; if the store refuses, it is left working as it was and the problem logged. A new connection the store refuses is not kept at all, since writing it into the database in the open would be exactly what this is for.
+- **The developer CLI** connected servers and shares by writing their configuration into the database itself, which would have bypassed all of this; it now uses the same connectors and the same seal as the application.
+- **Logs.** An audit of everything source code writes down found two gaps in `Redaction`, both closed: a Jellyfin token quoted on its own (`Token="..."`, as an exception or a player may quote an authorization value), and the per-file tokens in the SMB stream server's loopback addresses, which let any local process read that file while Reflux runs.

@@ -7,7 +7,7 @@ For a security-sensitive report, do not publish exploitable details in a public 
 Current handling of credentials:
 
 - Jellyfin passwords are used once to sign in and are never stored. The resulting access token (and the user name, for display) is stored in the source configuration inside the local library database. Moving tokens into platform secure storage (Android Keystore, OS keychains) is planned before release.
-- WebDAV share credentials are stored in the source configuration in the local library database, like Jellyfin tokens. On Android every source connection is sealed with a key in the Android keystore; on the desktop it is stored as it is until platform secure storage lands. Reflux only sends `PROPFIND` and `GET` to shares, and XML responses are parsed with DTDs disabled.
+- WebDAV share credentials are stored in the source configuration in the local library database, like Jellyfin tokens. On the desktop source connections are kept in the system's credential store (Windows Credential Manager, or the Secret Service on Linux where one runs) and the database holds only a reference; on Android they are sealed with a key in the Android keystore. A Linux desktop without a Secret Service still stores them as they are. Reflux only sends `PROPFIND` and `GET` to shares, and XML responses are parsed with DTDs disabled.
 - SMB credentials are stored like WebDAV credentials. Share files are opened read-only and streamed to the player through a server bound to the loopback interface only, with an unguessable token per file.
 - The TMDB credential is an application credential supplied at build time; it is not a user secret.
 
