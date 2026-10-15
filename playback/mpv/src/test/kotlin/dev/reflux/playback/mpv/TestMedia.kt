@@ -35,6 +35,24 @@ object TestMedia {
         return output
     }
 
+    /** 3 s of H.264 with English audio and one subtitle the file marks as default, not forced, in no language. */
+    fun defaultSubtitleMkv(directory: Path): Path {
+        val srt = directory.resolve("default.srt")
+        Files.writeString(srt, "1\n00:00:00,000 --> 00:00:03,000\nHello\n")
+        val output = directory.resolve("Default subtitle.mkv")
+        run(
+            "ffmpeg", "-y", "-loglevel", "error",
+            "-f", "lavfi", "-i", "testsrc=duration=3:size=320x240:rate=24",
+            "-f", "lavfi", "-i", "sine=frequency=440:duration=3",
+            "-i", srt.toString(),
+            "-map", "0:v", "-map", "1:a", "-map", "2:s",
+            "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac", "-c:s", "srt",
+            "-metadata:s:a:0", "language=eng", "-disposition:s:0", "default",
+            output.toString(),
+        )
+        return output
+    }
+
     /** 2 s of 10-bit HEVC tagged as HDR10 (PQ transfer). */
     fun hdrHevcMp4(directory: Path): Path {
         val output = directory.resolve("hdr.mp4")

@@ -180,7 +180,9 @@ The exchange is exercised against a real Jellyfin server by `JellyfinLiveTest` (
 - Marking it not played clears the position, the play count, and the last-played date. An un-marked record is therefore empty and undated, which is exactly the record Reflux does not let erase its own history.
 - The server keeps no position in items only a few minutes long.
 
-Verified end to end there: reading existing state, progress made in Reflux reaching the server, nothing being re-sent once the two agree, a stale server value not overwriting newer progress, progress and "played" made on another client being adopted, and watched/unwatched travelling both ways. Other server versions, episodes, and items with several versions have not been exercised live.
+Verified end to end there: reading existing state, progress made in Reflux reaching the server, nothing being re-sent once the two agree, a stale server value not overwriting newer progress, progress and "played" made on another client being adopted, and watched/unwatched travelling both ways.
+
+The same test and a walk through the desktop engine also ran against a real home server with a full library (Jellyfin Server 12.2.0, a dedicated test account; ROADMAP.md has the details). There, a local copy and the server's copy of one film were one work: connecting the server beside existing local progress sent nothing, local progress reached the server at the next scan, and the server's newer position resumed the local copy at the same moment. Other server versions, the watch state of episodes, and a work with several copies on the server have not been exercised live.
 
 ## Not in scope
 
