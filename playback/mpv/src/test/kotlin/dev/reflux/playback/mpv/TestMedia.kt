@@ -1,7 +1,9 @@
 package dev.reflux.playback.mpv
 
+import java.nio.channels.FileChannel
 import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.file.StandardOpenOption
 import java.util.concurrent.TimeUnit
 
 /** Generates small real media files with FFmpeg for engine tests. */
@@ -50,6 +52,23 @@ object TestMedia {
             "-metadata:s:a:0", "language=eng", "-disposition:s:0", "default",
             output.toString(),
         )
+        return output
+    }
+
+    /**
+     * 40 s of H.264 and audio cut off after its first quarter, its header still saying 40 s: what a stream whose
+     * server went away looks like to the engine.
+     */
+    fun truncatedMkv(directory: Path): Path {
+        val output = directory.resolve("Truncated.mkv")
+        run(
+            "ffmpeg", "-y", "-loglevel", "error",
+            "-f", "lavfi", "-i", "testsrc=duration=40:size=320x240:rate=24",
+            "-f", "lavfi", "-i", "sine=frequency=440:duration=40",
+            "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac",
+            output.toString(),
+        )
+        FileChannel.open(output, StandardOpenOption.WRITE).use { it.truncate(it.size() / 4) }
         return output
     }
 

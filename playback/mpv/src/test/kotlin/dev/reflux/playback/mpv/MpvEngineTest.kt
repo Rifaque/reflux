@@ -214,6 +214,30 @@ class MpvEngineTest {
     }
 
     @Test
+    fun aStreamThatStopsBeforeItsEndIsNotWatchedToTheEnd() {
+        // Found with a real Jellyfin server cut off mid-episode: mpv reports a stream that stops arriving as the end
+        // of the file, and the episode was recorded as watched.
+        val file = TestMedia.truncatedMkv(directory)
+        val stops = mutableListOf<Long>()
+        val reporter = object : WatchReporter {
+            override fun progress(itemId: MediaId, positionMs: Long, durationMs: Long?) {}
+            override fun stopped(itemId: MediaId, positionMs: Long, durationMs: Long?) { stops += positionMs }
+        }
+        headless().use { player ->
+            runBlocking {
+                val controller = PlaybackController(player, MediaId("m"), reporter, TrackPreferences(listOf("en")))
+                controller.start(this, PlaybackRequest(PlaybackTarget(file.toUri().toString()), "Sample", startPositionMs = 4_000))
+                val end = withTimeout(30_000) { player.state.first { it.status == PlayerStatus.ENDED || it.status == PlayerStatus.ERROR } }
+                assertEquals(PlayerStatus.ERROR, end.status)
+                assertEquals(PlaybackFailure.UNREACHABLE, end.failure)
+                assertTrue(end.positionMs < 20_000, "position ${end.positionMs}")
+                controller.stop()
+                assertEquals(listOf(end.positionMs), stops)
+            }
+        }
+    }
+
+    @Test
     fun failuresSayWhatWentWrong() {
         // A file that is not there, and a file that is not media: the two failures users actually meet.
         headless().use { player ->

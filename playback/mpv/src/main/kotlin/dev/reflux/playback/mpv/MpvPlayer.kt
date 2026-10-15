@@ -120,7 +120,14 @@ class MpvPlayer private constructor(
     private fun onEndFile(end: MpvEventEndFile) {
         mutableState.update {
             when (end.reason) {
-                LibMpv.END_FILE_REASON_EOF -> it.copy(status = PlayerStatus.ENDED, positionMs = it.durationMs ?: it.positionMs)
+                // mpv reports a stream that stops arriving (its server gone mid-playback, a cut-off file) as the end
+                // of the file. Only an end at the file's running time is one; an earlier end is the media becoming
+                // unreachable, and the position reached stays rather than becoming "watched to the end".
+                LibMpv.END_FILE_REASON_EOF -> if (endedEarly(it)) {
+                    it.copy(status = PlayerStatus.ERROR, failure = PlaybackFailure.UNREACHABLE, error = "the stream ended before the end of the media")
+                } else {
+                    it.copy(status = PlayerStatus.ENDED, positionMs = it.durationMs ?: it.positionMs)
+                }
                 LibMpv.END_FILE_REASON_ERROR ->
                     it.copy(status = PlayerStatus.ERROR, failure = failureOf(end.error), error = mpv.mpv_error_string(end.error))
                 // A stop caused by loading the next file is followed by START_FILE; plain stops go idle.
@@ -221,6 +228,12 @@ class MpvPlayer private constructor(
             }
             return MpvPlayer(mpv, handle, capabilities)
         }
+
+        /** How far short of its running time a file may end and still have played to its end. */
+        internal const val END_TOLERANCE_MS: Long = 15_000
+
+        internal fun endedEarly(state: PlayerState): Boolean =
+            state.durationMs.let { it != null && state.positionMs < it - END_TOLERANCE_MS }
 
         internal fun failureOf(error: Int): PlaybackFailure = when (error) {
             LibMpv.ERROR_LOADING_FAILED -> PlaybackFailure.UNREACHABLE
