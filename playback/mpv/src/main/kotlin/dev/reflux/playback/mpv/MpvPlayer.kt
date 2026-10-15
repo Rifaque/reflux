@@ -99,10 +99,16 @@ class MpvPlayer private constructor(
                     return
                 }
                 LibMpv.EVENT_START_FILE -> mutableState.update { it.copy(status = PlayerStatus.LOADING, failure = null, error = null) }
-                // Read tracks synchronously so external subtitles and status become visible together.
+                // Read tracks synchronously so external subtitles and status become visible together, and with
+                // them the tracks mpv chose on opening the file (its default subtitle, say): a selection
+                // published later would let a decision made from the tracks be taken against no selection.
                 LibMpv.EVENT_FILE_LOADED -> {
                     val tracks = MpvTracks.playerTracks(mpv.getString(handle, "track-list"))
-                    mutableState.update { it.copy(status = runningStatus(), tracks = tracks) }
+                    val audio = trackId(mpv.getString(handle, "aid"))
+                    val subtitle = trackId(mpv.getString(handle, "sid"))
+                    mutableState.update {
+                        it.copy(status = runningStatus(), tracks = tracks, selectedAudioId = audio, selectedSubtitleId = subtitle)
+                    }
                 }
                 LibMpv.EVENT_PLAYBACK_RESTART -> mutableState.update { it.copy(status = runningStatus()) }
                 LibMpv.EVENT_END_FILE -> event.data?.let { onEndFile(MpvEventEndFile(it)) }
@@ -141,16 +147,15 @@ class MpvPlayer private constructor(
                 Property.MUTE -> state.copy(muted = data.getInt(0) != 0)
                 Property.TRACK_LIST -> state.copy(tracks = MpvTracks.playerTracks(data.getPointer(0)?.getString(0, "UTF-8")))
                 Property.CHAPTERS -> state.copy(chapters = MpvTracks.chapters(data.getPointer(0)?.getString(0, "UTF-8")))
-                Property.AID -> state.copy(selectedAudioId = trackId(data))
-                Property.SID -> state.copy(selectedSubtitleId = trackId(data))
+                Property.AID -> state.copy(selectedAudioId = trackId(data.getPointer(0)?.getString(0, "UTF-8")))
+                Property.SID -> state.copy(selectedSubtitleId = trackId(data.getPointer(0)?.getString(0, "UTF-8")))
                 Property.PAUSE, Property.PAUSED_FOR_CACHE, Property.SEEKING ->
                     if (state.status in RUNNING_STATES) state.copy(status = runningStatus()) else state
             }
         }
     }
 
-    private fun trackId(data: Pointer): String? =
-        data.getPointer(0)?.getString(0, "UTF-8")?.takeIf { it != "no" && it != "auto" }
+    private fun trackId(value: String?): String? = value?.takeIf { it != "no" && it != "auto" }
 
     /** Playing, paused, or buffering, from mpv's current flags. */
     private fun runningStatus(): PlayerStatus = when {

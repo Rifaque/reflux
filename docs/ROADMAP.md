@@ -18,7 +18,7 @@
 | Background pipeline: change watching, debounced rescans, reconnect detection, scan → probe → metadata → artwork | Implemented and tested |
 | Smart search (deterministic query understanding over metadata, credits, stream facts, watch state) | Implemented and tested |
 | Smart library: default Home feed, franchise/manual/smart collections, diagnostics (weak identification, unmatched works, multiple versions, missing episodes and artwork, offline sources) | Implemented and tested |
-| Catalog-source architecture and Jellyfin adapter (sign-in, catalog, multi-version items, direct streams, two-way watch state through the source-independent reconciliation) | Implemented and tested against API fixtures. Sign-in, the catalog, the direct stream, and the watch-state exchange are verified against a real Jellyfin Server 12.2.0 with one movie; episodes, multi-version items, large libraries, other server versions, and playback of a server stream in the engine are not |
+| Catalog-source architecture and Jellyfin adapter (sign-in, catalog, multi-version items, direct streams, two-way watch state through the source-independent reconciliation) | Implemented and tested against API fixtures. Sign-in, the catalog, the direct stream, and the watch-state exchange are verified against Jellyfin Server 12.2.0, first in Docker and then on a real home server with a full library (1,453 versions, including works with several), where a server stream also played in the desktop engine (see the live Jellyfin verification below); the watch state of episodes and other server versions are not |
 | WebDAV network source (read-only) | Implemented; tested against fixtures and a live WsgiDAV server |
 | SMB network source (read-only, streamed through a loopback server) | Implemented; tested against a live SMB2 server (impacket), including probing and playback |
 | Cross-source unification: works sharing a provider ID merge into one work (Best Version across sources) | Implemented and tested |
@@ -165,14 +165,28 @@ Verified on 2026-10-14, on the tree that closes the milestone.
 
 ### Desktop credential storage: what was verified
 
-Verified on 2026-10-14. The real Jellyfin server integration this was planned alongside has not been run: it waits for a dedicated test account on that server.
+Verified on 2026-10-14. The real Jellyfin server integration this was planned alongside ran on 2026-10-15 (below).
 
 | Level | What ran | State |
 | --- | --- | --- |
 | Implemented | Source connections in the system credential store on the desktop (Windows Credential Manager; the Secret Service on Linux where one runs), a reference in the database, migration of connections stored in the open, removal of a source's entry, the developer CLI connecting through the same path; redaction of quoted Jellyfin tokens and stream-server tokens | Done |
 | Fixture-tested | `CredentialStorageTest` (migration at start, a store that refuses, removal, an entry the store lost, two libraries on one account, the Secret Service protocol never putting a secret in arguments), `SourceSectionsTest` (the per-source seal), `RedactionTest` | Part of the check below; none failed |
 | Windows verified | `./gradlew check`, including a real round trip through Windows Credential Manager | 513 tests, none failed |
-| Not verified | The Secret Service on a Linux desktop with a running keyring; the real Jellyfin server (no test account yet) | Open |
+| Not verified | The Secret Service on a Linux desktop with a running keyring | Open |
+
+### Live Jellyfin on a real server: what was verified
+
+Verified on 2026-10-15 on Windows 11, against the developer's own Jellyfin Server 12.2.0 (RS-X1) on the local network, with a dedicated test account named only in `~/.reflux-live/jellyfin.env`. The engine was driven through the developer CLI and headless libmpv, each step a fresh process over test libraries of their own; no window was opened.
+
+| Level | What ran | State |
+| --- | --- | --- |
+| Real server, automated | `JellyfinLiveTest`: sign-in, the catalog, the direct stream, and the whole watch-state exchange (existing state read, progress reaching the server, nothing re-sent, a stale value not winning, another client's progress and "played" adopted, watched and unwatched both ways) | Passed |
+| Real server, by hand | Signing in through the application's connector: 1,453 versions read (246 films, 45 shows), 265 works with several versions. Best Version on the server's own duplicates: decided by size when everything above it tied, by the stable order for identical copies, and by resolution over a lower-resolution local copy. A server stream played in libmpv with its audio and subtitle tracks, stopped at 10:08, resumed there, and the server held the position | Done |
+| Real server, by hand: handoff | A local copy of a server film with the same running time, one work with the server's copy. Local progress (20:03) kept and the server told nothing when the server was connected; progress after that (25:03) reached the server at the next scan; another client's 40:00 adopted and the local copy resumed there (same timeline); Reflux's newer 40:04 not undone by the server's 40:00, which was brought up to date; watched and unwatched sent both ways; the test account's record for the film left as found | Done |
+| Real server, credential storage on Windows | The connection in Credential Manager under the test library's name; the database holding only `keychain:v1:<source id>`; no password, token, or server address in the database, the cached artwork, the test reports, or the CLI's output; every later process reconnecting without the password; the test libraries' sessions signed out and their entries removed afterwards | Done |
+| Real server, out of reach | The server made unreachable for the engine's process alone (a dead HTTP proxy): the source checked as unavailable, a scan removing nothing, every work still listed and marked offline with its watch state, artwork still cached, Play answered with no plan instead of a failure; reachable again: available, nothing changed, playable, no sign-in | Done |
+| Found by the live run and fixed | A film's only subtitle, marked default but not forced, stayed on although its English audio was understood: mpv published the tracks before saying which it had chosen, so the default track selection was decided against no selection (`MpvEngineTest` reproduces it with a generated file) | Fixed in `playback:mpv`, rerun against the server |
+| Not verified | The desktop application's window against this server (a game was running on the machine); the server going away in the middle of playback; the watch state of episodes and of a work with several copies on the server; the Secret Service on Linux (the protocol-level test is no substitute) | Open |
 
 ### Source parity and library controls: what was verified
 

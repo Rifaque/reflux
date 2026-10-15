@@ -181,6 +181,39 @@ class MpvEngineTest {
     }
 
     @Test
+    fun aLoadedFileSaysWhichTracksArePlayingWithItsTracks() {
+        // mpv picks a file's default subtitle as it opens it. The tracks must not be shown without that choice,
+        // or whoever decides from them (the controller) decides against a selection that is not there yet.
+        val file = TestMedia.defaultSubtitleMkv(directory)
+        headless().use { player ->
+            player.load(PlaybackRequest(PlaybackTarget(file.toUri().toString()), "Sample"))
+            val loaded = player.await { it.tracks.isNotEmpty() && it.status != PlayerStatus.LOADING }
+            assertEquals(loaded.subtitleTracks.single().id, loaded.selectedSubtitleId)
+            assertEquals(loaded.audioTracks.single().id, loaded.selectedAudioId)
+        }
+    }
+
+    @Test
+    fun aDefaultSubtitleIsTurnedOffWhenTheAudioIsUnderstood() {
+        // Found playing a real Jellyfin film: its only subtitle, marked default but not forced, stayed on.
+        val file = TestMedia.defaultSubtitleMkv(directory)
+        val reporter = object : WatchReporter {
+            override fun progress(itemId: MediaId, positionMs: Long, durationMs: Long?) {}
+            override fun stopped(itemId: MediaId, positionMs: Long, durationMs: Long?) {}
+        }
+        headless().use { player ->
+            runBlocking {
+                val controller = PlaybackController(player, MediaId("m"), reporter, TrackPreferences(listOf("en")))
+                controller.start(this, PlaybackRequest(PlaybackTarget(file.toUri().toString()), "Sample"))
+                withTimeout(10_000) { player.state.first { it.status == PlayerStatus.PLAYING && it.selectedAudioId != null } }
+                delay(1_000)
+                assertNull(player.state.value.selectedSubtitleId)
+                controller.stop()
+            }
+        }
+    }
+
+    @Test
     fun failuresSayWhatWentWrong() {
         // A file that is not there, and a file that is not media: the two failures users actually meet.
         headless().use { player ->
