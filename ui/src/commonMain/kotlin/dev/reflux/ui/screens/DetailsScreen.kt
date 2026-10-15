@@ -75,6 +75,7 @@ import dev.reflux.ui.components.TitlePlaceholder
 import dev.reflux.ui.components.initialFocus
 import dev.reflux.ui.components.titleTones
 import dev.reflux.ui.state.AppState
+import dev.reflux.ui.state.ArtworkChoice
 import dev.reflux.ui.state.Destination
 import dev.reflux.ui.state.DetailsModel
 import dev.reflux.ui.state.Formatting
@@ -103,11 +104,18 @@ internal fun DetailsScreen(app: AppState, itemId: MediaId) {
     val list = rememberLazyListState()
     ReportPageScroll(remember { derivedStateOf { list.firstVisibleItemIndex > 0 || list.firstVisibleItemScrollOffset > 0 } }.value)
     BoxWithConstraints(Modifier.fillMaxSize()) {
-        // The page takes the backdrop's atmosphere down to the end of the header, then fades to the plain base.
-        // Without a backdrop the page takes the poster's, so it agrees with the artwork shown on it.
-        val backdrop = rememberArtwork(details.backdrop, maxWidth)
+        val television = layout.formFactor == FormFactor.TV
+        // The title and Play are in the first view however short the window (a phone on its side): the header
+        // never asks for more than the screen leaves above the bottom chrome.
+        val headerMin = minOf(if (television) 424.dp else 560.dp, maxHeight - LocalChromeInsets.current.bottom - 16.dp)
+        // The poster beside the title needs height as well as width.
+        val room = maxWidth >= 760.dp && (television || maxHeight >= 600.dp)
+        val art = ArtworkChoice.header(details.card.poster, details.backdrop, maxWidth / headerMin.coerceAtLeast(1.dp), room)
+        // The page takes the atmosphere of the artwork across the header down to its end, then fades to the plain
+        // base. With a generated header the page takes the poster's, so it agrees with the artwork shown on it.
+        val fill = rememberArtwork(art.fill, maxWidth)
         val poster = rememberArtwork(details.card.poster, 220.dp)
-        val atmosphere = rememberPageTone(backdrop ?: poster, details.card.title)
+        val atmosphere = rememberPageTone(fill ?: poster, details.card.title)
         var headerHeight by remember { mutableStateOf(520.dp) }
         val density = LocalDensity.current
         // The atmosphere recedes as the header scrolls away; versions, episodes, and cast below sit on the plain base.
@@ -116,7 +124,7 @@ internal fun DetailsScreen(app: AppState, itemId: MediaId) {
         val section = if (layout.formFactor == FormFactor.PHONE) 28.dp else 40.dp
         LazyColumn(Modifier.fillMaxSize(), state = list, contentPadding = PaddingValues(bottom = LocalChromeInsets.current.bottom)) {
             item(key = "header") {
-                Header(app, details, offline, backdrop, poster, tone, maxHeight, Modifier.onSizeChanged { headerHeight = with(density) { it.height.toDp() } })
+                Header(app, details, offline, art.posterBeside, fill, poster, tone, headerMin, maxHeight, Modifier.onSizeChanged { headerHeight = with(density) { it.height.toDp() } })
             }
             if (details.versions.isNotEmpty()) {
                 item(key = "versions") { Versions(app, details, Modifier.padding(horizontal = layout.safeMarginDp.dp).padding(top = section)) }
@@ -160,18 +168,25 @@ private fun Gone(app: AppState) {
 }
 
 @Composable
-private fun Header(app: AppState, details: DetailsModel, offline: OfflineStatus?, backdrop: ImageBitmap?, poster: ImageBitmap?, tone: () -> Color, viewport: Dp, modifier: Modifier = Modifier) {
+private fun Header(
+    app: AppState,
+    details: DetailsModel,
+    offline: OfflineStatus?,
+    posterBeside: Boolean,
+    fill: ImageBitmap?,
+    poster: ImageBitmap?,
+    tone: () -> Color,
+    minHeight: Dp,
+    viewport: Dp,
+    modifier: Modifier = Modifier,
+) {
     val layout = LocalLayout.current
     val card = details.card
-    BoxWithConstraints(modifier.fillMaxWidth()) {
-        val width = maxWidth
+    Box(modifier.fillMaxWidth()) {
         // A television's screen is its whole canvas: the header leaves room for what follows it to show.
         val television = layout.formFactor == FormFactor.TV
-        // The title and Play are in the first view however short the window (a phone on its side): the header
-        // never asks for more than the screen leaves above the bottom chrome.
-        val tallest = viewport - LocalChromeInsets.current.bottom - 16.dp
-        Box(Modifier.fillMaxWidth().heightIn(min = minOf(if (television) 424.dp else 560.dp, tallest))) {
-            ArtworkImage(backdrop, Modifier.matchParentSize(), alignment = Alignment.TopCenter) { TitleBackdrop(card.title, poster = poster) }
+        Box(Modifier.fillMaxWidth().heightIn(min = minHeight)) {
+            ArtworkImage(fill, Modifier.matchParentSize(), alignment = Alignment.TopCenter) { TitleBackdrop(card.title, poster = poster) }
             // Scrims keep the text readable and dissolve the backdrop into the page's own tone.
             Box(Modifier.matchParentSize().artworkScrims(tone, left = 0.92f, right = 0.08f))
             Row(
@@ -179,8 +194,7 @@ private fun Header(app: AppState, details: DetailsModel, offline: OfflineStatus?
                 horizontalArrangement = Arrangement.spacedBy(36.dp),
                 verticalAlignment = Alignment.Bottom,
             ) {
-                // The poster beside the title needs height as well as width.
-                if (width >= 760.dp && (television || viewport >= 600.dp)) {
+                if (posterBeside) {
                     val shape = RoundedCornerShape(14.dp)
                     val posterWidth = if (television) 164.dp else 220.dp
                     Box(Modifier.width(posterWidth).aspectRatio(2f / 3f).shadow(32.dp, shape).clip(shape)) {

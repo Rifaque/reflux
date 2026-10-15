@@ -112,6 +112,32 @@ class ScreensTest {
     }
 
     @Test
+    fun aWorkWithOnlyABackdropIsPicturedByItEverywhere() {
+        // A folder with a fanart.jpg and no poster, and no provider: the work has a backdrop and nothing else.
+        val world = TestWorld(metadata = false).also { world ->
+            world.file("Arrival (2016)/Arrival.2016.1080p.x264.mkv")
+            world.file("Arrival (2016)/fanart.jpg")
+            world.file("Heat (1995)/Heat.1995.1080p.BluRay.x264.mkv")
+            runBlocking { world.pipeline.refresh() }
+        }
+        val platform = FakePlatform()
+        screen(world, platform) { app ->
+            app.navigator.open(Destination.Movies)
+            awaitText("Arrival")
+            // Its poster card is the backdrop's middle, with the title beneath it, rather than a generated card.
+            await("the backdrop in the poster card") { platform.artwork.served.any { (name, _) -> name.endsWith("Arrival (2016)/fanart.jpg") } }
+            waitForIdle()
+            save("movies-backdrop-only")
+            app.navigator.open(Destination.Details(world.movie("Arrival").item.id))
+            awaitText("Play")
+            waitForIdle()
+            save("details-backdrop-only")
+            // Beside the title over a real backdrop there is no generated card naming the work a second time.
+            assertEquals(1, onAllNodesWithText("Arrival").fetchSemanticsNodes().size)
+        }
+    }
+
+    @Test
     fun showDetailsContinueWhereTheUserLeftOff() = screen(
         populated().also { world ->
             val episodes = world.episodes("Breaking Bad")
