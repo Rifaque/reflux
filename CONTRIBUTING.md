@@ -45,7 +45,15 @@ With a game controller connected, `./gradlew :desktop:app:test --tests "*Physica
 
 The Android client (`android:app`) is part of the build wherever an Android SDK is installed (`ANDROID_HOME`, or `sdk.dir` in `local.properties`); without one, everything else builds and tests as usual, and `-Preflux.android=false` leaves it out on purpose. `./gradlew :android:app:assembleDebug` builds it, and `./gradlew :android:app:connectedDebugAndroidTest` runs the on-device tests (they need FFmpeg on the build machine, for the test clip) on **every** connected device: set `ANDROID_SERIAL` to the one you mean, for example `ANDROID_SERIAL=emulator-5554`. Phone and tablet layouts are rendered offscreen by the `ui` tests like every other screen, so most layout work needs no device.
 
-The exchange with a real Jellyfin server has a test of its own, which runs when a server is named: `tools/ci/jellyfin-test-server.sh <scratch-dir>` starts a throwaway server in Docker, and the comment at its top gives the command that runs `JellyfinLiveTest` against it. The test rewrites its user's watch state, so do not point it at a server you care about.
+The exchange with a real Jellyfin server has a test of its own, `JellyfinLiveTest`, which runs when a server is named and is skipped otherwise. To name yours, create `%USERPROFILE%\.reflux-live\jellyfin.env` (`~/.reflux-live/jellyfin.env` elsewhere), outside the repository, with three lines:
+
+```
+REFLUX_JELLYFIN_TEST=<server url>
+REFLUX_JELLYFIN_TEST_USER=<a user there for testing>
+REFLUX_JELLYFIN_TEST_PASSWORD=<its password>
+```
+
+Variables of the same names in the environment take precedence, key by key; only the test reads the file, never Reflux, and nothing in it is repeated in test output. Then `./gradlew :desktop:engine:test --tests "*JellyfinLiveTest*" --rerun-tasks` (Gradle does not treat the file or the environment as an input, so without a forced rerun it may report the test up to date without running it). The test rewrites its user's watch state, so use a dedicated user, not one you care about. With no server of your own, `tools/ci/jellyfin-test-server.sh <scratch-dir>` starts a throwaway one in Docker, and the comment at its top gives the command for it.
 
 Tests that need libmpv, FFmpeg, or a display skip themselves on a machine without them. Set `REFLUX_REQUIRE_ENGINE_TESTS=true` (CI and the container do) to have them fail instead, when a green run must mean they ran.
 

@@ -31,10 +31,11 @@ import kotlin.test.assertTrue
 /**
  * The watch-state exchange with a real Jellyfin server, end to end through the library.
  *
- * Runs when `REFLUX_JELLYFIN_TEST` is set to the server's URL, with `REFLUX_JELLYFIN_TEST_USER` and
- * `REFLUX_JELLYFIN_TEST_PASSWORD`. The user's library must hold a movie of twenty minutes or more (servers
- * do not keep a position in anything short). The test rewrites that user's watch state for that movie and
- * leaves it unplayed: point it at a server and a user that are there for testing.
+ * Runs when a server is named: `REFLUX_JELLYFIN_TEST` (its URL), `REFLUX_JELLYFIN_TEST_USER`, and
+ * `REFLUX_JELLYFIN_TEST_PASSWORD`, in the environment or in `~/.reflux-live/jellyfin.env` ([LiveJellyfin]).
+ * The user's library must hold a movie of twenty minutes or more (servers do not keep a position in anything
+ * short). The test rewrites that user's watch state for that movie and leaves it unplayed: point it at a
+ * server and a user that are there for testing.
  * `tools/ci/jellyfin-test-server.sh` starts such a server in Docker.
  */
 class JellyfinLiveTest {
@@ -62,12 +63,11 @@ class JellyfinLiveTest {
 
     @Test
     fun watchStateRoundTripsWithARealServer() = runBlocking {
-        val url = System.getenv("REFLUX_JELLYFIN_TEST")
-        assumeTrue("REFLUX_JELLYFIN_TEST not set", url != null)
-        val user = System.getenv("REFLUX_JELLYFIN_TEST_USER").orEmpty()
-        val password = System.getenv("REFLUX_JELLYFIN_TEST_PASSWORD").orEmpty()
+        val live = LiveJellyfin.settings()
+        assumeTrue("no live Jellyfin server named (environment or ~/.reflux-live/jellyfin.env)", live != null)
+        val (url, user, password) = Triple(live!!.url, live.user, live.password)
         val http = JdkHttpFetcher()
-        val jellyfin = JellyfinSource(JellyfinSource.connect(url!!, user, password, http, deviceId = "reflux-live-test"), http, "Live test")
+        val jellyfin = JellyfinSource(JellyfinSource.connect(url, user, password, http, deviceId = "reflux-live-test"), http, "Live test")
         // The same user on another device, as any Jellyfin client presents itself.
         val elsewhere = JellyfinSource(JellyfinSource.connect(url, user, password, http, "reflux-live-test-elsewhere", "Another client"), http)
         val server = Observed(jellyfin)

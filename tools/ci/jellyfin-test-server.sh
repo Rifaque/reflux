@@ -4,7 +4,8 @@
 #
 #   tools/ci/jellyfin-test-server.sh <scratch-dir>
 #   REFLUX_JELLYFIN_TEST=http://127.0.0.1:8096 REFLUX_JELLYFIN_TEST_USER=reflux \
-#       REFLUX_JELLYFIN_TEST_PASSWORD=reflux-test ./gradlew :desktop:engine:test --tests "*JellyfinLiveTest*"
+#       REFLUX_JELLYFIN_TEST_PASSWORD=reflux-test ./gradlew :desktop:engine:test --tests "*JellyfinLiveTest*" --rerun-tasks
+#   (these variables override ~/.reflux-live/jellyfin.env, where a server of your own is named; see CONTRIBUTING.md)
 #   ./gradlew :android:app:connectedDebugAndroidTest -Preflux.jellyfin=http://10.0.2.2:8096   (on an emulator)
 #   docker rm -f reflux-jellyfin-test
 #
