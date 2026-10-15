@@ -69,6 +69,7 @@ import dev.reflux.ui.components.TitleBackdrop
 import dev.reflux.ui.components.WideCard
 import dev.reflux.ui.components.initialFocus
 import dev.reflux.ui.state.AppState
+import dev.reflux.ui.state.ArtworkChoice
 import dev.reflux.ui.state.Destination
 import dev.reflux.ui.state.Formatting
 import dev.reflux.ui.state.HomeRowModel
@@ -94,8 +95,9 @@ internal fun HomeScreen(app: AppState) {
         val heroHeight = (maxHeight * 0.62f).coerceIn(340.dp, 720.dp)
         val width = maxWidth
         val featured = home.featured
-        val heroImage = rememberArtwork(featured?.wide, width)
-        // Without wide artwork the hero is generated, in the color of the poster where there is one.
+        // Without wide artwork the poster fills the hero where the hero is not too wide for it (a phone held
+        // upright); otherwise the hero is generated, in the color of the poster where there is one.
+        val heroImage = rememberArtwork(featured?.let { ArtworkChoice.landscape(it.wide, it.poster, width / heroHeight) }.orEmpty(), width)
         val heroPoster = rememberArtwork(featured?.poster, 220.dp)
         val atmosphere = if (featured != null) rememberPageTone(heroImage ?: heroPoster, featured.title) else RefluxColors.background
         val list = rememberLazyListState()

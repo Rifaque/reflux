@@ -43,6 +43,7 @@ import androidx.compose.ui.unit.dp
 import dev.reflux.core.model.ArtworkLocator
 import dev.reflux.design.ArtworkAtmosphere
 import dev.reflux.design.Motion
+import dev.reflux.ui.state.ArtworkChoice
 import dev.reflux.ui.state.ArtworkLoader
 import dev.reflux.ui.state.Formatting
 import dev.reflux.ui.state.MediaCard
@@ -62,13 +63,20 @@ private const val SIZE_BUCKET_PX = 160
 
 /** Loads [locator] at about [width]; null while loading, when there is no artwork, or when it is unavailable. */
 @Composable
-fun rememberArtwork(locator: ArtworkLocator?, width: Dp): ImageBitmap? {
+fun rememberArtwork(locator: ArtworkLocator?, width: Dp): ImageBitmap? = rememberArtwork(listOfNotNull(locator), width)
+
+/**
+ * The first of [choices] (best first, from [ArtworkChoice]) that can be had, loaded at about [width]: one that
+ * cannot be read now (offline and not cached, or out of the platform's reach) gives way to the next.
+ */
+@Composable
+fun rememberArtwork(choices: List<ArtworkLocator>, width: Dp): ImageBitmap? {
     val loader = LocalArtworkLoader.current
     val pixels = with(LocalDensity.current) { width.toPx() }
     val bucket = (ceil(pixels / SIZE_BUCKET_PX).toInt().coerceAtLeast(1)) * SIZE_BUCKET_PX
-    var image by remember(locator, bucket) { mutableStateOf(locator?.let { loader.cached(it, bucket) }) }
-    LaunchedEffect(locator, bucket) {
-        if (image == null && locator != null) image = loader.load(locator, bucket)
+    var image by remember(choices, bucket) { mutableStateOf(choices.firstOrNull()?.let { loader.cached(it, bucket) }) }
+    LaunchedEffect(choices, bucket) {
+        if (image == null) image = choices.firstNotNullOfOrNull { loader.cached(it, bucket) ?: loader.load(it, bucket) }
     }
     return image
 }
@@ -243,7 +251,8 @@ fun PosterCard(card: MediaCard, onClick: () -> Unit, modifier: Modifier = Modifi
     val layout = LocalLayout.current
     val width = layout.posterWidthDp.dp
     val shape = RoundedCornerShape(12.dp)
-    val poster = rememberArtwork(card.poster, width)
+    // A work with only a backdrop shows its backdrop, cropped to its middle, rather than a generated card.
+    val image = rememberArtwork(ArtworkChoice.portrait(card.poster, card.wide), width)
     Column(if (fill) modifier.fillMaxWidth() else modifier.width(width), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Pressable(
             {
@@ -254,7 +263,7 @@ fun PosterCard(card: MediaCard, onClick: () -> Unit, modifier: Modifier = Modifi
             shape,
         ) { active ->
             Box(Modifier.fillMaxWidth().aspectRatio(2f / 3f)) {
-                ArtworkImage(poster, Modifier.fillMaxSize()) { TitlePlaceholder(card.title, null) }
+                ArtworkImage(image, Modifier.fillMaxSize()) { TitlePlaceholder(card.title, null) }
                 if (active) Box(Modifier.fillMaxSize().background(Color.White.copy(alpha = 0.06f)))
                 // Progress sits on a short shadow, so it reads on the brightest poster.
                 if (card.progress != null) {
@@ -267,9 +276,9 @@ fun PosterCard(card: MediaCard, onClick: () -> Unit, modifier: Modifier = Modifi
         }
         // Two lines are always reserved so rows line up; a placeholder already says the title, so only the caption follows it.
         Column(Modifier.padding(horizontal = 2.dp)) {
-            if (poster != null) Text(card.title, style = LocalTypography.current.captionStrong, maxLines = 1)
+            if (image != null) Text(card.title, style = LocalTypography.current.captionStrong, maxLines = 1)
             Caption(card.caption, card.downloaded)
-            if (poster == null) Text(" ", style = LocalTypography.current.captionStrong, maxLines = 1)
+            if (image == null) Text(" ", style = LocalTypography.current.captionStrong, maxLines = 1)
         }
     }
 }
@@ -289,10 +298,11 @@ fun WideCard(card: MediaCard, onClick: () -> Unit, modifier: Modifier = Modifier
     val layout = LocalLayout.current
     val width = (layout.posterWidthDp * 1.9f).dp
     val shape = RoundedCornerShape(14.dp)
+    val image = rememberArtwork(ArtworkChoice.landscape(card.wide, card.poster, 16f / 9f), width)
     Column(modifier.width(width), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Pressable(onClick, Modifier.semantics { contentDescription = describe(card) }, shape, lift = 0.6f) { active ->
             Box(Modifier.fillMaxWidth().aspectRatio(16f / 9f)) {
-                ArtworkImage(card.wide ?: card.poster, width, Modifier.fillMaxSize(), alignment = Alignment.TopCenter) {
+                ArtworkImage(image, Modifier.fillMaxSize(), alignment = Alignment.TopCenter) {
                     TitlePlaceholder(card.title, null)
                 }
                 Box(
@@ -302,7 +312,8 @@ fun WideCard(card: MediaCard, onClick: () -> Unit, modifier: Modifier = Modifier
                 )
                 if (active) Box(Modifier.fillMaxSize().background(Color.White.copy(alpha = 0.06f)))
                 Box(Modifier.fillMaxSize().border(1.dp, Color.White.copy(alpha = 0.07f), shape))
-                if (card.wide != null || card.poster != null) {
+                // A placeholder already says the title; real artwork has it said on it.
+                if (image != null) {
                     Text(
                         card.title,
                         Modifier.align(Alignment.BottomStart).padding(start = 12.dp, end = 12.dp, bottom = 20.dp),

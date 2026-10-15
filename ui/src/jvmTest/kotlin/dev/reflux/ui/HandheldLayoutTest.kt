@@ -46,6 +46,24 @@ class HandheldLayoutTest {
     }
 
     @Test
+    fun aPosterOnlyWorkOpensOnItsPosterOnAPhone() {
+        val platform = FakePlatform(backdrops = false)
+        screen(populated(), platform, width = phoneWidth, height = phoneHeight) { app ->
+            awaitText("Recently Added")
+            waitForIdle()
+            fun acrossTheScreen() = platform.artwork.served.any { (url, width) -> url.endsWith("poster/Whiplash") && width >= phoneWidth }
+            assertTrue(!acrossTheScreen(), "not already drawn across the screen by Home's hero")
+            app.navigator.open(Destination.Details(app.library.movies().first { it.item.title == "Whiplash" }.item.id))
+            awaitText("Play")
+            // The header of a phone held upright is nearly poster-shaped: the poster fills it, at the header's width,
+            // rather than leaving the work with a generated backdrop in its color.
+            await("the poster across the header") { acrossTheScreen() }
+            waitForIdle()
+            save("phone-details-poster-only")
+        }
+    }
+
+    @Test
     fun aPhoneNavigatesFromTheBottomOfTheScreen() = screen(populated(), width = phoneWidth, height = phoneHeight) { app ->
         awaitText("Recently Added")
         // The sections are within reach of a thumb, and there is no bar along the top.

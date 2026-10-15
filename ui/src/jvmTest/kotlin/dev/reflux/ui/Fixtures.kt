@@ -196,22 +196,35 @@ object FakeCatalog : MetadataProvider {
     }
 }
 
-/** Paints a distinct image for every artwork URL, standing in for posters and backdrops; [backdrops] false leaves works with posters only. */
-class FakeArtwork(private val enabled: Boolean = true, private val backdrops: Boolean = true) : ArtworkLoader {
+/**
+ * Paints a distinct image for every artwork URL and every image file in a source, standing in for posters and
+ * backdrops. [backdrops] false leaves works with posters only, [posters] false with backdrops only: the other
+ * image is there but cannot be read.
+ */
+class FakeArtwork(private val enabled: Boolean = true, private val backdrops: Boolean = true, private val posters: Boolean = true) : ArtworkLoader {
     private val images = mutableMapOf<Pair<ArtworkLocator, Int>, ImageBitmap>()
+
+    /** Every image handed out, as its URL and the width in pixels it was asked for. */
+    val served: List<Pair<String, Int>> get() = synchronized(images) { images.keys.map { name(it.first) to it.second } }
+
+    private fun name(locator: ArtworkLocator) = when (locator) {
+        is ArtworkLocator.Remote -> locator.url
+        is ArtworkLocator.SourceFile -> "file:${locator.location.path}"
+    }
 
     override fun cached(locator: ArtworkLocator, widthPx: Int): ImageBitmap? = synchronized(images) { images[locator to widthPx] }
 
     override suspend fun load(locator: ArtworkLocator, widthPx: Int): ImageBitmap? {
-        if (!enabled || locator !is ArtworkLocator.Remote || (!backdrops && "backdrop" in locator.url)) return null
-        return synchronized(images) { images.getOrPut(locator to widthPx) { paint(locator.url, widthPx) } }
+        val name = name(locator)
+        if (!enabled || (!backdrops && "backdrop" in name) || (!posters && "poster" in name)) return null
+        return synchronized(images) { images.getOrPut(locator to widthPx) { paint(name, widthPx) } }
     }
 
     /** An image already painted for a URL containing [part]. */
     fun painted(part: String): ImageBitmap? = synchronized(images) { images.entries.firstOrNull { (it.key.first as? ArtworkLocator.Remote)?.url?.contains(part) == true }?.value }
 
     private fun paint(url: String, widthPx: Int): ImageBitmap {
-        val wide = "backdrop" in url
+        val wide = "backdrop" in url || "fanart" in url
         val width = widthPx.coerceIn(64, 1600)
         val height = if (wide) width * 9 / 16 else width * 3 / 2
         val hue = (url.hashCode().absoluteValue % 360).toFloat()
@@ -242,13 +255,14 @@ val testDevice = DeviceCapabilities(
 class FakePlatform(
     artwork: Boolean = true,
     backdrops: Boolean = true,
+    posters: Boolean = true,
     override val television: Boolean = false,
     override val systemVolume: Boolean = television,
     override val folderBrowser: FolderBrowser? = null,
     override val offline: Offline? = null,
     override val connections: SourceConnections? = null,
 ) : Platform {
-    override val artwork: FakeArtwork = FakeArtwork(artwork, backdrops)
+    override val artwork: FakeArtwork = FakeArtwork(artwork, backdrops, posters)
     override val device: DeviceCapabilities = testDevice
     override val preferredLanguages: List<String> = listOf("en")
     override var canPlay: Boolean = true
