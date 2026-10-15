@@ -514,3 +514,40 @@ Why it was rejected:
 What a television shows without it: the shared fallback rule (`ArtworkChoice`, previous entry) over whatever artwork the work has. On Android 13 and later that is never a `poster.jpg` or `fanart.jpg` beside a video in local storage, since the system lists only the videos there. So a local work shows provider artwork when it is identified and was fetched online (cached for offline after that), or the generated title treatment. Android 12 and earlier read the sidecar images under `READ_EXTERNAL_STORAGE` as before.
 
 Possible future direction, not committed to: local artwork that reads no further than the video itself, needing no new permission. That could be cover art embedded in the file (Matroska attachments, MP4 `covr`) or a frame of the video. Either would be its own decision when it is taken up.
+
+## 2026-10-16 — A source that goes silent during playback: thirty seconds of waiting, then a stated failure
+
+Decided, not yet built. A source can stop sending data without closing its connection: a machine that lost power or its network, a server that hung, a link that dropped somewhere between. Nothing then reports a failure; the engine waits. Observed against a real Jellyfin server (ROADMAP.md, the live verification): the desktop player buffered for as long as it was left, while Media3 on Android reported the source unreachable through its own read timeout about two seconds after its buffer ran out. This entry decides what the viewer gets, the same on every platform. Ending normally, and a stream that fails or ends early, already behave as they should and are not changed.
+
+The rule extends the one for a playback that never starts (2026-10-12, "The engine is never waited for on the UI thread"): silence has a limit, and the limit is the viewer's patience, not the network's.
+
+- **Silence the viewer cannot see is nothing.** While the engine plays from what it has buffered, nothing is shown and nothing is decided. Most stalls on a home network end inside the buffer.
+- **Waiting shows as waiting.** When playback wants to run and has no data (the `Player` contract's `BUFFERING`, which includes waiting for a seek to land), the player shows that it is waiting, as it does today. A paused player is not waiting, and time paused does not count.
+- **After thirty seconds of waiting, the wait is a stated failure.** The player says that the source has stopped sending and offers Try again and the way back. Thirty seconds is the patience Reflux already gives a playback that does not start. It is longer than the ordinary causes of a long wait (a disk spinning up, a NAS waking from sleep, a seek far into a large file over a slow link), and short enough that a viewer is not left watching a spinner with no way to know whether anything is happening. It is not a setting.
+- **If the data comes back, the message makes way.** While the message shows, the player stays where it was. If playback starts again by itself, the message goes and playback continues, as with a playback that starts late.
+- **Try again is the viewer's.** It plans the playback afresh from the position kept, as pressing Play would: the source is checked, Best Version chooses again (another available copy may now be the one), and the handoff applies. Reflux runs no retry loop of its own and no backoff: an automatic retry is activity the viewer cannot see or stop, and the two cases it would serve are already covered, a source that comes back by itself (the message makes way) and one that does not (Try again, or another copy).
+- **The playback failed; the source is checked, not assumed.** A stated failure asks for the source to be checked, as an unreachable file already does. The source's card and the library show it offline only if that check cannot reach it. A server that answers the check but stalls a stream stays online, which is the truth.
+- **An engine that knows sooner may say so sooner.** Where an engine concludes by itself that the source cannot be reached (Media3's read timeout and retries do), that failure is shown when it comes, in the same words and with the same actions. Reflux does not hold back a real failure to match the slower engine. The thirty seconds are the limit, not a delay.
+- **Watch state does not change.** A stall is never an ending: the position kept is the one the engine reports when playback is left, as for every other stop, and the 90% rule applies to it as everywhere (WATCH_STATE.md). Nothing about a stall marks a work watched, counts a play, or clears a position.
+
+The same on every platform: the waiting, the thirty seconds, the message, Try again, the way back, and what is kept. Underneath, the engines may differ: how long each waits for a byte, whether it reconnects by itself, and how soon it reports a failure. Because the limit is measured on the `Player` contract's states, it lives in the shared playback session (beside the startup limit) and needs nothing from either engine.
+
+Alternatives considered:
+
+- **Leave it to the engines.** Rejected: one engine never gives up, the other gives up on its own terms, and the viewer would get a different product on each.
+- **An engine timeout as the rule** (mpv's or Media3's network timeouts). Rejected as the rule: they measure the network, not the wait the viewer sees, they behave differently per engine and per stage of a stream, and an engine reconnecting in the background would hide the wait from them. An engine timeout may still be set where implementing this shows it is needed (for instance so that Try again is not held up by a hung connection), as an engine detail.
+- **A shorter limit** (ten to fifteen seconds). Rejected: a disk or a NAS waking, or a long seek over a slow link, can take that long, and the spinner already says what is happening.
+- **Automatic retries with backoff.** Rejected for v1, for the reasons under Try again. It can be revisited if real use shows stalls that recover only on a new connection and are common.
+- **Marking the source offline when a stream stalls.** Rejected: a stall is a fact about one playback. Whether a source is there is decided by checking it.
+
+What implementing it must show, deterministically (the shared session with a fake player, as its existing tests do, plus each engine where its behavior is the point):
+
+- a stall shorter than the limit shows waiting and nothing else, and playback continues by itself;
+- waiting for the limit becomes the stated failure, with Try again and the way back, exactly once;
+- time paused, and time playing from the buffer, do not count toward the limit; a stall that ends restarts the count;
+- data returning while the failure shows clears it and playback continues;
+- Try again plans afresh from the position kept, and may choose another available copy;
+- the stated failure asks for the source to be checked, and the source is shown offline only when the check fails;
+- an engine's own earlier failure is shown at once, with the same message and actions;
+- the position kept is the position at leaving, the 90% rule applies unchanged, and a stall never completes a work or counts a play;
+- on the desktop, a silent connection held open (as the live run did, with a forwarder) reaches the stated failure, and Try again and leaving are not blocked by the hung engine.
