@@ -173,7 +173,7 @@ While Reflux plays a version from such a source, progress is also reported to it
 
 ### What a real server does
 
-The exchange is exercised against a real Jellyfin server by `JellyfinLiveTest` (it runs when `REFLUX_JELLYFIN_TEST` names a server; `tools/ci/jellyfin-test-server.sh` starts a throwaway one in Docker). Observed on Jellyfin Server 12.2.0, and relied on above:
+The exchange is exercised against a real Jellyfin server by `JellyfinLiveTest` (it runs when a server is named, in the environment or in `~/.reflux-live/jellyfin.env`, as CONTRIBUTING.md describes; `tools/ci/jellyfin-test-server.sh` starts a throwaway one in Docker). Observed on Jellyfin Server 12.2.0, and relied on above:
 
 - A stop reported for an item with no playback session started is accepted and sets the item's position and last-played date. This is how a position reaches the server at a scan.
 - Marking an item played clears its position and counts a play.
