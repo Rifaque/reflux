@@ -63,6 +63,10 @@ Known, deliberate, and visible in the library rather than silent:
 - **Multi-part files** (`CD1`/`CD2`, `part1`/`part2`) are identified as one work but appear as separate versions instead of playing in sequence. Solving it means a version made of several locations; the version model has one location per version today.
 - **Disc structures** (`BDMV`, `VIDEO_TS`) are recognized and skipped. Playing them means treating a folder as one playable version and handing the engine a disc path.
 
+## Playback over the network
+
+- A server that stops answering without closing its connections (a machine that loses power or its network) leaves the desktop player buffering for as long as it is left, once what it had buffered runs out; nothing reports it as a failure, and stopping keeps the position. A server that closes its connections is reported as unreachable. Observed against a real Jellyfin server on 2026-10-15; Android's player was not tried.
+
 ## Platforms and input
 
 - Verified: Windows 11, and Linux on X11 with a compositing manager (Ubuntu 24.04). Wayland has only been reached through XWayland; X11 without a compositor shows the player's controls window opaque.
