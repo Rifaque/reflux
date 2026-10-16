@@ -75,6 +75,8 @@ Recording follows the same rule in the other direction:
 - A report from a playing version stores the position together with that version's timeline.
 - The first minute of a *different* timeline does not replace where the user was. Glancing at another cut costs nothing.
 - Watching any copy to its end completes the work.
+- A playback that never got going (still opening when it was left, or failed to open) records nothing: the engine has no position of the viewer's to report, and the work's progress stays where it was.
+- Trying again after a playback failed (DECISIONS.md, 2026-10-16) records the position reached as progress, never as a stop, so it cannot complete a work wherever it happened. It then plans afresh as *continuing*: the position is where the viewer is even past 90% of the running time, where pressing Play would start the work over (`WatchRules.resumePosition`, `planPlayback(continuing = true)`).
 
 ## Choosing the version
 

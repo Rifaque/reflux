@@ -319,11 +319,22 @@ class PointerTest {
     fun aPlaybackFailureIsExplainedAndTheWayBackIsOneClick() = player { playing ->
         playing.player.fail("loading failed", PlaybackFailure.UNREACHABLE)
         awaitText("Playback stopped")
-        onNode(hasText("moved or deleted", substring = true)).assertExists()
+        onNode(hasText("stopped sending", substring = true)).assertExists()
         onNodeWithText("Details: loading failed").assertExists()
+        onNodeWithText("Try again").assertExists()
         assertFalse(exists("Timeline"), "controls for something that is not playing are not offered")
         onNodeWithText("Back to library").mouseClick()
         await("the player to close") { playing.app.playback == null }
+    }
+
+    @Test
+    fun aSourceThatStoppedSendingCanBeTriedAgainWithAClick() = player { playing ->
+        playing.player.fail("read timed out", PlaybackFailure.UNREACHABLE)
+        awaitText("Try again")
+        onNodeWithText("Try again").mouseClick()
+        await("playback to start again") { playing.player.requests.size == 2 && playing.app.playback?.error == null }
+        assertEquals(95_000, playing.player.requests.last().startPositionMs, "from where it was")
+        assertFalse(exists("Playback stopped"))
     }
 
     @Test

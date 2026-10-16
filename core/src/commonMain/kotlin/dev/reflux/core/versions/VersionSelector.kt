@@ -80,15 +80,17 @@ object VersionSelector {
     /**
      * @param preferred the version the user pinned for this work.
      * @param resuming the viewer's progress, when playback is going to continue from it.
+     * @param continuing playback picks up again after an interruption ([WatchRules.resumePosition]).
      */
     fun select(
         candidates: List<VersionCandidate>,
         device: DeviceCapabilities,
         preferred: VersionId? = null,
         resuming: WatchState? = null,
+        continuing: Boolean = false,
     ): VersionSelection {
         val ranked = candidates.map { RankedVersion(it, PlaybackAssessor.assess(it.version.stream, device)) }
-        val criteria = criteria(device, preferred, resuming)
+        val criteria = criteria(device, preferred, resuming, continuing)
         val comparator = Comparator<RankedVersion> { a, b ->
             for ((_, compare) in criteria) {
                 val result = compare(a, b)
@@ -110,17 +112,18 @@ object VersionSelector {
      * where they are kept and how large they are.
      */
     fun equivalent(a: RankedVersion, b: RankedVersion, device: DeviceCapabilities, preferred: VersionId? = null, resuming: WatchState? = null): Boolean =
-        criteria(device, preferred, resuming).takeWhile { it.first != SelectionCriterion.LOCALITY }.all { (_, compare) -> compare(a, b) == 0 }
+        criteria(device, preferred, resuming, continuing = false).takeWhile { it.first != SelectionCriterion.LOCALITY }.all { (_, compare) -> compare(a, b) == 0 }
 
     /** Each criterion returns a negative number when the first argument is better. */
     private fun criteria(
         device: DeviceCapabilities,
         preferred: VersionId?,
         resuming: WatchState?,
+        continuing: Boolean,
     ): List<Pair<SelectionCriterion, (RankedVersion, RankedVersion) -> Int>> = listOf(
         SelectionCriterion.AVAILABILITY to { a, b -> availabilityRank(a).compareTo(availabilityRank(b)) },
         SelectionCriterion.COMPATIBILITY to { a, b -> better(supported(a), supported(b)) },
-        SelectionCriterion.CONTINUITY to { a, b -> breaksContinuity(a, resuming).compareTo(breaksContinuity(b, resuming)) },
+        SelectionCriterion.CONTINUITY to { a, b -> breaksContinuity(a, resuming, continuing).compareTo(breaksContinuity(b, resuming, continuing)) },
         SelectionCriterion.USER_PREFERENCE to { a, b -> better(isPreferred(a, preferred), isPreferred(b, preferred)) },
         SelectionCriterion.FEWER_COMPROMISES to { a, b ->
             compareValuesBy(a, b, { it.assessment.verdict }, { it.assessment.compromises.size })
@@ -140,8 +143,8 @@ object VersionSelector {
     private fun isPreferred(version: RankedVersion, preferred: VersionId?): Boolean =
         version.version.id == preferred && version.playable
 
-    private fun breaksContinuity(version: RankedVersion, resuming: WatchState?): Boolean =
-        Handoff.relation(resuming, version.version) == TimelineMatch.DIFFERENT
+    private fun breaksContinuity(version: RankedVersion, resuming: WatchState?, continuing: Boolean): Boolean =
+        Handoff.relation(resuming, version.version, continuing) == TimelineMatch.DIFFERENT
 
     private fun availabilityRank(version: RankedVersion): Int = when (version.candidate.availability) {
         Availability.AVAILABLE -> 0

@@ -91,6 +91,37 @@ class PlaybackControllerTest {
     }
 
     @Test
+    fun stoppingToPlayAgainRecordsProgressAndNeverAnEnding() = runTest(UnconfinedTestDispatcher()) {
+        started()
+        // Past 90%, waiting for data that does not come; Try again stops the playback to plan it afresh.
+        playing(95_000)
+        player.state.value = player.state.value.copy(status = PlayerStatus.BUFFERING)
+        controller.stop(final = false)
+        assertEquals(listOf("progress:95000", "progress:95000"), reporter.events, "no stop, so nothing can complete the work")
+        controller.stop()
+        assertEquals(2, reporter.events.size, "and the playback's record is closed")
+    }
+
+    @Test
+    fun aPlaybackThatNeverGotGoingRecordsNothing() = runTest(UnconfinedTestDispatcher()) {
+        // Still opening (an engine that never starts, a source that never answers), or failed to open: the
+        // engine's position is not the viewer's, and recording it would lose where they were.
+        started()
+        controller.stop()
+        player.state.value = PlayerState(status = PlayerStatus.ERROR, failure = PlaybackFailure.UNREACHABLE)
+        started()
+        player.state.value = PlayerState(status = PlayerStatus.ERROR, failure = PlaybackFailure.UNREACHABLE)
+        controller.stop(final = false)
+        assertEquals(emptyList(), reporter.events)
+
+        started()
+        playing(30_000)
+        player.state.value = player.state.value.copy(status = PlayerStatus.ERROR, failure = PlaybackFailure.UNREACHABLE)
+        controller.stop()
+        assertEquals(listOf("progress:30000", "stopped:30000"), reporter.events, "one that played keeps the position it reached")
+    }
+
+    @Test
     fun appliesDefaultTracksOnce() = runTest(UnconfinedTestDispatcher()) {
         started()
         val tracks = listOf(
