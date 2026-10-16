@@ -29,12 +29,14 @@ class PlaybackController(
     private var lastReportedMs = -1L
     private var tracksApplied = false
     private var finished = false
+    private var begun = false
 
     /** Loads [request] and starts observing the player. */
     fun start(scope: CoroutineScope, request: PlaybackRequest) {
         job?.cancel()
         tracksApplied = false
         finished = false
+        begun = false
         lastReportedMs = -1L
         player.load(request)
         job = scope.launch { player.state.collect(::onState) }
@@ -65,19 +67,30 @@ class PlaybackController(
         return true
     }
 
-    /** Stops playback and records the final position. */
-    fun stop() {
+    /**
+     * Stops playback and records the final position.
+     *
+     * A playback that never got going (still opening, or failed to open) has no position of its own, and
+     * records nothing: the work's progress stays where it was.
+     *
+     * @param final false stops in order to play the work again (Try again after a failure). The position is
+     *   then recorded as progress, which never completes a work: nothing about trying again is an ending.
+     */
+    fun stop(final: Boolean = true) {
         val state = player.state.value
         job?.cancel()
         job = null
         if (!finished) {
             finished = true
-            reporter.stopped(itemId, state.positionMs, state.durationMs)
+            if (begun || state.status in PLAYED) {
+                if (final) reporter.stopped(itemId, state.positionMs, state.durationMs) else reporter.progress(itemId, state.positionMs, state.durationMs)
+            }
         }
         player.stop()
     }
 
     private fun onState(state: PlayerState) {
+        if (state.status in PLAYED) begun = true
         if (!tracksApplied && state.tracks.isNotEmpty() && state.status != PlayerStatus.LOADING) {
             tracksApplied = true
             applyDefaultTracks(state)
@@ -120,6 +133,9 @@ class PlaybackController(
         const val RESTART_THRESHOLD_MS: Long = 5_000
         const val VOLUME_STEP: Int = 5
         val SPEEDS: List<Double> = listOf(0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0)
+
+        /** States in which the engine has a position of the playback's own. */
+        private val PLAYED = setOf(PlayerStatus.PLAYING, PlayerStatus.PAUSED, PlayerStatus.ENDED)
 
         fun nextSpeed(current: Double, up: Boolean): Double =
             if (up) SPEEDS.firstOrNull { it > current + 1e-6 } ?: SPEEDS.last()

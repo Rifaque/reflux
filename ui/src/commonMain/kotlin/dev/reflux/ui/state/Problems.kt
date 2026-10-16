@@ -32,6 +32,7 @@ internal object Problems {
     const val SOURCE_NOT_REMOVED = "That source couldn't be removed."
     const val TRACK_GONE ="That track is no longer available."
     const val PLAYBACK_STALLED = "Playback isn't starting. The file may be slow to reach, or video couldn't be started on this device."
+    const val SOURCE_STOPPED = "The source stopped sending this. It may be asleep, busy, or no longer connected."
 
     fun noEngine(hint: String?): String = listOfNotNull("Reflux has no playback engine on this device yet.", hint).joinToString(" ")
 
@@ -61,8 +62,11 @@ internal object Problems {
     }
 }
 
-/** A playback failure as the player shows it: [message] for the user, [detail] from the engine for diagnostics. */
-data class PlaybackError(val message: String, val detail: String?)
+/**
+ * A playback failure as the player shows it: [message] for the user, [detail] from the engine for diagnostics.
+ * [canRetry] offers Try again, for failures that may pass (a source that stopped answering or sending).
+ */
+data class PlaybackError(val message: String, val detail: String?, val canRetry: Boolean = false)
 
 /** Why nothing of [itemId] can be played right now: no file, sources that are away, or formats this device lacks. */
 internal fun Library.unplayableReason(itemId: MediaId, device: DeviceCapabilities, sources: (SourceId) -> MediaSource?): String {

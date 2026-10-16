@@ -35,6 +35,8 @@ data class PlaybackPlan(
  *
  * @param versionId plays a specific version instead of Best Version (from the version picker).
  * @param resume false starts from the beginning ("Play from start").
+ * @param continuing picks up a playback that was interrupted (Try again after a failure): the position is
+ *   where the viewer is even near the end, where Play would otherwise start the work over.
  * @return null when no version is currently playable (e.g. its source is offline).
  */
 suspend fun Library.planPlayback(
@@ -43,8 +45,9 @@ suspend fun Library.planPlayback(
     sources: (SourceId) -> MediaSource?,
     versionId: VersionId? = null,
     resume: Boolean = true,
+    continuing: Boolean = false,
 ): PlaybackPlan? {
-    val selection = selectVersion(itemId, device, resuming = resume)
+    val selection = selectVersion(itemId, device, resuming = resume, continuing = continuing)
     val chosen = if (versionId != null) {
         selection.ranked.firstOrNull { it.version.id == versionId && it.playable }
     } else {
@@ -61,7 +64,7 @@ suspend fun Library.planPlayback(
             hearingImpaired = subtitle.hearingImpaired,
         )
     }
-    val start = if (resume) Handoff.resume(watchState(itemId), version) else ResumePoint.START
+    val start = if (resume) Handoff.resume(watchState(itemId), version, continuing) else ResumePoint.START
     val request = PlaybackRequest(
         target = source.playbackTarget(version.location.path),
         title = playbackTitle(itemId),

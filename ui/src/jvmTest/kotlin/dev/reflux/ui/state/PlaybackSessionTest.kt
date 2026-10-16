@@ -190,7 +190,8 @@ class PlaybackSessionTest {
 
     @Test
     fun failuresAreExplainedInTheUsersTermsAndKeptForDiagnostics() = runTest {
-        val playing = playing("Breaking Bad", 0)
+        // A file that could not be opened at all; one that stops arriving is SourceSilenceTest's.
+        val playing = playing("Breaking Bad", 0, FakePlatform().apply { starts = false })
         playing.player.fail("loading failed", PlaybackFailure.UNREACHABLE)
         runCurrent()
         val error = assertNotNull(playing.session.error)

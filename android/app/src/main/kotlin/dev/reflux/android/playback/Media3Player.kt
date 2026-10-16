@@ -126,7 +126,7 @@ class Media3Player(context: Context, override val capabilities: DeviceCapabiliti
 
         override fun onPlayerError(error: PlaybackException) {
             mutableState.update {
-                it.copy(status = PlayerStatus.ERROR, failure = failureOf(error), error = "${error.errorCodeName}: ${error.message.orEmpty()}")
+                it.copy(status = PlayerStatus.ERROR, failure = failureOf(error.errorCode), error = "${error.errorCodeName}: ${error.message.orEmpty()}")
             }
         }
     }
@@ -346,8 +346,12 @@ class Media3Player(context: Context, override val capabilities: DeviceCapabiliti
     companion object {
         private const val POSITION_INTERVAL_MS = 500L
 
-        /** Says what went wrong in the player's terms, from the engine's error code. */
-        fun failureOf(error: PlaybackException): PlaybackFailure = when (error.errorCode) {
+        /**
+         * Says what went wrong in the player's terms, from the engine's error code ([PlaybackException]).
+         * Its own read timeout on a source that went silent is an I/O error: the source is unreachable, which
+         * the shared player states as the source having stopped once playback had begun.
+         */
+        fun failureOf(errorCode: Int): PlaybackFailure = when (errorCode) {
             in 2000..2999 -> PlaybackFailure.UNREACHABLE
             in 3000..4999 -> PlaybackFailure.UNSUPPORTED
             in 5000..5999 -> PlaybackFailure.OUTPUT

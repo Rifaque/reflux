@@ -69,9 +69,11 @@ class PlaybackSession internal constructor(
     private var controller: PlaybackController? = null
     private var reporter: SerialWatchReporter? = null
     private var sourceId: SourceId? = null
+    private var itemId: MediaId? = null
     private var countdown: Job? = null
-    private var startup: Job? = null
-    private var stalled = false
+    private var waiting: Job? = null
+    private var waitedTooLong = false
+    private var begun = false
     private var endHandled = false
     private var closing: Job? = null
     private val closed: Boolean get() = closing != null
@@ -132,6 +134,11 @@ class PlaybackSession internal constructor(
         error = null
         menu = null
         endHandled = false
+        begun = false
+        waitedTooLong = false
+        waiting?.cancel()
+        waiting = null
+        this.itemId = itemId
         entry = details.entry
         title = details.heading.first
         subtitle = details.heading.second
@@ -151,27 +158,56 @@ class PlaybackSession internal constructor(
             preferences = TrackPreferences(app.platform.preferredLanguages),
             onSkip = { forward -> switchTo(if (forward) next else previous) },
         ).also { it.start(scope, plan.request) }
-        watchStartup()
+        // The engine may already say what it said for the last load; the wait for this one starts now.
+        watchWaiting(player.state.value.status)
         Problems.handoff(plan.resume)?.let(app::notify)
     }
 
     /**
-     * An engine that cannot start (its video output failed to come up, a source that never answers) reports
-     * nothing at all. After a while that silence is itself the failure, and the viewer is told and offered
-     * the way back. If playback does begin after all, the message makes way for it.
+     * The viewer's patience, measured on the player's states and nothing else: [PATIENCE_MS] of continuous
+     * waiting (loading, or playback that wants to run and has no data) becomes a stated failure, once. An
+     * engine that cannot start, or a source that stops sending without closing its connection, reports
+     * nothing at all, so the silence itself is the failure. Playing from what is buffered is not waiting,
+     * time paused is not waiting, and a wait that ends restarts the count. If playback goes on after all,
+     * the message makes way for it.
      */
-    private fun watchStartup() {
-        startup?.cancel()
-        stalled = false
-        startup = scope.launch {
-            delay(STARTUP_PATIENCE_MS)
-            if (error == null && player.state.value.status == PlayerStatus.LOADING) {
-                stalled = true
-                error = PlaybackError(Problems.PLAYBACK_STALLED, null)
-                menu = null
-                app.platform.report("Playback of \"$title\" did not start within ${STARTUP_PATIENCE_MS / 1000} s")
+    private fun watchWaiting(status: PlayerStatus) {
+        if (status !in WAITING) {
+            waiting?.cancel()
+            waiting = null
+        } else if (waiting == null && error == null) {
+            waiting = scope.launch {
+                delay(PATIENCE_MS)
+                giveUpWaiting()
             }
         }
+    }
+
+    private fun giveUpWaiting() {
+        if (error != null || player.state.value.status !in WAITING) return
+        waitedTooLong = true
+        error = PlaybackError(if (begun) Problems.SOURCE_STOPPED else Problems.PLAYBACK_STALLED, null, canRetry = true)
+        menu = null
+        app.platform.report(
+            if (begun) "Playback of \"$title\" waited ${PATIENCE_MS / 1000} s for data" else "Playback of \"$title\" did not start within ${PATIENCE_MS / 1000} s",
+        )
+        // The playback failed; whether the source is there is for a check of the source to say.
+        sourceId?.let(app::checkSource)
+    }
+
+    /**
+     * Try again after a failure that may pass: plans the playback afresh from where it was, as pressing Play
+     * would. The source is checked, Best Version chooses again (another copy may now be the one), and the
+     * handoff applies. The position reached is kept as progress first; trying again never ends a work.
+     */
+    fun retry() {
+        val current = itemId
+        if (current == null || closed || error?.canRetry != true) return
+        touch()
+        error = null
+        waitedTooLong = false
+        controller?.stop(final = false)
+        replan(current, "Trying playback again failed", "This couldn't be played right now.", continuing = true)
     }
 
     /** Handles a semantic action while the player is open. Every action counts as "still watching". */
@@ -183,7 +219,11 @@ class PlaybackSession internal constructor(
             action == SemanticAction.STOP -> close()
             action == SemanticAction.FULLSCREEN -> app.platform.requestFullscreen(!app.platform.fullscreen)
             open != null -> handleInMenu(open, action)
-            error != null -> if (action in LEAVING) close()
+            // Select takes the failure's first offer, Try again where there is one; back is always the way back.
+            error != null -> when {
+                action == SemanticAction.BACK -> close()
+                action in LEAVING -> if (error?.canRetry == true) retry() else close()
+            }
             action == SemanticAction.MENU -> showMenu(defaultMenu())
             action == SemanticAction.BACK -> close()
             action == SemanticAction.PLAY_PAUSE || action == SemanticAction.SELECT -> when {
@@ -389,34 +429,45 @@ class PlaybackSession internal constructor(
 
     private fun switchTo(target: LibraryEntry?): Boolean {
         if (target == null || closed) return false
+        replan(target.item.id, "Moving to another episode failed", "That episode couldn't be played right now.")
+        return true
+    }
+
+    /** Plans [itemId] as Play does and plays it here; when nothing can be played, says why and leaves. */
+    private fun replan(itemId: MediaId, failure: String, notice: String, continuing: Boolean = false) {
         countdown?.cancel()
         upNext = null
         scope.launch {
             try {
-                val plan = app.read { planPlayback(target.item.id, app.platform.device, app.sources) }
+                // What was recorded so far is written before the plan reads the work's progress.
+                reporter?.flush()
+                val plan = app.read { planPlayback(itemId, app.platform.device, app.sources, continuing = continuing) }
                 if (plan == null) {
-                    app.notify(app.read { unplayableReason(target.item.id, app.platform.device, app.sources) })
+                    app.notify(app.read { unplayableReason(itemId, app.platform.device, app.sources) })
                     close()
                 } else {
-                    reporter?.flush()
                     load(plan)
                 }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                app.platform.report("Moving to another episode failed", e)
-                app.notify("That episode couldn't be played right now.")
+                app.platform.report(failure, e)
+                app.notify(notice)
                 close()
             }
         }
-        return true
     }
 
     private fun onState(state: PlayerState) {
-        if (stalled && state.status in STARTED) {
-            stalled = false
-            error = null
+        if (state.status == PlayerStatus.PLAYING || state.status == PlayerStatus.PAUSED) {
+            begun = true
+            // Data came back: a wait that had become a failure was only a wait after all.
+            if (waitedTooLong) {
+                waitedTooLong = false
+                error = null
+            }
         }
+        watchWaiting(state.status)
         when (state.status) {
             PlayerStatus.ENDED -> if (!endHandled) {
                 endHandled = true
@@ -427,13 +478,21 @@ class PlaybackSession internal constructor(
         }
     }
 
+    /**
+     * An engine's own failure, shown when it comes. A source that could not be reached once playback had
+     * begun is the source stopping, whether the engine gave up by itself (Media3's read timeout) or the
+     * stream ended short: it reads as the waiting limit does and offers the same Try again.
+     */
     private fun onFailed(state: PlayerState) {
-        error = PlaybackError(Problems.playback(state.failure), state.error)
+        val unreachable = state.failure == PlaybackFailure.UNREACHABLE
+        val message = if (unreachable && begun) Problems.SOURCE_STOPPED else Problems.playback(state.failure)
+        error = PlaybackError(message, state.error, canRetry = unreachable)
         menu = null
         cancelUpNext()
         app.platform.report("Playback of \"$title\" failed: ${state.failure ?: PlaybackFailure.UNKNOWN} (${state.error ?: "no detail"})")
-        // The library may still describe a file that is gone; a rescan brings it up to date.
-        if (state.failure == PlaybackFailure.UNREACHABLE) sourceId?.let { app.refresh(it) }
+        // The library may still describe a file that is gone, or a source that is away; checking the source
+        // and rescanning it brings that up to date.
+        if (unreachable) sourceId?.let(app::checkSource)
     }
 
     private fun onEnded() {
@@ -471,10 +530,11 @@ class PlaybackSession internal constructor(
 
     private companion object {
         const val COUNTDOWN_TICK_MS = 250L
-        const val STARTUP_PATIENCE_MS = 30_000L
-        val STARTED = setOf(PlayerStatus.PLAYING, PlayerStatus.PAUSED, PlayerStatus.BUFFERING)
+        /** How long the viewer is left waiting, to start or for data, before the wait is a stated failure. */
+        const val PATIENCE_MS = 30_000L
+        val WAITING = setOf(PlayerStatus.LOADING, PlayerStatus.BUFFERING)
 
-        /** After a failure the player has one thing left to do, and every "go on" or "go back" does it. */
+        /** After a failure the player has one or two things left to do: every "go on" takes the first, back the way back. */
         val LEAVING = setOf(SemanticAction.BACK, SemanticAction.SELECT, SemanticAction.PLAY_PAUSE)
     }
 }

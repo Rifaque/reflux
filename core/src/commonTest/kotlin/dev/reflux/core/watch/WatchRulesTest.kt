@@ -44,6 +44,9 @@ class WatchRulesTest {
         assertFalse(state!!.completed)
         // Crashed near the end: do not offer to resume the credits.
         assertNull(WatchRules.resumePosition(state))
+        // But trying again on a playback that was interrupted there continues it.
+        assertEquals((1.95 * hour).toLong(), WatchRules.resumePosition(state, continuing = true))
+        assertNull(WatchRules.resumePosition(WatchRules.onProgress(null, id, 30_000, 2 * hour, nowMs = 1), continuing = true))
     }
 
     @Test

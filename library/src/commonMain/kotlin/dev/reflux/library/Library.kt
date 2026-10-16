@@ -322,8 +322,9 @@ class Library(
      *
      * @param resuming false ranks the versions for playing from the start, without regard to which cut
      *   the user is part-way through.
+     * @param continuing playback picks up again after an interruption ([WatchRules.resumePosition]).
      */
-    fun selectVersion(itemId: MediaId, device: DeviceCapabilities, resuming: Boolean = true): VersionSelection {
+    fun selectVersion(itemId: MediaId, device: DeviceCapabilities, resuming: Boolean = true, continuing: Boolean = false): VersionSelection {
         val candidates = versions(itemId).map { VersionCandidate(it.version, it.availability, it.locality) }
         val pinned = queries.preferredVersion(itemId.value).executeAsOneOrNull()?.let(::VersionId)
         // A copy on the device is the version it was made from: pinning one is honored by the other, so
@@ -332,7 +333,7 @@ class Library(
             queries.downloadOfOrigin(pin.value).executeAsOneOrNull()?.toModel()?.let(::copyOf)
                 ?.takeIf { it.availability != Availability.UNAVAILABLE }?.version?.id ?: pin
         }
-        return VersionSelector.select(candidates, device, preferred, if (resuming) watchState(itemId) else null)
+        return VersionSelector.select(candidates, device, preferred, if (resuming) watchState(itemId) else null, continuing)
     }
 
     fun setPreferredVersion(itemId: MediaId, versionId: VersionId?) {

@@ -15,6 +15,7 @@ dependencies {
     implementation(libs.jna)
     testImplementation(kotlin("test"))
     testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(project(":sources:local"))
 }
 
 compose.desktop {

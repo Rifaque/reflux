@@ -49,16 +49,19 @@ data class ResumePoint(val positionMs: Long?, val basis: ResumeBasis) {
  * never blindly to a different one.
  */
 object Handoff {
-    /** How [version]'s timeline relates to the one the viewer is part-way through, or null when nothing is in progress. */
-    fun relation(state: WatchState?, version: MediaVersion): TimelineMatch? {
-        if (state == null || WatchRules.resumePosition(state) == null) return null
+    /**
+     * How [version]'s timeline relates to the one the viewer is part-way through, or null when nothing is in
+     * progress. [continuing] as for [WatchRules.resumePosition].
+     */
+    fun relation(state: WatchState?, version: MediaVersion, continuing: Boolean = false): TimelineMatch? {
+        if (state == null || WatchRules.resumePosition(state, continuing) == null) return null
         val match = Timelines.compare(Timeline.of(state), Timeline.of(version))
         return if (sameVersion(state, version, match)) TimelineMatch.SAME else match
     }
 
-    /** Where playing [version] should start for a viewer whose progress is [state]. */
-    fun resume(state: WatchState?, version: MediaVersion): ResumePoint {
-        val position = WatchRules.resumePosition(state) ?: return ResumePoint.START
+    /** Where playing [version] should start for a viewer whose progress is [state]; [continuing] as for [WatchRules.resumePosition]. */
+    fun resume(state: WatchState?, version: MediaVersion, continuing: Boolean = false): ResumePoint {
+        val position = WatchRules.resumePosition(state, continuing) ?: return ResumePoint.START
         val match = Timelines.compare(Timeline.of(state!!), Timeline.of(version))
         return when {
             sameVersion(state, version, match) -> ResumePoint(position, ResumeBasis.SAME_VERSION)

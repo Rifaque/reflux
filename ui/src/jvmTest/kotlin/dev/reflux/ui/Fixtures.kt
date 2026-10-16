@@ -274,7 +274,10 @@ class FakePlatform(
     var chooseFolder: suspend () -> FolderChoice = { FolderChoice.Cancelled }
     var failToStart = false
 
-    override suspend fun createPlayer(): Player? = if (failToStart) null else FakePlayer(device).also { players += it }
+    /** False gives every new engine a file it accepts and never gets anywhere with ([FakePlayer.starts]). */
+    var starts = true
+
+    override suspend fun createPlayer(): Player? = if (failToStart) null else FakePlayer(device).also { it.starts = starts; players += it }
 
     /** Completes when the engine may go; lets a test hold a player in the middle of being released. */
     var releaseGate: CompletableDeferred<Unit>? = null

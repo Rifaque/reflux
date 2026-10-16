@@ -508,7 +508,12 @@ private fun nextHeading(prompt: UpNext): Pair<String, String?> {
 @Composable
 private fun Failure(session: PlaybackSession, error: PlaybackError, modifier: Modifier = Modifier) {
     Notice(modifier, "Playback stopped", error.message, detail = error.detail) {
-        Button("Back to library", { session.close() }, style = ButtonStyle.PRIMARY)
+        if (error.canRetry) {
+            Button("Try again", { session.retry() }, icon = Icon.PLAY, style = ButtonStyle.PRIMARY)
+            Button("Back to library", { session.close() })
+        } else {
+            Button("Back to library", { session.close() }, style = ButtonStyle.PRIMARY)
+        }
     }
 }
 

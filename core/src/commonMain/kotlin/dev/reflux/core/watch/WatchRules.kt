@@ -93,10 +93,15 @@ object WatchRules {
         )
     }
 
-    /** Where playback should start, or null to start from the beginning. */
-    fun resumePosition(state: WatchState?): Long? {
+    /**
+     * Where playback should start, or null to start from the beginning.
+     *
+     * @param continuing playback is picking up again after it was interrupted (Try again after a failure):
+     *   a position near the end is then where the viewer is, not a work they finished and are starting over.
+     */
+    fun resumePosition(state: WatchState?, continuing: Boolean = false): Long? {
         if (state == null || state.positionMs < MIN_RESUME_MS) return null
-        if (isCompletedAt(state.positionMs, state.durationMs)) return null
+        if (!continuing && isCompletedAt(state.positionMs, state.durationMs)) return null
         return state.positionMs
     }
 }
