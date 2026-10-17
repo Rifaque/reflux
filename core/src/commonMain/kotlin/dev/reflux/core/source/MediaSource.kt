@@ -74,14 +74,27 @@ data class SourceFile(
     val path: String,
     val sizeBytes: Long,
     val modifiedAtEpochMs: Long,
-)
+    /**
+     * Not a file: a folder at [path] that is there but could not be listed this time (a connection lost
+     * partway through a scan, a mount that stopped answering, permissions). Not being able to look is not
+     * evidence that anything below it is gone.
+     */
+    val unreadableFolder: Boolean = false,
+) {
+    companion object {
+        /** A folder at [path] that is there but could not be listed (see [unreadableFolder]). */
+        fun folderNotRead(path: String) = SourceFile(path, 0, 0, unreadableFolder = true)
+    }
+}
 
 /**
  * A source that lists files for Reflux to identify.
  *
  * [files] walks the source, applying [ScanRules] to skip directories and irrelevant files early.
- * It throws [SourceUnavailableException] if the source cannot be reached at all; unreadable
- * individual entries are skipped.
+ * It throws [SourceUnavailableException] if the source cannot be reached at all. A folder below the root
+ * that cannot be listed is reported with [SourceFile.folderNotRead] and the walk goes on; a scan that met
+ * one keeps what it knew and did not see. Other unreadable entries (a file that vanished, a broken link)
+ * are skipped.
  */
 interface FileEnumeratingSource : MediaSource {
     fun files(): Flow<SourceFile>

@@ -129,12 +129,13 @@ class Library(
         }
     }
 
-    private fun scanFiles(id: SourceId, files: List<SourceFile>): ScanReport {
+    private fun scanFiles(id: SourceId, listing: List<SourceFile>): ScanReport {
+        val (unread, files) = listing.partition { it.unreadableFolder }
         val hasVideo = files.any { ScanRules.roleOf(it.path.substringAfterLast('/')) == FileRole.VIDEO }
         if (!hasVideo && hasKnownVersions(id)) return keepEmpty(id)
         return database.transactionWithResult {
             val plan = planner().plan(id, files, overrides(id), yearHints(id))
-            val report = writer.apply(plan)
+            val report = writer.apply(plan, unread.map { it.path })
             queries.markSourceScanned(now(), id.value)
             report
         }

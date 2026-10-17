@@ -44,9 +44,13 @@ class WebDavSourceTest {
         ),
     )
 
+    /** Folders whose listing fails, as when the server stops answering partway through a scan. */
+    private val failing = mutableSetOf<String>()
+
     private val http = HttpFetcher { request ->
         requests += request
         val path = java.net.URI(request.url).path
+        if (path in failing) throw java.io.IOException("connection reset")
         if (request.headers["Authorization"] != "Basic YWxleDpzM2NyM3Q=") return@HttpFetcher HttpResult(401, ByteArray(0))
         val body = listings[path] ?: return@HttpFetcher HttpResult(404, ByteArray(0))
         val depth = request.headers["Depth"]
@@ -63,6 +67,13 @@ class WebDavSourceTest {
         assertEquals(784_887_151_000, files[1].modifiedAtEpochMs)
         assertTrue(requests.all { it.method == "PROPFIND" })
         assertTrue(requests.none { "snapshots" in it.url }, "hidden folders are not walked")
+    }
+
+    @Test
+    fun aFolderThatCannotBeListedIsReportedNotSkipped() = runTest {
+        failing += "/dav/media/Movies/"
+        val files = source.files().toList()
+        assertEquals(listOf(dev.reflux.core.source.SourceFile.folderNotRead("Movies")), files, "not an empty folder: one that was not read")
     }
 
     @Test

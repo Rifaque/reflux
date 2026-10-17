@@ -85,7 +85,10 @@ class WebDavSource(
                 throw e
             } catch (e: Exception) {
                 if (directory == root) throw SourceUnavailableException(descriptor.id, e)
-                continue // unreadable folder: skip it, keep scanning
+                // Not being able to list it (the server stopped answering partway, permissions) is reported, so
+                // that what was found below it stays; the scan goes on.
+                relativePath(directory)?.trimEnd('/')?.let { emit(SourceFile.folderNotRead(it)) }
+                continue
             }
             val subdirectories = mutableListOf<URI>()
             for (entry in entries.sortedBy { it.href.path }) {

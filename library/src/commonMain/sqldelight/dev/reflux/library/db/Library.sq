@@ -466,6 +466,9 @@ SELECT * FROM artwork WHERE item_id IN ?;
 deleteArtworkOfSource:
 DELETE FROM artwork WHERE source_id = ? AND origin = ?;
 
+artworkOfSource:
+SELECT * FROM artwork WHERE source_id = ? AND origin = ?;
+
 deleteOrphanArtwork:
 DELETE FROM artwork WHERE item_id NOT IN (SELECT id FROM item);
 
