@@ -180,8 +180,9 @@ class AppState(
 
     /**
      * Asks whether a source is there, and nothing more: after playback from it stopped, its state is a
-     * question of its own. Unlike [checkSource] it does not read the source again, which would also tell a
-     * media server the position of the playback still open on it and end that playback's session there.
+     * question of its own. Unlike [checkSource] it does not read the source again: the playback that failed
+     * is still open, and only playback stopping or finishing ends its session on a media server (a rescan
+     * brings positions up to date with `updatePosition`, which leaves that session open).
      */
     fun checkAvailability(id: SourceId): Job = scope.launch {
         val source = sources(id) ?: return@launch
