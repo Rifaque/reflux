@@ -114,13 +114,17 @@ class DocumentTreeSourceTest {
     }
 
     @Test
-    fun anUnreadableSubfolderIsSkippedAndTheRestIsListed() = runTest {
+    fun anUnreadableSubfolderIsReportedAndTheRestIsListed() = runTest {
         val tree = FakeTree {
             file("Movies/Heat.mkv")
             file("Private/Hidden.mkv")
         }
         tree.unreadable += tree.documentOf("Private")
-        assertEquals(listOf("Movies/Heat.mkv"), DocumentTreeSource(tree, "content://tree/a", "Media").files().toList().map { it.path })
+        // Reported as a folder that was not read, so that a scan keeps what it knew below it.
+        assertEquals(
+            listOf("Movies/Heat.mkv" to false, "Private" to true),
+            DocumentTreeSource(tree, "content://tree/a", "Media").files().toList().map { it.path to it.unreadableFolder }.sortedBy { it.first },
+        )
 
         tree.unreadable += tree.rootDocumentId
         assertFailsWith<SourceUnavailableException> { DocumentTreeSource(tree, "content://tree/a", "Media").files().toList() }
