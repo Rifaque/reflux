@@ -82,7 +82,7 @@ Recording follows the same rule in the other direction:
 
 Best Version (`VersionSelector`) is deterministic and device-specific. The first criterion that tells two versions apart decides:
 
-1. Availability of its source.
+1. Availability of its source: one known to be away sets a copy back; one not checked yet (just added, or signed in to again) does not.
 2. Whether this device can play it at all: container, codec, resolution, bit depth, Dolby Vision handling.
 3. Continuity: when the user is part-way through a work, a copy on the timeline in progress.
 4. The version the user pinned for the work.

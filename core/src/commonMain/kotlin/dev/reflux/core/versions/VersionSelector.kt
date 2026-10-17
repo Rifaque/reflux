@@ -146,11 +146,12 @@ object VersionSelector {
     private fun breaksContinuity(version: RankedVersion, resuming: WatchState?, continuing: Boolean): Boolean =
         Handoff.relation(resuming, version.version, continuing) == TimelineMatch.DIFFERENT
 
-    private fun availabilityRank(version: RankedVersion): Int = when (version.candidate.availability) {
-        Availability.AVAILABLE -> 0
-        Availability.UNKNOWN -> 1
-        Availability.UNAVAILABLE -> 2
-    }
+    /**
+     * Only a source known to be away sets a version back. One not checked yet (just added, or signed in to
+     * again) may well be there: ranking it below every reachable copy put a copy this device cannot play
+     * ahead of one it can, and a pinned copy behind another.
+     */
+    private fun availabilityRank(version: RankedVersion): Int = if (version.candidate.availability == Availability.UNAVAILABLE) 1 else 0
 
     private fun effectiveHeight(version: RankedVersion, device: DeviceCapabilities): Int {
         val height = version.version.stream.video?.nominalHeight ?: return 0
