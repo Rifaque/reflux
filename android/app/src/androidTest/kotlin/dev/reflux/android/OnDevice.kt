@@ -24,10 +24,14 @@ internal val context: Context get() = InstrumentationRegistry.getInstrumentation
 /** A real folder in the app's own storage, served as a document tree: what the system picker would hand over, without the picker. */
 internal class FolderTree(private val root: File) : DocumentTree {
     var present = true
+
+    /** Folders, by path, whose listing fails: a drive removed partway through a scan. */
+    val unreadable = mutableSetOf<String>()
     override val rootDocumentId: String = root.path
     override fun reachable() = present && root.isDirectory
     override fun children(documentId: String): List<TreeEntry> {
         check(present) { "the folder is gone" }
+        check(documentId !in unreadable) { "the folder cannot be read" }
         return File(documentId).listFiles().orEmpty().map { TreeEntry(it.path, it.name, it.isDirectory, it.length(), it.lastModified()) }
     }
 

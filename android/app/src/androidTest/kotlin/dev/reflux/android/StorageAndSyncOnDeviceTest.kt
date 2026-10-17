@@ -128,6 +128,22 @@ class StorageAndSyncOnDeviceTest {
     }
 
     @Test
+    fun aSubfolderThatCannotBeReadKeepsWhatWasBelowIt() = runBlocking {
+        val world = world("partial")
+        world.stub("Shows/Severance/Season 1/Severance.S01E01.mkv")
+        val heat = world.stub("Movies/Heat (1995)/Heat.1995.1080p.mkv")
+        world.environment.library.scan(world.folder)
+        assertEquals(1, world.environment.library.shows().size)
+
+        // The drive goes partway through the next scan: the shows folder cannot be listed. A film was deleted.
+        world.tree.unreadable += File(world.media, "Shows").path
+        heat.delete()
+        world.environment.library.scan(world.folder)
+        assertEquals(1, world.environment.library.shows().size, "what was not seen is not gone")
+        assertTrue(world.environment.library.movies().isEmpty(), "what was seen to be gone is gone")
+    }
+
+    @Test
     fun choosingNoFolderChangesNothing() = runBlocking {
         val world = world("cancel")
         val platform = AndroidPlatform(world.environment)
