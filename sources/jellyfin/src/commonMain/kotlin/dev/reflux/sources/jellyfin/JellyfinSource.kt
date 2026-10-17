@@ -187,6 +187,20 @@ class JellyfinSource(
         api.post("Sessions/Playing/Stopped", playbackBody(itemId, sourceId, positionMs, paused = false))
     }
 
+    /**
+     * With a playback of [path] open, the position goes as that playback's progress: a stop would end its
+     * session on the server, and the playback's next report would open another, which the server counts as
+     * another play.
+     */
+    override suspend fun updatePosition(path: String, positionMs: Long) {
+        val (itemId, sourceId) = versionIds(path) ?: return
+        if (path in startedSessions) {
+            api.post("Sessions/Playing/Progress", playbackBody(itemId, sourceId, positionMs, paused = false))
+        } else {
+            reportStopped(path, positionMs)
+        }
+    }
+
     override suspend fun setPlayed(path: String, played: Boolean) {
         val (itemId, _) = versionIds(path) ?: return
         val params = mapOf("userId" to credentials.userId)

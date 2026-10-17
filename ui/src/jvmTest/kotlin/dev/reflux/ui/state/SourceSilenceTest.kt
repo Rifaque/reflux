@@ -21,14 +21,16 @@ import dev.reflux.core.source.PlaybackTarget
 import dev.reflux.core.source.SourceCapability
 import dev.reflux.core.source.SourceDescriptor
 import dev.reflux.core.source.SourceLocality
+import dev.reflux.core.source.SourceUnavailableException
 import dev.reflux.core.source.SourceUserState
 import dev.reflux.core.source.WatchStateSyncSource
 import dev.reflux.ui.FakePlatform
 import dev.reflux.ui.FakePlayer
 import dev.reflux.ui.TestWorld
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
@@ -274,31 +276,120 @@ class SourceSilenceTest {
         assertEquals(Problems.SOURCE_STOPPED, playing.session.error?.message, "and the player's failure stays the player's")
     }
 
+    /** A world whose film Ronin is on [server] only, last read from it a minute before anything is watched. */
+    private suspend fun TestScope.playingFrom(server: RecordingServer, setUp: (TestWorld) -> Unit = {}): Playing = playing { world ->
+        world.library.addSource(server, "recording")
+        world.registry.register(server)
+        runBlocking { world.pipeline.refresh(server.descriptor.id) }
+        world.clock += 60_000
+        setUp(world)
+        world.movie("Ronin").item.id
+    }
+
+    /** One report of the playback, with the library's clock moving on as it plays. */
+    private fun TestScope.report(playing: Playing, positionMs: Long) {
+        playing.world.clock += 10_000
+        playing.player.playTo(positionMs)
+        runCurrent()
+    }
+
     @Test
-    fun theCheckAfterAStallLeavesAMediaServersPlaybackSessionAlone() = runTest {
-        // Found against a real Jellyfin server: reading the source again after a stall delivered Reflux's newer
-        // position as a stop, which ended the playback's session there; the next report opened another, and the
-        // server counted a second play. The check asks whether the source is there, and nothing more.
+    fun theCheckAfterAStallDoesNotReadTheSourceAgain() = runTest {
+        // Reading a media server again here delivered Reflux's newer position as a stop, which ended the
+        // playback's session there. The check asks whether the source is there, and nothing more.
         val server = RecordingServer()
-        val playing = playing { world ->
-            world.library.addSource(server, "recording")
-            world.registry.register(server)
-            runBlocking { world.pipeline.refresh(server.descriptor.id) }
-            // Watching happens after the server was last read.
-            world.clock += 60_000
-            world.movie("Ronin").item.id
-        }
-        assertEquals(server.descriptor.id, playing.world.library.versions(playing.itemId).single().version.location.sourceId)
+        val playing = playingFrom(server)
+        server.clock = { playing.world.clock }
         stallAt(playing, 20 * 60_000L)
+        val reads = server.reads
         wait(30_000)
         assertNotNull(playing.session.error)
         awaitReal("the source check") { playing.app.checking.isEmpty() }
         assertEquals(Availability.AVAILABLE, playing.world.library.source(server.descriptor.id)?.availability)
+        assertEquals(reads, server.reads, "asked whether it is there, not read again")
 
         playing.session.retry()
         runCurrent()
         assertEquals(PlayerStatus.PLAYING, playing.player.state.value.status)
-        assertEquals(listOf("start"), server.calls.filter { it != "progress" }, "one session, never stopped, never marked played")
+        assertEquals(1, server.sessions, "one session on the server")
+        assertEquals(1, server.plays)
+    }
+
+    @Test
+    fun aServerComingBackWhilePlaybackIsOpenKeepsItsSessionAndHearsThePosition() = runTest {
+        // A session starts and reports; the whole server goes silent while the player still plays from its
+        // buffer (that report is lost), the playback stalls, the check finds the server away; the server answers
+        // again, the library's watcher (every 30 s) finds it back and reads it again, which finds the server
+        // behind; Try again plays on.
+        val server = RecordingServer()
+        val playing = playingFrom(server)
+        server.clock = { playing.world.clock }
+        playing.app.start()
+        awaitReal("the first refresh") { runCurrent(); playing.app.checking.isEmpty() }
+        wait(1_000)
+        report(playing, 20 * 60_000L)
+        report(playing, 20 * 60_000L + 10_000)
+
+        server.answering = false
+        report(playing, 20 * 60_000L + 20_000)
+        playing.player.buffer()
+        runCurrent()
+        wait(30_000)
+        assertNotNull(playing.session.error)
+        assertEquals(Availability.UNAVAILABLE, playing.world.library.source(server.descriptor.id)?.availability, "the check says the server is away")
+
+        playing.world.clock += 30_000
+        server.answering = true
+        wait(30_000)
+        awaitReal("the watcher to find the server back") { playing.world.library.source(server.descriptor.id)?.availability == Availability.AVAILABLE }
+        wait(1_000)
+        assertEquals(20 * 60_000L + 20_000, server.position, "the read brought the server's position up to date")
+
+        playing.session.retry()
+        runCurrent()
+        report(playing, 20 * 60_000L + 30_000)
+        assertEquals(PlayerStatus.PLAYING, playing.player.state.value.status)
+        assertFalse("stop" in server.calls, "nothing stopped the playback's session while it was open: ${server.calls}")
+        assertEquals(1, server.sessions, "one session on the server: ${server.calls}")
+        assertEquals(1, server.plays)
+    }
+
+    @Test
+    fun aReadOfTheServerThatOverlapsTheStartOfAPlaybackKeepsItsSession() = runTest {
+        // Seen against a real Jellyfin server: the library's first refresh read the server just before Play
+        // was pressed and delivered Reflux's newer position two seconds into the playback, as a stop; the
+        // playback's next report opened a second session, and the server counted a second play.
+        val server = RecordingServer()
+        val world = TestWorld().apply { populate() }
+        world.library.addSource(server, "recording")
+        world.registry.register(server)
+        world.pipeline.refresh(server.descriptor.id)
+        server.clock = { world.clock }
+        // Progress the server has not heard of: watched on this device while it was away.
+        world.clock += 60_000
+        val ronin = world.movie("Ronin").item.id
+        world.library.stopped(ronin, 20 * 60_000L, 50 * 60_000L, null)
+        world.clock += 60_000
+        val platform = FakePlatform()
+        val app = appState(world, platform)
+
+        val gate = CompletableDeferred<Unit>()
+        server.gate = gate
+        val refresh = app.refresh(server.descriptor.id)
+        runCurrent()
+        assertEquals(1, server.waiting, "the read has the server's record; the playback starts before it is used")
+        app.play(ronin)
+        runCurrent()
+        val playing = Playing(world, platform, app, ronin)
+        assertEquals(20 * 60_000L, playing.player.requests.single().startPositionMs)
+        report(playing, 20 * 60_000L + 1_000)
+        gate.complete(Unit)
+        refresh.join()
+        runCurrent()
+        report(playing, 20 * 60_000L + 11_000)
+        report(playing, 20 * 60_000L + 21_000)
+        assertFalse("stop" in server.calls, "nothing stopped the playback's session while it was open: ${server.calls}")
+        assertEquals(1, server.sessions, "one session on the server: ${server.calls}")
         assertEquals(1, server.plays)
     }
 
@@ -388,47 +479,82 @@ class SourceSilenceTest {
 }
 
 /**
- * A media server that keeps watch state as Jellyfin was seen to: the first report of a playback opens a session
- * and counts a play, the position it stores trails the session's reports by one, and a stop ends the session.
+ * A media server that keeps watch state as a real Jellyfin server was seen to: the first report of a playback
+ * opens a session and counts a play, without storing the position it carries; later reports store theirs at
+ * once; each report dates the record; a stop ends the session. While it does not answer, nothing reaches it.
+ * [calls] is what the library told it: "start", "progress", "position" (a position brought up to date, the
+ * session left as it is), "stop".
  */
 private class RecordingServer : CatalogSource, WatchStateSyncSource {
     val calls: MutableList<String> = java.util.Collections.synchronizedList(mutableListOf())
+    var clock: () -> Long = { 0L }
+    @Volatile var answering = true
     @Volatile var plays = 0
-    @Volatile private var position = 0L
+    @Volatile var sessions = 0
+    @Volatile var position = 0L
+        private set
+    @Volatile var reads = 0
+        private set
+
+    /** While set, a read takes the server's record and then waits for it, as a slow read does. */
+    @Volatile var gate: CompletableDeferred<Unit>? = null
+    @Volatile var waiting = 0
+        private set
     @Volatile private var open = false
+    @Volatile private var lastPlayed: Long? = null
 
     override val descriptor = SourceDescriptor(StableIds.sourceId("recording", "server"), "recording", "Server", SourceLocality.LOCAL_NETWORK, setOf(SourceCapability.PROVIDES_CATALOG))
-    override suspend fun availability() = Availability.AVAILABLE
+    override suspend fun availability() = if (answering) Availability.AVAILABLE else Availability.UNAVAILABLE
     override suspend fun playbackTarget(path: String) = PlaybackTarget("http://server.local/$path")
 
-    @Volatile private var reported = 0L
-    override fun catalog(): Flow<CatalogEntry> = flowOf(
-        CatalogEntry(
+    override fun catalog(): Flow<CatalogEntry> = flow {
+        if (!answering) throw SourceUnavailableException(descriptor.id)
+        reads++
+        val record = CatalogEntry(
             ParsedMedia(ParsedKind.MOVIE, "Ronin", 1998),
             listOf(CatalogVersion("items/ronin", 3_000_000_000, 1, StreamInfo(Container.MATROSKA, VideoStream(VideoCodec.H264, 1920, 1080, 8), listOf(AudioStream(AudioCodec.AAC, 2, "eng")), durationMs = 50 * 60_000L))),
-            userState = SourceUserState(played = false, positionMs = position, playCount = plays, lastPlayedAtEpochMs = null, favorite = false),
-        ),
-    )
+            userState = SourceUserState(played = false, positionMs = position, playCount = plays, lastPlayedAtEpochMs = lastPlayed, favorite = false),
+        )
+        gate?.let { waiting++; it.await(); waiting-- }
+        emit(record)
+    }
+
+    private fun reach() {
+        if (!answering) throw SourceUnavailableException(descriptor.id)
+    }
 
     override suspend fun reportProgress(path: String, positionMs: Long, paused: Boolean) {
+        reach()
+        lastPlayed = clock()
         if (!open) {
             open = true
             plays++
+            sessions++
             calls += "start"
         } else {
-            position = reported
+            position = positionMs
             calls += "progress"
         }
-        reported = positionMs
     }
 
     override suspend fun reportStopped(path: String, positionMs: Long) {
+        reach()
         open = false
         position = positionMs
-        calls += "stopped"
+        lastPlayed = clock()
+        calls += "stop"
+    }
+
+    override suspend fun updatePosition(path: String, positionMs: Long) {
+        // A position update that keeps an open session open is the adapter's to do (JellyfinSource); here the
+        // server is told the position either way and the session stays as it was.
+        reach()
+        position = positionMs
+        calls += "position"
     }
 
     override suspend fun setPlayed(path: String, played: Boolean) {
+        reach()
         calls += "played:$played"
     }
 }
