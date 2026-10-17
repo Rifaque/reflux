@@ -171,6 +171,12 @@ class JellyfinSource(
         return PlaybackTarget(url, mapOf("Authorization" to api.authorization))
     }
 
+    /**
+     * The server's own rule (its "maximum resume percentage", 90% unless an administrator changed it): a
+     * progress report or a stop past it marks the item played and clears its position.
+     */
+    override val marksPlayedPast: Double = 0.90
+
     override suspend fun reportProgress(path: String, positionMs: Long, paused: Boolean) {
         val (itemId, sourceId) = versionIds(path) ?: return
         val body = playbackBody(itemId, sourceId, positionMs, paused)

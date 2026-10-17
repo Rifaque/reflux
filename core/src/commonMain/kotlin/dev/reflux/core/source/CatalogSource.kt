@@ -64,6 +64,13 @@ interface CatalogSource : MediaSource {
  * is away); Reflux's own state never depends on one succeeding.
  */
 interface WatchStateSyncSource : MediaSource {
+    /**
+     * The fraction of a work's running time past which the source marks it played by itself when a position
+     * is reported to it, or null when it does not. Positions Reflux reports stay below it
+     * (`WatchRules.reportedPosition`); a playback that finishes is reported as having reached the end.
+     */
+    val marksPlayedPast: Double? get() = null
+
     suspend fun reportProgress(path: String, positionMs: Long, paused: Boolean)
 
     /** Records where playback of [path] stopped. */

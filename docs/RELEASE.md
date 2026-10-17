@@ -66,6 +66,7 @@ Known, deliberate, and visible in the library rather than silent:
 ## Playback over the network
 
 - A server that stops answering without closing its connections (a machine that loses power or its network) plays on from what was buffered; once that runs out, the player shows that it is waiting, and after thirty seconds of waiting it says the source has stopped sending and offers Try again and the way back, on every platform (decision log, 2026-10-16). Where the engine gives up sooner by itself (Media3's read timeout on Android, about a minute after the silence began in the live run, so usually after the thirty seconds), the same message comes then. The desktop behavior is tested against the real engine and a connection held open in a test; it has not yet been rerun by hand against a real server. A server that closes its connections is reported as unreachable.
+- On a Jellyfin server, a position Reflux reports near the end of a work is held at 85% of its running time until the playback finishes, so that the server does not count the work watched by its own rule before the viewer has (decision log, 2026-10-17). The server's own clients therefore resume a little earlier there than where the viewer left; Reflux itself resumes at the exact position. A server whose administrator set its maximum resume percentage below 90% can still count a work watched early.
 
 ## Platforms and input
 

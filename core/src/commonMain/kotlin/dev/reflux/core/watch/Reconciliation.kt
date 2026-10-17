@@ -58,6 +58,9 @@ object WatchReconciler {
      * @param source what the source says now.
      * @param baseline what the source said at the last comparison; null the first time.
      * @param sourceVersion the source's copy of the work; the source's position is a time on its timeline.
+     * @param playedPast where the source marks a work played by itself when a position is reported to it
+     *   (`WatchStateSyncSource.marksPlayedPast`). Reflux's position is compared and sent as the source is told
+     *   it ([WatchRules.reportedPosition]), so a source that holds it just short of that point agrees.
      */
     fun reconcile(
         itemId: MediaId,
@@ -66,9 +69,10 @@ object WatchReconciler {
         baseline: SyncBaseline?,
         sourceVersion: MediaVersion?,
         nowMs: Long,
+        playedPast: Double? = null,
     ): Reconciliation {
         val seen = SyncBaseline(source.played, source.positionMs, source.lastPlayedAtEpochMs, nowMs)
-        if (agree(local, source, sourceVersion)) return Reconciliation(SyncDecision.IN_AGREEMENT, null, null, seen)
+        if (agree(local, source, sourceVersion, playedPast)) return Reconciliation(SyncDecision.IN_AGREEMENT, null, null, seen)
 
         val localAt = local?.let(WatchRules::changedAt)
         val sourceChanged = baseline == null || baseline.played != source.played ||
@@ -88,7 +92,7 @@ object WatchReconciler {
 
         // Reflux's state stands. The source is told only once the two have been in step before; a first
         // meeting never rewrites what a server knows.
-        val update = if (baseline != null && localChanged && local != null) updateFor(local, source, sourceVersion) else null
+        val update = if (baseline != null && localChanged && local != null) updateFor(local, source, sourceVersion, playedPast) else null
         // Until the update is delivered, the moment of the last agreement stays where it was, so that a
         // failed delivery is tried again.
         val remembered = if (update != null) seen.copy(reconciledAtEpochMs = baseline!!.reconciledAtEpochMs) else seen
@@ -100,19 +104,25 @@ object WatchReconciler {
     /** Positions too early to resume from are the beginning, on either side. */
     private fun resumable(positionMs: Long): Long = if (positionMs < WatchRules.MIN_RESUME_MS) 0 else positionMs
 
-    private fun agree(local: WatchState?, source: SourceUserState, sourceVersion: MediaVersion?): Boolean {
+    private fun agree(local: WatchState?, source: SourceUserState, sourceVersion: MediaVersion?, playedPast: Double?): Boolean {
         if (local == null) return !saysSomething(source)
         if (local.completed != source.played) return false
         if (local.completed) return true
-        val here = positionOn(local, sourceVersion) ?: return false
+        val here = positionOn(local, sourceVersion, playedPast) ?: return false
         return abs(here - resumable(source.positionMs)) < POSITION_TOLERANCE_MS
     }
 
-    /** Reflux's position as a time on the source's copy, or null when it cannot be stated exactly there. */
-    private fun positionOn(local: WatchState, sourceVersion: MediaVersion?): Long? {
+    /**
+     * Reflux's position as the source is told it: a time on the source's copy, short of where the source
+     * would count the work watched by itself; null when it cannot be stated exactly there. It is where the
+     * viewer is (*continuing*), also near the end: a playback that went past 90% without finishing (still
+     * open, or tried again) has a position, not a work to start over.
+     */
+    private fun positionOn(local: WatchState, sourceVersion: MediaVersion?, playedPast: Double?): Long? {
         val position = resumable(local.positionMs)
-        if (position == 0L || sourceVersion == null) return position
-        return Handoff.resume(local, sourceVersion).takeIf { it.exact }?.positionMs
+        if (position == 0L) return position
+        val there = if (sourceVersion == null) position else Handoff.resume(local, sourceVersion, continuing = true).takeIf { it.exact }?.positionMs ?: return null
+        return WatchRules.reportedPosition(there, sourceVersion?.stream?.durationMs ?: local.durationMs, playedPast)
     }
 
     private fun adopt(itemId: MediaId, local: WatchState?, source: SourceUserState, sourceVersion: MediaVersion?, nowMs: Long) = WatchState(
@@ -129,12 +139,12 @@ object WatchReconciler {
         cut = Cuts.of(sourceVersion?.edition),
     )
 
-    private fun updateFor(local: WatchState, source: SourceUserState, sourceVersion: MediaVersion?): SourceUpdate? {
+    private fun updateFor(local: WatchState, source: SourceUserState, sourceVersion: MediaVersion?, playedPast: Double?): SourceUpdate? {
         val played = local.completed.takeIf { it != source.played }
         // Marking a source's item not played makes it forget its position as well.
         val sourcePosition = if (played == false) 0 else resumable(source.positionMs)
         // A position is only sent where it is the same moment on the source's copy.
-        val position = if (local.completed) null else positionOn(local, sourceVersion)?.takeIf { abs(it - sourcePosition) >= POSITION_TOLERANCE_MS }
+        val position = if (local.completed) null else positionOn(local, sourceVersion, playedPast)?.takeIf { abs(it - sourcePosition) >= POSITION_TOLERANCE_MS }
         return if (played == null && position == null) null else SourceUpdate(played, position)
     }
 

@@ -560,3 +560,22 @@ How it is built:
 - **What it records.** Try again records the position reached as progress, never as a stop, and plans as *continuing*: a position past 90% is where the viewer is, not a finished work to start over (`WatchRules.resumePosition`). A playback that never got going records nothing when it is stopped, so a failed start does not overwrite where the viewer was (WATCH_STATE.md). Positions under a minute are not resumed, as everywhere.
 - **The hung engine.** Investigated with a real libmpv and a loopback server that holds its connection open and sends nothing (`SilentSourceTest`): mpv's own abort interrupts the blocked read, so `loadfile` (Try again) opens a new connection at once and the engine shuts down promptly when the player is left. No engine timeout was needed. Commands to the engine never wait (2026-10-12), and an engine that would not shut down is still left behind after five seconds.
 - **Media3** is unchanged: its read timeout and retries stay as they are, and its failure arrives through the `Player` contract as the source being unreachable.
+
+## 2026-10-17 — Positions told to a source stay short of where it counts a work watched
+
+Found by the live validation against a real Jellyfin server (ROADMAP.md). The server applies its own rule to every position it hears: a progress report or a stop past its maximum resume percentage (90% unless an administrator changed it) marks the item played and clears its position. Reflux reported its positions as they were, so a viewer who played past 90% and went back made the server say "played" before any stop. Leaving at thirty minutes, Reflux's record was right (not watched, thirty minutes); the next scan found the server's record changed and dated after Reflux's own stop, took it for news, and marked the work watched in Reflux.
+
+Decided:
+
+- **Watched is said once, when a playback finishes.** Reflux's rule for watched is its own (90% at the stop) and is unchanged. A position is never what makes a source count a work watched: a source declares where it would (`WatchStateSyncSource.marksPlayedPast`), and every position Reflux tells it (progress, a stop, a scan's update) stays 5% of the running time short of that (`WatchRules.reportedPosition`). The margin covers the server measuring against its own running time of the work, which can differ from the copy's; the live run had two copies of one film five minutes apart in two hours.
+- **A finished playback is reported as having reached the end** of the source's copy. The source then marks it played by its own rule, as it does for its own clients, and records the one play its session already counted. Marking it played separately would count a second.
+- **Reflux's own position is exact.** Only what the source is told is held short. The reconciler compares and sends Reflux's position as the source is told it, so the source's record of it agrees with Reflux and is never adopted over it, during a playback past 90% as after it.
+- **A "played" on the source stays news.** Once Reflux no longer causes one, a played record that changed is another client, or the server itself, and is reconciled by the same rules as before.
+
+Alternatives considered:
+
+- **Ignore a server's "played"**, or only when it seems to echo Reflux's reports. Rejected: watching on the server's own clients is real history, and guessing where a record came from is not deterministic.
+- **Read the server's configured threshold.** Rejected for now: the setting is the administrator's and not readable by an ordinary account. A server set below 90% can still count a work watched early (RELEASE.md).
+- **Stop reporting progress near the end.** Rejected: other clients should still see the work nearly finished, and the session must stay alive.
+
+Verified live on 2026-10-17 against the same server: playing to 95%, back to thirty minutes and leaving left the server unplayed at thirty minutes (it held 85% while the playback was near the end) and Reflux unwatched at the same position after a rescan, in one session and one play; a playback that ran to the end of the file was watched in Reflux and played on the server, with one play counted for it.

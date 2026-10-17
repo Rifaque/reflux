@@ -20,6 +20,24 @@ object WatchRules {
         durationMs != null && durationMs > 0 && positionMs >= durationMs * COMPLETION_RATIO
 
     /**
+     * How far below a source's own played threshold the positions Reflux tells it stay. The source measures
+     * against its own running time of the work, which can differ from the copy's (two copies of one film on
+     * a real server ran five minutes apart in two hours).
+     */
+    const val SOURCE_PLAYED_MARGIN: Double = 0.05
+
+    /**
+     * The position a source is told for [positionMs] on a copy [durationMs] long, when the source marks a work
+     * played by itself once a reported position passes [playedPast] of its running time (null: it does not).
+     * A position is never what makes a source count a work watched: Reflux says that only when a playback
+     * finishes. Reflux's own position is not changed by this.
+     */
+    fun reportedPosition(positionMs: Long, durationMs: Long?, playedPast: Double?): Long {
+        if (playedPast == null || durationMs == null || durationMs <= 0) return positionMs
+        return minOf(positionMs, (durationMs * (playedPast - SOURCE_PLAYED_MARGIN)).toLong())
+    }
+
+    /**
      * Records a periodic progress report. Never marks a work as watched: that only happens when playback ends,
      * so repeated reports past the threshold cannot inflate the play count.
      *
