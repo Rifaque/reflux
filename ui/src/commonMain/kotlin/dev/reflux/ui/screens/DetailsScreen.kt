@@ -315,12 +315,44 @@ private fun Versions(app: AppState, details: DetailsModel, modifier: Modifier = 
             SectionHeader(if (several) "Versions" else "Version")
             if (several) Text("Play picks the best copy for this device. Choose another to play it instead.", style = LocalTypography.current.caption, color = RefluxColors.textTertiary)
         }
-        details.versions.forEach { version -> VersionItem(version, details.bestReason) { app.play(details.card.id, version.ranked.version.id) } }
+        details.versions.forEach { version ->
+            VersionItem(
+                version,
+                details.bestReason,
+                onPlay = { app.play(details.card.id, version.ranked.version.id) },
+                onPin = { app.pinVersion(details.card.id, version.ranked.version.id.takeUnless { version.pinned }) },
+            )
+        }
+    }
+}
+
+/**
+ * A version and, where it can be, the standing choice of it: "Always play this", or "Let Reflux choose" on the
+ * one already chosen. Beside the version, or beneath it on a phone, where the version needs the width.
+ */
+@Composable
+private fun VersionItem(row: VersionRow, bestReason: SelectionCriterion?, onPlay: () -> Unit, onPin: () -> Unit) {
+    val narrow = LocalLayout.current.formFactor == FormFactor.PHONE
+    val choice: @Composable () -> Unit = {
+        if (row.pinned || row.pinnable) Button(if (row.pinned) "Let Reflux choose" else "Always play this", onPin, style = ButtonStyle.QUIET)
+    }
+    if (narrow) {
+        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(2.dp), horizontalAlignment = Alignment.End) {
+            VersionCard(row, bestReason, onPlay, narrow)
+            choice()
+        }
+    } else {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.weight(1f)) { VersionCard(row, bestReason, onPlay, narrow) }
+            // The same room beside every version, whatever it says or whether it says anything, so the versions
+            // line up as one list.
+            Box(Modifier.width(188.dp), contentAlignment = Alignment.CenterStart) { choice() }
+        }
     }
 }
 
 @Composable
-private fun VersionItem(row: VersionRow, bestReason: SelectionCriterion?, onPlay: () -> Unit) {
+private fun VersionCard(row: VersionRow, bestReason: SelectionCriterion?, onPlay: () -> Unit, narrow: Boolean) {
     val shape = RoundedCornerShape(16.dp)
     val playable = row.ranked.playable
     // The one Play uses is lifted out of the list; the rest are outlines of the same shape.
@@ -350,7 +382,6 @@ private fun VersionItem(row: VersionRow, bestReason: SelectionCriterion?, onPlay
                 )
             }
             // On a phone the mark goes above the quality, leaving the reason the whole width beneath it.
-            val narrow = LocalLayout.current.formFactor == FormFactor.PHONE
             val mark: @Composable () -> Unit = { Chip(if (pinned) "Your choice" else "Recommended", emphasized = true, icon = if (pinned) null else Icon.CHECK) }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 if (chosen && narrow) Box(Modifier.padding(bottom = 4.dp)) { mark() }
@@ -363,6 +394,10 @@ private fun VersionItem(row: VersionRow, bestReason: SelectionCriterion?, onPlay
                         color = RefluxColors.textSecondary,
                         maxLines = 1,
                     )
+                } else if (row.pinned) {
+                    // The user's choice, set aside this time by something that outranks it (the cut being resumed,
+                    // a source that is away): said, so the choice is not mistaken for forgotten.
+                    Text("Your choice", style = LocalTypography.current.metadata, color = RefluxColors.textSecondary, maxLines = 1)
                 }
                 // Where it comes from matters more than how it is encoded.
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {

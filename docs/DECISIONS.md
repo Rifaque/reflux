@@ -643,7 +643,7 @@ Decided: starting over is a new playback of the same work, and the remembered po
 
 ## 2026-10-17 — Version pinning is reached from the versions it applies to
 
-The engine has had a pinned version per work (Best Version's "the version the user pinned") with no way to set it. Decided: each version row offers "Always play this version", and the pinned row offers "Let Reflux choose" in its place; the row itself still plays that version once, as before. A pin never makes Reflux play something this device cannot play (WATCH_STATE.md), so the action is offered only on versions that play here. One version is pinned at most, per work; pinning another moves it.
+The engine has had a pinned version per work (Best Version's "the version the user pinned") with no way to set it. Decided: each version row offers "Always play this" beside it (beneath it on a phone), and the pinned row offers "Let Reflux choose" in its place; the row itself still plays that version once, as before. A pinned version that something outranks this time (the cut being resumed, a source that is away) still says "Your choice". Pinning a copy kept on the device pins the version it was made from, so the choice outlives the copy. Built for films, whose details page lists versions; episodes have no versions list yet (ROADMAP.md, M1). A pin never makes Reflux play something this device cannot play (WATCH_STATE.md), so the action is offered only on versions that play here. One version is pinned at most, per work; pinning another moves it.
 
 ## 2026-10-17 — Television sidecar subtitles in V1
 

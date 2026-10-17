@@ -32,6 +32,7 @@ import dev.reflux.library.LibraryEntry
 import dev.reflux.library.LibraryPipeline
 import dev.reflux.library.Offline
 import dev.reflux.library.PipelineActivity
+import dev.reflux.library.pinVersion
 import dev.reflux.library.planPlayback
 import dev.reflux.library.setWatchedEverywhere
 import kotlinx.coroutines.CancellationException
@@ -344,6 +345,16 @@ class AppState(
     fun toggleFavorite(entry: LibraryEntry): Job = attempt("Your favorites couldn't be updated.") {
         read { setFavorite(entry.item.id, !entry.favorite) }
         invalidate()
+    }
+
+    /**
+     * Makes [versionId] the version Play always uses for [itemId] ("Always play this"), or with null lets Best
+     * Version choose again ("Let Reflux choose").
+     */
+    fun pinVersion(itemId: MediaId, versionId: VersionId?): Job = attempt("That choice couldn't be saved.") {
+        read { pinVersion(itemId, versionId) }
+        invalidate()
+        notify(if (versionId != null) "Play will always use this version." else "Play will choose the best version for this device.")
     }
 
     /** Marks a work watched or unwatched here and on every source that keeps its own watch state. */

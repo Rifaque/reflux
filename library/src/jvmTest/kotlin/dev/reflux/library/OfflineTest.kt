@@ -405,6 +405,33 @@ class OfflineTest {
     }
 
     @Test
+    fun pinningTheCopyOnTheDevicePinsTheVersionItWasMadeFrom() = runTest {
+        server.movie("Dune", 2021, "dune-1080" to stream(155.0), "dune-4k" to stream(155.0, 2160, VideoCodec.HEVC, 10))
+        library.scan(server)
+        val dune = movie("Dune")
+        val uhd = library.versions(dune).map { it.version }.single { it.location.path == "items/dune-4k" }
+        val offline = started()
+        library.setPreferredVersion(dune, uhd.id)
+        offline.enqueue(offline.planFor(listOf(dune)))
+        runCurrent()
+        library.setPreferredVersion(dune, null)
+        val copy = library.versions(dune).map { it.version }.single { it.location.sourceId == DownloadsSource.ID }
+
+        // "Always play this" on the copy is a choice of the film as it is in that copy: the version it was made from.
+        library.pinVersion(dune, copy.id)
+        assertEquals(setOf(uhd.id, copy.id), library.pinnedVersions(dune))
+        assertEquals(copy.id, assertNotNull(library.planPlayback(dune, device, sources)).version.version.id, "played from the device while it is there")
+
+        // So the choice outlives the copy.
+        offline.remove(library.downloads().single().id)
+        assertEquals(setOf(uhd.id), library.pinnedVersions(dune))
+        assertEquals(uhd.id, assertNotNull(library.planPlayback(dune, device, sources)).version.version.id)
+
+        library.pinVersion(dune, null)
+        assertEquals(emptySet(), library.pinnedVersions(dune))
+    }
+
+    @Test
     fun aCopyOfOneCutNeverResumesAnotherCutsPosition() = runTest {
         server.movie("Aliens", 1986, "aliens-theatrical" to stream(137.0), "aliens-extended" to stream(154.0), edition = { if ("extended" in it) "Extended Edition" else null })
         library.scan(server)

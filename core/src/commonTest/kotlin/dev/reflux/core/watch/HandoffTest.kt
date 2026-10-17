@@ -183,8 +183,11 @@ class HandoffTest {
         assertEquals(104 * MINUTE, moved.positionMs)
         assertEquals("extended", moved.cut)
 
-        // On the same timeline, starting over is starting over.
-        assertEquals(0, WatchRules.onStop(state, id, 20_000, null, nowMs = 2_000, version = copy("server", 120.0, source = "server")).positionMs)
+        // On the same timeline, starting over keeps the place through the first minute as well (DECISIONS.md,
+        // 2026-10-17), and moves it once the new playback is past that.
+        val server = copy("server", 120.0, source = "server")
+        assertEquals(100 * MINUTE, WatchRules.onStop(state, id, 20_000, null, nowMs = 2_000, version = server).positionMs)
+        assertEquals(2 * MINUTE, WatchRules.onStop(state, id, 2 * MINUTE, null, nowMs = 2_000, version = server).positionMs)
     }
 
     @Test
