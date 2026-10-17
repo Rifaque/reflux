@@ -203,7 +203,16 @@ private fun Header(
                     }
                 }
                 Column(Modifier.weight(1f, fill = false).widthIn(max = 760.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text(card.title, style = LocalTypography.current.display, maxLines = 2)
+                    // The details are where a title is read in full: one too long for two lines at display size is set
+                    // smaller, step by step, rather than cut off (it is cut off everywhere else).
+                    var titleStep by remember(card.title) { mutableIntStateOf(0) }
+                    val typography = LocalTypography.current
+                    Text(
+                        card.title,
+                        style = listOf(typography.display, typography.headline, typography.title)[titleStep],
+                        maxLines = listOf(2, 5, 8)[titleStep],
+                        onTextLayout = { if (it.hasVisualOverflow && titleStep < 2) titleStep++ },
+                    )
                     details.tagline?.takeIf { it.isNotBlank() }?.let { Text(it, style = LocalTypography.current.title.copy(fontWeight = FontWeight.Normal), color = RefluxColors.textSecondary, maxLines = 1) }
                     Row(
                         Modifier.horizontalScroll(rememberScrollState()),
@@ -386,7 +395,9 @@ private fun EpisodeRow(app: AppState, episode: MediaCard, modifier: Modifier = M
                 Box(Modifier.matchParentSize().border(1.dp, Color.White.copy(alpha = 0.07f), thumbnail))
             }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(episode.caption ?: episode.title, style = LocalTypography.current.bodyStrong, color = if (episode.offline) RefluxColors.textTertiary else RefluxColors.textPrimary, maxLines = 1)
+                // Up to three lines: beside its picture on a phone, one line keeps only the number, and episodes are
+                // told apart by name.
+                Text(episode.caption ?: episode.title, style = LocalTypography.current.bodyStrong, color = if (episode.offline) RefluxColors.textTertiary else RefluxColors.textPrimary, maxLines = 3)
                 val facts = listOfNotNull(
                     "Not connected".takeIf { episode.offline },
                     Formatting.remaining(episode.entry.watchState) ?: episode.entry.metadata?.runtimeMinutes?.takeIf { it > 0 }?.let(Formatting::runtime),

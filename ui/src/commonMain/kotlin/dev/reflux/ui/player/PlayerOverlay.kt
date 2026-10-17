@@ -204,7 +204,8 @@ fun PlayerOverlay(app: AppState, session: PlaybackSession, modifier: Modifier = 
 
             AnimatedVisibility(
                 visible = app.notice != null,
-                modifier = Modifier.align(Alignment.TopCenter).padding(top = 28.dp),
+                // Kept off the screen's edges where the window is narrower than the notice can be.
+                modifier = Modifier.align(Alignment.TopCenter).padding(top = 28.dp).padding(horizontal = LocalLayout.current.safeMarginDp.dp),
                 enter = fadeIn(Motion.controlsShow.tween()),
                 exit = fadeOut(Motion.controlsHide.tween()),
             ) {
@@ -222,7 +223,7 @@ fun PlayerOverlay(app: AppState, session: PlaybackSession, modifier: Modifier = 
             val prompt = session.upNext
             val segment = session.skippable(state)
             when {
-                error != null -> Failure(session, error, Modifier.align(Alignment.Center))
+                error != null -> Failure(session, error, Modifier.align(Alignment.Center).padding(horizontal = layout.safeMarginDp.dp))
                 prompt != null -> UpNextCard(session, prompt, corner)
                 // With a remote, up is what takes the offer; the arrow says so.
                 segment != null && session.menu == null ->

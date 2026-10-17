@@ -10,6 +10,7 @@ import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -90,11 +91,13 @@ fun Text(
     color: Color = RefluxColors.textPrimary,
     maxLines: Int = Int.MAX_VALUE,
     align: TextAlign? = null,
+    onTextLayout: ((TextLayoutResult) -> Unit)? = null,
 ) {
     BasicText(
         text = text,
         modifier = modifier,
         style = style.copy(color = color, textAlign = align ?: TextAlign.Unspecified),
+        onTextLayout = onTextLayout,
         maxLines = maxLines,
         overflow = TextOverflow.Ellipsis,
     )
