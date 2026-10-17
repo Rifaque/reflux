@@ -191,8 +191,9 @@ class PlaybackSession internal constructor(
         app.platform.report(
             if (begun) "Playback of \"$title\" waited ${PATIENCE_MS / 1000} s for data" else "Playback of \"$title\" did not start within ${PATIENCE_MS / 1000} s",
         )
-        // The playback failed; whether the source is there is for a check of the source to say.
-        sourceId?.let(app::checkSource)
+        // The playback failed; whether the source is there is for a check of the source to say. Only a check:
+        // reading the source again would end the playback's session on a media server while it waits.
+        sourceId?.let(app::checkAvailability)
     }
 
     /**

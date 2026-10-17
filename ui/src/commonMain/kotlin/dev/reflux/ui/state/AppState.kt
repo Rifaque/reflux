@@ -178,6 +178,27 @@ class AppState(
         invalidate()
     }
 
+    /**
+     * Asks whether a source is there, and nothing more: after playback from it stopped, its state is a
+     * question of its own. Unlike [checkSource] it does not read the source again, which would also tell a
+     * media server the position of the playback still open on it and end that playback's session there.
+     */
+    fun checkAvailability(id: SourceId): Job = scope.launch {
+        val source = sources(id) ?: return@launch
+        if (id in checking) return@launch
+        checking = checking + id
+        try {
+            withContext(background) { library.refreshAvailability(source) }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            platform.report("Checking a source failed", e)
+        } finally {
+            checking = checking - id
+        }
+        invalidate()
+    }
+
     /** Checks a source again and rescans it: "Refresh" on a source that is there, "Try again" on one that is not. */
     fun checkSource(id: SourceId): Job = scope.launch {
         if (id in checking) return@launch
