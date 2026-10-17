@@ -132,6 +132,8 @@ class StorageAndSyncOnDeviceTest {
         val world = world("partial")
         world.stub("Shows/Severance/Season 1/Severance.S01E01.mkv")
         val heat = world.stub("Movies/Heat (1995)/Heat.1995.1080p.mkv")
+        // A film that stays: a listing with nothing playable in it at all reads as the storage being away.
+        world.stub("Movies/Arrival (2016)/Arrival.2016.1080p.mkv")
         world.environment.library.scan(world.folder)
         assertEquals(1, world.environment.library.shows().size)
 
@@ -140,7 +142,7 @@ class StorageAndSyncOnDeviceTest {
         heat.delete()
         world.environment.library.scan(world.folder)
         assertEquals(1, world.environment.library.shows().size, "what was not seen is not gone")
-        assertTrue(world.environment.library.movies().isEmpty(), "what was seen to be gone is gone")
+        assertEquals(listOf("Arrival"), world.environment.library.movies().map { it.item.title }, "what was seen to be gone is gone")
     }
 
     @Test
