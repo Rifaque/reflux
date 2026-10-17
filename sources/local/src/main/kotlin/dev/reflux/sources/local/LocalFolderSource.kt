@@ -23,6 +23,7 @@ import kotlinx.coroutines.withContext
 import java.io.IOException
 import java.nio.file.ClosedWatchServiceException
 import java.nio.file.Files
+import java.nio.file.NoSuchFileException
 import java.nio.file.Path
 import java.nio.file.StandardWatchEventKinds.ENTRY_CREATE
 import java.nio.file.StandardWatchEventKinds.ENTRY_DELETE
@@ -74,13 +75,19 @@ class LocalFolderSource(
         while (pending.isNotEmpty()) {
             currentCoroutineContext().ensureActive()
             val directory = pending.removeLast()
-            val key = directoryKey(directory) ?: continue
+            val key = directoryKey(directory) ?: run {
+                if (directory != root) emit(SourceFile.folderNotRead(relative(directory)))
+                continue
+            }
             if (!visited.add(key)) continue // symlink loop or duplicate mount
             val entries = try {
                 Files.newDirectoryStream(directory).use { stream -> stream.sortedBy { it.fileName.toString() } }
             } catch (e: IOException) {
                 if (directory == root) throw SourceUnavailableException(descriptor.id, e)
-                continue // unreadable subfolder: skip, keep scanning
+                // A folder that vanished since its parent was listed is gone; one that is there but unreadable
+                // (a mount that stopped answering, permissions) is reported, and the scan goes on.
+                if (e !is NoSuchFileException) emit(SourceFile.folderNotRead(relative(directory)))
+                continue
             }
             val subdirectories = mutableListOf<Path>()
             for (entry in entries) {
@@ -88,13 +95,16 @@ class LocalFolderSource(
                 val attributes = try {
                     Files.readAttributes(entry, BasicFileAttributes::class.java)
                 } catch (_: IOException) {
-                    continue // broken symlink or vanished file
+                    // A link that cannot be followed now may lead to a drive or share that is away: reported, so
+                    // that what was found through it stays. A file that vanished is skipped.
+                    if (Files.isSymbolicLink(entry)) emit(SourceFile.folderNotRead(relative(entry)))
+                    continue
                 }
                 when {
                     attributes.isDirectory -> if (ScanRules.shouldEnter(name)) subdirectories.add(entry)
                     attributes.isRegularFile && ScanRules.roleOf(name) != null -> emit(
                         SourceFile(
-                            path = root.relativize(entry).joinToString("/"),
+                            path = relative(entry),
                             sizeBytes = attributes.size(),
                             modifiedAtEpochMs = attributes.lastModifiedTime().toMillis(),
                         ),
@@ -168,6 +178,8 @@ class LocalFolderSource(
             thread.interrupt()
         }
     }
+
+    private fun relative(path: Path): String = root.relativize(path).joinToString("/")
 
     private fun directoryKey(directory: Path): Any? = try {
         Files.readAttributes(directory, BasicFileAttributes::class.java).fileKey()

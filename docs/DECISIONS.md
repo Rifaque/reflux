@@ -95,7 +95,7 @@ A scan only changes the cached library for a source that is reachable. If a sour
 
 ## 2026-10-08 — Local folder adapter
 
-`LocalFolderSource` (desktop JVM) walks a folder read-only, follows symbolic links with loop protection, skips hidden and system folders, and tolerates unreadable entries. Android will need a separate Storage Access Framework adapter because user-chosen folders are `content:` trees there, not paths.
+`LocalFolderSource` (desktop JVM) walks a folder read-only, follows symbolic links with loop protection, skips hidden and system folders, and tolerates unreadable entries (a folder it cannot list keeps what was known below it; see 2026-10-17). Android will need a separate Storage Access Framework adapter because user-chosen folders are `content:` trees there, not paths.
 
 ## 2026-10-08 — libmpv integration
 
@@ -590,3 +590,9 @@ Decided:
 - A title with no letters or digits keys as written, and such a file is titled by its own name, so it is a work of its own rather than one shared by every such file.
 
 Works whose key changes get a new identity on the next scan; a work's history moves with its only file, as for any re-identification. A file with an episode number and no show name anywhere in its path still has an unnamed show, which such files share: nothing in the path tells them apart.
+
+## 2026-10-17 — A folder a scan could not list is not a folder emptied
+
+Found by stress-testing source transitions. Every file-listing adapter (local folder, SMB, WebDAV, Android's document tree) treated only an unreadable root as the source being away; a folder below it that could not be listed was skipped. The library then saw its files missing and removed their versions, so a share whose connection dropped partway through a scan, a symbolic link to a drive that was not mounted, or a USB drive removed mid-scan took everything below that point out of the library until a later scan could read it again. Watch history survived (it belongs to works), but the library's picture of the source did not, against the rule that a source that is away is never emptied.
+
+Decided: an adapter reports a folder that is there but could not be listed (`SourceFile.folderNotRead`), and a scan keeps what it knew below such a folder, with its subtitles and artwork, while settling everything else as usual. A folder that was deleted is no longer in its parent's listing and its works are removed as before; one that vanished between being listed and being read (the local adapter can tell) counts as deleted. A link that cannot be followed is reported the same way, so a permanently broken link keeps what was found through it until it is removed.

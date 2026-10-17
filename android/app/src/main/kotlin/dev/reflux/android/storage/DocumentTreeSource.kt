@@ -88,7 +88,10 @@ class DocumentTreeSource(
                 tree.children(documentId).sortedBy { it.name }
             } catch (e: Exception) {
                 if (documentId == tree.rootDocumentId) throw SourceUnavailableException(descriptor.id, e)
-                continue // an unreadable subfolder is skipped, the scan goes on
+                // An unreadable subfolder (a drive removed partway, permissions) is reported, so that what was
+                // found below it stays; the scan goes on.
+                emit(SourceFile.folderNotRead(path))
+                continue
             }
             val folders = mutableListOf<Pair<String, String>>()
             for (entry in entries) {

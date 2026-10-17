@@ -127,6 +127,9 @@ class SmbSource(
                     share.list(join(root, relative))
                 } catch (e: Exception) {
                     if (relative.isEmpty()) throw SourceUnavailableException(descriptor.id, e)
+                    // Not being able to list it (the connection lost partway, permissions) is reported, so that
+                    // what was found below it stays; the scan goes on.
+                    emit(SourceFile.folderNotRead(relative))
                     continue
                 }
                 val subdirectories = mutableListOf<String>()
