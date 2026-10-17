@@ -1,6 +1,6 @@
 # Contributing to Reflux
 
-The Media Core, sources, metadata engine, desktop playback engine, the shared experience layer, and the first slice of the desktop shell are implemented. Contributions should preserve the project's core principles rather than optimize for feature count.
+Reflux is a pre-release working towards a public beta (docs/ROADMAP.md). Contributions should preserve the project's core principles rather than optimize for feature count.
 
 ## Before contributing
 
@@ -9,6 +9,7 @@ Read:
 - [Product](docs/PRODUCT.md)
 - [Architecture](docs/ARCHITECTURE.md)
 - [Roadmap](docs/ROADMAP.md)
+- [Versioning](docs/VERSIONING.md) (before touching versions, tags, or release metadata)
 - [Design](docs/DESIGN.md)
 - [Input model](docs/INPUT_MODEL.md)
 - [Metadata](docs/METADATA.md)
@@ -63,4 +64,4 @@ Shared (`commonMain`) code must stay free of platform APIs; `check` fails when i
 
 Keep changes focused and explain architectural consequences when they cross core boundaries.
 
-When introducing a significant product or architectural decision, update docs/DECISIONS.md.
+When introducing a significant product or architectural decision, update docs/DECISIONS.md. Record what was verified, and how, in docs/VERIFICATION.md, and user-visible changes under `Unreleased` in CHANGELOG.md.

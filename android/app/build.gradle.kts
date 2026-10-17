@@ -11,8 +11,9 @@ android {
         applicationId = "dev.reflux"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
-        versionName = "0.1.0"
+        // Both derive from reflux.version (docs/VERSIONING.md); never set them here.
+        versionCode = rootProject.extra["reflux.versionCode"] as Int
+        versionName = rootProject.extra["reflux.version"] as String
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         // -Preflux.jellyfin=<url> points the on-device continuity test at a real server (see JellyfinContinuityTest).
         providers.gradleProperty("reflux.jellyfin").orNull?.takeIf { it.isNotBlank() }?.let { testInstrumentationRunnerArguments["refluxJellyfin"] = it }

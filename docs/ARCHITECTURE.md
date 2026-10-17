@@ -10,11 +10,10 @@ The architecture must allow Reflux to evolve across local storage and remote ser
 
 ```text
 Platform Shell
-  - Android
-  - Android TV / Google TV
+  - Android (phones, tablets, Android TV / Google TV, Fire TV on Fire OS: one application)
   - Windows
   - Linux
-  - future platforms
+  - future platforms (Vega OS, iOS: not committed)
 
         |
         v
@@ -127,7 +126,7 @@ Examples:
 
 A source is allowed to lack capabilities. The Media Core should represent that explicitly.
 
-Two kinds of sources exist today:
+Kinds of sources:
 
 - **File-enumerating sources** (`FileEnumeratingSource`: local folders, WebDAV and SMB shares) list files that Reflux parses and identifies itself.
 - **Downloadable sources** (`DownloadableSource`, capability `DOWNLOAD`) hand out their files whole, so a copy can be kept. Jellyfin, WebDAV, and SMB are; a source that could only show a file would not be, and nothing assumes it is.
@@ -142,7 +141,7 @@ Kotlin Multiplatform (see the decision log). Modules:
 | --- | --- | --- |
 | `core` | Media Core contracts and pure logic. No platform APIs. | kotlinx-coroutines |
 | `library` | The local-first library engine: SQLite schema (SQLDelight) and its migrations, scan planning and reconciliation, read models (movies, shows, Continue Watching, search), the canonical watch state and its synchronization with sources, favorites, identity corrections, version preferences, metadata storage and refresh, Identify flow, smart search, collections, the default Home feed, diagnostics, the background pipeline, Smart Offline (`Offline`: download records, the queue, copying, and registering copies as versions), and adding sources by address (`SourceConnections`). JVM: database driver, `JdkHttpFetcher`, `ArtworkCache`, `FileDownloadStore`, `HttpDownloadTransport`. | `core`, SQLDelight |
-| `design` | Platform-free design system: color tokens with enforced contrast, liquid-glass material roles, motion specs, adaptive layout profiles (including the controller morph), artwork atmosphere extraction. Consumed by the Compose shells. | `core` |
+| `design` | Platform-free design system: color tokens with enforced contrast, glass material roles, motion specs, adaptive layout profiles (including the controller morph), artwork atmosphere extraction. Consumed by the Compose shells. | `core` |
 | `sources:local` | Read-only local folder adapter for desktop JVMs. | `core` |
 | `sources:webdav` | Read-only WebDAV share source (PROPFIND listing, streamed playback with share credentials) and its connector. | `core` |
 | `sources:smb` | Read-only SMB share source (smbj), its connector, and a loopback range-capable stream server that lets any player open share files. | `core`, smbj |
@@ -191,7 +190,7 @@ Video is always a platform surface beneath the experience layer's transparent `P
 
 ### What a platform supplies
 
-There are two shells, `desktop:app` and `android:app`. Each supplies what only its platform can, behind the same contracts, and nothing of either reaches the shared modules. A television is not a third shell: it is the Android shell on a device that says it is a television, and the television layout of the one experience layer (below).
+There are two shells, `desktop:app` and `android:app`. Each supplies what only its platform can, behind the same contracts, and nothing of either reaches the shared modules. A television is not a third shell: it is the Android shell on a device that says it is a television, and the television layout of the one experience layer (below). Fire TV on Fire OS is the same Android shell, distributed separately through the Amazon Appstore (ROADMAP.md); a Vega OS client would be a new shell.
 
 | Piece | Desktop | Android |
 | --- | --- | --- |
@@ -211,7 +210,7 @@ There are two shells, `desktop:app` and `android:app`. Each supplies what only i
 | Being a television | Never | What the system reports (`UiModeManager`, the leanback feature): listed in the TV launcher with its own banner, no touchscreen required |
 | Servers and shares (`Platform.connections`) | Jellyfin, Windows and NAS shares (SMB), web shares (WebDAV) | The same three; SMB through the same adapter and loopback stream server as the desktop |
 | What a connection stores (`ConfigSeal`) | The system's credential store (`KeychainSeal` over Windows Credential Manager or the Secret Service); the database keeps a reference. Where Linux has no Secret Service, stored as it is (see RELEASE.md) | Sealed with an AES key held in the Android keystore (`KeystoreSeal`); what an earlier version stored in the open is sealed at start |
-| Smart Offline (`Platform.offline`) | Not wired; nothing about downloads is shown | `Offline` over the application's internal storage (`FileDownloadStore`) and `HttpURLConnection` (`HttpDownloadTransport`), running in a scope that lives as long as the process |
+| Smart Offline (`Platform.offline`) | Not wired yet (decided for V1, DECISIONS.md, 2026-10-17); nothing about downloads is shown | `Offline` over the application's internal storage (`FileDownloadStore`) and `HttpURLConnection` (`HttpDownloadTransport`), running in a scope that lives as long as the process |
 | Sound output | What libmpv opens | Stereo unless an HDMI output reports more channels or formats it decodes itself, which become `maxOutputChannels` and `audioPassthrough` |
 | Language names for track labels | `Formatting.jvm.kt` | `Formatting.android.kt` |
 

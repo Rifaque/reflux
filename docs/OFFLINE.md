@@ -96,11 +96,18 @@ Android supplies where the copies go and when they are made:
 - Copies are kept in the application's **own internal storage**. No other application can read them, no permission is needed or asked for, and they go when Reflux is uninstalled. They are not offered on removable storage.
 - Copies are made **while Reflux is running**, in a scope that outlives any one screen. Reflux does not run a foreground service or show a notification to keep downloading with the application closed; a download cut short continues from where it was the next time Reflux starts. This is the same product line as background playback, and can be revisited with it.
 
-The desktop has the engine and none of the interface: nothing is wired there yet, and where a platform offers no `Platform.offline`, nothing about downloads is shown.
+The desktop has the engine and none of the interface: nothing is wired there yet, and where a platform offers no `Platform.offline`, nothing about downloads is shown. Wiring it on Windows and Linux is decided for V1 (DECISIONS.md, 2026-10-17).
 
 ## Not there yet
 
-- No way to choose individual episodes or a whole season; a show keeps its next three.
+Required for V1 (DECISIONS.md, 2026-10-17, "Smart Offline on the desktop is in V1"):
+
+- Choosing an individual episode or a whole season; today a show keeps its next three.
+- A Downloads entry point listing every copy with its state and actions.
+- The desktop.
+
+Later (V1.x):
+
 - Downloads do not continue with the application closed.
 - A server that only offers a transcoded stream for a file is not a download source.
 - A copy made from a file whose identity the user corrected follows it; a merge of two works while the origin is permanently gone does not move the copy.

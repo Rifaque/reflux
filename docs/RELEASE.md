@@ -1,6 +1,49 @@
 # Reflux Release Readiness
 
-What stands between the current source tree and something that can be handed to users. Nothing here blocks development; each item is a decision or a piece of work that a release needs and that must not be made harder in the meantime.
+What stands between the source tree and builds that can be handed to testers and the public, and the checklists each stage must pass. The milestones themselves are in [ROADMAP.md](ROADMAP.md) (M2 release engineering, M3 validation, M4–M7 beta to 1.0); version rules are in [VERSIONING.md](VERSIONING.md); the website, beta program, and store tracks are in [LAUNCH.md](LAUNCH.md).
+
+## Beta entry checklist (`0.9.0-beta.1`)
+
+- [ ] Every M1 item in ROADMAP.md is Done, or decided out of V1 in DECISIONS.md.
+- [ ] A license is chosen and in the repository; third-party notices generated.
+- [ ] About page with version and build, licenses, TMDB attribution, privacy and support links.
+- [ ] Android: signed release build from CI; R8 on, keep rules validated by a release build on a device; upgrade from the last alpha keeps library, watch state, sources, and downloads.
+- [ ] Fire TV: the developer's devices inspected (model, Fire OS, API level) and the release build run on them.
+- [ ] Desktop: Windows installer and Linux package installing libmpv with provenance; a clean-machine install on each.
+- [ ] TMDB credential injected into release builds; live TMDB run recorded in VERIFICATION.md.
+- [ ] At least one physical phone, one physical Google TV / Android TV device, one Fire TV device, and one physical controller verified (VERIFICATION.md).
+- [ ] CI green on GitHub, including Android.
+- [ ] Google Play closed testing track and Amazon Appstore testing set up with the current store requirements read and recorded here.
+- [ ] Beta website (W3) live with the demo video, signup, install instructions, privacy policy, changelog, and support.
+- [ ] Feedback path in the app (link and diagnostics export) works on every platform.
+- [ ] `CHANGELOG.md` has the beta's entry; the `release: 0.9.0-beta.1` commit and tag exist.
+
+## Release checklist (every build given to anyone outside CI)
+
+- [ ] Built by CI from a clean tree at a tagged commit; version follows VERSIONING.md (no hand-written `versionCode`).
+- [ ] Full `check` green; Android unit tests and lint green; instrumented tests run on at least one phone and one television image.
+- [ ] Release build smoke-tested on a device per platform: first run, a folder, a server, playback, resume, a download.
+- [ ] Upgrade from the previous build tested (data kept, migrations applied).
+- [ ] No credential, token, or test account in the build, its resources, or its logs; the TMDB credential comes from the build environment.
+- [ ] Changelog entry written in user terms; known issues listed.
+- [ ] Store or download artifacts checksummed; desktop installer signed.
+- [ ] VERIFICATION.md has a dated section for the build.
+
+## 1.0 checklist (in addition)
+
+- [ ] The V1 acceptance criteria in ROADMAP.md hold on every V1 target.
+- [ ] `1.0.0` is the final release candidate's commit with only the version changed.
+- [ ] Store listings final on Google Play and the Amazon Appstore; desktop downloads on the website.
+- [ ] Website in its 1.0 state (W4).
+
+## Store requirements
+
+Store rules change; this section records what was read in the stores' current documentation and when. Nothing here has been checked against the live consoles yet.
+
+| Store | To confirm when the track is set up |
+| --- | --- |
+| Google Play | Target API level in force at submission; closed-testing requirements for a new personal developer account (tester count and testing period); data safety form; TV app quality checklist and TV review; content rating; the `READ_MEDIA_VIDEO` declaration (see Credentials, televisions) |
+| Amazon Appstore (Fire TV) | Fire OS versions and devices to target (never Vega OS devices); Fire TV app requirements and test criteria; Live App Testing for the beta; listing assets at Amazon's sizes; privacy policy |
 
 ## Native runtime: libmpv
 
@@ -61,7 +104,7 @@ The diagnostics log, the Android system log, and Reflux's own log file pass ever
 Known, deliberate, and visible in the library rather than silent:
 
 - **Multi-part files** (`CD1`/`CD2`, `part1`/`part2`) are identified as one work but appear as separate versions instead of playing in sequence. Solving it means a version made of several locations; the version model has one location per version today.
-- **Episodes with no show name anywhere in their path** (`S01E01.mkv` at the top of a folder) are grouped under one unnamed show; nothing in the path tells such files apart.
+- **Episodes with no show name anywhere in their path** (`S01E01.mkv` at the top of a folder) are grouped under one unnamed show; nothing in the path tells such files apart. Decided for V1 (DECISIONS.md, 2026-10-17): grouped per folder, named after it, and offered to Identify; not built yet.
 - **Disc structures** (`BDMV`, `VIDEO_TS`) are recognized and skipped. Playing them means treating a folder as one playable version and handing the engine a disc path.
 
 ## Playback over the network
@@ -78,5 +121,6 @@ Known, deliberate, and visible in the library rather than silent:
 
 ## Project
 
-- No license has been chosen for Reflux itself (README).
-- Continuous integration runs the full check on Linux and Windows and the window tests on Linux; the Windows window tests run locally only, because hosted Windows runners have no libmpv.
+- No license has been chosen for Reflux itself (README). Every distribution, including the beta, needs one.
+- The CI workflow (`.github/workflows/ci.yml`) runs the full check on Linux and Windows and the window tests on Linux. It has been run in its container locally but never on GitHub, because nothing has been pushed since it was written. Android is not deliberately part of it: the workflow sets up no Android SDK, so whether the Android modules build there depends on the hosted runner image happening to provide `ANDROID_HOME`; no instrumented test, emulator, or release build is run, and the Linux container has no SDK at all.
+- The developer CLI is a diagnostic tool and is not distributed.
