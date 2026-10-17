@@ -10,18 +10,24 @@ object TitleText {
      * A comparison key: case-, accent-, and punctuation-insensitive.
      *
      * `"Amélie"` and `"amelie"` share a key, as do `"Marvel's Agents of S.H.I.E.L.D."` and `"Marvels Agents of SHIELD"`.
+     * Letters and digits of every script are kept (`"東京物語"` and `"Солярис"` are keys of their own); the
+     * combining accents that decomposed file names carry (macOS writes `"Amélie"`) are dropped, as
+     * precomposed ones are folded.
      */
     fun key(title: String): String {
         val folded = StringBuilder(title.length)
-        for (ch in title.lowercase()) folded.append(foldAccent(ch))
+        for (ch in title.lowercase()) if (ch !in COMBINING_ACCENTS) folded.append(foldAccent(ch))
         return folded.toString()
             .replace("&", " and ")
             .replace(Regex("""['’`]"""), "")
             // Join dotted acronyms (s.h.i.e.l.d) before treating dots as separators.
             .replace(Regex("""(?<![a-z0-9])[a-z0-9](?:\.[a-z0-9])+(?![a-z0-9])""")) { it.value.replace(".", "") }
-            .replace(Regex("""[^a-z0-9]+"""), " ")
+            .replace(Regex("""[^\p{L}\p{M}\p{N}]+"""), " ")
             .trim()
     }
+
+    /** The Combining Diacritical Marks block: the accents of Latin, Greek, and Cyrillic letters written apart. */
+    private val COMBINING_ACCENTS = '̀'..'ͯ'
 
     /** Tokens of [key], used for search matching. */
     fun keyTokens(title: String): List<String> = key(title).split(' ').filter { it.isNotEmpty() }

@@ -579,3 +579,14 @@ Alternatives considered:
 - **Stop reporting progress near the end.** Rejected: other clients should still see the work nearly finished, and the session must stay alive.
 
 Verified live on 2026-10-17 against the same server: playing to 95%, back to thirty minutes and leaving left the server unplayed at thirty minutes (it held 85% while the playback was near the end) and Reflux unwatched at the same position after a rescan, in one session and one play; a playback that ran to the end of the file was watched in Reflux and played on the server, with one play counted for it.
+
+## 2026-10-17 — Identity keys keep every script
+
+Found by stress-testing identification. A title's comparison key (`TitleText.key`, from which identity keys and work IDs are made) kept only ASCII letters and digits, after folding common Latin accents. A title in another script had an empty key, so works that had nothing in common became one: four films of 1953 named in Japanese, Russian, Hebrew, and Greek were one work with four versions and one watch history, and two shows named in Cyrillic and Chinese shared their episodes. The same was true of files named with no words at all (`-.mkv`, `().mkv`).
+
+Decided:
+
+- A key keeps the letters and digits of every script. Case and the combining accents of decomposed names (macOS writes `Amélie`) are folded, as precomposed Latin accents already were; marks that are part of a script's letters are kept.
+- A title with no letters or digits keys as written, and such a file is titled by its own name, so it is a work of its own rather than one shared by every such file.
+
+Works whose key changes get a new identity on the next scan; a work's history moves with its only file, as for any re-identification. A file with an episode number and no show name anywhere in its path still has an unnamed show, which such files share: nothing in the path tells them apart.

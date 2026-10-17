@@ -324,7 +324,8 @@ class MediaPathParser(maxYear: Int) {
         }
         return ParsedMedia(
             kind = ParsedKind.MOVIE,
-            title = title.ifBlank { NameParser.cleanTitle(stem) },
+            // A name with no words at all ("-", "()") is still this file's own, not a title shared with others.
+            title = title.ifBlank { NameParser.cleanTitle(stem) }.ifBlank { stem.trim() },
             year = year,
             edition = file.edition ?: folder?.edition,
             part = file.part,
