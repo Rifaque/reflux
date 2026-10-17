@@ -110,7 +110,7 @@ class Library(
      */
     suspend fun scan(source: MediaSource): ScanReport {
         val id = source.descriptor.id
-        check(queries.sourceById(id.value).executeAsOneOrNull() != null) { "source $id is not registered" }
+        check(registered(id)) { "source $id is not registered" }
         if (source !is FileEnumeratingSource && source !is CatalogSource) return ScanReport(id, ScanReport.Status.COMPLETED)
         if (refreshAvailability(source) != Availability.AVAILABLE) return ScanReport(id, ScanReport.Status.UNAVAILABLE)
         return try {
@@ -134,6 +134,7 @@ class Library(
         val hasVideo = files.any { ScanRules.roleOf(it.path.substringAfterLast('/')) == FileRole.VIDEO }
         if (!hasVideo && hasKnownVersions(id)) return keepEmpty(id)
         return database.transactionWithResult {
+            if (!registered(id)) return@transactionWithResult ScanReport(id, ScanReport.Status.REMOVED)
             val plan = planner().plan(id, files, overrides(id), yearHints(id))
             val report = writer.apply(plan, unread.map { it.path })
             queries.markSourceScanned(now(), id.value)
@@ -145,6 +146,7 @@ class Library(
     private fun scanCatalog(id: SourceId, entries: List<CatalogEntry>, playedPast: Double?): Pair<ScanReport, List<PendingSourceUpdate>> {
         if (entries.isEmpty() && hasKnownVersions(id)) return keepEmpty(id) to emptyList()
         return database.transactionWithResult {
+            if (!registered(id)) return@transactionWithResult ScanReport(id, ScanReport.Status.REMOVED) to emptyList()
             val plan = planner().planCatalog(id, entries, overrides(id), yearHints(id))
             val report = writer.apply(plan)
             val versionByPath = plan.versions.associate { it.version.location.path to it.version }
@@ -157,6 +159,12 @@ class Library(
             report to updates
         }
     }
+
+    /**
+     * Whether [id] is still a source of the library. A scan reads its source before writing, which can take a
+     * while; a source removed meanwhile must not have its works written back, where nothing would remove them.
+     */
+    private fun registered(id: SourceId): Boolean = queries.sourceById(id.value).executeAsOneOrNull() != null
 
     private fun hasKnownVersions(id: SourceId): Boolean = queries.versionsOfSource(id.value).executeAsList().isNotEmpty()
 
