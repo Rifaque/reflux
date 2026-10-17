@@ -1,6 +1,7 @@
 package dev.reflux.playback.mpv
 
 import com.sun.jna.Pointer
+import dev.reflux.core.net.Redaction
 import dev.reflux.core.playback.DeviceCapabilities
 import dev.reflux.core.playback.PlaybackFailure
 import dev.reflux.core.playback.PlaybackRequest
@@ -29,6 +30,7 @@ class MpvPlayer private constructor(
     private val mpv: LibMpv,
     private val handle: Pointer,
     override val capabilities: DeviceCapabilities,
+    private val log: ((String) -> Unit)?,
 ) : Player {
     private val mutableState = MutableStateFlow(PlayerState())
     override val state: StateFlow<PlayerState> = mutableState.asStateFlow()
@@ -113,6 +115,10 @@ class MpvPlayer private constructor(
                 LibMpv.EVENT_PLAYBACK_RESTART -> mutableState.update { it.copy(status = runningStatus()) }
                 LibMpv.EVENT_END_FILE -> event.data?.let { onEndFile(MpvEventEndFile(it)) }
                 LibMpv.EVENT_PROPERTY_CHANGE -> event.data?.let { onProperty(event.replyUserdata.toInt(), MpvEventProperty(it)) }
+                LibMpv.EVENT_LOG_MESSAGE -> event.data?.let { data ->
+                    val message = MpvEventLogMessage(data)
+                    log?.invoke(Redaction.redact("[${message.level}][${message.prefix}] ${message.text.orEmpty().trimEnd()}"))
+                }
             }
         }
     }
@@ -217,16 +223,20 @@ class MpvPlayer private constructor(
          * Creates a player, or returns null if libmpv is missing or fails to initialize.
          *
          * @param options merged over [defaultOptions]; use `vo=null`/`ao=null` for headless use.
+         * @param log receives the engine's own verbose log, line by line, with credentials removed. The engine's
+         *   `log-file` is not used for it: what it writes cannot be redacted, and it records every option it is
+         *   given, the HTTP headers of a server's stream with its access token among them.
          */
-        fun create(capabilities: DeviceCapabilities, options: Map<String, String> = emptyMap()): MpvPlayer? {
+        fun create(capabilities: DeviceCapabilities, options: Map<String, String> = emptyMap(), log: ((String) -> Unit)? = null): MpvPlayer? {
             val mpv = LibMpv.loadOrNull() ?: return null
             val handle = mpv.mpv_create() ?: return null
-            (defaultOptions + options).forEach { (name, value) -> mpv.mpv_set_option_string(handle, name, value) }
+            (defaultOptions + options - "log-file").forEach { (name, value) -> mpv.mpv_set_option_string(handle, name, value) }
             if (mpv.mpv_initialize(handle) < 0) {
                 mpv.mpv_terminate_destroy(handle)
                 return null
             }
-            return MpvPlayer(mpv, handle, capabilities)
+            if (log != null) mpv.mpv_request_log_messages(handle, "debug")
+            return MpvPlayer(mpv, handle, capabilities, log)
         }
 
         /** How far short of its running time a file may end and still have played to its end. */

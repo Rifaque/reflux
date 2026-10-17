@@ -26,6 +26,7 @@ internal interface LibMpv : Library {
     fun mpv_wakeup(ctx: Pointer)
     fun mpv_free(data: Pointer)
     fun mpv_error_string(error: Int): String
+    fun mpv_request_log_messages(ctx: Pointer, minLevel: String): Int
 
     companion object {
         /** Loads libmpv, or returns null when it is not installed. */
@@ -45,6 +46,7 @@ internal interface LibMpv : Library {
 
         const val EVENT_NONE = 0
         const val EVENT_SHUTDOWN = 1
+        const val EVENT_LOG_MESSAGE = 2
         const val EVENT_START_FILE = 6
         const val EVENT_END_FILE = 7
         const val EVENT_FILE_LOADED = 8
@@ -85,6 +87,19 @@ internal class MpvEventProperty(pointer: Pointer) : Structure(pointer) {
     @JvmField var name: String? = null
     @JvmField var format: Int = 0
     @JvmField var data: Pointer? = null
+
+    init {
+        read()
+    }
+}
+
+/** `mpv_event_log_message` */
+@Structure.FieldOrder("prefix", "level", "text", "logLevel")
+internal class MpvEventLogMessage(pointer: Pointer) : Structure(pointer) {
+    @JvmField var prefix: String? = null
+    @JvmField var level: String? = null
+    @JvmField var text: String? = null
+    @JvmField var logLevel: Int = 0
 
     init {
         read()

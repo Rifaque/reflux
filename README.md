@@ -97,7 +97,7 @@ tools/cli/build/install/reflux/bin/reflux play breaking bad
 tools/cli/build/install/reflux/bin/reflux doctor
 ```
 
-Playback and probing need libmpv (`libmpv2` on Debian/Ubuntu, `mpv-libs` on Fedora, `libmpv-2.dll` on Windows). When running from Gradle, a library placed in `.reflux/native/` (ignored by Git) is found without installing it system-wide. Nothing compiles against it: without libmpv everything builds, the tests that need an engine skip themselves, and the application browses but does not play. Shipping it is a release question, covered in [docs/RELEASE.md](docs/RELEASE.md). To see playback from the engine's side, set `REFLUX_MPV_LOG` to a file and libmpv writes its own verbose log there.
+Playback and probing need libmpv (`libmpv2` on Debian/Ubuntu, `mpv-libs` on Fedora, `libmpv-2.dll` on Windows). When running from Gradle, a library placed in `.reflux/native/` (ignored by Git) is found without installing it system-wide. Nothing compiles against it: without libmpv everything builds, the tests that need an engine skip themselves, and the application browses but does not play. Shipping it is a release question, covered in [docs/RELEASE.md](docs/RELEASE.md). To see playback from the engine's side, set `REFLUX_MPV_LOG` to a file (or a folder, for a file per engine) and the engine's verbose log is written there, with credentials removed.
 
 ## License
 
