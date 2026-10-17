@@ -66,8 +66,15 @@ interface CatalogSource : MediaSource {
 interface WatchStateSyncSource : MediaSource {
     suspend fun reportProgress(path: String, positionMs: Long, paused: Boolean)
 
-    /** Records where playback of [path] stopped; also how Reflux brings a source's position up to date. */
+    /** Records where playback of [path] stopped. */
     suspend fun reportStopped(path: String, positionMs: Long)
+
+    /**
+     * Brings the source's position in [path] up to date (what a scan finds the source has not heard of yet).
+     * It says nothing about a playback: a source on which this device has a playback of [path] open keeps
+     * it open, so that the playback's next report does not count as another one there.
+     */
+    suspend fun updatePosition(path: String, positionMs: Long) = reportStopped(path, positionMs)
 
     /** Marks [path] played or not played. Marking it not played also forgets the source's position in it. */
     suspend fun setPlayed(path: String, played: Boolean)

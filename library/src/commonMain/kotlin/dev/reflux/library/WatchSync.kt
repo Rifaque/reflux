@@ -76,7 +76,7 @@ internal suspend fun Library.deliver(source: MediaSource, updates: List<PendingS
     for ((path, update) in updates) {
         val delivered = bestEffort {
             update.played?.let { syncing.setPlayed(path, it) }
-            update.positionMs?.let { syncing.reportStopped(path, it) }
+            update.positionMs?.let { syncing.updatePosition(path, it) }
         }
         if (delivered) queries.markWatchSyncReconciled(now(), source.descriptor.id.value, path)
     }

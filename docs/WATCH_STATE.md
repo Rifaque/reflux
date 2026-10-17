@@ -173,6 +173,8 @@ Consequences:
 
 While Reflux plays a version from such a source, progress is also reported to it directly (`SyncingWatchReporter`), best-effort, one report at a time and in order, so that a stop is never overtaken by the progress report before it.
 
+A scan that finds a source behind brings its position up to date with `updatePosition`, which is not a stop: an adapter with a playback of that item open keeps it open (Jellyfin sends the position as that playback's progress). As a stop it ended the playback's session on a real server, and the playback's next report opened another, which the server counted as a second play (seen 2026-10-17: the library's first refresh read the server just before Play was pressed and delivered the position two seconds into the playback). A scan finds a source behind during a playback when it read the source before the playback's first report, or when reports were lost while the source was away.
+
 ### What a real server does
 
 The exchange is exercised against a real Jellyfin server by `JellyfinLiveTest` (it runs when a server is named, in the environment or in `~/.reflux-live/jellyfin.env`, as CONTRIBUTING.md describes; `tools/ci/jellyfin-test-server.sh` starts a throwaway one in Docker). Observed on Jellyfin Server 12.2.0, and relied on above:
@@ -181,7 +183,7 @@ The exchange is exercised against a real Jellyfin server by `JellyfinLiveTest` (
 - Marking an item played clears its position and counts a play.
 - Marking it not played clears the position, the play count, and the last-played date. An un-marked record is therefore empty and undated, which is exactly the record Reflux does not let erase its own history.
 - The server keeps no position in items only a few minutes long.
-- Each playback session opened (the first progress report of a playback) counts a play, whether or not the item ends up played; a stop ends the session. The position it stores trails the session's progress reports by about one report. A stop delivered while Reflux's own playback of the item is still open therefore ends that session early, and the next report counts another play (seen 2026-10-17, which is why the check after a stalled playback does not rescan; DECISIONS.md, 2026-10-16).
+- Each playback session opened (the first progress report of a playback) counts a play, whether or not the item ends up played. The position sent with that first report is not stored; those of later reports are, at once. A stop ends the session.
 
 Verified end to end there: reading existing state, progress made in Reflux reaching the server, nothing being re-sent once the two agree, a stale server value not overwriting newer progress, progress and "played" made on another client being adopted, and watched/unwatched travelling both ways.
 

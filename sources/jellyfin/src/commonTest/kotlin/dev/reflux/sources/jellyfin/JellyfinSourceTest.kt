@@ -158,6 +158,25 @@ class JellyfinSourceTest {
     }
 
     @Test
+    fun aPositionBroughtUpToDateDuringAPlaybackKeepsItsSessionOpen() = runTest {
+        // Seen on a real server: a scan delivering a position as a stop, two seconds into a playback of the same
+        // item, ended its session; the playback's next report opened another, and the server counted two plays.
+        val path = "items/m1/sources/s1"
+        source.updatePosition(path, 50_000) // no playback open: as a stop, which is how a position is set
+        source.reportProgress(path, 60_000, paused = false)
+        source.updatePosition(path, 65_000)
+        source.reportProgress(path, 70_000, paused = false)
+        source.reportStopped(path, 80_000)
+        val posts = requests.map { it.method + " " + it.url.removePrefix("https://jf.example.com/") }
+        assertEquals(
+            listOf("POST Sessions/Playing/Stopped", "POST Sessions/Playing", "POST Sessions/Playing/Progress", "POST Sessions/Playing/Progress", "POST Sessions/Playing/Stopped"),
+            posts,
+            "one session, opened once",
+        )
+        assertTrue("\"PositionTicks\":650000000" in requests[2].body!!.decodeToString())
+    }
+
+    @Test
     fun anUnmatchedItemsFolderNameIsNotItsTitle() {
         // Seen on a real server: an item no provider matched is called what its folder is called.
         assertEquals("Night Drive" to 2021, JellyfinSource.titleAndYear("Night Drive (2021)", 2021))
