@@ -61,6 +61,7 @@ The diagnostics log, the Android system log, and Reflux's own log file pass ever
 Known, deliberate, and visible in the library rather than silent:
 
 - **Multi-part files** (`CD1`/`CD2`, `part1`/`part2`) are identified as one work but appear as separate versions instead of playing in sequence. Solving it means a version made of several locations; the version model has one location per version today.
+- **Episodes with no show name anywhere in their path** (`S01E01.mkv` at the top of a folder) are grouped under one unnamed show; nothing in the path tells such files apart.
 - **Disc structures** (`BDMV`, `VIDEO_TS`) are recognized and skipped. Playing them means treating a folder as one playable version and handing the engine a disc path.
 
 ## Playback over the network
