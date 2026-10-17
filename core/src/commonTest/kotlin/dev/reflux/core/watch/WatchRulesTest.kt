@@ -96,4 +96,29 @@ class WatchRulesTest {
         val states = mapOf(MediaId("s0e1") to WatchState(MediaId("s0e1"), completed = true, lastPlayedAtEpochMs = 1))
         assertNull(NextUp.of(episodes, states))
     }
+
+    @Test
+    fun startingOverKeepsThePlaceThroughTheFirstMinute() {
+        val watching = WatchRules.onStop(null, id, hour, 2 * hour, nowMs = 1)
+        // "From the start", then leaving after a look at the opening.
+        val glanced = WatchRules.onStop(WatchRules.onProgress(watching, id, 20_000, 2 * hour, nowMs = 2), id, 40_000, 2 * hour, nowMs = 3)
+        assertEquals(hour, glanced.positionMs)
+        assertEquals(hour, WatchRules.resumePosition(glanced))
+        assertEquals(3, glanced.lastPlayedAtEpochMs)
+        assertEquals(watching.updatedAtEpochMs, glanced.updatedAtEpochMs, "nothing the user changed")
+
+        // Past the first minute, the new playback is where the viewer is.
+        val restarted = WatchRules.onStop(glanced, id, 5 * 60_000, 2 * hour, nowMs = 4)
+        assertEquals(5 * 60_000L, restarted.positionMs)
+        assertEquals(4, restarted.updatedAtEpochMs)
+    }
+
+    @Test
+    fun watchingAgainKeepsAFinishedWorkFinished() {
+        val finished = WatchRules.onStop(null, id, (1.95 * hour).toLong(), 2 * hour, nowMs = 1)
+        val again = WatchRules.onStop(finished, id, 20_000, 2 * hour, nowMs = 2)
+        assertTrue(again.completed)
+        assertEquals(0, again.positionMs)
+        assertNull(WatchRules.resumePosition(again))
+    }
 }

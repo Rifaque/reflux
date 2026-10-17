@@ -21,6 +21,7 @@ import dev.reflux.library.userSources
 import dev.reflux.library.LibraryEntry
 import dev.reflux.library.SourceRecord
 import dev.reflux.library.credits
+import dev.reflux.library.pinnedVersions
 import dev.reflux.library.downloads
 import dev.reflux.core.offline.DownloadState
 import dev.reflux.library.home
@@ -127,6 +128,10 @@ data class VersionRow(
     val technical: List<String>,
     val notes: List<String>,
     val best: Boolean,
+    /** The user's choice for the work ("Always play this"), whether or not it is the one Play uses this time. */
+    val pinned: Boolean = false,
+    /** Whether it can be made the user's choice: one of several versions, and one this device plays. */
+    val pinnable: Boolean = false,
 )
 
 @Immutable
@@ -196,6 +201,7 @@ internal fun Library.detailsModel(itemId: MediaId, device: DeviceCapabilities): 
             val best = selection.best
             val runtime = metadata?.runtimeMinutes ?: selection.ranked.firstNotNullOfOrNull { it.version.stream.durationMs }?.let { (it / 60_000).toInt() }
             val resumes = WatchRules.resumePosition(entry.watchState) != null
+            val pins = pinnedVersions(item.id)
             DetailsModel(
                 card = card,
                 overview = metadata?.overview,
@@ -221,6 +227,9 @@ internal fun Library.detailsModel(itemId: MediaId, device: DeviceCapabilities): 
                             ranked.assessment.compromises.map(Formatting::issue)
                         },
                         best = ranked.version.id == best?.version?.id,
+                        pinned = ranked.version.id in pins,
+                        // A pin never makes Reflux play something this device cannot play (WATCH_STATE.md).
+                        pinnable = selection.ranked.size > 1 && ranked.playable,
                     )
                 },
                 bestReason = selection.decidedBy.takeIf { selection.ranked.size > 1 },

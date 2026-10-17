@@ -54,8 +54,10 @@ object WatchRules {
     ): WatchState {
         val base = previous ?: WatchState(itemId)
         val position = if (positionMs < MIN_RESUME_MS) 0 else positionMs
-        // The first moments of another cut do not erase where the viewer was in the one they were watching.
-        if (position == 0L && version != null && Handoff.relation(base, version) == TimelineMatch.DIFFERENT) {
+        // The first minute of a playback does not erase where the viewer was: not a glance at another cut, and not
+        // starting this one over and leaving. Past it, the new position is where the viewer is.
+        val glance = version != null && Handoff.relation(base, version) == TimelineMatch.DIFFERENT
+        if (position == 0L && (glance || resumePosition(base) != null)) {
             return base.copy(lastPlayedAtEpochMs = nowMs)
         }
         val sameCopy = version == null || base.versionId == null || base.versionId == version.id

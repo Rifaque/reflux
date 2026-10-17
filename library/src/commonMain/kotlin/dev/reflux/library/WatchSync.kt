@@ -6,7 +6,9 @@ import dev.reflux.core.model.SourceId
 import dev.reflux.core.playback.WatchReporter
 import dev.reflux.core.source.MediaSource
 import dev.reflux.core.source.WatchStateSyncSource
+import dev.reflux.core.watch.Handoff
 import dev.reflux.core.watch.SourceUpdate
+import dev.reflux.core.watch.TimelineMatch
 import dev.reflux.core.watch.WatchRules
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -29,7 +31,8 @@ class SyncingWatchReporter(
 ) : WatchReporter {
     override fun progress(itemId: MediaId, positionMs: Long, durationMs: Long?) {
         library.progress(itemId, positionMs, durationMs, version)
-        sync { it.reportProgress(version.location.path, reported(it, positionMs, durationMs), paused = false) }
+        val told = held(itemId, positionMs)
+        sync { it.reportProgress(version.location.path, reported(it, told, durationMs), paused = false) }
     }
 
     override fun stopped(itemId: MediaId, positionMs: Long, durationMs: Long?) {
@@ -40,7 +43,21 @@ class SyncingWatchReporter(
         val end = (version.stream.durationMs ?: durationMs)
             ?.takeIf { WatchRules.isCompletedAt(positionMs, durationMs ?: version.stream.durationMs) }
             ?.let { maxOf(positionMs, it) }
-        sync { it.reportStopped(version.location.path, end ?: reported(it, positionMs, durationMs)) }
+        val told = held(itemId, positionMs)
+        sync { it.reportStopped(version.location.path, end ?: reported(it, told, durationMs)) }
+    }
+
+    /**
+     * Where the source is told the viewer is: the place Reflux still holds for the work when that is a place worth
+     * resuming on this copy's timeline (the first minute of starting over keeps it, [WatchRules.onProgress]), so
+     * the source does not record a few seconds and hand them back at the next scan as news; else the playback's own.
+     */
+    private fun held(itemId: MediaId, positionMs: Long): Long {
+        val state = library.watchState(itemId)
+        return when (Handoff.relation(state, version)) {
+            null, TimelineMatch.DIFFERENT -> positionMs
+            else -> state!!.positionMs
+        }
     }
 
     /** A position as the source is told it: never far enough for the source to count the work watched by itself. */

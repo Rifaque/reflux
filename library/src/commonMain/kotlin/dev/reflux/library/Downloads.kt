@@ -122,6 +122,27 @@ fun Library.downloadsOf(itemId: MediaId): List<Download> =
 /** The version a completed download is in the library, when its copy is registered. */
 fun Library.copyOf(download: Download): VersionInfo? = version(StableIds.versionId(MediaLocation(DownloadsSource.ID, download.path)))
 
+/** The version pinned for [itemId] and, when it was kept on the device, its copy: either is the user's choice. */
+fun Library.pinnedVersions(itemId: MediaId): Set<VersionId> {
+    val pin = queries.preferredVersion(itemId.value).executeAsOneOrNull() ?: return emptySet()
+    val copy = queries.downloadOfOrigin(pin).executeAsOneOrNull()?.let { StableIds.versionId(MediaLocation(DownloadsSource.ID, it.path)) }
+    return setOfNotNull(VersionId(pin), copy)
+}
+
+/**
+ * Makes [versionId] the version Play always uses for [itemId], or with null lets Best Version choose again.
+ * A copy kept on the device stands for the version it was made from, so the pin is the origin's and outlives
+ * the copy being removed (and a pinned origin is played from its copy while there is one, [Library.selectVersion]).
+ */
+fun Library.pinVersion(itemId: MediaId, versionId: VersionId?) {
+    val origin = versionId?.let { id ->
+        queries.downloadsOfItem(itemId.value).executeAsList()
+            .firstOrNull { StableIds.versionId(MediaLocation(DownloadsSource.ID, it.path)) == id }
+            ?.origin_version_id?.let(::VersionId)
+    }
+    setPreferredVersion(itemId, origin ?: versionId)
+}
+
 /** Whether a work's sources are the user's own, as opposed to Reflux's copies. */
 fun SourceRecord.isDownloads(): Boolean = type == DownloadsSource.TYPE
 

@@ -281,4 +281,55 @@ class ServerPlayedThresholdTest {
         assertTrue(state.completed)
         assertEquals(0, state.positionMs)
     }
+
+    @Test
+    fun startingOverAndLeavingInTheFirstMinuteKeepsThePlaceEverywhere() = runTest(UnconfinedTestDispatcher()) {
+        val (item, version) = arrival()
+        val first = SyncingWatchReporter(library, version, server, this)
+        first.progress(item, 20 * MINUTE, RUNNING_TIME)
+        clock += 10_000
+        first.stopped(item, 30 * MINUTE, RUNNING_TIME)
+        scan()
+
+        // "From the start", a look at the opening, and leaving.
+        clock += 3_600_000
+        val again = SyncingWatchReporter(library, version, server, this)
+        again.progress(item, 10_000, RUNNING_TIME)
+        clock += 10_000
+        again.progress(item, 20_000, RUNNING_TIME)
+        clock += 5_000
+        again.stopped(item, 25_000, RUNNING_TIME)
+
+        assertEquals(30 * MINUTE, library.watchState(item)?.positionMs, "Reflux keeps the place")
+        assertEquals(item, library.continueWatching().single().item.id)
+        assertEquals(30 * MINUTE, server.positionMs, "the server is told the place Reflux kept, not the seconds")
+
+        // So the next scan has nothing to bring back.
+        scan()
+        assertEquals(30 * MINUTE, library.watchState(item)?.positionMs)
+        assertEquals(30 * MINUTE, server.positionMs)
+    }
+
+    @Test
+    fun startingOverAndWatchingOnIsTheNewPlaceEverywhere() = runTest(UnconfinedTestDispatcher()) {
+        val (item, version) = arrival()
+        val first = SyncingWatchReporter(library, version, server, this)
+        first.progress(item, 20 * MINUTE, RUNNING_TIME)
+        clock += 10_000
+        first.stopped(item, 30 * MINUTE, RUNNING_TIME)
+        scan()
+
+        clock += 3_600_000
+        val again = SyncingWatchReporter(library, version, server, this)
+        again.progress(item, 20_000, RUNNING_TIME)
+        clock += 10_000
+        again.progress(item, 2 * MINUTE, RUNNING_TIME)
+        clock += 10_000
+        again.stopped(item, 5 * MINUTE, RUNNING_TIME)
+
+        assertEquals(5 * MINUTE, library.watchState(item)?.positionMs)
+        assertEquals(5 * MINUTE, server.positionMs)
+        scan()
+        assertEquals(5 * MINUTE, library.watchState(item)?.positionMs)
+    }
 }

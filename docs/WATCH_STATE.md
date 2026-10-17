@@ -73,7 +73,7 @@ The reasoning behind `ADJUSTED`: cuts of a work differ by material that is in on
 Recording follows the same rule in the other direction:
 
 - A report from a playing version stores the position together with that version's timeline.
-- The first minute of a *different* timeline does not replace where the user was. Glancing at another cut costs nothing.
+- The first minute of a playback does not replace a place worth resuming: not on a *different* timeline (glancing at another cut costs nothing), and not on the same one ("From the start", then leaving within a minute, keeps where the user was; DECISIONS.md, 2026-10-17). Past the first minute, the new position is where the user is. A source that keeps watch state is told the place Reflux kept, not the seconds played, so it cannot hand them back at the next scan.
 - Watching any copy to its end completes the work.
 - A playback that never got going (still opening when it was left, or failed to open) records nothing: the engine has no position of the viewer's to report, and the work's progress stays where it was.
 - Trying again after a playback failed (DECISIONS.md, 2026-10-16) records the position reached as progress, never as a stop, so it cannot complete a work wherever it happened. It then plans afresh as *continuing*: the position is where the viewer is even past 90% of the running time, where pressing Play would start the work over (`WatchRules.resumePosition`, `planPlayback(continuing = true)`).
@@ -85,7 +85,7 @@ Best Version (`VersionSelector`) is deterministic and device-specific. The first
 1. Availability of its source: one known to be away sets a copy back; one not checked yet (just added, or signed in to again) does not.
 2. Whether this device can play it at all: container, codec, resolution, bit depth, Dolby Vision handling.
 3. Continuity: when the user is part-way through a work, a copy on the timeline in progress.
-4. The version the user pinned for the work.
+4. The version the user pinned for the work ("Always play this" on a film's versions; "Let Reflux choose" removes it). Pinning a copy kept on the device pins the version it was made from.
 5. How well this device plays it: fewer compromises such as software decoding, tone mapping, or a Dolby Vision base layer.
 6. Resolution, as far as this display can show it.
 7. Dynamic range, as far as this display can show it.

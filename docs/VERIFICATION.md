@@ -197,3 +197,15 @@ Verified on 2026-10-17 on Windows 11, at `2a66250` before the rebaseline (the do
 | Baseline | `./gradlew check` | 579 tests, none failed; 8 skipped (environment-gated: live servers, real windows, physical controllers) |
 | Version single-sourced | `./gradlew printVersion`, `:android:app:assembleDebug`, the merged manifest; an invalid `reflux.version` | `0.9.0-alpha.1 (90001)`; the APK's `versionName` and `versionCode` match; an invalid version fails the build with the protocol's message |
 | Not verified | Anything on a device, a live service, or GitHub | Unchanged from the sections above |
+
+## First M1 slice ("From the start", version pinning): what was verified
+
+Verified on 2026-10-17 on Windows 11, on the tree that closes the slice.
+
+| Level | What ran | State |
+| --- | --- | --- |
+| Rules | `WatchRulesTest` (starting over keeps the place through the first minute, then moves it; a finished work stays finished), `HandoffTest` (the same-timeline case now keeps the place) | Passed; the new tests failed before the fix |
+| Library, with a server modeled on the real Jellyfin one | `ServerPlayedThresholdTest`: "From the start" and leaving after 25 s keeps 30:00 in Reflux, in Continue Watching, and on the server, through the next scan; watching on past the first minute is the new place everywhere. `OfflineTest`: pinning the copy on the device pins its origin, and the choice outlives the copy | Passed; the server test failed before the fix |
+| Experience layer | `VersionChoiceTest`: pin and unpin by pointer on a desktop window, beneath the version on a phone (412 dp), and with remote keys alone on a television; the renderings reviewed (cards aligned, choice within the screen, focus ring on the choice) | Passed |
+| Full check | `./gradlew check --rerun-tasks`, three times | 587 tests, 8 skipped (environment-gated). Twice one failure, `SourcesUiTest.theRemoteChoosesLibrariesToo` timing out waiting for focus on the libraries page; once none. That test passes alone and in the `ui` suite alone (151 tests, none failed), and the pre-slice tree passed one full run; the page offers its first focus only once its libraries arrive from a background load, which the test races under load. The page is untouched by this slice; recorded as an intermittent test to fix (ROADMAP.md, M2, CI) |
+| Not verified | Against a real Jellyfin server (the model stores a short stop as it is; a real server's handling of it is not exercised); on a device or emulator; by hand in the desktop window | Open |
