@@ -181,6 +181,7 @@ The exchange is exercised against a real Jellyfin server by `JellyfinLiveTest` (
 - Marking an item played clears its position and counts a play.
 - Marking it not played clears the position, the play count, and the last-played date. An un-marked record is therefore empty and undated, which is exactly the record Reflux does not let erase its own history.
 - The server keeps no position in items only a few minutes long.
+- Each playback session opened (the first progress report of a playback) counts a play, whether or not the item ends up played; a stop ends the session. The position it stores trails the session's progress reports by about one report. A stop delivered while Reflux's own playback of the item is still open therefore ends that session early, and the next report counts another play (seen 2026-10-17, which is why the check after a stalled playback does not rescan; DECISIONS.md, 2026-10-16).
 
 Verified end to end there: reading existing state, progress made in Reflux reaching the server, nothing being re-sent once the two agree, a stale server value not overwriting newer progress, progress and "played" made on another client being adopted, and watched/unwatched travelling both ways.
 

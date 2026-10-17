@@ -1,14 +1,35 @@
 package dev.reflux.ui.state
 
+import dev.reflux.core.identify.ParsedKind
+import dev.reflux.core.identify.ParsedMedia
 import dev.reflux.core.input.SemanticAction
 import dev.reflux.core.model.Availability
 import dev.reflux.core.model.MediaId
+import dev.reflux.core.model.StableIds
+import dev.reflux.core.playback.AudioCodec
+import dev.reflux.core.playback.AudioStream
+import dev.reflux.core.playback.Container
 import dev.reflux.core.playback.PlaybackFailure
 import dev.reflux.core.playback.PlayerStatus
+import dev.reflux.core.playback.StreamInfo
+import dev.reflux.core.playback.VideoCodec
+import dev.reflux.core.playback.VideoStream
+import dev.reflux.core.source.CatalogEntry
+import dev.reflux.core.source.CatalogSource
+import dev.reflux.core.source.CatalogVersion
+import dev.reflux.core.source.PlaybackTarget
+import dev.reflux.core.source.SourceCapability
+import dev.reflux.core.source.SourceDescriptor
+import dev.reflux.core.source.SourceLocality
+import dev.reflux.core.source.SourceUserState
+import dev.reflux.core.source.WatchStateSyncSource
 import dev.reflux.ui.FakePlatform
 import dev.reflux.ui.FakePlayer
 import dev.reflux.ui.TestWorld
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
@@ -217,10 +238,12 @@ class SourceSilenceTest {
         runCurrent()
         assertTrue("1080p" in playing.player.requests.last().target.uri, "the pin still decides")
 
-        // That copy goes; the check after the next failure finds it gone, and Try again plays the other.
-        Files.delete(playing.world.source.resolve(hd.location.path))
+        // That copy goes, and the library learns it as it learns any change, by reading the source. Try again
+        // after the next failure plays the other.
         stallAt(playing, 31 * 60_000L)
         wait(30_000)
+        Files.delete(playing.world.source.resolve(hd.location.path))
+        playing.app.refresh(playing.world.source.descriptor.id)
         awaitReal("the rescan to drop the missing copy") { library.versions(playing.itemId).none { it.version.id == hd.id } }
         playing.session.retry()
         runCurrent()
@@ -249,6 +272,34 @@ class SourceSilenceTest {
         wait(30_000)
         awaitReal("the source to be found away") { playing.world.library.source(sourceId)?.availability == Availability.UNAVAILABLE }
         assertEquals(Problems.SOURCE_STOPPED, playing.session.error?.message, "and the player's failure stays the player's")
+    }
+
+    @Test
+    fun theCheckAfterAStallLeavesAMediaServersPlaybackSessionAlone() = runTest {
+        // Found against a real Jellyfin server: reading the source again after a stall delivered Reflux's newer
+        // position as a stop, which ended the playback's session there; the next report opened another, and the
+        // server counted a second play. The check asks whether the source is there, and nothing more.
+        val server = RecordingServer()
+        val playing = playing { world ->
+            world.library.addSource(server, "recording")
+            world.registry.register(server)
+            runBlocking { world.pipeline.refresh(server.descriptor.id) }
+            // Watching happens after the server was last read.
+            world.clock += 60_000
+            world.movie("Ronin").item.id
+        }
+        assertEquals(server.descriptor.id, playing.world.library.versions(playing.itemId).single().version.location.sourceId)
+        stallAt(playing, 20 * 60_000L)
+        wait(30_000)
+        assertNotNull(playing.session.error)
+        awaitReal("the source check") { playing.app.checking.isEmpty() }
+        assertEquals(Availability.AVAILABLE, playing.world.library.source(server.descriptor.id)?.availability)
+
+        playing.session.retry()
+        runCurrent()
+        assertEquals(PlayerStatus.PLAYING, playing.player.state.value.status)
+        assertEquals(listOf("start"), server.calls.filter { it != "progress" }, "one session, never stopped, never marked played")
+        assertEquals(1, server.plays)
     }
 
     @Test
@@ -333,5 +384,51 @@ class SourceSilenceTest {
         assertEquals(20 * 60_000L, playing.player.requests.last().startPositionMs)
         assertEquals(20 * 60_000L, playing.watch?.positionMs)
         assertEquals(PlayerStatus.PLAYING, playing.player.state.value.status)
+    }
+}
+
+/**
+ * A media server that keeps watch state as Jellyfin was seen to: the first report of a playback opens a session
+ * and counts a play, the position it stores trails the session's reports by one, and a stop ends the session.
+ */
+private class RecordingServer : CatalogSource, WatchStateSyncSource {
+    val calls: MutableList<String> = java.util.Collections.synchronizedList(mutableListOf())
+    @Volatile var plays = 0
+    @Volatile private var position = 0L
+    @Volatile private var open = false
+
+    override val descriptor = SourceDescriptor(StableIds.sourceId("recording", "server"), "recording", "Server", SourceLocality.LOCAL_NETWORK, setOf(SourceCapability.PROVIDES_CATALOG))
+    override suspend fun availability() = Availability.AVAILABLE
+    override suspend fun playbackTarget(path: String) = PlaybackTarget("http://server.local/$path")
+
+    @Volatile private var reported = 0L
+    override fun catalog(): Flow<CatalogEntry> = flowOf(
+        CatalogEntry(
+            ParsedMedia(ParsedKind.MOVIE, "Ronin", 1998),
+            listOf(CatalogVersion("items/ronin", 3_000_000_000, 1, StreamInfo(Container.MATROSKA, VideoStream(VideoCodec.H264, 1920, 1080, 8), listOf(AudioStream(AudioCodec.AAC, 2, "eng")), durationMs = 50 * 60_000L))),
+            userState = SourceUserState(played = false, positionMs = position, playCount = plays, lastPlayedAtEpochMs = null, favorite = false),
+        ),
+    )
+
+    override suspend fun reportProgress(path: String, positionMs: Long, paused: Boolean) {
+        if (!open) {
+            open = true
+            plays++
+            calls += "start"
+        } else {
+            position = reported
+            calls += "progress"
+        }
+        reported = positionMs
+    }
+
+    override suspend fun reportStopped(path: String, positionMs: Long) {
+        open = false
+        position = positionMs
+        calls += "stopped"
+    }
+
+    override suspend fun setPlayed(path: String, played: Boolean) {
+        calls += "played:$played"
     }
 }
