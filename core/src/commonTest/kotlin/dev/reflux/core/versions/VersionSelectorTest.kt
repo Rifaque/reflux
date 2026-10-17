@@ -103,6 +103,22 @@ class VersionSelectorTest {
     }
 
     @Test
+    fun aSourceNotCheckedYetIsNotASourceThatIsAway() {
+        // A copy this phone cannot decode on a reachable source, and one it can on a source just added and
+        // not checked yet: the one it can play is the one, and it is offered.
+        val undecodable = candidate("uhd", VideoCodec.HEVC, 2160)
+        val unchecked = candidate("hd", locality = SourceLocality.LOCAL_NETWORK, availability = Availability.UNKNOWN)
+        val selection = VersionSelector.select(listOf(undecodable, unchecked), Devices.oldPhone)
+        assertEquals(unchecked.version, selection.best?.version)
+        assertEquals(SelectionCriterion.COMPATIBILITY, selection.decidedBy)
+        // A pinned copy on such a source is still the viewer's choice.
+        val other = candidate("other")
+        val pinned = VersionSelector.select(listOf(other, unchecked), Devices.tv4kHdr, preferred = unchecked.version.id)
+        assertEquals(unchecked.version, pinned.best?.version)
+        assertEquals(SelectionCriterion.USER_PREFERENCE, pinned.decidedBy)
+    }
+
+    @Test
     fun userPreferenceWinsWhilePlayable() {
         val uhd = candidate("uhd", VideoCodec.HEVC, 2160)
         val hd = candidate("hd")
