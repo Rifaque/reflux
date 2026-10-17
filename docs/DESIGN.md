@@ -6,7 +6,7 @@ Reflux should combine:
 
 - restrained, premium consumer-software ergonomics,
 - cinematic media presentation,
-- liquid-glass materials.
+- selective frosted glass for what floats above the media (DECISIONS.md, 2026-10-14, "Visual reset").
 
 The goal is not to copy Apple, Netflix, Infuse, Plex, or any other product. Those products are references for principles, not visual templates. What Reflux takes from the best of them is restraint: media is the hero, artwork carries the color and the energy, and the interface stays quiet around it.
 
@@ -14,7 +14,7 @@ In one line: let the media be colorful; let the interface be calm. Powerful unde
 
 ## Material system
 
-Liquid glass is a system, not a blur filter.
+Glass is a system, not a blur filter, and it is a layer above the media, not Reflux's identity.
 
 Define material roles such as:
 

@@ -1,453 +1,223 @@
 # Reflux Roadmap
 
-## Status
+The one source of truth for what Reflux is building, in what order, and what is finished. It is organized by outcome, not by layer.
 
-| Area | State |
+- What was run to verify each piece of work is in [VERIFICATION.md](VERIFICATION.md); it is not repeated here.
+- What a release build needs is in [RELEASE.md](RELEASE.md), and the release and beta checklists are there.
+- How versions are numbered and promoted is [VERSIONING.md](VERSIONING.md).
+- The website, demo video, and beta program are planned in [LAUNCH.md](LAUNCH.md).
+- Decisions behind the plan are in [DECISIONS.md](DECISIONS.md) (the rebaseline: 2026-10-17).
+
+This roadmap replaces the earlier Phase 0–18 plan, which was ordered by architectural layer and no longer matched the state of the code (DECISIONS.md, 2026-10-17, "Roadmap rebaseline").
+
+## Where Reflux is
+
+Reflux is a **pre-release**. The engine (Media Core, sources, identification, metadata, watch state, Best Version, playback, Smart Offline) is mature and heavily tested; the experience layer runs on desktop, Android phones and tablets, and Android TV. Nothing has been released: there is no signed Android build, no desktop installer, no store listing, no public website, and no tester outside the project. Everything on Android and television has been verified on emulators only. The current version is `0.9.0-alpha.1` ([VERSIONING.md](VERSIONING.md)).
+
+Status words used below:
+
+| Word | Meaning |
 | --- | --- |
-| Media Core contracts (entities, versions, locations, availability, watch state, artwork) | Implemented in `core` |
-| Universal watch state and version handoff: one watch state per work, positions carried between copies by timeline (cut and running time), different cuts never resumed blindly, reconciliation with sources that keep their own watch state | Implemented and tested with source-independent doubles ([WATCH_STATE.md](WATCH_STATE.md)); verified on Windows and Linux, and the exchange verified against a real Jellyfin server (see the verification table below) |
-| Source abstraction and capabilities | Contracts implemented |
-| Playback capability model and Best Version (capability-driven, local-first among equivalent versions, continuity of the cut in progress) | Implemented and tested |
-| Input model (semantic actions, mappings, modality tracking) | Implemented and tested |
-| Filename/folder identification, sidecars, confidence | Implemented and tested |
-| Local persistence / offline model (SQLite, offline and unmount safety) | Implemented and tested |
-| Local folder source (desktop) and scan → identify → library | Implemented and tested |
-| Player contract, default track selection, playback controller, chapters, skip intro/recap/credits, next-episode autoplay with "still watching?" | Implemented and tested |
-| Desktop engine: libmpv playback and probing (verified headlessly against real media) | Implemented and tested |
-| Metadata engine: provider contract, deterministic matching, TMDB provider, episode metadata, Identify flow, artwork cache | Implemented and tested |
-| Background pipeline: change watching, debounced rescans, reconnect detection, scan → probe → metadata → artwork | Implemented and tested |
-| Smart search (deterministic query understanding over metadata, credits, stream facts, watch state) | Implemented and tested |
-| Smart library: default Home feed, franchise/manual/smart collections, diagnostics (weak identification, unmatched works, multiple versions, missing episodes and artwork, offline sources) | Implemented and tested |
-| Catalog-source architecture and Jellyfin adapter (sign-in, catalog, multi-version items, direct streams, two-way watch state through the source-independent reconciliation) | Implemented and tested against API fixtures. Sign-in, the catalog, the direct stream, and the watch-state exchange are verified against Jellyfin Server 12.2.0, first in Docker and then on a real home server with a full library (1,453 versions, including works with several), where a server stream also played in the desktop engine, and the watch state of episodes and of a work with two copies on the server was walked through (see the live Jellyfin verification below); other server versions are not |
-| WebDAV network source (read-only) | Implemented; tested against fixtures and a live WsgiDAV server |
-| SMB network source (read-only, streamed through a loopback server) | Implemented; tested against a live SMB2 server (impacket), including probing and playback |
-| Cross-source unification: works sharing a provider ID merge into one work (Best Version across sources) | Implemented and tested |
-| Design system foundations (tokens, materials, motion, adaptive layout, artwork atmosphere) | Implemented and tested; rendered by the experience layer |
-| Developer CLI (scan, search, info, play, doctor) over the real engine | Implemented; verified end to end |
-| Continuous integration (Linux with libmpv, Windows) | The workflow runs the whole check on both and the desktop window tests on Linux under a virtual display, from scripts in `tools/ci` that a container image runs identically. On Linux, where the job installs the engine and a display, a test that needs them fails rather than skips itself. Those steps pass locally (Windows 11, and Ubuntu 24.04 in the container); the workflow itself has not run on GitHub since the desktop shell was added |
-| Experience layer (`ui`): first-run, Home, Movies/Shows, smart search, movie and show details, sources, player controls and menus, input-adaptive layout, failure states | Desktop Vertical Slice 0.2: implemented and tested as state logic, as rendered screens, and under pointer, keyboard, and controller input |
-| Desktop shell (`desktop:app`): window, embedded libmpv video with Reflux controls above it, fullscreen, keyboard, mouse, and controller input, native folder picker, diagnostics log | Desktop Vertical Slice 0.2: verified end to end in the real window on Windows 11 and on Linux (X11 with a compositing manager): first run through the folder dialog, browsing, and real playback operated by a mouse |
-| Desktop controllers (XInput and HID joysticks on Windows, the kernel joystick interface on Linux) | Implemented and tested from the reader upward, and hardened against the non-controller devices real machines report. No physical controller has been connected during development, so Xbox, PlayStation, and Switch Pro hardware is unverified; `PhysicalControllerTest` is the guided check for it |
-| Platform boundary | Shared modules are free of platform APIs and `check` enforces it; what a new shell supplies is listed in the architecture document |
-| Android phone and tablet client (`android:app`): the shared experience layer with phone and tablet layouts, folders through the Storage Access Framework, Media3 playback, the canonical watch state | First vertical slice implemented and hardened, verified on an emulator: first run, choosing a folder, storage that goes away and comes back, the library, details, playback, resume, picture-in-picture, the system's media controls, controller input, and continuity with a real Jellyfin server (see the verification table below) |
-| Android TV / Google TV: the same application and experience layer as a television form factor (10-foot layout, focus that is always somewhere, a remote-driven player, Reflux's own folder picker where the system has none, HDMI audio capabilities) | First milestone implemented, verified on the Google TV emulator: first run, choosing a folder, Home, Movies and Shows, details, search with the system keyboard, playback and its lists, resume, Continue Watching, and continuity with a real Jellyfin server, all with remote keys only (see the verification table below). Not verified on a real television |
-| Smart Offline: a copy of a version kept on the device as one more version of the same work, chosen by Best Version for this device in the room there is, played and resumed like any version ([OFFLINE.md](OFFLINE.md)) | Engine implemented and tested in `core` and `library` for every platform; in the experience layer a Download action, its status, and the "Watch offline" sheet; wired on Android (phone, tablet, television). Verified on emulators, including a real download from a Jellyfin server and playback with the server stopped (see the verification table below) |
-| Source onboarding and management: adding a folder, a Jellyfin server, or a network share (SMB or WebDAV, told apart by the address) from the application; a sources page with each source's state, contents, and actions (refresh or try again, sign in again or change, remove); sources that are away stay listed and in the library; Smart Offline reached from a details page through a sheet that shows and explains what would be kept before anything is downloaded; a neutral, restrained pass over the interface's use of amber | Implemented and tested (see the verification table below). Connectors are platform-free contracts in `core`, wired on the desktop and on Android alike (Jellyfin, SMB, WebDAV) |
-| Source parity and library controls: SMB on Android; choosing a Jellyfin server's libraries; connection secrets sealed with the Android keystore; adapters closed when replaced; the navigation lit only for the section the user is in | Implemented and tested (see the verification table below); exercised against live SMB, WebDAV, and Jellyfin servers on the desktop engine and in the installed Android application |
-| Visual reset: neutral-first cinematic interface (no interface hue, bright-neutral primary action, white progress and focus, artwork atmosphere behind heroes, selective frosted glass, versions led by the decision, the player title by the timeline, neutral app marks); the amber identity retired (DECISIONS.md, 2026-10-14) | Implemented across desktop, phone, tablet, and television (one experience layer); verified as rendered screens on every form factor and by the full check (see the verification table below) |
-| Smart Offline gaps | Downloads stop when the application is closed and continue at its next start. No choosing of single episodes or whole seasons. Not wired on the desktop. Removable storage is not offered. Verified on emulators only |
-| Artwork completeness: one fallback rule for every frame (poster, backdrop, the other real image, then generated), including a work whose artwork cannot be read on a platform (DECISIONS.md, 2026-10-15) | Implemented and tested; a television does not request image access in v1 (decided, DECISIONS.md, 2026-10-15) |
-| Television gaps | Subtitle and artwork files next to a video are not visible to Reflux on a television on Android 13 and later (the system only shows an app the media files; `READ_MEDIA_IMAGES` is not requested in v1, by decision; artwork embedded in or taken from the video is a possible later direction); nothing on the launcher beyond the app itself (no Watch Next row); a held seek key repeats at a fixed step; a folder on a drive is only reachable while the drive is mounted where it was; picture-in-picture, 4K, HDR, Dolby Vision, passthrough, and removable drives could not be exercised on an emulator |
-| Android gaps | No playback in the background (by decision, for now); chapters are not reported by the engine; a folder's changes are picked up at the next refresh rather than as they happen; the Identify and collections flows have no UI on any platform yet; release builds (signing, shrinking) are not set up; verified on an emulator only, not on physical phones or tablets |
-| Known gaps | Watch state is not synchronized between devices except through a source that keeps it; cuts are told apart by edition labels and running times only; stacked multi-part files play as separate versions; disc structures (BDMV/VIDEO_TS) are recognized but not playable; credentials are kept in the open on Linux desktops without a Secret Service |
-| Not yet in the experience layer | Identify flow, library diagnostics, and user collections have engine support but no UI; no settings screen yet; browsing one source's media on its own |
-| Desktop shell gaps | libmpv is not bundled and there is no installer; media keys are not captured; no scrollbars; the GNOME and KDE folder dialogs are used when their helper is installed but are only unit-tested (the Linux end-to-end run uses the toolkit's chooser); on X11 without a compositing manager the player's controls window is opaque and hides the video; Wayland has only been reached through X11 |
-| Not verified here | TMDB against the live service (no credential on the development machine; the provider is covered by fixtures and the app falls back to file names); a session with physical controllers |
-| Release readiness | Tracked in [RELEASE.md](RELEASE.md): libmpv distribution, credential storage, provider attribution, multi-part files, disc structures |
+| **Done** | Implemented, tested, documented, and verified as far as the environment allowed (VERIFICATION.md says how far) |
+| **Partial** | Some of it exists; the gap is stated |
+| **Open** | Not started |
+| **Gate** | A decision point with criteria; the outcome moves the item into V1 or to V1.x |
 
-### Desktop Vertical Slice 0.2: what was verified
+## Platforms
 
-Verified on 2026-10-13, on the tree that closes the slice.
-
-| Where | What ran | Result |
+| Target | V1 | Notes |
 | --- | --- | --- |
-| Windows 11 | `./gradlew check` | 358 tests, none failed; 7 skipped (the window tests, which run on request; the physical-controller check; the live SMB test) |
-| Windows 11, real window | `./gradlew :desktop:app:test -Preflux.windowTests=true`: first run through the native folder dialog, browsing with a mouse and with a scripted controller, playback with its controls, seeking, resume, next episode, fullscreen, a deleted file, closing the window | 27 tests, none failed; 1 skipped (physical controller) |
-| Ubuntu 24.04 in the `tools/ci` container (Xvfb, openbox, xcompmgr, software rendering) | the Linux job: `check`, then the real-window tests eight times in a row | 358 tests, none failed; eight rounds without a failure, and every window test ran in every round |
+| Android phone and tablet | Yes | Google Play |
+| Android TV / Google TV | Yes | Google Play, the same application package as phones |
+| **Fire TV running Fire OS** | **Yes** | Amazon Appstore. A separate distribution target from Android TV, with its own store, review, device matrix, and launcher integration; not "Android TV on another box" (DECISIONS.md, 2026-10-17, "Fire TV is a V1 target") |
+| Windows | Yes | Installer with libmpv bundled |
+| Linux | Yes | Package with libmpv (bundled or from the distribution) |
+| Vega OS (newer Fire TV devices) | No | Future compatibility track. Vega OS is not Android; Reflux's Android application does not run on it. Promoted only by an evaluation and an explicit decision |
+| iOS / iPadOS | No | Not a V1 commitment |
 
-Not verified: the workflow on GitHub (this work has not been pushed); physical controllers (none connected); TMDB against the live service; the GNOME and KDE folder dialogs; X11 without a compositing manager; native Wayland. The window tests need the desktop to themselves: a locked desktop, the test window being moved, or another window taking focus while they run fails them.
+## Milestones
 
-### Watch state and version handoff: what was verified
-
-Verified on 2026-10-13, on the tree that closes the milestone.
-
-| Level | What | State |
+| Milestone | Outcome | State |
 | --- | --- | --- |
-| Implemented | Canonical watch state, timelines and cuts, handoff, reconciliation with sources, Best Version order, schema migration | Done |
-| Verified on Windows 11 | `./gradlew check`; the real-window tests | 415 tests, none failed; 27 real-window tests, none failed (physical-controller check skipped) |
-| Verified on Linux (Ubuntu 24.04 in the `tools/ci` container) | The Linux job: `check`, then the real-window tests | 415 tests, none failed; two real-window rounds without a failure. With `REFLUX_REQUIRE_ENGINE_TESTS=true`, every engine, watch-state, migration, and source suite ran; only the Windows-only, physical-controller, and live-server tests were skipped |
-| Verified against a live service | `JellyfinLiveTest` against Jellyfin Server 12.2.0 in Docker: sign-in, catalog, direct stream, and the watch-state exchange in both directions, including the stale-value case | Passed, repeatedly, against freshly created servers |
-| Not verified | Jellyfin with episodes, multi-version items, a real library, or another server version; playing a server's stream in the engine; watch state with WebDAV and SMB sources beyond the shared tests (they keep no watch state of their own) | Open |
-| Blocked by the environment | The workflow on GitHub (not pushed); TMDB against the live service (no credential) | Open |
+| M0 — Rebaseline & governance | One roadmap, a versioning protocol, verification history separated, product decisions recorded, V1 acceptance criteria | Done (2026-10-17) |
+| M1 — Product completeness | Everything V1 must contain is built and tested | Partial |
+| M2 — Release engineering | Signed, shrunk, installable, upgradable builds for every V1 target, in CI, legally ready | Open |
+| M3 — Real-world validation | Live services, physical devices, real controllers, real networks, large libraries | Open |
+| M4 — Beta | `0.9.0-beta.1` in testers' hands through the stores and the website | Open |
+| M5 — Beta iteration | `beta.2`, `beta.3`, … until the beta exit criteria hold | Open |
+| M6 — Release candidate | `0.9.0-rc.1`, feature freeze, final validation, store submissions prepared | Open |
+| M7 — Public 1.0 | `1.0.0` on Google Play, the Amazon Appstore, Windows, and Linux; the website in its launch state | Open |
+| W0–W4 — Website | reflux.rsxdevelops.dev from foundation to launch, in parallel with M1–M7 ([LAUNCH.md](LAUNCH.md)) | Open |
 
-### Android phone and tablet: what was verified
+M1, M2, and M3 overlap: release engineering and validation start as soon as the work they depend on is stable, not after M1 is finished. Beta (M4) starts only when the beta entry checklist in RELEASE.md holds.
 
-Verified on 2026-10-13, on the tree that closes the Android hardening milestone.
+## Done
 
-| Level | What | State |
+What the product already does, everywhere it runs unless a platform is named. Details: ARCHITECTURE.md and the topic documents; evidence: VERIFICATION.md.
+
+- **Media Core**: works, versions, locations, availability, watch state, and artwork as separate concepts; source capabilities explicit.
+- **Identification**: films, shows, seasons, and episodes from ordinary file and folder names, with confidence; sidecar subtitles and artwork; identity keys for every script.
+- **Metadata and artwork**: deterministic matching, TMDB provider (fixture-tested), episode metadata, artwork cache, one artwork fallback rule, a designed state for works without artwork.
+- **Library**: local-first SQLite, offline and unmount safety, background pipeline (scan, probe, metadata, artwork), a source that is away stays in the library.
+- **Sources**: local folders (desktop paths, the Storage Access Framework on Android, folders by path on television), Jellyfin (catalog, libraries, direct streams, two-way watch state), SMB and WebDAV (read-only); added and managed from the application; credentials in the system store on desktop and sealed by the keystore on Android.
+- **Cross-source unification**: one work across sources, Best Version per device, local-first among equals.
+- **Universal watch state**: one state per work, carried between copies by timeline, never blindly onto another cut, reconciled with sources that keep their own.
+- **Continue Watching and Next Up** inside the application (Home and details).
+- **Search**: deterministic smart search over metadata, credits, stream facts, and watch state.
+- **Playback**: libmpv on desktop, Media3 on Android; default track selection, chapters (desktop), skip intro/recap/credits, next-episode autoplay and "still watching?", a source that goes silent becomes a stated failure, picture-in-picture on Android handhelds.
+- **Versions**: every version listed and playable by choice, the recommended one explained.
+- **Smart Offline (Android)**: Download on a details page, the review sheet, status, copies as versions, playback and resume with the source away.
+- **Input**: pointer, keyboard, touch, controllers (desktop readers, Android key events), television remotes; the controller morph.
+- **Form factors**: desktop, phone, tablet, television layouts of one experience layer, with the neutral-first visual system.
+- **Developer CLI**, **Linux CI workflow** (written and run in its container; never run on GitHub), regression tests for everything the 2026-10-17 stress cycle found.
+
+## M0 — Rebaseline & governance
+
+Done on 2026-10-17:
+
+- This roadmap, replacing the Phase 0–18 plan.
+- Verification history moved to [VERIFICATION.md](VERIFICATION.md).
+- [VERSIONING.md](VERSIONING.md), linked from AGENTS.md as mandatory for version and release changes; the version single-sourced in `gradle.properties`.
+- [LAUNCH.md](LAUNCH.md): website track, demo video, beta program, store tracks.
+- [RELEASE.md](RELEASE.md) rewritten around the release, beta-entry, and store checklists.
+- Stale claims corrected in README.md, SECURITY.md, CONTRIBUTING.md, ARCHITECTURE.md, DESIGN.md, OFFLINE.md, WATCH_STATE.md, and AGENTS.md; superseded decisions marked.
+- Product decisions recorded (DECISIONS.md, 2026-10-17): "From the start", television sidecar subtitles, desktop Smart Offline, collections in 1.0, episodes without a show name, the casting gate, Jellyfin sign-out on removal, truthful desktop capabilities, Watch Next, Fire TV, Vega OS, the beta stage.
+- V1 acceptance criteria (below).
+
+## M1 — Product completeness
+
+V1 contains what Reflux fundamentally is, and no more. Each row is required for V1 unless marked as a gate.
+
+| Item | State | What is left |
 | --- | --- | --- |
-| Implemented | The Android shell over the shared experience layer and engine: folders through the system picker, Media3 playback, picture-in-picture, the media session, phone and tablet layouts, the amber accent | Done |
-| Windows verified | `./gradlew check` (Android lint and unit tests included); the desktop real-window tests | 428 tests, none failed; 27 real-window tests, none failed |
-| Linux verified | The Linux job in its container, which has no Android SDK: `check`, then the real-window tests | 421 tests, none failed (the Android unit tests are not part of a build without an SDK); the real-window round without a failure |
-| Layouts, offscreen | Phone portrait and landscape and tablet, rendered and operated by touch (`HandheldLayoutTest`); every rendering reviewed | 4 tests, none failed |
-| Android emulator verified (Android 16, API 36.1, x86_64 phone) | `connectedDebugAndroidTest`: the shared parsing on Android's runtime; a folder becoming a library on Android's SQLite with the platform prober; storage that goes away, comes back empty, and comes back whole; cancelling the picker; continuity between a local folder and a server in both directions, a different cut, and a stale server record; real Media3 playback (seek, speed, end, a missing file); watching, then resuming | 11 tests, none failed; the live-server test is skipped unless a server is named |
-| Android emulator, by hand | First run through the system folder picker; cancelling it; the grant surviving a restart; the folder moved away (the library stays, titles marked offline) and back; details, playback, the timeline, Resume; leaving with Home into picture-in-picture, the system's play/pause key acting on it, and returning; rotation during playback; controller key events (navigation, select, back, play/pause, the layout morph and its prompts); system text at 130% | Done, with screenshots reviewed |
-| Live Jellyfin verified (Jellyfin Server 12.2.0 in Docker) | From the emulator: a film watched from the device's storage to 00:30:12 resumed at 00:30:12 from the server's stream, and back to the local file; the server heard of the progress. From the desktop JVM: the whole watch-state exchange (`JellyfinLiveTest`) | Passed on this tree, both |
-| Physical-device verified | Phones, tablets, and controllers in hand | **Not done.** No Android device was used (the developer's phone was attached and deliberately left alone), and no physical controller was connected; controller input was exercised as key events on the emulator |
-| Not verifiable on an emulator | Hardware decoding, HDR output, high-resolution playback, removable storage, real Bluetooth media buttons | Open |
-| Environment-blocked | The workflow on GitHub (not pushed); TMDB against the live service (no credential) | Open |
+| Automatic organization and identification | Done | Episodes without a show name: grouped per folder and offered to Identify instead of one unnamed show across the library (decided; open) |
+| Identify / fix match | Partial | Engine done (`Identify` flow, persistent overrides). No UI on any platform: search a provider, choose, apply, undo; reached from details and from weak identifications |
+| Continue Watching and Next Up | Done | — |
+| **Watch Next** (the platform's own "continue" row) | Open | Android TV / Google TV: the launcher's Watch Next row from Reflux's Continue Watching and Next Up, kept current and removed when finished. Fire TV: Amazon's equivalent where the platform allows an app of Reflux's kind (feasibility first; DECISIONS.md, 2026-10-17, "Watch Next is a V1 feature") |
+| Cross-source watch state | Done | "From the start" must not erase progress (decided; open) |
+| Best Version | Done | Desktop capabilities must be what the machine does, not a declared profile (decided; open) |
+| Visible version selection | Done | — |
+| Version pinning | Partial | Engine and the "Your choice" presentation done; no way to pin or unpin in the UI |
+| Smart Offline, user-facing | Partial | Android done. Choosing single episodes and whole seasons; a Downloads entry point listing every copy; desktop wiring (decided: in V1) |
+| Serious playback parity | Partial | Television: an explanation where sidecar subtitles cannot be read (decided); held seek acceleration; chapters on Android where Media3 can supply them; media keys on desktop |
+| Jellyfin correctness and security | Partial | Removing a server signs its session out (decided; open); the plain-HTTP policy on Android (RELEASE.md) |
+| Source onboarding and management | Done | — |
+| Android phone and tablet | Done (emulator) | Physical validation in M3 |
+| Android TV / Google TV | Done (emulator) | Watch Next; physical validation in M3 |
+| Fire TV / Fire OS | Open | Device inspection (model, Fire OS version, API level against `minSdk` 26); launcher and remote behavior; no-Google-services assumptions checked; Amazon's integration for "continue" |
+| Windows and Linux | Partial | Smart Offline wiring; truthful capabilities; media keys; scrollbars |
+| Accessibility baseline | Partial | Contrast and system text size are tested. Screen-reader labels on every control, focus order, reduced motion, and a TalkBack / Narrator pass are not |
+| About, legal, and attribution | Open | An About page: version and build, licenses (Reflux and third-party, including libmpv/FFmpeg obligations), TMDB attribution and logo, privacy and support links |
+| Casting | Gate | Time-boxed feasibility before beta; V1.1 if it fails the gate (DECISIONS.md, 2026-10-17, "Casting is a V1 feasibility gate") |
 
-### Visual refinement: what was verified
+First M1 slice (2026-10-17): "From the start" and version pinning. Recommended order after it: Watch Next, Identify UI, Smart Offline episode/season choice and Downloads, Jellyfin sign-out, desktop Smart Offline and capabilities, About/legal, accessibility, Fire TV inspection, the casting spike.
 
-Verified on 2026-10-13, all of it on the tree that closes the visual refinement (`2b7a21f`: colors, type, and accent use in the shared experience layer, and the details page's progress and recommendation; no navigation or engine change).
+## M2 — Release engineering
 
-| Level | What ran | State |
+| Item | State |
+| --- | --- |
+| License chosen for Reflux (blocks every distribution) | Open |
+| Android signed release build, R8 shrinking with keep rules validated on device | Open |
+| Android install, upgrade, and data migration tests (debug → release, release → release) | Open |
+| Android in CI (unit tests, lint, a release build; instrumented tests where a runner allows) | Open |
+| The CI workflow run on GitHub at least once, green | Open |
+| Google Play readiness: listing, data safety form, content rating, target API, TV quality checklist, closed-testing track | Open |
+| Fire OS / Amazon Appstore readiness: listing, Fire TV device targeting, Amazon's app review requirements, test on the declared devices | Open |
+| Desktop packaging: Windows installer (signed), Linux package(s) | Open |
+| libmpv distribution with provenance (LGPL build, license texts, source offer) | Open |
+| Desktop metadata: version, icon, file associations if any, data directory | Open |
+| TMDB credential injected into release builds, never committed | Open |
+| Release checklist (RELEASE.md) exercised end to end once before beta | Open |
+
+## M3 — Real-world validation
+
+| Item | State |
+| --- | --- |
+| TMDB against the live service, with attribution in place | Open |
+| A real Android phone and tablet | Open |
+| A real Google TV / Android TV device | Open |
+| Real Fire TV hardware (the developer's Fire TV Stick 4K and Fire TV television, after inspecting what they run) | Open |
+| Physical Xbox and PlayStation controllers on desktop, Android, and television | Open |
+| Desktop installation from the package on a clean Windows and a clean Linux machine | Open |
+| Network failure and recovery on real networks (Wi-Fi drop, server sleep, VPN) | Open |
+| A large-library performance baseline (scan, browse, search, start-up) recorded for regression | Open |
+| A reproducible stress harness: the 2026-10-17 fuzzing and race runs were not committed (only the regression tests for what they found are in the suite); decide whether to keep a seeded harness in the tree | Open |
+| A visual regression strategy for the offscreen renderings | Open |
+| Broader compatibility: other Jellyfin versions, NAS SMB servers, HDR/DV/passthrough on real hardware | Open |
+
+## M4 — Beta
+
+`0.9.0-beta.1`. Entry requires the beta checklist in RELEASE.md.
+
+- Google Play closed testing track; Amazon Appstore testing (Live App Testing) for Fire TV; desktop builds from the website.
+- About 15–20 testers, recruited through the website's beta signup, covering phones, tablets, Google TV, Fire TV, Windows, and Linux, local folders and servers.
+- The beta website (W3) with the demo video (W2), signup, supported platforms, and the changelog.
+- A feedback path (in-app link to a form or email, a diagnostics export) and a public changelog per beta.
+
+## M5 — Beta iteration
+
+`0.9.0-beta.2`, `beta.3`, … Bug fixes, compatibility, UX, performance, accessibility. New features enter only by an explicit decision recorded in DECISIONS.md; otherwise they wait for V1.x. Exit: no open blocker or critical bug, the V1 acceptance criteria hold, and the last beta ran at least a week without a new critical report.
+
+## M6 — Release candidate
+
+`0.9.0-rc.1`, then `rc.N` only for fixes. Feature freeze, final validation on every target, store listings and submissions prepared, legal pages final.
+
+## M7 — Public 1.0
+
+`1.0.0`, built from the final release candidate's commit with only the version changed ([VERSIONING.md](VERSIONING.md)). Google Play (phones, tablets, Google TV), Amazon Appstore (Fire TV on Fire OS), Windows, Linux; reflux.rsxdevelops.dev in its launch state (W4).
+
+## Website track (parallel)
+
+| Stage | Outcome | Needed by |
 | --- | --- | --- |
-| Implemented | The refined look across desktop, phone, and tablet: neutral dark base, one amber accent, sentence-case type, quiet chips, progress on details pages | Done |
-| Windows verified | `./gradlew check`, with every screen rendered and all 36 renderings reviewed (desktop, phone, tablet, player, controller focus, empty, search, and error states) | 428 tests, none failed |
-| Windows verified, real window | `./gradlew :desktop:app:test -Preflux.windowTests=true`, playback included | 27 tests, none failed. One run in between failed in two steps while the machine was in use; the run after it passed |
-| Linux verified (Ubuntu 24.04 container, engine tests required) | The Linux job: the headless `check`, then one round with the real-window tests (first run, browsing by mouse and by scripted controller, playback in the window) | 421 tests, none failed, in both |
-| Android emulator verified (Android 16, API 36.1) | `connectedDebugAndroidTest` | 11 tests, none failed; the live-server test ran separately, below |
-| Android emulator, by hand | First run through the system folder picker, Home, details, playback, the timeline, leaving at 00:30, Resume and the progress on details, Continue Watching on Home, resuming from there, and leaving into picture-in-picture | Done, with screenshots reviewed |
-| Live Jellyfin verified (Jellyfin Server 12.2.0 in Docker) | From the emulator: a film watched from the device's storage to 00:30:12 resumed there from the server's stream, and back to the local file. From the desktop JVM: `JellyfinLiveTest` | Passed, both |
-| Physical-device verified | A phone or tablet in hand | **Not done.** The developer's phone was attached and deliberately left alone |
-| Physical-controller verified | A controller in hand | **Not done.** None was connected; controller input was scripted on the desktop and sent as key events on the emulator |
-| Environment-blocked | The workflow on GitHub (not pushed); TMDB against the live service (no credential), so artwork in every run was generated placeholders | Open |
-
-### Android TV / Google TV: what was verified
-
-Verified on 2026-10-14, on the tree that closes the first television milestone, unless a row says otherwise.
-
-| Level | What ran | State |
-| --- | --- | --- |
-| Implemented | Television as a form factor of `ui` (layout for a 960 by 540 canvas, automatic and returning focus, focus glow, row-at-a-time Home, remote-driven player with an Episodes list, the folder picker), and in the Android shell: television detection, the TV launcher entry and banner, the storage browser and its permission, path-based folder sources, HDMI audio capabilities | Done |
-| Windows verified | `./gradlew check`, with every screen rendered: 51 renderings, of which the 15 television ones and a sample of the desktop and phone ones were reviewed | 439 tests, none failed. `TelevisionTest` drives the real screens with remote keys: starting focus, rows, details and back, the navigation, Movies, search, the player and its lists, and choosing a folder |
-| Windows verified, real window | `./gradlew :desktop:app:test -Preflux.windowTests=true` | 27 tests, none failed (physical-controller check skipped) |
-| Linux verified (Ubuntu 24.04 container, engine tests required) | The Linux job: the headless `check`, then one real-window round | 430 tests, none failed, in both |
-| Android TV emulator verified (Google TV, Android 16, 1080p) | `connectedDebugAndroidTest`: everything the handheld suite covers, on the television image, and `TelevisionOnDeviceTest`: a folder chosen by path becoming a library, one folder being one source, Android's file watching, real Media3 playback from a path, the source surviving a restart and its storage going away and coming back; and what the device reports it can show and send out | 13 tests, none failed. The emulator reports a 1080p SDR display, stereo output, and no passthrough, and that is what Reflux claimed |
-| Android TV emulator, with remote keys only | First run: the system's permission question, the folder picker down to a folder, the library appearing. Home, a row, details, playback, seeking with the D-pad and with the fast-forward key, the lists, Back; Resume and the progress on details; Continue Watching on Home and resuming from it; where focus is after each step; leaving with Home (playback pauses; this image has no picture-in-picture). Search: the television keyboard, typing, results, Back | Done, with screenshots reviewed. Search and the storage flow were walked on the tree before the last focus fixes; focus and playback on the final one |
-| Android phone emulator verified (Android 16) | `connectedDebugAndroidTest`; first run still opens the system folder picker and the storage permission stays ungranted | 13 tests, none failed |
-| Live Jellyfin verified (Jellyfin Server 12.2.0 in Docker) | From the TV emulator: a film watched from the device's storage to 00:30:12 resumed there from the server's stream, watched on to 00:33:00, and continued from the local file | Passed, on the tree before the last focus fixes (which are in `ui`; the engine and playback code did not change after). The desktop `JellyfinLiveTest` was not rerun for this milestone |
-| Watch-state continuity | The same canonical watch state as every platform; the continuity tests (local to server and back, a different cut, a stale server record) ran on the television image | Passed, as part of the 13 |
-| Physical-device verified | A television or streaming box, and its remote | **Not done.** None was available |
-| Physical-controller verified | A controller in hand, on a television or anywhere | **Not done.** Controller input on a television is covered by the shared tests only |
-| Not verifiable on an emulator | Hardware decoding, 4K, HDR and Dolby Vision output, an HDMI receiver's channels and passthrough formats, drives plugged into the device, picture-in-picture on a television, a real remote's media keys | Open |
-| Environment-blocked | The workflow on GitHub (not pushed); TMDB against the live service (no credential), so artwork in every run was generated placeholders | Open |
-
-The TV emulator stopped by itself twice during this work (the emulator process, not the app) and was restarted; no test result above comes from an interrupted run.
-
-### Smart Offline: what was verified
-
-Verified on 2026-10-14, on the tree that closes the Smart Offline milestone, unless a row says otherwise.
-
-| Level | What ran | State |
-| --- | --- | --- |
-| Implemented | The download capability on sources; the download model, storage policy, and planner in `core`; records, queue, copying, and registration of copies as versions in `library`, with a schema migration; the Download action, status, and "Watch offline" sheet in `ui`; Android wiring over private storage | Done |
-| Planner and engine, with source-independent doubles | `OfflinePlannerTest` (the version this device plays best, the smallest among equals, fitting the room, a pinned version never substituted, cuts, the reserve, estimates, subtitles) and `OfflineTest` (a copy is one more version of the same work; playback and resume with the source away; reconciliation when it is back, including a stale server record; pins; a different cut; proposals; insufficient room at planning and at start; interrupted and resumed transfers with and without ranges; a source that is away, gone media, a source that hands nothing out; pause, cancel, retry; an application stopped mid-download; subtitles; removal of a copy and of its source; corrected identity; storage away and a missing file), and both migrations | Part of the checks below; none failed |
-| Windows verified | `./gradlew check`, with every screen rendered: 61 renderings, of which the 10 offline ones and the phone details page were reviewed | 468 tests, none failed. `OfflineUiTest` drives the real screens: the action and its states, the sheet, removal, a phone, and a television by remote |
-| Windows verified, real window | `./gradlew :desktop:app:test -Preflux.windowTests=true` | 27 tests, none failed (physical-controller check skipped) |
-| Linux verified (Ubuntu 24.04 container, engine tests required) | The Linux job: the headless `check`, then one real-window round | 459 tests, none failed, in both |
-| Android phone emulator verified (Android 16; a clean virtual device, since the earlier one had no room left to download into) | `connectedDebugAndroidTest`, with `OfflineOnDeviceTest`: a copy fetched into the application's storage against the device's real free space, registered in Android's SQLite, played in Media3 from where the viewer was with its source away, still there after a restart, and removed | 16 tests, none failed; 3 skipped (the two live-server tests and the connect helper, which ran separately) |
-| Android TV emulator verified (Google TV, Android 16) | The same suite | 16 tests, none failed; the same 3 skipped |
-| Live Jellyfin verified (Jellyfin Server 12.2.0 in Docker), automated | On both emulators: a film watched from the server to 00:30:12, downloaded from the server over HTTP (the file's size as the server states it), played from the device at 00:30:12 with the server out of reach and on to 00:33:00, and the server holding that position once it was reachable again. The earlier continuity test alongside | Passed on both, on the tree before the last two interface fixes (wrapping actions on a phone, focus after a panel closes), which are in `ui` only |
-| Live Jellyfin, by hand in the installed application (phone emulator) | With the server connected through the test helper: Download on the film's details, progress, "On this device", the copy listed as the recommended version; the server's container stopped, the source shown as not connected, the library and artwork intact, Resume playing from the device at about 00:19 where it was left, watched on to 00:30; the container started again, and the server's own record read back as 00:30:15 | Done, with screenshots reviewed |
-| By hand on the TV emulator, remote keys only | Download from the details page, the sheet, Back, and playing the copy with the server stopped | Done |
-| Physical-device verified | A phone, tablet, or television in hand | **Not done** |
-| Not verified | Large files and slow or metered networks; a download interrupted by the system killing the application (the restart path is covered by tests, not by a real kill); WebDAV and SMB as download sources beyond the shared tests (SMB does not exist on Android); a server whose reported size differs from the file's | Open |
-| Environment-blocked | The workflow on GitHub (not pushed); TMDB against the live service (no credential) | Open |
-
-### Source onboarding and management: what was verified
-
-Verified on 2026-10-14, on the tree that closes the milestone.
-
-| Level | What ran | State |
-| --- | --- | --- |
-| Implemented | Connectors for Jellyfin, WebDAV, and SMB behind `SourceConnector`; `SourceConnections` in `library`; the Media sources, Add media, and connect pages; the offline sheet's review step with the planner's own reason; download marks on cards; the amber restraint pass | Done |
-| Engine, with fixtures | `JellyfinConnectorTest`, `WebDavConnectorTest`, `SmbConnectorTest` (addresses as people type them, every failure told apart, nothing secret kept or logged), `SourceConnectionsTest` (routing, persistence, signing in again, a changed address, nothing added on failure), `OfflinePlannerTest` (why each version was chosen) | Part of the checks below; none failed |
-| Windows verified | `./gradlew check`, with every screen rendered; the source, connect, offline review, phone, tablet, and television renderings reviewed. `SourcesUiTest` drives the real screens: first run with a folder first and a server one step aside, a wrong password and then the right one, a share that is not there, a server that goes away (still listed, still in the library), trying again, signing in again, a phone, a tablet, and the whole flow with remote keys | 488 tests, none failed |
-| Windows verified, real window | `./gradlew :desktop:app:test -Preflux.windowTests=true`: first run, the media sources page, Add media, the share form, Back out of it, the controller's Menu button, playback | 27 tests, none failed (physical-controller check skipped) |
-| Linux verified (Ubuntu 24.04 container, engine tests required) | The Linux job: the headless `check`, then a real-window round | Passed, both. The first window round failed in the test itself (a click meant for the navigation's "Media sources" landed on the page title of the same name); the test was corrected and the round rerun |
-| Live Jellyfin, phone emulator (Android 16, Jellyfin Server 12.2.0 in Docker), by hand in the installed application | First run, Connect a server or share, Jellyfin, the address typed with the phone keyboard and Next between fields, a wrong password ("That user name or password wasn't accepted.") and the right one; the library with the server's artwork; details, Download, the review sheet (`SD · 16 MB · from …`, room available), Download, "On this device", the copy as the recommended version; the server stopped, the source "Not connected" with its explanation, its address and account, Try again, Sign in again; the film played from the device | Done, with screenshots reviewed |
-| Live Jellyfin, television emulator (Google TV, Android 16), remote keys only | The same from first run: the form reached and filled with the D-pad and the television keyboard, connecting with OK, Home, details, Download, the sheet with focus on its confirmation, focus back on the action afterwards, the server stopped and the film played from the device; Menu opens the media sources | Done, with screenshots reviewed |
-| Found by the device runs and fixed | On a phone the bottom navigation sat on top of the keyboard and covered Connect (it now steps aside while typing); a field's label did not focus its field; on a television the keyboard opened as soon as a field had focus and took over the remote, and OK's release typed a letter into it (it now opens on OK, when OK is let go); a server in a container was named by its generated host name | Fixed and rerun |
-| Not verified | SMB and WebDAV connections against live servers from the application (their connectors are covered by fixtures and a closed port, and the adapters by the earlier live tests); physical devices; a real television's keyboard | Open |
-| Environment-blocked | The workflow on GitHub (not pushed); TMDB against the live service (no credential) | Open |
-
-### Desktop credential storage: what was verified
-
-Verified on 2026-10-14. The real Jellyfin server integration this was planned alongside ran on 2026-10-15 (below).
-
-| Level | What ran | State |
-| --- | --- | --- |
-| Implemented | Source connections in the system credential store on the desktop (Windows Credential Manager; the Secret Service on Linux where one runs), a reference in the database, migration of connections stored in the open, removal of a source's entry, the developer CLI connecting through the same path; redaction of quoted Jellyfin tokens and stream-server tokens | Done |
-| Fixture-tested | `CredentialStorageTest` (migration at start, a store that refuses, removal, an entry the store lost, two libraries on one account, the Secret Service protocol never putting a secret in arguments), `SourceSectionsTest` (the per-source seal), `RedactionTest` | Part of the check below; none failed |
-| Windows verified | `./gradlew check`, including a real round trip through Windows Credential Manager | 513 tests, none failed |
-| Not verified | The Secret Service on a Linux desktop with a running keyring | Open |
-
-### Live Jellyfin on a real server: what was verified
-
-Verified on 2026-10-15 on Windows 11, against the developer's own Jellyfin Server 12.2.0 (RS-X1) on the local network, with a dedicated test account named only in `~/.reflux-live/jellyfin.env`. The engine was driven through the developer CLI and headless libmpv, each step a fresh process over test libraries of their own; no window was opened.
-
-| Level | What ran | State |
-| --- | --- | --- |
-| Real server, automated | `JellyfinLiveTest`: sign-in, the catalog, the direct stream, and the whole watch-state exchange (existing state read, progress reaching the server, nothing re-sent, a stale value not winning, another client's progress and "played" adopted, watched and unwatched both ways) | Passed |
-| Real server, by hand | Signing in through the application's connector: 1,453 versions read (246 films, 45 shows), 265 works with several versions. Best Version on the server's own duplicates: decided by size when everything above it tied, by the stable order for identical copies, and by resolution over a lower-resolution local copy. A server stream played in libmpv with its audio and subtitle tracks, stopped at 10:08, resumed there, and the server held the position | Done |
-| Real server, by hand: handoff | A local copy of a server film with the same running time, one work with the server's copy. Local progress (20:03) kept and the server told nothing when the server was connected; progress after that (25:03) reached the server at the next scan; another client's 40:00 adopted and the local copy resumed there (same timeline); Reflux's newer 40:04 not undone by the server's 40:00, which was brought up to date; watched and unwatched sent both ways; the test account's record for the film left as found | Done |
-| Real server, credential storage on Windows | The connection in Credential Manager under the test library's name; the database holding only `keychain:v1:<source id>`; no password, token, or server address in the database, the cached artwork, the test reports, or the CLI's output; every later process reconnecting without the password; the test libraries' sessions signed out and their entries removed afterwards | Done |
-| Real server, out of reach | The server made unreachable for the engine's process alone (a dead HTTP proxy): the source checked as unavailable, a scan removing nothing, every work still listed and marked offline with its watch state, artwork still cached, Play answered with no plan instead of a failure; reachable again: available, nothing changed, playable, no sign-in | Done |
-| Real server, by hand: episodes | A second run the same day, through a scratch library of its own (the server's library had changed meanwhile: 1,189 versions, the second copies of 264 works gone from the server itself). One show the test account had not started: another client's position on an episode adopted, Continue Watching and Next Up on that episode, playback resuming there; progress reaching the server; Reflux's newer position kept over the server's older one and delivered at the next scan; watched and unwatched both ways; another client's "played" adopted; Next Up following each change by the documented rule. The test account's records for the episodes left as found | Done |
-| Real server, by hand: several copies on the server | A film with two copies on the server whose running times differ by five minutes (two timelines). Best Version by size from the start; continuity over a pinned copy when resuming, the pin when starting over; the other cut resumed at an adjusted position, in both directions (the same moment in the longer copy, five minutes earlier in the shorter); a position sent only to the server copy on its timeline, "watched" to both; another client's position on one copy adopted with that copy's timeline. Both copies' records left as found, the pin removed | Done |
-| Real server, cut off mid-playback | The scratch library connected through a local forwarder that could reset or silently drop its connections, the server itself untouched. Reset during playback: playback went on from what the engine had already buffered (most of an episode, on a local network), the source checked as unavailable, the position reached was kept and delivered at the next scan once reachable. Reset, then a seek past the buffer: reported as the media being unreachable, the position kept (after the fix below). Connections dropped without a reset, then a seek past the buffer: the player stayed buffering for as long as it was watched (150 s), and stopping it was clean and kept the position; nothing reports this as a failure. Reachable again: available, playback resumed where it was, no sign-in | Done; the silent case is now built as decided (DECISIONS.md, 2026-10-16) and tested against the real engine with a connection held open (`SilentSourceTest`) |
-| Real server, silent stream, 2026-10-16/17 | The shared player session and the real desktop engine (headless libmpv, no window, a small engine cache so the buffer ran out in seconds) through a relay that could hold the stream's connection open and silent while the server's API still answered, or silence everything. Played from the buffer, then waiting shown; the stated failure ("stopped sending", Try again, the way back) after 30.0 s of waiting each time; the source checked and still online; data returning on the held connection cleared the failure and playback went on; Try again played again in under a second from the position kept, in the same engine; Reflux's watch state never completed and no play counted. Found and fixed: the check after the failure rescanned the server, which ended the playback's session there and counted a second play on the server (now only availability is checked; rerun: the server's count stayed at one through the failure, the check, and Try again). Not completed because the server went off the network during the run: leaving a failed playback, the whole server silent, the near-end and first-minute Try again, and Android against this server; a longer run's second play on the server was traced (2026-10-17, the relay logging each session call) to the library's first refresh, which had read the server just before Play and delivered a position as a stop two seconds into the playback; positions brought up to date by a scan now leave an open playback's session alone (WATCH_STATE.md), and the same run repeated opened one session and counted one play (DECISIONS.md, 2026-10-16) | Partly done; open |
-| Real server, near the end, 2026-10-17 | Played past 90%, back to thirty minutes, and left: the server had marked the film played from a progress report alone, and the next scan marked it watched in Reflux. Fixed: positions told to the server stay short of its own threshold until a playback finishes, which is reported as the end (DECISIONS.md, 2026-10-17). Rerun: the server held 85% while the playback was near the end and stayed unplayed; after leaving at thirty minutes, Reflux and the server both had thirty minutes, unwatched, through a rescan, in one session; a playback run to the end of the file was watched in Reflux and played on the server with one play | Fixed, rerun against the server |
-| Stress testing, 2026-10-17 | Deterministic fuzzing and race tests across identification (30,000 generated names), scanning (3,000 films; repeated, partial, and interrupted scans), watch-state reconciliation (randomized sequences against a server modeled on the real one), the playback session (randomized engine and viewer events), and Best Version (40,000 random cases); the shared UI rendered offscreen with worst-case real titles at desktop, phone, tablet, and television sizes. Found and fixed: identity keys that dropped every non-Latin letter (unrelated works of the same year merged, 2026-10-17 in DECISIONS.md); a folder a scan could not list removed its works (DECISIONS.md, 2026-10-17); a source not checked yet ranked a playable copy behind an undecodable one (WATCH_STATE.md); a source removed during its scan left works behind; the engine's diagnostic log recorded a server's access token (now redacted, confirmed against the real server); long titles, episode names, and the player's failure card on a phone. On the phone emulator, the regression test for an unreadable folder and the rest of the instrumented tests pass | Done |
-| Found by the live run and fixed | A film's only subtitle, marked default but not forced, stayed on although its English audio was understood: mpv published the tracks before saying which it had chosen, so the default track selection was decided against no selection (`MpvEngineTest` reproduces it with a generated file) | Fixed in `playback:mpv`, rerun against the server |
-| Found by the live run and fixed | With the server cut off, the stream running out before the end of an episode was reported by mpv as the end of the file, and the episode was recorded as watched (completed, a play counted, the position cleared, "played" pending for the server). An end more than 15 s before the running time is now the media becoming unreachable, and the position reached stays (`MpvEngineTest` reproduces it with a cut-off file) | Fixed in `playback:mpv`, rerun against the server |
-| Android, real server, cut off mid-playback | On the phone emulator (Android 16), the engine with Media3 and the application's own playback controller, connected to this server through the same forwarder, 2026-10-16. Sign-in, a scan, playback, resume at the same moment, and progress reaching the server; an episode played to its end counted as watched and reached the server as played. Connections closed cleanly or reset during playback, or before a seek past the buffer: Media3 reports the source as unreachable (after what it had buffered, when playing on), the position reached is kept and is not counted as watched (a stop past 90% of the running time still is, as everywhere), and playback resumes there once the server is back. A server that stops answering: Media3 played on from its buffer and then, through its own read timeout, reported the source as unreachable, about a minute after the silence began. A file cut off before its stated running time, served whole by a local web server: reported as unreachable, never as ended. No change was needed on Android | Done; Media3's own failure now reads as the source having stopped, with Try again, through the shared player (DECISIONS.md, 2026-10-16); not yet rerun on the emulator |
-| Not verified | The desktop application's window against this server (the machine was in use: a game during the first run, other applications during the second); Android on a real phone or television against this server; the Secret Service on Linux (the protocol-level test is no substitute) | Open |
-
-### Source parity and library controls: what was verified
-
-Verified on 2026-10-14, on the tree that closes the milestone.
-
-| Level | What ran | State |
-| --- | --- | --- |
-| Gaps found before changing anything | SMB not offered on Android; a server's libraries could not be chosen; adapters not closed when replaced (a share's connection left open); adding SMB on Android would have stored its password in the open; Home lit on the sources pages; WebDAV and SMB never exercised through the application | All closed below |
-| Engine, with fixtures | `JellyfinLibrariesTest` (which libraries are offered, a library left out is never read, an item in two libraries is read once, an older server's address, the choice kept with the connection), `SourceSectionsTest` (leaving a library out and taking it back with its watch history, the connection kept, everything cannot be left out, signing in again keeps the choice, sealed storage and sealing what was stored before, adapters closed), `LocalStreamServerTest` (listens on 127.0.0.1) | Part of the checks below; none failed |
-| Experience layer | `SourcesUiTest`: choosing libraries by pointer and by remote, the last one kept, a server that is away cannot be asked, the card's summary, one film across a folder and a server with all its versions, no tab lit on the sources pages | Part of the checks below; none failed |
-| Windows verified | `./gradlew check`, then the real-window tests; every screen rendered and the source, library-choice, phone, tablet, and television renderings reviewed | 503 tests, none failed; the real-window tests ran and passed (physical-controller check skipped) |
-| Linux verified (Ubuntu 24.04 container) | The headless `check`, then a real-window round | Passed, both |
-| Android emulators (phone and Google TV, Android 16) | `connectedDebugAndroidTest` on each, with SMB and the keystore seal in the application | 13 passed on each; the 3 tests that need a named live server skipped themselves |
-| Live, desktop engine (`SourcesLiveTest` against Samba and WebDAV in Docker, `tools/ci/share-test-servers.sh`) | A wrong password, a share that does not exist, a share that needs a sign-in, each told apart; both shares connected and scanned into one film with a version on each; libmpv opening each version (running time read through SMB's loopback stream and over WebDAV); a copy kept from the SMB version; both servers stopped: sources kept and not connected, every version still known, the copy playing; both started: available, nothing duplicated, the same share connected again being the same source | Passed, all three phases, after the SMB fixes below |
-| Live, Android phone emulator, by hand in the installed application | Upgrading over an installation whose server token was stored in the open: sealed at start, still read. A share added as `//10.0.2.2:1445/Movies` with its name and password, scanned, probed, played; the copy removed and kept again from the share; the share stopped: "Not connected" with its explanation, and the film resuming from the device; started again: reconnected by itself. A Jellyfin server with two libraries (`REFLUX_JELLYFIN_KIDS=1`): both listed, Kids left out, its film gone from the library, "1 library left out" on the card | Done, with screenshots reviewed |
-| Found by the device run and fixed | The SMB stream server bound to IPv6 loopback on Android; a probe closed the share under the player; a failing stream ended the application | Fixed in `sources:smb`, rerun on the device and on the desktop engine |
-| Not verified | SMB and the library choice on the television emulator (the remote path is covered by `SourcesUiTest`); physical devices; NAS products other than Samba | Open |
-| Environment-blocked | The workflow on GitHub (not pushed); TMDB against the live service (no credential), so artwork in these runs was the server's own or generated | Open |
-
-### Visual reset: what was verified
-
-Verified on 2026-10-14 on Windows 11, on the tree that closes the visual reset (`design`, the experience layer, and the shells' icons; no navigation, playback, source, or library change).
-
-| State | What | Result |
-| --- | --- | --- |
-| Implemented | The full check: 516 tests, 0 failures, 9 skipped (the environment-gated live-server, real-window, and physical-controller tests), including new tests that hold every chrome token to no hue, the primary action and progress to their contrast, the artwork atmosphere to a readable dark tone, and versions to leading with what they are chosen by | Done |
-| Implemented | Every screen rendered offscreen at desktop, phone, tablet, and television sizes (`-Preflux.screenshots`) and reviewed: Home with and without artwork, scrolled Home, details of a movie, a show, and a work kept offline, versions with the recommendation, the player and its lists on all form factors, first run, sources, search, the offline sheet, and controller and remote focus | Done |
-| Not verified | The new look on a physical phone, tablet, or television, and in the real desktop window with real artwork (the renders use generated fixture artwork) | Open |
-
-## Phase 0 — Product and architecture foundation
-
-- Define universal media entities.
-- Define source and capability abstraction.
-- Define library, metadata, artwork, playback, availability, version, watch-state, download, and search contracts.
-- Define normalized input actions.
-- Define adaptive UI states.
-- Establish default-experience requirements.
-
-## Phase 1 — Visual language and interaction prototype
-
-- Build the liquid-glass + cinematic design language.
-- Establish typography, spacing, poster/backdrop treatment, materials, focus states, motion, navigation, player surfaces, and empty/loading states.
-- Prototype controller morph transitions before large-scale UI implementation.
-- Use a Jellyfin-connected prototype only as a design laboratory if useful; do not make Jellyfin the architecture.
-
-## Phase 2 — Scanner and identification engine
-
-- Filesystem scanning.
-- Incremental scanning and file watching.
-- Large-library behavior.
-- Disconnected-source behavior.
-- Filename parsing.
-- Movie/show/season/episode identification.
-- Confidence scoring.
-- Manual "Identify this movie/show" correction.
-- Persistent per-item association overrides.
-
-## Phase 3 — Metadata and artwork engine
-
-- Posters, backdrops, logos, titles, synopsis, cast, genres, runtime, release data.
-- Seasons and episodes.
-- Local caching.
-- Offline browsing.
-- Provider abstraction.
-
-## Phase 4 — Local media MVP
-
-Target loop:
-
-`folder -> scan -> identify -> artwork -> virtual library -> play`
-
-Initial target:
-
-- movies,
-- TV shows,
-- seasons,
-- episodes,
-- search,
-- continue watching,
-- resume,
-- favorites,
-- collections,
-- cached local metadata.
-
-## Phase 5 — Smart library
-
-- Automatic collections.
-- User collections.
-- Rule-based smart collections.
-- Diagnostics for duplicates, unidentified files, missing episodes, bad metadata, multiple versions, missing artwork, and disconnected storage.
-- Opt-in library intelligence.
-
-## Phase 6 — Smart search
-
-Start deterministic and rule based. The first version is implemented (`SmartQueryParser`, `Library.smartSearch`): kinds, watch state, resolution and HDR, genres and people from the user's own library, years and decades, and runtimes; leftover words match titles, and the interpretation is returned for display.
-
-Examples:
-
-- `4k movies I haven't watched`
-- `Nolan movies`
-- `science fiction under 2 hours`
-- `movies with Ryan Gosling`
-
-Natural-language intelligence can be layered above this later.
-
-## Phase 7 — Jellyfin integration
-
-- Server connection and authentication.
-- Libraries.
-- Remote metadata.
-- Playback.
-- Resume/watch-state sync.
-- Collections and playlists where practical.
-- Local cache of server library information.
-
-## Phase 8 — Universal source architecture
-
-Candidate adapters:
-
-- Local filesystem
-- Jellyfin
-- SMB
-- WebDAV
-- Plex
-- Emby
-- DLNA
-
-Priority is based on product value and platform capability, not feature-count for its own sake.
-
-## Phase 9 — Best Version
-
-- Resolve equivalent media across sources.
-- Prefer local when quality/compatibility are otherwise equivalent.
-- Consider resolution, HDR, audio, compatibility, reliability, and availability.
-- Allow user overrides.
-- Continue on another version from where the user stopped (implemented: [WATCH_STATE.md](WATCH_STATE.md)).
-
-## Phase 10 — Native Android
-
-First vertical slice done and hardened (see the status and verification tables above); servers and shares (SMB and WebDAV) can be added in the application. Next on Android: the Identify flow, physical-device verification, and release builds.
-
-- Android phone.
-- Android tablet.
-- Touch-first adaptive layout.
-- Native playback integration.
-- Strong controller support.
-
-## Phase 11 — Serious playback
-
-- Hardware decoding.
-- Practical H.264 / HEVC / AV1 support by platform.
-- HDR where supported.
-- Audio track controls.
-- Subtitle engine and styling.
-- Chapters.
-- Resume.
-- Playback speed.
-- Picture controls.
-- Passthrough where supported.
-- PiP/background behavior where supported.
-
-## Phase 12 — Controller and adaptive UI
-
-First-class support for:
-
-- PlayStation controllers,
-- Xbox controllers,
-- Nintendo controllers where practical,
-- generic Bluetooth/USB controllers,
-- Android TV remotes,
-- keyboard/media keys,
-- handheld devices.
-
-The first meaningful controller input should trigger a smooth transition into controller-optimized interaction.
-
-## Phase 13 — Smart Offline
-
-First milestone done (see the status and verification tables above, and [OFFLINE.md](OFFLINE.md)); reachable from the application since servers and shares can be added there. Next: continuing with the application closed, if that product decision is made; episode and season selection; the desktop.
-
-- Download media.
-- "Prepare for offline".
-- Consider storage, quality, audio/subtitles, unwatched content, and next episodes.
-- Future trip mode.
-
-## Phase 14 — Android TV / Google TV
-
-First milestone done (see the status and verification tables above): the television is a form factor of the shared experience layer inside the one Android application. Next for television: a real device, the Identify flow, and the launcher's Watch Next row. Servers and shares are added with the remote and the television's keyboard.
-
-- D-pad-first interaction.
-- 10-foot layouts.
-- TV-oriented focus system.
-- HDR/4K/audio support within platform capabilities.
-
-## Phase 15 — Desktop
-
-- Windows.
-- Linux.
-- Mouse/keyboard/controller.
-- Large-library performance.
-- Hardware acceleration.
-- Fullscreen and multi-monitor considerations.
-
-## Phase 16 — Ecosystem features
-
-- Optional device handoff.
-- No mandatory Reflux account.
-- Local-network continuity where practical.
-- Casting.
-
-## Phase 17 — Advanced intelligence
-
-- Natural-language search.
-- Recommendations.
-- Context-aware discovery.
-- Higher-level library intelligence.
-
-The deterministic local engine remains the source of truth.
-
-## Phase 18 — v1.0 target
-
-Target platforms:
-
-- Android phone/tablet,
-- Android TV / Google TV,
-- Windows,
-- Linux.
-
-Target foundations:
-
-- local media,
-- Jellyfin,
-- at least one network source,
-- universal source architecture,
-- automatic identification and artwork,
-- virtual organization,
-- smart collections,
-- search,
-- continue watching,
-- version detection,
-- serious playback,
-- controller support,
-- adaptive liquid-glass/cinematic UI,
-- excellent defaults,
-- no mandatory account,
-- no filesystem mutation.
-
-Explicitly outside the initial v1 target:
-
-- iOS/iPadOS commitment,
-- social features,
-- Watch Together,
-- own streaming service,
-- mandatory cloud backend,
-- AI everywhere,
-- unnecessary server administration complexity,
-- own transcoding stack unless justified by product requirements.
+| W0 | Design system and site foundation | Before beta preparation |
+| W1 | Early public landing page | During M1–M2 |
+| W2 | Product demo video | M4 entry |
+| W3 | Beta signup and launch content | M4 entry |
+| W4 | Final 1.0 product site | M7 |
+
+Requirements and the visual direction are in [LAUNCH.md](LAUNCH.md).
+
+## V1 acceptance criteria
+
+1.0 ships when all of these hold on every V1 target (Android phone/tablet, Android TV / Google TV, Fire TV on Fire OS, Windows, Linux), verified as VERIFICATION.md describes:
+
+1. **The benchmark loop works without setup.** A normal folder of films and shows becomes an identified library with metadata and artwork, with no account, no `.nfo` files, and no renaming; a folder with poor names still yields a browsable library and every weak match can be fixed with Identify.
+2. **Play does the right thing.** Play picks a version this device plays well, says why, and starts where the viewer left off on any copy of the same cut; "From the start" and a pinned version behave as WATCH_STATE.md says.
+3. **Progress is never lost.** Watch state survives sources going away, sources being removed, re-identification, starting over, and syncing with Jellyfin; it is never overwritten by a stale server record.
+4. **Continue where you are, from outside the app.** Watch Next on Android TV / Google TV reflects Continue Watching and Next Up; Fire TV has the platform's equivalent where Amazon permits it, and the decision record says what it does where not.
+5. **Offline is a feature, not a file manager.** Download a film, an episode, or a season from its details page; see and manage every copy from a Downloads entry point; play and resume with the source away; on Android and on desktop.
+6. **Sources are manageable and safe.** Folders, Jellyfin, SMB, and WebDAV are added, signed in again, narrowed, and removed from the app; removing a Jellyfin server ends its session; no credential appears in a log, a database in the clear (where secure storage exists), or a crash report.
+7. **Every input works.** Touch, pointer, keyboard, Xbox and PlayStation controllers, and the Android TV and Fire TV remotes reach every V1 function, verified with physical hardware.
+8. **Playback is serious.** Hardware decoding where the device has it, HDR/Dolby Vision handled honestly per device, multiple audio and subtitle tracks, subtitles readable over the controls, chapters where the engine reports them, and network failures stated rather than silent.
+9. **Accessible baseline.** Every control has a label for screen readers, focus order is coherent, contrast meets WCAG AA, system text size is respected, and motion respects the system's reduce-motion setting where the platform reports one.
+10. **Legal and honest.** A chosen license, third-party notices (including libmpv/FFmpeg), TMDB attribution, a privacy policy, and a support contact are in the app and on the website.
+11. **Installable and upgradable.** Signed builds from CI; an upgrade from the last beta keeps the library, watch state, sources, and downloads.
+12. **Verified for real.** Live TMDB, physical phone, physical Google TV device, physical Fire TV device, physical controllers, clean desktop installs, and a large-library baseline are recorded in VERIFICATION.md.
+13. **Excellent out of the box.** No V1 function requires a setting to be changed first; the beta's critical and blocker reports are closed.
+
+## V1.x
+
+Candidates after 1.0, each needing its own decision to be promoted:
+
+- Casting, if it does not pass the V1 gate.
+- Collections UI: automatic (franchise), user, and smart collections (engine done).
+- Library diagnostics as a page (engine done).
+- Downloads that continue with the application closed (a foreground service and notification).
+- Background audio playback on Android.
+- Sidecar artwork and subtitles on Android 13+ televisions without broad storage access (embedded cover art, video frames).
+- Multi-part files (CD1/CD2) as one version; disc structures (BDMV/VIDEO_TS) playable.
+- Plex, Emby, and DLNA sources.
+- Linux credential storage without a Secret Service.
+
+## Future
+
+- Vega OS client (a compatibility track; evaluation first).
+- Device handoff and synchronization of watch state between devices without a server.
+- Recommendations, natural-language search, and higher-level library intelligence, above the deterministic engine.
+- Advanced playback (picture controls, per-title audio/subtitle styling, trip mode for offline).
+- iOS / iPadOS.
+
+## Not planned
+
+Social features, Watch Together, a Reflux streaming service, a mandatory cloud backend or account, AI required for basic features, server administration, and a transcoding stack of Reflux's own unless a product requirement justifies one.

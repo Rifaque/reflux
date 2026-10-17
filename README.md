@@ -52,17 +52,22 @@ UI and playback features should consume normalized media entities and source cap
 
 ## Project status
 
-The engine (Media Core, sources, metadata, playback) is implemented, and the desktop app is a working vertical slice on top of it: point it at a folder, browse, search, and play, with a mouse, a keyboard, or a controller. The Android phone and tablet client is the same experience layer and engine in an Android shell, with its first vertical slice working: choose a folder, browse, play, and resume. Servers and shares are added from the application as well as folders: a Jellyfin server, a Windows or NAS share, or a web share, each by its address. On Android it can also keep the right version of something on the device and play it with its source away ([Smart Offline](docs/OFFLINE.md)). The same application is the Android TV and Google TV client: the experience laid out for a television and operated with a remote alone, so far verified on an emulator. See the status section of [docs/ROADMAP.md](docs/ROADMAP.md).
+Pre-release; nothing has been published. The engine (Media Core, sources, identification, metadata, watch state, Best Version, playback, Smart Offline) is implemented and heavily tested, and one experience layer runs on desktop (Windows, Linux), Android phones and tablets, and Android TV / Google TV: point it at a folder or connect a Jellyfin server or a network share, browse, search, play, and resume on any copy. Android and television have been verified on emulators only. V1 targets Android phones and tablets, Android TV / Google TV, Fire TV (Fire OS), Windows, and Linux, through a public beta first. The plan and what is left are in [docs/ROADMAP.md](docs/ROADMAP.md); the current version and how versions work are in [docs/VERSIONING.md](docs/VERSIONING.md).
 
 ## Documentation
 
 - [Product](docs/PRODUCT.md)
 - [Architecture](docs/ARCHITECTURE.md)
 - [Roadmap](docs/ROADMAP.md)
+- [Versioning](docs/VERSIONING.md)
+- [Launch plan: website, demo, beta, stores](docs/LAUNCH.md)
+- [Verification log](docs/VERIFICATION.md)
+- [Changelog](CHANGELOG.md)
 - [Design direction](docs/DESIGN.md)
 - [Input model](docs/INPUT_MODEL.md)
 - [Metadata and identification](docs/METADATA.md)
 - [Watch state and version handoff](docs/WATCH_STATE.md)
+- [Smart Offline](docs/OFFLINE.md)
 - [Decision log](docs/DECISIONS.md)
 - [Release readiness](docs/RELEASE.md)
 
@@ -101,4 +106,4 @@ Playback and probing need libmpv (`libmpv2` on Debian/Ubuntu, `mpv-libs` on Fedo
 
 ## License
 
-Not decided yet.
+Not decided yet. A license is required before any build is distributed, the beta included ([docs/RELEASE.md](docs/RELEASE.md)).

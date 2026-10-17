@@ -1,5 +1,6 @@
 package dev.reflux.sources.jellyfin
 
+import dev.reflux.core.RefluxBuild
 import dev.reflux.core.net.HttpFetcher
 import dev.reflux.core.net.HttpRequest
 import dev.reflux.core.net.HttpResult
@@ -110,7 +111,7 @@ internal class JellyfinApi(
     }
 
     companion object {
-        const val CLIENT_VERSION = "0.1.0"
+        const val CLIENT_VERSION = RefluxBuild.VERSION
 
         fun encode(value: String): String = buildString {
             for (byte in value.encodeToByteArray()) {

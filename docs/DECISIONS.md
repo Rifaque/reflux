@@ -40,9 +40,13 @@ See the 2026-10-13 entry on local-first version selection for what "otherwise eq
 
 ## 2026-10-08 — Platform scope
 
+> Extended by "Fire TV is a V1 target, separate from Android TV" (2026-10-17).
+
 Initial target scope is Android phone/tablet, Android TV / Google TV, Windows, and Linux. iOS/iPadOS is not a v1 commitment.
 
 ## 2026-10-08 — Visual direction
+
+> Refined by "Visual reset: a neutral-first cinematic interface" (2026-10-14): glass is selective, for what floats, not the identity.
 
 The design language combines restrained premium ergonomics, cinematic media presentation, and liquid glass without copying any single reference product.
 
@@ -329,6 +333,8 @@ The Android phone and tablet client is the shared experience layer and the share
 
 ## 2026-10-13 — One accent
 
+> **Superseded** by "Visual reset: a neutral-first cinematic interface; the amber identity is retired" (2026-10-14).
+
 The interface's own color is a warm amber, and it is the same on every page. Details pages used to take the color of their primary action from the poster; that made the controls compete with the artwork they sat on, and left Reflux with no color of its own. Artwork still colors the page behind the controls. The extraction of an accent from artwork stays in `design` for ambient use.
 
 ## 2026-10-13 — Credentials never reach a log
@@ -336,6 +342,8 @@ The interface's own color is a warm amber, and it is the same on every page. Det
 What a shell writes down about a problem passes through `Redaction` (in `core`): addresses with user names and passwords, token and password parameters, and authorization headers are replaced before the text reaches a file, the system log, or the screen. It was a desktop function; with a second shell writing logs it is shared.
 
 ## 2026-10-13 — Visual refinement: calm on the surface
+
+> **Superseded in its use of amber** by "Visual reset" (2026-10-14); the neutral base and the typographic hierarchy stand.
 
 A pass over the whole interface against one test: does this element earn the attention it takes from the artwork? Decided, for every platform at once since the experience layer is shared:
 
@@ -418,6 +426,8 @@ The sources were a small panel under the navigation. With servers and shares, ea
 - The same column is used on every form factor. A tablet gets no split view: there is never more than one thing to look at on these pages.
 
 ## 2026-10-14 — Amber is a signature, not the color of the interface
+
+> **Superseded** by "Visual reset: a neutral-first cinematic interface; the amber identity is retired" (2026-10-14).
 
 The earlier refinement made amber the primary action, the section the user is in, progress, and what is switched on. In use that was too much amber: a selected tab, a favorite, a watched mark, a downloaded copy, and a player's buttons all in the same warm color made screens orange-leaning and took the accent's meaning away. Decided:
 
@@ -517,7 +527,7 @@ Possible future direction, not committed to: local artwork that reads no further
 
 ## 2026-10-16 — A source that goes silent during playback: thirty seconds of waiting, then a stated failure
 
-Built and tested (implementation notes at the end of this entry). A source can stop sending data without closing its connection: a machine that lost power or its network, a server that hung, a link that dropped somewhere between. Nothing then reports a failure; the engine waits. Observed against a real Jellyfin server (ROADMAP.md, the live verification): the desktop player buffered for as long as it was left, while Media3 on Android reported the source unreachable through its own read timeout about two seconds after its buffer ran out. This entry decides what the viewer gets, the same on every platform. Ending normally, and a stream that fails or ends early, already behave as they should and are not changed.
+Built and tested (implementation notes at the end of this entry). A source can stop sending data without closing its connection: a machine that lost power or its network, a server that hung, a link that dropped somewhere between. Nothing then reports a failure; the engine waits. Observed against a real Jellyfin server (VERIFICATION.md, the live verification): the desktop player buffered for as long as it was left, while Media3 on Android reported the source unreachable through its own read timeout about two seconds after its buffer ran out. This entry decides what the viewer gets, the same on every platform. Ending normally, and a stream that fails or ends early, already behave as they should and are not changed.
 
 The rule extends the one for a playback that never starts (2026-10-12, "The engine is never waited for on the UI thread"): silence has a limit, and the limit is the viewer's patience, not the network's.
 
@@ -563,7 +573,7 @@ How it is built:
 
 ## 2026-10-17 — Positions told to a source stay short of where it counts a work watched
 
-Found by the live validation against a real Jellyfin server (ROADMAP.md). The server applies its own rule to every position it hears: a progress report or a stop past its maximum resume percentage (90% unless an administrator changed it) marks the item played and clears its position. Reflux reported its positions as they were, so a viewer who played past 90% and went back made the server say "played" before any stop. Leaving at thirty minutes, Reflux's record was right (not watched, thirty minutes); the next scan found the server's record changed and dated after Reflux's own stop, took it for news, and marked the work watched in Reflux.
+Found by the live validation against a real Jellyfin server (VERIFICATION.md). The server applies its own rule to every position it hears: a progress report or a stop past its maximum resume percentage (90% unless an administrator changed it) marks the item played and clears its position. Reflux reported its positions as they were, so a viewer who played past 90% and went back made the server say "played" before any stop. Leaving at thirty minutes, Reflux's record was right (not watched, thirty minutes); the next scan found the server's record changed and dated after Reflux's own stop, took it for news, and marked the work watched in Reflux.
 
 Decided:
 
@@ -596,3 +606,71 @@ Works whose key changes get a new identity on the next scan; a work's history mo
 Found by stress-testing source transitions. Every file-listing adapter (local folder, SMB, WebDAV, Android's document tree) treated only an unreadable root as the source being away; a folder below it that could not be listed was skipped. The library then saw its files missing and removed their versions, so a share whose connection dropped partway through a scan, a symbolic link to a drive that was not mounted, or a USB drive removed mid-scan took everything below that point out of the library until a later scan could read it again. Watch history survived (it belongs to works), but the library's picture of the source did not, against the rule that a source that is away is never emptied.
 
 Decided: an adapter reports a folder that is there but could not be listed (`SourceFile.folderNotRead`), and a scan keeps what it knew below such a folder, with its subtitles and artwork, while settling everything else as usual. A folder that was deleted is no longer in its parent's listing and its works are removed as before; one that vanished between being listed and being read (the local adapter can tell) counts as deleted. A link that cannot be followed is reported the same way, so a permanently broken link keeps what was found through it until it is removed.
+
+## 2026-10-17 — Roadmap rebaseline
+
+Decided by the product owner after a read-only audit of the repository at `2a66250`. The Phase 0–18 roadmap was ordered by architectural layer, mixed status, plan, and verification logs, and no longer matched the code: most of its phases were built, while what stands between the tree and a release (signing, packaging, physical validation, legal, a beta) had no place in it. It is replaced by outcome milestones M0–M7 with a parallel website track W0–W4 (ROADMAP.md). Verification history moved to VERIFICATION.md; release and beta checklists are in RELEASE.md; launch tracks in LAUNCH.md.
+
+- **Beta is a real launch stage** before 1.0: `0.9.0-beta.N` through Google Play closed testing, Amazon's testing path, and desktop downloads, with about 15–20 testers chosen for coverage, then release candidates `0.9.0-rc.N`, then `1.0.0`.
+- **The website (reflux.rsxdevelops.dev) is a launch track**, begun before the beta, beta-facing at M4, and Reflux's permanent home at 1.0. Its visual language is minimal and nearly blank; the product's media provides the color (LAUNCH.md).
+- **A product demo video is a beta asset**, required for the beta website.
+- **V1 is what Reflux fundamentally is**, listed in ROADMAP.md (M1) with acceptance criteria; it is neither shrunk to make future features nor grown into everything Reflux may become.
+
+## 2026-10-17 — Versioning protocol
+
+One product version for every platform, declared once (`reflux.version` in `gradle.properties`), SemVer with `alpha`, `beta`, and `rc` stages on a single `0.9.0` line before 1.0, and Android `versionCode` and desktop package versions computed from it (VERSIONING.md). Alternatives: per-platform versions (rejected: one product, one changelog, testers comparing builds across devices) and date-based versions (rejected: stores need monotonically increasing codes anyway, and SemVer says what a release changes). The 1.0 build is the final release candidate's commit with only the version changed, as the product plan names its release candidates `0.9.0-rc.N`. The tree's version became `0.9.0-alpha.1` (`versionCode` 90001); the Jellyfin client version is read from the same property through a generated `RefluxBuild.VERSION`.
+
+## 2026-10-17 — Fire TV is a V1 target, separate from Android TV
+
+Fire TV devices running **Fire OS**, distributed through the **Amazon Appstore**, are a V1 platform. They run the same Android application as phones and Google TV, but are a separate target: a different store and review, devices without Google services, different launcher integration, a different device matrix (Fire OS 7 is API 28, Fire OS 8 is API 30; Reflux's `minSdk` is 26, so Fire OS 6 devices are excluded), and their own validation. Documentation never equates Fire TV with Android TV. The developer's Fire TV Stick 4K and Fire TV television are inspected for model and OS before anything is assumed about them (LAUNCH.md, Fire TV plan).
+
+**Vega OS** (Amazon's newer non-Android Fire TV platform, on some recent Fire TV sticks) is not part of V1. Reflux's Android application does not run on it, and a Vega client would be a new shell. It is a future compatibility track, promoted only by an evaluation and an explicit decision.
+
+## 2026-10-17 — Watch Next is a V1 feature
+
+Supersedes the audit's recommendation that the launcher's Watch Next row wait for V1.x. Reflux's Continue Watching and Next Up appear on the platform's own home screen, because on a television that is where people continue:
+
+- **Android TV / Google TV**: the launcher's Watch Next row (`WatchNextPrograms` through AndroidX TV Provider): the work in progress with its position, and a show's next episode, added, updated, and removed as Reflux's watch state changes; selecting one opens Reflux and plays it. Required for V1.
+- **Fire TV**: Amazon's home screen does not take Android TV's Watch Next channel; it has its own integration for continuing to watch. Whether it is open to an app of Reflux's kind (local and personal media, not a catalog partner) is evaluated against Amazon's current documentation as part of this work. If it is, it is V1; if it is not, Fire TV ships without a home-screen row, and that is recorded here rather than worked around.
+- Phones, tablets, and desktops keep Continue Watching inside the application; there is no system surface to fill.
+- Nothing about a work leaves the device through this beyond what the platform's launcher shows locally.
+
+## 2026-10-17 — "From the start" keeps the place until the new playback is under way
+
+The defect: pressing "From the start" on a work in progress, then leaving within a minute (to check the opening, or by mistake), erased the position. The first progress report of the new playback is below the minimum resume position and was recorded as 0, so Continue Watching lost the work; on a Jellyfin server the stop at those seconds reached the server as well, and would have come back as news at the next scan.
+
+Decided: starting over is a new playback of the same work, and the remembered position stays until that playback is past the first minute (`WatchRules.MIN_RESUME_MS`), exactly as the first minute of another cut already did. Leaving within it keeps where the viewer was, on Reflux and on a source that keeps watch state (it is told the kept position when the playback stops). Past the first minute, the new position is where the viewer is. A completed work stays completed when watched again. Alternatives rejected: clearing the position as soon as "From the start" is pressed (an accidental press costs the place), and keeping the old position until the new one passes it (someone starting over means to start over; Continue Watching would resume them at a point they chose to leave).
+
+## 2026-10-17 — Version pinning is reached from the versions it applies to
+
+The engine has had a pinned version per work (Best Version's "the version the user pinned") with no way to set it. Decided: each version row offers "Always play this version", and the pinned row offers "Let Reflux choose" in its place; the row itself still plays that version once, as before. A pin never makes Reflux play something this device cannot play (WATCH_STATE.md), so the action is offered only on versions that play here. One version is pinned at most, per work; pinning another moves it.
+
+## 2026-10-17 — Television sidecar subtitles in V1
+
+On Android 13 and later a television reads local folders through `READ_MEDIA_VIDEO`, and the system lists only video files there: a subtitle file beside a video (`.srt`, `.ass`) is invisible, as sidecar artwork is. No less-privileged permission covers subtitle files (they are not media to the system; even `READ_MEDIA_IMAGES` would not show them), and all-files access was rejected earlier. Decided for V1: no new permission. On such a television, local works play their embedded subtitle tracks, and network sources (Jellyfin, SMB, WebDAV) keep their external subtitles, which are unaffected. Where a local work on such a device has no subtitle track, the subtitle list says why ("Subtitle files beside videos can't be read on this TV") instead of looking empty. Android 12 and earlier, including Fire OS 7 and 8 devices, read sidecar files as before. Later possibility, not committed: a folder granted through the Storage Access Framework on televisions that offer a picker for it.
+
+## 2026-10-17 — Smart Offline on the desktop is in V1
+
+The engine and the JVM implementations (`FileDownloadStore`, `HttpDownloadTransport`) already run on the desktop; only the wiring and the data directory are missing. A laptop is the most common reason to keep something offline on a computer, and a feature that exists on one platform and silently not on another is not the same experience. Decided: V1 wires Smart Offline on Windows and Linux with the same sheet and rules as Android, copies in Reflux's data directory, made while Reflux runs. Alternative: Android only in V1 (rejected for the reasons above; the cost is small).
+
+Also V1 on every platform: choosing a single episode or a whole season to keep, and a Downloads entry point that lists every copy with its state and actions (OFFLINE.md). Not V1: downloads that continue with the application closed.
+
+## 2026-10-17 — Collections are V1.x
+
+The engine has automatic (franchise), manual, and smart collections, and no interface shows any of them. Decided: 1.0 has no collections interface; collections, their pages, and editing are V1.x. 1.0 is complete without them (Home, Movies, Shows, search, and details organize the library), and a half-built collection editor would not meet the default-experience bar. The engine and its tests stay.
+
+## 2026-10-17 — Episodes without a show name are grouped by folder and offered to Identify
+
+Episodes whose path has no show name anywhere (`S01E01.mkv` at the top of a source) are grouped today under one unnamed show, so unrelated files from different folders and sources collide. Decided for V1: such episodes are grouped by the folder they are in (the source itself when they are at its top), the show is titled after that folder (or the source's name), its identification is weak by definition, so it appears among weak identifications, and Identify can assign it to the right show; that correction is kept as an override like any other. They are never merged with another group by an empty name. Not built yet (ROADMAP.md, M1).
+
+## 2026-10-17 — Casting is a V1 feasibility gate
+
+Casting is investigated for V1 and must not move the beta. A time-boxed spike, before beta entry, answers: can an Android phone cast a local file, a share's file, and a Jellyfin stream to a Google TV or Chromecast with Reflux's watch state recorded, without a Reflux account, with acceptable dependencies (the Cast SDK needs Google Play services, so it cannot be on Fire TV or desktop, and local files need a stream server on the local network), and without licensing or store-review problems? If the answer is yes and the work fits before beta, casting is V1 for Android senders; otherwise it is V1.1, recorded here. DLNA rendering is considered in the same spike only as an alternative, not as a second feature.
+
+## 2026-10-17 — Removing a Jellyfin server ends its session
+
+Removing a Jellyfin source today forgets its token locally but leaves the session open on the server, which keeps listing the device and accepting the token. Decided for V1: removal asks the server to end the session (best-effort, when it is reachable) and forgets the token either way; if the server could not be reached, the removal still completes and the server's own device list may still show Reflux until the server expires it. Signing in again to a server ends the session it replaces in the same way.
+
+## 2026-10-17 — Desktop capabilities are observed, not declared
+
+The desktop capability profile (`DesktopCapabilities`) declares hardware decoding for H.264, HEVC, and VP9 on every machine and an SDR display; Best Version ranks by it. Decided for V1: claims about hardware decoding come from what the engine reports for this machine (libmpv's decoder in use, recorded per codec after a playback, and a conservative default before), and HDR output is claimed only where the platform reports an HDR display. Until then the declared profile stays, and the roadmap lists the gap (ROADMAP.md, M1).

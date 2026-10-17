@@ -15,10 +15,22 @@ Before making substantial changes:
 1. Read `README.md`.
 2. Read the relevant files under `docs/`.
 3. Check `docs/DECISIONS.md` for existing architectural decisions.
-4. Check `docs/ROADMAP.md` for the current milestone.
+4. Check `docs/ROADMAP.md` for the current milestone. It is the one source of truth for product status and release milestones.
 5. Inspect the existing code before proposing a new abstraction or dependency.
 
 The repository documentation is the product and architecture specification. Keep it current as implementation evolves.
+
+## Versions and releases
+
+**Before changing anything about versions or releases, read `docs/VERSIONING.md` and follow it.** That covers `reflux.version` in `gradle.properties`, Android `versionCode`/`versionName`, desktop package versions, `CHANGELOG.md` release headings, Git tags, and store or package metadata. In particular: never change the version unless the user explicitly asks for a build or release to be cut, never write a `versionCode` by hand, never reuse a version, and never create or push tags unless asked. Add user-visible changes to `CHANGELOG.md` under `Unreleased` as part of the change that makes them.
+
+Where things are recorded:
+
+- `docs/ROADMAP.md`: milestones, what is done, what is left, V1 acceptance criteria.
+- `docs/VERIFICATION.md`: what was run to verify work, on what, with what result. Verification logs do not go in the roadmap.
+- `docs/RELEASE.md`: what release builds still need, and the beta and release checklists.
+- `docs/LAUNCH.md`: website, demo video, beta program, store tracks.
+- `docs/DECISIONS.md`: durable product and architecture decisions.
 
 ## Core product principles
 
@@ -231,30 +243,17 @@ Do not choose playback, database, UI, or networking libraries solely because the
 
 ## Current strategic direction
 
-Initial platform targets:
+V1 platform targets:
 
-- Android phone/tablet
-- Android TV / Google TV
+- Android phone/tablet (Google Play)
+- Android TV / Google TV (Google Play)
+- Fire TV running Fire OS (Amazon Appstore), a separate distribution target, never described as Android TV
 - Windows
 - Linux
 
-iOS/iPadOS is not a v1 commitment.
+Not V1: Vega OS (a future compatibility track) and iOS/iPadOS.
 
-Initial major product milestones:
-
-1. Media Core contracts
-2. Source abstraction
-3. Local persistence/offline model
-4. Playback capability model
-5. Platform playback feasibility
-6. Visual/interaction system
-7. Local scanner + identification
-8. Metadata/artwork engine
-9. Local media vertical slice
-10. Jellyfin integration
-11. Universal source expansion
-12. Serious playback and controller adaptation
-13. TV and desktop production clients
+The milestones are outcome-based and defined in `docs/ROADMAP.md`: M0 rebaseline and governance, M1 product completeness, M2 release engineering, M3 real-world validation, M4 beta, M5 beta iteration, M6 release candidate, M7 public 1.0, with the website track W0–W4 in parallel. Work on the next incomplete milestone there.
 
 Do not reorder foundational work merely to produce a flashy demo.
 

@@ -13,6 +13,31 @@ plugins {
 // that need an engine skip themselves where none can be loaded.
 val developmentNatives = rootDir.resolve(".reflux/native").takeIf { it.isDirectory }?.absolutePath
 
+// The one product version (docs/VERSIONING.md). Everything that reports a version derives it from this
+// property; the numbers stores and installers need are computed here and never written by hand.
+val refluxVersion: String = providers.gradleProperty("reflux.version").get()
+val refluxVersionCode: Int = run {
+    val match = Regex("""(\d+)\.(\d+)\.(\d+)(?:-(alpha|beta|rc)\.(\d+))?""").matchEntire(refluxVersion)
+        ?: throw GradleException("reflux.version '$refluxVersion' is not MAJOR.MINOR.PATCH[-alpha|beta|rc.N] (docs/VERSIONING.md)")
+    val (major, minor, patch) = match.destructured.toList().take(3).map(String::toInt)
+    val stage = match.groupValues[4]
+    val n = match.groupValues[5].toIntOrNull()
+    if (minor > 99 || patch > 99) throw GradleException("reflux.version '$refluxVersion': MINOR and PATCH stay below 100 (docs/VERSIONING.md)")
+    if (n != null && n !in 1..29) throw GradleException("reflux.version '$refluxVersion': a stage number is 1 to 29 (docs/VERSIONING.md)")
+    val s = when (stage) { "alpha" -> n!!; "beta" -> 30 + n!!; "rc" -> 60 + n!!; else -> 99 }
+    major * 1_000_000 + minor * 10_000 + patch * 100 + s
+}
+extra["reflux.version"] = refluxVersion
+extra["reflux.versionCode"] = refluxVersionCode
+
+val printVersion by tasks.registering {
+    group = "help"
+    description = "Prints the product version and the Android versionCode derived from it."
+    val version = refluxVersion
+    val code = refluxVersionCode
+    doLast { println("$version ($code)") }
+}
+
 // The shared source sets (`commonMain`) are meant for every platform. The engine modules are compiled once,
 // for the JVM, and Android uses them as they are, so the compiler accepts JVM and desktop APIs in them.
 // This check holds the line: it fails on imports and calls that only exist on one platform. (`ui` is
