@@ -175,6 +175,13 @@ While Reflux plays a version from such a source, progress is also reported to it
 
 A scan that finds a source behind brings its position up to date with `updatePosition`, which is not a stop: an adapter with a playback of that item open keeps it open (Jellyfin sends the position as that playback's progress). As a stop it ended the playback's session on a real server, and the playback's next report opened another, which the server counted as a second play (seen 2026-10-17: the library's first refresh read the server just before Play was pressed and delivered the position two seconds into the playback). A scan finds a source behind during a playback when it read the source before the playback's first report, or when reports were lost while the source was away.
 
+**A position is never what makes a source count a work watched.** Whether a work is watched is Reflux's own rule: 90% of the running time at the stop (`WatchRules.COMPLETION_RATIO`). A source may apply a rule of its own to every position it hears: Jellyfin marks an item played, and clears its position, once a progress report or a stop passes its maximum resume percentage (90% unless an administrator changed it). Reported as they were, Reflux's reports near the end made the server's record say "played" while the viewer went back and left at thirty minutes; the next scan took that record, dated after Reflux's own stop, for news and marked the work watched in Reflux (seen 2026-10-17). So:
+
+- A source says where it marks a work played (`WatchStateSyncSource.marksPlayedPast`; Jellyfin: 90%), and every position Reflux tells it, whether progress, a stop, or a scan's update, stays 5% of the running time short of that (`WatchRules.reportedPosition`). The margin covers the server measuring against its own running time of the work, which can differ from the copy's.
+- A playback that finished by Reflux's rule is reported as a stop at the end of the source's copy, so the source marks it played by its own rule, as its own clients do, and counts the one play its session already counted.
+- Reflux's own position is never changed. The reconciler compares and sends it as the source is told it, so a source holding it just short of its threshold agrees with Reflux instead of overwriting it, also during a playback that went past 90% without finishing.
+- A "played" on the source is still news like any other change: another client, or the server itself, marked the work played.
+
 ### What a real server does
 
 The exchange is exercised against a real Jellyfin server by `JellyfinLiveTest` (it runs when a server is named, in the environment or in `~/.reflux-live/jellyfin.env`, as CONTRIBUTING.md describes; `tools/ci/jellyfin-test-server.sh` starts a throwaway one in Docker). Observed on Jellyfin Server 12.2.0, and relied on above:
@@ -184,6 +191,7 @@ The exchange is exercised against a real Jellyfin server by `JellyfinLiveTest` (
 - Marking it not played clears the position, the play count, and the last-played date. An un-marked record is therefore empty and undated, which is exactly the record Reflux does not let erase its own history.
 - The server keeps no position in items only a few minutes long.
 - Each playback session opened (the first progress report of a playback) counts a play, whether or not the item ends up played. The position sent with that first report is not stored; those of later reports are, at once. A stop ends the session.
+- A progress report or a stop past 90% of the item's running time marks it played and clears its position, with no stop needed and no second play counted for that session.
 
 Verified end to end there: reading existing state, progress made in Reflux reaching the server, nothing being re-sent once the two agree, a stale server value not overwriting newer progress, progress and "played" made on another client being adopted, and watched/unwatched travelling both ways.
 

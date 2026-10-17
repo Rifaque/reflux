@@ -7,6 +7,7 @@ import dev.reflux.core.playback.WatchReporter
 import dev.reflux.core.source.MediaSource
 import dev.reflux.core.source.WatchStateSyncSource
 import dev.reflux.core.watch.SourceUpdate
+import dev.reflux.core.watch.WatchRules
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -28,13 +29,23 @@ class SyncingWatchReporter(
 ) : WatchReporter {
     override fun progress(itemId: MediaId, positionMs: Long, durationMs: Long?) {
         library.progress(itemId, positionMs, durationMs, version)
-        sync { it.reportProgress(version.location.path, positionMs, paused = false) }
+        sync { it.reportProgress(version.location.path, reported(it, positionMs, durationMs), paused = false) }
     }
 
     override fun stopped(itemId: MediaId, positionMs: Long, durationMs: Long?) {
         library.stopped(itemId, positionMs, durationMs, version)
-        sync { it.reportStopped(version.location.path, positionMs) }
+        // A playback that finished (as Reflux records it, by its own rule) is reported as having reached the
+        // end of the source's copy, so that the source counts it watched by its own rule, as its own clients
+        // do; any other stop is a position.
+        val end = (version.stream.durationMs ?: durationMs)
+            ?.takeIf { WatchRules.isCompletedAt(positionMs, durationMs ?: version.stream.durationMs) }
+            ?.let { maxOf(positionMs, it) }
+        sync { it.reportStopped(version.location.path, end ?: reported(it, positionMs, durationMs)) }
     }
+
+    /** A position as the source is told it: never far enough for the source to count the work watched by itself. */
+    private fun reported(source: WatchStateSyncSource, positionMs: Long, durationMs: Long?): Long =
+        WatchRules.reportedPosition(positionMs, version.stream.durationMs ?: durationMs, source.marksPlayedPast)
 
     private var lastReport: Job? = null
 
