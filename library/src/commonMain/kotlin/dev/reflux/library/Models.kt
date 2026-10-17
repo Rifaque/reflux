@@ -77,5 +77,8 @@ data class ScanReport(
          * or share whose mount point still exists. The cached library was kept and the source marked unavailable.
          */
         EMPTY_KEPT,
+
+        /** The source was removed while it was being scanned. Nothing was written: its works are gone. */
+        REMOVED,
     }
 }
