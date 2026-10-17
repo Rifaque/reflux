@@ -48,7 +48,7 @@ Source credentials (Jellyfin access tokens, WebDAV and SMB passwords) are kept o
 - Verified: the Windows store with a real round trip, and the migration and failure paths with a store in memory. The Linux Secret Service path is tested through its command protocol only; no Linux desktop with a running keyring was available, and the Linux container has none, so there the fallback is what ran.
 - Still open: Linux desktops without a Secret Service keep connections in the open; on Android the database holds ciphertext rather than a reference.
 
-The diagnostics log, the Android system log, and Reflux's own log file pass everything through `Redaction`: credentials in addresses, query parameters, and headers, a Jellyfin token quoted on its own (`Token="..."`), and the per-file tokens of the SMB stream server's loopback addresses. One developer switch is outside it: `REFLUX_MPV_LOG` makes libmpv write its own verbose log, and libmpv records the request headers it was given, which for a Jellyfin stream include the server's authorization. It is never on by default.
+The diagnostics log, the Android system log, and Reflux's own log file pass everything through `Redaction`: credentials in addresses, query parameters, and headers, a Jellyfin token quoted on its own (`Token="..."`), and the per-file tokens of the SMB stream server's loopback addresses. So does the engine's own verbose log that the developer switch `REFLUX_MPV_LOG` turns on: Reflux takes libmpv's log messages and writes them itself, rather than letting libmpv write a file it cannot redact (libmpv records every option it is given, a Jellyfin stream's authorization among them).
 
 ## Metadata provider
 

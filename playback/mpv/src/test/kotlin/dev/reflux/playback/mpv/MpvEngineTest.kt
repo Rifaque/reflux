@@ -122,6 +122,23 @@ class MpvEngineTest {
     }
 
     @Test
+    fun theEnginesLogCarriesNoCredentials() {
+        val file = TestMedia.multiTrackMkv(directory)
+        val lines = java.util.Collections.synchronizedList(mutableListOf<String>())
+        // The log-file option is not taken: what the engine writes there cannot be redacted.
+        val logFile = directory.resolve("engine.log")
+        MpvPlayer.create(capabilities, mapOf("vo" to "null", "ao" to "null", "log-file" to logFile.toString()), log = { lines += it })!!.use { player ->
+            val headers = mapOf("Authorization" to """MediaBrowser Client="Reflux", Device="Desk", DeviceId="d1", Version="0.1.0", Token="0123456789abcdef0123456789abcdef"""")
+            player.load(PlaybackRequest(target = PlaybackTarget(file.toUri().toString(), headers), title = "Sample"))
+            player.await { it.status == PlayerStatus.PLAYING }
+        }
+        assertTrue(lines.size > 20, "the engine's log arrives: ${lines.size} lines")
+        assertTrue(lines.any { "http-header-fields" in it }, "including the line that sets the headers")
+        assertTrue(lines.none { "0123456789abcdef" in it }, "but never the token")
+        assertTrue(!Files.exists(logFile), "and the engine writes no file of its own")
+    }
+
+    @Test
     fun startPositionPauseSeekAndTrackSelection() {
         val file = TestMedia.multiTrackMkv(directory)
         headless().use { player ->

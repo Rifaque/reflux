@@ -31,7 +31,9 @@ import dev.reflux.sources.webdav.WebDavConnector
 import dev.reflux.sources.webdav.WebDavSource
 import java.awt.GraphicsEnvironment
 import java.io.IOException
+import java.nio.charset.StandardCharsets
 import java.nio.file.Files
+import java.nio.file.StandardOpenOption
 import java.nio.file.Path
 import java.util.Locale
 
@@ -187,9 +189,14 @@ class DesktopEnvironment(
     fun createPlayer(options: Map<String, String> = emptyMap()): MpvPlayer? {
         val log = System.getenv("REFLUX_MPV_LOG")?.takeIf { it.isNotBlank() }?.let { Path.of(it) }?.let { target ->
             val file = if (Files.isDirectory(target)) target.resolve("mpv-${System.currentTimeMillis()}.log") else target
-            mapOf("log-file" to file.toString(), "msg-level" to "all=v")
+            // Written by Reflux, through the same redaction as its own log: the engine's own log file records the
+            // stream's HTTP headers, a server's access token among them.
+            val sink: (String) -> Unit = { line ->
+                Files.writeString(file, line + System.lineSeparator(), StandardCharsets.UTF_8, StandardOpenOption.CREATE, StandardOpenOption.APPEND)
+            }
+            sink
         }
-        return MpvPlayer.create(deviceCapabilities(), options + log.orEmpty())
+        return MpvPlayer.create(deviceCapabilities(), options, log)
     }
 
     private fun hostName(): String = runCatching { java.net.InetAddress.getLocalHost().hostName }.getOrNull()?.takeIf { it.isNotBlank() } ?: "desktop"
