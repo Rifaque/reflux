@@ -64,9 +64,14 @@ sealed interface Identification {
  * Keys are built from normalized titles, so `The.Dark.Knight.2008` and `The Dark Knight (2008)` agree.
  */
 object IdentityKeys {
-    fun movie(title: String, year: Int?): String = "movie:${TitleText.key(title)}:${year ?: ""}"
+    fun movie(title: String, year: Int?): String = "movie:${titleKey(title)}:${year ?: ""}"
 
-    fun show(title: String, year: Int?): String = "show:${TitleText.key(title)}" + (year?.let { ":$it" } ?: "")
+    fun show(title: String, year: Int?): String = "show:${titleKey(title)}" + (year?.let { ":$it" } ?: "")
+
+    /** A title with no letters or digits ("-", "()") is keyed as written, so that such works stay apart. */
+    private fun titleKey(title: String): String = TitleText.key(title).ifEmpty {
+        title.trim().lowercase().let { if (it.isEmpty()) "" else "=$it" }
+    }
 
     fun season(showKey: String, number: Int): String = "$showKey/s$number"
 

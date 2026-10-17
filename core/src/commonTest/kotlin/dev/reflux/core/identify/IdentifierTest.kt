@@ -27,6 +27,35 @@ class IdentifierTest {
     }
 
     @Test
+    fun titlesInOtherScriptsAreWorksOfTheirOwn() {
+        // Four films of 1953 in four scripts once shared one key, and so one work.
+        val films = listOf("東京物語 (1953)/東京物語 (1953).mkv", "Пётр (1953).mkv", "שלום (1953).mkv", "Ελένη (1953).mkv")
+            .map { identify(it).playable.id }
+        assertEquals(4, films.toSet().size)
+        // And the same film named in the same script is still one work, however its file is written.
+        assertEquals(identify("Солярис (1972).mkv").playable.id, identify("Фильмы/СОЛЯРИС.1972.1080p.mkv").playable.id)
+        // Shows too: two unrelated shows' first episodes are not one episode.
+        val friends = identify("Друзья/Season 1/Друзья S01E01.mkv")
+        val titan = identify("进击的巨人/Season 1/进击的巨人 S01E01.mkv")
+        assertNotEquals(friends.playable.id, titan.playable.id)
+    }
+
+    @Test
+    fun aDecomposedAccentIsTheSameTitle() {
+        // macOS writes file names decomposed: "e" followed by a combining acute accent.
+        assertEquals(identify("Amélie (2001).mkv").playable.id, identify("Amélie (2001).mkv").playable.id)
+        assertEquals(TitleText.key("Amélie"), TitleText.key("Amélie"))
+    }
+
+    @Test
+    fun aNameWithNoWordsIsItsOwnWork() {
+        val dash = identify("-.mkv")
+        val brackets = identify("().mkv")
+        assertNotEquals(dash.playable.id, brackets.playable.id)
+        assertEquals("-", dash.playable.title)
+    }
+
+    @Test
     fun remakesAreDifferentWorks() {
         assertNotEquals(identify("Dune (1984).mkv").playable.id, identify("Dune (2021).mkv").playable.id)
     }
