@@ -15,10 +15,12 @@ import kotlinx.coroutines.withContext
 import java.net.URI
 import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.file.Paths
 import java.nio.file.StandardCopyOption
 import java.nio.file.attribute.FileTime
 import java.security.MessageDigest
 import kotlin.io.path.isRegularFile
+import kotlin.io.path.listDirectoryEntries
 
 /**
  * A disk cache of artwork images, so posters and backdrops stay visible while offline.
@@ -53,7 +55,7 @@ class ArtworkCache(
                     val source = sources(locator.location.sourceId) ?: return null
                     val playable = source.playbackTarget(locator.location.path)
                     if (playable.uri.startsWith("file:")) {
-                        withContext(Dispatchers.IO) { Files.readAllBytes(Path.of(URI(playable.uri))) }
+                        withContext(Dispatchers.IO) { Files.readAllBytes(Paths.get(URI(playable.uri))) }
                     } else {
                         http.get(playable.uri, playable.headers).takeIf { it.ok }?.body
                     }
@@ -84,7 +86,7 @@ class ArtworkCache(
     fun trim() {
         // A cache directory can be taken away while Reflux runs (a system short of space, a user tidying up).
         if (!Files.isDirectory(directory)) return
-        val files = Files.list(directory).use { stream -> stream.filter { it.isRegularFile() }.toList() }
+        val files = directory.listDirectoryEntries().filter { it.isRegularFile() }
             .map { it to Files.readAttributes(it, java.nio.file.attribute.BasicFileAttributes::class.java) }
             .sortedBy { it.second.lastModifiedTime() }
         var total = files.sumOf { it.second.size() }

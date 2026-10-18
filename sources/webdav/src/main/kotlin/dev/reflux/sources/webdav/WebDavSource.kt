@@ -160,7 +160,7 @@ class WebDavSource(
         val rootPath = root.rawPath
         val path = href.rawPath ?: return null
         if (!path.startsWith(rootPath)) return null
-        return path.removePrefix(rootPath).split('/').joinToString("/") { URLDecoder.decode(it.replace("+", "%2B"), StandardCharsets.UTF_8) }
+        return path.removePrefix(rootPath).split('/').joinToString("/") { URLDecoder.decode(it.replace("+", "%2B"), "UTF-8") }
             .takeIf { it.isNotEmpty() }
     }
 

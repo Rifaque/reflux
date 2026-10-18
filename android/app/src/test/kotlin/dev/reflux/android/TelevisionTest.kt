@@ -38,6 +38,14 @@ class TelevisionTest {
     }
 
     @Test
+    fun leavingATelevisionPausesInsteadOfFloating() {
+        // Fire OS offers picture-in-picture and pauses the session on Home: a frozen window over its launcher.
+        assertFalse(leavesIntoWindow(television = true, systemOffersIt = true))
+        assertTrue(leavesIntoWindow(television = false, systemOffersIt = true))
+        assertFalse(leavesIntoWindow(television = false, systemOffersIt = false))
+    }
+
+    @Test
     fun storageIsWalkedOneFolderAtATimeAndOnlyRead() = runTest {
         val root = storage()
         val before = root.walkTopDown().map { it.path to it.length() }.toList()

@@ -1,5 +1,6 @@
 package dev.reflux.ui
 
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.test.DesktopComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
@@ -42,8 +43,9 @@ private const val TV_DENSITY = 2f
 internal fun television(
     world: TestWorld = populated(),
     platform: FakePlatform = FakePlatform(television = true),
+    around: @Composable (@Composable () -> Unit) -> Unit = { it() },
     block: DesktopComposeUiTest.(AppState) -> Unit,
-) = screen(world, platform, TV_WIDTH, TV_HEIGHT, density = TV_DENSITY, block = block)
+) = screen(world, platform, TV_WIDTH, TV_HEIGHT, density = TV_DENSITY, around = around, block = block)
 
 /**
  * A press on the remote, the way the Android shell delivers one: what a key means is decided first, and a

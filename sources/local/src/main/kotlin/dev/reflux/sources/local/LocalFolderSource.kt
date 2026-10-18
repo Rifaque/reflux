@@ -25,6 +25,7 @@ import java.nio.file.ClosedWatchServiceException
 import java.nio.file.Files
 import java.nio.file.NoSuchFileException
 import java.nio.file.Path
+import java.nio.file.Paths
 import java.nio.file.StandardWatchEventKinds.ENTRY_CREATE
 import java.nio.file.StandardWatchEventKinds.ENTRY_DELETE
 import java.nio.file.StandardWatchEventKinds.ENTRY_MODIFY
@@ -193,7 +194,7 @@ class LocalFolderSource(
 
         /** Recreates a source from its persisted configuration (the root path). */
         fun fromConfig(config: String, displayName: String): LocalFolderSource =
-            LocalFolderSource(Path.of(config), displayName)
+            LocalFolderSource(Paths.get(config), displayName)
     }
 }
 

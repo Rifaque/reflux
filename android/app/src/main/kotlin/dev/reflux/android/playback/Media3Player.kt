@@ -85,6 +85,9 @@ class Media3Player(context: Context, override val capabilities: DeviceCapabiliti
     private var surface: SurfaceView? = null
     private var started = false
     private var closed = false
+
+    /** Whether the engine let go of its decoders while the app is out of sight ([standBy]). */
+    private var standingBy = false
     private var volume = 100
     private var muted = false
 
@@ -98,6 +101,8 @@ class Media3Player(context: Context, override val capabilities: DeviceCapabiliti
     private val listener = object : EnginePlayer.Listener {
         override fun onPlaybackStateChanged(playbackState: Int) {
             if (playbackState == EnginePlayer.STATE_READY) started = true
+            // Prepared again, by Reflux or by the system's controls: the engine is itself once more.
+            if (playbackState != EnginePlayer.STATE_IDLE) standingBy = false
             publish()
         }
 
@@ -178,10 +183,30 @@ class Media3Player(context: Context, override val capabilities: DeviceCapabiliti
         val player = engine ?: return@onMain
         // Play at the end starts over, as on any player.
         if (player.playbackState == EnginePlayer.STATE_ENDED) player.seekTo(0)
+        if (standingBy) player.prepare()
         player.play()
     }
 
     override fun pause() = onMain { engine?.pause() }
+
+    /**
+     * Lets go of the decoders and audio focus while the app is out of sight, keeping the work, its place, and
+     * its tracks: the platform asks an application it no longer shows to release them for others (Amazon's
+     * Fire TV requirements; seen held on Fire OS 8). What the player reports stays as it was meanwhile.
+     */
+    fun standBy() = onMain {
+        val player = engine ?: return@onMain
+        if (player.playbackState == EnginePlayer.STATE_IDLE || player.playbackState == EnginePlayer.STATE_ENDED) return@onMain
+        publish()
+        player.pause()
+        standingBy = true
+        player.stop()
+    }
+
+    /** Takes the decoders back after [standBy], when the app is seen again: the picture returns, paused where it was. */
+    fun wake() = onMain {
+        if (standingBy) engine?.prepare()
+    }
 
     override fun seekTo(positionMs: Long) = onMain {
         engine?.seekTo(positionMs.coerceAtLeast(0))
@@ -288,7 +313,7 @@ class Media3Player(context: Context, override val capabilities: DeviceCapabiliti
     /** Reads the engine's state into [state]. An error stays until the next load. */
     private fun publish() {
         val player = engine ?: return
-        if (closed) return
+        if (closed || standingBy) return
         mutableState.update { previous ->
             if (previous.status == PlayerStatus.ERROR || previous.status == PlayerStatus.IDLE) return@update previous
             val duration = player.duration.takeIf { it != C.TIME_UNSET && it > 0 }

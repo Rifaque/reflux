@@ -82,6 +82,58 @@ class PlaybackOnDeviceTest {
         assertEquals(ended.durationMs, ended.positionMs, "an ending is at the end, so that it counts as watched")
     }
 
+    /** How many codecs the system's resource manager counts as this process's. */
+    private fun codecsHeld(): Int {
+        val dump = InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand("dumpsys media.resource_manager")
+            .let { android.os.ParcelFileDescriptor.AutoCloseInputStream(it).bufferedReader().readText() }
+        val mine = dump.substringAfter("Pid: ${android.os.Process.myPid()}\n", "").substringBefore("Pid: ").substringBefore("Events logs")
+        return Regex("codec/video-codec|codec/audio-codec").findAll(mine).count()
+    }
+
+    @Test
+    fun leavingTheAppLetsGoOfTheDecodersAndKeepsThePlace() {
+        val world = world("standby")
+        val clip = world.clip("clip.mp4")
+        val player = player(world)
+        player.load(PlaybackRequest(PlaybackTarget(world.tree.open(clip.path)), "Clip"))
+        player.await("playback to start") { it.status == PlayerStatus.PLAYING && it.positionMs > 2_000 }
+        player.pause()
+        val paused = player.await("pause") { it.status == PlayerStatus.PAUSED }
+        assumeTrue("this device's resource manager lists the decoder", codecsHeld() > 0)
+
+        // Out of sight (the activity stopped): the decoders go, and what the player says does not change.
+        player.standBy()
+        awaitTrue("the decoders to be released") { codecsHeld() == 0 }
+        val standing = player.state.value
+        assertEquals(PlayerStatus.PAUSED, standing.status)
+        assertTrue(abs(standing.positionMs - paused.positionMs) < 250, "kept ${standing.positionMs}, paused at ${paused.positionMs}")
+        assertEquals(paused.selectedAudioId, standing.selectedAudioId)
+
+        // Seen again: paused where it was, with its decoders, and Play goes on from there.
+        player.wake()
+        awaitTrue("the decoders to come back") { codecsHeld() > 0 }
+        assertEquals(PlayerStatus.PAUSED, player.state.value.status)
+        assertTrue(abs(player.state.value.positionMs - paused.positionMs) < 500, "resumed at ${player.state.value.positionMs}, left at ${paused.positionMs}")
+        player.play()
+        player.await("playback to go on") { it.status == PlayerStatus.PLAYING && it.positionMs > paused.positionMs + 500 }
+
+        // Play while still out of sight (the remote's play key reaches the player in the background) prepares it again.
+        player.pause()
+        player.await("pause") { it.status == PlayerStatus.PAUSED }
+        player.standBy()
+        awaitTrue("the decoders to be released") { codecsHeld() == 0 }
+        player.play()
+        player.await("playback from standby") { it.status == PlayerStatus.PLAYING && it.positionMs > paused.positionMs + 1_000 }
+    }
+
+    private fun awaitTrue(what: String, condition: () -> Boolean) {
+        val deadline = System.currentTimeMillis() + 15_000
+        while (!condition()) {
+            assertTrue(System.currentTimeMillis() < deadline, "timed out waiting for $what")
+            Thread.sleep(200)
+        }
+    }
+
     @Test
     fun aMissingFileIsSaidToBeUnreachable() {
         val world = world("missing")

@@ -88,19 +88,6 @@ fun TextInput(
     val shape = RoundedCornerShape(14.dp)
     // The label is part of the field: touching or clicking it is touching the field.
     val field = remember { FocusRequester() }
-    val keyboard = LocalSoftwareKeyboardController.current
-    val television = layout.formFactor == FormFactor.TV
-    // Whether OK has asked for the keyboard since focus arrived; until it has, a television keeps it away.
-    var asked by remember { mutableStateOf(false) }
-    LaunchedEffect(focused) {
-        if (!focused) asked = false
-        if (!television || !focused) return@LaunchedEffect
-        // The field opens the keyboard by itself as it takes focus, a moment later.
-        repeat(KEYBOARD_PATIENCE_FRAMES) {
-            withFrameNanos { }
-            if (!asked) keyboard?.hide()
-        }
-    }
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text(
             label,
@@ -112,17 +99,7 @@ fun TextInput(
         BasicTextField(
             value = value,
             onValueChange = onValueChange,
-            modifier = fieldModifier.focusRequester(field)
-                // A remote's OK opens the keyboard when it is let go of. Opened on the press, the keyboard
-                // would receive the release and type whatever key it starts on.
-                .onPreviewKeyEvent { event ->
-                    if (event.key != Key.DirectionCenter) return@onPreviewKeyEvent false
-                    if (event.type == KeyEventType.KeyUp) {
-                        asked = true
-                        keyboard?.show()
-                    }
-                    true
-                }
+            modifier = fieldModifier.focusRequester(field).keyboardByRemote()
                 .fillMaxWidth().semantics { contentDescription = label }.onFocusChanged { onFocus(it.isFocused) },
             enabled = enabled,
             singleLine = true,
@@ -139,9 +116,7 @@ fun TextInput(
                     InputKind.SECRET -> KeyboardType.Password
                 },
                 imeAction = if (last) ImeAction.Done else ImeAction.Next,
-                // With a remote, focus only passes through a field on its way somewhere; the keyboard,
-                // which takes over the remote while it is up, opens when OK says so.
-                showKeyboardOnFocus = !television,
+                showKeyboardOnFocus = showsKeyboardOnFocus(),
             ),
             keyboardActions = KeyboardActions(onNext = { onDone() }, onDone = { onDone() }),
             decorationBox = { inner ->
@@ -165,6 +140,43 @@ fun TextInput(
         )
     }
 }
+
+/**
+ * How a text field takes a remote. Focus only passes through a field on its way somewhere, so a television
+ * keeps the keyboard, which takes over the remote while it is up, away until OK asks for it; and OK opens it
+ * when it is let go of. A keyboard opened as focus arrives, or on the press, takes the press or its release
+ * for its own: Fire TV's then types the key it starts on, so a search began with an "a". Every field a
+ * remote can reach uses this, with [showsKeyboardOnFocus] in its keyboard options.
+ */
+@Composable
+internal fun Modifier.keyboardByRemote(): Modifier {
+    val television = LocalLayout.current.formFactor == FormFactor.TV
+    val keyboard = LocalSoftwareKeyboardController.current
+    var focused by remember { mutableStateOf(false) }
+    // Whether OK has asked for the keyboard since focus arrived; until it has, a television keeps it away.
+    var asked by remember { mutableStateOf(false) }
+    LaunchedEffect(focused) {
+        if (!focused) asked = false
+        if (!television || !focused) return@LaunchedEffect
+        // The field opens the keyboard by itself as it takes focus, a moment later.
+        repeat(KEYBOARD_PATIENCE_FRAMES) {
+            withFrameNanos { }
+            if (!asked) keyboard?.hide()
+        }
+    }
+    return onFocusChanged { focused = it.isFocused }.onPreviewKeyEvent { event ->
+        if (event.key != Key.DirectionCenter) return@onPreviewKeyEvent false
+        if (event.type == KeyEventType.KeyUp) {
+            asked = true
+            keyboard?.show()
+        }
+        true
+    }
+}
+
+/** Whether a field opens the keyboard as it takes focus: everywhere but on a television ([keyboardByRemote]). */
+@Composable
+internal fun showsKeyboardOnFocus(): Boolean = LocalLayout.current.formFactor != FormFactor.TV
 
 /** How many frames after focus arrives a television keeps hiding a keyboard nobody asked for. */
 private const val KEYBOARD_PATIENCE_FRAMES = 20

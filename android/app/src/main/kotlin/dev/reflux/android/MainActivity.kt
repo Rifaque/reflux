@@ -261,7 +261,7 @@ class MainActivity : ComponentActivity() {
 
     /** Tells the system whether leaving the app should shrink it into a floating window, and of what shape. */
     private fun continuesInWindow(enabled: Boolean, aspect: Float?) {
-        if (!packageManager.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE)) return
+        if (!leavesIntoWindow(platform.television, packageManager.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE))) return
         windowOnLeave = enabled
         // The system accepts shapes between about 1:2.39 and 2.39:1.
         windowShape = aspect?.takeIf { it.isFinite() && it > 0f }?.coerceIn(0.42f, 2.39f)?.let { Rational((it * 1000).toInt(), 1000) }
@@ -287,11 +287,19 @@ class MainActivity : ComponentActivity() {
         inPictureInPicture = isInPictureInPictureMode
     }
 
+    override fun onStart() {
+        super.onStart()
+        platform.player?.wake()
+    }
+
     override fun onStop() {
         super.onStop()
         // Nothing keeps playing unseen: an activity in a floating window is not stopped, one that was
-        // closed, covered, or left with the screen off is.
-        platform.player?.pause()
+        // closed, covered, or left with the screen off is. Unseen, it holds no decoder either.
+        platform.player?.let {
+            it.pause()
+            it.standBy()
+        }
         // Leaving Reflux is when the launcher should know where the user is; the work playing records its place first.
         val application = application as RefluxApplication
         if (application.watchNext.supported) application.scope.launch {
@@ -307,6 +315,13 @@ class MainActivity : ComponentActivity() {
         super.onDestroy()
     }
 }
+
+/**
+ * Whether leaving the app while something plays shrinks it into a floating window: on a handheld whose system
+ * offers one. A television's remote cannot reach such a window, and Fire OS pauses the playing session as Home
+ * is pressed, which left a frozen picture over its home screen; there, leaving pauses and the place is kept.
+ */
+internal fun leavesIntoWindow(television: Boolean, systemOffersIt: Boolean): Boolean = systemOffersIt && !television
 
 /** How long the user's state is quiet before the launcher's row is brought up to date (the platform asks for under 5 s). */
 private const val WATCH_NEXT_QUIET_MS = 2_000L

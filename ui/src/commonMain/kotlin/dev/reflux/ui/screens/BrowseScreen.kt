@@ -19,6 +19,7 @@ import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.DisposableEffect
@@ -44,6 +45,8 @@ import dev.reflux.ui.components.Chip
 import dev.reflux.ui.components.Icon
 import dev.reflux.ui.components.IconButton
 import dev.reflux.ui.components.initialFocus
+import dev.reflux.ui.components.keyboardByRemote
+import dev.reflux.ui.components.showsKeyboardOnFocus
 import dev.reflux.ui.components.PosterCard
 import dev.reflux.ui.state.AppState
 import dev.reflux.ui.state.Destination
@@ -158,8 +161,10 @@ internal fun SearchScreen(app: AppState) {
                     value = query,
                     onValueChange = { app.searchQuery = it },
                     // Searching starts in the field, with a remote as with a keyboard.
-                    modifier = Modifier.weight(1f).focusRequester(field).initialFocus().onFocusChanged { app.textInputActive = it.isFocused },
+                    modifier = Modifier.weight(1f).focusRequester(field).initialFocus().onFocusChanged { app.textInputActive = it.isFocused }
+                        .keyboardByRemote(),
                     singleLine = true,
+                    keyboardOptions = KeyboardOptions(showKeyboardOnFocus = showsKeyboardOnFocus()),
                     textStyle = LocalTypography.current.title.copy(color = RefluxColors.textPrimary),
                     cursorBrush = SolidColor(RefluxColors.textPrimary),
                     decorationBox = { inner ->
