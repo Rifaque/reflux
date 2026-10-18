@@ -628,6 +628,8 @@ Fire TV devices running **Fire OS**, distributed through the **Amazon Appstore**
 
 ## 2026-10-17 — Watch Next is a V1 feature
 
+> Carried out by "Watch Next is derived from watch state, never stored" and "Fire TV ships without a home-screen 'continue' row" (2026-10-18).
+
 Supersedes the audit's recommendation that the launcher's Watch Next row wait for V1.x. Reflux's Continue Watching and Next Up appear on the platform's own home screen, because on a television that is where people continue:
 
 - **Android TV / Google TV**: the launcher's Watch Next row (`WatchNextPrograms` through AndroidX TV Provider): the work in progress with its position, and a show's next episode, added, updated, and removed as Reflux's watch state changes; selecting one opens Reflux and plays it. Required for V1.
@@ -674,3 +676,30 @@ Removing a Jellyfin source today forgets its token locally but leaves the sessio
 ## 2026-10-17 — Desktop capabilities are observed, not declared
 
 The desktop capability profile (`DesktopCapabilities`) declares hardware decoding for H.264, HEVC, and VP9 on every machine and an SDR display; Best Version ranks by it. Decided for V1: claims about hardware decoding come from what the engine reports for this machine (libmpv's decoder in use, recorded per codec after a playback, and a conservative default before), and HDR output is claimed only where the platform reports an HDR display. Until then the declared profile stays, and the roadmap lists the gap (ROADMAP.md, M1).
+
+## 2026-10-18 — Watch Next is derived from watch state, never stored
+
+Implements "Watch Next is a V1 feature" (2026-10-17) on Android TV and Google TV.
+
+- **One rule for what can be continued.** The launcher's programs are computed from `Library.continuations()`, the same computation as Continue Watching (most recent first, one entry per show, works with no version left excluded), by `WatchNext` in `library` (platform-neutral, pure). A film or episode with a resume position is `CONTINUE` with its position and running time; a show's next episode, or one started over and barely begun, is `NEXT`. At most 10 programs, the most recently engaged.
+- **The launcher is compared with, never believed.** Each run reads back only Reflux's own rows and compares a fingerprint stored with each row (`internal_provider_data`); it adds what is missing, updates what changed, deletes what is no longer to be continued, and leaves unchanged rows alone so the launcher does not reorder them. Nothing read from the launcher reaches watch state; updating it never marks anything watched.
+- **A work whose source is away stays on the row**, as it stays in Continue Watching: a sleeping server or an unplugged drive is not the end of a film. Selecting it opens the work's details page, where Play says why it cannot play. A work whose last version is gone (its source removed) leaves the row.
+- **What the user removes from the launcher is deleted and stays off until they play it again in Reflux.** The platform hides such a row and expects the application to delete it (`ACTION_WATCH_NEXT_PROGRAM_BROWSABLE_DISABLED`). Reflux deletes it at its next run and remembers, per work, when it was last played at that moment (application preferences, not the library). That is a preference about the launcher, not progress. No broadcast receiver: Reflux does nothing in the background.
+- **When it runs:** while Reflux runs, two seconds after the user's state settles (`AppState.revision`) and when the user leaves the application (after the paused position is written). The platform asks for under five seconds.
+- **Selecting a program** sends an explicit intent to `MainActivity` naming the work (`reflux://play/<media id>`, no intent filter, so no new public entry point): the details page opens and Play runs as it would there (`AppState.continueFromOutside`).
+- **Artwork** comes from Reflux's own artwork cache through a read-only, exported `ArtworkProvider` that serves only cache files by their digest names; the launcher draws cards in its own process and cannot read private storage. Publishing never waits for the network: art cached later is written then.
+- **Capability, not device name:** it runs where the system has the TV provider. Phones and tablets have none.
+- **Permissions:** `WRITE_EPG_DATA` is required to insert programs (Google TV emulator, Android 16: refused without it). The TV provider library's `READ_EPG_DATA` is removed from the manifest: reading back an application's own programs does not need it.
+- **Dependency:** `androidx.tvprovider:tvprovider` 1.1.0 (May 2025, the current stable), Apache 2.0, depending only on AndroidX core and annotation, already in the graph. It is the documented way to write Watch Next programs; the alternative, writing `TvContract` columns by hand, is the same contract with less checking.
+- **Not verified:** Google TV shows an application's Watch Next programs only once its integration is certified for quality (Google TV developer guide, read 2026-10-18), and the emulator's launcher needs a Google account before it shows its home. What a launcher draws has therefore not been seen; that the programs are written, updated, removed, and open Reflux was verified on the device (VERIFICATION.md).
+
+## 2026-10-18 — Fire TV ships without a home-screen "continue" row
+
+Resolves the Fire TV half of "Watch Next is a V1 feature" (2026-10-17), from Amazon's current documentation (read 2026-10-18):
+
+- Fire TV's Continue Watching row is fed by **Watch Activity**, part of Amazon's Fire TV Integration SDK (Content Personalization). It requires the application to "participate in the catalog integration process, so Fire TV recognizes the content IDs that your app is passing": every event names a content ID from the application's catalog submitted to Amazon (`cdf_id`), with a partner ID supplied by Amazon and catalog acceptance as a step. The SDK is a jar downloaded from Amazon, not a Maven artifact.
+- Reflux plays the user's own media. It has no catalog to submit and no content IDs Amazon could recognize; a film on a USB drive or a home server is not an Amazon catalog entry. Watch Activity is not open to an application of Reflux's kind.
+- No Amazon page read says Fire OS shows Android TV Watch Next programs. Reflux does not add Amazon's SDK, does not invent a catalog, and does not try to place programs another way.
+- Fire TV therefore ships **without a home-screen continue row**. Continue Watching inside Reflux is the continue experience there, reached from Reflux's ordinary launcher entry. (Whether Amazon's home screen shows recently used applications for any installed app was not documented on the pages read and is not relied on.) V1 acceptance criterion 4 is met for Fire TV by this record.
+- Reflux's Watch Next code runs only where the TV provider exists. Whether a Fire OS device has one, and what happens if it does, is checked on the developer's devices; until then it is unknown, and nothing depends on it.
+- Revisited if Amazon opens a "continue" integration to applications without a catalog.
