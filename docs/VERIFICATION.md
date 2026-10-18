@@ -295,3 +295,16 @@ Verified on 2026-10-18 on Windows 11, on the developer's Fire TV Stick (`AFTMA08
 | Google TV emulator (API 36), not hardware | `WatchNextOnDeviceTest`: the three publishing tests passed (programs added, updated, removed, artwork readable), so Android TV and Google TV still publish; the Fire OS test skipped itself. `PlaybackOnDeviceTest.leavingTheAppLetsGoOfTheDecodersAndKeepsThePlace` skipped itself (the emulator's resource manager lists no decoders). The emulator process then crashed (exit 139, nothing in its log) twice in a row as the app opened a show's page, after a second copy of an episode had been added; the same page renders offscreen and runs on the Fire TV. Not resolved | Partly done; crash open |
 | Not verified | Episode versions on a phone or tablet emulator, or with a pointer on a real desktop window (offscreen renderings only); a Jellyfin, SMB, or WebDAV episode in several copies on a device (covered by the engine test with a catalog source); an episode's copy kept offline on a device | Open |
 
+
+## Google TV emulator crash on a show's page: triage
+
+Done on 2026-10-18 on Windows 11 with the `Reflux_TV` AVD (Google TV, API 36, `BT2A.260319.001`, 2 GB guest RAM, `-gpu swiftshader_indirect`), Android Emulator 37.2.12.0, and the debug build installed in the previous cycle. Time-boxed.
+
+| What ran | Result |
+| --- | --- |
+| The show's page (`Signal Fires`, two episodes in two copies) opened by remote keys right after boot | Rendered; no crash |
+| A copy of an episode added to the show's folder (`adb shell cp`, media scan), then Back, 15 s, and the show's page again | The emulator process died with exit 139 (SIGSEGV) as the page opened, the third time this sequence has done it |
+| The same sequence after a restart, with another new copy; and the show's page opened and closed eight more times, scrolled into the episodes each time | No crash; the new copies listed ("2 versions" on every episode) |
+| Evidence | The host process segfaulted (`Segmentation fault ... EXIT 139` from the shell); the emulator's verbose log ends without an error; no crashpad report was written (`emu-crash-37.2.12.db/reports` empty). In the guest, the last log lines before the host died show nothing from Reflux beyond normal rendering: no `FATAL EXCEPTION`, no ANR, no native crash, no tombstone, no dropbox crash entry; the next boot's `SYSTEM_LAST_KMSG` is clean and gives "reboot" as the reason, i.e. the guest was stopped from outside |
+
+Attribution: **the emulator, not Reflux.** The process that crashed is the host's emulator (qemu with the SwiftShader renderer), which a guest application cannot legitimately crash; the guest shows no fault of its own; it is intermittent (one of two attempts with the same trigger, none in ten plain openings); and the same page works on the physical Fire TV and renders offscreen. What the trigger has in common each time is the app scanning and probing a new file while it draws the page, which points at load on the emulator's software renderer rather than at anything the page does. No workaround was added. The emulator stays usable for this page; a crash there is to be retried before it is taken for a regression, and a physical Google TV device (M3) is the real check.
