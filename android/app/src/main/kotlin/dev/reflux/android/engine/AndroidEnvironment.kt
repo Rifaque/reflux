@@ -111,6 +111,9 @@ class AndroidEnvironment(context: Context, dataDirectory: File = context.filesDi
 
     val http: HttpFetcher = AndroidFetcher(application, userAgent = "Reflux/0.1 (Android)")
 
+    /** Web shares' listings, which [http] cannot send (see [WebDavTransport]). Made when the first share is. */
+    private val webDav: HttpFetcher by lazy { WebDavTransport(userAgent = "Reflux/0.1 (Android)") }
+
     /** [databaseName] null keeps the library in memory, for tests. */
     val library = Library(RefluxDatabase(AndroidSqliteDriver(RefluxDatabase.Schema, application, databaseName))) { System.currentTimeMillis() }
     val artwork = ArtworkCache(dataDirectory.resolve(ARTWORK_DIRECTORY).also { it.mkdirs() }.toPath(), http)
@@ -139,7 +142,7 @@ class AndroidEnvironment(context: Context, dataDirectory: File = context.filesDi
             // A folder chosen by its path, on devices where Reflux browses storage itself (televisions).
             LocalFolderSource.TYPE to { record -> LocalFolderSource(File(record.config).toPath(), record.displayName) },
             JellyfinSource.TYPE to { record -> JellyfinCredentials.decode(seal.open(record.id, record.config))?.let { JellyfinSource(it, http, record.displayName) } },
-            WebDavSource.TYPE to { record -> WebDavConfig.decode(seal.open(record.id, record.config))?.let { WebDavSource(it, http, record.displayName) } },
+            WebDavSource.TYPE to { record -> WebDavConfig.decode(seal.open(record.id, record.config))?.let { WebDavSource(it, webDav, record.displayName) } },
             SmbSource.TYPE to { record -> SmbShareConfig.decode(seal.open(record.id, record.config))?.let { SmbSource(it, streams, record.displayName) } },
         ),
     ).apply { load(library.sources()) }
@@ -150,7 +153,7 @@ class AndroidEnvironment(context: Context, dataDirectory: File = context.filesDi
         SourceConnections(
             library,
             registry,
-            listOf(JellyfinConnector(http, deviceId, deviceName = "Reflux on $device"), SmbConnector(streams), WebDavConnector(http)),
+            listOf(JellyfinConnector(http, deviceId, deviceName = "Reflux on $device"), SmbConnector(streams), WebDavConnector(webDav)),
             report = ::report,
             seal = seal,
         )

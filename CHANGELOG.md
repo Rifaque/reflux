@@ -25,3 +25,5 @@ What changes for people using Reflux, version by version. The rules for versions
 - Asking again to keep something whose download was paused or didn't finish picks it up again.
 - When the version you chose can't be downloaded right now, the offline sheet says so before keeping another one.
 - A Windows or NAS share left idle no longer shows as "Not connected" until the next check: Reflux now reconnects first when the connection it kept went stale.
+- Web shares (WebDAV: a NAS, Nextcloud, a web server) can now be added on Android phones and tablets, Android TV, Google TV, and Fire TV. Before, connecting one failed with "Nothing answered at that address".
+- Web shares are only ever asked about their own address: a share whose listing names another server or a folder outside the share no longer sends your sign-in there.
