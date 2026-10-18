@@ -65,7 +65,7 @@ What the product already does, everywhere it runs unless a platform is named. De
 - **Continue Watching and Next Up** inside the application (Home and details).
 - **Search**: deterministic smart search over metadata, credits, stream facts, and watch state.
 - **Playback**: libmpv on desktop, Media3 on Android; default track selection, chapters (desktop), skip intro/recap/credits, next-episode autoplay and "still watching?", a source that goes silent becomes a stated failure, picture-in-picture on Android handhelds.
-- **Versions**: every version listed and playable by choice, the recommended one explained.
+- **Versions**: every version of a film or an episode listed and playable by choice, the recommended one explained, any one pinned.
 - **Smart Offline (Android)**: Download on a details page, the review sheet, status, copies as versions, playback and resume with the source away.
 - **Input**: pointer, keyboard, touch, controllers (desktop readers, Android key events), television remotes; the controller morph.
 - **Form factors**: desktop, phone, tablet, television layouts of one experience layer, with the neutral-first visual system.
@@ -96,8 +96,8 @@ V1 contains what Reflux fundamentally is, and no more. Each row is required for 
 | **Watch Next** (the platform's own "continue" row) | Done (emulator) | Android TV / Google TV: programs derived from Continue Watching and Next Up, added, updated, and removed with watch state, opening Reflux on the work (DECISIONS.md, 2026-10-18). What Google TV's launcher draws is unseen: it shows only certified integrations, so Google's Watch Next certification belongs to the Play submission (M2), and a physical Google TV check to M3. Fire TV: no home-screen row, because Amazon's Watch Activity needs a content catalog Reflux does not have, and no programs written to Fire OS's TV provider (DECISIONS.md, 2026-10-18) |
 | Cross-source watch state | Done | — ("From the start" keeps the place, 2026-10-17) |
 | Best Version | Done | Desktop capabilities must be what the machine does, not a declared profile (decided; open) |
-| Visible version selection | Partial | Films list every version and play any of them; an episode's versions are not listed anywhere |
-| Version pinning | Partial | Films: "Always play this" and "Let Reflux choose" (2026-10-17). Episodes wait for their versions list |
+| Visible version selection | Done | Films and episodes list every version and play any of them; an episode's are on its own page, offered from its row where it has more than one (DECISIONS.md, 2026-10-18) |
+| Version pinning | Done | Films (2026-10-17) and episodes (2026-10-18): "Always play this" and "Let Reflux choose"; a pin set aside is said and kept; an episode's pin follows it through Identify |
 | Smart Offline, user-facing | Partial | Android done. Choosing single episodes and whole seasons; a Downloads entry point listing every copy; desktop wiring (decided: in V1) |
 | Serious playback parity | Partial | Television: an explanation where sidecar subtitles cannot be read (decided); held seek acceleration; chapters on Android where Media3 can supply them; media keys on desktop |
 | Jellyfin correctness and security | Partial | Removing a server signs its session out (decided; open); the plain-HTTP policy on Android (RELEASE.md) |
@@ -110,7 +110,7 @@ V1 contains what Reflux fundamentally is, and no more. Each row is required for 
 | About, legal, and attribution | Open | An About page: version and build, licenses (Reflux and third-party, including libmpv/FFmpeg obligations), TMDB attribution and logo, privacy and support links |
 | Casting | Gate | Time-boxed feasibility before beta; V1.1 if it fails the gate (DECISIONS.md, 2026-10-17, "Casting is a V1 feasibility gate") |
 
-First M1 slice, done 2026-10-17: "From the start" keeps the place (Reflux and Jellyfin), and films' versions can be pinned and unpinned on every form factor. Second, done 2026-10-18: Watch Next on Android TV / Google TV, and the Fire TV home-screen decision. Third, 2026-10-18: the Fire TV smoke test on physical hardware and its fixes. Fourth, 2026-10-18: Identify, and episodes without a show name grouped by folder. Recommended order after it: an episode's versions (list and pin), Smart Offline episode/season choice and Downloads, Jellyfin sign-out, desktop Smart Offline and capabilities, About/legal, accessibility, the casting spike, performance R&D.
+First M1 slice, done 2026-10-17: "From the start" keeps the place (Reflux and Jellyfin), and films' versions can be pinned and unpinned on every form factor. Second, done 2026-10-18: Watch Next on Android TV / Google TV, and the Fire TV home-screen decision. Third, 2026-10-18: the Fire TV smoke test on physical hardware and its fixes. Fourth, 2026-10-18: Identify, and episodes without a show name grouped by folder. Fifth, 2026-10-18: no Watch Next programs on Fire OS, Play ignored out of sight, and an episode's versions (list and pin). Recommended order after it: Smart Offline episode/season choice and Downloads, Jellyfin sign-out, desktop Smart Offline and capabilities, About/legal, accessibility, the casting spike, performance R&D.
 
 ## M2 — Release engineering
 
