@@ -82,6 +82,10 @@ import dev.reflux.ui.screens.DetailsScreen
 import dev.reflux.ui.screens.FolderPickerPanel
 import dev.reflux.ui.screens.HomeScreen
 import dev.reflux.ui.screens.IdentifyScreen
+import dev.reflux.ui.screens.DownloadsScreen
+import dev.reflux.ui.state.libraryState
+import dev.reflux.ui.state.offlineState
+import dev.reflux.library.downloads
 import dev.reflux.ui.screens.OfflinePanel
 import dev.reflux.ui.screens.SearchScreen
 import dev.reflux.ui.screens.AddSourceScreen
@@ -280,6 +284,7 @@ fun RefluxApp(app: AppState, modifier: Modifier = Modifier) {
                                     is Destination.Listing -> BrowseScreen(app, destination.title, destination.query, shows = false)
                                     is Destination.Details -> DetailsScreen(app, destination.itemId)
                                     is Destination.Identify -> IdentifyScreen(app, destination.itemId)
+                                    Destination.Downloads -> DownloadsScreen(app)
                                     Destination.Sources -> SourcesScreen(app)
                                     Destination.AddSource -> AddSourceScreen(app)
                                     is Destination.Connect -> ConnectScreen(app, destination)
@@ -381,9 +386,12 @@ private fun BoxScope.CompactNavigation(app: AppState) {
         if (navigator.current !is Destination.Section) IconButton(Icon.BACK, "Back", { navigator.back() }, size = 44.dp, glass = true)
         Spacer(Modifier.weight(1f))
         ActivityIndicator(activity)
-        // Search has its field across the top; the sources are a tap away from any other section.
+        // Search has its field across the top; the downloads and the sources are a tap away from any other section.
         if (navigator.current is Destination.Section && navigator.current != Destination.Search) {
+            DownloadsButton(app, size = 44.dp, glass = true)
             IconButton(Icon.FOLDER, "Media sources", { app.toggleSources() }, size = 44.dp, glass = true)
+        } else if (navigator.current == Destination.Downloads) {
+            DownloadsButton(app, size = 44.dp, glass = true)
         } else if (navigator.current.aboutSources) {
             // Where the user is, said by the one control that leads here.
             IconButton(Icon.FOLDER, "Media sources", { app.toggleSources() }, size = 44.dp, glass = true, selected = true)
@@ -467,7 +475,25 @@ private fun NavigationBarContent(app: AppState, activity: PipelineActivity, modi
         }
         ActivityIndicator(activity)
         IconButton(Icon.SEARCH, "Search", { navigator.show(Destination.Search) }, tint = tabColor(navigator.highlighted == Destination.Search))
+        DownloadsButton(app)
         IconButton(Icon.FOLDER, "Media sources", { app.toggleSources() }, tint = tabColor(navigator.current.aboutSources), selected = navigator.current.aboutSources)
+    }
+}
+
+/**
+ * The way to the Downloads page, where this platform keeps copies and there is anything to keep or kept. While
+ * something is being downloaded a small dot says so; it does not move.
+ */
+@Composable
+private fun DownloadsButton(app: AppState, size: Dp = 40.dp, glass: Boolean = false) {
+    val offline = app.platform.offline ?: return
+    val offered by app.libraryState { offline.possible() || downloads().isNotEmpty() }
+    val busy by app.offlineState { downloads().any { it.active } }
+    if (offered != true) return
+    val here = app.navigator.current == Destination.Downloads
+    Box {
+        IconButton(Icon.DOWNLOAD, if (busy == true) "Downloads, downloading" else "Downloads", { app.toggleDownloads() }, size = size, glass = glass, tint = tabColor(here), selected = here)
+        if (busy == true) Box(Modifier.align(Alignment.TopEnd).padding(top = 7.dp, end = 7.dp).size(7.dp).background(RefluxColors.textPrimary, CircleShape))
     }
 }
 

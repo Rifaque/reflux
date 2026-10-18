@@ -7,9 +7,13 @@ import dev.reflux.core.playback.DisplayCapabilities
 import dev.reflux.core.source.MediaSource
 import dev.reflux.library.ArtworkCache
 import dev.reflux.library.ConfigSeal
+import dev.reflux.library.DownloadsSource
+import dev.reflux.library.FileDownloadStore
+import dev.reflux.library.HttpDownloadTransport
 import dev.reflux.library.Library
 import dev.reflux.library.LibraryDatabase
 import dev.reflux.library.LibraryPipeline
+import dev.reflux.library.Offline
 import dev.reflux.library.SourceConnections
 import dev.reflux.library.SourceRecord
 import dev.reflux.library.SourceRegistry
@@ -29,6 +33,9 @@ import dev.reflux.sources.smb.SmbSource
 import dev.reflux.sources.webdav.WebDavConfig
 import dev.reflux.sources.webdav.WebDavConnector
 import dev.reflux.sources.webdav.WebDavSource
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import java.awt.GraphicsEnvironment
 import java.io.IOException
 import java.nio.charset.StandardCharsets
@@ -91,8 +98,12 @@ class DesktopEnvironment(
     /** Streams SMB files to players over loopback HTTP. */
     val streams by lazy { LocalStreamServer() }
 
+    /** Where copies for offline are kept: Reflux's own data directory, never one of the user's folders. */
+    private val downloads = FileDownloadStore(dataDirectory.resolve("downloads").toFile())
+
     val registry = SourceRegistry(
         mapOf(
+            DownloadsSource.TYPE to { _ -> DownloadsSource(downloads) },
             LocalFolderSource.TYPE to { record -> LocalFolderSource.fromConfig(record.config, record.displayName) },
             JellyfinSource.TYPE to { record ->
                 JellyfinCredentials.decode(seal.open(record.id, record.config))?.let { JellyfinSource(it, http, record.displayName) }
@@ -137,6 +148,34 @@ class DesktopEnvironment(
     fun source(id: SourceId): MediaSource? = registry.resolve(id)
 
     fun deviceCapabilities(): DeviceCapabilities = DesktopCapabilities.of(display())
+
+    /**
+     * Smart Offline on this machine, with the same planner and rules as everywhere (docs/OFFLINE.md). Copies are
+     * made while Reflux is running; one that was cut short continues from where it was the next time Reflux
+     * starts (see [startOffline]).
+     */
+    val offline: Offline by lazy {
+        val device by lazy { deviceCapabilities() }
+        Offline(
+            library = library,
+            store = downloads,
+            transport = HttpDownloadTransport("Reflux/0.1"),
+            sources = registry::resolve,
+            device = { device },
+            preferredLanguages = listOf(Locale.getDefault().language).filter { it.isNotBlank() },
+            register = registry::register,
+            dispatcher = Dispatchers.IO,
+            report = diagnostics::record,
+        )
+    }
+
+    private var offlineJob: Job? = null
+
+    /** Starts making copies in [scope], once: it should live as long as the application does. */
+    @Synchronized
+    fun startOffline(scope: CoroutineScope) {
+        if (offlineJob == null) offlineJob = offline.start(scope)
+    }
 
     /** Whether a playback engine is installed. Without one the library still works; only playback is unavailable. */
     val canPlay: Boolean get() = MpvPlayer.isAvailable

@@ -47,10 +47,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.foundation.border
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.reflux.core.metadata.Credit
 import dev.reflux.core.metadata.CreditRole
+import dev.reflux.core.offline.DownloadState
 import dev.reflux.core.model.ArtworkLocator
 import dev.reflux.core.model.MediaId
 import dev.reflux.core.versions.SelectionCriterion
@@ -70,6 +73,7 @@ import dev.reflux.ui.components.IconButton
 import dev.reflux.ui.components.LocalFocusEntry
 import dev.reflux.ui.components.Pressable
 import dev.reflux.ui.components.ProgressBar
+import dev.reflux.ui.components.ProgressRing
 import dev.reflux.ui.components.SectionHeader
 import dev.reflux.ui.components.TitleBackdrop
 import dev.reflux.ui.components.TitlePlaceholder
@@ -82,7 +86,10 @@ import dev.reflux.ui.state.Destination
 import dev.reflux.ui.state.DetailsModel
 import dev.reflux.ui.state.Formatting
 import dev.reflux.ui.state.MediaCard
+import dev.reflux.ui.state.EpisodeOffline
 import dev.reflux.ui.state.OfflineStatus
+import dev.reflux.ui.state.episodeOffline
+import dev.reflux.ui.state.offlineState
 import dev.reflux.ui.state.offlineStatus
 import dev.reflux.ui.state.VersionRow
 import dev.reflux.ui.state.detailsModel
@@ -106,7 +113,13 @@ internal fun DetailsScreen(app: AppState, itemId: MediaId) {
     val shown = details.seasons.getOrNull(season)
     val episodes = shown?.episodes.orEmpty()
     // Whether it is, or is being, kept on this device; null where the platform keeps nothing.
-    val offline by app.libraryState(itemId) { app.platform.offline?.let { offlineStatus(itemId, it) } }
+    val offline by app.offlineState(itemId) { app.platform.offline?.let { offlineStatus(itemId, it) } }
+    // For a show: the season shown, and each of its episodes that can be or is kept.
+    val seasonId = shown?.season?.id
+    val seasonOffline by app.offlineState(seasonId) { seasonId?.let { id -> app.platform.offline?.let { offlineStatus(id, it) } } }
+    val episodeMarks by app.offlineState(itemId, details.seasons.isNotEmpty()) {
+        app.platform.offline?.takeIf { details.seasons.isNotEmpty() }?.let { episodeOffline(itemId, it) }
+    }
     val list = rememberLazyListState()
     ReportPageScroll(remember { derivedStateOf { list.firstVisibleItemIndex > 0 || list.firstVisibleItemScrollOffset > 0 } }.value)
     BoxWithConstraints(Modifier.fillMaxSize()) {
@@ -136,18 +149,43 @@ internal fun DetailsScreen(app: AppState, itemId: MediaId) {
                 item(key = "versions") { Versions(app, details, Modifier.padding(horizontal = layout.safeMarginDp.dp).padding(top = section)) }
             }
             if (details.seasons.isNotEmpty()) {
+                // Room for a choice of versions beside every row of a season where any episode has one, and for a
+                // download mark where episodes can be kept, so the rows line up.
+                val versions = shown?.versions.orEmpty()
+                val marks = episodeMarks.orEmpty()
+                val rowWidth = episodeRowWidth(room = versions.isNotEmpty(), keeps = marks.isNotEmpty())
                 item(key = "seasons") {
-                    Row(
-                        Modifier.padding(top = section, bottom = 10.dp).horizontalScroll(rememberScrollState()).padding(horizontal = layout.safeMarginDp.dp, vertical = 6.dp),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    ) {
-                        details.seasons.forEachIndexed { index, model -> Tab(model.season.title, index == season) { season = index } }
+                    val tabs: @Composable () -> Unit = {
+                        Row(
+                            Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = layout.safeMarginDp.dp, vertical = 6.dp),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            details.seasons.forEachIndexed { index, model -> Tab(model.season.title, index == season) { season = index } }
+                        }
+                    }
+                    // Keeping the whole season shown is at the end of its tabs' line, over the episodes' marks, so a
+                    // remote goes straight up and down between them; beneath the tabs on a phone.
+                    val keep = seasonOffline?.takeIf { it.offered }
+                    when {
+                        keep == null || seasonId == null -> Box(Modifier.padding(top = section, bottom = 10.dp)) { tabs() }
+                        layout.formFactor == FormFactor.PHONE -> Column(Modifier.padding(top = section, bottom = 10.dp)) {
+                            tabs()
+                            SeasonDownload(app, seasonId, keep, Modifier.padding(horizontal = layout.safeMarginDp.dp))
+                        }
+                        else -> Row(
+                            Modifier.widthIn(max = rowWidth + layout.safeMarginDp.dp * 2).fillMaxWidth().padding(top = section, bottom = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Box(Modifier.weight(1f)) { tabs() }
+                            SeasonDownload(app, seasonId, keep, Modifier.padding(start = if (television) 18.dp else 6.dp, end = layout.safeMarginDp.dp))
+                        }
                     }
                 }
-                // Room for a choice of versions beside every row of a season where any episode has one, so the rows line up.
-                val versions = shown?.versions.orEmpty()
                 items(episodes, key = { it.id.value }) { episode ->
-                    EpisodeItem(app, episode, versions[episode.id], room = versions.isNotEmpty(), Modifier.padding(horizontal = layout.safeMarginDp.dp, vertical = 5.dp))
+                    EpisodeItem(
+                        app, episode, versions[episode.id], room = versions.isNotEmpty(), marks[episode.id], keeps = marks.isNotEmpty(),
+                        Modifier.padding(horizontal = layout.safeMarginDp.dp, vertical = 5.dp),
+                    )
                 }
             }
             val cast = details.credits.filter { it.role == CreditRole.ACTOR }.take(16)
@@ -265,9 +303,8 @@ private fun Header(
                             { app.toggleFavorite(card.entry) },
                             glass = true,
                         )
-                        // An episode is kept for offline from its show's page (OFFLINE.md); its own page is about its versions.
-                        if (offline?.offered == true && details.showId == null) {
-                            val settled = offline.downloaded || offline.busy || offline.failed
+                        // A film, an episode on its own page, or a show (its next few episodes); a season is kept from beside its tabs.
+                        if (offline?.offered == true) {
                             // The sheet this opens takes focus; when it closes, focus comes back here, not to Play.
                             val download = remember { FocusRequester() }
                             val entry = LocalFocusEntry.current
@@ -279,10 +316,10 @@ private fun Header(
                                     offline.failed -> "Download didn't finish"
                                     else -> "Download"
                                 },
-                                // First what Reflux would keep, to confirm; once there is a download, what there is to do about it.
+                                // What Reflux would keep, to confirm, and what of it is kept already, with what can be done about it.
                                 {
                                     entry?.afterPanel = download
-                                    if (settled) app.offlineOpen = true else app.reviewDownload(card.id)
+                                    app.reviewDownload(card.id)
                                 },
                                 Modifier.focusRequester(download),
                                 glass = true,
@@ -439,12 +476,14 @@ private fun VersionCard(row: VersionRow, bestReason: SelectionCriterion?, onPlay
 }
 
 /**
- * An episode and, when it has several versions, the way to them ("2 versions", its own page): beside the row,
- * where a remote reaches it with a step to the right and its focus stays clear of the episode's own, or
- * beneath it on a phone. [room] keeps that place beside every row of the season, so the rows line up.
+ * An episode and, beside it, the way to its versions when it has several ("2 versions", its own page) and its
+ * download mark where episodes of the show can be kept: where a remote reaches them with a step to the right
+ * and their focus stays clear of the episode's own. On a phone the mark is at the row's end and the versions
+ * beneath it. [room] keeps the versions' place beside every row of the season, and [keeps] the mark's, so the
+ * rows line up.
  */
 @Composable
-private fun EpisodeItem(app: AppState, episode: MediaCard, versions: Int?, room: Boolean, modifier: Modifier = Modifier) {
+private fun EpisodeItem(app: AppState, episode: MediaCard, versions: Int?, room: Boolean, mark: EpisodeOffline?, keeps: Boolean, modifier: Modifier = Modifier) {
     val choice: @Composable () -> Unit = {
         if (versions != null) {
             // Back from the episode's page comes back here, not to the top of the show's.
@@ -452,17 +491,106 @@ private fun EpisodeItem(app: AppState, episode: MediaCard, versions: Int?, room:
             Button("$versions versions", { back.leaving(); app.navigator.open(Destination.Details(episode.id)) }, back.modifier, style = ButtonStyle.QUIET)
         }
     }
+    val download: @Composable () -> Unit = { Box(Modifier.width(MarkWidth), contentAlignment = Alignment.Center) { mark?.let { EpisodeDownload(app, episode, it) } } }
     when {
-        !room -> EpisodeRow(app, episode, modifier.widthIn(max = 980.dp))
+        !room && !keeps -> EpisodeRow(app, episode, modifier.widthIn(max = 980.dp))
         LocalLayout.current.formFactor == FormFactor.PHONE -> Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(2.dp), horizontalAlignment = Alignment.End) {
-            EpisodeRow(app, episode, Modifier)
-            choice()
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+                EpisodeRow(app, episode, Modifier.weight(1f))
+                if (keeps) download()
+            }
+            if (room) choice()
         }
         // A focused control grows; on a television the gap leaves its ring clear of the row beside it.
-        else -> Row(modifier.widthIn(max = 980.dp + 184.dp).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(if (LocalLayout.current.formFactor == FormFactor.TV) 24.dp else 12.dp), verticalAlignment = Alignment.CenterVertically) {
+        else -> Row(
+            modifier.widthIn(max = episodeRowWidth(room, keeps)).fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(if (LocalLayout.current.formFactor == FormFactor.TV) 24.dp else 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             EpisodeRow(app, episode, Modifier.weight(1f))
-            Box(Modifier.width(160.dp), contentAlignment = Alignment.CenterStart) { choice() }
+            if (room) Box(Modifier.width(160.dp), contentAlignment = Alignment.CenterStart) { choice() }
+            if (keeps) download()
         }
+    }
+}
+
+/** The room a download mark takes beside an episode, focused or not. */
+private val MarkWidth = 56.dp
+
+/** How wide an episode's line is at most, with what is beside it. */
+private fun episodeRowWidth(room: Boolean, keeps: Boolean): Dp = 980.dp + (if (room) 184.dp else 0.dp) + (if (keeps) MarkWidth + 24.dp else 0.dp)
+
+/**
+ * Whether an episode is kept, on its way, or can be: one control that opens what Reflux would keep of it, or
+ * the copy there is and what can be done about it. Progress is a thin ring that moves only with the download.
+ */
+@Composable
+private fun EpisodeDownload(app: AppState, episode: MediaCard, mark: EpisodeOffline) {
+    val requester = remember { FocusRequester() }
+    val entry = LocalFocusEntry.current
+    val name = episode.caption ?: episode.title
+    val state = mark.state
+    val busy = state == DownloadState.QUEUED || state == DownloadState.PREPARING || state == DownloadState.DOWNLOADING || state == DownloadState.PAUSED
+    val stopped = state == DownloadState.FAILED || state == DownloadState.UNAVAILABLE
+    val description = when {
+        state == DownloadState.COMPLETED -> "$name is on this device"
+        state == DownloadState.PAUSED -> "Download of $name paused"
+        busy -> "Downloading $name"
+        stopped -> "Download of $name didn't finish"
+        else -> "Download $name"
+    }
+    val target = maxOf(40f, minOf(LocalLayout.current.minTargetDp, 56f)).dp
+    Pressable(
+        {
+            // The sheet takes focus; when it closes, focus comes back here.
+            entry?.afterPanel = requester
+            app.reviewDownload(episode.id)
+        },
+        Modifier.focusRequester(requester).semantics { contentDescription = description },
+        CircleShape,
+        lift = 0.8f,
+    ) { active ->
+        Box(
+            Modifier.size(target).background(Color.White.copy(alpha = (if (state == DownloadState.COMPLETED) 0.18f else 0f) + (if (active) 0.14f else 0f))),
+            contentAlignment = Alignment.Center,
+        ) {
+            if (busy) ProgressRing(mark.progress ?: 0f, Modifier.size(target * 0.74f), color = if (state == DownloadState.PAUSED) RefluxColors.textTertiary else RefluxColors.textPrimary)
+            Icon(
+                if (state == DownloadState.COMPLETED) Icon.DOWNLOADED else Icon.DOWNLOAD,
+                size = target * if (busy) 0.36f else 0.46f,
+                tint = when {
+                    stopped -> RefluxColors.unavailable
+                    state == null -> RefluxColors.textSecondary
+                    else -> RefluxColors.textPrimary
+                },
+            )
+        }
+    }
+}
+
+/**
+ * Keeping every episode of a season: "Download season", or "Season on this device" once all of it is, with how
+ * much of it is kept beside it. It opens what Reflux would keep and the season's copies, for the user to confirm.
+ */
+@Composable
+private fun SeasonDownload(app: AppState, seasonId: MediaId, status: OfflineStatus, modifier: Modifier = Modifier) {
+    val requester = remember { FocusRequester() }
+    val entry = LocalFocusEntry.current
+    Row(modifier, horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+        status.label?.takeUnless { status.downloaded }?.let {
+            Text(it, style = LocalTypography.current.caption, color = if (status.failed) RefluxColors.unavailable else RefluxColors.textSecondary, maxLines = 1)
+        }
+        status.progress?.let { ProgressBar(it, Modifier.width(72.dp)) }
+        Button(
+            if (status.downloaded) "Season on this device" else "Download season",
+            {
+                entry?.afterPanel = requester
+                app.reviewDownload(seasonId)
+            },
+            Modifier.focusRequester(requester),
+            icon = if (status.downloaded) Icon.DOWNLOADED else Icon.DOWNLOAD,
+            style = ButtonStyle.QUIET,
+        )
     }
 }
 

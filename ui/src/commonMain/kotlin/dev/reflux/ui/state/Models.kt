@@ -7,6 +7,7 @@ import dev.reflux.core.model.ArtworkLocator
 import dev.reflux.core.model.Availability
 import dev.reflux.core.model.Episode
 import dev.reflux.core.model.MediaId
+import dev.reflux.core.model.MediaItem
 import dev.reflux.core.model.Movie
 import dev.reflux.core.model.Season
 import dev.reflux.core.model.Show
@@ -30,6 +31,7 @@ import dev.reflux.library.pinnedVersions
 import dev.reflux.library.episodeVersionChoices
 import dev.reflux.library.versionChoices
 import dev.reflux.library.downloads
+import dev.reflux.library.worksOf
 import dev.reflux.core.offline.DownloadState
 import dev.reflux.library.home
 
@@ -47,8 +49,10 @@ data class MediaCard(
     val wide: ArtworkLocator?,
     /** Where selecting the card leads: the work itself, or the show of an episode. */
     val detailsId: MediaId,
-    /** A copy of it (or, for a show, of one of its episodes) is kept on this device. */
+    /** It is kept on this device: a film or an episode, or every episode of a show. */
     val downloaded: Boolean = false,
+    /** Some episodes of a show are kept on this device, not all of them. */
+    val downloadedPartly: Boolean = false,
 ) {
     val id: MediaId get() = entry.item.id
     val watched: Boolean get() = entry.watchState?.completed == true
@@ -58,9 +62,20 @@ data class MediaCard(
 
 internal fun Library.cards(entries: List<LibraryEntry>): List<MediaCard> {
     val shows = mutableMapOf<MediaId, LibraryEntry?>()
-    val kept = downloads().filter { it.state == DownloadState.COMPLETED }.flatMap { download ->
-        listOfNotNull(download.itemId, (item(download.itemId) as? Episode)?.showId)
-    }.toSet()
+    val kept = downloads().filter { it.state == DownloadState.COMPLETED }.map { it.itemId }.toSet()
+    // A show is kept when every episode of it is; one with some of them kept says so, differently.
+    val keptOfShow = kept.mapNotNull { item(it) as? Episode }.groupBy { it.showId }
+    val ofShow = mutableMapOf<MediaId, Pair<Boolean, Boolean>>()
+    fun show(item: MediaItem): Pair<Boolean, Boolean> = ofShow.getOrPut(item.id) {
+        val episodes = when (item) {
+            is Show -> keptOfShow[item.id].orEmpty()
+            is Season -> keptOfShow[item.showId].orEmpty().filter { it.seasonId == item.id }
+            else -> emptyList()
+        }
+        if (episodes.isEmpty()) return@getOrPut false to false
+        val all = episodes.size >= worksOf(item.id).size
+        all to !all
+    }
     return entries.map { entry ->
         when (val item = entry.item) {
             is Episode -> {
@@ -82,7 +97,8 @@ internal fun Library.cards(entries: List<LibraryEntry>): List<MediaCard> {
                 poster = entry.artwork[ArtworkKind.POSTER],
                 wide = entry.artwork[ArtworkKind.BACKDROP],
                 detailsId = if (item is Season) item.showId else item.id,
-                downloaded = item.id in kept,
+                downloaded = item.id in kept || show(item).first,
+                downloadedPartly = show(item).second,
             )
         }
     }

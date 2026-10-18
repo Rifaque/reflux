@@ -262,8 +262,9 @@ fun Library.offlineSuggestions(limit: Int = 8): List<Pair<MediaId, OfflineReason
 }
 
 /**
- * The works a request for [itemId] stands for: a movie or an episode is itself; a show or a season is the
- * episode to watch next and the ones after it, [episodes] in all, never the whole run by default.
+ * The works a request for [itemId] stands for: a movie or an episode is itself; a season is every episode
+ * of it, which is what choosing a season means; a show is the episode to watch next and the ones after it,
+ * [episodes] in all, never the whole run by default.
  */
 fun Library.offlineSelection(itemId: MediaId, episodes: Int = 3): List<MediaId> = when (val item = item(itemId)) {
     is Movie, is Episode -> listOf(item.id)
@@ -272,9 +273,55 @@ fun Library.offlineSelection(itemId: MediaId, episodes: Int = 3): List<MediaId> 
         val start = detail.nextUp ?: all.firstOrNull { watchState(it.id)?.completed != true } ?: all.firstOrNull()
         start?.let { first -> listOf(first.id) + following(first, episodes - 1) }
     }.orEmpty()
-    is Season -> showDetail(item.showId)?.seasons?.firstOrNull { it.season.id == item.id }?.episodes
-        ?.filter { it.watchState?.completed != true }?.take(episodes)?.map { it.item.id }.orEmpty()
+    is Season -> worksOf(item.id)
     null -> emptyList()
+}
+
+/** The movies and episodes [itemId] is made of, as the library has them now: itself, or every episode of a show or a season, in order. */
+fun Library.worksOf(itemId: MediaId): List<MediaId> = when (val item = item(itemId)) {
+    is Movie, is Episode -> listOf(item.id)
+    is Show -> showDetail(item.id)?.seasons.orEmpty().flatMap { season -> season.episodes.map { it.item.id } }
+    is Season -> showDetail(item.showId)?.seasons?.firstOrNull { it.season.id == item.id }?.episodes?.map { it.item.id }.orEmpty()
+    null -> emptyList()
+}
+
+/**
+ * How much of a work is kept on the device: a movie or an episode itself, or each episode of a show or a
+ * season. A show is not on the device because one of its episodes is (OFFLINE.md).
+ */
+data class OfflineCoverage(
+    /** The movies and episodes the work is made of. */
+    val works: Int,
+    /** Those with a finished copy on the device. */
+    val kept: Int,
+    /** Those with a copy waiting, under way, or paused, and none finished. */
+    val pending: Int,
+    /** Those whose copy stopped without finishing, or is no longer there, and none finished or on its way. */
+    val failed: Int,
+) {
+    /** Every one of them is on the device. */
+    val complete: Boolean get() = works > 0 && kept == works
+}
+
+/** The episodes of [showId] with a version off the device: what there is to keep of a show. */
+fun Library.episodesOffDevice(showId: MediaId): Set<MediaId> = queries.episodesOffDeviceOfShow(showId.value).executeAsList().map(::MediaId).toSet()
+
+fun Library.offlineCoverage(itemId: MediaId): OfflineCoverage {
+    val works = worksOf(itemId)
+    val wanted = works.toSet()
+    val byWork = downloads().filter { it.itemId in wanted }.groupBy { it.itemId }
+    var kept = 0
+    var pending = 0
+    var failed = 0
+    for (work in works) {
+        val copies = byWork[work] ?: continue
+        when {
+            copies.any { it.state == DownloadState.COMPLETED } -> kept++
+            copies.any { it.active || it.state == DownloadState.PAUSED } -> pending++
+            copies.any { it.state == DownloadState.FAILED || it.state == DownloadState.UNAVAILABLE } -> failed++
+        }
+    }
+    return OfflineCoverage(works.size, kept, pending, failed)
 }
 
 /** The [count] episodes after [episode], in watching order. */

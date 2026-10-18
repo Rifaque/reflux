@@ -415,6 +415,11 @@ SELECT version.id, version.item_id
 FROM version JOIN item ON item.id = version.item_id
 WHERE item.show_id = ?;
 
+-- The episodes of a show with a version somewhere other than on the device: what there is to keep of it.
+episodesOffDeviceOfShow:
+SELECT DISTINCT item.id FROM version JOIN item ON item.id = version.item_id JOIN source ON source.id = version.source_id
+WHERE item.show_id = ? AND source.locality != 'DEVICE';
+
 versionById:
 SELECT version.*, source.availability, source.locality
 FROM version JOIN source ON source.id = version.source_id

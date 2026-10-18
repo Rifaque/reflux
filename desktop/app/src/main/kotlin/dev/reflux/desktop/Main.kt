@@ -77,7 +77,11 @@ internal fun runReflux(
         // The last line of defence: a failure nobody handled is written down instead of ending the app.
         val scope = rememberCoroutineScope { CoroutineExceptionHandler { _, error -> platform.report("An unexpected error was not handled", error) } }
         val app = remember {
-            AppState(environment.library, environment.pipeline, environment.registry::resolve, platform, scope).also { it.start() }
+            AppState(environment.library, environment.pipeline, environment.registry::resolve, platform, scope).also {
+                it.start()
+                // Copies are made for as long as Reflux runs, whatever screen is open.
+                environment.startOffline(scope)
+            }
         }
         val windowState = rememberWindowState(size = DpSize(1360.dp, 860.dp), position = WindowPosition.Aligned(Alignment.Center))
 

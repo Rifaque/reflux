@@ -121,6 +121,9 @@ class Offline(
     /** The room there is, less what downloads already accepted will still write. */
     fun storage(): StorageSnapshot = store.storage().copy(committedBytes = library.downloads().filter { it.active || it.state == DownloadState.PAUSED }.sumOf { it.remainingBytes })
 
+    /** What new downloads may still take: the room there is, less the reserve and what is already on its way. */
+    fun usableBytes(): Long = policy.usableBytes(storage())
+
     /** Whether any source that is there hands out files to keep; without one there is nothing to offer. */
     fun possible(): Boolean = library.userSources().any { record ->
         sources(record.id).let { it is DownloadableSource && SourceCapability.DOWNLOAD in it.descriptor.capabilities }
@@ -179,6 +182,21 @@ class Offline(
         if (download.state != DownloadState.PAUSED && download.state != DownloadState.FAILED && download.state != DownloadState.UNAVAILABLE) return
         setState(id, DownloadState.QUEUED)
         wake.trySend(Unit)
+    }
+
+    /**
+     * Picks up again what of [itemIds] (as [planFor] reads them) was paused, did not finish, or is no longer on
+     * the device: asking to keep something again asks for that too. Returns how many downloads it picked up.
+     */
+    fun resumeStopped(itemIds: List<MediaId>): Int {
+        val works = itemIds.flatMap { library.offlineSelection(it) }.toSet()
+        val stopped = library.downloads().filter {
+            it.itemId in works && (it.state == DownloadState.PAUSED || it.state == DownloadState.FAILED || it.state == DownloadState.UNAVAILABLE)
+        }
+        if (stopped.isEmpty()) return 0
+        stopped.forEach { setState(it.id, DownloadState.QUEUED) }
+        wake.trySend(Unit)
+        return stopped.size
     }
 
     /** Tries again the downloads that stopped for a reason that passes by itself: a source away, a broken connection. */

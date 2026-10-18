@@ -239,6 +239,7 @@ private fun describe(card: MediaCard): String = listOfNotNull(
     "watched".takeIf { card.watched },
     "not connected".takeIf { card.offline },
     "on this device".takeIf { card.downloaded },
+    "some episodes on this device".takeIf { card.downloadedPartly },
 ).joinToString(", ")
 
 /**
@@ -277,17 +278,21 @@ fun PosterCard(card: MediaCard, onClick: () -> Unit, modifier: Modifier = Modifi
         // Two lines are always reserved so rows line up; a placeholder already says the title, so only the caption follows it.
         Column(Modifier.padding(horizontal = 2.dp)) {
             if (image != null) Text(card.title, style = LocalTypography.current.captionStrong, maxLines = 1)
-            Caption(card.caption, card.downloaded)
+            Caption(card.caption, card.downloaded, card.downloadedPartly)
             if (image == null) Text(" ", style = LocalTypography.current.captionStrong, maxLines = 1)
         }
     }
 }
 
-/** A card's line beneath its title, with a small mark when a copy is kept on this device. */
+/**
+ * A card's line beneath its title, with a small mark when a copy is kept on this device: the filled mark when
+ * all of it is, the outline when some episodes of a show are.
+ */
 @Composable
-private fun Caption(text: String?, downloaded: Boolean) {
+private fun Caption(text: String?, downloaded: Boolean, partly: Boolean) {
     Row(horizontalArrangement = Arrangement.spacedBy(5.dp), verticalAlignment = Alignment.CenterVertically) {
         if (downloaded) Icon(Icon.DOWNLOADED, size = 12.dp, tint = RefluxColors.textSecondary)
+        else if (partly) Icon(Icon.DOWNLOAD, size = 12.dp, tint = RefluxColors.textTertiary)
         Text(text ?: " ", style = LocalTypography.current.caption, color = RefluxColors.textTertiary, maxLines = 1)
     }
 }
