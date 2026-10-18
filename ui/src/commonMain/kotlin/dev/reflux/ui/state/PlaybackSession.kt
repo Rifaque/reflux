@@ -396,6 +396,11 @@ class PlaybackSession internal constructor(
         playNext()
     }
 
+    /** Returns once every position reported so far has been written to the library. */
+    suspend fun recorded() {
+        reporter?.flush()
+    }
+
     /**
      * Leaves the player: records the position, releases the engine, and returns to browsing. The player UI
      * disappears at once; the returned job completes when the position is saved and the engine released.

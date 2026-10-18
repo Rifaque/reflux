@@ -85,6 +85,8 @@ dependencies {
     implementation(libs.androidx.activity.compose)
     implementation(libs.media3.exoplayer)
     implementation(libs.media3.session)
+    // The launcher's Watch Next row on Android TV and Google TV (DECISIONS.md, 2026-10-18).
+    implementation(libs.androidx.tvprovider)
 
     testImplementation(kotlin("test-junit"))
     testImplementation(libs.kotlinx.coroutines.test)

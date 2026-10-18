@@ -5,6 +5,7 @@ import android.app.Application
 import android.Manifest
 import android.app.PictureInPictureParams
 import android.app.UiModeManager
+import android.content.Intent
 import android.content.pm.ActivityInfo
 import android.content.pm.PackageManager
 import android.content.res.Configuration
@@ -43,6 +44,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -63,6 +65,8 @@ import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.media3.common.text.Cue
 import dev.reflux.android.engine.AndroidEnvironment
+import dev.reflux.android.launcher.WatchNextLink
+import dev.reflux.android.launcher.WatchNextPublisher
 import dev.reflux.android.playback.Media3Player
 import dev.reflux.core.input.SemanticAction
 import dev.reflux.core.playback.PlayerStatus
@@ -73,7 +77,12 @@ import dev.reflux.ui.theme.RefluxColors
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.plus
 
 /** Holds the engine for the life of the process, so that it outlives any one screen. */
@@ -82,6 +91,9 @@ class RefluxApplication : Application() {
 
     /** For what must not stop when a screen goes away: a copy being made for offline is one. */
     val scope = CoroutineScope(SupervisorJob() + CoroutineExceptionHandler { _, error -> environment.report("An unexpected error was not handled", error) })
+
+    /** The launcher's Watch Next row, where the device has one. */
+    val watchNext: WatchNextPublisher by lazy { WatchNextPublisher(this, environment.library, environment.artwork, environment::report) }
 }
 
 /**
@@ -121,6 +133,33 @@ class MainActivity : ComponentActivity() {
             if (!app.dispatch(SemanticAction.BACK)) moveTaskToBack(true)
         }
         setContent { Shell() }
+        keepWatchNextCurrent()
+        // Launched from a Watch Next card: the first time only, not again when the activity is recreated.
+        if (savedInstanceState == null) continueFromLauncher(intent)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        continueFromLauncher(intent)
+    }
+
+    /** A Watch Next card names a work; Reflux opens it and plays it from where the user is. */
+    private fun continueFromLauncher(intent: Intent?) {
+        val itemId = WatchNextLink.itemId(intent?.dataString) ?: return
+        app.continueFromOutside(itemId)
+    }
+
+    /**
+     * The launcher's row follows the user's state: whenever it may have changed (a playback stopped, a
+     * work was marked, a scan brought news), shortly after, once things are quiet; and when the user leaves.
+     */
+    @OptIn(FlowPreview::class)
+    private fun keepWatchNextCurrent() {
+        val watchNext = (application as RefluxApplication).watchNext
+        if (!watchNext.supported) return
+        lifecycleScope.launch {
+            snapshotFlow { app.revision }.debounce(WATCH_NEXT_QUIET_MS).collectLatest { watchNext.publish() }
+        }
     }
 
     /** Whether this device is a television: what the system says it is, not what size its screen happens to be. */
@@ -253,6 +292,14 @@ class MainActivity : ComponentActivity() {
         // Nothing keeps playing unseen: an activity in a floating window is not stopped, one that was
         // closed, covered, or left with the screen off is.
         platform.player?.pause()
+        // Leaving Reflux is when the launcher should know where the user is; the work playing records its place first.
+        val application = application as RefluxApplication
+        if (application.watchNext.supported) application.scope.launch {
+            // Pausing reports the position; it is written before the row is.
+            delay(WATCH_NEXT_QUIET_MS)
+            app.playback?.recorded()
+            application.watchNext.publish()
+        }
     }
 
     override fun onDestroy() {
@@ -260,6 +307,9 @@ class MainActivity : ComponentActivity() {
         super.onDestroy()
     }
 }
+
+/** How long the user's state is quiet before the launcher's row is brought up to date (the platform asks for under 5 s). */
+private const val WATCH_NEXT_QUIET_MS = 2_000L
 
 /** The video, letterboxed to its own shape, with subtitles drawn over it. */
 @Composable

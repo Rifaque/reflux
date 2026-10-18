@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <!-- Metadata, artwork, and network sources. Local playback and browsing never need it. -->
     <uses-permission android:name="android.permission.INTERNET" />
@@ -11,6 +12,14 @@
     -->
     <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
+
+    <!--
+        Adding to the launcher's Watch Next row needs the TV provider's write permission (seen on Google
+        TV, Android 16). Reading back Reflux's own programs does not need the read permission the TV
+        provider library also asks for, so that one is not requested.
+    -->
+    <uses-permission android:name="com.android.providers.tv.permission.WRITE_EPG_DATA" />
+    <uses-permission android:name="com.android.providers.tv.permission.READ_EPG_DATA" tools:node="remove" />
 
     <!-- One app for handhelds and televisions: neither a touchscreen nor the TV launcher is required. -->
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
@@ -44,5 +53,14 @@
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!--
+            Artwork for the launcher's Watch Next cards, which the launcher draws in its own process.
+            Read-only and limited to the artwork cache (ArtworkProvider).
+        -->
+        <provider
+            android:name=".launcher.ArtworkProvider"
+            android:authorities="${applicationId}.artwork"
+            android:exported="true" />
     </application>
 </manifest>
