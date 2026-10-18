@@ -24,3 +24,4 @@ What changes for people using Reflux, version by version. The rules for versions
 - Watch offline on Windows and Linux: films, episodes, and seasons are kept in Reflux's own data folder and play without their source, as on Android.
 - Asking again to keep something whose download was paused or didn't finish picks it up again.
 - When the version you chose can't be downloaded right now, the offline sheet says so before keeping another one.
+- A Windows or NAS share left idle no longer shows as "Not connected" until the next check: Reflux now reconnects first when the connection it kept went stale.
