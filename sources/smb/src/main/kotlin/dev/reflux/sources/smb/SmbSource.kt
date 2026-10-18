@@ -91,7 +91,7 @@ class SmbSource(
 
     override suspend fun availability(): Availability = withContext(Dispatchers.IO) {
         try {
-            if (share().folderExists(root)) Availability.AVAILABLE else Availability.UNAVAILABLE
+            if (onShare { it.folderExists(root) }) Availability.AVAILABLE else Availability.UNAVAILABLE
         } catch (_: Exception) {
             reset()
             Availability.UNAVAILABLE
@@ -114,7 +114,8 @@ class SmbSource(
 
     override fun files(): Flow<SourceFile> = flow {
         val share = try {
-            share()
+            // Listing the top of the share first proves the connection, replacing one that went stale.
+            onShare { share -> share.also { it.list(root) } }
         } catch (e: Exception) {
             reset()
             throw SourceUnavailableException(descriptor.id, e)
@@ -163,15 +164,16 @@ class SmbSource(
     }
 
     private fun openReader(path: String): RangeReader {
-        val share = share()
-        val file: File = share.openFile(
-            join(root, path),
-            EnumSet.of(AccessMask.GENERIC_READ),
-            null,
-            EnumSet.of(SMB2ShareAccess.FILE_SHARE_READ),
-            SMB2CreateDisposition.FILE_OPEN,
-            null,
-        )
+        val file: File = onShare { share ->
+            share.openFile(
+                join(root, path),
+                EnumSet.of(AccessMask.GENERIC_READ),
+                null,
+                EnumSet.of(SMB2ShareAccess.FILE_SHARE_READ),
+                SMB2CreateDisposition.FILE_OPEN,
+                null,
+            )
+        }
         return object : RangeReader, Closeable {
             override val length: Long = file.fileInformation.standardInformation.endOfFile
             override fun read(offset: Long, buffer: ByteArray, count: Int): Int = file.read(buffer, offset, 0, count)
@@ -179,6 +181,18 @@ class SmbSource(
                 file.close()
             }
         }
+    }
+
+    /**
+     * Runs [block] on the share. A connection kept open between uses can go stale while idle (servers, NAT, and
+     * Wi-Fi drop idle connections, and it still says it is connected): the first failure is retried once on a
+     * fresh connection, and only what fails then is the truth about the share.
+     */
+    private fun <T> onShare(block: (DiskShare) -> T): T = try {
+        block(share())
+    } catch (_: Exception) {
+        reset()
+        block(share())
     }
 
     @Synchronized
