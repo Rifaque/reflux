@@ -93,7 +93,7 @@ V1 contains what Reflux fundamentally is, and no more. Each row is required for 
 | Automatic organization and identification | Done | Episodes without a show name: grouped per folder and offered to Identify instead of one unnamed show across the library (decided; open) |
 | Identify / fix match | Partial | Engine done (`Identify` flow, persistent overrides). No UI on any platform: search a provider, choose, apply, undo; reached from details and from weak identifications |
 | Continue Watching and Next Up | Done | — |
-| **Watch Next** (the platform's own "continue" row) | Open | Android TV / Google TV: the launcher's Watch Next row from Reflux's Continue Watching and Next Up, kept current and removed when finished. Fire TV: Amazon's equivalent where the platform allows an app of Reflux's kind (feasibility first; DECISIONS.md, 2026-10-17, "Watch Next is a V1 feature") |
+| **Watch Next** (the platform's own "continue" row) | Done (emulator) | Android TV / Google TV: programs derived from Continue Watching and Next Up, added, updated, and removed with watch state, opening Reflux on the work (DECISIONS.md, 2026-10-18). What Google TV's launcher draws is unseen: it shows only certified integrations, so Google's Watch Next certification belongs to the Play submission (M2), and a physical Google TV check to M3. Fire TV: no home-screen row, because Amazon's Watch Activity needs a content catalog Reflux does not have (DECISIONS.md, 2026-10-18) |
 | Cross-source watch state | Done | — ("From the start" keeps the place, 2026-10-17) |
 | Best Version | Done | Desktop capabilities must be what the machine does, not a declared profile (decided; open) |
 | Visible version selection | Partial | Films list every version and play any of them; an episode's versions are not listed anywhere |
@@ -103,14 +103,14 @@ V1 contains what Reflux fundamentally is, and no more. Each row is required for 
 | Jellyfin correctness and security | Partial | Removing a server signs its session out (decided; open); the plain-HTTP policy on Android (RELEASE.md) |
 | Source onboarding and management | Done | — |
 | Android phone and tablet | Done (emulator) | Physical validation in M3 |
-| Android TV / Google TV | Done (emulator) | Watch Next; physical validation in M3 |
-| Fire TV / Fire OS | Open | Device inspection (model, Fire OS version, API level against `minSdk` 26); launcher and remote behavior; no-Google-services assumptions checked; Amazon's integration for "continue" |
+| Android TV / Google TV | Done (emulator) | Physical validation in M3 |
+| Fire TV / Fire OS | Open | Device inspection (model, Fire OS version, API level against `minSdk` 26): not yet done, no Fire TV was reachable over adb on 2026-10-18. Amazon's model list matters here: the first Fire TV Stick 4K (2018, `AFTMM`) runs Fire OS 6 (API 25), below `minSdk`, and the 2026 Fire TV Stick 4K (`AFTCR001`) runs Vega OS; the 2023 Stick 4K (`AFTKM`) runs Fire OS 8 (API 30). Then: launcher and remote behavior, no-Google-services assumptions checked, whether the TV provider exists there. Home-screen "continue": decided, none (DECISIONS.md, 2026-10-18) |
 | Windows and Linux | Partial | Smart Offline wiring; truthful capabilities; media keys; scrollbars |
 | Accessibility baseline | Partial | Contrast and system text size are tested. Screen-reader labels on every control, focus order, reduced motion, and a TalkBack / Narrator pass are not |
 | About, legal, and attribution | Open | An About page: version and build, licenses (Reflux and third-party, including libmpv/FFmpeg obligations), TMDB attribution and logo, privacy and support links |
 | Casting | Gate | Time-boxed feasibility before beta; V1.1 if it fails the gate (DECISIONS.md, 2026-10-17, "Casting is a V1 feasibility gate") |
 
-First M1 slice, done 2026-10-17: "From the start" keeps the place (Reflux and Jellyfin), and films' versions can be pinned and unpinned on every form factor. Recommended order after it: Watch Next, Identify UI, an episode's versions (list and pin), Smart Offline episode/season choice and Downloads, Jellyfin sign-out, desktop Smart Offline and capabilities, About/legal, accessibility, Fire TV inspection, the casting spike.
+First M1 slice, done 2026-10-17: "From the start" keeps the place (Reflux and Jellyfin), and films' versions can be pinned and unpinned on every form factor. Second, done 2026-10-18: Watch Next on Android TV / Google TV, and the Fire TV home-screen decision. Recommended order after it: Fire TV device inspection (needs the devices on the network with ADB debugging on), Identify UI, an episode's versions (list and pin), Smart Offline episode/season choice and Downloads, Jellyfin sign-out, desktop Smart Offline and capabilities, About/legal, accessibility, the casting spike.
 
 ## M2 — Release engineering
 
@@ -122,7 +122,7 @@ First M1 slice, done 2026-10-17: "From the start" keeps the place (Reflux and Je
 | Android in CI (unit tests, lint, a release build; instrumented tests where a runner allows) | Open |
 | The CI workflow run on GitHub at least once, green | Open |
 | Intermittent tests fixed: `SourcesUiTest.theRemoteChoosesLibrariesToo` times out under a loaded full `check` (VERIFICATION.md, first M1 slice) | Open |
-| Google Play readiness: listing, data safety form, content rating, target API, TV quality checklist, closed-testing track | Open |
+| Google Play readiness: listing, data safety form, content rating, target API, TV quality checklist, Watch Next certification for Google TV, closed-testing track | Open |
 | Fire OS / Amazon Appstore readiness: listing, Fire TV device targeting, Amazon's app review requirements, test on the declared devices | Open |
 | Desktop packaging: Windows installer (signed), Linux package(s) | Open |
 | libmpv distribution with provenance (LGPL build, license texts, source offer) | Open |
