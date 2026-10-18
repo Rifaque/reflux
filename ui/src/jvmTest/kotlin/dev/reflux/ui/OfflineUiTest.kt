@@ -195,10 +195,12 @@ class OfflineUiTest {
                 app.invalidate()
             }
 
-            // Reached from where the library's sources are; no destination of its own.
+            // Reached from the Downloads page, which the media sources lead to as well.
             onNodeWithContentDescription("Media sources").performClick()
-            awaitText("Watch offline")
-            onNodeWithText("Watch offline").performClick()
+            awaitText("Add media")
+            onNodeWithText("Downloads").performClick()
+            awaitText("Keep what you're watching")
+            onNodeWithText("Keep what you're watching").performClick()
             awaitText("Ready to keep")
             assertTrue(shows("Ronin") && shows("Continue watching"))
             assertTrue(shows("4.2 GB needed") && shows("available"), "what it costs and what there is")
@@ -208,11 +210,12 @@ class OfflineUiTest {
             onNodeWithText("Download").performClick()
             await("the copy to be here") { app.library.downloads().singleOrNull()?.state == DownloadState.COMPLETED }
             awaitText("On this device")
-            await("the proposal to be gone") { !shows("Ready to keep") }
+            // What is kept is no longer proposed, and the page says it is here.
+            await("the proposal to be gone") { !shows("Keep what you're watching") }
             save("offline-sheet-downloaded")
 
             // Removing asks once, says what goes and what stays, and takes only the copy.
-            onNodeWithContentDescription("Remove Ronin from this device").performClick()
+            onNodeWithContentDescription("Remove Ronin, 1998 from this device").performClick()
             await("the question") { shows("Only the copy goes.") }
             save("offline-sheet-remove")
             onNodeWithText("Remove").performClick()
@@ -231,7 +234,8 @@ class OfflineUiTest {
         assertFalse(has("Download"))
         onNodeWithContentDescription("Media sources").performClick()
         awaitText("Add media")
-        assertFalse(shows("Watch offline"))
+        assertFalse(shows("Downloads"))
+        assertFalse(has("Downloads"))
     }
 
     @Test

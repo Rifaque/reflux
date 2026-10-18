@@ -121,7 +121,7 @@ internal fun SourcesScreen(app: AppState) {
         item(key = "actions") {
             FlowRow(Modifier.padding(bottom = 8.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Button("Add media", { app.navigator.open(Destination.AddSource) }, Modifier.initialFocus(), icon = Icon.PLUS, style = ButtonStyle.PRIMARY)
-                if (keeps == true) Button("Watch offline", { app.offlineOpen = true }, icon = Icon.DOWNLOAD)
+                if (keeps == true) Button("Downloads", { app.navigator.open(Destination.Downloads) }, icon = Icon.DOWNLOAD)
             }
         }
         if (model.rows.isEmpty()) {

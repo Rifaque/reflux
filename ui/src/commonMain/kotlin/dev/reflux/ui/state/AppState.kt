@@ -73,6 +73,13 @@ class AppState(
     var revision by mutableIntStateOf(0)
         private set
 
+    /**
+     * Advances whenever a download changes state or makes visible progress. Only what shows downloads reloads
+     * for it ([offlineState]); a finished or removed copy changes the library, and so [revision], as well.
+     */
+    var downloadRevision by mutableIntStateOf(0)
+        private set
+
     /** What is playing, if anything. Rendered above everything else by the shell. */
     var playback: PlaybackSession? by mutableStateOf(null)
         private set
@@ -124,12 +131,12 @@ class AppState(
     /** Starts keeping the library current: an initial refresh, then change and reconnect watching. */
     fun start() {
         scope.launch { library.changes().collect { revision++ } }
-        // A download's progress is something screens show, like anything else that changes.
-        // Often enough to watch it move, not so often that every screen reloads for every megabyte.
+        // A download's progress is something the places that show downloads follow: often enough to watch it
+        // move, not so often that they reload for every megabyte, and without reloading every other screen.
         platform.offline?.let { offline ->
             scope.launch {
                 offline.changes.collect {
-                    revision++
+                    downloadRevision++
                     delay(DOWNLOAD_PROGRESS_MS)
                 }
             }
@@ -280,14 +287,20 @@ class AppState(
     }
 
     /**
-     * Keeps [itemId] for watching without its source: a film or an episode itself, the next few episodes
-     * of a show. Which version is Reflux's to work out; the user is told that it is happening, or why not.
+     * Keeps [itemId] for watching without its source: a film or an episode itself, every episode of a season,
+     * the next few episodes of a show. What of it was paused or did not finish is picked up again. Which version
+     * is Reflux's to work out; the user is told that it is happening, or why not.
      */
     fun download(itemId: MediaId): Job = attempt(Problems.OFFLINE_NOT_PREPARED) {
         val offline = platform.offline ?: return@attempt
-        val plan = withContext(background) { offline.planFor(listOf(itemId)).also(offline::enqueue) }
+        val (plan, resumed) = withContext(background) {
+            val plan = offline.planFor(listOf(itemId)).also(offline::enqueue)
+            plan to offline.resumeStopped(listOf(itemId))
+        }
         notify(
             when {
+                plan.downloads.isEmpty() && resumed > 0 -> Problems.OFFLINE_RESUMED
+                // What was left out of a season is said where its episodes are listed; the rest is on its way.
                 plan.downloads.isEmpty() -> plan.skipped.firstOrNull()?.let { Problems.offlineSkip(it.reason) } ?: Problems.NOTHING_TO_PLAY
                 plan.downloads.any { it.madeToFit } -> Problems.OFFLINE_PREPARING_TO_FIT
                 else -> Problems.OFFLINE_PREPARING
@@ -310,6 +323,14 @@ class AppState(
 
     /** Removes a download and its copy from the device. The work and what was watched of it stay. */
     fun removeDownload(id: String): Job = changeDownload { it.remove(id) }
+
+    /** Removes several downloads at once (every episode of a season kept on the device). */
+    fun removeDownloads(ids: List<String>): Job = changeDownload { offline -> ids.forEach { offline.remove(it) } }
+
+    /** Opens the page listing every download, or leaves it when it is what is open. */
+    fun toggleDownloads() {
+        if (navigator.current == Destination.Downloads) navigator.back() else navigator.open(Destination.Downloads)
+    }
 
     private fun changeDownload(change: suspend (Offline) -> Unit): Job = attempt(Problems.DOWNLOAD_NOT_CHANGED) {
         val offline = platform.offline ?: return@attempt
@@ -571,5 +592,13 @@ class AppState(
 fun <T> AppState.libraryState(vararg keys: Any?, block: Library.() -> T): State<T?> {
     val state = remember(*keys) { mutableStateOf<T?>(null) }
     LaunchedEffect(revision, *keys) { state.value = read { block() } }
+    return state
+}
+
+/** As [libraryState], for what shows downloads: it also follows their progress ([AppState.downloadRevision]). */
+@Composable
+fun <T> AppState.offlineState(vararg keys: Any?, block: Library.() -> T): State<T?> {
+    val state = remember(*keys) { mutableStateOf<T?>(null) }
+    LaunchedEffect(revision, downloadRevision, *keys) { state.value = read { block() } }
     return state
 }

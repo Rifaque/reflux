@@ -24,6 +24,9 @@ sealed interface Destination {
     /** The complete contents of a Home row: the results of a smart search, under the row's title. */
     data class Listing(val title: String, val query: String) : Destination
 
+    /** Every copy kept on this device, or on its way, with what can be done about each. */
+    data object Downloads : Destination
+
     /** Where the library comes from: every source, whether it can be reached, and what can be done about it. */
     data object Sources : Destination
 

@@ -2,17 +2,22 @@
 
 Reflux can keep the right copy of something on the device, so that it plays without its source. The user says *that* they want it; which version, from which source, and whether it fits is Reflux's to work out.
 
-This is not a download manager. There is no list of files to administer and no question about codecs. There is one action on a details page, one sheet that proposes what to keep and is confirmed, and the copies that exist.
+This is not a download manager. There is no list of files to administer and no question about codecs. There is one action where a film, an episode, or a season is, one sheet that proposes what to keep and is confirmed, and a Downloads page with the copies that exist.
 
 ## In the application
 
-1. A details page offers Download next to the other secondary actions, never larger than Play.
-2. Selecting it opens the sheet on what Reflux would keep: "Preparing the best offline version for this device.", then the work, the version in plain terms (`1080p · HDR10 · 4.3 GB · from Living Room`), why that one when there was a choice ("Chosen because it plays best on this device.", "…looks the same here in less space.", "The best version that fits in the space on this device.", "The version you chose for this."), what it needs and what is available. If nothing can be kept, the sheet says why instead (already on this device, its source is not connected, no room).
-3. Download confirms; Not now (or Back) does nothing.
-4. The details page then says how far it is in one quiet line, with a thin progress bar. The action becomes "Downloading", then a lit "Downloaded"; selecting it again opens the sheet with every copy and what can be done about each: pause, try again, cancel (at once) or remove (asked first).
-5. The work's card carries a small mark before its caption; the copy is listed among the work's versions as the closest one.
+1. Download is offered where the thing to keep is, never larger than Play:
+   - a film's details page and an episode's own page: the action beside watched and favorite;
+   - each episode on its show's page: a small mark beside the row (on a television a step to the right of it; on a phone at the row's end), which says whether the episode is kept, on its way (a thin ring that moves only with the download), or did not finish;
+   - a season: "Download season" at the end of the season tabs' line, over the episodes' marks (beneath the tabs on a phone), with how much of it is kept beside it ("1 of 4 episodes on this device");
+   - a show: the action on its page keeps the episode to watch next and the two after it, a convenience over its episodes.
+2. Selecting any of them opens the sheet on that work: its name ("Slow Horses · Season 1"), what Reflux would keep ("Preparing the best offline version for this device."), each version in plain terms (`1080p · HDR10 · 4.3 GB · from Living Room`), why that one when there was a choice ("Chosen because it plays best on this device.", "…looks the same here in less space.", "The best version that fits in the space on this device.", "The version you chose for this."), what it needs and what is available, and the copies of it there already are, with what can be done about each: pause, continue, try again, cancel (at once) or remove (asked first). Within a season each line is an episode; what is left out is said of each episode. A season or show with several copies offers "Remove all from this device", asked once.
+3. Download confirms and the sheet closes; Not now (or Back) does nothing. Asking again for something of which a copy was paused or did not finish picks that copy up again.
+4. The page then says how far it is in one quiet line, with a thin progress bar. A film's or an episode's action becomes "Downloading", then a lit "Downloaded". A show or a season is counted episode by episode: "3 of 30 episodes on this device" while some are kept, and only with every episode kept is it "Downloaded" ("All 6 episodes on this device", "Season on this device").
+5. A card carries a small filled mark before its caption when its work is kept, and an outline mark on a show of which some episodes are; the copy is listed among the work's versions as the closest one.
+6. **Downloads** is a page of its own, reached from the download button in the navigation (beside Search; at the top of a phone) and from the media sources. It lists every copy under "Downloading" (waiting, under way, paused: in the order they will be made), "Didn't finish" (with why), and "On this device" (by work, a show's episodes in order), each with its work's artwork and name, the version kept, its size and source, where it stands, and its actions beside it. A line opens the work's page (an episode's own page). Above them: how many copies, how much room they take, and how much is available, and "Keep what you're watching" when Reflux has something to propose, which opens the sheet on what is being watched. It is not a second library: nothing is browsed or played from it. While something downloads, the navigation's button carries a small dot that does not move.
 
-Why a version was chosen comes from the planner itself (`PlannedDownload.choice`), so the sheet explains the decision rather than guessing at it.
+Why a version was chosen comes from the planner itself (`PlannedDownload.choice`), so the sheet explains the decision rather than guessing at it. When the version the user pinned cannot be had right now and another is proposed, the sheet says so ("The version you chose can't be downloaded right now. This is the best one that can be."); the pin stays.
 
 ## A download is a version, not a work
 
@@ -54,7 +59,7 @@ A source says so itself: the `DOWNLOAD` capability, and `DownloadableSource.down
 
 So 4K is not "better" on a 1080p screen, a 10-bit encode is not "better" on a device that plays the 8-bit one more cleanly, and a different cut is not a smaller copy of the one being watched.
 
-Asked without a selection ("prepare for offline"), Reflux proposes what the user is in the middle of, most recent first, and for a show the episode after the one in progress; at most eight works. Asked for a show, it keeps the episode to watch next and the two after it, not the whole run.
+Asked without a selection ("prepare for offline"), Reflux proposes what the user is in the middle of, most recent first, and for a show the episode after the one in progress; at most eight works. Asked for a show, it keeps the episode to watch next and the two after it, not the whole run. Asked for a season, it keeps every episode of it, watched or not: choosing a season is choosing all of it. Each episode is planned on its own, by the rules above, so a season of episodes in several versions keeps the right one of each, a pinned episode keeps its pin, and an episode that is here or on its way is not planned again.
 
 ## Room
 
@@ -96,15 +101,14 @@ Android supplies where the copies go and when they are made:
 - Copies are kept in the application's **own internal storage**. No other application can read them, no permission is needed or asked for, and they go when Reflux is uninstalled. They are not offered on removable storage.
 - Copies are made **while Reflux is running**, in a scope that outlives any one screen. Reflux does not run a foreground service or show a notification to keep downloading with the application closed; a download cut short continues from where it was the next time Reflux starts. This is the same product line as background playback, and can be revisited with it.
 
-The desktop has the engine and none of the interface: nothing is wired there yet, and where a platform offers no `Platform.offline`, nothing about downloads is shown. Wiring it on Windows and Linux is decided for V1 (DECISIONS.md, 2026-10-17).
+Windows and Linux supply the same (DECISIONS.md, 2026-10-17, "Smart Offline on the desktop is in V1"):
+
+- Copies are kept in Reflux's **data directory** (`downloads` inside it: `%LOCALAPPDATA%\Reflux` on Windows, `$XDG_DATA_HOME/reflux` on Linux), never in one of the user's folders.
+- Copies are made **while Reflux is running**, in the application's own scope, and continue from where they were at the next start, as on Android.
+
+Where a platform offers no `Platform.offline`, nothing about downloads is shown.
 
 ## Not there yet
-
-Required for V1 (DECISIONS.md, 2026-10-17, "Smart Offline on the desktop is in V1"):
-
-- Choosing an individual episode or a whole season; today a show keeps its next three.
-- A Downloads entry point listing every copy with its state and actions.
-- The desktop.
 
 Later (V1.x):
 

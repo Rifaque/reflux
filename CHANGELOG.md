@@ -19,3 +19,8 @@ What changes for people using Reflux, version by version. The rules for versions
 - A version that is a different cut from the recommended one now says so, with its running time.
 - Choosing an episode from the TV home screen's Watch Next row opens that episode's page in Reflux, instead of a page saying it was no longer in your library.
 - Episodes in a folder with no show name (just `S01E01.mkv`) are a show of their own folder, instead of one show mixing every such folder, and Reflux offers to identify them.
+- Keep a single episode for offline from the mark beside it on its show's page, or from the episode's own page, and a whole season with "Download season". A show is only shown as downloaded once every episode is; until then it says how many are ("3 of 30 episodes on this device").
+- A Downloads page, from the download button in the navigation, lists everything kept on the device, on its way, or that didn't finish, with pause, continue, try again, cancel, and remove.
+- Watch offline on Windows and Linux: films, episodes, and seasons are kept in Reflux's own data folder and play without their source, as on Android.
+- Asking again to keep something whose download was paused or didn't finish picks it up again.
+- When the version you chose can't be downloaded right now, the offline sheet says so before keeping another one.

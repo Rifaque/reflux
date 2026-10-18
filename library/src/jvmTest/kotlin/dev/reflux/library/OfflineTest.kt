@@ -837,4 +837,136 @@ class OfflineTest {
         assertEquals(DownloadState.COMPLETED, library.downloads().single().state)
         assertEquals(2, library.versions(after).size)
     }
+
+    @Test
+    fun aSeasonIsEveryEpisodeOfItAndWhatIsKeptIsNotKeptTwice() = runTest {
+        for (number in 1..5) server.episode("Severance", 1, number)
+        for (number in 1..2) server.episode("Severance", 2, number)
+        library.scan(server)
+        val detail = assertNotNull(library.showDetail(library.shows().single().item.id))
+        val show = detail.show.item.id
+        val (first, second) = detail.seasons.map { it.season.id }
+        val episodes = detail.seasons.first().episodes.map { it.item.id }
+        // One of them already watched: choosing a season is choosing all of it.
+        library.setWatched(episodes[1], true)
+        val offline = started()
+
+        // One episode on its own first.
+        offline.enqueue(offline.planFor(listOf(episodes[0])))
+        runCurrent()
+        assertEquals(OfflineCoverage(works = 5, kept = 1, pending = 0, failed = 0), library.offlineCoverage(first))
+
+        // Then the season: the four that are not here, and not the one that is.
+        val plan = offline.planFor(listOf(first))
+        assertEquals(episodes.drop(1), plan.downloads.map { it.itemId })
+        assertEquals(listOf(episodes[0] to OfflineSkipReason.ALREADY_ON_DEVICE), plan.skipped.map { it.itemId to it.reason })
+        offline.enqueue(plan)
+        // Asked again, nothing is queued twice.
+        offline.enqueue(offline.planFor(listOf(first)))
+        runCurrent()
+        assertEquals(5, library.downloads().size)
+        assertTrue(library.downloads().all { it.state == DownloadState.COMPLETED })
+        assertTrue(library.offlineCoverage(first).complete)
+        assertTrue(offline.planFor(listOf(first)).empty)
+
+        // The show is not on the device: its second season is not.
+        assertEquals(OfflineCoverage(works = 7, kept = 5, pending = 0, failed = 0), library.offlineCoverage(show))
+        assertFalse(library.offlineCoverage(show).complete)
+        assertEquals(OfflineCoverage(works = 2, kept = 0, pending = 0, failed = 0), library.offlineCoverage(second))
+        // One work per episode, never a work of its own for the copies.
+        assertEquals(7, library.worksOf(show).size)
+        assertEquals(1, library.shows().size)
+    }
+
+    @Test
+    fun aShowIsOnTheDeviceOnlyWhenEveryEpisodeIs() = runTest {
+        for (number in 1..30) server.episode("The Wire", 1, number, bytes = 8 * KB)
+        library.scan(server)
+        val show = library.shows().single().item.id
+        val episodes = library.worksOf(show)
+        assertEquals(30, episodes.size)
+        val offline = started()
+
+        // Asked for the show, Reflux keeps the next few, not the whole run.
+        val plan = offline.planFor(listOf(show))
+        assertEquals(episodes.take(3), plan.downloads.map { it.itemId })
+        offline.enqueue(plan)
+        runCurrent()
+        val coverage = library.offlineCoverage(show)
+        assertEquals(OfflineCoverage(works = 30, kept = 3, pending = 0, failed = 0), coverage)
+        assertFalse(coverage.complete, "three of thirty is not the show")
+        assertTrue(library.offlineCoverage(episodes[0]).complete)
+        assertFalse(library.offlineCoverage(episodes[3]).complete)
+    }
+
+    @Test
+    fun keepingASeasonAgainPicksUpWhatWasPausedOrDidNotFinish() = runTest {
+        for (number in 1..3) server.episode("Andor", 1, number)
+        library.scan(server)
+        val season = assertNotNull(library.showDetail(library.shows().single().item.id)).seasons.single()
+        val episodes = season.episodes.map { it.item.id }
+        val offline = offline()
+        offline.enqueue(offline.planFor(listOf(season.season.id)))
+        val first = library.downloads().single { it.itemId == episodes[0] }
+        offline.pause(first.id)
+        // The others find their source gone when their turn comes.
+        wire.unreachable += "server://"
+        offline.start(backgroundScope)
+        runCurrent()
+        assertEquals(DownloadState.PAUSED, library.download(first.id)?.state)
+        assertTrue(library.downloads().filter { it.id != first.id }.all { it.state == DownloadState.FAILED && it.failure == DownloadFailure.SOURCE_UNAVAILABLE })
+        assertEquals(OfflineCoverage(works = 3, kept = 0, pending = 1, failed = 2), library.offlineCoverage(season.season.id))
+        // Planning sees them as on their way, so asking again does not plan them twice...
+        assertTrue(offline.planFor(listOf(season.season.id)).empty)
+
+        // ...and asking again is what picks them up.
+        wire.unreachable.clear()
+        assertEquals(3, offline.resumeStopped(listOf(season.season.id)))
+        runCurrent()
+        assertTrue(library.downloads().all { it.state == DownloadState.COMPLETED })
+        assertEquals(3, library.downloads().size)
+        assertTrue(library.offlineCoverage(season.season.id).complete)
+        assertEquals(0, offline.resumeStopped(listOf(season.season.id)), "nothing left to pick up")
+    }
+
+    @Test
+    fun keepingCopiesNeverChangesWhatWasWatched() = runTest {
+        for (number in 1..3) server.episode("Dark", 1, number)
+        server.movie("Heat", 1995, "heat" to stream(170.0))
+        library.scan(server)
+        val show = library.shows().single().item.id
+        val season = assertNotNull(library.showDetail(show)).seasons.single().season.id
+        val episodes = library.worksOf(show)
+        val heat = movie("Heat")
+        watch(onServer(episodes[0]), minutes = 20)
+        library.setWatched(episodes[1], true)
+        watch(onServer(heat), minutes = 45)
+        val works = episodes + heat
+        fun states() = works.associateWith { library.watchState(it) }
+        val before = states()
+        val told = server.told.toList()
+        val offline = started()
+
+        // Planned, made, paused, failed, picked up, and removed: none of it is watching.
+        wire.hold = CompletableDeferred()
+        offline.enqueue(offline.planFor(listOf(season, heat)))
+        runCurrent()
+        assertEquals(before, states())
+        offline.pause(library.downloads().first { it.state == DownloadState.DOWNLOADING }.id)
+        wire.unreachable += "server://"
+        offline.resumeStopped(listOf(season, heat))
+        runCurrent()
+        assertEquals(before, states())
+        wire.unreachable.clear()
+        offline.resumeStopped(listOf(season, heat))
+        runCurrent()
+        assertTrue(library.downloads().all { it.state == DownloadState.COMPLETED })
+        assertEquals(before, states())
+        library.downloads().forEach { offline.remove(it.id) }
+        assertEquals(before, states())
+        assertEquals(told, server.told, "nothing is said to the server about a copy")
+        // What was watched is still what Continue Watching and Next Up go by.
+        assertEquals(20 * MINUTE, library.watchState(episodes[0])?.positionMs)
+        assertEquals(true, library.watchState(episodes[1])?.completed)
+    }
 }

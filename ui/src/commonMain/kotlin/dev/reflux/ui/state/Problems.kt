@@ -26,6 +26,8 @@ internal object Problems {
     const val OFFLINE_PREPARING = "Preparing the best offline version for this device."
     const val OFFLINE_PREPARING_TO_FIT = "Preparing the best offline version that fits on this device."
     const val OFFLINE_NOT_PREPARED = "That couldn't be prepared for offline."
+    const val OFFLINE_RESUMED = "Picking up where the download stopped."
+    const val OFFLINE_PIN_SET_ASIDE = "The version you chose can't be downloaded right now. This is the best one that can be."
     const val DOWNLOAD_NOT_CHANGED = "That download couldn't be changed."
     const val ENTER_ADDRESS = "Enter the address first."
     const val ENTER_USERNAME = "Enter the user name you use for this server."

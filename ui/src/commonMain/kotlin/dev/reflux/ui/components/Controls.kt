@@ -272,6 +272,21 @@ fun ProgressBar(fraction: Float, modifier: Modifier = Modifier, height: Dp = 3.d
 }
 
 /**
+ * How far something is, as a thin ring (a download beside its episode). Drawn again only when [fraction]
+ * changes; it never spins on its own.
+ */
+@Composable
+fun ProgressRing(fraction: Float, modifier: Modifier = Modifier, stroke: Dp = 2.dp, color: Color = RefluxColors.textPrimary) {
+    Canvas(modifier) {
+        val width = stroke.toPx()
+        val inset = width / 2
+        val arc = Size(size.width - width, size.height - width)
+        drawArc(Color.White.copy(alpha = 0.18f), 0f, 360f, false, Offset(inset, inset), arc, style = Stroke(width))
+        drawArc(color, -90f, 360f * fraction.coerceIn(0f, 1f), false, Offset(inset, inset), arc, style = Stroke(width, cap = StrokeCap.Round))
+    }
+}
+
+/**
  * One of a set of places to be: a section of the library, a season, a list in the player. The one that is
  * selected is white on a soft pill; the rest are grey until pointed at. [compact] is for small panels.
  */
