@@ -355,25 +355,38 @@ class Library(
      * Continue Watching: unfinished works and the next episode of started shows, most recent first,
      * one entry per show.
      */
-    fun continueWatching(limit: Int = 20): List<LibraryEntry> {
+    fun continueWatching(limit: Int = 20): List<LibraryEntry> = continuations(limit).map { it.entry }
+
+    /**
+     * What [continueWatching] lists, with what a launcher needs besides: the show an episode belongs to, and
+     * when the user last engaged with it. Everything that continues outside the application is derived from
+     * this, so there is one rule for what can be continued.
+     */
+    fun continuations(limit: Int = 20): List<Continuation> {
         val states = watchStates()
-        val result = linkedMapOf<MediaId, MediaItem>() // keyed by movie or show
+        val result = linkedMapOf<MediaId, Pair<MediaItem, Long>>() // keyed by movie or show
         val recent = queries.recentlyPlayed(500, ::Watch_state).executeAsList().map { it.toModel() }
         val items = itemsByIds(recent.map { it.itemId.value }).associateBy { it.id }
         for (state in recent) {
+            // Most recent first, so the first state seen for a movie or show is when the user last engaged with it.
+            val engaged = state.lastPlayedAtEpochMs ?: continue
             when (val item = items[state.itemId]) {
-                is Movie -> if (WatchRules.resumePosition(state) != null && hasVersions(item.id)) result.getOrPut(item.id) { item }
+                is Movie -> if (WatchRules.resumePosition(state) != null && hasVersions(item.id)) result.getOrPut(item.id) { item to engaged }
                 is Episode -> if (item.showId !in result) {
                     val episodes = queries.episodesOfShow(item.showId.value).executeAsList().map { it.toModel() as Episode }
                     NextUp.of(episodes, states)?.let { next ->
-                        if (hasVersions(next.id)) result[item.showId] = next
+                        if (hasVersions(next.id)) result[item.showId] = next to engaged
                     }
                 }
                 else -> Unit
             }
             if (result.size >= limit) break
         }
-        return entries(result.values.toList())
+        val found = result.values.toList()
+        val shows = entries(itemsByIds(found.mapNotNull { (it.first as? Episode)?.showId?.value }.distinct())).associateBy { it.item.id }
+        return entries(found.map { it.first }).zip(found) { entry, (_, engaged) ->
+            Continuation(entry, (entry.item as? Episode)?.let { shows[it.showId] }, engaged)
+        }
     }
 
     /** Deterministic title search across movies, shows, and episodes. */

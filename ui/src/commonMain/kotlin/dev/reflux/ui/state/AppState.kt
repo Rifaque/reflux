@@ -401,6 +401,20 @@ class AppState(
         }
     }
 
+    /**
+     * Continues a work chosen outside Reflux (the launcher's Watch Next row): what was playing stops, the
+     * work's details page opens, and it plays as Play there would, from the work's own place. Should it not
+     * play (its source is away), the details page is where the user is left, with the reason.
+     */
+    fun continueFromOutside(itemId: MediaId): Job = scope.launch {
+        if (read { item(itemId) } == null) return@launch notify(Problems.NOTHING_TO_PLAY)
+        playback?.close()
+        offlineOpen = false
+        navigator.show(Destination.Home)
+        navigator.open(Destination.Details(itemId))
+        play(itemId).join()
+    }
+
     internal fun playbackClosed(session: PlaybackSession, release: Job) {
         if (playback === session) playback = null
         releasing = release

@@ -197,6 +197,10 @@ Verified end to end there: reading existing state, progress made in Reflux reach
 
 The same test and a walk through the desktop engine also ran against a real home server with a full library (Jellyfin Server 12.2.0, a dedicated test account; VERIFICATION.md has the details). There, a local copy and the server's copy of one film were one work: connecting the server beside existing local progress sent nothing, local progress reached the server at the next scan, and the server's newer position resumed the local copy at the same moment. Episodes of a show, and a film with two copies of different running times on the server, behaved as described above: Next Up followed the episodes' state, and a position travelled only to the server copy on its own timeline while "watched" reached both. Other server versions have not been exercised live.
 
+## Outside the application
+
+On Android TV and Google TV the launcher's Watch Next row shows what Continue Watching shows, derived from the same computation (`Library.continuations`, `WatchNext`) each time Reflux brings it up to date. It is a view of the canonical state, not a record of its own: the launcher's rows are only compared with what should be there, a work removed from the launcher is only kept off it (until it is played again), and nothing on the launcher changes a position or marks a work watched (DECISIONS.md, 2026-10-18).
+
 ## Not in scope
 
 - A Reflux account, or synchronization between devices. The state is local; sources that keep watch state are the only thing it is reconciled with.
@@ -215,3 +219,4 @@ The same test and a walk through the desktop engine also ran against a real home
 | Best Version | `core/versions/VersionSelector.kt` |
 | Persistence, the scan-time comparison, delivery of updates | `library` (`watch_state`, `watch_sync`; `Library.kt`, `WatchSync.kt`, `Playback.kt`) |
 | Translation of a server's records | the source adapter (`sources/jellyfin`) |
+| The launcher's Watch Next row | `library` (`WatchNext.kt`, `Library.continuations`); the Android shell (`launcher/WatchNextPublisher.kt`) |

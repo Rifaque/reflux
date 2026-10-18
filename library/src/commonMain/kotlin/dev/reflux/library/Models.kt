@@ -37,6 +37,14 @@ data class LibraryEntry(
     val metadata: ItemMetadata? = null,
 )
 
+/**
+ * Something the user can continue: a work in progress, or the next episode of a show they are watching.
+ *
+ * @param show the show, when [entry] is an episode.
+ * @param lastEngagedAtEpochMs when the user last played the work, or for a show any of its episodes.
+ */
+data class Continuation(val entry: LibraryEntry, val show: LibraryEntry?, val lastEngagedAtEpochMs: Long)
+
 /** A version with the state of its source. */
 data class VersionInfo(
     val version: MediaVersion,

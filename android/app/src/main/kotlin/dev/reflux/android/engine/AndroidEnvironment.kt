@@ -113,7 +113,7 @@ class AndroidEnvironment(context: Context, dataDirectory: File = context.filesDi
 
     /** [databaseName] null keeps the library in memory, for tests. */
     val library = Library(RefluxDatabase(AndroidSqliteDriver(RefluxDatabase.Schema, application, databaseName))) { System.currentTimeMillis() }
-    val artwork = ArtworkCache(dataDirectory.resolve("artwork").also { it.mkdirs() }.toPath(), http)
+    val artwork = ArtworkCache(dataDirectory.resolve(ARTWORK_DIRECTORY).also { it.mkdirs() }.toPath(), http)
     val language: String = Locale.getDefault().toLanguageTag().takeIf { it != "und" } ?: "en-US"
     val deviceId: String = dataDirectory.resolve("device-id").let { file ->
         if (file.exists()) file.readText().trim() else UUID.randomUUID().toString().also(file::writeText)
@@ -284,10 +284,13 @@ class AndroidEnvironment(context: Context, dataDirectory: File = context.filesDi
         return name?.takeIf { it.isNotBlank() } ?: DocumentsContract.getTreeDocumentId(treeUri).substringAfterLast('/').substringAfterLast(':').ifBlank { "Media" }
     }
 
-    private companion object {
-        const val MAX_LOG_BYTES = 512 * 1024L
+    companion object {
+        /** Where artwork is cached, inside the data directory; the launcher reads it there (ArtworkProvider). */
+        const val ARTWORK_DIRECTORY = "artwork"
 
-        fun tmdbToken(context: Context): String? {
+        private const val MAX_LOG_BYTES = 512 * 1024L
+
+        private fun tmdbToken(context: Context): String? {
             val id = context.resources.getIdentifier("reflux_tmdb_token", "string", context.packageName)
             return if (id == 0) null else context.getString(id).takeIf { it.isNotBlank() }
         }
