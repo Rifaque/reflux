@@ -204,7 +204,7 @@ There are two shells, `desktop:app` and `android:app`. Each supplies what only i
 | `DeviceCapabilities` | What libmpv decodes, and the display | What the device's own codec list and display report (`AndroidCapabilities`) |
 | Engine wiring (data directory, source factories, pipeline, the rule that one folder is one source) | `desktop:engine` (`DesktopEnvironment`) | `AndroidEnvironment`, in the app's private storage |
 | Database driver | JDBC SQLite | Android's SQLite, through the same generated schema and migrations |
-| HTTP | The JDK client (`JdkHttpFetcher`) | `HttpURLConnection` (`AndroidFetcher`), which also reads `content:` addresses |
+| HTTP | The JDK client (`JdkHttpFetcher`) | `HttpURLConnection` (`AndroidFetcher`), which also reads `content:` addresses; web shares (WebDAV) through OkHttp (`WebDavTransport`), since `HttpURLConnection` cannot send `PROPFIND` (DECISIONS.md, 2026-10-18) |
 | Local media source | `sources:local`: a folder as a filesystem path | `DocumentTreeSource`: a folder granted through the Storage Access Framework, which is a tree of documents and a grant that can be revoked, not a path. On a television, whose system has no such picker, the same `sources:local` folder-by-path as on the desktop |
 | Choosing a folder | The system's folder dialog | The system's folder picker; on a television, Reflux's own picker over `StorageFolders` (the mounted volumes and their folders), after the system's permission question |
 | Being a television | Never | What the system reports (`UiModeManager`, the leanback feature): listed in the TV launcher with its own banner, no touchscreen required |
