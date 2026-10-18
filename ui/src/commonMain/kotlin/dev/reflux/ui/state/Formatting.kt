@@ -155,6 +155,13 @@ object Formatting {
             .ifEmpty { listOf(video?.codec?.let(::videoCodec) ?: "Unknown quality") }
     }
 
+    /**
+     * That a version is not the same cut as the recommended one, with its running time where it is known
+     * (`Another cut, 58m`), so it is never taken for another copy of the same thing.
+     */
+    fun otherCut(version: MediaVersion): String =
+        version.stream.durationMs?.takeIf { it >= 60_000 }?.let { "Another cut, ${runtime((it / 60_000).toInt())}" } ?: "Another cut"
+
     /** What explains a copy's quality without being the reason to pick it: `HEVC · TrueHD 7.1 Atmos`. */
     fun versionTechnical(version: MediaVersion): List<String> {
         val quality = versionQuality(version)

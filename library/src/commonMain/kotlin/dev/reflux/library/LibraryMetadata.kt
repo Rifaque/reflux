@@ -135,7 +135,8 @@ fun Library.undoIdentification(itemId: MediaId): MediaId? {
 
 /**
  * What the user said about a work that is not about its files follows it to its new identity: that it is a
- * favorite, in their collections, and which version Play always uses. Watch history moves with the files.
+ * favorite, in their collections, and which version Play always uses (for a show, each episode's, which
+ * follows the version it names to the episode that holds it now). Watch history moves with the files.
  */
 private fun Library.carryUserState(from: MediaId, to: MediaId) {
     if (from == to) return
@@ -148,6 +149,7 @@ private fun Library.carryUserState(from: MediaId, to: MediaId) {
             queries.setPreferredVersion(to.value, version)
             queries.clearPreferredVersion(from.value)
         }
+        queries.movePinsWithTheirVersions()
         // A favorite kept the old identity in the library with nothing in it; without one it goes.
         queries.deleteOrphanPlayables()
         queries.deleteEmptySeasons()

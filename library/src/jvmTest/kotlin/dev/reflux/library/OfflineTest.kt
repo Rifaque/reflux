@@ -465,6 +465,37 @@ class OfflineTest {
     }
 
     @Test
+    fun anEpisodesCopyOnTheDeviceIsTheVersionItWasMadeFrom() = runTest {
+        share.file("Severance/Season 1/Severance.S01E01.1080p.mkv")
+        share.file("Severance/Season 1/Severance.S01E01.720p.mkv")
+        share.file("Severance/Season 1/Severance.S01E02.1080p.mkv")
+        library.scan(share)
+        val show = library.shows().single().item.id
+        val (pilot, second) = library.showDetail(show)!!.seasons.single().episodes.map { it.item.id }
+        val offline = started()
+        offline.enqueue(offline.planFor(listOf(pilot)))
+        runCurrent()
+        val copy = downloaded(pilot)
+        val origin = library.downloads().single().originVersionId
+
+        // Three versions are listed (two on the share and the copy), and there are two to choose between.
+        assertEquals(3, library.versions(pilot).size)
+        assertEquals(2, library.versionChoices(pilot, library.versions(pilot).map { it.version.id }))
+        assertEquals(mapOf(pilot to 2, second to 1), library.episodeVersionChoices(show))
+
+        // Choosing the copy is choosing the episode as it is in that copy: the version it was made from.
+        library.pinVersion(pilot, copy.id)
+        assertEquals(setOf(origin, copy.id), library.pinnedVersions(pilot))
+        assertEquals(copy.id, assertNotNull(library.planPlayback(pilot, device, sources)).version.version.id, "played from the device while it is there")
+
+        // The choice outlives the copy, and the episode is one choice fewer again.
+        offline.remove(library.downloads().single().id)
+        assertEquals(setOf(origin), library.pinnedVersions(pilot))
+        assertEquals(origin, assertNotNull(library.planPlayback(pilot, device, sources)).version.version.id)
+        assertEquals(mapOf(pilot to 2, second to 1), library.episodeVersionChoices(show))
+    }
+
+    @Test
     fun whatIsBeingWatchedAndWhatComesNextIsProposed() = runTest {
         server.movie("Heat", 1995, "heat" to stream(170.0))
         server.movie("Arrival", 2016, "arrival" to stream(116.0))

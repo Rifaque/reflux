@@ -143,6 +143,27 @@ fun Library.pinVersion(itemId: MediaId, versionId: VersionId?) {
     setPreferredVersion(itemId, origin ?: versionId)
 }
 
+/**
+ * What each copy kept on the device stands for when it is chosen: the version it was made from ([pinVersion]),
+ * so a copy and its origin are one choice, not two.
+ */
+private fun copyOrigins(downloads: List<Download>): Map<VersionId, VersionId> =
+    downloads.associate { StableIds.versionId(MediaLocation(DownloadsSource.ID, it.path)) to it.originVersionId }
+
+/** How many of [versions] (of [itemId]) there are to choose between, a copy on the device and its origin counting once. */
+fun Library.versionChoices(itemId: MediaId, versions: List<VersionId>): Int {
+    val origins = copyOrigins(downloadsOf(itemId))
+    return versions.map { origins[it] ?: it }.distinct().size
+}
+
+/** For every episode of [showId] that has a version, how many there are to choose between, counted as [versionChoices] does. */
+fun Library.episodeVersionChoices(showId: MediaId): Map<MediaId, Int> {
+    val origins = copyOrigins(downloads())
+    return queries.versionIdsOfShow(showId.value).executeAsList()
+        .groupBy({ MediaId(it.item_id) }, { origins[VersionId(it.id)] ?: VersionId(it.id) })
+        .mapValues { (_, choices) -> choices.distinct().size }
+}
+
 /** Whether a work's sources are the user's own, as opposed to Reflux's copies. */
 fun SourceRecord.isDownloads(): Boolean = type == DownloadsSource.TYPE
 
