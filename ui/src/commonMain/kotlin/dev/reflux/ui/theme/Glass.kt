@@ -11,6 +11,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.runtime.snapshots.Snapshot
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -45,6 +46,12 @@ class GlassBackdrop internal constructor(internal val layer: GraphicsLayer) {
 }
 
 val LocalGlassBackdrop = compositionLocalOf<GlassBackdrop?> { null }
+
+/** Whether this platform can blur what is drawn behind a material. Android before 12 ignores render effects. */
+internal expect val platformBlursBackdrop: Boolean
+
+/** Whether glass may blur its backdrop here; tests provide `false` to draw as Android before 12 does. */
+val LocalBackdropBlur = staticCompositionLocalOf { platformBlursBackdrop }
 
 /**
  * Hosts [content] as the backdrop of [overlay]: glass materials inside [overlay] blur [content].
@@ -97,6 +104,11 @@ fun Modifier.glass(
     val base = if (spec.shadowElevationDp > 0f) shadow(spec.shadowElevationDp.dp, shape, clip = false) else this
     if (backdrop == null || spec.blurRadiusDp <= 0f) {
         return base.clip(shape).drawBehind { drawRect(tintColor) }.border(1.dp, highlight, shape)
+    }
+    if (!LocalBackdropBlur.current) {
+        // Unblurred, the page beneath would show sharp through the tint and compete with the material's own
+        // text (seen on Fire OS 8, Android 11). Where there is no blur the material is solid instead.
+        return base.clip(shape).drawBehind { drawRect(RefluxColors.background); drawRect(tintColor) }.border(1.dp, highlight, shape)
     }
     val blurred = rememberGraphicsLayer()
     var position by remember { mutableStateOf(Offset.Zero) }

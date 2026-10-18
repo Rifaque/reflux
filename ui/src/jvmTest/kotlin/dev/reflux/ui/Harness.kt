@@ -3,6 +3,7 @@ package dev.reflux.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -39,6 +40,8 @@ internal fun screen(
     width: Int = 1440,
     height: Int = 900,
     density: Float = 1f,
+    /** Around the whole application, for what a shell would provide: the system keyboard, for one. */
+    around: @Composable (@Composable () -> Unit) -> Unit = { it() },
     block: DesktopComposeUiTest.(AppState) -> Unit,
 ) = runDesktopComposeUiTest((width * density).toInt(), (height * density).toInt()) {
     var app: AppState? = null
@@ -47,11 +50,13 @@ internal fun screen(
         val state = remember { AppState(world.library, world.pipeline, world.registry::resolve, platform, scope).also { app = it } }
         // [width] and [height] are the canvas the layout sees; a denser screen only draws it with more pixels.
         CompositionLocalProvider(LocalDensity provides Density(density)) {
-            Box(Modifier.fillMaxSize()) {
-                RefluxApp(state)
-                state.playback?.let { session ->
-                    Box(Modifier.fillMaxSize().background(Brush.linearGradient(listOf(Color(0xFF5A3E2B), Color(0xFF0E1A2B)))))
-                    PlayerOverlay(state, session)
+            around {
+                Box(Modifier.fillMaxSize()) {
+                    RefluxApp(state)
+                    state.playback?.let { session ->
+                        Box(Modifier.fillMaxSize().background(Brush.linearGradient(listOf(Color(0xFF5A3E2B), Color(0xFF0E1A2B)))))
+                        PlayerOverlay(state, session)
+                    }
                 }
             }
         }

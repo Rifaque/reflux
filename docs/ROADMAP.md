@@ -12,7 +12,7 @@ This roadmap replaces the earlier Phase 0–18 plan, which was ordered by archit
 
 ## Where Reflux is
 
-Reflux is a **pre-release**. The engine (Media Core, sources, identification, metadata, watch state, Best Version, playback, Smart Offline) is mature and heavily tested; the experience layer runs on desktop, Android phones and tablets, and Android TV. Nothing has been released: there is no signed Android build, no desktop installer, no store listing, no public website, and no tester outside the project. Everything on Android and television has been verified on emulators only. The current version is `0.9.0-alpha.1` ([VERSIONING.md](VERSIONING.md)).
+Reflux is a **pre-release**. The engine (Media Core, sources, identification, metadata, watch state, Best Version, playback, Smart Offline) is mature and heavily tested; the experience layer runs on desktop, Android phones and tablets, and Android TV. Nothing has been released: there is no signed Android build, no desktop installer, no store listing, no public website, and no tester outside the project. Android phones and Google TV have been verified on emulators only; one physical Fire TV (a Fire TV Stick 4K Plus on Fire OS 8) has had a smoke test of a debug build (2026-10-18). The current version is `0.9.0-alpha.1` ([VERSIONING.md](VERSIONING.md)).
 
 Status words used below:
 
@@ -104,13 +104,13 @@ V1 contains what Reflux fundamentally is, and no more. Each row is required for 
 | Source onboarding and management | Done | — |
 | Android phone and tablet | Done (emulator) | Physical validation in M3 |
 | Android TV / Google TV | Done (emulator) | Physical validation in M3 |
-| Fire TV / Fire OS | Open | Device inspection (model, Fire OS version, API level against `minSdk` 26): not yet done, no Fire TV was reachable over adb on 2026-10-18. Amazon's model list matters here: the first Fire TV Stick 4K (2018, `AFTMM`) runs Fire OS 6 (API 25), below `minSdk`, and the 2026 Fire TV Stick 4K (`AFTCR001`) runs Vega OS; the 2023 Stick 4K (`AFTKM`) runs Fire OS 8 (API 30). Then: launcher and remote behavior, no-Google-services assumptions checked, whether the TV provider exists there. Home-screen "continue": decided, none (DECISIONS.md, 2026-10-18) |
+| Fire TV / Fire OS | Partial (one physical device) | Smoke-tested on a Fire TV Stick 4K Plus (`AFTMA08C15`, Fire OS 8.1.8.5, API 30, 32-bit userland) on 2026-10-18 with a debug build: installation, launcher, remote navigation, the folder chooser, browsing, details, search, playback up to 4K60 HEVC Main10 on the hardware decoder, lifecycle, the media session, and the instrumented suite (VERIFICATION.md). Five Fire OS defects found and fixed (DECISIONS.md, 2026-10-18). Left: the Fire TV television (not reachable), a release build (M2), Jellyfin and network shares from the device, a USB drive, HDR output, sleep and wake, Amazon's own test criteria. The TV provider exists on Fire OS and Reflux's programs are kept there unseen; whether to stop writing them there is open (DECISIONS.md, 2026-10-18). Fire OS 6 devices (`AFTMM`, API 25) are below `minSdk`; Vega OS devices (`AFTCR001`) do not run Android applications |
 | Windows and Linux | Partial | Smart Offline wiring; truthful capabilities; media keys; scrollbars |
 | Accessibility baseline | Partial | Contrast and system text size are tested. Screen-reader labels on every control, focus order, reduced motion, and a TalkBack / Narrator pass are not |
 | About, legal, and attribution | Open | An About page: version and build, licenses (Reflux and third-party, including libmpv/FFmpeg obligations), TMDB attribution and logo, privacy and support links |
 | Casting | Gate | Time-boxed feasibility before beta; V1.1 if it fails the gate (DECISIONS.md, 2026-10-17, "Casting is a V1 feasibility gate") |
 
-First M1 slice, done 2026-10-17: "From the start" keeps the place (Reflux and Jellyfin), and films' versions can be pinned and unpinned on every form factor. Second, done 2026-10-18: Watch Next on Android TV / Google TV, and the Fire TV home-screen decision. Recommended order after it: Fire TV device inspection (needs the devices on the network with ADB debugging on), Identify UI, an episode's versions (list and pin), Smart Offline episode/season choice and Downloads, Jellyfin sign-out, desktop Smart Offline and capabilities, About/legal, accessibility, the casting spike.
+First M1 slice, done 2026-10-17: "From the start" keeps the place (Reflux and Jellyfin), and films' versions can be pinned and unpinned on every form factor. Second, done 2026-10-18: Watch Next on Android TV / Google TV, and the Fire TV home-screen decision. Third, 2026-10-18: the Fire TV smoke test on physical hardware and its fixes. Recommended order after it: Identify UI, an episode's versions (list and pin), Smart Offline episode/season choice and Downloads, Jellyfin sign-out, desktop Smart Offline and capabilities, About/legal, accessibility, the casting spike, performance R&D.
 
 ## M2 — Release engineering
 
@@ -137,7 +137,7 @@ First M1 slice, done 2026-10-17: "From the start" keeps the place (Reflux and Je
 | TMDB against the live service, with attribution in place | Open |
 | A real Android phone and tablet | Open |
 | A real Google TV / Android TV device | Open |
-| Real Fire TV hardware (the developer's Fire TV Stick 4K and Fire TV television, after inspecting what they run) | Open |
+| Real Fire TV hardware (the developer's Fire TV Stick 4K Plus and Fire TV television) | Partial: the stick smoke-tested with a debug build (2026-10-18); the television not yet reachable |
 | Physical Xbox and PlayStation controllers on desktop, Android, and television | Open |
 | Desktop installation from the package on a clean Windows and a clean Linux machine | Open |
 | Network failure and recovery on real networks (Wi-Fi drop, server sleep, VPN) | Open |

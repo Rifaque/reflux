@@ -323,6 +323,8 @@ The Android phone and tablet client is the shared experience layer and the share
 
 ## 2026-10-13 — Android: leaving the app, and the system's controls
 
+> Amended for televisions by "Leaving on a television pauses; picture-in-picture is for handhelds" and "Out of sight, the player gives back its decoder and audio focus" (2026-10-18).
+
 **Picture-in-picture is how video goes on when the app is left.** While something plays, leaving the app turns the activity into a floating window of the picture's shape that shows the picture and nothing else; Reflux's controls come back with the full window. An activity that is stopped (closed, covered, or the screen off) pauses.
 
 **No playback in the background.** Keeping a film's sound going with nothing on screen would need a foreground service and a permanent notification, for something a video player rarely wants. It is not built and not claimed as a capability. Audio-only content would change that.
@@ -703,3 +705,33 @@ Resolves the Fire TV half of "Watch Next is a V1 feature" (2026-10-17), from Ama
 - Fire TV therefore ships **without a home-screen continue row**. Continue Watching inside Reflux is the continue experience there, reached from Reflux's ordinary launcher entry. (Whether Amazon's home screen shows recently used applications for any installed app was not documented on the pages read and is not relied on.) V1 acceptance criterion 4 is met for Fire TV by this record.
 - Reflux's Watch Next code runs only where the TV provider exists. Whether a Fire OS device has one, and what happens if it does, is checked on the developer's devices; until then it is unknown, and nothing depends on it.
 - Revisited if Amazon opens a "continue" integration to applications without a catalog.
+
+## 2026-10-18 — The shared engine may call only the Java that Android's oldest supported release has
+
+Found on the first physical Fire TV (Fire OS 8, Android 11, API 30). The engine modules are plain JVM code compiled against JDK 21 and shared with the desktop (2026-10-13, "Android: one more shell over the same engine"), and nothing checked their calls against Android's API levels: Android lint covers the Android application's own sources, not the JVM libraries it packages. `ArtworkCache` called `Stream.toList()` and `Path.of(URI)` (Android 14), and the WebDAV adapter `URLDecoder.decode(String, Charset)` (Android 13). Every emulator in use ran Android 16, so none of this was seen. On Android 8 to 13, which includes every Fire OS device, artwork prefetch, in-source artwork, and WebDAV browsing failed with `NoSuchMethodError`, an `Error` that the `catch (e: Exception)` around artwork does not catch.
+
+Decided:
+
+- Shared code uses the API 26 forms (`Paths.get`, `listDirectoryEntries`, `URLDecoder.decode(String, "UTF-8")`). Where a newer Java method is wanted, it is wanted on the desktop only, and lives there.
+- `checkDebugPlatformApi` (part of `check` where an Android SDK is installed) reads the built package after D8, which backports some such methods by itself, and fails on any `java.*` or `javax.*` method that Reflux's own classes call and Android added after `minSdk`, naming the caller. Android's own APIs stay with lint, because the shell guards them with `SDK_INT`. Alternatives: core library desugaring (a dependency for three calls, and it does not cover everything), a source rule (unenforceable), or class-file scanning before D8 (reports methods D8 backports anyway).
+- The check does not report classes Android lacks entirely: `java.net.http` is used only by the desktop's `JdkHttpFetcher`, which Android never loads. A shared class that needs one belongs on the desktop.
+
+## 2026-10-18 — Glass without blur is solid
+
+Android before 12 ignores render effects, so the glass material's blur did nothing there: the sharp page beneath showed through the tint and competed with the material's own text (the folder chooser on Fire OS 8 read as two screens on top of each other). Where the platform cannot blur (`platformBlursBackdrop`: Android 12 and later, and the desktop, can), a material that floats over the page is drawn on an opaque base under its tint instead. The frosted look is unchanged where blur exists. The alternative, a higher tint alpha, still leaves sharp shapes visible behind text.
+
+## 2026-10-18 — Leaving on a television pauses; picture-in-picture is for handhelds
+
+Amends "Android: leaving the app, and the system's controls" (2026-10-13) for televisions. Fire OS offers picture-in-picture, and it also pauses the playing media session itself when Home is pressed (seen on Fire OS 8: a pause command through the session, from the key policy that handles Home). Reflux entered picture-in-picture as it left, so a frozen frame floated over Fire TV's home screen where the remote cannot reach it. On a television (the system's own UI mode or the leanback feature, not a device name), leaving while something plays now pauses and keeps the place, as the Google TV emulator (which has no picture-in-picture) already did. Phones and tablets keep picture-in-picture. A television's picture-in-picture would need a way for the remote to reach and close the window, and a reason to watch in a corner; neither is a V1 need.
+
+## 2026-10-18 — Out of sight, the player gives back its decoder and audio focus
+
+Seen on Fire OS 8: with Reflux stopped in the background and its playback paused, it still held a hardware video decoder (the system's resource manager listed it) and audio focus. Amazon's requirements for media applications ask that an application it no longer shows release them, because other applications may need the device's few decoders. When the activity stops, the Android player now stands by: it keeps the work, its position, and its tracks, and lets the engine release its decoders and focus (`Media3Player.standBy`, Media3's `stop()` without clearing the item). When the activity is seen again it prepares again, paused where it was, and Play from the background (the remote's play key reaching the session) prepares it too. What the player reports is frozen meanwhile, so watch state and the interface see no change. A floating window on a handheld is not stopped and keeps its decoder.
+
+## 2026-10-18 — Every text field takes a remote the same way
+
+Seen on Fire OS 8: searching began with a stray "a". The fields of the source forms already kept the keyboard away while focus arrived and opened it when OK was let go of, because a keyboard that is up takes the remote and Fire TV's types the key it starts on; the search field did neither, so the system's keyboard already had the field when OK arrived. The rule is now one modifier (`keyboardByRemote`, with `showsKeyboardOnFocus` in the field's options) used by every text field a remote can reach.
+
+## 2026-10-18 — Fire OS has the TV provider; Reflux's Watch Next programs are kept there and not shown
+
+Resolves what "Fire TV ships without a home-screen 'continue' row" left to the device. Fire OS 8 has Android's TV provider (`com.android.providers.tv`, authority `android.media.tv`), so the publisher's capability check passes and Reflux keeps its programs there exactly as on Google TV: `WatchNextOnDeviceTest` passes on the Fire TV Stick (added, updated in place, removed, artwork readable). Fire TV's home screen does not show them: after several Reflux playbacks its own "Continue watching" row held only an Amazon title. No code was added for Fire OS: the publisher is cheap (a few provider rows after the user's state settles), harmless, and right if Amazon ever reads the row. Open for a decision, not a defect: on Fire OS these rows serve no one, and they put the titles of personal media into a system provider that Amazon's own components could read; the Watch Next decision promised that nothing leaves the device beyond what the launcher shows. Turning the publisher off on Fire OS would need a Fire-specific check (`amazon.hardware.fire_tv`), since no capability says whether a launcher shows the row.
