@@ -69,4 +69,10 @@ data class ParsedMedia(
     val externalIds: Map<String, String> = emptyMap(),
     val stream: StreamInfo = StreamInfo(),
     val confidence: Confidence = Confidence(0.0, emptySet()),
+    /**
+     * For an episode whose path names no show: the source and folder it is grouped by (DECISIONS.md, 2026-10-17,
+     * "Episodes without a show name are grouped by folder"). Such a show is keyed by its group, not its title,
+     * so episodes in unrelated folders or sources never become one show.
+     */
+    val group: String? = null,
 )

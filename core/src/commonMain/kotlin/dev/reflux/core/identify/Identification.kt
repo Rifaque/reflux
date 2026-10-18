@@ -66,7 +66,9 @@ sealed interface Identification {
 object IdentityKeys {
     fun movie(title: String, year: Int?): String = "movie:${titleKey(title)}:${year ?: ""}"
 
-    fun show(title: String, year: Int?): String = "show:${titleKey(title)}" + (year?.let { ":$it" } ?: "")
+    /** A show by its title and year, or, for episodes whose path names no show, by the folder they are grouped in. */
+    fun show(title: String, year: Int?, group: String? = null): String =
+        group?.let { "show@$it" } ?: ("show:${titleKey(title)}" + (year?.let { ":$it" } ?: ""))
 
     /** A title with no letters or digits ("-", "()") is keyed as written, so that such works stay apart. */
     private fun titleKey(title: String): String = TitleText.key(title).ifEmpty {
@@ -122,7 +124,7 @@ class Identifier(
 
     private fun identifyEpisode(parsed: ParsedMedia): Identification {
         val year = resolvedYear(ParsedKind.EPISODE, parsed)
-        val showKey = canonicalKey(IdentityKeys.show(parsed.title, year))
+        val showKey = canonicalKey(IdentityKeys.show(parsed.title, year, parsed.group))
         val show = Show(id = StableIds.mediaId(showKey), title = parsed.title, year = year)
         val seasonNumber = parsed.season ?: 1
         val season = Season(

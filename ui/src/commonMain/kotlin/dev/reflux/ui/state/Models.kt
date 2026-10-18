@@ -17,6 +17,7 @@ import dev.reflux.core.versions.RankedVersion
 import dev.reflux.core.versions.SelectionCriterion
 import dev.reflux.core.watch.WatchRules
 import dev.reflux.library.Library
+import dev.reflux.library.identificationStatus
 import dev.reflux.library.userSources
 import dev.reflux.library.LibraryEntry
 import dev.reflux.library.SourceRecord
@@ -157,6 +158,8 @@ data class DetailsModel(
     val seasons: List<SeasonModel>,
     /** The season to open on: the one holding the episode to continue with. */
     val initialSeason: Int,
+    /** Whether Reflux is unsure what this is, which the page says, offering Identify. */
+    val weak: Boolean = false,
 )
 
 /**
@@ -193,6 +196,7 @@ internal fun Library.detailsModel(itemId: MediaId, device: DeviceCapabilities): 
                 bestReason = null,
                 seasons = seasons,
                 initialSeason = seasons.indexOfFirst { it.season.id == next?.seasonId }.coerceAtLeast(0),
+                weak = identificationStatus(itemId)?.weak == true,
             )
         }
         is Movie -> {
@@ -235,6 +239,7 @@ internal fun Library.detailsModel(itemId: MediaId, device: DeviceCapabilities): 
                 bestReason = selection.decidedBy.takeIf { selection.ranked.size > 1 },
                 seasons = emptyList(),
                 initialSeason = 0,
+                weak = identificationStatus(itemId)?.weak == true,
             )
         }
         else -> null

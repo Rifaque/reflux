@@ -80,7 +80,7 @@ private val PageWidth = 640.dp
 
 /** A page that is one calm column in the middle of the screen, starting below the navigation. */
 @Composable
-private fun Page(content: androidx.compose.foundation.lazy.LazyListScope.() -> Unit) {
+internal fun Page(content: androidx.compose.foundation.lazy.LazyListScope.() -> Unit) {
     val layout = LocalLayout.current
     val insets = LocalChromeInsets.current
     AmbientBackdrop()
@@ -95,7 +95,7 @@ private fun Page(content: androidx.compose.foundation.lazy.LazyListScope.() -> U
 }
 
 @Composable
-private fun Heading(title: String, body: String?) {
+internal fun Heading(title: String, body: String?) {
     Column(Modifier.padding(bottom = 10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text(title, style = LocalTypography.current.headline)
         body?.let { Text(it, color = RefluxColors.textSecondary) }

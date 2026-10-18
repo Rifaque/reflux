@@ -81,6 +81,7 @@ import dev.reflux.ui.screens.BrowseScreen
 import dev.reflux.ui.screens.DetailsScreen
 import dev.reflux.ui.screens.FolderPickerPanel
 import dev.reflux.ui.screens.HomeScreen
+import dev.reflux.ui.screens.IdentifyScreen
 import dev.reflux.ui.screens.OfflinePanel
 import dev.reflux.ui.screens.SearchScreen
 import dev.reflux.ui.screens.AddSourceScreen
@@ -278,6 +279,7 @@ fun RefluxApp(app: AppState, modifier: Modifier = Modifier) {
                                     Destination.Search -> SearchScreen(app)
                                     is Destination.Listing -> BrowseScreen(app, destination.title, destination.query, shows = false)
                                     is Destination.Details -> DetailsScreen(app, destination.itemId)
+                                    is Destination.Identify -> IdentifyScreen(app, destination.itemId)
                                     Destination.Sources -> SourcesScreen(app)
                                     Destination.AddSource -> AddSourceScreen(app)
                                     is Destination.Connect -> ConnectScreen(app, destination)

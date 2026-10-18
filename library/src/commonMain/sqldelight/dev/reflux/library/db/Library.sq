@@ -544,6 +544,9 @@ INSERT OR REPLACE INTO metadata_pin(item_id, provider_ref) VALUES (?, ?);
 metadataPinOf:
 SELECT provider_ref FROM metadata_pin WHERE item_id = ?;
 
+unpinMetadata:
+DELETE FROM metadata_pin WHERE item_id = ?;
+
 deleteMetadataOf:
 DELETE FROM metadata WHERE item_id = ?;
 

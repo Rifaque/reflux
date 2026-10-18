@@ -90,8 +90,8 @@ V1 contains what Reflux fundamentally is, and no more. Each row is required for 
 
 | Item | State | What is left |
 | --- | --- | --- |
-| Automatic organization and identification | Done | Episodes without a show name: grouped per folder and offered to Identify instead of one unnamed show across the library (decided; open) |
-| Identify / fix match | Partial | Engine done (`Identify` flow, persistent overrides). No UI on any platform: search a provider, choose, apply, undo; reached from details and from weak identifications |
+| Automatic organization and identification | Done | — (episodes without a show name are grouped per folder and offered to Identify, 2026-10-18) |
+| Identify / fix match | Done (automated) | Built on every form factor (the shared experience layer): search, results told apart, choose, undo, reached from every details page and offered plainly where Reflux is unsure (DECISIONS.md, 2026-10-18). Verified with fixtures on the desktop renderer, including a remote-only television path; not yet against live TMDB (no credential here, M3) nor driven on a device, which needs a build with the credential. Episodes' own numbers cannot be corrected from it (their show can) |
 | Continue Watching and Next Up | Done | — |
 | **Watch Next** (the platform's own "continue" row) | Done (emulator) | Android TV / Google TV: programs derived from Continue Watching and Next Up, added, updated, and removed with watch state, opening Reflux on the work (DECISIONS.md, 2026-10-18). What Google TV's launcher draws is unseen: it shows only certified integrations, so Google's Watch Next certification belongs to the Play submission (M2), and a physical Google TV check to M3. Fire TV: no home-screen row, because Amazon's Watch Activity needs a content catalog Reflux does not have (DECISIONS.md, 2026-10-18) |
 | Cross-source watch state | Done | — ("From the start" keeps the place, 2026-10-17) |
@@ -110,7 +110,7 @@ V1 contains what Reflux fundamentally is, and no more. Each row is required for 
 | About, legal, and attribution | Open | An About page: version and build, licenses (Reflux and third-party, including libmpv/FFmpeg obligations), TMDB attribution and logo, privacy and support links |
 | Casting | Gate | Time-boxed feasibility before beta; V1.1 if it fails the gate (DECISIONS.md, 2026-10-17, "Casting is a V1 feasibility gate") |
 
-First M1 slice, done 2026-10-17: "From the start" keeps the place (Reflux and Jellyfin), and films' versions can be pinned and unpinned on every form factor. Second, done 2026-10-18: Watch Next on Android TV / Google TV, and the Fire TV home-screen decision. Third, 2026-10-18: the Fire TV smoke test on physical hardware and its fixes. Recommended order after it: Identify UI, an episode's versions (list and pin), Smart Offline episode/season choice and Downloads, Jellyfin sign-out, desktop Smart Offline and capabilities, About/legal, accessibility, the casting spike, performance R&D.
+First M1 slice, done 2026-10-17: "From the start" keeps the place (Reflux and Jellyfin), and films' versions can be pinned and unpinned on every form factor. Second, done 2026-10-18: Watch Next on Android TV / Google TV, and the Fire TV home-screen decision. Third, 2026-10-18: the Fire TV smoke test on physical hardware and its fixes. Fourth, 2026-10-18: Identify, and episodes without a show name grouped by folder. Recommended order after it: an episode's versions (list and pin), Smart Offline episode/season choice and Downloads, Jellyfin sign-out, desktop Smart Offline and capabilities, About/legal, accessibility, the casting spike, performance R&D.
 
 ## M2 — Release engineering
 

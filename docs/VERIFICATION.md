@@ -257,3 +257,15 @@ Lightweight performance observations (debug build, so start-up and Compose are s
 | Library from 7 files | On screen 5 s after choosing the folder |
 | 4K60 HEVC Main10 | Reflux 31% of a core steady (55–83% in the first seconds), `media.codec` 12%, `surfaceflinger` 11%; first frame 776 ms after the decoder started; 40 of the 52 dropped frames in the first 0.8 s, the longest run 18 |
 | Rendering | No stutter seen while moving focus; artwork was the generated treatment only (no TMDB credential on this machine, no sidecar images in the test media), so artwork loading was not exercised |
+
+## Identify: what was verified
+
+Verified on 2026-10-18 on Windows 11, on the tree that closes this cycle.
+
+| Level | What ran | State |
+| --- | --- | --- |
+| Engine | `IdentifyTest` (4): an ambiguous film (two "Dune") corrected with its two versions, watch position, favorite, and pinned version kept, surviving a rescan, nothing left under the old identity; undo restoring the identity its file name gives, with its history and favorite, and staying undone after a rescan; episodes without a show name as one show per folder and per source (two sources of the same name stay two shows), all weak; identifying one folder's show leaving another folder's alone, and undoing it. Removing the carrying of user state made the first fail (a favorite lost) | Passed |
+| Experience layer, fixtures | `IdentifyUiTest` (6) on the offscreen desktop renderer with a fixture catalog: from a details page to results told apart (year, summary, current match), small result posters, choosing, the corrected page in place of the old one and Back past it; one catalog request for a repeated query; nothing found; the catalog out of reach and "Try again"; Cancel changing nothing; undo; a weak show's prompt and its identification as a real show with its episodes' titles; no Identify without a catalog; a television with remote keys only, from the search field down the results to a choice. `IdentifyQueryTest` (2). `TmdbProviderTest` for the result poster size. Renderings reviewed | Passed |
+| Full check, Windows 11 | `./gradlew check --continue` | 633 tests, none failed, 8 skipped (environment-gated); Android lint and `checkDebugPlatformApi` passed |
+| Fire TV, physically | With the debug build (no TMDB credential, so Identify is not offered): an episode at the top of the source and two in a `TV` folder appeared as two shows, "RefluxSmoke" and "TV", beside the named ones. The details page was not opened on the device: the device was taken over by someone using it (another application was in front) and was left alone | Partly done |
+| Not verified | Identify against live TMDB (no credential on this machine, M3); Identify driven on a device; the Android phone and Google TV emulators (not run in this cycle) | Open |

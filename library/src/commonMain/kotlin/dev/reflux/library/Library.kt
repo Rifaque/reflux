@@ -74,7 +74,10 @@ class Library(
     internal var downloadStore: DownloadStore? = null
     internal val metadataSync = MetadataSync(database, now)
     private val smartSearch = SmartSearch(database)
-    private val parser get() = MediaPathParser(maxYear = yearOf(now()) + 1)
+    private val parser get() = MediaPathParser(maxYear = latestReleaseYear())
+
+    /** The latest year a release can name; a later number in a title is part of it (`Blade Runner 2049`). */
+    fun latestReleaseYear(): Int = yearOf(now()) + 1
 
     // Sources ------------------------------------------------------------------------------------
 
@@ -135,7 +138,7 @@ class Library(
         if (!hasVideo && hasKnownVersions(id)) return keepEmpty(id)
         return database.transactionWithResult {
             if (!registered(id)) return@transactionWithResult ScanReport(id, ScanReport.Status.REMOVED)
-            val plan = planner().plan(id, files, overrides(id), yearHints(id))
+            val plan = planner().plan(id, files, overrides(id), yearHints(id), sourceName(id))
             val report = writer.apply(plan, unread.map { it.path })
             queries.markSourceScanned(now(), id.value)
             report
@@ -219,11 +222,13 @@ class Library(
             queries.externalSubtitlePathsOfSource(sourceId.value).executeAsList().map { SourceFile(it, 0, 0) } +
             queries.artworkPathsOfSource(sourceId.value).executeAsList().map { SourceFile(it, 0, 0) }
         val report = database.transactionWithResult {
-            val plan = planner().plan(sourceId, files.distinctBy { it.path }, overrides(sourceId), yearHints(sourceId))
+            val plan = planner().plan(sourceId, files.distinctBy { it.path }, overrides(sourceId), yearHints(sourceId), sourceName(sourceId))
             writer.apply(plan)
         }
         return report
     }
+
+    private fun sourceName(id: SourceId): String = source(id)?.displayName.orEmpty()
 
     private fun planner() = ScanPlanner(parser, queries.allAliases().executeAsList().associate { it.alias_key to it.canonical_key })
 
@@ -431,7 +436,7 @@ class Library(
 
     /** Versions whose identification is weak, for diagnostics and the Identify flow. */
     fun lowConfidence(): List<VersionInfo> =
-        queries.lowConfidenceVersions(0.55).executeAsList().mapNotNull { version(VersionId(it.id)) }
+        queries.lowConfidenceVersions(WEAK_CONFIDENCE).executeAsList().mapNotNull { version(VersionId(it.id)) }
 
     /** Emits whenever library contents change, so UIs can refresh. */
     fun changes(): Flow<Unit> = queries.presentPlayables().asFlow().map { }

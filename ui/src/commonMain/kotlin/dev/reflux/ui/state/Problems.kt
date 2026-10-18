@@ -33,6 +33,8 @@ internal object Problems {
     const val TRACK_GONE ="That track is no longer available."
     const val PLAYBACK_STALLED = "Playback isn't starting. The file may be slow to reach, or video couldn't be started on this device."
     const val SOURCE_STOPPED = "The source stopped sending this. It may be asleep, busy, or no longer connected."
+    const val IDENTIFY_SEARCH = "That search didn't work. Try again in a moment."
+    const val IDENTIFY_APPLY = "That couldn't be changed. Your library is as it was."
 
     fun noEngine(hint: String?): String = listOfNotNull("Reflux has no playback engine on this device yet.", hint).joinToString(" ")
 

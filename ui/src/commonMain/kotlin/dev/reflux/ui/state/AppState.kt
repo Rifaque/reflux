@@ -19,6 +19,8 @@ import dev.reflux.core.input.InputSignal
 import dev.reflux.core.input.InputState
 import dev.reflux.core.input.Key
 import dev.reflux.core.input.SemanticAction
+import dev.reflux.core.metadata.MetadataCandidate
+import dev.reflux.core.metadata.ScoredCandidate
 import dev.reflux.core.model.Episode
 import dev.reflux.core.model.MediaId
 import dev.reflux.core.model.Movie
@@ -161,6 +163,27 @@ class AppState(
             platform.report(failure, e)
             notify(failure)
         }
+    }
+
+    // Identify -----------------------------------------------------------------------------------
+
+    /** Whether works can be identified here: the build includes a metadata provider to search. */
+    val canIdentify: Boolean get() = pipeline.canIdentify
+
+    internal suspend fun identifyCandidates(itemId: MediaId, title: String, year: Int?): List<ScoredCandidate> =
+        withContext(background) { pipeline.identifyCandidates(itemId, title, year) }
+
+    internal suspend fun identify(itemId: MediaId, candidate: MetadataCandidate): MediaId =
+        withContext(background) { pipeline.identify(itemId, candidate) }
+
+    internal suspend fun undoIdentification(itemId: MediaId): MediaId? =
+        withContext(background) { pipeline.undoIdentification(itemId) }
+
+    /** After Identify: the work, as it is now, opens in place of the pages that led there. */
+    internal fun identified(from: MediaId, to: MediaId?) {
+        navigator.leave { it is Destination.Identify || (it is Destination.Details && it.itemId == from) }
+        to?.let { navigator.open(Destination.Details(it)) }
+        invalidate()
     }
 
     // Library actions ----------------------------------------------------------------------------
