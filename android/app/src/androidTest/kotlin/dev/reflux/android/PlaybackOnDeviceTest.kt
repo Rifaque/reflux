@@ -117,13 +117,26 @@ class PlaybackOnDeviceTest {
         player.play()
         player.await("playback to go on") { it.status == PlayerStatus.PLAYING && it.positionMs > paused.positionMs + 500 }
 
-        // Play while still out of sight (the remote's play key reaches the player in the background) prepares it again.
+        // Play while out of sight (a remote's or headset's play key reaching the session in the background) is not
+        // obeyed: Reflux does not play in the background, and does not take the decoders back for it.
         player.pause()
-        player.await("pause") { it.status == PlayerStatus.PAUSED }
+        val left = player.await("pause") { it.status == PlayerStatus.PAUSED }
         player.standBy()
         awaitTrue("the decoders to be released") { codecsHeld() == 0 }
         player.play()
-        player.await("playback from standby") { it.status == PlayerStatus.PLAYING && it.positionMs > paused.positionMs + 1_000 }
+        val audio = context.getSystemService(android.media.AudioManager::class.java)
+        for (action in listOf(android.view.KeyEvent.ACTION_DOWN, android.view.KeyEvent.ACTION_UP)) {
+            audio.dispatchMediaKeyEvent(android.view.KeyEvent(action, android.view.KeyEvent.KEYCODE_MEDIA_PLAY))
+        }
+        Thread.sleep(3_000)
+        assertEquals(0, codecsHeld(), "no decoder was taken back")
+        assertEquals(PlayerStatus.PAUSED, player.state.value.status)
+        assertTrue(abs(player.state.value.positionMs - left.positionMs) < 250, "the place did not move")
+
+        // Seen again, Play is the viewer's once more.
+        player.wake()
+        player.play()
+        player.await("playback once seen") { it.status == PlayerStatus.PLAYING && it.positionMs > left.positionMs + 500 }
     }
 
     private fun awaitTrue(what: String, condition: () -> Boolean) {

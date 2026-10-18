@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.content.Intent
 import android.net.Uri
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.tvprovider.media.tv.TvContractCompat
 import androidx.tvprovider.media.tv.TvContractCompat.PreviewPrograms
 import androidx.tvprovider.media.tv.TvContractCompat.WatchNextPrograms
 import dev.reflux.android.engine.AndroidEnvironment
@@ -19,6 +20,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import java.io.File
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -26,7 +28,8 @@ import kotlin.test.assertTrue
 /**
  * Reflux's programs on the launcher's Watch Next row, on a real Android TV provider: added from the
  * library's watch state, updated in place, and removed when finished. Runs where the device has a TV
- * provider (televisions) and skips itself elsewhere.
+ * provider (televisions) and skips itself elsewhere; on Fire OS, which has the provider but does not show
+ * the row, it checks that nothing is written there.
  *
  * It runs as the application, so while it runs it replaces the installed application's own programs; it
  * deletes them at the end and the application puts its own back the next time it runs.
@@ -45,15 +48,20 @@ class WatchNextOnDeviceTest {
         val type: Int, val position: Int, val duration: Int, val engaged: Long, val poster: String?, val aspect: Int, val key: String?, val intent: String?,
     )
 
+    private val fireOs = context.packageManager.hasSystemFeature(WatchNextPublisher.FIRE_TV_FEATURE)
+
+    /** Whether the device has the TV provider at all, whether or not Reflux writes to it. */
+    private val tvProvider = context.contentResolver.acquireContentProviderClient(TvContractCompat.AUTHORITY)?.also { it.close() } != null
+
     @Before
     fun onlyWithATvProvider() {
-        assumeTrue("this device has no TV provider", publisher.supported)
+        assumeTrue("this device has no TV provider", tvProvider)
         clear()
     }
 
     @After
     fun cleanUp() {
-        if (publisher.supported) clear()
+        if (tvProvider) clear()
         lent.forEach(File::delete)
         world.close()
     }
@@ -79,6 +87,7 @@ class WatchNextOnDeviceTest {
 
     @Test
     fun aFilmIsAddedUpdatedInPlaceAndRemovedWhenFinished() = runBlocking {
+        assumeTrue("Fire OS: Reflux keeps no programs there", !fireOs)
         world.stub("Heat (1995)/Heat (1995).mkv")
         world.environment.library.scan(world.folder)
         val heat = world.movie("Heat")
@@ -116,6 +125,7 @@ class WatchNextOnDeviceTest {
 
     @Test
     fun aShowOffersItsNextEpisode() = runBlocking {
+        assumeTrue("Fire OS: Reflux keeps no programs there", !fireOs)
         world.stub("Caminandes/Season 1/Caminandes.S01E01.mkv")
         world.stub("Caminandes/Season 1/Caminandes.S01E02.mkv")
         val library = world.environment.library
@@ -140,6 +150,7 @@ class WatchNextOnDeviceTest {
 
     @Test
     fun theLauncherCanReadTheCardsPicture() = runBlocking {
+        assumeTrue("Fire OS: Reflux keeps no programs there", !fireOs)
         world.stub("Heat (1995)/Heat (1995).mkv")
         File(world.media, "Heat (1995)/poster.jpg").writeBytes(POSTER)
         val library = world.environment.library
@@ -160,6 +171,23 @@ class WatchNextOnDeviceTest {
         assertEquals("${context.packageName}.artwork", poster.authority)
         assertEquals(PreviewPrograms.ASPECT_RATIO_MOVIE_POSTER, row.aspect)
         assertTrue(POSTER.contentEquals(context.contentResolver.openInputStream(poster)!!.use { it.readBytes() }))
+    }
+
+    @Test
+    fun fireOsKeepsNoProgramsInTheTvProvider() = runBlocking {
+        assumeTrue("not Fire OS", fireOs)
+        assertFalse(publisher.supported)
+        world.stub("Heat (1995)/Heat (1995).mkv")
+        val library = world.environment.library
+        library.scan(world.folder)
+        val heat = world.movie("Heat")
+        library.stopped(heat, 40 * MINUTE, 170 * MINUTE)
+
+        publisher.publish()
+        assertTrue(rows().isEmpty(), "nothing was written to the TV provider")
+        // Reflux's own state is untouched: the work is still there to continue, inside Reflux.
+        assertEquals(40 * MINUTE, library.watchState(heat)?.positionMs)
+        assertEquals(heat, library.continuations(10).single().entry.item.id)
     }
 
     private companion object {

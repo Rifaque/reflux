@@ -49,7 +49,8 @@ import androidx.media3.common.Player as EnginePlayer
  * While something is loaded the engine is also the device's media session, which is how the system's own
  * controls reach it: headset and Bluetooth buttons, and the buttons of a picture-in-picture window. They
  * act on this same engine, so there is one playback state however it is controlled. Next and previous
- * are not the engine's to decide (it holds one item) and go to [onSkip].
+ * are not the engine's to decide (it holds one item) and go to [onSkip]. Out of sight ([standBy] until
+ * [wake]) nothing starts playback: Reflux does not play in the background ([SystemControls]).
  */
 class Media3Player(context: Context, override val capabilities: DeviceCapabilities) : Player {
     private val application = context.applicationContext
@@ -88,6 +89,10 @@ class Media3Player(context: Context, override val capabilities: DeviceCapabiliti
 
     /** Whether the engine let go of its decoders while the app is out of sight ([standBy]). */
     private var standingBy = false
+
+    /** Whether the app is out of sight, from [standBy] to [wake], decoders or not. */
+    @Volatile
+    private var outOfSight = false
     private var volume = 100
     private var muted = false
 
@@ -181,6 +186,7 @@ class Media3Player(context: Context, override val capabilities: DeviceCapabiliti
 
     override fun play() = onMain {
         val player = engine ?: return@onMain
+        if (outOfSight) return@onMain
         // Play at the end starts over, as on any player.
         if (player.playbackState == EnginePlayer.STATE_ENDED) player.seekTo(0)
         if (standingBy) player.prepare()
@@ -192,9 +198,11 @@ class Media3Player(context: Context, override val capabilities: DeviceCapabiliti
     /**
      * Lets go of the decoders and audio focus while the app is out of sight, keeping the work, its place, and
      * its tracks: the platform asks an application it no longer shows to release them for others (Amazon's
-     * Fire TV requirements; seen held on Fire OS 8). What the player reports stays as it was meanwhile.
+     * Fire TV requirements; seen held on Fire OS 8). What the player reports stays as it was meanwhile, and
+     * until [wake] nothing, the system's controls included, starts playback or takes the decoders back.
      */
     fun standBy() = onMain {
+        outOfSight = true
         val player = engine ?: return@onMain
         if (player.playbackState == EnginePlayer.STATE_IDLE || player.playbackState == EnginePlayer.STATE_ENDED) return@onMain
         publish()
@@ -205,6 +213,7 @@ class Media3Player(context: Context, override val capabilities: DeviceCapabiliti
 
     /** Takes the decoders back after [standBy], when the app is seen again: the picture returns, paused where it was. */
     fun wake() = onMain {
+        outOfSight = false
         if (standingBy) engine?.prepare()
     }
 
@@ -273,27 +282,9 @@ class Media3Player(context: Context, override val capabilities: DeviceCapabiliti
             player.setVideoSurfaceView(surface)
             player.volume = if (muted) 0f else volume / 100f
             main.post(ticker)
-            session = runCatching { MediaSession.Builder(application, SystemControls(player)).setId("reflux-${System.identityHashCode(this)}").build() }.getOrNull()
+            val controls = SystemControls(player, inSight = { !outOfSight }, onSkip = { forward -> onSkip?.invoke(forward) })
+            session = runCatching { MediaSession.Builder(application, controls).setId("reflux-${System.identityHashCode(this)}").build() }.getOrNull()
         }
-
-    /** The engine as the system's controls see it: everything is the engine's, except moving between works. */
-    private inner class SystemControls(player: ExoPlayer) : ForwardingPlayer(player) {
-        private val skipping = intArrayOf(
-            EnginePlayer.COMMAND_SEEK_TO_NEXT, EnginePlayer.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM,
-            EnginePlayer.COMMAND_SEEK_TO_PREVIOUS, EnginePlayer.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM,
-        )
-
-        override fun getAvailableCommands(): EnginePlayer.Commands = super.getAvailableCommands().buildUpon().addAll(*skipping).build()
-        override fun isCommandAvailable(command: Int): Boolean = command in skipping || super.isCommandAvailable(command)
-        override fun seekToNext() = skip(true)
-        override fun seekToNextMediaItem() = skip(true)
-        override fun seekToPrevious() = skip(false)
-        override fun seekToPreviousMediaItem() = skip(false)
-
-        private fun skip(forward: Boolean) {
-            onSkip?.invoke(forward)
-        }
-    }
 
     private fun applyVolume() {
         engine?.volume = if (muted) 0f else volume / 100f
@@ -390,5 +381,45 @@ class Media3Player(context: Context, override val capabilities: DeviceCapabiliti
             "ttml", "dfxp", "xml" -> MimeTypes.APPLICATION_TTML
             else -> MimeTypes.APPLICATION_SUBRIP
         }
+    }
+}
+
+/**
+ * The engine as the system's controls see it (headset and Bluetooth buttons, a remote's media keys, a
+ * picture-in-picture window): everything is the engine's, except moving between works, which goes to
+ * [onSkip]. While the app is out of sight ([inSight] false) they may pause and stop, and nothing else:
+ * Reflux does not play in the background, so a Play arriving then neither resumes the work nor prepares
+ * the engine again (which would take back a decoder and audio focus), and does not seek or move to another
+ * work (DECISIONS.md, 2026-10-18, "Out of sight, Play is not obeyed").
+ */
+internal class SystemControls(
+    player: EnginePlayer,
+    private val inSight: () -> Boolean,
+    private val onSkip: (forward: Boolean) -> Unit,
+) : ForwardingPlayer(player) {
+    private val skipping = intArrayOf(
+        EnginePlayer.COMMAND_SEEK_TO_NEXT, EnginePlayer.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM,
+        EnginePlayer.COMMAND_SEEK_TO_PREVIOUS, EnginePlayer.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM,
+    )
+
+    override fun getAvailableCommands(): EnginePlayer.Commands = super.getAvailableCommands().buildUpon().addAll(*skipping).build()
+    override fun isCommandAvailable(command: Int): Boolean = command in skipping || super.isCommandAvailable(command)
+
+    override fun play() = whenSeen { super.play() }
+    override fun prepare() = whenSeen { super.prepare() }
+    override fun setPlayWhenReady(playWhenReady: Boolean) = if (playWhenReady) whenSeen { super.setPlayWhenReady(true) } else super.setPlayWhenReady(false)
+    override fun seekToDefaultPosition() = whenSeen { super.seekToDefaultPosition() }
+    override fun seekToDefaultPosition(mediaItemIndex: Int) = whenSeen { super.seekToDefaultPosition(mediaItemIndex) }
+    override fun seekTo(positionMs: Long) = whenSeen { super.seekTo(positionMs) }
+    override fun seekTo(mediaItemIndex: Int, positionMs: Long) = whenSeen { super.seekTo(mediaItemIndex, positionMs) }
+    override fun seekBack() = whenSeen { super.seekBack() }
+    override fun seekForward() = whenSeen { super.seekForward() }
+    override fun seekToNext() = whenSeen { onSkip(true) }
+    override fun seekToNextMediaItem() = whenSeen { onSkip(true) }
+    override fun seekToPrevious() = whenSeen { onSkip(false) }
+    override fun seekToPreviousMediaItem() = whenSeen { onSkip(false) }
+
+    private inline fun whenSeen(action: () -> Unit) {
+        if (inSight()) action()
     }
 }
