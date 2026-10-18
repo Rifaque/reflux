@@ -31,7 +31,8 @@ import kotlinx.coroutines.withContext
  * that differ ([WatchNext.plan]); the launcher's rows are never read back into Reflux's state.
  *
  * It runs while Reflux does, when the user's state changes and when they leave the application; there is
- * no background job. On a device without the TV provider (phones, tablets) it does nothing.
+ * no background job. On a device without the TV provider (phones, tablets) it does nothing, and on Fire OS,
+ * whose home screen does not show these rows, it does nothing either ([publishes]).
  */
 class WatchNextPublisher(
     context: Context,
@@ -47,10 +48,13 @@ class WatchNextPublisher(
     /** Works the user removed from the launcher, and when they had last played them (see [WatchNext.plan]). */
     private val dismissals = application.getSharedPreferences("watch-next-dismissed", Context.MODE_PRIVATE)
 
-    /** Whether this device has a launcher that takes Watch Next programs: a capability, not a device name. */
-    val supported: Boolean by lazy {
+    /** Whether this device has the TV provider, where Watch Next programs are kept. */
+    private val tvProvider: Boolean by lazy {
         runCatching { resolver.acquireContentProviderClient(TvContractCompat.AUTHORITY)?.also { it.close() } != null }.getOrDefault(false)
     }
+
+    /** Whether Reflux writes Watch Next programs on this device at all ([publishes]). */
+    val supported: Boolean by lazy { publishes(tvProvider, application.packageManager.hasSystemFeature(FIRE_TV_FEATURE)) }
 
     /** Brings the row up to date. Never throws: a launcher that refuses is reported, and Reflux carries on. */
     suspend fun publish() {
@@ -148,7 +152,18 @@ class WatchNextPublisher(
     private fun artworkUri(artwork: WatchNextArtwork): Uri? =
         this.artwork.cached(artwork.locator)?.toFile()?.let { ArtworkProvider.uriFor(application.packageName, it) }
 
-    private companion object {
-        const val FIELD = "\u001F"
+    companion object {
+        private const val FIELD = "\u001F"
+
+        /** The system feature every Fire TV device declares (Amazon's Fire TV device documentation). */
+        const val FIRE_TV_FEATURE = "amazon.hardware.fire_tv"
+
+        /**
+         * Programs are written where a launcher shows them: Android TV and Google TV, which have the TV
+         * provider. Fire OS has the provider too, but its home screen does not show these rows and Amazon's own
+         * "continue" integration is closed to Reflux, so there the titles of personal media would sit in a
+         * system provider for no one (DECISIONS.md, 2026-10-18). Reflux's own watch state is the same either way.
+         */
+        fun publishes(tvProvider: Boolean, fireOs: Boolean): Boolean = tvProvider && !fireOs
     }
 }
