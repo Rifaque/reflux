@@ -276,7 +276,7 @@ class FakePlatform(
     override val connections: SourceConnections? = null,
 ) : Platform {
     override val artwork: FakeArtwork = FakeArtwork(artwork, backdrops, posters)
-    override val device: DeviceCapabilities = testDevice
+    override var device: DeviceCapabilities = testDevice
     override val preferredLanguages: List<String> = listOf("en")
     override var canPlay: Boolean = true
 

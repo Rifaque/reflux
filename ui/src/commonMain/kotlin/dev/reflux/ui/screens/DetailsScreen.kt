@@ -25,6 +25,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.key
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.runtime.remember
@@ -73,6 +74,7 @@ import dev.reflux.ui.components.SectionHeader
 import dev.reflux.ui.components.TitleBackdrop
 import dev.reflux.ui.components.TitlePlaceholder
 import dev.reflux.ui.components.initialFocus
+import dev.reflux.ui.components.rememberFocusReturn
 import dev.reflux.ui.components.titleTones
 import dev.reflux.ui.state.AppState
 import dev.reflux.ui.state.ArtworkChoice
@@ -90,7 +92,10 @@ import dev.reflux.ui.theme.LocalTypography
 import dev.reflux.ui.theme.RefluxColors
 import dev.reflux.ui.theme.Text
 
-/** A movie or a show: what it is, what the main button will play, and which versions or episodes exist. */
+/**
+ * A movie, a show, or an episode: what it is, what the main button will play, and which versions or episodes
+ * exist. An episode's own page is its versions under its show's name, reached from its row on the show's page.
+ */
 @Composable
 internal fun DetailsScreen(app: AppState, itemId: MediaId) {
     val loaded by app.libraryState(itemId) { Loaded(detailsModel(itemId, app.platform.device)) }
@@ -98,7 +103,8 @@ internal fun DetailsScreen(app: AppState, itemId: MediaId) {
     val details = (loaded ?: return).details ?: return Gone(app)
     val layout = LocalLayout.current
     var season by rememberSaveable(itemId) { mutableIntStateOf(details.initialSeason) }
-    val episodes = details.seasons.getOrNull(season)?.episodes.orEmpty()
+    val shown = details.seasons.getOrNull(season)
+    val episodes = shown?.episodes.orEmpty()
     // Whether it is, or is being, kept on this device; null where the platform keeps nothing.
     val offline by app.libraryState(itemId) { app.platform.offline?.let { offlineStatus(itemId, it) } }
     val list = rememberLazyListState()
@@ -138,8 +144,10 @@ internal fun DetailsScreen(app: AppState, itemId: MediaId) {
                         details.seasons.forEachIndexed { index, model -> Tab(model.season.title, index == season) { season = index } }
                     }
                 }
+                // Room for a choice of versions beside every row of a season where any episode has one, so the rows line up.
+                val versions = shown?.versions.orEmpty()
                 items(episodes, key = { it.id.value }) { episode ->
-                    EpisodeRow(app, episode, Modifier.padding(horizontal = layout.safeMarginDp.dp, vertical = 5.dp))
+                    EpisodeItem(app, episode, versions[episode.id], room = versions.isNotEmpty(), Modifier.padding(horizontal = layout.safeMarginDp.dp, vertical = 5.dp))
                 }
             }
             val cast = details.credits.filter { it.role == CreditRole.ACTOR }.take(16)
@@ -257,7 +265,8 @@ private fun Header(
                             { app.toggleFavorite(card.entry) },
                             glass = true,
                         )
-                        if (offline?.offered == true) {
+                        // An episode is kept for offline from its show's page (OFFLINE.md); its own page is about its versions.
+                        if (offline?.offered == true && details.showId == null) {
                             val settled = offline.downloaded || offline.busy || offline.failed
                             // The sheet this opens takes focus; when it closes, focus comes back here, not to Play.
                             val download = remember { FocusRequester() }
@@ -281,7 +290,13 @@ private fun Header(
                             )
                         }
                         // Telling Reflux what this is, when it guessed wrong; offered more plainly below when it is unsure.
-                        if (app.canIdentify && !details.weak) Button("Identify", { app.navigator.open(Destination.Identify(card.id)) }, style = ButtonStyle.QUIET)
+                        // An episode is identified through its show, which its page leads back to.
+                        val showId = details.showId
+                        if (showId != null) {
+                            Button("All episodes", { app.navigator.open(Destination.Details(showId)) }, style = ButtonStyle.QUIET)
+                        } else if (app.canIdentify && !details.weak) {
+                            Button("Identify", { app.navigator.open(Destination.Identify(card.id)) }, style = ButtonStyle.QUIET)
+                        }
                     }
                     if (app.canIdentify && details.weak) {
                         Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -311,7 +326,7 @@ private fun credit(credits: List<Credit>): String? {
 }
 
 /**
- * Every version of a movie, best first. The question this answers is "which one should I watch?": each copy
+ * Every version of a movie or an episode, best first. The question this answers is "which one should I watch?": each copy
  * leads with what it is chosen by (resolution, HDR, edition), the one Play will use says so and why, and
  * where it lives and how it is encoded follow quietly beneath.
  */
@@ -321,16 +336,20 @@ private fun Versions(app: AppState, details: DetailsModel, modifier: Modifier = 
     Column(modifier.widthIn(max = 880.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Column(Modifier.padding(bottom = 2.dp)) {
             SectionHeader(if (several) "Versions" else "Version")
-            if (several) Text("Play picks the best copy for this device. Choose another to play it instead.", style = LocalTypography.current.caption, color = RefluxColors.textTertiary)
+            // Where the user's choice is set aside this time, that is what needs saying, in place of the general rule.
+            val note = details.pinNote ?: "Play picks the best copy for this device. Choose another to play it instead.".takeIf { several }
+            note?.let { Text(it, style = LocalTypography.current.caption, color = if (details.pinNote != null) RefluxColors.textSecondary else RefluxColors.textTertiary) }
         }
-        details.versions.forEach { version ->
+        // Keyed by version: choosing one reorders the list, and focus goes with the version it is on rather than
+        // staying in its place, where a second press would choose another.
+        details.versions.forEach { version -> key(version.ranked.version.id.value) {
             VersionItem(
                 version,
                 details.bestReason,
                 onPlay = { app.play(details.card.id, version.ranked.version.id) },
                 onPin = { app.pinVersion(details.card.id, version.ranked.version.id.takeUnless { version.pinned }) },
             )
-        }
+        } }
     }
 }
 
@@ -419,10 +438,38 @@ private fun VersionCard(row: VersionRow, bestReason: SelectionCriterion?, onPlay
     }
 }
 
+/**
+ * An episode and, when it has several versions, the way to them ("2 versions", its own page): beside the row,
+ * where a remote reaches it with a step to the right and its focus stays clear of the episode's own, or
+ * beneath it on a phone. [room] keeps that place beside every row of the season, so the rows line up.
+ */
+@Composable
+private fun EpisodeItem(app: AppState, episode: MediaCard, versions: Int?, room: Boolean, modifier: Modifier = Modifier) {
+    val choice: @Composable () -> Unit = {
+        if (versions != null) {
+            // Back from the episode's page comes back here, not to the top of the show's.
+            val back = rememberFocusReturn("versions/${episode.id.value}")
+            Button("$versions versions", { back.leaving(); app.navigator.open(Destination.Details(episode.id)) }, back.modifier, style = ButtonStyle.QUIET)
+        }
+    }
+    when {
+        !room -> EpisodeRow(app, episode, modifier.widthIn(max = 980.dp))
+        LocalLayout.current.formFactor == FormFactor.PHONE -> Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(2.dp), horizontalAlignment = Alignment.End) {
+            EpisodeRow(app, episode, Modifier)
+            choice()
+        }
+        // A focused control grows; on a television the gap leaves its ring clear of the row beside it.
+        else -> Row(modifier.widthIn(max = 980.dp + 184.dp).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(if (LocalLayout.current.formFactor == FormFactor.TV) 24.dp else 12.dp), verticalAlignment = Alignment.CenterVertically) {
+            EpisodeRow(app, episode, Modifier.weight(1f))
+            Box(Modifier.width(160.dp), contentAlignment = Alignment.CenterStart) { choice() }
+        }
+    }
+}
+
 @Composable
 private fun EpisodeRow(app: AppState, episode: MediaCard, modifier: Modifier = Modifier) {
     val shape = RoundedCornerShape(14.dp)
-    Pressable({ app.play(episode.id) }, modifier.widthIn(max = 980.dp).fillMaxWidth(), shape, enabled = !episode.offline, lift = 0.15f) { active ->
+    Pressable({ app.play(episode.id) }, modifier.fillMaxWidth(), shape, enabled = !episode.offline, lift = 0.15f) { active ->
         Row(
             Modifier.fillMaxWidth().background(Color.White.copy(alpha = if (active) 0.07f else 0f)).padding(8.dp),
             horizontalArrangement = Arrangement.spacedBy(16.dp),

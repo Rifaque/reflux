@@ -409,6 +409,12 @@ FROM version JOIN source ON source.id = version.source_id
 WHERE version.item_id = ?
 ORDER BY version.id;
 
+-- Every version of every episode of a show, by episode: how many there are to choose between.
+versionIdsOfShow:
+SELECT version.id, version.item_id
+FROM version JOIN item ON item.id = version.item_id
+WHERE item.show_id = ?;
+
 versionById:
 SELECT version.*, source.availability, source.locality
 FROM version JOIN source ON source.id = version.source_id
@@ -641,6 +647,13 @@ SELECT version_id FROM version_preference WHERE item_id = ?;
 
 clearPreferredVersion:
 DELETE FROM version_preference WHERE item_id = ?;
+
+-- A pin names a version; when re-identification gives that version to another work (a show's episodes, when
+-- the show is identified), the pin goes with it.
+movePinsWithTheirVersions:
+UPDATE OR REPLACE version_preference
+SET item_id = (SELECT version.item_id FROM version WHERE version.id = version_preference.version_id)
+WHERE EXISTS (SELECT 1 FROM version WHERE version.id = version_preference.version_id AND version.item_id != version_preference.item_id);
 
 -- Smart search facts ------------------------------------------------------------------------------
 

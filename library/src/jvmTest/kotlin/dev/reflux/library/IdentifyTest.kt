@@ -134,6 +134,7 @@ class IdentifyTest {
     fun identifyingOneFolderLeavesEveryOtherFolderAlone() = runTest {
         val firefly = provider.show("1437", "Firefly", 2002, mapOf(1 to 2))
         file("TV/S01E01.mkv")
+        file("TV/S01E01.720p.mkv")
         file("TV/S01E02.mkv")
         file("Videos/S01E01.mkv")
         library.scan(source)
@@ -141,6 +142,9 @@ class IdentifyTest {
         val videos = library.shows().single { it.item.title == "Videos" }
         val pilot = library.showDetail(tv.item.id)!!.seasons.single().episodes.first().item.id
         library.stopped(pilot, 5 * 60_000L, 44 * 60_000L)
+        // The episode's own choice of version, which is not the show's.
+        val chosen = library.versions(pilot).single { it.version.location.path == "TV/S01E01.720p.mkv" }.version.id
+        library.pinVersion(pilot, chosen)
 
         val candidate = library.searchMetadata(tv.item.id, provider, "en-US", title = "Firefly").first { it.candidate.ref == firefly }
         val identified = library.identifyAs(tv.item.id, candidate.candidate, provider, "en-US")
@@ -150,6 +154,9 @@ class IdentifyTest {
         val episodes = library.showDetail(identified)!!.seasons.single().episodes
         assertEquals(2, episodes.size)
         assertEquals(5 * 60_000L, episodes.first().watchState?.positionMs, "the episode's place follows it")
+        assertNotEquals(pilot, episodes.first().item.id, "the episode is another work now, under its show")
+        assertEquals(setOf(chosen), library.pinnedVersions(episodes.first().item.id), "and so does its pinned version")
+        assertEquals(emptySet(), library.pinnedVersions(pilot))
         library.scan(source)
         assertEquals(listOf("Firefly", "Videos"), library.shows().map { it.item.title }.sorted())
 
@@ -158,6 +165,7 @@ class IdentifyTest {
         assertNotEquals(identified, back)
         assertEquals(tv.item.id, back)
         assertEquals(5 * 60_000L, library.showDetail(back)!!.seasons.single().episodes.first().watchState?.positionMs)
+        assertEquals(setOf(chosen), library.pinnedVersions(library.showDetail(back)!!.seasons.single().episodes.first().item.id))
         assertEquals(listOf("TV", "Videos"), library.shows().map { it.item.title }.sorted())
     }
 }

@@ -85,7 +85,7 @@ Best Version (`VersionSelector`) is deterministic and device-specific. The first
 1. Availability of its source: one known to be away sets a copy back; one not checked yet (just added, or signed in to again) does not.
 2. Whether this device can play it at all: container, codec, resolution, bit depth, Dolby Vision handling.
 3. Continuity: when the user is part-way through a work, a copy on the timeline in progress.
-4. The version the user pinned for the work ("Always play this" on a film's versions; "Let Reflux choose" removes it). Pinning a copy kept on the device pins the version it was made from.
+4. The version the user pinned for the work ("Always play this" on a film's or an episode's versions; "Let Reflux choose" removes it). Pinning a copy kept on the device pins the version it was made from. Where something above outranks the pin, the versions list says so and the pin is kept.
 5. How well this device plays it: fewer compromises such as software decoding, tone mapping, or a Dolby Vision base layer.
 6. Resolution, as far as this display can show it.
 7. Dynamic range, as far as this display can show it.

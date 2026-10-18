@@ -15,6 +15,10 @@ import dev.reflux.core.playback.DeviceCapabilities
 import dev.reflux.core.search.SmartQuery
 import dev.reflux.core.versions.RankedVersion
 import dev.reflux.core.versions.SelectionCriterion
+import dev.reflux.core.versions.VersionSelection
+import dev.reflux.core.watch.Timeline
+import dev.reflux.core.watch.TimelineMatch
+import dev.reflux.core.watch.Timelines
 import dev.reflux.core.watch.WatchRules
 import dev.reflux.library.Library
 import dev.reflux.library.identificationStatus
@@ -23,6 +27,8 @@ import dev.reflux.library.LibraryEntry
 import dev.reflux.library.SourceRecord
 import dev.reflux.library.credits
 import dev.reflux.library.pinnedVersions
+import dev.reflux.library.episodeVersionChoices
+import dev.reflux.library.versionChoices
 import dev.reflux.library.downloads
 import dev.reflux.core.offline.DownloadState
 import dev.reflux.library.home
@@ -135,8 +141,12 @@ data class VersionRow(
     val pinnable: Boolean = false,
 )
 
+/**
+ * A season of a show page. [versions] is, for each episode with more than one version to choose between, how
+ * many there are; an episode in one copy (and its download) is not in it, so its row offers nothing more.
+ */
 @Immutable
-data class SeasonModel(val season: Season, val episodes: List<MediaCard>)
+data class SeasonModel(val season: Season, val episodes: List<MediaCard>, val versions: Map<MediaId, Int> = emptyMap())
 
 @Immutable
 data class DetailsModel(
@@ -160,6 +170,13 @@ data class DetailsModel(
     val initialSeason: Int,
     /** Whether Reflux is unsure what this is, which the page says, offering Identify. */
     val weak: Boolean = false,
+    /** For an episode's own page: the show it belongs to, where its other episodes are and what identifies it. */
+    val showId: MediaId? = null,
+    /**
+     * Said above the versions when the user's choice is not what Play uses this time, and why (its source is
+     * away, this device cannot play it, another cut is being resumed); the choice itself is kept.
+     */
+    val pinNote: String? = null,
 )
 
 /**
@@ -174,7 +191,10 @@ internal fun Library.detailsModel(itemId: MediaId, device: DeviceCapabilities): 
     return when (val item = entry.item) {
         is Show -> {
             val detail = showDetail(item.id) ?: return null
-            val seasons = detail.seasons.map { SeasonModel(it.season, cards(it.episodes)) }
+            val choices = episodeVersionChoices(item.id).filterValues { it > 1 }
+            val seasons = detail.seasons.map { season ->
+                SeasonModel(season.season, cards(season.episodes), season.episodes.mapNotNull { e -> choices[e.item.id]?.let { e.item.id to it } }.toMap())
+            }
             if (seasons.none { it.episodes.isNotEmpty() }) return null
             val next = detail.nextUp ?: (detail.seasons.firstOrNull { it.season.number > 0 } ?: detail.seasons.firstOrNull())
                 ?.episodes?.firstOrNull()?.item as? Episode
@@ -202,10 +222,8 @@ internal fun Library.detailsModel(itemId: MediaId, device: DeviceCapabilities): 
         is Movie -> {
             val selection = selectVersion(item.id, device)
             if (selection.ranked.isEmpty()) return null
-            val best = selection.best
             val runtime = metadata?.runtimeMinutes ?: selection.ranked.firstNotNullOfOrNull { it.version.stream.durationMs }?.let { (it / 60_000).toInt() }
             val resumes = WatchRules.resumePosition(entry.watchState) != null
-            val pins = pinnedVersions(item.id)
             DetailsModel(
                 card = card,
                 overview = metadata?.overview,
@@ -218,30 +236,92 @@ internal fun Library.detailsModel(itemId: MediaId, device: DeviceCapabilities): 
                 playId = item.id,
                 playLabel = if (resumes) "Resume" else "Play",
                 resumes = resumes,
-                versions = selection.ranked.map { ranked ->
-                    val sourceId = ranked.version.location.sourceId
-                    VersionRow(
-                        ranked = ranked,
-                        sourceName = names.getOrPut(sourceId) { source(sourceId)?.displayName ?: "Unknown source" },
-                        quality = Formatting.versionQuality(ranked.version),
-                        technical = Formatting.versionTechnical(ranked.version) + Formatting.size(ranked.version.sizeBytes),
-                        notes = if (ranked.candidate.availability == Availability.UNAVAILABLE) {
-                            listOf("Not connected")
-                        } else {
-                            ranked.assessment.compromises.map(Formatting::issue)
-                        },
-                        best = ranked.version.id == best?.version?.id,
-                        pinned = ranked.version.id in pins,
-                        // A pin never makes Reflux play something this device cannot play (WATCH_STATE.md).
-                        pinnable = selection.ranked.size > 1 && ranked.playable,
-                    )
-                },
+                versions = versionRows(item.id, selection, names),
                 bestReason = selection.decidedBy.takeIf { selection.ranked.size > 1 },
                 seasons = emptyList(),
                 initialSeason = 0,
                 weak = identificationStatus(itemId)?.weak == true,
+                pinNote = pinNote(item.id, selection),
+            )
+        }
+        // An episode's own page: its versions, as a film's, under its show's name. Reached from the episode's
+        // row when it has several, and from outside Reflux (Watch Next), which names the episode.
+        is Episode -> {
+            val selection = selectVersion(item.id, device)
+            if (selection.ranked.isEmpty()) return null
+            val runtime = metadata?.runtimeMinutes ?: selection.ranked.firstNotNullOfOrNull { it.version.stream.durationMs }?.let { (it / 60_000).toInt() }
+            val resumes = WatchRules.resumePosition(entry.watchState) != null
+            DetailsModel(
+                card = card,
+                overview = metadata?.overview,
+                tagline = card.caption,
+                facts = Formatting.facts(entry, runtime),
+                genres = entry(item.showId)?.metadata?.genres.orEmpty(),
+                badges = Formatting.qualityBadges(selection.ranked.map { it.version }),
+                backdrop = card.wide,
+                credits = emptyList(),
+                playId = item.id,
+                playLabel = if (resumes) "Resume" else "Play",
+                resumes = resumes,
+                versions = versionRows(item.id, selection, names),
+                bestReason = selection.decidedBy.takeIf { selection.ranked.size > 1 },
+                seasons = emptyList(),
+                initialSeason = 0,
+                showId = item.showId,
+                pinNote = pinNote(item.id, selection),
             )
         }
         else -> null
+    }
+}
+
+/**
+ * A work's versions as its page lists them, best first. Every version is listed, a copy kept on the device
+ * among them; whether a choice can be pinned counts a copy and the version it was made from as one, since
+ * pinning either pins the origin. A version on another timeline than the recommended one (another cut, or a
+ * running time too far apart) says so, so copies that are not the same film or episode never look alike.
+ */
+private fun Library.versionRows(itemId: MediaId, selection: VersionSelection, names: MutableMap<SourceId, String>): List<VersionRow> {
+    val best = selection.best
+    val pins = pinnedVersions(itemId)
+    val choices = versionChoices(itemId, selection.ranked.map { it.version.id })
+    val reference = (best ?: selection.ranked.first()).version.let(Timeline::of)
+    return selection.ranked.map { ranked ->
+        val sourceId = ranked.version.location.sourceId
+        val otherCut = ranked.version.id != best?.version?.id && Timelines.compare(reference, Timeline.of(ranked.version)) == TimelineMatch.DIFFERENT
+        VersionRow(
+            ranked = ranked,
+            sourceName = names.getOrPut(sourceId) { source(sourceId)?.displayName ?: "Unknown source" },
+            quality = Formatting.versionQuality(ranked.version),
+            technical = Formatting.versionTechnical(ranked.version) + Formatting.size(ranked.version.sizeBytes),
+            notes = listOfNotNull(Formatting.otherCut(ranked.version).takeIf { otherCut }) +
+                if (ranked.candidate.availability == Availability.UNAVAILABLE) {
+                    listOf("Not connected")
+                } else {
+                    ranked.assessment.compromises.map(Formatting::issue)
+                },
+            best = ranked.version.id == best?.version?.id,
+            pinned = ranked.version.id in pins,
+            // A pin never makes Reflux play something this device cannot play (WATCH_STATE.md).
+            pinnable = choices > 1 && ranked.playable,
+        )
+    }
+}
+
+/**
+ * Why the user's pinned version is not the one Play uses this time, when it is not; null when it is, or when
+ * nothing is pinned. Best Version's own order decides: what is reachable and playable here, then the cut
+ * being resumed, then the pin (WATCH_STATE.md). The pin is kept either way.
+ */
+private fun Library.pinNote(itemId: MediaId, selection: VersionSelection): String? {
+    val pins = pinnedVersions(itemId)
+    if (pins.isEmpty() || selection.best?.version?.id in pins) return null
+    val pinned = selection.ranked.filter { it.version.id in pins }
+    val instead = if (selection.best != null) "Play uses the best version here" else "nothing here can play now"
+    return when {
+        pinned.isEmpty() -> "Your choice is no longer in your library, so Play uses the best version here."
+        pinned.all { it.candidate.availability == Availability.UNAVAILABLE } -> "Your choice isn't connected right now, so $instead. It stays your choice."
+        pinned.none { it.playable } -> "Your choice can't be played on this device, so $instead. It stays your choice."
+        else -> "Play continues the cut you're part-way through. Your choice stays for next time."
     }
 }
