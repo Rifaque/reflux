@@ -197,6 +197,8 @@ dependencies {
     implementation(libs.media3.session)
     // The launcher's Watch Next row on Android TV and Google TV (DECISIONS.md, 2026-10-18).
     implementation(libs.androidx.tvprovider)
+    // WebDAV's PROPFIND, which HttpURLConnection refuses; used by the WebDAV transport only (DECISIONS.md, 2026-10-18).
+    implementation(libs.okhttp)
 
     testImplementation(kotlin("test-junit"))
     testImplementation(libs.kotlinx.coroutines.test)

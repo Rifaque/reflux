@@ -109,7 +109,10 @@ class WebDavSource(
     override suspend fun downloadTarget(path: String): PlaybackTarget = playbackTarget(path)
 
     override suspend fun playbackTarget(path: String): PlaybackTarget {
-        val encoded = path.split('/').joinToString("/") { segment -> URI(null, null, segment, null).rawPath }
+        val segments = path.split('/')
+        // The share's credentials go only to the share.
+        require(segments.none { it == "." || it == ".." }) { "not a path inside the share" }
+        val encoded = segments.joinToString("/") { segment -> URI(null, null, segment, null).rawPath }
         return PlaybackTarget(root.resolve(encoded).toASCIIString(), authHeaders)
     }
 
@@ -134,9 +137,12 @@ class WebDavSource(
     }
 
     private fun parseMultistatus(xml: ByteArray, base: URI): List<Entry> {
+        // No entity in an answer is ever expanded (XXE, entity bombs), and a listing has no use for a document
+        // type. Refused here, because Android's parser accepts no setting for it and would read one.
+        check(!declaresDoctype(xml)) { "a listing that declares a document type" }
         val factory = DocumentBuilderFactory.newInstance().apply {
             isNamespaceAware = true
-            setFeature("http://apache.org/xml/features/disallow-doctype-decl", true) // no XXE
+            runCatching { setFeature("http://apache.org/xml/features/disallow-doctype-decl", true) }
         }
         val document = factory.newDocumentBuilder().parse(ByteArrayInputStream(xml))
         val responses = document.getElementsByTagNameNS(DAV, "response")
@@ -146,8 +152,11 @@ class WebDavSource(
             // Only properties reported with a 200 status are real.
             val okProps = response.children("propstat").filter { it.text("status")?.contains(" 200") != false }
                 .flatMap { it.children("prop") }
+            // Only the path of an href is taken, on the share's own address: a server behind a proxy may name
+            // itself differently, and a reply must never send the next request, with its credentials, elsewhere.
+            val path = runCatching { base.resolve(href.trim()).rawPath }.getOrNull()?.takeIf { it.startsWith("/") } ?: return@mapNotNull null
             Entry(
-                href = base.resolve(href.trim()),
+                href = root.resolve(path).normalize(),
                 collection = okProps.any { prop -> prop.children("resourcetype").any { it.children("collection").isNotEmpty() } },
                 size = okProps.firstNotNullOfOrNull { it.text("getcontentlength")?.trim()?.toLongOrNull() } ?: 0,
                 modifiedAtEpochMs = okProps.firstNotNullOfOrNull { it.text("getlastmodified")?.let(::parseHttpDate) } ?: 0,
@@ -155,13 +164,19 @@ class WebDavSource(
         }
     }
 
-    /** The share-relative, decoded path of [href], or null when it lies outside the share. */
+    /**
+     * The share-relative, decoded path of [href], or null when it lies outside the share or does not name one
+     * thing in it: an encoded `..` or `/` inside a name would make it mean another place when used again.
+     */
     private fun relativePath(href: URI): String? {
         val rootPath = root.rawPath
         val path = href.rawPath ?: return null
         if (!path.startsWith(rootPath)) return null
-        return path.removePrefix(rootPath).split('/').joinToString("/") { URLDecoder.decode(it.replace("+", "%2B"), "UTF-8") }
-            .takeIf { it.isNotEmpty() }
+        val segments = path.removePrefix(rootPath).split('/').map { segment ->
+            runCatching { URLDecoder.decode(segment.replace("+", "%2B"), "UTF-8") }.getOrNull() ?: return null
+        }
+        if (segments.any { it == "." || it == ".." || '/' in it }) return null
+        return segments.joinToString("/").takeIf { it.isNotEmpty() }
     }
 
     companion object {
@@ -169,6 +184,22 @@ class WebDavSource(
         private const val DAV = "DAV:"
         private val PROPFIND_BODY = """<?xml version="1.0" encoding="utf-8"?>
             |<d:propfind xmlns:d="DAV:"><d:prop><d:resourcetype/><d:getcontentlength/><d:getlastmodified/></d:prop></d:propfind>""".trimMargin()
+
+        /** Whether [xml] has `<!DOCTYPE` anywhere, in any case, in UTF-8 or UTF-16 (whose zero bytes are skipped). */
+        internal fun declaresDoctype(xml: ByteArray): Boolean {
+            val marker = "<!DOCTYPE"
+            var matched = 0
+            for (byte in xml) {
+                if (byte == 0.toByte()) continue
+                matched = when {
+                    byte.toInt().toChar().uppercaseChar() == marker[matched] -> matched + 1
+                    byte.toInt().toChar() == marker[0] -> 1
+                    else -> 0
+                }
+                if (matched == marker.length) return true
+            }
+            return false
+        }
 
         internal fun parseHttpDate(value: String): Long? =
             runCatching { ZonedDateTime.parse(value.trim(), DateTimeFormatter.RFC_1123_DATE_TIME).toInstant().toEpochMilli() }.getOrNull()
