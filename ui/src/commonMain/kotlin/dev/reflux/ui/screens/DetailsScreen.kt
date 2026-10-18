@@ -280,6 +280,14 @@ private fun Header(
                                 selected = offline.downloaded,
                             )
                         }
+                        // Telling Reflux what this is, when it guessed wrong; offered more plainly below when it is unsure.
+                        if (app.canIdentify && !details.weak) Button("Identify", { app.navigator.open(Destination.Identify(card.id)) }, style = ButtonStyle.QUIET)
+                    }
+                    if (app.canIdentify && details.weak) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Text("Reflux isn't sure what this is.", style = LocalTypography.current.caption, color = RefluxColors.textSecondary, maxLines = 1)
+                            Button("Identify", { app.navigator.open(Destination.Identify(card.id)) }, icon = Icon.SEARCH)
+                        }
                     }
                     // Said once, quietly, like progress: that it is on this device, or on its way.
                     offline?.label?.let { label ->

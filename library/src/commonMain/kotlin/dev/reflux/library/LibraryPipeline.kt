@@ -1,9 +1,13 @@
 package dev.reflux.library
 
+import dev.reflux.core.metadata.MetadataCandidate
 import dev.reflux.core.metadata.MetadataProvider
+import dev.reflux.core.metadata.MetadataUnavailableException
+import dev.reflux.core.metadata.ScoredCandidate
 import dev.reflux.core.model.ArtworkKind
 import dev.reflux.core.model.ArtworkLocator
 import dev.reflux.core.model.Availability
+import dev.reflux.core.model.MediaId
 import dev.reflux.core.model.SourceId
 import dev.reflux.core.playback.MediaProber
 import dev.reflux.core.source.CatalogSource
@@ -124,6 +128,32 @@ class LibraryPipeline(
             }
         }
     }
+
+    /** Whether works can be identified against a metadata provider here: the build supplied its credential. */
+    val canIdentify: Boolean get() = metadata != null
+
+    /**
+     * What [itemId] could be, best first, for a title the user typed (and a year, if they gave one).
+     * Throws [MetadataUnavailableException] when the provider cannot be reached; returns nothing without one.
+     */
+    suspend fun identifyCandidates(itemId: MediaId, title: String, year: Int?): List<ScoredCandidate> {
+        val provider = metadata ?: return emptyList()
+        return library.searchMetadata(itemId, provider, language, title, year)
+    }
+
+    /**
+     * Makes [itemId] the work [candidate] is, from now on and across rescans, with its titles and artwork, and
+     * returns the work's ID afterwards. Runs between scans, never during one.
+     */
+    suspend fun identify(itemId: MediaId, candidate: MetadataCandidate): MediaId {
+        val provider = metadata ?: return itemId
+        val identified = mutex.withLock { library.identifyAs(itemId, candidate, provider, language) }
+        prefetchArtwork?.let { prefetch -> library.entry(identified)?.let { entry -> prefetch(entry.artwork.values.toList()) } }
+        return identified
+    }
+
+    /** Gives [itemId] back to automatic identification ([Library.undoIdentification]); the work it is now, if any. */
+    suspend fun undoIdentification(itemId: MediaId): MediaId? = mutex.withLock { library.undoIdentification(itemId) }
 
     private companion object {
         const val BATCH = 50

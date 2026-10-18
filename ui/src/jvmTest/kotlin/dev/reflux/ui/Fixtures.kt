@@ -17,6 +17,7 @@ import dev.reflux.core.metadata.MetadataCandidate
 import dev.reflux.core.metadata.MetadataKind
 import dev.reflux.core.metadata.MetadataProvider
 import dev.reflux.core.metadata.MetadataQuery
+import dev.reflux.core.metadata.MetadataUnavailableException
 import dev.reflux.core.metadata.ProviderRef
 import dev.reflux.core.metadata.RemoteArtwork
 import dev.reflux.core.metadata.SeasonMetadata
@@ -131,6 +132,8 @@ object FakeCatalog : MetadataProvider {
         Work("2", MetadataKind.MOVIE, "Blade Runner 2049", 2017, listOf("Science Fiction", "Drama"), 164, 8.0, "A young blade runner unearths a long-buried secret that leads him to track down a former blade runner who has been missing for thirty years.", listOf("Denis Villeneuve" to CreditRole.DIRECTOR, "Ryan Gosling" to CreditRole.ACTOR, "Harrison Ford" to CreditRole.ACTOR)),
         Work("3", MetadataKind.MOVIE, "Arrival", 2016, listOf("Science Fiction", "Drama"), 116, 7.9, "A linguist is recruited to find a way to communicate with visitors whose arrival has divided the world.", listOf("Denis Villeneuve" to CreditRole.DIRECTOR, "Amy Adams" to CreditRole.ACTOR)),
         Work("4", MetadataKind.MOVIE, "Dune", 2021, listOf("Science Fiction", "Adventure"), 155, 8.0, "Paul Atreides travels to the most dangerous planet in the universe to secure the future of his family and his people.", listOf("Denis Villeneuve" to CreditRole.DIRECTOR, "Timothée Chalamet" to CreditRole.ACTOR)),
+        // Another film of the same name, for choosing between them.
+        Work("41", MetadataKind.MOVIE, "Dune", 1984, listOf("Science Fiction"), 137, 6.3, "A duke's son leads desert warriors against the galactic emperor and his father's evil nemesis.", listOf("David Lynch" to CreditRole.DIRECTOR, "Kyle MacLachlan" to CreditRole.ACTOR)),
         Work("5", MetadataKind.MOVIE, "Interstellar", 2014, listOf("Science Fiction", "Adventure"), 169, 8.4, "A team of explorers travels through a wormhole in search of a new home for humanity.", listOf("Christopher Nolan" to CreditRole.DIRECTOR, "Matthew McConaughey" to CreditRole.ACTOR)),
         Work("6", MetadataKind.MOVIE, "Mad Max: Fury Road", 2015, listOf("Action", "Adventure"), 120, 7.6, "In a wasteland where water and fuel are power, a drifter and a rebel commander flee a tyrant across the desert.", listOf("George Miller" to CreditRole.DIRECTOR, "Tom Hardy" to CreditRole.ACTOR)),
         Work("7", MetadataKind.MOVIE, "Alien", 1979, listOf("Horror", "Science Fiction"), 117, 8.2, "The crew of a commercial spacecraft answers a distress call and brings something back aboard.", listOf("Ridley Scott" to CreditRole.DIRECTOR, "Sigourney Weaver" to CreditRole.ACTOR)),
@@ -158,9 +161,19 @@ object FakeCatalog : MetadataProvider {
 
     private fun normalize(title: String) = title.lowercase().filter { it.isLetterOrDigit() }
 
-    override suspend fun search(query: MetadataQuery): List<MetadataCandidate> =
-        works.filter { it.kind == query.kind && normalize(it.title) == normalize(query.title) }
-            .map { MetadataCandidate(ref(it), it.title, year = it.year, overview = it.overview, popularity = 50.0) }
+    /** Every search asked of the catalog, by title, in order. */
+    val searches: MutableList<String> = java.util.Collections.synchronizedList(mutableListOf())
+
+    /** While set, the catalog cannot be reached, as when the device is offline. */
+    @Volatile
+    var unreachable = false
+
+    override suspend fun search(query: MetadataQuery): List<MetadataCandidate> {
+        if (unreachable) throw MetadataUnavailableException("offline")
+        searches += query.title
+        return works.filter { it.kind == query.kind && normalize(it.title) == normalize(query.title) }
+            .map { MetadataCandidate(ref(it), it.title, year = it.year, overview = it.overview, popularity = 50.0, posterUrl = "art://result/${it.title}/${it.year}") }
+    }
 
     override suspend fun findByExternalId(kind: MetadataKind, source: String, id: String): ProviderRef? = null
 

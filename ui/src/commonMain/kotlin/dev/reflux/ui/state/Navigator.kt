@@ -18,6 +18,9 @@ sealed interface Destination {
 
     data class Details(val itemId: MediaId) : Destination
 
+    /** Telling Reflux what a movie or show is ("Identify"), reached from its details page. */
+    data class Identify(val itemId: MediaId) : Destination
+
     /** The complete contents of a Home row: the results of a smart search, under the row's title. */
     data class Listing(val title: String, val query: String) : Destination
 

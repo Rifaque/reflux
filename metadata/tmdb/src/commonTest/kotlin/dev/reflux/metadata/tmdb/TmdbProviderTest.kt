@@ -45,7 +45,8 @@ class TmdbProviderTest {
         val results = tmdb.search(MetadataQuery(MetadataKind.MOVIE, "Interstellar", 2014, language = "en-US"))
         assertEquals(ProviderRef("tmdb", MetadataKind.MOVIE, "157336"), results.first().ref)
         assertEquals(2014, results.first().year)
-        assertEquals("https://image.tmdb.org/t/p/w780/p.jpg", results.first().posterUrl)
+        // Results are told apart by a small poster; the full-size one comes with the chosen work's details.
+        assertEquals("https://image.tmdb.org/t/p/w185/p.jpg", results.first().posterUrl)
         assertNull(results[1].year)
 
         val (url, headers) = requests.single()

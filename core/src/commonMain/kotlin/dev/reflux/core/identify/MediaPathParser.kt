@@ -93,6 +93,13 @@ class MediaPathParser(maxYear: Int) {
         }
     }
 
+    /**
+     * The folder an episode with no show name is grouped by: the one it is in, above any season folders, as a
+     * path within its source ("" at the source's top). `TV/Season 1/S01E02.mkv` is in `TV`.
+     */
+    fun groupingFolder(path: String): String =
+        path.split('/').filter { it.isNotEmpty() }.dropLast(1).dropLastWhile { seasonOfFolder(it) != null }.joinToString("/")
+
     /** The season a folder name denotes (`Season 2`, `S02`, `Specials` → 0), or null. */
     fun seasonOfFolder(name: String): Int? {
         val trimmed = name.trim()

@@ -123,7 +123,8 @@ class TmdbProvider(
             year = date(date)?.year,
             overview = json.string("overview"),
             popularity = json.double("popularity") ?: 0.0,
-            posterUrl = image(json.string("poster_path"), POSTER_SIZE),
+            // A search result's poster is shown small, to tell results apart; the chosen work fetches its own.
+            posterUrl = image(json.string("poster_path"), RESULT_POSTER_SIZE),
         )
     }
 
@@ -265,6 +266,7 @@ class TmdbProvider(
         const val ID: String = "tmdb"
         private const val MAX_ATTEMPTS = 3
         private const val POSTER_SIZE = "w780"
+        private const val RESULT_POSTER_SIZE = "w185"
         private const val BACKDROP_SIZE = "w1280"
         private const val LOGO_SIZE = "w500"
         private const val STILL_SIZE = "w780"

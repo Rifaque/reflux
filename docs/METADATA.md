@@ -80,13 +80,13 @@ TMDB is the first provider. Its credential is an application credential supplied
 
 When two works of the same kind share a provider identifier (a matched provider entry, or an ID embedded in a name or reported by a server), they are the same work under two names. The oldest survives; the other's identity key is recorded as an alias, its files are re-identified into the survivor (episode by episode for shows), and its watch history, favorites, and collection membership move along. Aliases are permanent, so rescans keep one work.
 
-## Manual correction
+## Manual correction (Identify)
 
-Provide a fast flow such as:
+**Details page → Identify → search → choose → remembered.** Every movie and show page offers "Identify" (a quiet button; where Reflux is unsure, the page says so and offers it plainly). An episode is identified through its show. The page searches the work's own name once as it opens, then whatever the user types, when they ask (a trailing year narrows it: "Dune 1984"); results show a small poster, the year, the original title where it differs, and what each is about, and mark the current match. Choosing writes an override for every file of the work and pins the chosen provider entry (`identifyAs`); the work's watch history, favorite, collections, and pinned version follow it, and the corrected work's page opens in place of the old one. "Let Reflux identify it" takes the correction back (`undoIdentification`). Searching, nothing found, and the catalog out of reach are each said; without a provider in the build, Identify is not offered.
 
-**Long press poster -> Identify this movie/show -> candidate search -> choose -> remember**
+Episodes whose path names no show (`S01E01.mkv` at a source's top, `TV/Season 1/S01E02.mkv`) are a show of their folder, titled after it or the source, keyed by source and folder so they never merge with another folder's, and weak until identified (DECISIONS.md, 2026-10-17 and 2026-10-18).
 
-Corrections should persist as Reflux state and must not modify the underlying media file.
+Corrections persist as Reflux state and never modify the underlying media file.
 
 ## Caching
 

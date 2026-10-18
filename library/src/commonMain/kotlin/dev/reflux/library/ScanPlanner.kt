@@ -91,6 +91,8 @@ internal class ScanPlanner(
         files: List<SourceFile>,
         overrides: Map<String, IdentityOverride>,
         externalYearHints: Map<Pair<ParsedKind, String>, Set<Int>>,
+        /** The source's name, which titles episodes at its top whose path names no show. */
+        sourceName: String = "",
     ): ScanPlan {
         val videos = files.filter { ScanRules.roleOf(it.path.substringAfterLast('/')) == FileRole.VIDEO }
         val skipped = mutableMapOf<ParsedKind, Int>()
@@ -98,7 +100,7 @@ internal class ScanPlanner(
         val subtitlesByVideo = sidecars.subtitles.groupBy { it.videoPath }
         val candidates = videos.mapNotNull { file ->
             val parsed = parser.parse(file.path) ?: return@mapNotNull null
-            val effective = overrides[file.path]?.applyTo(parsed) ?: parsed
+            val effective = (overrides[file.path]?.applyTo(parsed) ?: parsed).let { grouped(sourceId, sourceName, file.path, it) }
             if (effective.kind != ParsedKind.MOVIE && effective.kind != ParsedKind.EPISODE) {
                 skipped[effective.kind] = (skipped[effective.kind] ?: 0) + 1
                 return@mapNotNull null
@@ -111,6 +113,19 @@ internal class ScanPlanner(
         val assembled = assemble(sourceId, candidates, externalYearHints)
         val artwork = resolveArtwork(sourceId, sidecars.artwork, assembled.identificationByPath, assembled.items.map { it.id }.toSet())
         return ScanPlan(sourceId, assembled.items, assembled.versions, artwork, skipped, assembled.externalHints, assembled.identityKeys)
+    }
+
+    /**
+     * An episode whose path names no show (`S01E01.mkv` at a source's top, `TV/Season 1/S01E02.mkv`) belongs to
+     * a show of its folder, titled after that folder or the source, and kept apart from every other folder's
+     * (DECISIONS.md, 2026-10-17). It stays a weak identification, offered to Identify; a user's correction
+     * gives it a title of its own and takes it out of the group.
+     */
+    private fun grouped(sourceId: SourceId, sourceName: String, path: String, parsed: ParsedMedia): ParsedMedia {
+        if (parsed.kind != ParsedKind.EPISODE || parsed.title.isNotBlank()) return parsed
+        val folder = parser.groupingFolder(path)
+        val title = folder.substringAfterLast('/').ifEmpty { sourceName }.ifBlank { "Episodes" }
+        return parsed.copy(title = title, group = "${sourceId.value}/$folder")
     }
 
     /** Plans a catalog source: identities, streams, subtitles, and artwork come from the source. */
@@ -200,7 +215,7 @@ internal class ScanPlanner(
             val parsed = identification.parsed
             when (identification) {
                 is Identification.OfMovie -> identification.movie.id to canonical(IdentityKeys.movie(parsed.title, parsed.year))
-                is Identification.OfEpisode -> identification.show.id to canonical(IdentityKeys.show(parsed.title, parsed.year))
+                is Identification.OfEpisode -> identification.show.id to canonical(IdentityKeys.show(parsed.title, parsed.year, parsed.group))
             }
         }
         return Assembled(
