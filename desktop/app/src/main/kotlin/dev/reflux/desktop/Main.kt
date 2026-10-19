@@ -41,6 +41,8 @@ import dev.reflux.ui.player.PlayerOverlay
 import dev.reflux.ui.state.AppState
 import dev.reflux.ui.theme.RefluxColors
 import kotlinx.coroutines.CoroutineExceptionHandler
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.awt.AWTEvent
 import java.awt.Dimension
@@ -77,10 +79,17 @@ internal fun runReflux(
         // The last line of defence: a failure nobody handled is written down instead of ending the app.
         val scope = rememberCoroutineScope { CoroutineExceptionHandler { _, error -> platform.report("An unexpected error was not handled", error) } }
         val app = remember {
-            AppState(environment.library, environment.pipeline, environment.registry::resolve, platform, scope).also {
-                it.start()
+            AppState(environment.library, environment.pipeline, environment.registry::resolve, platform, scope).also { state ->
+                state.start()
                 // Copies are made for as long as Reflux runs, whatever screen is open.
                 environment.startOffline(scope)
+                // What is observed of the display and decoding changes what Best Version says; pages read it again.
+                environment.capabilities.onChange = { SwingUtilities.invokeLater { state.invalidate() } }
+                scope.launch(Dispatchers.IO) {
+                    // Once the library's first refresh has had the machine to itself.
+                    delay(DECODE_PROBE_DELAY_MS)
+                    environment.probeDecoding()
+                }
             }
         }
         val windowState = rememberWindowState(size = DpSize(1360.dp, 860.dp), position = WindowPosition.Aligned(Alignment.Center))
@@ -123,8 +132,10 @@ internal fun runReflux(
                         SwingUtilities.invokeLater { app.onGamepadButton(button, family) }
                     }
                 }
+                val displays = DisplayWatcher(window, environment.capabilities)
                 onStarted(RunningReflux(app, window, ::exitApplication))
                 onDispose {
+                    displays.close()
                     controllers?.close()
                     Toolkit.getDefaultToolkit().removeAWTEventListener(mouse)
                     focus.removeKeyEventDispatcher(keys)
@@ -194,6 +205,9 @@ private fun darkTitleBar(window: java.awt.Window) {
         Native.load("dwmapi", Dwm::class.java).DwmSetWindowAttribute(handle, DWMWA_USE_IMMERSIVE_DARK_MODE, enabled, 4)
     }
 }
+
+/** How long after start the engine is asked about hardware decoding (about two seconds of work, once). */
+private const val DECODE_PROBE_DELAY_MS = 3_000L
 
 private const val DWMWA_USE_IMMERSIVE_DARK_MODE = 20
 

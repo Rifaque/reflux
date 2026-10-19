@@ -3,7 +3,6 @@ package dev.reflux.desktop.engine
 import dev.reflux.core.metadata.MetadataProvider
 import dev.reflux.core.model.SourceId
 import dev.reflux.core.playback.DeviceCapabilities
-import dev.reflux.core.playback.DisplayCapabilities
 import dev.reflux.core.source.MediaSource
 import dev.reflux.library.ArtworkCache
 import dev.reflux.library.ConfigSeal
@@ -20,7 +19,8 @@ import dev.reflux.library.SignOut
 import dev.reflux.library.SourceRegistry
 import dev.reflux.library.net.JdkHttpFetcher
 import dev.reflux.metadata.tmdb.TmdbProvider
-import dev.reflux.playback.mpv.DesktopCapabilities
+import dev.reflux.playback.mpv.DecodeEvidence
+import dev.reflux.playback.mpv.MpvDecodeProbe
 import dev.reflux.playback.mpv.MpvPlayer
 import dev.reflux.playback.mpv.MpvProbe
 import dev.reflux.sources.jellyfin.JellyfinConnector
@@ -38,7 +38,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import java.awt.GraphicsEnvironment
 import java.io.IOException
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
@@ -149,7 +148,32 @@ class DesktopEnvironment(
 
     fun source(id: SourceId): MediaSource? = registry.resolve(id)
 
-    fun deviceCapabilities(): DeviceCapabilities = DesktopCapabilities.of(display())
+    /**
+     * What this machine can show and decode, as observed (docs/DECISIONS.md, "Desktop capabilities are observed,
+     * not declared"). Starts from the default screen and nothing known of hardware decoding; the shell tells it
+     * which display the window is on, and [probeDecoding] and every playback what the engine decodes.
+     */
+    val capabilities = ObservedCapabilities(report = diagnostics::record).also { it.observeDisplay(null) }
+
+    /** What Best Version is told now. */
+    fun deviceCapabilities(): DeviceCapabilities = capabilities.current()
+
+    /**
+     * Asks the engine which codecs this machine's hardware decodes ([MpvDecodeProbe]), once. Blocking, about a
+     * second or two; run it in the background after start. Without libmpv nothing is learned, and decoding stays
+     * unknown.
+     */
+    fun probeDecoding() {
+        val probe = MpvDecodeProbe.createOrNull() ?: return capabilities.probed(DecodeEvidence.UNKNOWN, 0).let { }
+        val started = System.nanoTime()
+        val evidence = try {
+            probe.run()
+        } catch (e: Exception) {
+            diagnostics.record("The hardware decoding probe failed; decoding stays unknown", e)
+            DecodeEvidence.UNKNOWN
+        }
+        capabilities.probed(evidence, (System.nanoTime() - started) / 1_000_000)
+    }
 
     /**
      * Smart Offline on this machine, with the same planner and rules as everywhere (docs/OFFLINE.md). Copies are
@@ -157,13 +181,12 @@ class DesktopEnvironment(
      * starts (see [startOffline]).
      */
     val offline: Offline by lazy {
-        val device by lazy { deviceCapabilities() }
         Offline(
             library = library,
             store = downloads,
             transport = HttpDownloadTransport("Reflux/0.1"),
             sources = registry::resolve,
-            device = { device },
+            device = { capabilities.current() },
             preferredLanguages = listOf(Locale.getDefault().language).filter { it.isNotBlank() },
             register = registry::register,
             dispatcher = Dispatchers.IO,
@@ -236,14 +259,8 @@ class DesktopEnvironment(
             }
             sink
         }
-        return MpvPlayer.create(deviceCapabilities(), options, log)
+        return MpvPlayer.create(deviceCapabilities(), options, log, onDecode = { capabilities.decoded(it) })
     }
 
     private fun hostName(): String = runCatching { java.net.InetAddress.getLocalHost().hostName }.getOrNull()?.takeIf { it.isNotBlank() } ?: "desktop"
-
-    private fun display(): DisplayCapabilities {
-        if (GraphicsEnvironment.isHeadless()) return DisplayCapabilities(1920, 1080)
-        val mode = GraphicsEnvironment.getLocalGraphicsEnvironment().defaultScreenDevice.displayMode
-        return DisplayCapabilities(mode.width, mode.height)
-    }
 }

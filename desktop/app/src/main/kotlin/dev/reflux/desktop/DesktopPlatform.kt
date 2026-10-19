@@ -32,7 +32,8 @@ internal class DesktopPlatform(private val environment: DesktopEnvironment) : Pl
 
     override val artwork: ArtworkLoader = DesktopArtworkLoader(environment.artwork, environment.registry::resolve)
 
-    override val device: DeviceCapabilities by lazy { environment.deviceCapabilities() }
+    /** As observed now: the display the window is on, and what the engine was seen to decode ([DisplayWatcher]). */
+    override val device: DeviceCapabilities get() = environment.deviceCapabilities()
 
     override val preferredLanguages: List<String> =
         listOf(Locale.getDefault().language).filter { it.isNotBlank() }.ifEmpty { listOf("en") }

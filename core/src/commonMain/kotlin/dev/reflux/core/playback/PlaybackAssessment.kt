@@ -62,7 +62,8 @@ object PlaybackAssessor {
                 fitting.isEmpty() && decoders.none { it.fitsFrame(video) } ->
                     return listOf(PlaybackIssue.VIDEO_RESOLUTION_UNSUPPORTED)
                 fitting.isEmpty() -> return listOf(PlaybackIssue.VIDEO_BIT_DEPTH_UNSUPPORTED)
-                fitting.none { it.hardware } -> issues += PlaybackIssue.SOFTWARE_VIDEO_DECODE
+                // Only where software is all there is known to be; a decoder that may be hardware is not a compromise.
+                fitting.all { it.hardware == false } -> issues += PlaybackIssue.SOFTWARE_VIDEO_DECODE
             }
         }
         issues += assessDynamicRange(video, device.display)

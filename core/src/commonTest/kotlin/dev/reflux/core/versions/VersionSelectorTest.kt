@@ -256,4 +256,12 @@ class VersionSelectorTest {
         val selection = VersionSelector.select(listOf(extended, away, theatrical), Devices.oldPhone, resuming = progress)
         assertEquals(theatrical.version, selection.best?.version)
     }
+
+    @Test
+    fun aDisplayOfUnknownSizeCapsNothing() {
+        val unknownDisplay = Devices.tv4kHdr.copy(display = Devices.tv4kHdr.display.copy(maxWidth = null, maxHeight = null))
+        val selection = VersionSelector.select(listOf(candidate("hd", height = 1080, size = 9_000), candidate("uhd", height = 2160, size = 1_000)), unknownDisplay)
+        assertEquals("uhd", selection.best?.version?.location?.path?.removeSuffix(".mkv"))
+        assertEquals(SelectionCriterion.RESOLUTION, selection.decidedBy)
+    }
 }

@@ -79,6 +79,25 @@ class PlaybackAssessorTest {
         val avi = StreamInfo(container = Container.AVI)
         assertEquals(PlaybackVerdict.UNSUPPORTED, PlaybackAssessor.assess(avi, Devices.oldPhone).verdict)
     }
+
+    @Test
+    fun aDecoderNotKnownToBeHardwareOrSoftwareIsNoCompromise() {
+        val unsure = Devices.laptop1080.copy(
+            videoDecoders = listOf(
+                VideoDecoderSupport(VideoCodec.HEVC, 7680, 4320, 12, hardware = false),
+                VideoDecoderSupport(VideoCodec.HEVC, 7680, 4320, 10, hardware = null),
+            ),
+        )
+        assertEquals(emptyList(), PlaybackAssessor.assess(video(VideoCodec.HEVC, 1080, bitDepth = 10), unsure).issues, "unknown is not counted against it")
+        assertEquals(
+            listOf(PlaybackIssue.SOFTWARE_VIDEO_DECODE),
+            PlaybackAssessor.assess(video(VideoCodec.HEVC, 1080, bitDepth = 12), unsure).issues,
+            "where only software is known to fit, that is what it is",
+        )
+        assertEquals(null, unsure.decoderFor(VideoCodec.HEVC)?.hardware, "an unknown decoder is offered before a known software one")
+        val known = unsure.copy(videoDecoders = unsure.videoDecoders + VideoDecoderSupport(VideoCodec.HEVC, 3840, 2160, 10, hardware = true))
+        assertEquals(true, known.decoderFor(VideoCodec.HEVC)?.hardware, "and a known hardware one before both")
+    }
 }
 
 class NominalHeightTest {
