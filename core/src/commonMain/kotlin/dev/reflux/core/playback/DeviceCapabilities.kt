@@ -6,13 +6,18 @@ data class VideoDecoderSupport(
     val maxWidth: Int,
     val maxHeight: Int,
     val maxBitDepth: Int = 8,
-    val hardware: Boolean,
+    /**
+     * Whether it decodes in hardware: true or false where the platform says, null where that is not known
+     * (a desktop before its engine has been asked). Unknown is neither counted against a version nor for it.
+     */
+    val hardware: Boolean?,
 )
 
-/** What the attached display can present. */
+/** What the display playback goes to can present. */
 data class DisplayCapabilities(
-    val maxWidth: Int,
-    val maxHeight: Int,
+    /** Its size in pixels; null when it is not known which display that is, and nothing is capped by it. */
+    val maxWidth: Int?,
+    val maxHeight: Int?,
     val dynamicRanges: Set<DynamicRange> = setOf(DynamicRange.SDR),
     /** Whether the playback stack can tone-map HDR content for a display that cannot show it. */
     val canToneMap: Boolean = false,
@@ -44,9 +49,15 @@ data class DeviceCapabilities(
     val subtitleFormats: Set<SubtitleFormat>,
     val features: Set<PlaybackFeature> = emptySet(),
 ) {
-    /** The best decoder for [codec]: hardware first, then the largest supported frame. */
+    /** The best decoder for [codec]: known hardware first, then unknown, then software; then the largest supported frame. */
     fun decoderFor(codec: VideoCodec): VideoDecoderSupport? =
         videoDecoders.filter { it.codec == codec }
-            .sortedWith(compareByDescending<VideoDecoderSupport> { it.hardware }.thenByDescending { it.maxWidth * it.maxHeight })
+            .sortedWith(compareByDescending<VideoDecoderSupport> { hardwareRank(it.hardware) }.thenByDescending { it.maxWidth.toLong() * it.maxHeight })
             .firstOrNull()
+
+    private fun hardwareRank(hardware: Boolean?): Int = when (hardware) {
+        true -> 2
+        null -> 1
+        false -> 0
+    }
 }

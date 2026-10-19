@@ -125,7 +125,7 @@ class TelevisionOnDeviceTest {
     fun theDeviceSaysForItselfWhatItCanShowAndSendOut() {
         val device = AndroidEnvironment(context, data, databaseName = null).capabilities
         // Nothing is assumed of a screen or an output: what is claimed is what was reported.
-        assertTrue(device.videoDecoders.isNotEmpty() && device.display.maxWidth >= device.display.maxHeight)
+        assertTrue(device.videoDecoders.isNotEmpty() && device.display.maxWidth!! >= device.display.maxHeight!!)
         assertTrue(device.videoDecoders.all { it.maxWidth > 0 && it.maxHeight > 0 })
         assertTrue(device.maxOutputChannels >= 2)
         assertEquals(device.audioPassthrough.isNotEmpty(), PlaybackFeature.AUDIO_PASSTHROUGH in device.features)

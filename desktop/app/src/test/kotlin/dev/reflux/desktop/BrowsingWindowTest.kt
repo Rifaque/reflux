@@ -146,7 +146,8 @@ class BrowsingWindowTest {
         assumeTrue("window tests not requested", windowTestsRequested)
         val pad = ScriptedGamepad(ControllerFamily.PLAYSTATION)
         try {
-            Shell(environment(), pad).use { shell ->
+            val environment = environment()
+            Shell(environment, pad).use { shell ->
                 val app = shell.app
                 shell.awaitShown("Recently Added")
                 // Controllers act only on the application in use; the test window has to be that application.
@@ -174,7 +175,9 @@ class BrowsingWindowTest {
                 pad.press(GamepadButton.FACE_EAST)
                 shell.await("Back to return Home") { app.navigator.current == Destination.Home }
 
-                // Holding a direction travels.
+                // Holding a direction travels. What the machine was found to decode refreshes pages once, a few
+                // seconds after start; that is not navigation.
+                shell.await("the decode probe to finish", timeoutMs = 30_000) { environment.capabilities.probeFinished }
                 pad.press(GamepadButton.DPAD_DOWN)
                 pad.press(GamepadButton.DPAD_DOWN)
                 val start = shell.ui { app.revision }
