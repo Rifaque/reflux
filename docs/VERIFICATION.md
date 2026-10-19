@@ -404,3 +404,24 @@ Investigated on 2026-10-19 on Windows 11 (125% scaling, two screens) and in the 
 | Full check, Windows 11 | `./gradlew check --continue` plus `:android:app:compileDebugAndroidTestKotlin` | 738 tests, none failed, 11 skipped (environment-gated, as before). The live Jellyfin server answered again, and both live Jellyfin tests passed: their failures in the previous cycle were the server being off. Android lint and `checkDebugPlatformApi` passed |
 | Not verified | A by-hand check with a person's mouse and keyboard (the window tests drive the real window through the toolkit's input path without moving the system pointer); a screen reader actually reading a page change | Open |
 | For M1.6 | The leaving page's fade (140 ms) takes visibly longer under the container's software rendering; the show's "Downloaded" label trails the season's by a moment after a season finishes downloading | Recorded |
+
+## About, legal, and attribution: what was verified
+
+2026-10-19, on the Windows 11 machine, from the working tree on top of `8bd4bba`.
+
+**Automated (deterministic, no live service):**
+
+- Full `./gradlew check :android:app:assembleDebugAndroidTest --continue`: green, 756 tests, 0 failures, 11 skipped (the same environment-gated skips as before: window, controller, and live-share tests). It ran the live Jellyfin tests against the user's server, `checkDebugPlatformApi`, Android lint, and the new `checkThirdPartyNotices` for `desktop:app` and `android:app`.
+- New: `AboutUiTest` (11: reached from the media sources and back, the version from `RefluxBuild` with the recorded commit and a modified tree, TMDB's notice word for word with its logo smaller than Reflux's name and in its own proportions, nothing credited or claimed without a provider, each build's own notices, a license shown as it is, libmpv said to be not included, a keyboard in and back to each page's control, a remote paragraph by paragraph through the Apache License with every stop on screen and back to the control each page was left by, headings and button roles, the leaving page absent from the semantics tree mid-transition, every listed text present, reflowing that changes no word), `BuildIdentityTest` (core, 4), `TmdbAttributionTest` (2: the notice, and the logo's path, box, and gradient equal to TMDB's published SVG, kept as a test resource), and `BuildIdentityTest` in `desktop:app` (the commit the build recorded equals `git rev-parse`, and the modified flag `git status`).
+- `checkThirdPartyNotices` was seen to fail, naming `com.google.guava:*`, with Guava's line removed, and to pass with it back.
+- The configuration cache is reused after an edit: the commit is read when a task needs it, not while configuring.
+- Offscreen renderings reviewed (`-Preflux.screenshots`): About at 1440x900 and 412x915, the desktop notices, Bouncy Castle's license, and the television at 960x540 reading the Apache License.
+
+**Real desktop window (Windows):** `./gradlew :desktop:app:test -Preflux.windowTests=true`. New `AboutWindowTest`: the media sources button and About Reflux with the mouse, "Version 0.9.0-alpha.1 (8bd4bba, modified)" from the build, arrows through the page, Enter into the notices, Skia's license opened with the mouse (scrolled to as a wheel would), and Escape back page by page, the first arrow landing on the control each page was left by: passed. In the full window run the browsing, capabilities, offline, and silent-source window tests passed; `FirstRunTest` failed once with an empty first library and passed on an untouched rerun (the machine was in use); `EmbeddedPlaybackTest` failed with "the desktop is locked or something covers the Reflux window", its own message for a screen it cannot see (the machine was in use), so it says nothing about this change. Without a TMDB credential on this machine the real window showed no credit and no TMDB claim, as intended.
+
+**Not verified:**
+
+- Linux container window rounds: started, then stopped by Claude Code's low-memory reaper about 45 seconds in, while still compiling (0.8 GB free; the user had a game open). Not rerun.
+- Google TV emulator and `AboutOnDeviceTest` on a device: not run, for the same memory reason. The instrumented test package builds.
+- Physical Fire TV: the stick answered ping but refused adb on 5555 all session (network debugging off, probably after a restart).
+- TMDB against the live service (no credential here; M3). Only the attribution's content was checked, against TMDB's FAQ and published logo file, read 2026-10-19.

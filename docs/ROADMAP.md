@@ -107,16 +107,16 @@ V1 contains what Reflux fundamentally is, and no more. Each row is required for 
 | Fire TV / Fire OS | Partial (one physical device) | Smoke-tested on a Fire TV Stick 4K Plus (`AFTMA08C15`, Fire OS 8.1.8.5, API 30, 32-bit userland) on 2026-10-18 with a debug build: installation, launcher, remote navigation, the folder chooser, browsing, details, search, playback up to 4K60 HEVC Main10 on the hardware decoder, lifecycle, the media session, and the instrumented suite (VERIFICATION.md). Five Fire OS defects found and fixed (DECISIONS.md, 2026-10-18). Left: the Fire TV television (not reachable), a release build (M2), Jellyfin from the device (SMB was used for Smart Offline, 2026-10-18; WebDAV added, scanned, played, and removed on the device, 2026-10-19), a USB drive, HDR output, sleep and wake, Amazon's own test criteria. Fire OS has the TV provider, and Reflux writes no Watch Next programs to it; with Reflux in the background a remote's Play key is not obeyed (both DECISIONS.md, 2026-10-18). Fire OS 6 devices (`AFTMM`, API 25) are below `minSdk`; Vega OS devices (`AFTCR001`) do not run Android applications |
 | Windows and Linux | Partial | Capabilities observed since 2026-10-19 (the display the window is on, hardware decoding as the engine shows it). Left: media keys; scrollbars; HDR output |
 | Accessibility baseline | Partial | Contrast and system text size are tested. Screen-reader labels on every control, focus order, reduced motion, and a TalkBack / Narrator pass are not |
-| About, legal, and attribution | Open | An About page: version and build, licenses (Reflux and third-party, including libmpv/FFmpeg obligations), TMDB attribution and logo, privacy and support links |
+| About, legal, and attribution | Done (automated, Windows window), 2026-10-19; three parts wait elsewhere | About Reflux, from the media sources page: version and build, the metadata provider's credit (TMDB's logo and notice, from its adapter), what Reflux keeps and sends, and the third-party software with every license text, checked against each build by `check` (DECISIONS.md, 2026-10-19). Verified offscreen at every form factor (television remote included) and in a real Windows window; the Linux container, the Google TV emulator, and the Fire TV are not run yet (VERIFICATION.md). Waiting elsewhere: Reflux's own license (a decision; M2 row), the privacy policy and support links (the website, W3), and libmpv's notice for a bundled build (M2). A diagnostics export is not in it: the log keeps file paths and titles (DECISIONS.md, 2026-10-19) |
 | Casting | Gate | Time-boxed feasibility before beta; V1.1 if it fails the gate (DECISIONS.md, 2026-10-17, "Casting is a V1 feasibility gate") |
 
-First M1 slice, done 2026-10-17: "From the start" keeps the place (Reflux and Jellyfin), and films' versions can be pinned and unpinned on every form factor. Second, done 2026-10-18: Watch Next on Android TV / Google TV, and the Fire TV home-screen decision. Third, 2026-10-18: the Fire TV smoke test on physical hardware and its fixes. Fourth, 2026-10-18: Identify, and episodes without a show name grouped by folder. Fifth, 2026-10-18: no Watch Next programs on Fire OS, Play ignored out of sight, and an episode's versions (list and pin). Sixth, 2026-10-18: Smart Offline complete (episodes, seasons, the Downloads page, the desktop). Seventh, 2026-10-19: WebDAV on Android (phones, televisions, Fire TV). Eighth, 2026-10-19: removing a Jellyfin server signs its session out. Ninth, 2026-10-19: desktop capabilities observed, not declared. Recommended order after it: About/legal, accessibility, the casting spike, performance R&D.
+First M1 slice, done 2026-10-17: "From the start" keeps the place (Reflux and Jellyfin), and films' versions can be pinned and unpinned on every form factor. Second, done 2026-10-18: Watch Next on Android TV / Google TV, and the Fire TV home-screen decision. Third, 2026-10-18: the Fire TV smoke test on physical hardware and its fixes. Fourth, 2026-10-18: Identify, and episodes without a show name grouped by folder. Fifth, 2026-10-18: no Watch Next programs on Fire OS, Play ignored out of sight, and an episode's versions (list and pin). Sixth, 2026-10-18: Smart Offline complete (episodes, seasons, the Downloads page, the desktop). Seventh, 2026-10-19: WebDAV on Android (phones, televisions, Fire TV). Eighth, 2026-10-19: removing a Jellyfin server signs its session out. Ninth, 2026-10-19: desktop capabilities observed, not declared. Tenth, 2026-10-19: About, legal, and attribution. Recommended order after it: accessibility, the casting spike, performance R&D.
 
 ## M2 — Release engineering
 
 | Item | State |
 | --- | --- |
-| License chosen for Reflux (blocks every distribution) | Open |
+| License chosen for Reflux (blocks every distribution). The About page shows it once `LICENSE` is in the repository | Open: a decision for the product owner |
 | Android signed release build, R8 shrinking with keep rules validated on device | Open |
 | Android install, upgrade, and data migration tests (debug → release, release → release) | Open |
 | Android in CI (unit tests, lint, a release build; instrumented tests where a runner allows) | Open |
@@ -127,9 +127,10 @@ First M1 slice, done 2026-10-17: "From the start" keeps the place (Reflux and Je
 | Google Play readiness: listing, data safety form, content rating, target API, TV quality checklist, Watch Next certification for Google TV, closed-testing track | Open |
 | Fire OS / Amazon Appstore readiness: listing, Fire TV device targeting, Amazon's app review requirements, test on the declared devices | Open |
 | Desktop packaging: Windows installer (signed), Linux package(s) | Open |
-| libmpv distribution with provenance (LGPL build, license texts, source offer) | Open |
+| libmpv distribution with provenance (LGPL build, license texts, source offer), and its line in `legal/components.txt` | Open |
 | Desktop metadata: version, icon, file associations if any, data directory | Open |
 | TMDB credential injected into release builds, never committed | Open |
+| A diagnostics export for bug reports, with file paths and titles redacted, and the in-app feedback link (beta entry, RELEASE.md) | Open |
 | Release checklist (RELEASE.md) exercised end to end once before beta | Open |
 
 ## M3 — Real-world validation

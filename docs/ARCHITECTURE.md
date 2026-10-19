@@ -194,7 +194,7 @@ There are two shells, `desktop:app` and `android:app`. Each supplies what only i
 
 | Piece | Desktop | Android |
 | --- | --- | --- |
-| `Platform` (artwork decoding, device capabilities, player and video surface, adding media, fullscreen, problem reports): the whole contract between `ui` and a shell | `DesktopPlatform`: Skia decoding, AWT windows | `AndroidPlatform`: the platform decoder, the system folder picker, system bars and orientation |
+| `Platform` (artwork decoding, device capabilities, player and video surface, adding media, fullscreen, problem reports, which build it is and whose notices apply): the whole contract between `ui` and a shell | `DesktopPlatform`: Skia decoding, AWT windows | `AndroidPlatform`: the platform decoder, the system folder picker, system bars and orientation |
 | Hosting the experience layer | A Compose window, with the player's controls in a window above the video | One activity (`MainActivity`), edge to edge, with the controls composed above the video |
 | Input normalization into `Key`, `GamepadButton`, and `InputSignal` | AWT keys; XInput, HID, and joystick readers | Key and motion events (`Input`, `StickDirections`); Back through the system's back dispatcher |
 | Playback engine behind `Player` | libmpv into a native child window | Media3 (ExoPlayer) into a `SurfaceView` (`Media3Player`); subtitles are drawn by the shell. The same engine is the device's media session, so headset buttons and the system's own controls act on the one playback state |
@@ -222,6 +222,8 @@ How the shared code reaches each platform:
 - Without an Android SDK (`ANDROID_HOME`, or `sdk.dir` in `local.properties`), the Android variant of `ui` and the `android` modules are simply not part of the build. Everything else builds and tests as before.
 
 Two things keep the shared code honest about platform APIs. The compiler does for `ui`, which no longer has a single target. For the engine modules, `./gradlew check` still fails when `commonMain` sources import or call platform-only APIs (`verifySharedSources`), and the on-device tests run the engine on a real Android runtime, which is where differences in behavior rather than in API show up: Android's regular expressions are a stricter engine than the JDK's, and that was found there.
+
+The About page's third-party notices are generated into `ui` from `legal/` at build time, and `check` holds that list to each shell's runtime classpath (`checkThirdPartyNotices`; RELEASE.md, "Third-party notices"). The commit a build is made from is written into each shell's package by its build, read by `Platform.build`; the version stays `RefluxBuild.VERSION` (VERSIONING.md).
 
 ### Layout by form factor
 
