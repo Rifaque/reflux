@@ -32,3 +32,4 @@ What changes for people using Reflux, version by version. The rules for versions
 - Web shares are only ever asked about their own address: a share whose listing names another server or a folder outside the share no longer sends your sign-in there.
 - About Reflux, at the end of the Media sources page, says which version you have, what Reflux keeps on your device and what it sends where, credits TMDB for titles and artwork, and lists the software Reflux is built with, each with its license.
 - With a keyboard, a controller, or a remote, going back from several pages in now returns to what you chose on each page, instead of the top of the page.
+- About Reflux says who owns Reflux: it is proprietary software by RSX Develops, all rights reserved, under "Copyright and ownership". The software Reflux is built with keeps its own licenses, listed separately under "Third-party software".

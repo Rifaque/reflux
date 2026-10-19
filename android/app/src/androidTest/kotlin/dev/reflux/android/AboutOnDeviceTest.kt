@@ -43,5 +43,10 @@ class AboutOnDeviceTest {
             val text = assertNotNull(Notices.text(file), "${component.name}: $file")
             assertTrue(Notices.paragraphs(text).isNotEmpty())
         }
+        // Reflux's own notice is in the package too: proprietary, and not among the third parties.
+        val own = assertNotNull(Notices.refluxLicense, "Reflux's copyright notice is in the package")
+        assertTrue("It is not open source" in own && "nothing in this notice changes or restricts them" in own)
+        assertEquals("Copyright © 2026 RSX Develops. All rights reserved.", Notices.refluxCopyright)
+        assertFalse("Reflux" in names)
     }
 }

@@ -146,12 +146,40 @@ class AboutUiTest {
     }
 
     @Test
+    fun refluxIsProprietaryAndItsOwnTermsStandApartFromTheThirdParties() = screen(populated(), height = 2400) { app ->
+        val notice = assertNotNull(Notices.refluxLicense)
+        // An ownership notice, not an open-source license: none of their grants is in it.
+        for (grant in listOf("Permission is hereby granted", "Licensed under", "GNU", "Redistribution and use", "MIT License")) {
+            assertFalse(grant in notice, "Reflux's notice grants no open-source license: \"$grant\"")
+        }
+        assertEquals("Copyright © 2026 RSX Develops. All rights reserved.", Notices.refluxCopyright)
+        openAbout(app)
+        // The copyright with the build, and Reflux's own terms a row of their own, before the software it is built with.
+        assertTrue(shows("Copyright © 2026 RSX Develops. All rights reserved."))
+        val own = onNode(hasText("Copyright and ownership") and SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button)).fetchSemanticsNode()
+        val others = onNode(hasText("Third-party software") and SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button)).fetchSemanticsNode()
+        assertTrue(own.boundsInRoot.bottom <= others.boundsInRoot.top, "Reflux's own row comes first")
+        assertTrue(shows("Reflux is proprietary software, not open source"))
+        onNodeWithText("Copyright and ownership").performClick()
+        await("the notice") { shows("Reflux is proprietary software. It is not open source", substring = true) }
+        assertTrue(shows("nothing in this notice changes or restricts them", substring = true), "third-party licenses stay their own")
+        save("about-ownership")
+        // The third-party list is the third parties': Reflux is not among them, and each keeps its own license.
+        runOnIdle { app.navigator.open(Destination.Notices) }
+        awaitText("Kotlin and kotlinx libraries")
+        assertTrue(shows("which Reflux's own copyright does not change", substring = true))
+        assertTrue(Notices.components(NoticeTarget.DESKTOP).none { it.name == "Reflux" || "RSX Develops" in it.license })
+    }
+
+    @Test
     fun aKeyboardGoesInAndComesBackToWhereItWas() = screen(populated()) { app ->
         openAbout(app)
         // The first arrow starts on the page's first stop: who and what this is.
         runOnIdle { app.onKey(Key.ARROW_DOWN) }
         awaitFocusOn("Version ${RefluxBuild.VERSION}")
         repeat(3) { runOnIdle { app.onKey(Key.ARROW_DOWN) } }
+        awaitFocusOn("Copyright and ownership")
+        runOnIdle { app.onKey(Key.ARROW_DOWN) }
         awaitFocusOn("Third-party software")
         onNode(isFocused()).performKeyInput { pressKey(ComposeKey.Enter) }
         await("the notices") { app.navigator.current == Destination.Notices }
@@ -181,7 +209,7 @@ class AboutUiTest {
         remote(app, Key.DPAD_CENTER)
         // A television arrives on the page's first stop, not on the navigation above it.
         awaitFocusOn("Version ${RefluxBuild.VERSION}")
-        repeat(3) { remote(app, Key.ARROW_DOWN) }
+        repeat(4) { remote(app, Key.ARROW_DOWN) }
         awaitFocusOn("Third-party software")
         remote(app, Key.DPAD_CENTER)
         awaitFocusOn("Kotlin and kotlinx libraries")
@@ -236,9 +264,8 @@ class AboutUiTest {
                 assertNotNull(Notices.text(file), "${component.name}: $file")
             }
         }
-        // Reflux's own license is shown exactly when the repository has one.
-        val license = File("../LICENSE").takeIf { it.exists() }?.readText()
-        assertEquals(license, Notices.refluxLicense)
+        // Reflux's own notice is the repository's, word for word.
+        assertEquals(File("../LICENSE").readText(), assertNotNull(Notices.refluxLicense))
     }
 
     @Test

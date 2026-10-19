@@ -67,6 +67,7 @@ internal fun AboutScreen(app: AppState) {
                 Text("Reflux", Modifier.semantics { heading() }, style = LocalTypography.current.headline)
                 Text("A media player built around your media, not your media server.", color = RefluxColors.textSecondary)
                 Text("Version ${build.label}", Modifier.padding(top = 4.dp), style = LocalTypography.current.caption, color = RefluxColors.textTertiary)
+                Notices.refluxCopyright?.let { Text(it, style = LocalTypography.current.caption, color = RefluxColors.textTertiary) }
             }
         }
         attribution?.let { credit -> item(key = "credits") { Credit(credit) } }
@@ -86,22 +87,23 @@ internal fun AboutScreen(app: AppState) {
                 )
             }
         }
+        // Reflux's own terms first, then the software it is built with: two rows, so neither reads as the other's.
+        if (Notices.refluxLicense != null) {
+            item(key = "license") {
+                val back = rememberFocusReturn("about/license")
+                Link("Copyright and ownership", "Reflux is proprietary software, not open source", back.modifier) {
+                    back.leaving()
+                    app.navigator.open(Destination.Notice(REFLUX_NOTICE))
+                }
+            }
+        }
         if (target != null) {
             item(key = "notices") {
                 val back = rememberFocusReturn("about/notices")
                 val count = Notices.components(target).size
-                Link("Third-party software", "$count components Reflux is built with, and their licenses", back.modifier) {
+                Link("Third-party software", "$count components Reflux is built with, each under its own license", back.modifier) {
                     back.leaving()
                     app.navigator.open(Destination.Notices)
-                }
-            }
-        }
-        if (Notices.refluxLicense != null) {
-            item(key = "license") {
-                val back = rememberFocusReturn("about/license")
-                Link("Reflux's license", "The terms Reflux itself is under", back.modifier) {
-                    back.leaving()
-                    app.navigator.open(Destination.Notice(REFLUX_NOTICE))
                 }
             }
         }
@@ -163,7 +165,9 @@ internal fun NoticesScreen(app: AppState) {
     val target = app.platform.notices ?: return
     val components = remember(target) { Notices.components(target) }
     Page {
-        item(key = "heading") { Heading("Third-party software", "Reflux is built with this software, each under its own license. Thank you to everyone who makes it.") }
+        item(key = "heading") {
+            Heading("Third-party software", "Reflux is built with this software, each under its own license, which Reflux's own copyright does not change. Thank you to everyone who makes it.")
+        }
         itemsIndexed(components, key = { _, it -> it.name }) { index, component ->
             val back = rememberFocusReturn("notice/${component.name}")
             NoticeRow(component, if (index == 0) back.modifier.initialFocus() else back.modifier) {

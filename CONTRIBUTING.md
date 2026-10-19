@@ -2,6 +2,8 @@
 
 Reflux is a pre-release working towards a public beta (docs/ROADMAP.md). Contributions should preserve the project's core principles rather than optimize for feature count.
 
+Reflux is proprietary, not open source ([LICENSE](LICENSE)). An outside contribution would first need an agreement about who owns it, and there is none yet (docs/RELEASE.md, "Legal review").
+
 ## Before contributing
 
 Read:

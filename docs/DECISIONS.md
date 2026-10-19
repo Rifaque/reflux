@@ -840,6 +840,8 @@ Consequences: OkHttp 5.5.0 resolves to `okhttp-android` plus Okio 3.18.1, about 
 
 ## 2026-10-19 — About, legal, and attribution
 
+> Its bullet on Reflux's own license is settled by "Reflux is proprietary; its source is visible, not licensed" (2026-10-19).
+
 Reflux had no page that said which build it is, who it credits, or what software it is made of. Decided:
 
 - **About is reached from the media sources page**, as its last row ("About Reflux"), and belongs to the same group of pages: no library tab is lit, the media sources button leads out of it. Reflux has no settings page, and a player-first application does not grow one for this. About is one short page: the name and which build, the metadata provider's credit, what Reflux keeps and sends, and a row to the third-party software; each component's licenses are a page further in, read a paragraph at a time.
@@ -851,3 +853,25 @@ Reflux had no page that said which build it is, who it credits, or what software
 - **Diagnostics are not exposed yet.** The log removes credentials but keeps file paths and the titles of the user's media, and the library diagnostics are lists of titles. An export needs path redaction and a way to hand the text over on each platform (a television has no clipboard to speak of); it comes with the feedback path (RELEASE.md, beta entry).
 - **Reflux's own license is not chosen** (README, RELEASE.md). The page shows it, first, as soon as a `LICENSE` file is in the repository; until then it shows none rather than a guess.
 - **Coming back finds the control on every page.** `FocusEntry` remembered one control for the whole application, so Back two pages deep put focus at the top; it now remembers one per page.
+
+## 2026-10-19 — Reflux is proprietary; its source is visible, not licensed
+
+Decided by the product owner. Reflux is not open-source software, and no license to its source code is granted:
+
+- **All rights reserved.** Reflux's own code, documentation, and design belong to RSX Develops, the maker the website already names (LAUNCH.md). The repository's `LICENSE` is a plain ownership notice, `Copyright © 2026 RSX Develops. All rights reserved.`, with a few sentences saying what that means; it is not a license, and it is not a custom legal license drafted to look like one. No MIT, Apache, GPL, LGPL, BSD, or other open-source license applies to Reflux itself.
+- **The source is public on purpose**, as a portfolio and for transparency. Seeing it gives no permission to redistribute it, use it commercially, publish modified versions, sublicense it, build it into another product, or distribute works derived from it.
+- **Third-party software keeps its own licenses.** Every component Reflux is built with stays under the license its authors chose, listed with its full text on the About page (`legal/`, checked by `check`). Reflux's status restricts none of them, and the notice says so.
+- **On the About page**, the copyright line stands with the build, and "Copyright and ownership" is a row of its own, before "Third-party software", leading to the notice. The two never share a row or a page, so neither is read as the other's terms. The page reads the notice from `LICENSE` at build time (the mechanism the About decision already had), so there is one text, not a second copy in code.
+- **A consequence for libmpv:** a proprietary application can ship libmpv only as an LGPL build (mpv built without its GPL parts, and an FFmpeg without GPL components), loaded dynamically as today, with its texts and a source offer. A GPL build cannot be bundled. This narrows the M2 item that was already "LGPL build" (RELEASE.md).
+- **Left for legal review, not drafted here** (RELEASE.md, "Legal review"): whether the store and desktop builds need end-user terms (an EULA) beyond the stores' own; whether "RSX Develops" is the right legal name for the holder; how the notice reads beside the hosting service's own terms for public repositories (GitHub's let its users view and fork them on GitHub); and an agreement for outside contributions, without which none can be accepted.
+
+Alternatives rejected: an open-source license (the owner's decision is that Reflux is not open source); a source-available license written for the occasion (that is legal drafting; if one is wanted, it is written with legal advice); no notice at all (the default is the same in law, but a visitor to a public repository would have to guess).
+
+## 2026-10-19 — Reflux is free at launch, supported by voluntary donations
+
+Decided by the product owner. How Reflux pays for itself at launch:
+
+- **Free, whole, and unlimited.** 1.0 has no price, no subscription, no Pro tier, and no feature gating, and nothing in the core media-player experience is limited to make a paid version look better.
+- **Voluntary donations** are the way to support Reflux at first. Their place is a calm, unobtrusive "Support Reflux" section on the website (LAUNCH.md), not the application: this milestone adds no donation or payment system to the app. The donation destination does not exist yet; choosing a provider and setting it up is a launch-track task. No provider, address, or account is named before it exists.
+- **Reflux Pro is a possibility for later, not a plan.** If it comes, it would draw on advanced capabilities after V1 (the V1.x and Future candidates in ROADMAP.md). Which ones, if any, is not decided now; that is decided explicitly when those capabilities are understood. V1 functionality is never removed or held back to make room for it.
+- **Nothing is built for it now**: no in-app billing, subscriptions, entitlements, license keys, or payment code. Store listings declare no in-app purchases.
