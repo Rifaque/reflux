@@ -1,5 +1,7 @@
 package dev.reflux.android.engine
 
+import dev.reflux.core.BuildIdentity
+import dev.reflux.core.RefluxBuild
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -111,10 +113,13 @@ class AndroidEnvironment(context: Context, dataDirectory: File = context.filesDi
     /** The application context, for what the shell creates on the engine's behalf (players). */
     val context: Context get() = application
 
-    val http: HttpFetcher = AndroidFetcher(application, userAgent = "Reflux/0.1 (Android)")
+    /** Which build this is: the version, and the commit its build recorded in the package's assets. */
+    val build: BuildIdentity = BuildIdentity.parse(runCatching { application.assets.open(BUILD_IDENTITY).bufferedReader().use { it.readText() } }.getOrNull())
+
+    val http: HttpFetcher = AndroidFetcher(application, userAgent = USER_AGENT)
 
     /** Web shares' listings, which [http] cannot send (see [WebDavTransport]). Made when the first share is. */
-    private val webDav: HttpFetcher by lazy { WebDavTransport(userAgent = "Reflux/0.1 (Android)") }
+    private val webDav: HttpFetcher by lazy { WebDavTransport(userAgent = USER_AGENT) }
 
     /** [databaseName] null keeps the library in memory, for tests. */
     val library = Library(RefluxDatabase(AndroidSqliteDriver(RefluxDatabase.Schema, application, databaseName))) { System.currentTimeMillis() }
@@ -162,6 +167,8 @@ class AndroidEnvironment(context: Context, dataDirectory: File = context.filesDi
     }
 
     init {
+        // Which build wrote what follows (docs/VERSIONING.md).
+        report("Reflux ${build.label} started")
         // Whatever an earlier version stored in the open is sealed before anything else reads it.
         connections.sealStored()
     }
@@ -188,7 +195,7 @@ class AndroidEnvironment(context: Context, dataDirectory: File = context.filesDi
         Offline(
             library = library,
             store = downloads,
-            transport = HttpDownloadTransport("Reflux/0.1 (Android)"),
+            transport = HttpDownloadTransport(USER_AGENT),
             sources = registry::resolve,
             device = { capabilities },
             preferredLanguages = LocaleList.getDefault().let { locales -> (0 until locales.size()).map { locales[it].language } }.filter { it.isNotBlank() },
@@ -303,3 +310,9 @@ class AndroidEnvironment(context: Context, dataDirectory: File = context.filesDi
         }
     }
 }
+
+/** How Reflux names itself to the servers it talks to, with the one product version (docs/VERSIONING.md). */
+private val USER_AGENT = "Reflux/${RefluxBuild.VERSION} (Android)"
+
+/** Written into the package's assets by the build (`generateBuildIdentity`). */
+private const val BUILD_IDENTITY = "build-identity.properties"

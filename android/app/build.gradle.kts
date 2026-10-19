@@ -62,6 +62,26 @@ val generateTestMedia = tasks.register<GenerateTestMedia>("generateTestMedia") {
     output.set(layout.buildDirectory.dir("generated/testMedia"))
 }
 
+/** The commit this build is from (docs/VERSIONING.md, "Build metadata"), as an asset the About page reads. */
+abstract class GenerateBuildIdentity : DefaultTask() {
+    @get:Input
+    abstract val identity: Property<String>
+
+    @get:OutputDirectory
+    abstract val output: DirectoryProperty
+
+    @TaskAction
+    fun generate() {
+        output.get().file("build-identity.properties").asFile.writeText(identity.get())
+    }
+}
+
+val generateBuildIdentity = tasks.register<GenerateBuildIdentity>("generateBuildIdentity") {
+    @Suppress("UNCHECKED_CAST")
+    identity.set(rootProject.extra["reflux.gitIdentity"] as Provider<String>)
+    output.set(layout.buildDirectory.dir("generated/buildIdentity"))
+}
+
 /**
  * The engine is plain JVM code shared with the desktop and compiled against a current JDK, so nothing stops it
  * calling a Java method the oldest supported Android lacks: Fire OS 8 (Android 11) failed on `Stream.toList()`,
@@ -156,6 +176,7 @@ abstract class CheckPlatformApi : DefaultTask() {
 androidComponents {
     onVariants { variant ->
         variant.androidTest?.sources?.assets?.addGeneratedSourceDirectory(generateTestMedia, GenerateTestMedia::output)
+        variant.sources.assets?.addGeneratedSourceDirectory(generateBuildIdentity, GenerateBuildIdentity::output)
     }
     onVariants(selector().withBuildType("debug")) { variant ->
         val sdk = sdkComponents.sdkDirectory

@@ -90,7 +90,10 @@ import dev.reflux.ui.state.offlineState
 import dev.reflux.library.downloads
 import dev.reflux.ui.screens.OfflinePanel
 import dev.reflux.ui.screens.SearchScreen
+import dev.reflux.ui.screens.AboutScreen
 import dev.reflux.ui.screens.AddSourceScreen
+import dev.reflux.ui.screens.NoticeScreen
+import dev.reflux.ui.screens.NoticesScreen
 import dev.reflux.ui.screens.ConnectScreen
 import dev.reflux.ui.screens.SourceSectionsScreen
 import dev.reflux.ui.screens.SourcesScreen
@@ -295,6 +298,9 @@ fun RefluxApp(app: AppState, modifier: Modifier = Modifier) {
                                         Destination.AddSource -> AddSourceScreen(app)
                                         is Destination.Connect -> ConnectScreen(app, destination)
                                         is Destination.SourceSections -> SourceSectionsScreen(app, destination.sourceId)
+                                        Destination.About -> AboutScreen(app)
+                                        Destination.Notices -> NoticesScreen(app)
+                                        is Destination.Notice -> NoticeScreen(app, destination.name)
                                     }
                                 }
                             }

@@ -1,5 +1,7 @@
 package dev.reflux.android
 
+import dev.reflux.core.BuildIdentity
+import dev.reflux.ui.legal.NoticeTarget
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
@@ -101,6 +103,10 @@ internal class AndroidPlatform(private val environment: AndroidEnvironment, over
     var allowStorage: (suspend () -> Boolean)? = null
 
     override val offline: Offline get() = environment.offline
+
+    override val build: BuildIdentity get() = environment.build
+
+    override val notices: NoticeTarget get() = NoticeTarget.ANDROID
 
     override val connections: SourceConnections get() = environment.connections
 

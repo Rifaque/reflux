@@ -3,6 +3,7 @@ package dev.reflux.library
 import dev.reflux.core.metadata.MetadataCandidate
 import dev.reflux.core.metadata.MetadataProvider
 import dev.reflux.core.metadata.MetadataUnavailableException
+import dev.reflux.core.metadata.ProviderAttribution
 import dev.reflux.core.metadata.ScoredCandidate
 import dev.reflux.core.model.ArtworkKind
 import dev.reflux.core.model.ArtworkLocator
@@ -62,6 +63,9 @@ class LibraryPipeline(
      * complete without it (file-name identification); the next refresh picks up where this one stopped.
      */
     val metadataUnreachable: StateFlow<Boolean> = mutableMetadataUnreachable.asStateFlow()
+
+    /** How the metadata provider in use asks to be credited (the About page); null without one. */
+    val metadataAttribution: ProviderAttribution? get() = metadata?.attribution
 
     /** Scans [sourceId] (or every source) and enriches the library. Concurrent calls run one after another. */
     suspend fun refresh(sourceId: SourceId? = null): List<ScanReport> = mutex.withLock {

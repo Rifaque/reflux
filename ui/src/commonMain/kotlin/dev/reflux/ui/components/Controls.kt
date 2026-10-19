@@ -11,6 +11,7 @@ import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
@@ -133,6 +134,20 @@ fun Pressable(
             .clickable(interactionSource = interaction, indication = null, enabled = enabled, role = role, onClick = onClick),
         content = { content(active) },
     )
+}
+
+/**
+ * A block of text a keyboard or a remote can rest on, so that text longer than the screen is read by moving
+ * through it: focus brings each block into view, with the same ring and glow as a control. It is never an action.
+ */
+@Composable
+fun Modifier.readable(shape: Shape = RoundedCornerShape(14.dp)): Modifier {
+    val layout = LocalLayout.current
+    val interaction = remember { MutableInteractionSource() }
+    val focused by interaction.collectIsFocusedAsState()
+    val ring = focused && layout.showsFocus
+    val glow by animateFloatAsState(if (ring && layout.modality == InputModality.DIRECTIONAL) 1f else 0f, Motion.focusChange.tween())
+    return this.focusGlow(shape, glow).then(if (ring) Modifier.focusRing(shape) else Modifier).focusable(interactionSource = interaction)
 }
 
 /**

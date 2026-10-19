@@ -20,12 +20,14 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -55,6 +57,7 @@ import dev.reflux.design.Motion
 import dev.reflux.library.PipelineActivity
 import dev.reflux.library.downloads
 import dev.reflux.ui.LocalChromeInsets
+import dev.reflux.ui.ReportPageScroll
 import dev.reflux.ui.components.Button
 import dev.reflux.ui.components.ButtonStyle
 import dev.reflux.ui.components.Icon
@@ -62,6 +65,7 @@ import dev.reflux.ui.components.InputKind
 import dev.reflux.ui.components.Pressable
 import dev.reflux.ui.components.TextInput
 import dev.reflux.ui.components.initialFocus
+import dev.reflux.ui.components.rememberFocusReturn
 import dev.reflux.ui.state.AppState
 import dev.reflux.ui.state.Destination
 import dev.reflux.ui.state.SourceRow
@@ -83,10 +87,14 @@ private val PageWidth = 640.dp
 internal fun Page(content: androidx.compose.foundation.lazy.LazyListScope.() -> Unit) {
     val layout = LocalLayout.current
     val insets = LocalChromeInsets.current
+    val list = rememberLazyListState()
+    // Where pages move a row at a time (a television), what goes up under the navigation fades out.
+    ReportPageScroll(remember { derivedStateOf { list.firstVisibleItemIndex > 0 || list.firstVisibleItemScrollOffset > 0 } }.value)
     AmbientBackdrop()
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
         LazyColumn(
-            Modifier.widthIn(max = PageWidth + layout.safeMarginDp.dp * 2).fillMaxWidth(),
+            state = list,
+            modifier = Modifier.widthIn(max = PageWidth + layout.safeMarginDp.dp * 2).fillMaxWidth(),
             contentPadding = PaddingValues(start = layout.safeMarginDp.dp, end = layout.safeMarginDp.dp, top = insets.top + 8.dp, bottom = insets.bottom + 16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
             content = content,
@@ -144,6 +152,14 @@ internal fun SourcesScreen(app: AppState) {
                     style = LocalTypography.current.caption,
                     color = RefluxColors.textTertiary,
                 )
+            }
+        }
+        // Reflux itself, after everything about the library: a quiet way to its version, privacy, and credits.
+        item(key = "about") {
+            val back = rememberFocusReturn("sources/about")
+            Option(Icon.INFO, "About Reflux", "Version ${app.platform.build.version}, privacy, licenses, and credits", back.modifier.padding(top = 12.dp)) {
+                back.leaving()
+                app.navigator.open(Destination.About)
             }
         }
     }

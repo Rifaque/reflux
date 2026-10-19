@@ -62,8 +62,11 @@ class FocusEntry {
 
     private class Offer(val requester: FocusRequester, val screen: Any?)
 
-    /** The item the user last went into (see [returnsFocus]), so that coming back can find it again. */
-    internal var left: String? = null
+    /**
+     * The item the user last went into on each page (see [rememberFocusReturn]), so that coming back to any
+     * of them, however many pages deep the user went, finds it again.
+     */
+    internal val left = HashMap<Any?, String>()
 
     /**
      * While focus is on the navigation rather than in the page: the direction that leads back to the page
@@ -171,7 +174,7 @@ fun rememberFocusReturn(key: String): FocusReturn {
     val entry = LocalFocusEntry.current
     val requester = remember { FocusRequester() }
     val screen = LocalFocusScreen.current
-    val returning = entry != null && entry.left == key
+    val returning = entry != null && entry.left[screen] == key
     if (returning) {
         val showsFocus = LocalLayout.current.showsFocus
         DisposableEffect(entry, screen) {
@@ -181,7 +184,7 @@ fun rememberFocusReturn(key: String): FocusReturn {
         // Only on the page being come back to: the same item on the page being left has just been activated.
         LaunchedEffect(Unit) { if (showsFocus && entry!!.screen == screen) runCatching { requester.requestFocus() } }
     }
-    return remember(entry, key) { FocusReturn(Modifier.focusRequester(requester)) { entry?.left = key } }
+    return remember(entry, key, screen) { FocusReturn(Modifier.focusRequester(requester)) { entry?.left?.set(screen, key) } }
 }
 
 /** [modifier] goes on the item; [leaving] is called when the user goes into it. */

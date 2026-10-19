@@ -75,6 +75,8 @@ internal fun runReflux(
     onStarted: (RunningReflux) -> Unit = {},
 ) {
     val platform = DesktopPlatform(environment)
+    // Which build wrote what follows (docs/VERSIONING.md).
+    environment.diagnostics.record("Reflux ${platform.build.label} started")
     application(exitProcessOnExit = exitProcess) {
         // The last line of defence: a failure nobody handled is written down instead of ending the app.
         val scope = rememberCoroutineScope { CoroutineExceptionHandler { _, error -> platform.report("An unexpected error was not handled", error) } }

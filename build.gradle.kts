@@ -30,6 +30,104 @@ val refluxVersionCode: Int = run {
 extra["reflux.version"] = refluxVersion
 extra["reflux.versionCode"] = refluxVersionCode
 
+/**
+ * The commit a build is made from and whether the tree had changes (docs/VERSIONING.md, "Build metadata"), as
+ * `commit=<short hash>` and `modified=<true|false>` lines; empty where there is no Git checkout to ask. Read
+ * when a task needs it, never while configuring, so an edit does not invalidate the configuration cache.
+ */
+abstract class GitIdentity : ValueSource<String, GitIdentity.Parameters> {
+    interface Parameters : ValueSourceParameters {
+        val root: DirectoryProperty
+    }
+
+    @get:Inject
+    abstract val exec: ExecOperations
+
+    override fun obtain(): String {
+        fun git(vararg args: String): String? = runCatching {
+            val out = java.io.ByteArrayOutputStream()
+            val result = exec.exec {
+                commandLine("git", *args)
+                workingDir = parameters.root.get().asFile
+                standardOutput = out
+                errorOutput = java.io.OutputStream.nullOutputStream()
+                isIgnoreExitValue = true
+            }
+            out.toString().trim().takeIf { result.exitValue == 0 }
+        }.getOrNull()
+        val commit = git("rev-parse", "--short=7", "HEAD")?.takeIf { it.isNotEmpty() } ?: return ""
+        val modified = git("status", "--porcelain")?.isNotEmpty() ?: true
+        return "commit=$commit\nmodified=$modified\n"
+    }
+}
+
+extra["reflux.gitIdentity"] = providers.of(GitIdentity::class) { parameters.root.set(layout.projectDirectory) }
+
+/**
+ * Fails when the third-party notices (`legal/components.txt`, shown on the About page) no longer describe a
+ * shell's runtime classpath: a module no line covers, or a line for this target whose modules are all gone.
+ */
+abstract class CheckThirdPartyNotices : DefaultTask() {
+    @get:InputFile
+    abstract val components: RegularFileProperty
+
+    @get:Input
+    abstract val target: Property<String>
+
+    @get:Input
+    abstract val modules: SetProperty<String>
+
+    @get:OutputFile
+    abstract val report: RegularFileProperty
+
+    @TaskAction
+    fun check() {
+        val lines = components.get().asFile.readLines().filter { it.isNotBlank() && !it.startsWith("#") }.map { it.split("|").map(String::trim) }
+        fun pattern(glob: String) = Regex(glob.split("*").joinToString(".*") { Regex.escape(it) })
+        val mine = lines.filter { target.get() in it[3].split(" ") }.map { it[0] to it[4].split(" ").filter(String::isNotEmpty).map(::pattern) }
+        val present = modules.get()
+        val uncovered = present.filter { module -> mine.none { (_, patterns) -> patterns.any { it.matches(module) } } }.sorted()
+        val gone = mine.filter { (_, patterns) -> patterns.isNotEmpty() && present.none { module -> patterns.any { it.matches(module) } } }.map { it.first }
+        report.get().asFile.writeText((uncovered.map { "uncovered: $it" } + gone.map { "gone: $it" }).joinToString("\n"))
+        if (uncovered.isNotEmpty() || gone.isNotEmpty()) {
+            throw GradleException(
+                buildString {
+                    append("legal/components.txt does not match the ${target.get()} build (docs/RELEASE.md, \"Third-party notices\").\n")
+                    if (uncovered.isNotEmpty()) append("Modules no line covers; read their licenses and add them:\n").append(uncovered.joinToString("\n") { "  $it" }).append('\n')
+                    if (gone.isNotEmpty()) append("Lines whose modules are no longer in the build:\n").append(gone.joinToString("\n") { "  $it" })
+                },
+            )
+        }
+    }
+}
+
+// Each shell's notices are checked against what that shell ships: its release runtime classpath.
+val noticeTargets = mapOf(":desktop:app" to ("desktop" to "runtimeClasspath"), ":android:app" to ("android" to "releaseRuntimeClasspath"))
+subprojects {
+    val (noticeTarget, classpath) = noticeTargets[path] ?: return@subprojects
+    val checkNotices = tasks.register<CheckThirdPartyNotices>("checkThirdPartyNotices") {
+        group = "verification"
+        description = "Fails when legal/components.txt does not cover this shell's third-party modules."
+        components.set(rootProject.layout.projectDirectory.file("legal/components.txt"))
+        target.set(noticeTarget)
+        modules.set(
+            provider { configurations.getByName(classpath) }.flatMap { it.incoming.resolutionResult.rootComponent }.map { root ->
+                val visited = HashSet<org.gradle.api.artifacts.component.ComponentIdentifier>()
+                fun walk(component: org.gradle.api.artifacts.result.ResolvedComponentResult) {
+                    for (dependency in component.dependencies) {
+                        val next = (dependency as? org.gradle.api.artifacts.result.ResolvedDependencyResult)?.selected ?: continue
+                        if (visited.add(next.id)) walk(next)
+                    }
+                }
+                walk(root)
+                visited.filterIsInstance<org.gradle.api.artifacts.component.ModuleComponentIdentifier>().map { "${it.group}:${it.module}" }.toSet()
+            },
+        )
+        report.set(layout.buildDirectory.file("reports/thirdPartyNotices.txt"))
+    }
+    tasks.matching { it.name == "check" }.configureEach { dependsOn(checkNotices) }
+}
+
 val printVersion by tasks.registering {
     group = "help"
     description = "Prints the product version and the Android versionCode derived from it."

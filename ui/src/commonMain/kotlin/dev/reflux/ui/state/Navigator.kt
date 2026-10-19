@@ -38,11 +38,24 @@ sealed interface Destination {
 
     /** Choosing which parts of a source (a server's libraries) Reflux includes. */
     data class SourceSections(val sourceId: SourceId) : Destination
+
+    /** Reflux itself: its version and build, what it sends where, and its credits. Reached from the media sources. */
+    data object About : Destination
+
+    /** The third-party software in this build, each with its license. */
+    data object Notices : Destination
+
+    /** One component's notice and license texts, by its [name] in the notices (or Reflux's own license). */
+    data class Notice(val name: String) : Destination
 }
 
-/** The pages about where the library comes from, which belong to no section of the library. */
+/**
+ * The pages about where the library comes from, and the About pages reached from them, which belong to no
+ * section of the library: the media sources button leads to them and back out of them.
+ */
 val Destination.aboutSources: Boolean
-    get() = this is Destination.Sources || this is Destination.AddSource || this is Destination.Connect || this is Destination.SourceSections
+    get() = this is Destination.Sources || this is Destination.AddSource || this is Destination.Connect || this is Destination.SourceSections ||
+        this is Destination.About || this is Destination.Notices || this is Destination.Notice
 
 /**
  * Back-stack navigation. Home is always the root: sections replace each other above it, details and

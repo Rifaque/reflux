@@ -1,5 +1,6 @@
 package dev.reflux.desktop.engine
 
+import dev.reflux.core.RefluxBuild
 import dev.reflux.core.metadata.MetadataProvider
 import dev.reflux.core.model.SourceId
 import dev.reflux.core.playback.DeviceCapabilities
@@ -81,7 +82,7 @@ class DesktopEnvironment(
     /** Where source connections are kept; by default the system's credential store (see [DesktopSecrets]). */
     sealFor: (Path, (String) -> Unit) -> ConfigSeal = { directory, report -> DesktopSecrets.seal(directory, report = report) },
 ) {
-    val http = JdkHttpFetcher(userAgent = "Reflux/0.1")
+    val http = JdkHttpFetcher(userAgent = USER_AGENT)
 
     /** Problems worth a developer's attention, kept next to the library. */
     val diagnostics = DiagnosticLog(dataDirectory.resolve("reflux.log"))
@@ -184,7 +185,7 @@ class DesktopEnvironment(
         Offline(
             library = library,
             store = downloads,
-            transport = HttpDownloadTransport("Reflux/0.1"),
+            transport = HttpDownloadTransport(USER_AGENT),
             sources = registry::resolve,
             device = { capabilities.current() },
             preferredLanguages = listOf(Locale.getDefault().language).filter { it.isNotBlank() },
@@ -264,3 +265,6 @@ class DesktopEnvironment(
 
     private fun hostName(): String = runCatching { java.net.InetAddress.getLocalHost().hostName }.getOrNull()?.takeIf { it.isNotBlank() } ?: "desktop"
 }
+
+/** How Reflux names itself to the servers it talks to, with the one product version (docs/VERSIONING.md). */
+private val USER_AGENT = "Reflux/${RefluxBuild.VERSION}"
