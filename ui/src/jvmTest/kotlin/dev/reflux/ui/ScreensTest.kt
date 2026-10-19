@@ -347,4 +347,19 @@ class ScreensTest {
             save("small-player")
         }
     }
+
+    @Test
+    fun aPageOnItsWayOutIsNoLongerThereForAssistiveTechnology() = screen(populated()) { app ->
+        awaitText("Recently Added")
+        mainClock.autoAdvance = false
+        runOnUiThread { app.navigator.open(Destination.Shows) }
+        // Part way through the change: the old page is still fading on screen, the new one coming in.
+        mainClock.advanceTimeBy(64)
+        assertEquals(0, onAllNodesWithText("Recently Added").fetchSemanticsNodes().size, "Home, leaving, is not read out")
+        assertTrue(onAllNodesWithText("TV Shows").fetchSemanticsNodes().isNotEmpty(), "the page being opened is")
+        mainClock.autoAdvance = true
+        awaitText("TV Shows")
+        runOnUiThread { app.navigator.back() }
+        awaitText("Recently Added")
+    }
 }

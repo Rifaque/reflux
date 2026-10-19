@@ -86,7 +86,8 @@ class OfflineWindowTest {
                 shell.click("Download 2")
                 shell.awaitShown("Season on this device")
                 assertTrue(environment.library.downloads().all { it.state == DownloadState.COMPLETED })
-                assertTrue(shell.shows("Downloaded"), "every episode of the show is kept, so the show is")
+                // Every episode of the show is kept, so the show is; the show's own status catches up with the season's.
+                shell.awaitShown("Downloaded")
 
                 // The page, from the navigation.
                 shell.click("Downloads")
