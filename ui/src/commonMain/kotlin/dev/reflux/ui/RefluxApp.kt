@@ -1,6 +1,8 @@
 package dev.reflux.ui
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.animation.EnterExitState
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.fadeIn
@@ -274,21 +276,26 @@ fun RefluxApp(app: AppState, modifier: Modifier = Modifier) {
                                 fadeOut(Motion.focusChange.tween())
                         },
                     ) { destination ->
-                        screens.SaveableStateProvider(destination.toString()) {
-                            CompositionLocalProvider(LocalFocusScreen provides destination) {
-                                when (destination) {
-                                    Destination.Home -> HomeScreen(app)
-                                    Destination.Movies -> BrowseScreen(app, "Movies", query = null, shows = false)
-                                    Destination.Shows -> BrowseScreen(app, "TV Shows", query = null, shows = true)
-                                    Destination.Search -> SearchScreen(app)
-                                    is Destination.Listing -> BrowseScreen(app, destination.title, destination.query, shows = false)
-                                    is Destination.Details -> DetailsScreen(app, destination.itemId)
-                                    is Destination.Identify -> IdentifyScreen(app, destination.itemId)
-                                    Destination.Downloads -> DownloadsScreen(app)
-                                    Destination.Sources -> SourcesScreen(app)
-                                    Destination.AddSource -> AddSourceScreen(app)
-                                    is Destination.Connect -> ConnectScreen(app, destination)
-                                    is Destination.SourceSections -> SourceSectionsScreen(app, destination.sourceId)
+                        // A page on its way out stays on screen while it fades, but it is no longer there for
+                        // assistive technology, which would otherwise find two pages at once.
+                        val leaving = transition.targetState == EnterExitState.PostExit
+                        Box(Modifier.fillMaxSize().then(if (leaving) Modifier.clearAndSetSemantics {} else Modifier)) {
+                            screens.SaveableStateProvider(destination.toString()) {
+                                CompositionLocalProvider(LocalFocusScreen provides destination) {
+                                    when (destination) {
+                                        Destination.Home -> HomeScreen(app)
+                                        Destination.Movies -> BrowseScreen(app, "Movies", query = null, shows = false)
+                                        Destination.Shows -> BrowseScreen(app, "TV Shows", query = null, shows = true)
+                                        Destination.Search -> SearchScreen(app)
+                                        is Destination.Listing -> BrowseScreen(app, destination.title, destination.query, shows = false)
+                                        is Destination.Details -> DetailsScreen(app, destination.itemId)
+                                        is Destination.Identify -> IdentifyScreen(app, destination.itemId)
+                                        Destination.Downloads -> DownloadsScreen(app)
+                                        Destination.Sources -> SourcesScreen(app)
+                                        Destination.AddSource -> AddSourceScreen(app)
+                                        is Destination.Connect -> ConnectScreen(app, destination)
+                                        is Destination.SourceSections -> SourceSectionsScreen(app, destination.sourceId)
+                                    }
                                 }
                             }
                         }

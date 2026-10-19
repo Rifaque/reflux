@@ -3,7 +3,9 @@ package dev.reflux.desktop
 import androidx.compose.runtime.tooling.ComposeToolingApi
 import androidx.compose.ui.awt.ComposeDialog
 import androidx.compose.ui.awt.ComposeWindow
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsNode
 import androidx.compose.ui.semantics.SemanticsOwner
 import androidx.compose.ui.semantics.SemanticsProperties
@@ -17,6 +19,7 @@ import java.awt.Component
 import java.awt.Container
 import java.awt.GraphicsEnvironment
 import java.awt.Point
+import java.awt.KeyboardFocusManager
 import java.awt.Robot
 import java.awt.Window
 import java.awt.event.InputEvent
@@ -48,6 +51,9 @@ internal fun needs(what: String, present: Boolean): Boolean {
 }
 
 internal val isWindows: Boolean = System.getProperty("os.name").startsWith("Windows")
+
+/** How many turns of the wheel a test may take to bring something into view before it is called unreachable. */
+private const val MAX_WHEEL_TURNS = 30
 
 /**
  * The real desktop shell, running in its real window, for end-to-end tests.
@@ -92,7 +98,10 @@ internal class Shell(environment: DesktopEnvironment, gamepads: GamepadReader? =
             if (ui(condition)) return
             Thread.sleep(80)
         }
-        error("Timed out waiting for $what. ${ui(state)} On screen: ${ui { texts() }.take(40)}")
+        val message = "Timed out waiting for $what. ${ui(state)} On screen: ${ui { texts() }.take(40)}"
+        // What the window showed when it did not happen, where pictures were asked for.
+        if (screenshots != null) runCatching { capture("timeout") }
+        error(message)
     }
 
     // Finding things ---------------------------------------------------------------------------------
@@ -107,14 +116,47 @@ internal class Shell(environment: DesktopEnvironment, gamepads: GamepadReader? =
         return labels.any { if (exact) it == text else it.contains(text) }
     }
 
-    /** Must run on the UI thread. The player's controls are searched first: they are what is in front. */
-    private fun locate(text: String, exact: Boolean): Located? {
+    /**
+     * Must run on the UI thread. The player's controls are searched first: they are what is in front. With
+     * [clickable], something that says [text] and can be clicked is preferred over text that only says it (a
+     * card over a heading with the same title).
+     */
+    private fun locate(text: String, exact: Boolean, clickable: Boolean = false): Located? {
         for ((surface, owners) in surfaces()) {
-            val node = owners.flatMap { it.getAllSemanticsNodes(mergingEnabled = true) }
-                .firstOrNull { it.says(text, exact) && !it.boundsInWindow.isEmpty } ?: continue
+            val visible = owners.flatMap { it.getAllSemanticsNodes(mergingEnabled = true) }.filter { it.says(text, exact) && !it.boundsInWindow.isEmpty }
+            val node = (if (clickable) visible.firstOrNull { it.config.contains(SemanticsActions.OnClick) } else null) ?: visible.firstOrNull() ?: continue
             return Located(surface, node.boundsInWindow)
         }
         return null
+    }
+
+    /**
+     * Something that says [text] and is on the page, but scrolled out of the window: where it is, unclipped,
+     * in the window's pixels. Must run on the UI thread.
+     */
+    private fun outOfView(text: String, exact: Boolean): Offset? = window.semanticsOwners
+        .flatMap { it.getAllSemanticsNodes(mergingEnabled = true) }
+        .firstOrNull { it.says(text, exact) && it.boundsInWindow.isEmpty && it.size.height > 0 }
+        ?.positionInWindow
+
+    /**
+     * Scrolls the page under the pointer with the wheel, as a person would, until [text] is in the window.
+     * Each turn waits for the page to have moved, never for a fixed time.
+     */
+    private fun bringIntoView(text: String, exact: Boolean) {
+        repeat(MAX_WHEEL_TURNS) {
+            if (ui { locate(text, exact) } != null) return
+            val (position, height) = ui { outOfView(text, exact) to content(window).height * window.graphicsConfiguration.defaultTransform.scaleX.toFloat() }
+            position ?: return
+            val notches = if (position.y >= height) 2 else -2
+            ui {
+                val pane = content(window)
+                val scale = window.graphicsConfiguration.defaultTransform.scaleX.toFloat()
+                mouse(window, MouseEvent.MOUSE_WHEEL, pane.width * scale / 2, pane.height * scale / 2, wheel = notches)
+            }
+            await("the page to scroll towards \"$text\"", timeoutMs = 5_000) { locate(text, exact) != null || outOfView(text, exact) != position }
+        }
+        error("\"$text\" stayed out of view after $MAX_WHEEL_TURNS turns of the wheel. ${ui { matches(text, exact) }}")
     }
 
     private fun texts(): List<String> = surfaces().flatMap { (_, owners) ->
@@ -123,10 +165,31 @@ internal class Shell(environment: DesktopEnvironment, gamepads: GamepadReader? =
         }
     }
 
+    /** What has keyboard focus in the browsing window, as assistive technology would name it; null when nothing has. */
+    fun focused(): String? = ui {
+        window.semanticsOwners.flatMap { it.getAllSemanticsNodes(mergingEnabled = true) }
+            .firstOrNull { it.config.getOrNull(SemanticsProperties.Focused) == true }
+            ?.let { node -> (node.config.getOrNull(SemanticsProperties.ContentDescription).orEmpty() + node.config.getOrNull(SemanticsProperties.Text).orEmpty().map { it.text }).firstOrNull() }
+    }
+
     /** Whether a control or text named [text] is on screen, in the browsing window or the player. */
     fun shows(text: String, exact: Boolean = true): Boolean = ui { locate(text, exact) != null }
 
-    fun awaitShown(text: String, exact: Boolean = true) = await("\"$text\" to be shown") { locate(text, exact) != null }
+    fun awaitShown(text: String, exact: Boolean = true) = await("\"$text\" to be shown", state = { matches(text, exact) }) { locate(text, exact) != null }
+
+    /**
+     * Every node that says [text], visible or not, for a failure message: a node that exists with nothing of it
+     * inside the window (clipped by a scrolling parent, say) is not the same failure as no node at all.
+     */
+    private fun matches(text: String, exact: Boolean): String {
+        val found = surfaces().flatMap { (surface, owners) ->
+            owners.flatMap { it.getAllSemanticsNodes(mergingEnabled = true) }.filter { it.says(text, exact) }.map { node ->
+                "visible ${node.boundsInWindow}, whole ${node.boundsInRoot}, clickable ${node.config.contains(SemanticsActions.OnClick)}" +
+                    " in a ${surface.javaClass.simpleName} of ${content(surface).width}x${content(surface).height} at scale ${surface.graphicsConfiguration.defaultTransform.scaleX}"
+            }
+        }
+        return if (found.isEmpty()) "No node says \"$text\"." else "Nodes that say \"$text\": $found."
+    }
 
     fun awaitGone(text: String) = await("\"$text\" to go away") { locate(text, exact = true) == null }
 
@@ -206,11 +269,12 @@ internal class Shell(environment: DesktopEnvironment, gamepads: GamepadReader? =
      * a screen that is still sliding in or one that is on its way out.
      */
     private fun settled(text: String, exact: Boolean): Located {
-        awaitShown(text, exact)
+        await("\"$text\" to be on the page", state = { matches(text, exact) }) { locate(text, exact) != null || outOfView(text, exact) != null }
+        bringIntoView(text, exact)
         val deadline = System.currentTimeMillis() + 10_000
         var previous: Located? = null
         while (System.currentTimeMillis() < deadline) {
-            val current = ui { locate(text, exact) }
+            val current = ui { locate(text, exact, clickable = true) }
             if (current != null && previous != null && current.surface === previous.surface && current.bounds == previous.bounds) return current
             previous = current
             Thread.sleep(120)
@@ -249,10 +313,18 @@ internal class Shell(environment: DesktopEnvironment, gamepads: GamepadReader? =
         ui { locate(text, exact = true)?.let { mouse(it.surface, MouseEvent.MOUSE_WHEEL, it.bounds.center.x, it.bounds.center.y, wheel = notches) } }
     }
 
-    /** Presses a key the way the toolkit delivers one, whichever of the shell's windows has focus. */
+    /**
+     * Presses a key the way a keyboard does: to the component that has the keyboard's focus (the toolkit
+     * retargets a key it takes from its own queue there, but not one handed to a component directly). Reflux's
+     * own key handling sees it either way; a key Reflux leaves to the toolkit (Enter on a focused control)
+     * reaches the control only like this. With nothing focused, it goes to the window, which is where Reflux's
+     * handling still takes it.
+     */
     fun key(code: Int) = ui {
-        window.dispatchEvent(KeyEvent(window, KeyEvent.KEY_PRESSED, System.currentTimeMillis(), 0, code, KeyEvent.CHAR_UNDEFINED))
-        window.dispatchEvent(KeyEvent(window, KeyEvent.KEY_RELEASED, System.currentTimeMillis(), 0, code, KeyEvent.CHAR_UNDEFINED))
+        val target = KeyboardFocusManager.getCurrentKeyboardFocusManager().focusOwner?.takeIf { SwingUtilities.getWindowAncestor(it) === window } ?: window
+        for (id in listOf(KeyEvent.KEY_PRESSED, KeyEvent.KEY_RELEASED)) {
+            target.dispatchEvent(KeyEvent(target, id, System.currentTimeMillis(), 0, code, KeyEvent.CHAR_UNDEFINED))
+        }
     }
 
     /** Asks the window to close, as its close button does. */

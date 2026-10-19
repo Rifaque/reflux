@@ -84,6 +84,22 @@ class BrowsingWindowTest {
                 shell.click("Back")
                 shell.awaitShown("12 titles")
 
+                // The keyboard reaches a show's card and opens it. Enter is the toolkit's to deliver to the focused
+                // control, which it does only to the window keys go to, so the window is made that one, as it is
+                // for anyone typing into it.
+                shell.click("Shows")
+                shell.awaitShown("1 title")
+                shell.ui { shell.window.requestFocus() }
+                shell.await("the window to take the keyboard") { KeyboardFocusManager.getCurrentKeyboardFocusManager().focusOwner != null }
+                shell.await("a show's card to take focus", state = { "Focused: ${shell.focused()}" }) {
+                    shell.focused()?.startsWith("Harbour Lights") == true || run { shell.key(KeyEvent.VK_DOWN); false }
+                }
+                shell.key(KeyEvent.VK_ENTER)
+                shell.await("the show's page to open") { (app.navigator.current as? Destination.Details)?.itemId == app.library.shows().single().item.id }
+                shell.awaitShown("Play S1 · E1")
+                shell.key(KeyEvent.VK_ESCAPE)
+                shell.awaitShown("1 title")
+
                 // Search: a suggestion, results, and clearing.
                 shell.click("Search")
                 shell.click("favorites")

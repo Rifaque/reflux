@@ -14,7 +14,9 @@ import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.performKeyInput
 import androidx.compose.ui.test.performMouseInput
+import androidx.compose.ui.test.pressKey
 import dev.reflux.core.input.ControllerFamily
 import dev.reflux.core.input.GamepadButton
 import dev.reflux.core.input.InputModality
@@ -252,5 +254,25 @@ class DirectionalInputTest {
         runOnIdle { app.navigator.back() }
         awaitText("Recently Added")
         assertEquals(0, onAllNodes(isFocused()).fetchSemanticsNodes().size)
+    }
+
+    @Test
+    fun enterOnAFocusedCardOpensIt() = screen(populated()) { app ->
+        awaitText("Recently Added")
+        runOnIdle { app.navigator.open(Destination.Shows) }
+        awaitText("TV Shows")
+        fun focusedName() = runCatching { onNode(isFocused()).fetchSemanticsNode().config.getOrNull(SemanticsProperties.ContentDescription)?.firstOrNull() }.getOrNull()
+        val show = app.library.shows().first()
+        repeat(6) {
+            if (focusedName()?.startsWith(show.item.title) != true) {
+                runOnIdle { app.onKey(Key.ARROW_DOWN) }
+                waitForIdle()
+            }
+        }
+        assertTrue(focusedName()?.startsWith(show.item.title) == true, "the keyboard reached the card: ${focusedName()}")
+        // Reflux leaves Enter to the toolkit while browsing; the toolkit gives it to the focused control.
+        assertFalse(runOnIdle { app.onKey(Key.ENTER) })
+        onNode(isFocused()).performKeyInput { pressKey(androidx.compose.ui.input.key.Key.Enter) }
+        await("the show's page to open") { (app.navigator.current as? Destination.Details)?.itemId == show.item.id }
     }
 }
