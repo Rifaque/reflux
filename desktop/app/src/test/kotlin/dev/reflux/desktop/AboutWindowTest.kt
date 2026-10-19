@@ -44,10 +44,19 @@ class AboutWindowTest {
                 shell.awaitShown("Privacy")
                 shell.capture("about")
 
-                // The keyboard reads the page a stop at a time and goes on to the notices.
+                // The keyboard reads the page a stop at a time and goes on to the notices. An arrow pressed while the
+                // page is still arriving finds nothing to focus yet (slow under software rendering), so the first
+                // arrow is pressed again while nothing has focus; whichever one lands must land on the first stop.
+                shell.await("focus on the build", state = { "focused: ${shell.focused()}" }) { arrowUntilFocused(shell, "Reflux") }
                 shell.key(KeyEvent.VK_DOWN)
-                shell.await("focus on the build", state = { "focused: ${shell.focused()}" }) { shell.focused() == "Reflux" }
                 shell.key(KeyEvent.VK_DOWN)
+                shell.await("focus on Reflux's own terms", state = { "focused: ${shell.focused()}" }) { shell.focused() == "Copyright and ownership" }
+                shell.awaitShown("Copyright © 2026 RSX Develops. All rights reserved.")
+                // Reflux's own notice, read and left with the keyboard, which comes back to the row it left.
+                shell.key(KeyEvent.VK_ENTER)
+                shell.awaitShown("Reflux is proprietary software. It is not open source", exact = false)
+                shell.key(KeyEvent.VK_ESCAPE)
+                shell.await("focus back on Reflux's own terms", state = { "focused: ${shell.focused()}" }) { shell.focused() == "Copyright and ownership" }
                 shell.key(KeyEvent.VK_DOWN)
                 shell.await("focus on the notices", state = { "focused: ${shell.focused()}" }) { shell.focused() == "Third-party software" }
                 shell.key(KeyEvent.VK_ENTER)
@@ -64,8 +73,7 @@ class AboutWindowTest {
                 shell.awaitShown("Third-party software")
                 shell.key(KeyEvent.VK_ESCAPE)
                 shell.awaitShown("Privacy")
-                shell.key(KeyEvent.VK_DOWN)
-                shell.await("focus back on the notices row", state = { "focused: ${shell.focused()}" }) { shell.focused() == "Third-party software" }
+                shell.await("focus back on the notices row", state = { "focused: ${shell.focused()}" }) { arrowUntilFocused(shell, "Third-party software") }
                 shell.key(KeyEvent.VK_ESCAPE)
                 shell.await("the media sources") { shell.app.navigator.current == Destination.Sources }
                 shell.await("focus back on About", state = { "focused: ${shell.focused()}" }) { shell.focused() == "About Reflux" }
@@ -74,5 +82,20 @@ class AboutWindowTest {
         } finally {
             root.toFile().deleteRecursively()
         }
+    }
+
+    private var lastArrow = 0L
+
+    /**
+     * Whether focus is on [expected]; while nothing has focus, presses an arrow (at most every half second, so
+     * one still being handled is not followed by another that would move focus on from where it landed).
+     */
+    private fun arrowUntilFocused(shell: Shell, expected: String): Boolean {
+        val focused = shell.focused()
+        if (focused == null && System.currentTimeMillis() - lastArrow > 500) {
+            lastArrow = System.currentTimeMillis()
+            shell.key(KeyEvent.VK_DOWN)
+        }
+        return focused == expected
     }
 }

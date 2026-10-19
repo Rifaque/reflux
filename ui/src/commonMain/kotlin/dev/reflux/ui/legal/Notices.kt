@@ -21,8 +21,11 @@ object Notices {
     /** What [target]'s build contains, in the order `legal/components.txt` gives. */
     fun components(target: NoticeTarget): List<ThirdPartyComponent> = NoticeData.components.filter { target in it.targets }
 
-    /** Reflux's own license, once one is chosen and in the repository; null until then. */
+    /** Reflux's own copyright notice, the repository's `LICENSE`: proprietary, all rights reserved; null without one. */
     val refluxLicense: String? get() = NoticeData.refluxLicense
+
+    /** The notice's copyright line ("Copyright © ... All rights reserved."), shown with the build. */
+    val refluxCopyright: String? get() = refluxLicense?.lines()?.firstOrNull { it.startsWith("Copyright") }?.trim()
 
     /** The license text in `legal/licenses/[file]`, or null if there is none by that name. */
     fun text(file: String): String? = NoticeData.text(file)

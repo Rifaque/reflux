@@ -106,4 +106,6 @@ Playback and probing need libmpv (`libmpv2` on Debian/Ubuntu, `mpv-libs` on Fedo
 
 ## License
 
-Not decided yet. A license is required before any build is distributed, the beta included ([docs/RELEASE.md](docs/RELEASE.md)).
+Reflux is proprietary software: Copyright © 2026 RSX Develops, all rights reserved ([LICENSE](LICENSE)). It is not open source. The source is public so that the work can be seen; that gives no permission to redistribute it, use it commercially, publish modified versions, or build it into another product.
+
+The third-party software Reflux is built with keeps its own licenses, listed with their texts in [legal/](legal/) and on Reflux's About page.

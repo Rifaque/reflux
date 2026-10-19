@@ -28,7 +28,11 @@ The site follows the product's own principle: let the media be colorful; let the
 - **RSX Develops** is named as the maker in the footer and on the about/legal pages; the brand on the site is Reflux.
 - Fast and accessible: static pages, images sized for the screen, WCAG AA contrast, real text (not text in images), keyboard navigable.
 
-Content the site must carry by W4: supported platforms (Android phone/tablet, Android TV / Google TV, Fire TV, Windows, Linux) and what each needs; the beta call to action until 1.0; the changelog (from `CHANGELOG.md`); privacy policy (what Reflux stores, that it has no account and sends nothing to RSX Develops, what TMDB and the user's own servers receive); support; licenses and TMDB attribution.
+Content the site must carry by W4: supported platforms (Android phone/tablet, Android TV / Google TV, Fire TV, Windows, Linux) and what each needs; the beta call to action until 1.0; the changelog (from `CHANGELOG.md`); privacy policy (what Reflux stores, that it has no account and sends nothing to RSX Develops, what TMDB and the user's own servers receive); support; licenses (Reflux's own copyright, proprietary and all rights reserved, apart from the third-party licenses) and TMDB attribution; and "Support Reflux" (below).
+
+### Support Reflux
+
+Reflux is free, with no paid tier at launch; voluntary donations are how people can support it (DECISIONS.md, 2026-10-19). The site carries a calm "Support Reflux" section: a sentence on why, and a way to give, never a banner, a pop-up, or a nag, and nothing on the site or in the app is held back from those who do not give. The application itself takes no payments and has no donation prompt. The donation destination does not exist yet: choosing a provider and setting it up is a task of this track, done before the section goes live; until then the section is not published and no provider, address, or account is named.
 
 ## Demo video
 

@@ -5,8 +5,9 @@ What stands between the source tree and builds that can be handed to testers and
 ## Beta entry checklist (`0.9.0-beta.1`)
 
 - [ ] Every M1 item in ROADMAP.md is Done, or decided out of V1 in DECISIONS.md.
-- [ ] A license is chosen and in the repository (third-party notices are done: `legal/`, checked by the build, below).
-- [ ] About page with version and build, licenses, TMDB attribution, privacy and support links (built 2026-10-19; left: Reflux's own license, and the privacy policy and support links once the website has them).
+- [x] Reflux's own terms are in the repository: `LICENSE`, proprietary, all rights reserved (DECISIONS.md, 2026-10-19); third-party notices are done (`legal/`, checked by the build, below).
+- [ ] The legal review below is done, or each item decided as not needed for the beta.
+- [ ] About page with version and build, Reflux's copyright, third-party licenses, TMDB attribution, privacy and support links (done 2026-10-19 apart from the privacy policy and support links, which wait for the website to have them).
 - [ ] Android: signed release build from CI; R8 on, keep rules validated by a release build on a device; upgrade from the last alpha keeps library, watch state, sources, and downloads.
 - [ ] Fire TV: the developer's devices inspected (model, Fire OS, API level) and the release build run on them.
 - [ ] Desktop: Windows installer and Linux package installing libmpv with provenance; a clean-machine install on each.
@@ -60,7 +61,7 @@ Desktop playback and probing use libmpv through its stable client API (decision 
 
 - A libmpv build to ship on Windows, with a known provenance and configuration: built LGPL (no GPL-only components), with the decoders and hardware paths Reflux relies on. The development DLL is a third-party build and is not that.
 - On Linux, either a dependency on the distribution's libmpv (deb/rpm) or a bundled copy (Flatpak/AppImage). The versions differ between distributions; the binding only uses API that every libmpv 2.x has.
-- LGPL obligations for the bundled library and its dependencies (FFmpeg, libass, libplacebo): license texts, source offer, and dynamic linking, which is already how it is loaded. The About page lists libmpv today as the copy on the user's computer, not included; a bundled build changes its line in `legal/components.txt` (its license as built, the LGPL text, where its source is offered).
+- LGPL obligations for the bundled library and its dependencies (FFmpeg, libass, libplacebo): license texts, source offer, and dynamic linking, which is already how it is loaded. Reflux is proprietary, so the bundled build must be an LGPL one, with no GPL parts in mpv or FFmpeg (DECISIONS.md, 2026-10-19). The About page lists libmpv today as the copy on the user's computer, not included; a bundled build changes its line in `legal/components.txt` (its license as built, the LGPL text, where its source is offered).
 - A packaged desktop build that carries its own Java runtime adds that runtime to the notices (OpenJDK is GPL-2.0 with the Classpath Exception); the notice check only sees Maven modules.
 - An installer or package per platform, and code signing on Windows. `desktop:app` has no packaging configuration yet.
 - On X11 the engine changes process-wide state (decision log, 2026-10-12); a bundled build is a chance to patch that at the source.
@@ -131,6 +132,17 @@ The About page lists the third-party software in each build, with its license te
 
 ## Project
 
-- No license has been chosen for Reflux itself (README). Every distribution, including the beta, needs one. Choosing it is a product decision for the owner (DECISIONS.md); once a `LICENSE` file is in the repository the About page shows it without other changes, and README's License section and the website follow.
+- Reflux is proprietary, all rights reserved, and not open source; its public source is for viewing (DECISIONS.md, 2026-10-19). `LICENSE` is the ownership notice, and the About page shows it from there. Third-party components keep their own licenses.
+- Reflux is free at launch: no price, subscription, Pro tier, feature gating, or in-app purchase, so store listings declare none (DECISIONS.md, 2026-10-19). Donations are taken on the website once it has a destination for them (LAUNCH.md).
+
+## Legal review
+
+Questions for legal advice before builds go to people outside the project. None is drafted here; each is resolved, or decided as not needed, and recorded in DECISIONS.md:
+
+- End-user terms (an EULA) for the Android, Fire TV, and desktop builds, beyond what Google Play and the Amazon Appstore apply by default.
+- The copyright holder's legal name: whether "RSX Develops" is a registered name or the trading name of its owner, and so how the notice names it.
+- How the ownership notice reads beside the hosting service's own terms for public repositories (GitHub lets its users view and fork public repositories on GitHub).
+- An agreement for outside contributions (ownership, or a license to Reflux), without which none is accepted.
+- The bundled libmpv's obligations for a proprietary application: an LGPL build only, with its texts and a source offer (above).
 - The CI workflow (`.github/workflows/ci.yml`) runs the full check on Linux and Windows and the window tests on Linux. It has been run in its container locally but never on GitHub, because nothing has been pushed since it was written. Android is not deliberately part of it: the workflow sets up no Android SDK, so whether the Android modules build there depends on the hosted runner image happening to provide `ANDROID_HOME`; no instrumented test, emulator, or release build is run, and the Linux container has no SDK at all.
 - The developer CLI is a diagnostic tool and is not distributed.
