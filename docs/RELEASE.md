@@ -86,7 +86,7 @@ Source credentials (Jellyfin access tokens, WebDAV and SMB passwords) are kept o
 | Android | The library database, encrypted with an AES key held in the Android keystore | Ciphertext |
 
 - A connection stored in the open by an earlier version is moved at start, and keeps working; if the store refuses it, it is left as it was and the problem is logged. A new connection that cannot be kept securely where secure storage exists is not kept at all.
-- Removing a source removes its entry from the store.
+- Removing a source removes its entry from the store. Removing a Jellyfin server also asks the server to revoke that token (best-effort; decision log, 2026-10-19).
 - Nothing outside the source adapters reads a connection, and nothing in the Media Core sees one.
 - Verified: the Windows store with a real round trip, and the migration and failure paths with a store in memory. The Linux Secret Service path is tested through its command protocol only; no Linux desktop with a running keyring was available, and the Linux container has none, so there the fallback is what ran.
 - Still open: Linux desktops without a Secret Service keep connections in the open; on Android the database holds ciphertext rather than a reference.
