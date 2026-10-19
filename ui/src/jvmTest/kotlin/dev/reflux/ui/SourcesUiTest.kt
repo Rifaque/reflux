@@ -44,6 +44,7 @@ import dev.reflux.core.source.SourceLocality
 import dev.reflux.core.source.SourceUnavailableException
 import dev.reflux.library.SourceConnections
 import dev.reflux.ui.state.Destination
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.flow
@@ -86,6 +87,14 @@ private class HomeServer(val address: String, override val excludedSections: Set
 private object HomeNetwork {
     @Volatile var serverUp = true
 
+    /** Whether the server stops answering in the middle of being signed out of, as a network that drops does. */
+    @Volatile var signOutHangs = false
+
+    /** The tokens the server was asked to end. */
+    val signedOut = java.util.concurrent.CopyOnWriteArrayList<String>()
+
+    private var sessions = 0
+
     val server = object : SourceConnector {
         override val type = "home"
         override val kind = ConnectionKind.SERVER
@@ -97,7 +106,15 @@ private object HomeNetwork {
             !request.address.startsWith("http://home.local") -> Connection.Failed(ConnectionProblem.UNREACHABLE)
             !serverUp -> Connection.Failed(ConnectionProblem.UNREACHABLE)
             request.password != "secret" -> Connection.Failed(ConnectionProblem.AUTHENTICATION, "HTTP 401")
-            else -> Connection.Established(HomeServer(request.address), "address=${request.address}\nuser=${request.username}\ntoken=t0k")
+            else -> Connection.Established(HomeServer(request.address), "address=${request.address}\nuser=${request.username}\ntoken=t0k${++sessions}")
+        }
+        override suspend fun signOut(config: String, keeping: String?): Boolean {
+            val token = config.lines().single { it.startsWith("token=") }.substringAfter('=')
+            if (keeping?.lines()?.contains("token=$token") == true) return false
+            if (signOutHangs) awaitCancellation()
+            if (!serverUp) error("no route to host")
+            signedOut += token
+            return true
         }
         override fun describe(config: String) = config.lines().associate { it.substringBefore('=') to it.substringAfter('=') }.let { ConnectionRequest(it.getValue("address"), it["user"]) }
         override fun withExcludedSections(config: String, excluded: Set<String>) =
@@ -132,10 +149,13 @@ class SourcesUiTest {
 
     private fun world(empty: Boolean = false): Pair<TestWorld, FakePlatform> {
         HomeNetwork.serverUp = true
+        HomeNetwork.signOutHangs = false
+        HomeNetwork.signedOut.clear()
         val world = if (empty) TestWorld().also { it.library.removeSource(it.source.descriptor.id); it.registry.unregister(it.source.descriptor.id) } else populated()
         world.factories["home"] = { record -> HomeNetwork.recreate(record.config) }
         val connections = SourceConnections(world.library, world.registry, listOf(HomeNetwork.server, HomeNetwork.share))
-        return world to FakePlatform(connections = connections)
+        // As the platforms remove: at once, with the server's sign-out left to run on its own.
+        return world to FakePlatform(connections = connections).also { it.remove = { id -> connections.remove(id) } }
     }
 
     /** Fills the form and connects; a television has no pointer, so there the button is activated as such. */
@@ -423,4 +443,86 @@ class SourcesUiTest {
 
     private fun DesktopComposeUiTest.focusedIs(text: String) = onAllNodes(isFocused() and hasText(text, substring = true)).fetchSemanticsNodes().isNotEmpty() ||
         onAllNodes(isFocused()).fetchSemanticsNodes().any { node -> node.config.toString().contains(text) }
+
+    private fun DesktopComposeUiTest.removeTheServer() {
+        // The page remembers which row was open, also for a server that was removed and added again.
+        if (!shows("Sign in again")) onNodeWithText("Living Room").performClick()
+        awaitText("Sign in again")
+        onNodeWithText("Remove").performClick()
+        awaitText("Remove Living Room?")
+        assertTrue(shows("signs this device out of the server"), "the question says the server is signed out of")
+        assertTrue(shows("What you have watched is remembered"))
+        onNodeWithText("Remove").performClick()
+    }
+
+    @Test
+    fun removingAServerSignsOutOfItAndAddingItAgainSignsInAfresh() {
+        val (world, platform) = world()
+        screen(world, platform) { app ->
+            awaitText("Recently Added")
+            runOnIdle { app.navigator.open(Destination.Connect(ConnectionKind.SERVER)) }
+            awaitText("Connect to Jellyfin")
+            signIn("secret")
+            await("the server's films") { world.library.movies().any { it.item.title == "Ronin" } }
+            val heat = world.library.movies().single { it.item.title == "Heat" }.item.id
+            runOnIdle { app.setWatched(heat, true) }
+            await("Heat to be watched") { world.library.watchState(heat)?.completed == true }
+            val token = world.library.sources().single { it.type == "home" }.config.lines().last().substringAfter('=')
+
+            onNodeWithContentDescription("Media sources").performClick()
+            awaitText("Living Room")
+            removeTheServer()
+            await("the server to leave the list") { !shows("Living Room") }
+            await("the server to be signed out of") { HomeNetwork.signedOut.isNotEmpty() }
+            assertEquals(listOf(token), HomeNetwork.signedOut.toList(), "its own session, and only that")
+            assertTrue(world.library.sources().none { it.type == "home" })
+            assertFalse(world.library.movies().any { it.item.title == "Ronin" }, "its films leave the library")
+            assertEquals(true, world.library.watchState(heat)?.completed, "what was watched is remembered")
+            assertTrue(world.library.sources().any { it.id == world.source.descriptor.id }, "the folder stays")
+
+            // Adding it again is a new sign-in, which the old session has no part in.
+            runOnIdle { app.navigator.open(Destination.Connect(ConnectionKind.SERVER)) }
+            awaitText("Connect to Jellyfin")
+            signIn("secret")
+            await("the server's films again") { world.library.movies().any { it.item.title == "Ronin" } }
+            val fresh = world.library.sources().single { it.type == "home" }.config.lines().last().substringAfter('=')
+            assertTrue(fresh != token)
+            assertEquals(listOf(token), HomeNetwork.signedOut.toList())
+        }
+    }
+
+    @Test
+    fun aServerThatIsAwayOrStopsAnsweringIsRemovedAtOnce() {
+        val (world, platform) = world()
+        screen(world, platform) { app ->
+            awaitText("Recently Added")
+            runOnIdle { app.navigator.open(Destination.Connect(ConnectionKind.SERVER)) }
+            awaitText("Connect to Jellyfin")
+            signIn("secret")
+            await("the server's films") { world.library.movies().any { it.item.title == "Ronin" } }
+
+            // Away: the removal does not depend on it.
+            HomeNetwork.serverUp = false
+            val refreshing = runOnIdle { app.refresh() }
+            onNodeWithContentDescription("Media sources").performClick()
+            await("the server to be seen as away") { shows("Not connected") && refreshing.isCompleted }
+            removeTheServer()
+            await("the server to leave the list") { !shows("Living Room") }
+            assertTrue(world.library.sources().none { it.type == "home" })
+            assertTrue(HomeNetwork.signedOut.isEmpty(), "nothing was confirmed")
+            assertFalse(platform.reports.any { "couldn" in it }, "removing is not reported as failing")
+
+            // Back, then silent in the middle of signing out: the list does not wait for it.
+            HomeNetwork.serverUp = true
+            HomeNetwork.signOutHangs = true
+            runOnIdle { app.navigator.open(Destination.Connect(ConnectionKind.SERVER)) }
+            awaitText("Connect to Jellyfin")
+            signIn("secret")
+            await("the server's films again", { "at ${app.navigator.current}, sources ${world.library.sources().map { it.displayName + "/" + it.availability }}, notice ${app.notice}, reports ${platform.reports}" }) { world.library.movies().any { it.item.title == "Ronin" } }
+            await("the list", { "at ${app.navigator.current}, sources ${world.library.sources().map { it.displayName }}" }) { shows("Living Room") }
+            removeTheServer()
+            await("the server to leave the list") { !shows("Living Room") }
+            assertTrue(world.library.sources().none { it.type == "home" })
+        }
+    }
 }

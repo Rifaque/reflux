@@ -74,12 +74,17 @@ class CredentialStorageTest {
     }
 
     @Test
-    fun removingASourceRemovesItsEntry() {
+    fun removingASourceRemovesItsEntry() = kotlinx.coroutines.runBlocking {
         plaintextLibrary()
         val store = MemoryStore()
         val environment = DesktopEnvironment(data, sealFor = { directory, _ -> KeychainSeal(store, directory) })
-        environment.removeSource(stored(environment).id)
+        val id = stored(environment).id
+        // jf.local is no server here: the removal does not wait for one, and does not claim the session ended.
+        val signOut = environment.removeSource(id)
         assertTrue(store.entries.isEmpty())
+        assertNull(environment.library.source(id))
+        assertEquals(dev.reflux.library.SignOut.UNCONFIRMED, signOut.await())
+        assertFalse(Files.readString(data.resolve("reflux.log")).contains("secret-token"), "the log does not carry the token")
     }
 
     @Test

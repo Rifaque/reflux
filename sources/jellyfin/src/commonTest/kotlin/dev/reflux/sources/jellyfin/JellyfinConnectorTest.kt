@@ -9,8 +9,10 @@ import dev.reflux.core.source.ConnectionRequest
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertIs
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /** Signing in from what a user types, and every way that can go wrong, told apart. */
@@ -75,5 +77,61 @@ class JellyfinConnectorTest {
     fun aFailureCarriesNoCredentialsForTheLog() = runTest {
         val failed = assertIs<Connection.Failed>(connect("jf.local:8096", password = "hunter2"))
         assertTrue(failed.detail.orEmpty().let { "hunter2" !in it && "tok" !in it })
+    }
+
+    private val signedIn = JellyfinCredentials("http://jf.local:8096", "srv1", "u1", "tok-1", "device-1", "Alex").encode()
+
+    /** The server's answer to signing out, and nothing else. */
+    private fun signOutAnswer(answer: (HttpRequest) -> HttpResult) = HttpFetcher { request ->
+        requests += request
+        if (request.url.substringBefore('?').endsWith("/Sessions/Logout")) answer(request) else error("unexpected ${request.method} ${request.url}")
+    }
+
+    @Test
+    fun signingOutEndsThisDevicesSessionWithItsOwnTokenAndNothingElse() = runTest {
+        val connector = JellyfinConnector(signOutAnswer { HttpResult(204, ByteArray(0)) }, "device-1", "Living room TV")
+        assertTrue(connector.signOut(signedIn))
+        val request = requests.single()
+        assertEquals("POST", request.method)
+        assertEquals("http://jf.local:8096/Sessions/Logout", request.url, "the server that issued the token, with nothing in the address")
+        val authorization = request.headers.getValue("Authorization")
+        assertTrue("Token=\"tok-1\"" in authorization, "the session is the one its own token names")
+        assertTrue("DeviceId=\"device-1\"" in authorization)
+        assertTrue(request.body == null || request.body!!.isEmpty(), "no body: no user, no session id, no password")
+        assertFalse(request.headers.keys.any { it.equals("X-Emby-Token", ignoreCase = true) })
+    }
+
+    @Test
+    fun aTokenTheServerNoLongerAcceptsIsAlreadySignedOut() = runTest {
+        // Expired, revoked by an administrator, or replaced by a newer sign-in from this device.
+        assertTrue(JellyfinConnector(signOutAnswer { HttpResult(401, ByteArray(0)) }, "device-1").signOut(signedIn))
+    }
+
+    @Test
+    fun aSignOutThatIsNotConfirmedSaysSo() = runTest {
+        val unreachable = HttpFetcher { error("no route to host") }
+        assertEquals(ConnectionProblem.UNREACHABLE, JellyfinConnector.problemOf(assertFailsWith<JellyfinException> { JellyfinConnector(unreachable, "device-1").signOut(signedIn) }))
+        val failing = assertFailsWith<JellyfinException> { JellyfinConnector(signOutAnswer { HttpResult(500, ByteArray(0)) }, "device-1").signOut(signedIn) }
+        assertEquals(500, failing.status)
+        // Something that is not Jellyfin answered (a captive portal, a proxy's page): that ended nothing.
+        val page = signOutAnswer { HttpResult(200, "<html>Welcome</html>".encodeToByteArray()) }
+        assertFailsWith<JellyfinException> { JellyfinConnector(page, "device-1").signOut(signedIn) }
+        listOf(failing.message, failing.cause?.message).forEach { assertFalse(it.orEmpty().contains("tok-1"), "no token in what is reported") }
+    }
+
+    @Test
+    fun aConnectionThatStaysInUseIsNotSignedOut() = runTest {
+        val connector = JellyfinConnector(signOutAnswer { HttpResult(204, ByteArray(0)) }, "device-1")
+        // A server may hand this device the same token again on signing in again; ending it would end the new one.
+        assertFalse(connector.signOut(signedIn, keeping = signedIn.replace("Alex", "alex")))
+        assertTrue(requests.isEmpty())
+        assertTrue(connector.signOut(signedIn, keeping = signedIn.replace("tok-1", "tok-2")))
+        assertTrue("Token=\"tok-1\"" in requests.single().headers.getValue("Authorization"), "the replaced token, never the new one")
+    }
+
+    @Test
+    fun somethingThatIsNotAJellyfinConnectionHasNothingToSignOut() = runTest {
+        assertFalse(JellyfinConnector(signOutAnswer { error("not asked") }, "device-1").signOut("garbage"))
+        assertNull(requests.firstOrNull())
     }
 }

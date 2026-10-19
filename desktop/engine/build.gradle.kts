@@ -20,4 +20,5 @@ dependencies {
     runtimeOnly(libs.slf4j.nop) // smbj logs through SLF4J; shells report problems themselves
     testImplementation(kotlin("test"))
     testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.kotlinx.serialization.json) // reading a live server's answers in tests
 }

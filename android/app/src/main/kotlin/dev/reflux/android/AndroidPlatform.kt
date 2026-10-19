@@ -158,5 +158,8 @@ internal class AndroidPlatform(private val environment: AndroidEnvironment, over
         }
     }
 
-    override suspend fun removeSource(id: SourceId) = withContext(Dispatchers.IO) { environment.removeSource(id) }
+    override suspend fun removeSource(id: SourceId) {
+        // The server's sign-out goes on by itself; the removal is done here.
+        withContext(Dispatchers.IO) { environment.removeSource(id) }
+    }
 }

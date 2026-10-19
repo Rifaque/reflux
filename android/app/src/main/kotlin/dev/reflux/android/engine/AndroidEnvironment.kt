@@ -27,6 +27,7 @@ import dev.reflux.library.Library
 import dev.reflux.library.LibraryPipeline
 import dev.reflux.library.SourceConnections
 import dev.reflux.library.SourceRecord
+import dev.reflux.library.SignOut
 import dev.reflux.library.SourceRegistry
 import dev.reflux.library.db.RefluxDatabase
 import dev.reflux.metadata.tmdb.TmdbProvider
@@ -43,6 +44,7 @@ import dev.reflux.sources.webdav.WebDavConnector
 import dev.reflux.sources.webdav.WebDavSource
 import android.os.LocaleList
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -251,15 +253,17 @@ class AndroidEnvironment(context: Context, dataDirectory: File = context.filesDi
         return TreeAddition.Added(source, narrower)
     }
 
-    /** Removes a source and what Reflux derived from it, and gives back its folder grant. Files are never touched. */
-    fun removeSource(id: SourceId) {
+    /**
+     * Removes a source and what Reflux derived from it, and gives back its folder grant. Files are never
+     * touched. A server's session is then ended without holding the removal up ([SourceConnections.remove]).
+     */
+    fun removeSource(id: SourceId): Deferred<SignOut> {
         val record = library.source(id)
-        library.removeSource(id)
-        registry.unregister(id)
-        connections.forget(id)
+        val signOut = connections.remove(id)
         if (record?.type == DocumentTreeSource.TYPE) {
             runCatching { application.contentResolver.releasePersistableUriPermission(Uri.parse(record.config), Intent.FLAG_GRANT_READ_URI_PERMISSION) }
         }
+        return signOut
     }
 
     /** Records a problem for developers: in the system log, and next to the library for bug reports. */

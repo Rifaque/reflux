@@ -82,6 +82,16 @@ interface SourceConnector {
 
     /** [config] with [excluded] parts left out, for sources made of parts ([SectionedSource]); null for the rest. */
     fun withExcludedSections(config: String, excluded: Set<String>): String? = null
+
+    /**
+     * Ends what [config] signed in to on the other side, so that what it holds stops working there: this
+     * device's session on a server, and nothing else of the account's. Returns false when there is nothing
+     * of the kind to end (the default: a share keeps no session). [keeping] is a connection that stays in
+     * use; whatever it shares with [config] is left open.
+     *
+     * Throws when it could not be confirmed (unreachable, refused, an unexpected answer).
+     */
+    suspend fun signOut(config: String, keeping: String? = null): Boolean = false
 }
 
 /** What a part of a source holds, in the user's terms. */

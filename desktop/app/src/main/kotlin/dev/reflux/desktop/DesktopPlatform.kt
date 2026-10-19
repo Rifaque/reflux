@@ -104,7 +104,10 @@ internal class DesktopPlatform(private val environment: DesktopEnvironment) : Pl
         }
     }
 
-    override suspend fun removeSource(id: SourceId) = withContext(Dispatchers.IO) { environment.removeSource(id) }
+    override suspend fun removeSource(id: SourceId) {
+        // The server's sign-out goes on by itself; the removal is done here.
+        withContext(Dispatchers.IO) { environment.removeSource(id) }
+    }
 
     private companion object {
         /** Reflux draws its own controls and handles all input, so mpv's are switched off. */

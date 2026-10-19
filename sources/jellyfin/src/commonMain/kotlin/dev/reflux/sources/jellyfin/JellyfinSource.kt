@@ -463,7 +463,26 @@ class JellyfinSource(
             return credentials to info.string("ServerName")?.takeIf { it.isNotBlank() }
         }
 
-        private val trailingYear = Regex("""^(.*\S)\s*\(((?:18|19|20)\d{2})\)$""")
+        /**
+         * Ends the session [credentials] signed in to: `POST Sessions/Logout`, sent with the access token
+         * itself, revokes that token and no other (the server looks up the one device record holding it). Not
+         * the account's other sessions, other devices, or other clients; no administrator rights are needed.
+         *
+         * A 401 means the server no longer accepts the token (it was already ended, or expired), which is the
+         * point. Anything else but the server's empty success is not taken as ended.
+         *
+         * @throws JellyfinException when the server could not be reached or the end not confirmed.
+         */
+        internal suspend fun signOut(credentials: JellyfinCredentials, http: HttpFetcher, deviceName: String) {
+            val api = JellyfinApi(credentials.serverUrl, http, credentials.deviceId, deviceName, credentials.accessToken)
+            try {
+                api.postWithoutAnswer("Sessions/Logout")
+            } catch (e: JellyfinException) {
+                if (e.status != 401) throw e
+            }
+        }
+
+        private val trailingYear =Regex("""^(.*\S)\s*\(((?:18|19|20)\d{2})\)$""")
 
         /**
          * A title as a work is known by, and its year. A server names an item it found no metadata for after

@@ -47,6 +47,15 @@ class JellyfinConnector(
     override fun describe(config: String): ConnectionRequest? =
         JellyfinCredentials.decode(config)?.let { ConnectionRequest(it.serverUrl, it.userName) }
 
+    /** Ends the session of [config]'s access token, and no other (see [JellyfinSource.signOut]). */
+    override suspend fun signOut(config: String, keeping: String?): Boolean {
+        val credentials = JellyfinCredentials.decode(config) ?: return false
+        // A server may hand the same token out again to a sign-in from this device; ending it would end both.
+        if (keeping?.let(JellyfinCredentials::decode)?.let { it.serverUrl == credentials.serverUrl && it.accessToken == credentials.accessToken } == true) return false
+        JellyfinSource.signOut(credentials, http, deviceName)
+        return true
+    }
+
     internal companion object {
         private val address = Regex("""^https?://[^\s/?#@]+(/[^\s?#]*)?$""", RegexOption.IGNORE_CASE)
 
