@@ -8,7 +8,7 @@ Current handling of credentials:
 
 - Jellyfin passwords are used once to sign in and are never stored. The resulting access token, and WebDAV and SMB passwords, are a source's connection.
 - Where a connection is kept: on Windows in Credential Manager and on Linux in the Secret Service where one runs, with only a reference in the library database; on Android in the library database, encrypted with a key held in the Android keystore; on a Linux desktop without a Secret Service, in the library database as it is (the diagnostics log says so). Details: docs/RELEASE.md, Credentials.
-- Removing a Jellyfin source forgets its token but does not yet end its session on the server; ending it is decided for V1 (docs/DECISIONS.md, 2026-10-17).
+- Removing a Jellyfin source forgets its token and asks the server to end that session (`POST /Sessions/Logout` with that token, which revokes it and nothing else). The removal never waits for the server; if it cannot be reached, the token is forgotten anyway and the server may list the device until it expires the session (docs/DECISIONS.md, 2026-10-19).
 - Reflux only sends `PROPFIND` and `GET` to WebDAV shares, and XML responses are parsed with DTDs disabled. SMB share files are opened read-only and streamed to the player through a server bound to the loopback interface only, with an unguessable token per file.
 - Logs (the diagnostics log, the Android system log, libmpv's verbose log when enabled) pass through redaction of credentials in addresses, parameters, headers, and quoted tokens.
 - The TMDB credential is an application credential supplied at build time; it is not a user secret.

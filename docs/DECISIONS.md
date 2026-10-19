@@ -675,7 +675,20 @@ Casting is investigated for V1 and must not move the beta. A time-boxed spike, b
 
 ## 2026-10-17 — Removing a Jellyfin server ends its session
 
+> Built by "How a Jellyfin server is signed out of" (2026-10-19).
+
 Removing a Jellyfin source today forgets its token locally but leaves the session open on the server, which keeps listing the device and accepting the token. Decided for V1: removal asks the server to end the session (best-effort, when it is reachable) and forgets the token either way; if the server could not be reached, the removal still completes and the server's own device list may still show Reflux until the server expires it. Signing in again to a server ends the session it replaces in the same way.
+
+## 2026-10-19 — How a Jellyfin server is signed out of
+
+Implements "Removing a Jellyfin server ends its session" (2026-10-17).
+
+- **The operation:** `POST /Sessions/Logout`, no body, sent to the server's own address with the session's access token in the usual `Authorization: MediaBrowser ... Token="..."` header. The server looks up the one device record holding that token and deletes it, so that token stops working. It needs no administrator rights and touches none of the account's other tokens, so other Reflux installations and the user's other clients keep their sessions (read in the server's source, `SessionController.ReportSessionEnded` and `SessionManager.Logout`, and verified live, VERIFICATION.md). Endpoints that revoke a user's tokens or delete devices by id were not used: they act on more than this session, and the device ones need an administrator.
+- **Local first, then the server.** Removing a source removes it from the library and the registry and forgets its connection (the credential store's entry, or the encrypted value) before the server is asked anything; the connection is opened just before, so the sign-out has the token. The removal never waits for the server: the sign-out runs on its own, once, and is given up after 5 seconds (`SourceConnections.SIGN_OUT_WITHIN_MS`). No retry, and nothing kept to retry with.
+- **What counts as ended:** the server's empty success (204), or a 401 (the token is no longer accepted: it expired, an administrator revoked it, or a newer sign-in from this device replaced it). Anything else (unreachable, a timeout, a server error, a page that is not Jellyfin's) is unconfirmed, reported to the diagnostics log without the token, and not presented as ended. The server may then keep listing Reflux until it expires the session; the token is gone from Reflux either way.
+- **Signing in again** ends the session it replaces in the same way, unless the server handed out the same token again (then nothing is ended). Current servers already revoke the previous token of the same user on the same device when it signs in again, so this matters for a changed account or address, and for servers that do not.
+- **Where it lives:** `SourceConnector.signOut` is the adapter's part (a share has nothing to end and keeps the default); `SourceConnections.remove` is the one removal path both platforms use. The experience layer only says, in the removal question, that Reflux signs this device out of the server.
+- **Known limit:** the server also reports every live session with the same device id as ended (by device id, not by user). Reflux has one device id per installation, so with two accounts of one server added to one Reflux, removing one ends the other's live session on the server; its token is untouched and its next request opens a new session. A device id per account would avoid that, and would change every existing installation's device on its servers; not worth it for V1.
 
 ## 2026-10-17 — Desktop capabilities are observed, not declared
 
