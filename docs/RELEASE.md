@@ -5,8 +5,8 @@ What stands between the source tree and builds that can be handed to testers and
 ## Beta entry checklist (`0.9.0-beta.1`)
 
 - [ ] Every M1 item in ROADMAP.md is Done, or decided out of V1 in DECISIONS.md.
-- [ ] A license is chosen and in the repository; third-party notices generated.
-- [ ] About page with version and build, licenses, TMDB attribution, privacy and support links.
+- [ ] A license is chosen and in the repository (third-party notices are done: `legal/`, checked by the build, below).
+- [ ] About page with version and build, licenses, TMDB attribution, privacy and support links (built 2026-10-19; left: Reflux's own license, and the privacy policy and support links once the website has them).
 - [ ] Android: signed release build from CI; R8 on, keep rules validated by a release build on a device; upgrade from the last alpha keeps library, watch state, sources, and downloads.
 - [ ] Fire TV: the developer's devices inspected (model, Fire OS, API level) and the release build run on them.
 - [ ] Desktop: Windows installer and Linux package installing libmpv with provenance; a clean-machine install on each.
@@ -60,7 +60,8 @@ Desktop playback and probing use libmpv through its stable client API (decision 
 
 - A libmpv build to ship on Windows, with a known provenance and configuration: built LGPL (no GPL-only components), with the decoders and hardware paths Reflux relies on. The development DLL is a third-party build and is not that.
 - On Linux, either a dependency on the distribution's libmpv (deb/rpm) or a bundled copy (Flatpak/AppImage). The versions differ between distributions; the binding only uses API that every libmpv 2.x has.
-- LGPL obligations for the bundled library and its dependencies (FFmpeg, libass, libplacebo): license texts, source offer, and dynamic linking, which is already how it is loaded.
+- LGPL obligations for the bundled library and its dependencies (FFmpeg, libass, libplacebo): license texts, source offer, and dynamic linking, which is already how it is loaded. The About page lists libmpv today as the copy on the user's computer, not included; a bundled build changes its line in `legal/components.txt` (its license as built, the LGPL text, where its source is offered).
+- A packaged desktop build that carries its own Java runtime adds that runtime to the notices (OpenJDK is GPL-2.0 with the Classpath Exception); the notice check only sees Maven modules.
 - An installer or package per platform, and code signing on Windows. `desktop:app` has no packaging configuration yet.
 - On X11 the engine changes process-wide state (decision log, 2026-10-12); a bundled build is a chance to patch that at the source.
 
@@ -96,7 +97,7 @@ The diagnostics log, the Android system log, and Reflux's own log file pass ever
 ## Metadata provider
 
 - The TMDB credential is an application credential supplied by the build (decision log, "Metadata providers"). Today it is read from the environment; release builds need it injected and not checked in.
-- TMDB's terms require attribution in the product ("This product uses the TMDB API but is not endorsed or certified by TMDB", with their logo). There is no About screen yet to carry it.
+- TMDB's terms require attribution in the product: its approved logo and "This product uses the TMDB API but is not endorsed or certified by TMDB.", in an About or Credits section (developer.themoviedb.org FAQ, read 2026-10-19). The About page carries both whenever the provider is in use (DECISIONS.md, 2026-10-19).
 - The live service has not been exercised from this repository's tests; the provider is tested against recorded responses.
 
 ## Media handling gaps
@@ -119,8 +120,17 @@ Known, deliberate, and visible in the library rather than silent:
 - Television: verified on the Google TV emulator only. A real television or streaming box is still owed, and with it everything an emulator cannot show: hardware decoding, 4K, HDR and Dolby Vision, an HDMI receiver's audio formats, drives plugged into the device, and a real remote in the hand.
 - Media keys are not captured on desktop.
 
+## Third-party notices
+
+The About page lists the third-party software in each build, with its license texts, from `legal/` (DECISIONS.md, 2026-10-19):
+
+- `legal/components.txt`: one line per component (name, license, texts, targets, Maven module patterns, a note), and `legal/licenses/`: the texts, verbatim, taken from the artifacts where they carry them (`META-INF/LICENSE*`), otherwise from the license's canonical source.
+- `./gradlew check` runs `checkThirdPartyNotices` for `desktop:app` (its runtime classpath) and `android:app` (its release runtime classpath): it fails, naming the modules, when a module no line covers appears, or when a line's modules have all gone. Native code is not seen by it: Skia and ICU (inside Skiko's runtime), libmpv, and a bundled Java runtime are kept by hand.
+- When it fails after a dependency change: read the new module's license from its POM and from the license files in its artifacts, add it to an existing line when it is the same project under the same license, otherwise add a line and, for a license whose text names its copyright holder (MIT, BSD), its own text file. Never infer a license from a project's name.
+- Audited 2026-10-19: everything on both runtime classpaths is Apache-2.0 except Bouncy Castle, MBassador, and SLF4J (MIT), SQLite JDBC's original Zentus code (BSD-2-Clause, beside its Apache-2.0), and JNA (Apache-2.0 or LGPL-2.1-or-later); Skiko's desktop runtime adds Skia (BSD-3-Clause) and ICU data (Unicode-3.0). No artifact carries an Apache `NOTICE` file. Media3 uses the platform's decoders, so no FFmpeg is in the Android package.
+
 ## Project
 
-- No license has been chosen for Reflux itself (README). Every distribution, including the beta, needs one.
+- No license has been chosen for Reflux itself (README). Every distribution, including the beta, needs one. Choosing it is a product decision for the owner (DECISIONS.md); once a `LICENSE` file is in the repository the About page shows it without other changes, and README's License section and the website follow.
 - The CI workflow (`.github/workflows/ci.yml`) runs the full check on Linux and Windows and the window tests on Linux. It has been run in its container locally but never on GitHub, because nothing has been pushed since it was written. Android is not deliberately part of it: the workflow sets up no Android SDK, so whether the Android modules build there depends on the hosted runner image happening to provide `ANDROID_HOME`; no instrumented test, emulator, or release build is run, and the Linux container has no SDK at all.
 - The developer CLI is a diagnostic tool and is not distributed.
