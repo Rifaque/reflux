@@ -122,7 +122,8 @@ First M1 slice, done 2026-10-17: "From the start" keeps the place (Reflux and Je
 | Android in CI (unit tests, lint, a release build; instrumented tests where a runner allows) | Open |
 | The CI workflow run on GitHub at least once, green | Open |
 | Intermittent tests fixed: `SourcesUiTest.theRemoteChoosesLibrariesToo` times out under a loaded full `check` (VERIFICATION.md, first M1 slice) | Open |
-| Linux window tests: in the `tools/ci` container a show's card on screen is never located for a click, failing `EmbeddedPlaybackTest` and `OfflineWindowTest` (already failing on `a48cd67`; VERIFICATION.md, Smart Offline) | Open |
+| Linux window tests: in the `tools/ci` container a show's card on screen is never located for a click, failing `EmbeddedPlaybackTest` and `OfflineWindowTest` (already failing on `a48cd67`; VERIFICATION.md, Smart Offline) | Done 2026-10-19: harness causes, fixed (VERIFICATION.md, "Real-window browsing") |
+| Intermittent window test: `EmbeddedPlaybackTest`'s missing-file step on Linux, where the engine reported nothing within 20 s for a file deleted just before Resume (1 of 9 container rounds; VERIFICATION.md, "Real-window browsing") | Open |
 | Google Play readiness: listing, data safety form, content rating, target API, TV quality checklist, Watch Next certification for Google TV, closed-testing track | Open |
 | Fire OS / Amazon Appstore readiness: listing, Fire TV device targeting, Amazon's app review requirements, test on the declared devices | Open |
 | Desktop packaging: Windows installer (signed), Linux package(s) | Open |
