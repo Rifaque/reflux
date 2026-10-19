@@ -18,6 +18,22 @@ dependencies {
     testImplementation(project(":sources:local"))
 }
 
+// The commit this build is from (docs/VERSIONING.md, "Build metadata"), read by the About page and the
+// diagnostics log. The version itself comes from core's generated RefluxBuild.
+val generateBuildIdentity by tasks.registering {
+    @Suppress("UNCHECKED_CAST")
+    val identity = rootProject.extra["reflux.gitIdentity"] as Provider<String>
+    val output = layout.buildDirectory.dir("generated/buildIdentity")
+    inputs.property("identity", identity)
+    outputs.dir(output)
+    doLast {
+        val file = output.get().file("dev/reflux/desktop/build-identity.properties").asFile
+        file.parentFile.mkdirs()
+        file.writeText(identity.get())
+    }
+}
+sourceSets.main { resources.srcDir(generateBuildIdentity) }
+
 compose.desktop {
     application {
         mainClass = "dev.reflux.desktop.MainKt"

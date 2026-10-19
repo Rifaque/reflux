@@ -10,6 +10,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.LinearGradientShader
 import androidx.compose.ui.graphics.Paint
+import dev.reflux.core.BuildIdentity
 import dev.reflux.core.metadata.Credit
 import dev.reflux.core.metadata.CreditRole
 import dev.reflux.core.metadata.EpisodeMetadata
@@ -22,6 +23,7 @@ import dev.reflux.core.metadata.ProviderRef
 import dev.reflux.core.metadata.RemoteArtwork
 import dev.reflux.core.metadata.SeasonMetadata
 import dev.reflux.core.metadata.WorkMetadata
+import dev.reflux.metadata.tmdb.TmdbProvider
 import dev.reflux.core.model.ArtworkKind
 import dev.reflux.core.model.ArtworkLocator
 import dev.reflux.core.model.CalendarDate
@@ -49,6 +51,7 @@ import dev.reflux.library.SourceRegistry
 import dev.reflux.sources.local.LocalFolderSource
 import dev.reflux.library.Offline
 import dev.reflux.library.SourceConnections
+import dev.reflux.ui.legal.NoticeTarget
 import dev.reflux.ui.state.ArtworkLoader
 import dev.reflux.ui.state.FolderBrowser
 import dev.reflux.ui.state.FolderChoice
@@ -113,6 +116,7 @@ class TestWorld(metadata: Boolean = true) {
 /** A tiny provider catalog covering [TestWorld.populate]. Artwork URLs are resolved by [FakeArtwork]. */
 object FakeCatalog : MetadataProvider {
     override val id = "tmdb"
+    override val attribution = TmdbProvider.ATTRIBUTION
 
     private class Work(
         val key: String,
@@ -274,6 +278,8 @@ class FakePlatform(
     override val folderBrowser: FolderBrowser? = null,
     override val offline: Offline? = null,
     override val connections: SourceConnections? = null,
+    override val build: BuildIdentity = BuildIdentity(commit = "8bd4bba"),
+    override val notices: NoticeTarget? = NoticeTarget.DESKTOP,
 ) : Platform {
     override val artwork: FakeArtwork = FakeArtwork(artwork, backdrops, posters)
     override var device: DeviceCapabilities = testDevice

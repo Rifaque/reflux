@@ -25,7 +25,7 @@ import dev.reflux.ui.theme.RefluxColors
 enum class Icon {
     PLAY, PAUSE, NEXT, PREVIOUS, REWIND, FORWARD,
     BACK, CHEVRON_RIGHT, CHEVRON_UP, CHEVRON_DOWN, CLOSE, CHECK, PLUS, SEARCH,
-    HEART, HEART_FILLED, FOLDER, REFRESH, OFFLINE, DOWNLOAD, DOWNLOADED, SERVER, NETWORK,
+    HEART, HEART_FILLED, FOLDER, REFRESH, INFO, OFFLINE, DOWNLOAD, DOWNLOADED, SERVER, NETWORK,
     VOLUME, VOLUME_MUTED, SUBTITLES, AUDIO, CHAPTERS, FULLSCREEN, FULLSCREEN_EXIT,
 }
 
@@ -124,6 +124,11 @@ private fun DrawScope.draw(icon: Icon, color: Color) {
         Icon.REFRESH -> {
             drawArc(color, startAngle = -40f, sweepAngle = 300f, useCenter = false, topLeft = Offset(4.5f, 4.5f), size = Size(15f, 15f), style = line)
             stroke(color) { moveTo(18.9f, 3.6f); lineTo(18.4f, 8f); lineTo(14.2f, 7.2f) }
+        }
+        Icon.INFO -> {
+            drawCircle(color, radius = 8f, center = Offset(12f, 12f), style = line)
+            stroke(color) { moveTo(12f, 11f); lineTo(12f, 16f) }
+            drawCircle(color, radius = 1.2f, center = Offset(12f, 7.9f))
         }
         Icon.OFFLINE -> {
             drawCircle(color, radius = 8f, center = Offset(12f, 12f), style = line)

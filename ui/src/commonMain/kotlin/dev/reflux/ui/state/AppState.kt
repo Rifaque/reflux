@@ -38,6 +38,7 @@ import dev.reflux.library.pinVersion
 import dev.reflux.library.planPlayback
 import dev.reflux.library.setWatchedEverywhere
 import kotlinx.coroutines.CancellationException
+import dev.reflux.core.metadata.ProviderAttribution
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -117,6 +118,9 @@ class AppState(
 
     /** Whether titles and artwork could not be fetched last time; the library works without them. */
     val metadataUnreachable: StateFlow<Boolean> get() = pipeline.metadataUnreachable
+
+    /** How the metadata provider in use asks to be credited, for the About page; null without one. */
+    val metadataAttribution: ProviderAttribution? get() = pipeline.metadataAttribution
 
     /** Volume and mute carry over from one playback session to the next. */
     internal var volume = 100

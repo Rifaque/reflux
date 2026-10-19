@@ -8,6 +8,63 @@ plugins {
 val refluxAndroid: Boolean by extra
 if (refluxAndroid) apply(plugin = "com.android.kotlin.multiplatform.library")
 
+/**
+ * The About page's notices, generated from `legal/` (components.txt and the license texts beside it; and the
+ * repository's own LICENSE once there is one), so the application shows exactly what is checked in.
+ */
+abstract class GenerateNotices : DefaultTask() {
+    @get:InputDirectory
+    abstract val legal: DirectoryProperty
+
+    @get:InputFiles
+    @get:Optional
+    abstract val license: RegularFileProperty
+
+    @get:OutputDirectory
+    abstract val output: DirectoryProperty
+
+    @TaskAction
+    fun generate() {
+        fun literal(text: String) = "\"" + text.replace("\r\n", "\n").replace("\\", "\\\\").replace("\"", "\\\"").replace("$", "\\$").replace("\n", "\\n") + "\""
+        val lines = legal.file("components.txt").get().asFile.readLines().filter { it.isNotBlank() && !it.startsWith("#") }.map { it.split("|").map(String::trim) }
+        val texts = legal.dir("licenses").get().asFile.listFiles { file -> file.name.endsWith(".txt") }!!.sortedBy { it.name }
+        val known = texts.map { it.name }.toSet()
+        val components = lines.map { (name, spdx, files, targets, _, note) ->
+            val named = files.split(" ").filter(String::isNotEmpty)
+            named.firstOrNull { it !in known }?.let { throw GradleException("legal/components.txt: $name names $it, which is not in legal/licenses") }
+            val platforms = targets.split(" ").filter(String::isNotEmpty).joinToString(", ") { "NoticeTarget.${it.uppercase()}" }
+            "        ThirdPartyComponent(${literal(name)}, ${literal(spdx)}, listOf(${named.joinToString(", ") { literal(it) }}), setOf($platforms), ${note.takeIf(String::isNotEmpty)?.let(::literal) ?: "null"}),"
+        }
+        val own = license.orNull?.asFile?.takeIf { it.exists() }?.readText()
+        val file = output.get().file("dev/reflux/ui/legal/NoticeData.kt").asFile
+        file.parentFile.mkdirs()
+        file.writeText(
+            buildString {
+                append("package dev.reflux.ui.legal\n\n")
+                append("/** Generated from legal/ by the ui build (GenerateNotices); never edited. */\n")
+                append("internal object NoticeData {\n")
+                append("    val components: List<ThirdPartyComponent> = listOf(\n").append(components.joinToString("\n")).append("\n    )\n\n")
+                append("    val refluxLicense: String? = ").append(own?.let(::literal) ?: "null").append("\n\n")
+                append("    fun text(file: String): String? = when (file) {\n")
+                texts.forEach { append("        ${literal(it.name)} -> Texts.").append(it.nameWithoutExtension.replace(Regex("[^A-Za-z0-9]"), "_").uppercase()).append('\n') }
+                append("        else -> null\n    }\n\n")
+                // Constants of their own object: loaded when a notice is opened, not with the About page.
+                append("    private object Texts {\n")
+                texts.forEach { append("        const val ").append(it.nameWithoutExtension.replace(Regex("[^A-Za-z0-9]"), "_").uppercase()).append(" = ").append(literal(it.readText())).append('\n') }
+                append("    }\n}\n")
+            },
+        )
+    }
+
+    private operator fun <T> List<T>.component6(): T = this[5]
+}
+
+val generateNotices by tasks.registering(GenerateNotices::class) {
+    legal.set(rootProject.layout.projectDirectory.dir("legal"))
+    license.set(rootProject.layout.projectDirectory.file("LICENSE"))
+    output.set(layout.buildDirectory.dir("generated/notices"))
+}
+
 kotlin {
     jvmToolchain(21)
     jvm()
@@ -20,6 +77,9 @@ kotlin {
     }
 
     sourceSets {
+        commonMain {
+            kotlin.srcDir(generateNotices)
+        }
         commonMain.dependencies {
             api(project(":core"))
             api(project(":library"))
@@ -36,6 +96,7 @@ kotlin {
             implementation(libs.compose.ui.test)
             implementation(compose.desktop.currentOs)
             implementation(project(":sources:local"))
+            implementation(project(":metadata:tmdb")) // its real attribution, for the About page's tests
         }
     }
 }

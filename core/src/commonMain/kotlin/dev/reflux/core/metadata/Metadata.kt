@@ -94,6 +94,9 @@ data class SeasonMetadata(
 interface MetadataProvider {
     val id: String
 
+    /** What the provider's terms ask the product to say about using it, on its About page; null if nothing. */
+    val attribution: ProviderAttribution? get() = null
+
     suspend fun search(query: MetadataQuery): List<MetadataCandidate>
 
     /** Resolves an external ID (`imdb` → `tt0133093`) to this provider's reference, if known. */
@@ -103,6 +106,20 @@ interface MetadataProvider {
 
     suspend fun season(ref: ProviderRef, seasonNumber: Int, language: String): SeasonMetadata?
 }
+
+/**
+ * How a metadata provider asks to be credited: its name, the notice its terms require word for word, where it
+ * is found, and the logo it approves. The provider's adapter owns all of it, so the About page shows any
+ * provider the same way without knowing which one it is.
+ */
+data class ProviderAttribution(val name: String, val notice: String, val site: String, val logo: ProviderLogo? = null)
+
+/**
+ * A provider's approved logo as the vector it is published as: SVG path data in a [width] by [height] box,
+ * filled with a horizontal gradient through [stops] (offset from 0 to 1, and an ARGB color). Drawn as it is,
+ * never recolored or reshaped.
+ */
+data class ProviderLogo(val pathData: String, val width: Float, val height: Float, val stops: List<Pair<Float, Long>>)
 
 /** Thrown when a provider cannot be reached or refuses requests; the caller retries later. */
 class MetadataUnavailableException(message: String, cause: Throwable? = null) : Exception(message, cause)

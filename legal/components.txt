@@ -1,0 +1,35 @@
+# Third-party software in Reflux's builds, as the About page lists it (docs/RELEASE.md, "Third-party notices").
+#
+# One component per line, six fields separated by "|":
+#   name | license | texts | targets | modules | note
+#
+#   texts    the files in legal/licenses shown for it, in order, separated by spaces
+#   targets  where it is part of the build: android, desktop, or both
+#   modules  Maven modules it covers, as group:name patterns where * matches anything; empty for software
+#            that is not a Maven module (native code)
+#   note     one sentence shown with it, or empty
+#
+# `./gradlew check` fails when a module on a shell's runtime classpath is covered by no line for that target,
+# or when a line names modules none of which that target has. Licenses here were read from each module's POM
+# and from the license files inside its artifacts (2026-10-19); keep that evidence when adding a line.
+
+Kotlin and kotlinx libraries | Apache-2.0 | apache-2.0.txt | android desktop | org.jetbrains.kotlin:* org.jetbrains.kotlinx:* |
+JetBrains Java Annotations | Apache-2.0 | apache-2.0.txt | android desktop | org.jetbrains:annotations |
+Compose Multiplatform | Apache-2.0 | apache-2.0.txt | android desktop | org.jetbrains.compose.*:* org.jetbrains.androidx.*:* |
+JetBrains Runtime API | Apache-2.0 | apache-2.0.txt | desktop | org.jetbrains.runtime:jbr-api |
+Skiko | Apache-2.0 | apache-2.0.txt | desktop | org.jetbrains.skiko:* |
+Skia | BSD-3-Clause | skia.txt | desktop | org.jetbrains.skiko:skiko-awt-runtime-* | Part of Skiko's native library.
+ICU data | Unicode-3.0 | icu.txt | desktop | org.jetbrains.skiko:skiko-awt-runtime-* | Part of Skiko's native library.
+AndroidX libraries | Apache-2.0 | apache-2.0.txt | android desktop | androidx.*:* |
+AndroidX Media3 | Apache-2.0 | apache-2.0.txt | android | androidx.media3:* |
+SQLDelight | Apache-2.0 | apache-2.0.txt | android desktop | app.cash.sqldelight:* |
+SQLite JDBC | Apache-2.0 | apache-2.0.txt sqlite-jdbc-zentus.txt | desktop | org.xerial:sqlite-jdbc | Includes SQLite, which is in the public domain.
+smbj and ASN.1 | Apache-2.0 | apache-2.0.txt | android desktop | com.hierynomus:* |
+Bouncy Castle | MIT | bouncycastle.txt | android desktop | org.bouncycastle:* |
+MBassador | MIT | mbassador.txt | android desktop | net.engio:mbassador |
+SLF4J | MIT | slf4j.txt | android desktop | org.slf4j:* |
+Java Native Access (JNA) | Apache-2.0 OR LGPL-2.1-or-later | jna.txt apache-2.0.txt | desktop | net.java.dev.jna:jna |
+JSpecify | Apache-2.0 | apache-2.0.txt | android desktop | org.jspecify:* |
+Guava | Apache-2.0 | apache-2.0.txt | android | com.google.guava:* |
+OkHttp and Okio | Apache-2.0 | apache-2.0.txt | android | com.squareup.okhttp3:* com.squareup.okio:* |
+mpv (libmpv) and FFmpeg | LGPL-2.1-or-later or GPL-2.0-or-later, as built | | desktop | | Playback uses the libmpv on this computer, which includes FFmpeg; Reflux loads it when it starts and does not include it.

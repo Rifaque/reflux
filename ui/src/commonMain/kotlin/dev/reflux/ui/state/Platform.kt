@@ -1,12 +1,14 @@
 package dev.reflux.ui.state
 
 import androidx.compose.ui.graphics.ImageBitmap
+import dev.reflux.core.BuildIdentity
 import dev.reflux.core.model.ArtworkLocator
 import dev.reflux.core.model.SourceId
 import dev.reflux.core.playback.DeviceCapabilities
 import dev.reflux.core.playback.Player
 import dev.reflux.library.Offline
 import dev.reflux.library.SourceConnections
+import dev.reflux.ui.legal.NoticeTarget
 
 /** Decodes artwork for display. Implemented by the platform shell on top of its disk cache and image decoder. */
 interface ArtworkLoader {
@@ -91,6 +93,12 @@ interface Platform {
 
     /** The storage to choose a media folder from, where the platform has no picker of its own; null where it does. */
     val folderBrowser: FolderBrowser? get() = null
+
+    /** Which build this is: the version, and the commit the shell's build recorded (About, diagnostics). */
+    val build: BuildIdentity get() = BuildIdentity()
+
+    /** Which build's third-party notices apply here; null where the shell lists none (a test's). */
+    val notices: NoticeTarget? get() = null
 
     /** Whether a playback engine is installed. Browsing never depends on it. */
     val canPlay: Boolean
