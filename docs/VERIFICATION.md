@@ -425,3 +425,21 @@ Investigated on 2026-10-19 on Windows 11 (125% scaling, two screens) and in the 
 - Google TV emulator and `AboutOnDeviceTest` on a device: not run, for the same memory reason. The instrumented test package builds.
 - Physical Fire TV: the stick answered ping but refused adb on 5555 all session (network debugging off, probably after a restart).
 - TMDB against the live service (no credential here; M3). Only the attribution's content was checked, against TMDB's FAQ and published logo file, read 2026-10-19.
+
+## Reflux's ownership notice on the About page: what was verified
+
+2026-10-19 and 20, from the working tree on top of `e41c538` (builds show `0.9.0-alpha.1 (e41c538, modified)`). This also completes the About page runs the previous section left open.
+
+**Automated:** `./gradlew check :android:app:assembleDebugAndroidTest --continue` on Windows 11: green, 758 tests, 0 failures, 12 skipped, all environment-gated (8 real-window and controller tests without `-Preflux.windowTests`, 3 live-share tests without a share server, and a permission test that cannot run on Windows). Android lint, `checkDebugPlatformApi`, and `checkThirdPartyNotices` for both shells passed. New in `AboutUiTest`: Reflux's notice contains no open-source grant, its copyright line is shown with the build, "Copyright and ownership" is a button before "Third-party software", the notice opens and says third-party licenses are unchanged, and Reflux is not among the third-party components. `AboutOnDeviceTest` now also checks that the package carries the notice.
+
+| Where | What | Result |
+| --- | --- | --- |
+| Windows, real window | The whole window suite (`-Preflux.windowTests=true`), then `AboutWindowTest` again after the change below | Passed |
+| Linux, real window (`tools/ci` container) | First round: `AboutWindowTest` failed at its first arrow, then, after a first attempt at a fix, at the arrow after a page opened by the mouse; every other window test passed. Cause, in the harness: an arrow pressed while a page is still arriving finds nothing to focus yet (`FocusEntry` restores focus only to the page that has arrived), and the container's software rendering makes that window long. The test now presses the first arrow again while nothing has focus, at most every half second; the first arrow that lands must still land on the stop the page was left by. Then 2 of 2 rounds, all 31 window tests passing | Passed (harness fixed) |
+| Google TV emulator (`Reflux_TV`, API 36) | `AboutOnDeviceTest` (2) via `am instrument`; by remote: Media sources → About Reflux arrives on the build and copyright stop; down to "Copyright and ownership", in, three paragraphs, Back to that row; "Third-party software" (13 components), Kotlin, the Apache License paragraph by paragraph to section 4; Back to Kotlin, the list's row, About Reflux. No crash | Passed |
+| Fire TV Stick 4K Plus (`AFTMA08C15`, Fire OS 8.1.8.5, API 30), now at a new address on the LAN; adb had to be authorized again | Installed over the existing app (library kept); `AboutOnDeviceTest` (2); the same remote walk, Menu opening the media sources. No crash | Passed |
+| Xiaomi Pad 7 (`2410CRP4CI`, Android 16, API 36, 3200x2136 landscape at 440 dpi), first physical tablet run | Fresh install (HyperOS needs "Install via USB" in developer options); `AboutOnDeviceTest` (2); by touch: Media sources → About Reflux, the build and copyright line, "Copyright and ownership" (the notice fits the screen), Back, "Third-party software", Kotlin, the Apache License scrolled by swipes to its end, Back through each page to Media sources. Layout: one centred column, nothing clipped or overflowing; the text scrolls under the floating navigation as on every page. No crash | Passed |
+
+**Not verified:** portrait on the tablet (not rotated, to leave the device's rotation setting alone; portrait phone and tablet layouts are rendered offscreen by the `ui` tests); a physical phone; TalkBack or Narrator reading the pages; TMDB's credit on a device (no credential; with none the page shows no credit, as seen on all three devices).
+
+**Seen, not changed:** an arrow pressed during a page transition is dropped rather than kept for the arriving page; the next arrow works. It predates this change and is visible only where rendering is slow. For the accessibility and performance milestones.
