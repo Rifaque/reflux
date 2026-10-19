@@ -86,6 +86,12 @@ internal class JellyfinApi(
         return if (result.body.isEmpty()) null else parse(result)
     }
 
+    /** A POST whose success is an empty answer; any body there is not what was expected. */
+    suspend fun postWithoutAnswer(path: String) {
+        val result = send(HttpRequest(url(path), "POST", headers()))
+        if (result.body.isNotEmpty()) throw JellyfinException("unexpected response", result.status)
+    }
+
     suspend fun delete(path: String, params: Map<String, String> = emptyMap()) {
         send(HttpRequest(url(path, params), "DELETE", headers()))
     }

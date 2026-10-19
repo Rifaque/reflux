@@ -225,7 +225,11 @@ private fun SourceItem(app: AppState, row: SourceRow, expanded: Boolean, scannin
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("Remove ${row.name}?", style = LocalTypography.current.bodyStrong)
                         Text(
-                            "Its movies and shows leave your library. What you have watched is remembered, and nothing on it is touched.",
+                            if (row.kind == ConnectionKind.SERVER) {
+                                "Its movies and shows leave your library, and Reflux signs this device out of the server. What you have watched is remembered, and your media on it is not touched."
+                            } else {
+                                "Its movies and shows leave your library. What you have watched is remembered, and nothing on it is touched."
+                            },
                             style = LocalTypography.current.caption,
                             color = RefluxColors.textSecondary,
                         )

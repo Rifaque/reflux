@@ -16,6 +16,7 @@ import dev.reflux.library.LibraryPipeline
 import dev.reflux.library.Offline
 import dev.reflux.library.SourceConnections
 import dev.reflux.library.SourceRecord
+import dev.reflux.library.SignOut
 import dev.reflux.library.SourceRegistry
 import dev.reflux.library.net.JdkHttpFetcher
 import dev.reflux.metadata.tmdb.TmdbProvider
@@ -34,6 +35,7 @@ import dev.reflux.sources.webdav.WebDavConfig
 import dev.reflux.sources.webdav.WebDavConnector
 import dev.reflux.sources.webdav.WebDavSource
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import java.awt.GraphicsEnvironment
@@ -213,12 +215,11 @@ class DesktopEnvironment(
         path.toAbsolutePath().normalize()
     }
 
-    /** Removes a source and what Reflux derived from it. Watch history is kept; files are never touched. */
-    fun removeSource(id: SourceId) {
-        library.removeSource(id)
-        registry.unregister(id)
-        connections.forget(id)
-    }
+    /**
+     * Removes a source and what Reflux derived from it. Watch history is kept; files are never touched. A
+     * server's session is then ended without holding the removal up ([SourceConnections.remove]).
+     */
+    fun removeSource(id: SourceId): Deferred<SignOut> = connections.remove(id)
 
     /**
      * Creates a playback engine with Reflux's defaults plus [options], or null when libmpv is not installed.
