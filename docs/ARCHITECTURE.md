@@ -176,7 +176,7 @@ A source's life: it is added by a connector (or a folder rule) and kept as a rec
 
 A scan is a pure plan followed by one transaction: the source's file listing is parsed, corrected by user overrides, identified, matched with sidecars, and then applied so the plan becomes the complete contents of that source. The same listing always yields the same library.
 
-Contracts follow three rules: unknown is not failure, capabilities are explicit, and every decision is deterministic and explainable (identification signals, playback issues, selection criteria).
+Contracts follow three rules: unknown is not failure, capabilities are explicit, and every decision is deterministic and explainable (identification signals, playback issues, selection criteria). A capability that is not known is said to be unknown (a decoder's `hardware` null, a display's size null), never guessed.
 
 ### Experience layer and shells
 
@@ -201,7 +201,7 @@ There are two shells, `desktop:app` and `android:app`. Each supplies what only i
 | Leaving the app while playing | The window stays where it is | On a phone or tablet, picture-in-picture: the activity becomes a small window of the picture's shape showing only the picture. On a television, and when stopped, covered, or with the screen off, playback pauses and the player releases its decoders and audio focus until it is seen again |
 | Problem reports | `DiagnosticLog`, a file in the data directory | The system log and a file in the app's storage. Both pass through `Redaction` in `core`, so no log carries credentials |
 | `MediaProber` | libmpv | The platform's `MediaExtractor` (`AndroidMediaProber`) |
-| `DeviceCapabilities` | What libmpv decodes, and the display | What the device's own codec list and display report (`AndroidCapabilities`) |
+| `DeviceCapabilities` | What was observed (`ObservedCapabilities`): libmpv's decoders as a start-up probe and real playbacks showed them, unknown until then, and the display the window is on, read again as it moves | What the device's own codec list and display report (`AndroidCapabilities`) |
 | Engine wiring (data directory, source factories, pipeline, the rule that one folder is one source) | `desktop:engine` (`DesktopEnvironment`) | `AndroidEnvironment`, in the app's private storage |
 | Database driver | JDBC SQLite | Android's SQLite, through the same generated schema and migrations |
 | HTTP | The JDK client (`JdkHttpFetcher`) | `HttpURLConnection` (`AndroidFetcher`), which also reads `content:` addresses; web shares (WebDAV) through OkHttp (`WebDavTransport`), since `HttpURLConnection` cannot send `PROPFIND` (DECISIONS.md, 2026-10-18) |
