@@ -55,6 +55,7 @@ import dev.reflux.ui.legal.NoticeTarget
 import dev.reflux.ui.state.ArtworkLoader
 import dev.reflux.ui.state.FolderBrowser
 import dev.reflux.ui.state.FolderChoice
+import dev.reflux.ui.state.FullscreenMode
 import dev.reflux.ui.state.Platform
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -275,6 +276,7 @@ class FakePlatform(
     posters: Boolean = true,
     override val television: Boolean = false,
     override val systemVolume: Boolean = television,
+    override val fullscreenMode: FullscreenMode = if (television) FullscreenMode.NONE else FullscreenMode.WINDOW,
     override val folderBrowser: FolderBrowser? = null,
     override val offline: Offline? = null,
     override val connections: SourceConnections? = null,

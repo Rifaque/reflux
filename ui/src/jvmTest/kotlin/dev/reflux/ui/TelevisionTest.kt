@@ -161,6 +161,8 @@ class TelevisionTest {
         await("details") { app.navigator.current is Destination.Details }
         awaitFocusOn("Play")
         assertTrue(focused().bottom < TV_HEIGHT - 24f, "the main action is on screen without scrolling")
+        // The remote's Back is the way back; an arrow for it on screen would only be one more stop on the way up.
+        assertFalse(has("Back"), "no Back on screen on a television")
         save("tv-details")
         remote(app, Key.ARROW_DOWN, 2)
         save("tv-details-episodes")

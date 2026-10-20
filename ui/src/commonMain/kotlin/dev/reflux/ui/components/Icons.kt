@@ -26,7 +26,7 @@ enum class Icon {
     PLAY, PAUSE, NEXT, PREVIOUS, REWIND, FORWARD,
     BACK, CHEVRON_RIGHT, CHEVRON_UP, CHEVRON_DOWN, CLOSE, CHECK, PLUS, SEARCH,
     HEART, HEART_FILLED, FOLDER, REFRESH, INFO, OFFLINE, DOWNLOAD, DOWNLOADED, SERVER, NETWORK,
-    VOLUME, VOLUME_MUTED, SUBTITLES, AUDIO, CHAPTERS, FULLSCREEN, FULLSCREEN_EXIT,
+    VOLUME, VOLUME_MUTED, SUBTITLES, AUDIO, CHAPTERS, FULLSCREEN, FULLSCREEN_EXIT, MORE,
 }
 
 @Composable
@@ -68,12 +68,20 @@ private fun Path.heart() {
     close()
 }
 
-/** An open circle with an arrowhead at its top, turning counter-clockwise (rewind). */
-private fun DrawScope.turn(color: Color) {
-    drawArc(color, startAngle = -50f, sweepAngle = 320f, useCenter = false, topLeft = Offset(4.5f, 5.5f), size = Size(15f, 15f), style = line)
-    stroke(color) {
-        moveTo(14.6f, 2.6f); lineTo(11.6f, 5.5f); lineTo(14.6f, 8.4f)
+private val digits = Stroke(width = 1.6f, cap = StrokeCap.Round, join = StrokeJoin.Round)
+
+/**
+ * A ten-second seek: a circle turning back (or, mirrored, ahead) with "10" inside it, so it reads as a jump
+ * of that length rather than as reload. The digits are drawn after the mirroring, so they never read "01".
+ */
+private fun DrawScope.seek(color: Color, ahead: Boolean) {
+    scale(if (ahead) -1f else 1f, 1f, pivot = Offset(12f, 12f)) {
+        // From the top round to ten o'clock; the arrowhead on the top end points the way it turns.
+        drawArc(color, startAngle = -90f, sweepAngle = 300f, useCenter = false, topLeft = Offset(2.8f, 3.6f), size = Size(18.4f, 18.4f), style = line)
+        stroke(color) { moveTo(14.4f, 1.2f); lineTo(11.8f, 3.6f); lineTo(14.4f, 6.0f) }
     }
+    drawPath(path { moveTo(8.3f, 10.6f); lineTo(9.6f, 9.6f); lineTo(9.6f, 16.4f) }, color, style = digits)
+    drawOval(color, Offset(11.9f, 9.6f), Size(3.9f, 6.8f), style = digits)
 }
 
 private fun DrawScope.draw(icon: Icon, color: Color) {
@@ -82,8 +90,9 @@ private fun DrawScope.draw(icon: Icon, color: Color) {
         Icon.PAUSE -> solid(color) { bar(6.6f, 5.2f, 3.6f, 13.6f); bar(13.8f, 5.2f, 3.6f, 13.6f) }
         Icon.NEXT -> solid(color) { moveTo(5.5f, 5.5f); lineTo(14.5f, 12f); lineTo(5.5f, 18.5f); close(); bar(16.4f, 5.5f, 2.2f, 13f) }
         Icon.PREVIOUS -> scale(-1f, 1f, pivot = Offset(12f, 12f)) { draw(Icon.NEXT, color) }
-        Icon.REWIND -> turn(color)
-        Icon.FORWARD -> scale(-1f, 1f, pivot = Offset(12f, 12f)) { turn(color) }
+        Icon.REWIND -> seek(color, ahead = false)
+        Icon.FORWARD -> seek(color, ahead = true)
+        Icon.MORE -> listOf(5.5f, 12f, 18.5f).forEach { drawCircle(color, radius = 1.7f, center = Offset(it, 12f)) }
         Icon.BACK -> stroke(color) { moveTo(14.5f, 5.5f); lineTo(8f, 12f); lineTo(14.5f, 18.5f) }
         Icon.CHEVRON_RIGHT -> stroke(color) { moveTo(9.5f, 5.5f); lineTo(16f, 12f); lineTo(9.5f, 18.5f) }
         Icon.DOWNLOAD -> stroke(color) {

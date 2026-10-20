@@ -37,6 +37,18 @@ sealed interface FolderChoice {
     data class NotAFolder(val name: String) : FolderChoice
 }
 
+/** What fullscreen is on a platform. */
+enum class FullscreenMode {
+    /** A window that can fill its screen and come back (a desktop). */
+    WINDOW,
+
+    /** The application already fills the screen; fullscreen turns the picture across its long side (a phone or tablet). */
+    LANDSCAPE,
+
+    /** Always the whole screen, one way up (a television): there is nothing to offer. */
+    NONE,
+}
+
 /** A folder as a platform's storage shows it. [id] is the platform's own way of finding it again. */
 data class BrowsedFolder(val id: String, val name: String)
 
@@ -120,6 +132,9 @@ interface Platform {
 
     /** Removes a source and what Reflux derived from it. The user's files are never touched. */
     suspend fun removeSource(id: SourceId)
+
+    /** What [requestFullscreen] does here, so the player offers it only where it changes something. */
+    val fullscreenMode: FullscreenMode get() = FullscreenMode.WINDOW
 
     /** Whether the window is fullscreen, as observable state. */
     val fullscreen: Boolean

@@ -365,9 +365,15 @@ private fun Chrome(app: AppState, page: PageScroll) {
             ) {
                 OfflinePanel(app)
             }
+            // A notice never covers an open sheet: on a phone, where the sheet rises from the bottom, it is said at the top instead.
+            val aboveSheet = compact && app.offlineOpen
             AnimatedContent(
                 targetState = app.notice,
-                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = if (compact) 10.dp + NavigationBarHeight + 14.dp else 32.dp),
+                modifier = if (aboveSheet) {
+                    Modifier.align(Alignment.TopCenter).padding(top = 12.dp + 44.dp + 12.dp)
+                } else {
+                    Modifier.align(Alignment.BottomCenter).padding(bottom = if (compact) 10.dp + NavigationBarHeight + 14.dp else 32.dp)
+                },
                 transitionSpec = {
                     (fadeIn(Motion.controlsShow.tween()) + slideInVertically(Motion.controlsShow.tween()) { it / 3 }) togetherWith
                         (fadeOut(Motion.controlsHide.tween()) + slideOutVertically(Motion.controlsHide.tween()) { it / 3 })
@@ -426,7 +432,7 @@ private fun BoxScope.CompactNavigation(app: AppState) {
                 )
             }
             Row(
-                Modifier.fillMaxWidth().widthIn(max = 420.dp).height(NavigationBarHeight).glass(MaterialRole.FLOATING, CircleShape).absorbsPointer()
+                Modifier.align(Alignment.CenterHorizontally).widthIn(max = 420.dp).fillMaxWidth().height(NavigationBarHeight).glass(MaterialRole.FLOATING, CircleShape).absorbsPointer()
                     .onFocusChanged { entry?.chrome = SemanticAction.NAVIGATE_UP.takeIf { _ -> it.hasFocus } }.padding(horizontal = 8.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
@@ -456,7 +462,8 @@ private fun NavigationBar(app: AppState, clear: Boolean, modifier: Modifier = Mo
 private fun NavigationBarContent(app: AppState, activity: PipelineActivity, modifier: Modifier) {
     val navigator = app.navigator
     Row(modifier, verticalAlignment = Alignment.CenterVertically) {
-        if (navigator.current !is Destination.Section) {
+        // A remote has a Back button of its own; on a television an arrow for it would only be one more stop.
+        if (navigator.current !is Destination.Section && LocalLayout.current.formFactor != FormFactor.TV) {
             IconButton(Icon.BACK, "Back", { navigator.back() })
         } else {
             Spacer(Modifier.width(12.dp))

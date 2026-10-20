@@ -26,6 +26,7 @@ import dev.reflux.library.SourceConnections
 import dev.reflux.ui.state.ArtworkLoader
 import dev.reflux.ui.state.FolderBrowser
 import dev.reflux.ui.state.FolderChoice
+import dev.reflux.ui.state.FullscreenMode
 import dev.reflux.ui.state.Platform
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Semaphore
@@ -137,6 +138,9 @@ internal class AndroidPlatform(private val environment: AndroidEnvironment, over
     override val canPlay: Boolean get() = true
 
     override fun report(problem: String, cause: Throwable?) = environment.report(problem, cause)
+
+    /** The app already fills the screen: on a handheld fullscreen turns the picture sideways, on a television there is none. */
+    override val fullscreenMode: FullscreenMode get() = if (television) FullscreenMode.NONE else FullscreenMode.LANDSCAPE
 
     override var fullscreen: Boolean by mutableStateOf(false)
         private set

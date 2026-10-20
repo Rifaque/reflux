@@ -13,6 +13,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -250,144 +251,164 @@ private fun menuIcon(menu: PlayerMenu): Icon = when (menu) {
 }
 
 @Composable
-private fun Controls(app: AppState, session: PlaybackSession, state: PlayerState, onBar: (Float) -> Unit) {
+private fun Controls(app: AppState, session: PlaybackSession, state: PlayerState, onBar: (Float) -> Unit) = BoxWithConstraints(Modifier.fillMaxSize()) {
     val layout = LocalLayout.current
     val margin = layout.safeMarginDp.dp
     val menus = session.menus(state)
     val open = session.menu?.takeIf { it in menus }
     val failed = session.error != null
-    // On a phone the transport sits in the middle of the picture, where thumbs are, and the bar along the
-    // bottom keeps the timeline and what is used less often. Volume is the device's own buttons.
+    // What this device shows, and where: a phone or tablet in hand has the transport under the thumbs and
+    // its own volume keys; a television has a remote for all of it; a desktop has a pointer and a window.
+    val controls = PlayerControls.of(
+        layout.formFactor,
+        layout.modality,
+        app.platform.systemVolume,
+        app.platform.fullscreenMode,
+        app.platform.fullscreen,
+        portrait = maxHeight > maxWidth,
+        hasPrevious = session.previous != null,
+        hasNext = session.next != null,
+        menus = menus,
+    )
     val compact = layout.formFactor == FormFactor.PHONE
-    // On a television nothing here is pressed with a pointer: the remote plays, seeks, and opens the lists,
-    // so the bar only says where playback is and what there is beneath it.
-    val television = layout.formFactor == FormFactor.TV
-    Box(Modifier.fillMaxSize()) {
-        // Scrims carry the title and controls over bright scenes; the picture between them is left alone.
-        Box(Modifier.fillMaxWidth().fillMaxHeight(0.24f).background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.66f), Color.Transparent))))
-        Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().fillMaxHeight(0.46f).background(Brush.verticalGradient(0f to Color.Transparent, 0.45f to Color.Black.copy(alpha = 0.42f), 1f to Color.Black.copy(alpha = 0.84f))))
+    val centre = controls.transport == Transport.CENTRE
+    // Scrims carry the title and controls over bright scenes; the picture between them is left alone.
+    Box(Modifier.fillMaxWidth().fillMaxHeight(0.24f).background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.66f), Color.Transparent))))
+    Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().fillMaxHeight(0.46f).background(Brush.verticalGradient(0f to Color.Transparent, 0.45f to Color.Black.copy(alpha = 0.42f), 1f to Color.Black.copy(alpha = 0.84f))))
 
-        // What is playing belongs with where it is: above the timeline. A phone keeps it at the top, beside the
-        // way back, where it stays clear of the transport in the middle of the picture.
-        Row(
-            Modifier.align(Alignment.TopStart).padding(horizontal = margin, vertical = 22.dp),
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            if (!television) IconButton(Icon.BACK, "Back to library", { session.close() }, glass = true)
-            if (compact) NowPlaying(session, compact = true)
-        }
+    // What is playing belongs with where it is: above the timeline. A phone keeps it at the top, beside the
+    // way back, where it stays clear of the transport in the middle of the picture.
+    Row(
+        Modifier.align(Alignment.TopStart).padding(horizontal = margin, vertical = 22.dp),
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (controls.back) IconButton(Icon.BACK, "Back to library", { session.close() }, glass = true, shortcut = "Esc")
+        if (compact) NowPlaying(session, compact = true)
+    }
 
-        if (app.namesButtons && !failed) {
-            val family = app.input.controllerFamily ?: ControllerFamily.GENERIC
-            ButtonPrompts(
-                if (open != null) {
-                    listOf(InputMapping.confirmButton(family) to "Choose", InputMapping.cancelButton(family) to "Close")
-                } else {
-                    listOfNotNull(
-                        InputMapping.confirmButton(family) to if (state.pauses) "Pause" else "Play",
-                        InputMapping.cancelButton(family) to "Back",
-                        GamepadButton.START to "Options",
-                        (GamepadButton.SHOULDER_RIGHT to "Next").takeIf { session.next != null },
+    if (app.namesButtons && !failed) {
+        val family = app.input.controllerFamily ?: ControllerFamily.GENERIC
+        ButtonPrompts(
+            if (open != null) {
+                listOf(InputMapping.confirmButton(family) to "Choose", InputMapping.cancelButton(family) to "Close")
+            } else {
+                listOfNotNull(
+                    InputMapping.confirmButton(family) to if (state.pauses) "Pause" else "Play",
+                    InputMapping.cancelButton(family) to "Back",
+                    GamepadButton.START to "Options",
+                    (GamepadButton.SHOULDER_RIGHT to "Next").takeIf { session.next != null },
+                )
+            },
+            family,
+            Modifier.align(Alignment.TopEnd).padding(horizontal = margin, vertical = 24.dp),
+        )
+    }
+
+    // While a list is open it has the screen's attention: on a touch screen it can be taller than the space
+    // beneath the transport, so the transport steps aside until the list closes rather than sit under it.
+    if (centre && !failed && open == null) {
+        val waiting = state.status == PlayerStatus.LOADING || state.status == PlayerStatus.BUFFERING
+        // A tablet's picture is larger and its thumbs further apart; the cluster grows with it, not with the screen.
+        val seek = if (compact) 54.dp else 64.dp
+        val play = if (compact) 72.dp else 84.dp
+        Row(Modifier.align(Alignment.Center), horizontalArrangement = Arrangement.spacedBy(if (compact) 30.dp else 44.dp), verticalAlignment = Alignment.CenterVertically) {
+            IconButton(Icon.REWIND, "Back 10 seconds", { session.handle(SemanticAction.SEEK_BACKWARD) }, size = seek, glass = true)
+            // While playback is waiting, the spinner is here instead.
+            Box(Modifier.size(play), contentAlignment = Alignment.Center) {
+                if (!waiting) {
+                    IconButton(
+                        if (state.pauses) Icon.PAUSE else Icon.PLAY,
+                        if (state.pauses) "Pause" else "Play",
+                        { session.handle(SemanticAction.PLAY_PAUSE) },
+                        size = play,
+                        glass = true,
                     )
-                },
-                family,
-                Modifier.align(Alignment.TopEnd).padding(horizontal = margin, vertical = 24.dp),
-            )
+                }
+            }
+            IconButton(Icon.FORWARD, "Forward 10 seconds", { session.handle(SemanticAction.SEEK_FORWARD) }, size = seek, glass = true)
         }
-
-        if (compact && !failed) {
-            val waiting = state.status == PlayerStatus.LOADING || state.status == PlayerStatus.BUFFERING
-            Row(Modifier.align(Alignment.Center), horizontalArrangement = Arrangement.spacedBy(30.dp), verticalAlignment = Alignment.CenterVertically) {
-                IconButton(Icon.REWIND, "Back 10 seconds", { session.handle(SemanticAction.SEEK_BACKWARD) }, size = 54.dp, glass = true)
-                // While playback is waiting, the spinner is here instead.
-                Box(Modifier.size(72.dp), contentAlignment = Alignment.Center) {
-                    if (!waiting) {
-                        IconButton(
-                            if (state.pauses) Icon.PAUSE else Icon.PLAY,
-                            if (state.pauses) "Pause" else "Play",
-                            { session.handle(SemanticAction.PLAY_PAUSE) },
-                            size = 72.dp,
-                            glass = true,
-                        )
+    }
+    Column(
+        Modifier.align(Alignment.BottomCenter).padding(horizontal = margin).padding(bottom = if (compact) 12.dp else 24.dp).widthIn(max = 1180.dp)
+            .onGloballyPositioned { bottom ->
+                // The share of the window this block covers (what is playing, the bar, an open list), and a
+                // little air: subtitles are kept above it.
+                val window = bottom.findRootCoordinates().size.height.toFloat()
+                if (window > 0f) onBar(((window - bottom.positionInRoot().y) / window + 0.02f).coerceIn(0f, 1f))
+            },
+        verticalArrangement = Arrangement.spacedBy(14.dp),
+        horizontalAlignment = Alignment.End,
+    ) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(24.dp), verticalAlignment = Alignment.Bottom) {
+            if (!compact) NowPlaying(session, compact = false, Modifier.weight(1f).padding(start = 6.dp)) else Spacer(Modifier.weight(1f))
+            if (open != null && !failed) MenuPanel(session, menus, open, session.options(open, state))
+        }
+        if (failed) return@Column
+        Column(
+            // Clicks on the panel itself must not reach the video's click-to-pause.
+            Modifier.fillMaxWidth().glass(MaterialRole.FLOATING, RoundedCornerShape(26.dp), tint = playerTint).absorbsPointer()
+                .padding(horizontal = 18.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Timeline(session, state)
+            if (controls.listHints) {
+                Row(Modifier.fillMaxWidth().padding(top = 2.dp, bottom = 2.dp), horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(if (state.pauses) "" else "Paused", Modifier.weight(1f), style = LocalTypography.current.captionStrong, color = RefluxColors.textSecondary, maxLines = 1)
+                    // Down opens these; the one that is open is the one lit.
+                    Icon(Icon.CHEVRON_DOWN, size = 12.dp, tint = RefluxColors.textTertiary)
+                    menus.forEach { menu ->
+                        Text(menu.title, style = LocalTypography.current.captionStrong, color = if (menu == open) RefluxColors.textPrimary else RefluxColors.textSecondary, maxLines = 1)
                     }
                 }
-                IconButton(Icon.FORWARD, "Forward 10 seconds", { session.handle(SemanticAction.SEEK_FORWARD) }, size = 54.dp, glass = true)
-            }
-        }
-        Column(
-            Modifier.align(Alignment.BottomCenter).padding(horizontal = margin).padding(bottom = if (compact) 12.dp else 24.dp).widthIn(max = 1180.dp)
-                .onGloballyPositioned { bottom ->
-                    // The share of the window this block covers (what is playing, the bar, an open list), and a
-                    // little air: subtitles are kept above it.
-                    val window = bottom.findRootCoordinates().size.height.toFloat()
-                    if (window > 0f) onBar(((window - bottom.positionInRoot().y) / window + 0.02f).coerceIn(0f, 1f))
-                },
-            verticalArrangement = Arrangement.spacedBy(14.dp),
-            horizontalAlignment = Alignment.End,
-        ) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(24.dp), verticalAlignment = Alignment.Bottom) {
-                if (!compact) NowPlaying(session, compact = false, Modifier.weight(1f).padding(start = 6.dp)) else Spacer(Modifier.weight(1f))
-                if (open != null && !failed) MenuPanel(session, menus, open, session.options(open, state))
-            }
-            if (failed) return@Column
-            Column(
-                // Clicks on the panel itself must not reach the video's click-to-pause.
-                Modifier.fillMaxWidth().glass(MaterialRole.FLOATING, RoundedCornerShape(26.dp), tint = playerTint).absorbsPointer()
-                    .padding(horizontal = 18.dp, vertical = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                Timeline(session, state)
-                if (television) {
-                    Row(Modifier.fillMaxWidth().padding(top = 2.dp, bottom = 2.dp), horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Text(if (state.pauses) "" else "Paused", Modifier.weight(1f), style = LocalTypography.current.captionStrong, color = RefluxColors.textSecondary, maxLines = 1)
-                        // Down opens these; the one that is open is the one lit.
-                        Icon(Icon.CHEVRON_DOWN, size = 12.dp, tint = RefluxColors.textTertiary)
-                        menus.forEach { menu ->
-                            Text(menu.title, style = LocalTypography.current.captionStrong, color = if (menu == open) RefluxColors.textPrimary else RefluxColors.textSecondary, maxLines = 1)
-                        }
-                    }
-                } else Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                    IconButton(Icon.PREVIOUS, "Previous", { session.handle(SemanticAction.PREVIOUS) })
-                    if (!compact) {
-                        IconButton(Icon.REWIND, "Back 10 seconds", { session.handle(SemanticAction.SEEK_BACKWARD) })
-                        IconButton(
-                            if (state.pauses) Icon.PAUSE else Icon.PLAY,
-                            if (state.pauses) "Pause" else "Play",
-                            { session.handle(SemanticAction.PLAY_PAUSE) },
-                            size = 48.dp,
+            } else Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                if (controls.previous) IconButton(Icon.PREVIOUS, "Previous", { session.handle(SemanticAction.PREVIOUS) }, shortcut = "Page Up")
+                if (controls.transport == Transport.BAR) {
+                    IconButton(Icon.REWIND, "Back 10 seconds", { session.handle(SemanticAction.SEEK_BACKWARD) }, shortcut = "←")
+                    IconButton(
+                        if (state.pauses) Icon.PAUSE else Icon.PLAY,
+                        if (state.pauses) "Pause" else "Play",
+                        { session.handle(SemanticAction.PLAY_PAUSE) },
+                        size = 48.dp,
+                        shortcut = "Space",
+                    )
+                    IconButton(Icon.FORWARD, "Forward 10 seconds", { session.handle(SemanticAction.SEEK_FORWARD) }, shortcut = "→")
+                }
+                if (controls.next) IconButton(Icon.NEXT, "Next episode", { session.playNext() }, shortcut = "Page Down")
+                Spacer(Modifier.weight(1f))
+                if (controls.volume) {
+                    IconButton(if (state.muted || state.volume == 0) Icon.VOLUME_MUTED else Icon.VOLUME, if (state.muted) "Unmute" else "Mute", { session.handle(SemanticAction.MUTE) }, shortcut = "M")
+                    Slider(
+                        fraction = if (state.muted) 0f else state.volume / 100f,
+                        description = "Volume",
+                        onChange = { session.setVolume((it * 100).toInt()) },
+                        modifier = Modifier.width(96.dp).padding(end = 8.dp),
+                    )
+                }
+                controls.lists.forEach { menu ->
+                    val tint = if (menu == open || (menu == PlayerMenu.SUBTITLES && state.selectedSubtitleId != null)) RefluxColors.textPrimary else RefluxColors.textSecondary
+                    if (menu == PlayerMenu.SPEED) {
+                        Button(
+                            if (state.speed == 1.0) "1×" else Formatting.speed(state.speed),
+                            { session.toggleMenu(menu) },
+                            Modifier.semantics { contentDescription = "Playback speed" },
+                            style = ButtonStyle.QUIET,
                         )
-                        IconButton(Icon.FORWARD, "Forward 10 seconds", { session.handle(SemanticAction.SEEK_FORWARD) })
+                    } else {
+                        IconButton(menuIcon(menu), menu.title, { session.toggleMenu(menu) }, tint = tint)
                     }
-                    if (session.next != null) IconButton(Icon.NEXT, "Next episode", { session.playNext() })
-                    Spacer(Modifier.weight(1f))
-                    if (!compact) {
-                        IconButton(if (state.muted || state.volume == 0) Icon.VOLUME_MUTED else Icon.VOLUME, if (state.muted) "Unmute" else "Mute", { session.handle(SemanticAction.MUTE) })
-                        Slider(
-                            fraction = if (state.muted) 0f else state.volume / 100f,
-                            description = "Volume",
-                            onChange = { session.setVolume((it * 100).toInt()) },
-                            modifier = Modifier.width(96.dp).padding(end = 8.dp),
-                        )
-                    }
-                    // The bar has its own previous and next; the lists are what is left.
-                    menus.filter { it != PlayerMenu.EPISODES }.forEach { menu ->
-                        val tint = if (menu == open || (menu == PlayerMenu.SUBTITLES && state.selectedSubtitleId != null)) RefluxColors.textPrimary else RefluxColors.textSecondary
-                        if (menu == PlayerMenu.SPEED) {
-                            Button(
-                                if (state.speed == 1.0) "1×" else Formatting.speed(state.speed),
-                                { session.toggleMenu(menu) },
-                                Modifier.semantics { contentDescription = "Playback speed" },
-                                style = ButtonStyle.QUIET,
-                            )
-                        } else {
-                            IconButton(menuIcon(menu), menu.title, { session.toggleMenu(menu) }, tint = tint)
-                        }
-                    }
+                }
+                controls.more?.let { first ->
+                    // The rest of the lists, one tap away; their tabs lead from one to another.
+                    val lit = open != null && open !in controls.lists
+                    IconButton(Icon.MORE, "More options", { if (lit) session.closeMenu() else session.toggleMenu(first) }, tint = if (lit) RefluxColors.textPrimary else RefluxColors.textSecondary)
+                }
+                if (controls.fullscreen) {
                     IconButton(
                         if (app.platform.fullscreen) Icon.FULLSCREEN_EXIT else Icon.FULLSCREEN,
                         if (app.platform.fullscreen) "Exit fullscreen" else "Fullscreen",
                         { session.handle(SemanticAction.FULLSCREEN) },
+                        shortcut = "F",
                     )
                 }
             }
