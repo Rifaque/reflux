@@ -1,6 +1,9 @@
 package dev.reflux.ui
 
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.DesktopComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.SemanticsNodeInteraction
@@ -187,6 +190,22 @@ class PointerTest {
         awaitText("S1 · E2 · Cat's in the Bag...")
         onNodeWithContentDescription("Back to library").mouseClick()
         await("the player to close and release its engine") { playing.app.playback == null && playing.player.closed }
+    }
+
+    @Test
+    fun anIconThePointerRestsOnSaysWhatItIsAndItsKey() = player { _ ->
+        fun labels() = onAllNodes(SemanticsMatcher("a hover label") { it.config.getOrNull(SemanticsProperties.TestTag)?.startsWith("hover:") == true })
+            .fetchSemanticsNodes().map { it.config[SemanticsProperties.TestTag].removePrefix("hover:") }
+        assertTrue(labels().isEmpty())
+        onNodeWithContentDescription("Forward 10 seconds").performMouseInput { moveTo(center) }
+        await("the label", { labels() }) { labels() == listOf("Forward 10 seconds  ·  →") }
+        // Leaving the icon takes it away. (The label is a window of its own, so the pointer is moved by a node, not the root.)
+        onNodeWithContentDescription("Timeline").performMouseInput { moveTo(center) }
+        await("the label to go", { labels() }) { labels().isEmpty() }
+        // Pressing an icon puts its label away until the pointer leaves and comes back.
+        onNodeWithContentDescription("Forward 10 seconds").performMouseInput { moveTo(center); press(); release() }
+        mainClock.advanceTimeBy(1_500)
+        assertTrue(labels().isEmpty(), "no label over a control just pressed: ${labels()}")
     }
 
     @Test

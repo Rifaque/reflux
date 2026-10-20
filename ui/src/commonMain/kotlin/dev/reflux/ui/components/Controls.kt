@@ -31,6 +31,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -44,6 +45,8 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.drawOutline
@@ -55,8 +58,17 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntRect
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupPositionProvider
+import kotlinx.coroutines.delay
 import androidx.compose.ui.unit.dp
 import dev.reflux.core.input.InputModality
 import dev.reflux.design.MaterialRole
@@ -241,10 +253,16 @@ fun IconButton(
     enabled: Boolean = true,
     /** Switched on (a favorite, a watched mark): shown by a lit surface rather than by a color. */
     selected: Boolean = false,
+    /** The key that does the same, named in the pointer's label ("Space"); null where there is none. */
+    shortcut: String? = null,
 ) {
     val layout = LocalLayout.current
     val target = maxOf(size.value, minOf(layout.minTargetDp, 56f)).dp
-    Pressable(onClick, modifier.semantics { contentDescription = description }, CircleShape, enabled, lift = 0.8f) { active ->
+    // A pointer can rest on an icon and ask what it is; a finger or a remote cannot, and is not shown labels.
+    // The pointer is always followed, so the input changing mid-press never changes what is being pressed.
+    val pointer = remember { HoverState() }
+    Pressable(onClick, modifier.semantics { contentDescription = description }.followPointer(pointer), CircleShape, enabled, lift = 0.8f) { active ->
+        if (layout.modality == InputModality.POINTER) HoverLabel(pointer, if (shortcut != null) "$description  ·  $shortcut" else description)
         Box(
             Modifier.size(target)
                 .then(if (glass) Modifier.glass(MaterialRole.INTERACTIVE, CircleShape) else Modifier)
@@ -253,6 +271,57 @@ fun IconButton(
         ) {
             Icon(icon, size = (target.value * 0.5f).dp, tint = if (enabled) tint else RefluxColors.textTertiary)
         }
+    }
+}
+
+/**
+ * What an icon is, shown beside it once the pointer has rested on it a moment: the desktop's tooltip. It is
+ * for the eye only; assistive technology already has the control's description.
+ */
+@Composable
+private fun HoverLabel(pointer: HoverState, text: String) {
+    val wanted = pointer.over && !pointer.pressed
+    var shown by remember { mutableStateOf(false) }
+    LaunchedEffect(wanted) {
+        if (wanted) delay(HOVER_LABEL_DELAY_MS)
+        shown = wanted
+    }
+    if (!shown) return
+    Popup(popupPositionProvider = AboveOrBelow) {
+        // Nothing for a screen reader to read twice; tagged so tests can see it is there.
+        Box(Modifier.clearAndSetSemantics { testTag = "hover:$text" }.glass(MaterialRole.MODAL, RoundedCornerShape(8.dp)).padding(horizontal = 10.dp, vertical = 5.dp)) {
+            Text(text, style = LocalTypography.current.caption, maxLines = 1)
+        }
+    }
+}
+
+private const val HOVER_LABEL_DELAY_MS = 600L
+
+/** Whether the pointer is over a control, and whether it has pressed it since it came (which puts the label away until it leaves). */
+private class HoverState {
+    var over by mutableStateOf(false)
+    var pressed by mutableStateOf(false)
+}
+
+private fun Modifier.followPointer(state: HoverState): Modifier = pointerInput(state) {
+    awaitPointerEventScope {
+        while (true) {
+            when (awaitPointerEvent(PointerEventPass.Initial).type) {
+                PointerEventType.Enter -> state.over = true
+                PointerEventType.Exit -> { state.over = false; state.pressed = false }
+                PointerEventType.Press -> state.pressed = true
+            }
+        }
+    }
+}
+
+/** Centred above the control, below it where there is no room above, and always inside the window. */
+private object AboveOrBelow : PopupPositionProvider {
+    override fun calculatePosition(anchorBounds: IntRect, windowSize: IntSize, layoutDirection: LayoutDirection, popupContentSize: IntSize): IntOffset {
+        val gap = 6
+        val x = (anchorBounds.center.x - popupContentSize.width / 2).coerceIn(0, (windowSize.width - popupContentSize.width).coerceAtLeast(0))
+        val above = anchorBounds.top - gap - popupContentSize.height
+        return IntOffset(x, if (above >= 0) above else anchorBounds.bottom + gap)
     }
 }
 

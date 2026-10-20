@@ -14,6 +14,8 @@ import androidx.compose.ui.test.performTouchInput
 import dev.reflux.core.input.InputModality
 import dev.reflux.core.playback.PlayerStatus
 import dev.reflux.ui.state.Destination
+import dev.reflux.ui.state.FullscreenMode
+import kotlin.math.abs
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -43,6 +45,11 @@ class HandheldLayoutTest {
         val title = onAllNodesWithText("Heat").fetchSemanticsNodes().maxBy { it.boundsInRoot.height }.boundsInRoot
         val play = onNodeWithText("Play").fetchSemanticsNode().boundsInRoot
         assertTrue(title.top >= 0f && play.bottom < phoneWidth - 60f, "title $title and Play $play are in the first view")
+        // The sections stay one pill in the middle, not spread to the screen's two ends.
+        val home = onNodeWithText("Home").fetchSemanticsNode().boundsInRoot
+        val search = onNodeWithContentDescription("Search").fetchSemanticsNode().boundsInRoot
+        assertTrue(search.right - home.left <= 420f, "the sections span ${search.right - home.left}")
+        assertTrue(abs((home.left + search.right) / 2 - phoneHeight / 2f) < 24f, "and are centred: $home $search")
     }
 
     @Test
@@ -96,9 +103,12 @@ class HandheldLayoutTest {
         save("phone-search")
     }
 
+    /** What an Android phone or tablet is to the player: its own volume keys, and fullscreen as turning the picture sideways. */
+    private fun handheld() = FakePlatform(systemVolume = true, fullscreenMode = FullscreenMode.LANDSCAPE)
+
     @Test
     fun aPhonePlayerPutsTheTransportUnderTheThumbs() {
-        val platform = FakePlatform()
+        val platform = handheld()
         screen(populated(), platform, width = phoneWidth, height = phoneHeight) { app ->
             awaitText("Recently Added")
             tap("Shows")
@@ -113,11 +123,26 @@ class HandheldLayoutTest {
             val play = centre("Play")
             assertTrue(play.x in phoneWidth * 0.4f..phoneWidth * 0.6f && play.y in phoneHeight * 0.4f..phoneHeight * 0.6f, "play is in the middle: $play")
             assertTrue(centre("Back 10 seconds").x < play.x && centre("Forward 10 seconds").x > play.x)
-            for (control in listOf("Timeline", "Next episode", "Audio", "Subtitles", "Playback speed", "Fullscreen")) {
+            for (control in listOf("Timeline", "Next episode", "Audio", "Subtitles", "More options", "Fullscreen")) {
                 val bounds = onNodeWithContentDescription(control).fetchSemanticsNode().boundsInRoot
                 assertTrue(bounds.left >= 0f && bounds.right <= phoneWidth && bounds.top > phoneHeight * 0.7f, "$control fits along the bottom: $bounds")
             }
             assertTrue(!has("Volume") && !has("Mute"), "volume is the device's own buttons")
+            assertTrue(!has("Previous"), "the first episode has none before it")
+            assertTrue(!has("Playback speed") && !has("Chapters"), "the lists wanted less often are behind More")
+            // More opens them, and their tabs lead to the rest; the panel fits the screen.
+            onNodeWithContentDescription("More options").performTouchInput { click() }
+            awaitText("Speed")
+            val panel = onNodeWithText("Speed").fetchSemanticsNode().boundsInRoot
+            assertTrue(panel.right <= phoneWidth, "the lists' tabs fit the screen: $panel")
+            // The longest list is taller than the space under the transport: the transport steps aside while it is open.
+            onNodeWithText("Speed").performTouchInput { click() }
+            awaitText("Normal")
+            assertTrue(!has("Play") && !has("Back 10 seconds"), "nothing sits under the open list")
+            save("phone-player-more")
+            onNodeWithContentDescription("More options").performTouchInput { click() }
+            await("the lists to close") { app.playback?.menu == null }
+            await("the transport to return") { has("Play") }
             save("phone-player")
 
             // A tap on the picture puts the controls away and brings them back; it does not pause or play.
@@ -155,7 +180,7 @@ class HandheldLayoutTest {
 
     @Test
     fun aPhoneOnItsSidePlaysAcrossTheLongEdge() {
-        val platform = FakePlatform()
+        val platform = handheld()
         screen(populated(), platform, width = phoneHeight, height = phoneWidth) { app ->
             awaitText("Recently Added")
             runOnIdle { app.play(app.library.movies().first { it.item.title == "Heat" }.item.id) }
@@ -166,7 +191,37 @@ class HandheldLayoutTest {
             val timeline = onNodeWithContentDescription("Timeline").fetchSemanticsNode().boundsInRoot
             assertTrue(play.y < timeline.top - 24f, "the transport is clear of the bar beneath it: $play, $timeline")
             assertTrue(timeline.bottom <= phoneWidth)
+            // A film has no episode either side, and a phone on its side is already all picture.
+            assertTrue(!has("Previous") && !has("Next episode") && !has("Fullscreen"))
             save("phone-player-landscape")
+        }
+    }
+
+    @Test
+    fun aTabletPlayerIsMadeForHandsNotStretchedFromADesktop() {
+        val platform = handheld()
+        val (width, height) = 1163 to 777 // a Xiaomi Pad 7 on its side
+        screen(populated(), platform, width = width, height = height) { app ->
+            awaitText("Recently Added")
+            tap("Shows")
+            awaitText("Breaking Bad")
+            assertEquals(InputModality.TOUCH, app.input.modality)
+            runOnIdle { app.play(app.library.shows().first { it.item.title == "Breaking Bad" }.item.id) }
+            awaitText("S1 · E1 · Pilot")
+            platform.players.single().apply { playTo(95_000) }.pause()
+            waitForIdle()
+            // Play and the seeks in the middle of the picture, where the hands are; the bar keeps the rest.
+            val play = centre("Play")
+            assertTrue(play.x in width * 0.4f..width * 0.6f && play.y in height * 0.35f..height * 0.65f, "play is in the middle: $play")
+            assertEquals(1, onAllNodesWithContentDescription("Play").fetchSemanticsNodes().size, "and only there")
+            for (control in listOf("Timeline", "Next episode", "Chapters", "Audio", "Subtitles", "Playback speed")) {
+                assertTrue(onNodeWithContentDescription(control).fetchSemanticsNode().boundsInRoot.top > height * 0.75f, "$control is in the bar")
+            }
+            // Nothing that the device does itself, or that would do nothing here.
+            assertTrue(!has("Volume") && !has("Mute"), "volume is the tablet's own keys")
+            assertTrue(!has("Fullscreen") && !has("Exit fullscreen"), "on its side, the player is already the whole screen")
+            assertTrue(!has("Previous") && !has("More options"))
+            save("tablet-player")
         }
     }
 

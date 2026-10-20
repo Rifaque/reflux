@@ -285,8 +285,10 @@ private fun Header(
                             Text(remaining, style = LocalTypography.current.caption, color = RefluxColors.textSecondary, maxLines = 1)
                         }
                     }
-                    // On a narrow screen the lesser actions go to a second line rather than off the edge.
-                    FlowRow(Modifier.padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp), itemVerticalAlignment = Alignment.CenterVertically) {
+                    // On a narrow screen the lesser actions go to a second line rather than off the edge. On a
+                    // television the focused action grows and wears a ring, so its neighbours stand further off.
+                    val gap = if (LocalLayout.current.formFactor == FormFactor.TV) 22.dp else 12.dp
+                    FlowRow(Modifier.padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(gap), verticalArrangement = Arrangement.spacedBy(10.dp), itemVerticalAlignment = Alignment.CenterVertically) {
                         val playId = details.playId
                         Button(details.playLabel, { playId?.let { app.play(it) } }, Modifier.initialFocus(), icon = Icon.PLAY, style = ButtonStyle.PRIMARY, enabled = playId != null && !card.offline)
                         if (details.resumes && playId != null) Button("From the start", { app.play(playId, resume = false) })

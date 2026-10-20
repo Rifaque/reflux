@@ -256,6 +256,11 @@ class OfflineUiTest {
             await("the sheet", { "open=${app.offlineOpen} review=${app.offlineReview}" }) { onAllNodesWithText("Watch offline").fetchSemanticsNodes().isNotEmpty() }
             val sheet = onNodeWithText("Watch offline").fetchSemanticsNode().boundsInRoot
             assertTrue(sheet.left >= 0f && sheet.right <= 412f)
+            // A notice said while the sheet is open is said above it, never over the sheet's own buttons.
+            runOnIdle { app.notify("A notice while the sheet is open.") }
+            awaitText("A notice while the sheet is open.")
+            val notice = onNodeWithText("A notice while the sheet is open.").fetchSemanticsNode().boundsInRoot
+            assertTrue(notice.bottom < sheet.top, "the notice $notice is above the sheet $sheet")
             save("offline-phone-sheet")
         }
 

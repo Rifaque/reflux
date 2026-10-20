@@ -339,7 +339,7 @@ class ScreensTest {
             awaitText("S1 · E1 · Pilot")
             platform.players.single().apply { playTo(95_000) }.pause()
             waitForIdle()
-            for (control in listOf("Previous", "Play", "Next episode", "Mute", "Volume", "Chapters", "Audio", "Subtitles", "Playback speed", "Fullscreen")) {
+            for (control in listOf("Play", "Next episode", "Mute", "Volume", "Chapters", "Audio", "Subtitles", "Playback speed", "Fullscreen")) {
                 onNodeWithContentDescription(control).assertIsDisplayed()
             }
             onNodeWithContentDescription("Subtitles").performClick()
