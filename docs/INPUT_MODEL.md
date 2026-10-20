@@ -82,6 +82,7 @@ Touch/pointer/keyboard interaction should still remain possible.
 - A television starts out `DIRECTIONAL` with the `TV_REMOTE` family, and its arrow keys are its remote's (they never make it a keyboard). A controller used on a television is still told apart from the remote, in both directions.
 - A remote's keys are named for what they do (OK, Back, Menu), so prompts are only shown for controllers.
 - Where loudness is the device's own (`Platform.systemVolume`: Android's volume keys, a television's remote), up and down in the player are not the volume: down opens the player's lists, and up takes what is offered on screen (skip intro, recap, credits).
+- A television shows no Back arrow in its navigation: the remote's Back is the way back, and an arrow for it would only be one more stop on the way up.
 
 ## Television remote
 
@@ -99,7 +100,7 @@ A remote has a D-pad, OK, Back, and sometimes play/pause, rewind, and fast-forwa
 - Keys are taken once, at the application level, normalized to `Key`, and handed to the experience layer. This works whichever native window has focus, including the video surface.
 - While browsing, navigation actions move toolkit focus and Back unwinds navigation; while playing, the same keys are playback actions. While a text field has focus, only Escape and Down are taken, so typing is never read as shortcuts.
 - Keys with Ctrl, Alt, or Meta held are left to the system. `F11` is fullscreen alongside `F`.
-- The pointer: hover and focus are one "active" state; rows page with arrows that appear under the pointer; the wheel scrolls pages and is the volume in the player; a click on the video pauses and a double click toggles fullscreen; on Windows the mouse's back button is Back.
+- The pointer: hover and focus are one "active" state; rows page with arrows that appear under the pointer; the wheel scrolls pages and is the volume in the player; a click on the video pauses and a double click toggles fullscreen; on Windows the mouse's back button is Back. An icon the pointer rests on says what it is, and in the player which key does the same ("Pause · Space"); the label goes once the icon is pressed, and is never shown for touch, a remote, or a controller.
 - Controllers are read by the shell and enter the same semantic path as keys (decision log, "Desktop controllers through platform APIs"):
   - Windows: XInput (Xbox family) and the joystick API (PlayStation, Switch Pro, generic HID pads).
   - Linux: the kernel joystick interface, with button meanings taken from each device's capabilities.
