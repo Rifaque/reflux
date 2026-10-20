@@ -875,3 +875,22 @@ Decided by the product owner. How Reflux pays for itself at launch:
 - **Voluntary donations** are the way to support Reflux at first. Their place is a calm, unobtrusive "Support Reflux" section on the website (LAUNCH.md), not the application: this milestone adds no donation or payment system to the app. The donation destination does not exist yet; choosing a provider and setting it up is a launch-track task. No provider, address, or account is named before it exists.
 - **Reflux Pro is a possibility for later, not a plan.** If it comes, it would draw on advanced capabilities after V1 (the V1.x and Future candidates in ROADMAP.md). Which ones, if any, is not decided now; that is decided explicitly when those capabilities are understood. V1 functionality is never removed or held back to make room for it.
 - **Nothing is built for it now**: no in-app billing, subscriptions, entitlements, license keys, or payment code. Store listings declare no in-app purchases.
+
+## 2026-10-20 — Controls are composed for each device, not one set resized
+
+An audit of every screen at each form factor (offscreen at phone, tablet, desktop, and television sizes, then on the devices) found the player in particular carrying one bar onto every screen and hiding parts of it by width: a tablet got the desktop's bar, its volume slider, and a fullscreen button that did nothing (on Android fullscreen only turns the picture sideways, and a tablet on its side already shows nothing else); every device showed Previous, which on a film or a first episode only went back to the start; the ten-second seeks were the same circle as Refresh, with no number; a phone's bar held seven equal icons. Decided:
+
+- **One policy decides the player's controls**, `PlayerControls.of` (pure, tested), from the form factor, the input in use, and what the platform says about itself, rather than `if` statements spread through the overlay:
+  - The transport (play and pause, the seeks) is in the middle of the picture on a touch screen, phone or tablet; in the bar for a pointer or keyboard; nowhere on a television, whose remote does all of it.
+  - Previous and Next are shown only when there is an episode that way. The timeline is the way to a film's start.
+  - Volume is shown only where `Platform.systemVolume` is false (desktops), and not on a phone-sized window.
+  - Fullscreen follows the new `Platform.fullscreenMode`: `WINDOW` (desktop) always; `LANDSCAPE` (Android phones and tablets) only while the screen is upright or fullscreen is on, so there is a way back; `NONE` (televisions) never.
+  - A phone keeps Audio and Subtitles as buttons and puts the other lists behind one "More options" button; the lists' own tabs lead to all of them. Tablets and desktops have room for each. Episodes are a tab, never a button, everywhere.
+- **The seeks say what they do**: ↺10 and ↻10, the number never mirrored.
+- **A television has no on-screen Back in its navigation**; the remote's Back is the way back.
+- **With a pointer, an icon says what it is** after the pointer rests on it, and in the player the key that does the same. The label is not in the accessibility tree (the control's own description is), and touch, remotes, and controllers never see it.
+- Smaller fixes from the same audit: a landscape phone's navigation is a centred pill rather than a bar stretched across the screen (a modifier order made its maximum width do nothing); a notice no longer covers the phone's offline sheet (it is said at the top while the sheet is open); a television's details actions stand further apart, so a focused action's ring and growth do not crowd its neighbour.
+
+Kept as they were, deliberately: the phone's own navigation along the bottom and the larger screens' bar along the top; the player's way back on touch screens even though Android has a system Back (the system bars are hidden while playing, and the gesture is not discoverable there); the television's named lists beneath the timeline, which say what Down opens.
+
+Alternatives rejected: a per-platform player composable for each form factor (four copies of the same timeline, lists, and failure handling, drifting apart); deciding by screen width alone (a large tablet is wider than a small desktop window, and a tablet with a mouse attached is driven like a desktop: the input in use and the platform's own capabilities decide, width only says how much fits).

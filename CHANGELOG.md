@@ -4,6 +4,13 @@ What changes for people using Reflux, version by version. The rules for versions
 
 ## Unreleased
 
+- The player's controls now suit the device. On tablets the play and skip buttons are in the middle of the picture, where your hands are, and the volume slider is gone (your tablet's volume keys do it). Fullscreen is offered only where it does something: on a desktop window, or on a phone or tablet held upright. Previous only appears when there is an episode before this one.
+- The skip buttons show "10", so they read as ten seconds back or ahead rather than as reload.
+- On phones the player's bar keeps Audio and Subtitles, and the other lists (chapters, speed, episodes) are one tap away under More.
+- On a desktop, resting the mouse on a button says what it does, and in the player which key does the same.
+- On a TV, the navigation no longer shows a Back arrow: the remote's Back button is the way back.
+- On a phone held sideways, the navigation is a compact bar in the middle instead of stretching across the screen; and a message no longer covers the offline sheet's buttons.
+
 ## 0.9.0-alpha.2 — 2026-10-20
 
 - On Android TV and Google TV, what you are watching and the next episode of your shows are offered on the home screen's Watch Next row, and choosing one opens Reflux and plays it from where you were. It follows your progress in Reflux, and something you remove from that row stays off until you play it again.
