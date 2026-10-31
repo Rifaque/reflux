@@ -444,6 +444,42 @@ Investigated on 2026-10-19 on Windows 11 (125% scaling, two screens) and in the 
 
 **Seen, not changed:** an arrow pressed during a page transition is dropped rather than kept for the arriving page; the next arrow works. It predates this change and is visible only where rendering is slow. For the accessibility and performance milestones.
 
+## Accessibility closing pass: what was verified
+
+2026-11-01, on `feature/engine-foundation` after `273e5fe`, with the fixes this pass made. It closes what the section below left open, and records what stays open.
+
+**Verified on a real device, with real TalkBack.** Xiaomi Pad 7 (Android 16), TalkBack 17.1. Swipes and double taps came from a `uinput` virtual touchscreen, so they went through the system's touch handling as a finger's do, which `adb input` does not; what TalkBack said was read from its own "Display speech output". A person's ear has still not heard it.
+
+| What | Result |
+| --- | --- |
+| Reading order | Home, Movies, Search, a film's page, a show's page, the episode list, the player, its lists, Sources: sections, then Search, Downloads, Media sources, then the page; headings are said as headings; a tab says its place ("Movies. Tab. 2 of 3") and whether it is selected |
+| Cards | One stop each, title once, with what is left to watch ("VisionQuest, S1 · E5 · Firewall, 39 min left") |
+| Search | "Editing. Harbour. Edit box. Search your library"; the number of results can be read ("1 result") |
+| Player | Opening says "Playing Quiet Harbour"; reading starts on the way back; the whole player can be walked, the timeline says "0:11 of 1:15. Timeline. Slider"; nothing of the page behind is reached |
+| Lists | Named on opening; one swipe from their button goes in; "Selected. Normal. Radio button. 3 of 7"; the controls behind are skipped |
+| Up Next | Announced by itself: "Up next: S1 · E2 · Episode 2" |
+| Playback error | Announced by itself: "Playback stopped. This file isn't in a format Reflux can play."; the card then reads in order, with its action |
+| Sheet and questions | Watch offline reads in order with the page out of reach; a question is announced when it appears ("Remove RefluxA11y?") |
+| Back | A real double tap on the way back left the player; Back closed a list, then the player |
+
+**Found by that walk and fixed, none of it visible to the semantics tests:** wide and placeholder cards said their title twice; the speed button said its value twice; an open list came before its button in reading order, so reaching it meant starting over; a question that appeared in place was silent.
+
+**Verified on a real device, without a screen reader.** Pad 7, "Remove animations" and text at 200%, by eye: the spinner becomes the word "Loading…"; Home, Search, a film's page, the player, a list (it scrolls, and a choice is made from it) and a question: nothing cut off, no action lost. Two cosmetic marks remain: a generated placeholder can break a long word at 200% in the smallest tile, and "Loading…" over the brightest frames has little contrast.
+
+**Verified through semantics and tests only.** `AccessibilityTest`, with new tests for all four fixes. On television: isolation, the timeline's actions, and focus, on `Reflux_TV` in the section below. Dragging a slider under TalkBack (its action is tested, the gesture was not driven). Notices other than those above being spoken.
+
+**Automated, at this point.** `check`: 810 tests, 0 failures, 12 environment-gated skips, lint and API green. Windows real windows: everything passes, `OfflineWindowTest` included; `PhysicalControllerTest` skips with no controller connected. Linux container, on these changes: both real-window rounds pass, and the headless check passes (`DesktopOfflineTest` with room to spare) except for two focus waits, `AboutUiTest.aKeyboardGoesInAndComesBackToWhereItWas` every time and `IdentifyUiTest.aRemoteSearchesAndChoosesWithoutAPointer` in some runs. Neither is from this work: they fail the same way on `fc51bd4`, before any of it. They time out with nothing focused, only in that headless run on Linux; the real-window keyboard and controller tests pass there. Their cause is not yet known, and is for M2's Linux CI to settle.
+
+The two offline tests of the section below were this machine's disk, as it said, now proved: the planner read 25.80 GB free, 51.09 GB reserved, 0 usable. Once the disk had 59 GB free both passed, unchanged. They still fail on any disk under its 5% reserve (M2: give them a fixed room).
+
+**Not met: where reading resumes.** Closing the player, a sheet, or a list opened from elsewhere puts TalkBack at the top of the screen, not on what opened it. Reflux can move input focus, but on Android TalkBack does not follow it on a touch screen, including with controls made focusable: tried and removed, since it worked only in a test. A double tap keeps TalkBack on a button that stays on screen, so a list closes back to its button. Moving TalkBack needs an accessibility-focus request the toolkit does not offer publicly.
+
+**Blocked by environment.** Fire TV: reachable over adb at `192.168.1.176`, but its network was degraded (its Home said it was offline, it could not reach this machine, and installs dropped), so this build could not be installed: the device-specific controls and this work are still owed the Fire TV. A 19 MB install in 1 MB pieces lost the link at the second.
+
+**Not yet verifiable here.** TalkBack on a television (the `Reflux_TV` image has none). VoiceView on Fire OS.
+
+**Unsupported by the platform or toolkit.** What Reflux gives a desktop screen reader is the same semantics tree. Compose reaches none on Linux; on Windows it reaches the Java Access Bridge only, so Narrator reads nothing, and an NVDA or JAWS pass also needs `jdk.accessibility` in the packaged runtime (M2). Keyboard use, reduced motion, and text size work on the desktop without one. Reflux does not claim desktop screen-reader support.
+
 ## Accessibility baseline: what was verified
 
 2026-10-31, on `feature/engine-foundation` after `fc51bd4`. Physical devices were not attached and the Fire TV did not answer; device work below is on emulators.
