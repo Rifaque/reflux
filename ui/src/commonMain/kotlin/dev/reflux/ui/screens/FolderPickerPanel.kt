@@ -32,10 +32,10 @@ import dev.reflux.ui.components.Icon
 import dev.reflux.ui.components.Pressable
 import dev.reflux.ui.components.absorbsPointer
 import dev.reflux.ui.components.focusPanel
+import dev.reflux.ui.components.pane
 import dev.reflux.ui.state.BrowsedFolder
 import dev.reflux.ui.state.FolderListing
 import dev.reflux.ui.state.FolderPicker
-import dev.reflux.ui.theme.LocalLayout
 import dev.reflux.ui.theme.LocalTypography
 import dev.reflux.ui.theme.RefluxColors
 import dev.reflux.ui.theme.Text
@@ -51,15 +51,14 @@ internal fun FolderPickerPanel(picker: FolderPicker) {
     val current = picker.current
     val folders = picker.folders
     val main = remember { FocusRequester() }
-    val showsFocus = LocalLayout.current.showsFocus
     // Each step starts on what is most likely wanted next: this folder, or the first place to look.
     LaunchedEffect(picker.path.size) {
-        if (!showsFocus) return@LaunchedEffect
         withFrameNanos { }
         runCatching { main.requestFocus() }
     }
     Column(
         Modifier.widthIn(max = 520.dp).fillMaxWidth().glass(MaterialRole.MODAL).absorbsPointer()
+            .pane(current?.folder?.name ?: "Choose a folder") { picker.close() }
             .focusPanel().focusProperties { onExit = { cancelFocusChange() } }.focusGroup()
             .padding(22.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),

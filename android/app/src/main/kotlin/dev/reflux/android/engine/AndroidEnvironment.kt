@@ -113,6 +113,9 @@ class AndroidEnvironment(context: Context, dataDirectory: File = context.filesDi
     /** The application context, for what the shell creates on the engine's behalf (players). */
     val context: Context get() = application
 
+    /** The system's accessibility settings, followed for as long as the process lives. */
+    val accessibility: AndroidAccessibility by lazy { AndroidAccessibility(application) }
+
     /** Which build this is: the version, and the commit its build recorded in the package's assets. */
     val build: BuildIdentity = BuildIdentity.parse(runCatching { application.assets.open(BUILD_IDENTITY).bufferedReader().use { it.readText() } }.getOrNull())
 

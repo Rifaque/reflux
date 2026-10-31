@@ -12,9 +12,13 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asSkiaBitmap
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.ComposeTimeoutException
 import androidx.compose.ui.test.DesktopComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.v2.runDesktopComposeUiTest
 import androidx.compose.ui.unit.Density
@@ -40,6 +44,8 @@ internal fun screen(
     width: Int = 1440,
     height: Int = 900,
     density: Float = 1f,
+    /** The system's text size, as Android hands it to the toolkit. */
+    fontScale: Float = 1f,
     /** Around the whole application, for what a shell would provide: the system keyboard, for one. */
     around: @Composable (@Composable () -> Unit) -> Unit = { it() },
     block: DesktopComposeUiTest.(AppState) -> Unit,
@@ -49,7 +55,7 @@ internal fun screen(
         val scope = rememberCoroutineScope()
         val state = remember { AppState(world.library, world.pipeline, world.registry::resolve, platform, scope).also { app = it } }
         // [width] and [height] are the canvas the layout sees; a denser screen only draws it with more pixels.
-        CompositionLocalProvider(LocalDensity provides Density(density)) {
+        CompositionLocalProvider(LocalDensity provides Density(density, fontScale)) {
             around {
                 Box(Modifier.fillMaxSize()) {
                     RefluxApp(state)
@@ -75,7 +81,17 @@ private const val PATIENCE_MS = 30_000L
 
 @OptIn(ExperimentalTestApi::class)
 internal fun DesktopComposeUiTest.awaitText(text: String) =
-    waitUntil("\"$text\" to appear", PATIENCE_MS) { onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty() }
+    waitUntil("\"$text\" to appear", PATIENCE_MS) { saysAnywhere(text) }
+
+/** Whether [text] is on a node, or in the description of one (a card says its title and caption as one stop). */
+@OptIn(ExperimentalTestApi::class)
+internal fun DesktopComposeUiTest.saysAnywhere(text: String): Boolean =
+    onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty() || onAllNodesWithContentDescription(text, substring = true).fetchSemanticsNodes().isNotEmpty()
+
+/** Whether button prompts are on screen that say [text]; they are for the eye, and are not in the tree as words. */
+@OptIn(ExperimentalTestApi::class)
+internal fun DesktopComposeUiTest.prompted(text: String): Boolean =
+    onAllNodes(SemanticsMatcher("prompts") { it.config.getOrNull(SemanticsProperties.TestTag)?.let { tag -> tag.startsWith("prompts:") && text in tag } == true }).fetchSemanticsNodes().isNotEmpty()
 
 /** Waits for [condition]; [state] describes what was seen instead, for the failure message. */
 @OptIn(ExperimentalTestApi::class)

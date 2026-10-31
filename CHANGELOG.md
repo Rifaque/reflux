@@ -4,6 +4,14 @@ What changes for people using Reflux, version by version. The rules for versions
 
 ## Unreleased
 
+- Screen readers: while a video plays, or a sheet is open, only what is in front can be reached, not the page behind it. Pages, sheets, the player, and its lists say their name as they open; notices, failures, and how many results a search found are spoken; every control says what it is and whether it is on, open, or selected.
+- With a screen reader on, the player's controls stay on screen instead of fading away, and the timeline and volume can be moved from it. On a TV, play, pause, and the ten-second seeks are offered as actions.
+- On a desktop, O opens the player's audio, subtitle, and speed lists, on any keyboard. Tab no longer wanders through the page hidden behind the video.
+- When a sheet closes, focus goes straight back to the button that opened it, without waiting for the next key.
+- Reflux follows the system's reduce-motion setting (Remove animations on Android, Show animations on Windows, Animations in GNOME), and says "Loading…" in words when it does.
+- Reflux follows the system's text size on Windows and Linux as it already did on Android, and buttons, fields, and Home's opening title grow with large text rather than cutting it off.
+- On touch screens, tabs, the player's lists, and its timeline are comfortably large enough for a finger.
+
 - The player's controls now suit the device. On tablets the play and skip buttons are in the middle of the picture, where your hands are, and the volume slider is gone (your tablet's volume keys do it). Fullscreen is offered only where it does something: on a desktop window, or on a phone or tablet held upright. Previous only appears when there is an episode before this one.
 - The skip buttons show "10", so they read as ten seconds back or ahead rather than as reload.
 - On phones the player's bar keeps Audio and Subtitles, and the other lists (chapters, speed, episodes) are one tap away under More.

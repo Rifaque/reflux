@@ -318,8 +318,8 @@ class ScreensTest {
             mainClock.autoAdvance = false
             runOnUiThread { app.playback?.selectAudio("no such track") }
             mainClock.advanceTimeBy(600)
-            // Twice: once on the page under the video, once where the viewer can see it.
-            assertEquals(2, onAllNodesWithText("That track is no longer available.").fetchSemanticsNodes().size)
+            // Where the viewer can see it. It is also on the page under the video, where nothing can reach it.
+            assertEquals(1, onAllNodesWithText("That track is no longer available.").fetchSemanticsNodes().size)
             save("player-notice")
         }
     }

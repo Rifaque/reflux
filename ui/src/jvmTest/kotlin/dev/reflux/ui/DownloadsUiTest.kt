@@ -117,7 +117,7 @@ private class DownloadsWorld {
     val server = ShowServer()
     private val directory = Files.createTempDirectory("reflux-ui-downloads").toFile().also { it.deleteOnExit() }
     val offline = Offline(
-        world.library, FileDownloadStore(directory), server.transport, world.registry::resolve, { testDevice }, listOf("en"),
+        world.library, RoomyStore(FileDownloadStore(directory)), server.transport, world.registry::resolve, { testDevice }, listOf("en"),
         world.registry::register, Dispatchers.Default,
     )
     val platform = FakePlatform(offline = offline)

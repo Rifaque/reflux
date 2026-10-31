@@ -60,7 +60,7 @@ private const val MINUTE = 60_000L
  * A media server on the home network that lets in alex with "secret": a Movies library with two films of
  * its own and a copy of one the local folder has too, and a Kids library.
  */
-private class HomeServer(val address: String, override val excludedSections: Set<String> = emptySet()) : CatalogSource, SectionedSource {
+internal class HomeServer(val address: String, override val excludedSections: Set<String> = emptySet()) : CatalogSource, SectionedSource {
     override suspend fun sections(): List<SourceSection> {
         if (!HomeNetwork.serverUp) throw SourceUnavailableException(descriptor.id)
         return listOf(SourceSection("lib-m", "Films", SectionKind.MOVIES), SourceSection("lib-k", "Kids", SectionKind.MOVIES))
@@ -84,7 +84,7 @@ private class HomeServer(val address: String, override val excludedSections: Set
 }
 
 /** The network the tests' sources live on: a server that can be switched off, and a share that is never there. */
-private object HomeNetwork {
+internal object HomeNetwork {
     @Volatile var serverUp = true
 
     /** Whether the server stops answering in the middle of being signed out of, as a network that drops does. */

@@ -32,6 +32,7 @@ import dev.reflux.ui.components.IconButton
 import dev.reflux.ui.components.ProgressBar
 import dev.reflux.ui.components.absorbsPointer
 import dev.reflux.ui.components.focusPanel
+import dev.reflux.ui.components.pane
 import dev.reflux.ui.state.AppState
 import dev.reflux.ui.state.OfflineLine
 import dev.reflux.ui.state.Problems
@@ -62,11 +63,11 @@ internal fun OfflinePanel(app: AppState) {
     var removingAll by remember(reviewing) { mutableStateOf(false) }
     val first = remember { FocusRequester() }
     val showsFocus = LocalLayout.current.showsFocus
-    // Opened without a pointer, the panel takes focus once it has something to give it to, and keeps it: when a
-    // copy it lists goes, focus goes back to its main button rather than nowhere.
+    // The panel takes focus once it has something to give it to, and keeps it, or Tab would walk the page behind
+    // it however the panel was opened. When a copy it lists goes, focus goes back to its main button rather than nowhere.
     val copies = model?.downloads?.map { it.id }
     LaunchedEffect(model != null, copies?.size) {
-        if (!showsFocus || model == null || !app.offlineOpen) return@LaunchedEffect
+        if (model == null || !app.offlineOpen) return@LaunchedEffect
         withFrameNanos { }
         runCatching { first.requestFocus() }
     }
@@ -79,6 +80,7 @@ internal fun OfflinePanel(app: AppState) {
     }
     Column(
         Modifier.widthIn(max = 420.dp).fillMaxWidth().glass(MaterialRole.MODAL).absorbsPointer()
+            .pane("Watch offline") { app.offlineOpen = false }
             .focusPanel().focusProperties { onExit = { cancelFocusChange() } }.focusGroup()
             .padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),

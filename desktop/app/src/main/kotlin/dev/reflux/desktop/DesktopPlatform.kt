@@ -12,6 +12,7 @@ import dev.reflux.desktop.engine.FolderAddition
 import dev.reflux.library.Offline
 import dev.reflux.library.SourceConnections
 import dev.reflux.ui.legal.NoticeTarget
+import dev.reflux.ui.state.AccessibilityPreferences
 import dev.reflux.ui.state.ArtworkLoader
 import dev.reflux.ui.state.FolderChoice
 import dev.reflux.ui.state.Platform
@@ -19,6 +20,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.awt.Window
 import java.util.Locale
+import java.util.concurrent.atomic.AtomicBoolean
+import javax.swing.SwingUtilities
+import kotlin.concurrent.thread
 
 /** The desktop shell's side of the experience layer: Skia artwork, libmpv in a native surface, AWT windows. */
 internal class DesktopPlatform(private val environment: DesktopEnvironment) : Platform {
@@ -39,6 +43,22 @@ internal class DesktopPlatform(private val environment: DesktopEnvironment) : Pl
 
     override val preferredLanguages: List<String> =
         listOf(Locale.getDefault().language).filter { it.isNotBlank() }.ifEmpty { listOf("en") }
+
+    /** Read once at start and whenever the window comes back to the front: a setting changed meanwhile applies. */
+    override var accessibility: AccessibilityPreferences by mutableStateOf(AccessibilityPreferences())
+        private set
+
+    private val readingSettings = AtomicBoolean(false)
+
+    /** Reads the system's settings on a thread of their own; on Linux that runs a process. */
+    fun refreshAccessibility() {
+        if (!readingSettings.compareAndSet(false, true)) return
+        thread(name = "reflux-accessibility-settings", isDaemon = true) {
+            val read = runCatching { DesktopAccessibility.read() }.getOrDefault(accessibility)
+            readingSettings.set(false)
+            SwingUtilities.invokeLater { accessibility = read }
+        }
+    }
 
     override val canPlay: Boolean get() = environment.canPlay
 

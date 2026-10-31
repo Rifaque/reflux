@@ -36,6 +36,7 @@ import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
@@ -236,6 +237,7 @@ private fun StateBadges(card: MediaCard, modifier: Modifier = Modifier) {
 private fun describe(card: MediaCard): String = listOfNotNull(
     card.title,
     card.caption,
+    Formatting.remaining(card.entry.watchState),
     "watched".takeIf { card.watched },
     "not connected".takeIf { card.offline },
     "on this device".takeIf { card.downloaded },
@@ -276,7 +278,8 @@ fun PosterCard(card: MediaCard, onClick: () -> Unit, modifier: Modifier = Modifi
             }
         }
         // Two lines are always reserved so rows line up; a placeholder already says the title, so only the caption follows it.
-        Column(Modifier.padding(horizontal = 2.dp)) {
+        // The card has said all of this, as one stop.
+        Column(Modifier.padding(horizontal = 2.dp).clearAndSetSemantics { }) {
             if (image != null) Text(card.title, style = LocalTypography.current.captionStrong, maxLines = 1)
             Caption(card.caption, card.downloaded, card.downloadedPartly)
             if (image == null) Text(" ", style = LocalTypography.current.captionStrong, maxLines = 1)
@@ -329,7 +332,7 @@ fun WideCard(card: MediaCard, onClick: () -> Unit, modifier: Modifier = Modifier
                 StateBadges(card)
             }
         }
-        Column(Modifier.padding(horizontal = 2.dp)) {
+        Column(Modifier.padding(horizontal = 2.dp).clearAndSetSemantics { }) {
             Text(card.caption ?: card.title, style = LocalTypography.current.captionStrong, maxLines = 1)
             Text(
                 Formatting.remaining(card.entry.watchState) ?: " ",

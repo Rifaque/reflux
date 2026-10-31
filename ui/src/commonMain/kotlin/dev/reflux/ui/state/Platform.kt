@@ -19,6 +19,19 @@ interface ArtworkLoader {
     suspend fun load(locator: ArtworkLocator, widthPx: Int): ImageBitmap?
 }
 
+/**
+ * What the device's accessibility settings ask of the interface. Each is what the system reports, never a
+ * setting of Reflux's own; where a platform does not say, the default stands.
+ */
+data class AccessibilityPreferences(
+    /** A screen reader is running: what a sighted user finds by moving the pointer has to stay in the tree. */
+    val screenReader: Boolean = false,
+    /** The user asked for less motion: state changes at once rather than travelling there. */
+    val reduceMotion: Boolean = false,
+    /** Text size on top of what the toolkit already applies (Android applies the system's own; a desktop does not). */
+    val textScale: Float = 1f,
+)
+
 /** What came of asking the user for a media folder. */
 sealed interface FolderChoice {
     /** The user closed the picker without choosing. */
@@ -111,6 +124,9 @@ interface Platform {
 
     /** Which build's third-party notices apply here; null where the shell lists none (a test's). */
     val notices: NoticeTarget? get() = null
+
+    /** What the system's accessibility settings are now, as observable state. */
+    val accessibility: AccessibilityPreferences get() = AccessibilityPreferences()
 
     /** Whether a playback engine is installed. Browsing never depends on it. */
     val canPlay: Boolean

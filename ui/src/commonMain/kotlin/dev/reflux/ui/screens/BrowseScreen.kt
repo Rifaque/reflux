@@ -8,7 +8,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
@@ -34,6 +34,8 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -44,6 +46,8 @@ import dev.reflux.ui.components.Button
 import dev.reflux.ui.components.Chip
 import dev.reflux.ui.components.Icon
 import dev.reflux.ui.components.IconButton
+import dev.reflux.ui.components.announces
+import dev.reflux.ui.components.heading
 import dev.reflux.ui.components.initialFocus
 import dev.reflux.ui.components.keyboardByRemote
 import dev.reflux.ui.components.showsKeyboardOnFocus
@@ -117,7 +121,7 @@ internal fun BrowseScreen(app: AppState, title: String, query: String?, shows: B
     val cards = loaded ?: return
     PosterGrid(app, cards) {
         Column(Modifier.padding(bottom = 6.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(title, style = LocalTypography.current.headline, maxLines = 1)
+            Text(title, Modifier.heading(), style = LocalTypography.current.headline, maxLines = 1)
             Text(
                 when (cards.size) {
                     0 -> "Nothing here yet"
@@ -152,7 +156,7 @@ internal fun SearchScreen(app: AppState) {
     PosterGrid(app, model?.cards.orEmpty(), startsOnFirst = false) {
         Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Row(
-                Modifier.fillMaxWidth().height(56.dp).glass(MaterialRole.ELEVATED, CircleShape).padding(start = 20.dp, end = 8.dp),
+                Modifier.fillMaxWidth().heightIn(min = 56.dp).glass(MaterialRole.ELEVATED, CircleShape).padding(start = 20.dp, end = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -162,7 +166,7 @@ internal fun SearchScreen(app: AppState) {
                     onValueChange = { app.searchQuery = it },
                     // Searching starts in the field, with a remote as with a keyboard.
                     modifier = Modifier.weight(1f).focusRequester(field).initialFocus().onFocusChanged { app.textInputActive = it.isFocused }
-                        .keyboardByRemote(),
+                        .keyboardByRemote().semantics { contentDescription = "Search your library" },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(showKeyboardOnFocus = showsKeyboardOnFocus()),
                     textStyle = LocalTypography.current.title.copy(color = RefluxColors.textPrimary),
@@ -184,6 +188,16 @@ internal fun SearchScreen(app: AppState) {
                 }
             }
             val current = model
+            // Results fill the page by themselves; someone not looking at it is told how many there are.
+            Box(
+                Modifier.announces(
+                    when {
+                        query.isBlank() || current == null -> null
+                        current.cards.size == 1 -> "1 result"
+                        else -> "${current.cards.size} results"
+                    },
+                ),
+            )
             when {
                 query.isBlank() -> Row(
                     Modifier.horizontalScroll(rememberScrollState()),

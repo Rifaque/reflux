@@ -52,6 +52,9 @@ import dev.reflux.sources.local.LocalFolderSource
 import dev.reflux.library.Offline
 import dev.reflux.library.SourceConnections
 import dev.reflux.ui.legal.NoticeTarget
+import dev.reflux.core.offline.StorageSnapshot
+import dev.reflux.library.DownloadStore
+import dev.reflux.ui.state.AccessibilityPreferences
 import dev.reflux.ui.state.ArtworkLoader
 import dev.reflux.ui.state.FolderBrowser
 import dev.reflux.ui.state.FolderChoice
@@ -287,6 +290,7 @@ class FakePlatform(
     override var device: DeviceCapabilities = testDevice
     override val preferredLanguages: List<String> = listOf("en")
     override var canPlay: Boolean = true
+    override var accessibility: AccessibilityPreferences by mutableStateOf(AccessibilityPreferences())
 
     val players = mutableListOf<FakePlayer>()
     val released = mutableListOf<Player>()
@@ -328,6 +332,11 @@ class FakePlatform(
     override fun report(problem: String, cause: Throwable?) {
         reports += problem
     }
+}
+
+/** Downloads on a disk with plenty of room, whatever the disk of the machine running the tests has left. */
+class RoomyStore(store: DownloadStore) : DownloadStore by store {
+    override fun storage() = StorageSnapshot(freeBytes = 400_000_000_000, totalBytes = 500_000_000_000)
 }
 
 /** A playback engine that plays instantly and goes wherever the test tells it to. */

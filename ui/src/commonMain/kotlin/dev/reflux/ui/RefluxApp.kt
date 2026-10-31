@@ -26,12 +26,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
@@ -52,8 +54,11 @@ import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.PointerType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
@@ -73,6 +78,14 @@ import dev.reflux.ui.components.FocusScrollInsets
 import dev.reflux.ui.components.FocusedControl
 import dev.reflux.ui.components.Icon
 import dev.reflux.ui.components.IconButton
+import dev.reflux.ui.components.LimitedTextSize
+import dev.reflux.ui.components.LocalAccessibility
+import dev.reflux.ui.components.NAVIGATION_TEXT_LIMIT
+import dev.reflux.ui.components.Traversal
+import dev.reflux.ui.components.announces
+import dev.reflux.ui.components.inert
+import dev.reflux.ui.components.pane
+import dev.reflux.ui.components.traversal
 import dev.reflux.ui.components.LocalArtworkLoader
 import dev.reflux.ui.components.LocalFocusEntry
 import dev.reflux.ui.components.LocalFocusScreen
@@ -103,6 +116,7 @@ import dev.reflux.ui.state.Destination
 import dev.reflux.ui.theme.GlassScene
 import dev.reflux.ui.theme.LocalLayout
 import dev.reflux.ui.theme.LocalTypography
+import dev.reflux.ui.theme.MotionPolicy
 import dev.reflux.ui.theme.RefluxColors
 import dev.reflux.ui.theme.Text
 import dev.reflux.ui.theme.Typography
@@ -167,12 +181,17 @@ private fun chromeInsets(compact: Boolean, onSection: Boolean, prompts: Boolean)
 fun RefluxTheme(app: AppState, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
     BoxWithConstraints(modifier.fillMaxSize()) {
         val target = AdaptiveLayout.profile(maxWidth.value, maxHeight.value, app.platform.television, app.input.modality)
+        val accessibility = app.platform.accessibility
+        SideEffect { MotionPolicy.reduced = accessibility.reduceMotion }
+        val density = LocalDensity.current
         val posterWidth by animateFloatAsState(target.posterWidthDp, Motion.inputMorph.tween())
         val focusScale by animateFloatAsState(target.focusScale, Motion.inputMorph.tween())
         val minTarget by animateFloatAsState(target.minTargetDp, Motion.inputMorph.tween())
         val layout = target.copy(posterWidthDp = posterWidth, focusScale = focusScale, minTargetDp = minTarget)
         CompositionLocalProvider(
             LocalLayout provides layout,
+            LocalAccessibility provides accessibility,
+            LocalDensity provides remember(density, accessibility.textScale) { Density(density.density, density.fontScale * accessibility.textScale) },
             LocalTypography provides remember(target.textScale, target.formFactor) { Typography(target.textScale, displaySize(target.formFactor)) },
             LocalArtworkLoader provides app.platform.artwork,
             content = content,
@@ -263,12 +282,26 @@ fun RefluxApp(app: AppState, modifier: Modifier = Modifier) {
                     if (entry.hasFocus || entry.enter()) return@LaunchedEffect
                 }
             }
+        } else if (LocalLayout.current.showsFocus) {
+            // A keyboard or a controller at a desk: a panel that closes hands focus back to what opened it at
+            // once, not on the next arrow, so a key pressed next acts where the user was.
+            val covered = app.offlineOpen || app.folderPicker != null
+            LaunchedEffect(covered) {
+                if (covered) return@LaunchedEffect
+                repeat(FOCUS_PATIENCE_FRAMES) {
+                    withFrameNanos { }
+                    if (entry.afterPanel == null || entry.start()) return@LaunchedEffect
+                }
+            }
         }
+        // What is in front is all a screen reader finds: the player, or a panel that holds focus until it closes.
+        val panelOpen = app.offlineOpen || app.folderPicker != null
+        val behind = app.playback != null || panelOpen
         val page = remember { PageScroll() }
         CompositionLocalProvider(LocalFocusEntry provides entry, LocalFocusedControl provides focused, LocalChromeInsets provides insets, LocalPageScroll provides page) {
             GlassScene(
                 Modifier.fillMaxSize().background(RefluxColors.background).trackPointer(app).onFocusChanged { entry.hasFocus = it.hasFocus },
-                overlay = { Chrome(app, page) },
+                overlay = { Chrome(app, page, navigationInert = behind, noticeInert = app.playback != null) },
             ) {
                 // Focus that scrolls a page stops short of the floating navigation.
                 FocusScrollInsets(start = insets.top, end = insets.bottom + 8.dp) {
@@ -282,7 +315,11 @@ fun RefluxApp(app: AppState, modifier: Modifier = Modifier) {
                         // A page on its way out stays on screen while it fades, but it is no longer there for
                         // assistive technology, which would otherwise find two pages at once.
                         val leaving = transition.targetState == EnterExitState.PostExit
-                        Box(Modifier.fillMaxSize().then(if (leaving) Modifier.clearAndSetSemantics {} else Modifier)) {
+                        val named = accessibleTitle(destination)
+                        Box(
+                            Modifier.fillMaxSize().traversal(Traversal.PAGE).inert(leaving || behind)
+                                .then(if (named != null) Modifier.pane(named) else Modifier),
+                        ) {
                             screens.SaveableStateProvider(destination.toString()) {
                                 CompositionLocalProvider(LocalFocusScreen provides destination) {
                                     when (destination) {
@@ -322,7 +359,7 @@ fun RefluxApp(app: AppState, modifier: Modifier = Modifier) {
 
 /** Everything that floats above the screens: navigation, the offline sheet, button prompts, and notices. */
 @Composable
-private fun Chrome(app: AppState, page: PageScroll) {
+private fun Chrome(app: AppState, page: PageScroll, navigationInert: Boolean, noticeInert: Boolean) {
     val layout = LocalLayout.current
     val compact = layout.formFactor == FormFactor.PHONE
     val margin = Modifier.fillMaxSize().padding(horizontal = layout.safeMarginDp.dp)
@@ -331,8 +368,11 @@ private fun Chrome(app: AppState, page: PageScroll) {
     val current = app.navigator.current
     val clear = (current == Destination.Home || current is Destination.Details) && !page.scrolled
     Box(Modifier.fillMaxSize()) {
-        Box(margin) {
-            if (compact) CompactNavigation(app) else NavigationBar(app, clear, Modifier.align(Alignment.TopCenter).padding(top = 14.dp))
+        // The navigation's words stop growing before they stop fitting; the sections always say all of them to a screen reader.
+        LimitedTextSize(NAVIGATION_TEXT_LIMIT) {
+            Box(margin.inert(navigationInert)) {
+                if (compact) CompactNavigation(app) else NavigationBar(app, clear, Modifier.align(Alignment.TopCenter).padding(top = 14.dp).traversal(Traversal.BEFORE_PAGE))
+            }
         }
         // A click outside the open panel closes it and goes no further.
         if (app.offlineOpen) {
@@ -369,11 +409,13 @@ private fun Chrome(app: AppState, page: PageScroll) {
             val aboveSheet = compact && app.offlineOpen
             AnimatedContent(
                 targetState = app.notice,
-                modifier = if (aboveSheet) {
-                    Modifier.align(Alignment.TopCenter).padding(top = 12.dp + 44.dp + 12.dp)
-                } else {
-                    Modifier.align(Alignment.BottomCenter).padding(bottom = if (compact) 10.dp + NavigationBarHeight + 14.dp else 32.dp)
-                },
+                modifier = (
+                    if (aboveSheet) {
+                        Modifier.align(Alignment.TopCenter).padding(top = 12.dp + 44.dp + 12.dp)
+                    } else {
+                        Modifier.align(Alignment.BottomCenter).padding(bottom = if (compact) 10.dp + NavigationBarHeight + 14.dp else 32.dp)
+                    }
+                ).announces(app.notice.takeUnless { noticeInert }),
                 transitionSpec = {
                     (fadeIn(Motion.controlsShow.tween()) + slideInVertically(Motion.controlsShow.tween()) { it / 3 }) togetherWith
                         (fadeOut(Motion.controlsHide.tween()) + slideOutVertically(Motion.controlsHide.tween()) { it / 3 })
@@ -401,7 +443,7 @@ private fun BoxScope.CompactNavigation(app: AppState) {
     val navigator = app.navigator
     val entry = LocalFocusEntry.current
     val activity by app.activity.collectAsState()
-    Row(Modifier.align(Alignment.TopStart).fillMaxWidth().padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.align(Alignment.TopStart).fillMaxWidth().padding(top = 12.dp).traversal(Traversal.BEFORE_PAGE), verticalAlignment = Alignment.CenterVertically) {
         if (navigator.current !is Destination.Section) IconButton(Icon.BACK, "Back", { navigator.back() }, size = 44.dp, glass = true)
         Spacer(Modifier.weight(1f))
         ActivityIndicator(activity)
@@ -418,7 +460,7 @@ private fun BoxScope.CompactNavigation(app: AppState) {
     }
     // While typing, the keyboard owns the bottom of the screen: the sections step aside rather than sit on
     // top of the keyboard and cover what is being typed into, or the button that comes after it.
-    AnimatedVisibility(!app.textInputActive, Modifier.align(Alignment.BottomCenter), enter = fadeIn(Motion.controlsShow.tween()), exit = fadeOut(Motion.controlsHide.tween())) {
+    AnimatedVisibility(!app.textInputActive, Modifier.align(Alignment.BottomCenter).traversal(Traversal.AFTER_PAGE), enter = fadeIn(Motion.controlsShow.tween()), exit = fadeOut(Motion.controlsHide.tween())) {
         Column(Modifier.padding(bottom = 10.dp), horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(8.dp)) {
             // With a controller in hand, what its buttons do here, in that controller's own terms.
             AnimatedVisibility(app.namesButtons, enter = fadeIn(Motion.inputMorph.tween()), exit = fadeOut(Motion.controlsHide.tween())) {
@@ -433,17 +475,26 @@ private fun BoxScope.CompactNavigation(app: AppState) {
             }
             Row(
                 Modifier.align(Alignment.CenterHorizontally).widthIn(max = 420.dp).fillMaxWidth().height(NavigationBarHeight).glass(MaterialRole.FLOATING, CircleShape).absorbsPointer()
-                    .onFocusChanged { entry?.chrome = SemanticAction.NAVIGATE_UP.takeIf { _ -> it.hasFocus } }.padding(horizontal = 8.dp),
+                    .onFocusChanged { entry?.chrome = SemanticAction.NAVIGATE_UP.takeIf { _ -> it.hasFocus } }.selectableGroup().padding(horizontal = 8.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Tab("Home", navigator.highlighted == Destination.Home) { navigator.show(Destination.Home) }
-                Tab("Movies", navigator.highlighted == Destination.Movies) { navigator.show(Destination.Movies) }
-                Tab("Shows", navigator.highlighted == Destination.Shows) { navigator.show(Destination.Shows) }
-                IconButton(Icon.SEARCH, "Search", { navigator.show(Destination.Search) }, tint = tabColor(navigator.highlighted == Destination.Search))
+                // Words that have grown give way before Search leaves the bar.
+                val roomy = Modifier.weight(1f, fill = false)
+                Tab("Home", navigator.highlighted == Destination.Home, roomy) { navigator.show(Destination.Home) }
+                Tab("Movies", navigator.highlighted == Destination.Movies, roomy) { navigator.show(Destination.Movies) }
+                Tab("Shows", navigator.highlighted == Destination.Shows, roomy) { navigator.show(Destination.Shows) }
+                SearchSection(app)
             }
         }
     }
+}
+
+/** Search is one of the sections, in the same place as their tabs, though it is drawn as an icon. */
+@Composable
+private fun SearchSection(app: AppState) {
+    val here = app.navigator.highlighted == Destination.Search
+    IconButton(Icon.SEARCH, "Search", { app.navigator.show(Destination.Search) }, tint = tabColor(here), selected = here, role = Role.Tab)
 }
 
 @Composable
@@ -469,7 +520,7 @@ private fun NavigationBarContent(app: AppState, activity: PipelineActivity, modi
             Spacer(Modifier.width(12.dp))
         }
         Text("Reflux", Modifier.padding(start = 4.dp, end = 22.dp), style = LocalTypography.current.title.copy(letterSpacing = (-0.02).em))
-        Row(horizontalArrangement = Arrangement.spacedBy(2.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.selectableGroup(), horizontalArrangement = Arrangement.spacedBy(2.dp), verticalAlignment = Alignment.CenterVertically) {
             Tab("Home", navigator.highlighted == Destination.Home) { navigator.show(Destination.Home) }
             Tab("Movies", navigator.highlighted == Destination.Movies) { navigator.show(Destination.Movies) }
             Tab("Shows", navigator.highlighted == Destination.Shows) { navigator.show(Destination.Shows) }
@@ -494,7 +545,7 @@ private fun NavigationBarContent(app: AppState, activity: PipelineActivity, modi
             )
         }
         ActivityIndicator(activity)
-        IconButton(Icon.SEARCH, "Search", { navigator.show(Destination.Search) }, tint = tabColor(navigator.highlighted == Destination.Search))
+        SearchSection(app)
         DownloadsButton(app)
         IconButton(Icon.FOLDER, "Media sources", { app.toggleSources() }, tint = tabColor(navigator.current.aboutSources), selected = navigator.current.aboutSources)
     }
@@ -534,6 +585,25 @@ private fun ActivityIndicator(activity: PipelineActivity) {
             }
         }
     }
+}
+
+/** What a page is called when it arrives, for a screen reader; a work's page says its own title. */
+private fun accessibleTitle(destination: Destination): String? = when (destination) {
+    Destination.Home -> "Home"
+    Destination.Movies -> "Movies"
+    Destination.Shows -> "TV Shows"
+    Destination.Search -> "Search"
+    is Destination.Listing -> destination.title
+    Destination.Downloads -> "Downloads"
+    Destination.Sources -> "Media sources"
+    Destination.AddSource -> "Add media"
+    is Destination.Connect -> "Connect"
+    is Destination.SourceSections -> "Libraries"
+    Destination.About -> "About Reflux"
+    Destination.Notices -> "Third-party software"
+    is Destination.Notice -> destination.name
+    is Destination.Details -> null
+    is Destination.Identify -> "Identify"
 }
 
 internal fun activityLabel(activity: PipelineActivity): String? = when (activity) {

@@ -30,6 +30,8 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.reflux.core.input.ControllerFamily
@@ -240,7 +242,10 @@ private class InsetBringIntoViewSpec(private val start: Float, private val end: 
 fun ButtonPrompts(prompts: List<Pair<GamepadButton, String>>, family: ControllerFamily, modifier: Modifier = Modifier, floating: Boolean = true) {
     Row(
         // On its own over video it needs a surface; inside other chrome it borrows that one.
-        if (floating) modifier.glass(MaterialRole.FLOATING, CircleShape).padding(horizontal = 16.dp, vertical = 9.dp) else modifier,
+        // A hint for the eye about the buttons in the hand, not something on the screen to reach or read.
+        // Tagged so tests can see it is there.
+        (if (floating) modifier.glass(MaterialRole.FLOATING, CircleShape).padding(horizontal = 16.dp, vertical = 9.dp) else modifier)
+            .clearAndSetSemantics { testTag = "prompts:" + prompts.joinToString(",") { (button, action) -> InputMapping.glyph(button, family) + " " + action } },
         horizontalArrangement = Arrangement.spacedBy(16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

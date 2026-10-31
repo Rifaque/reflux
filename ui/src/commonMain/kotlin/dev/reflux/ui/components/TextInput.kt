@@ -9,7 +9,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -38,7 +38,9 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.error
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -91,7 +93,8 @@ fun TextInput(
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text(
             label,
-            Modifier.pointerInput(enabled) { detectTapGestures { if (enabled) runCatching { field.requestFocus() } } },
+            // The field below is named after it: said once, there.
+            Modifier.clearAndSetSemantics { }.pointerInput(enabled) { detectTapGestures { if (enabled) runCatching { field.requestFocus() } } },
             style = LocalTypography.current.captionStrong,
             color = RefluxColors.textSecondary,
             maxLines = 1,
@@ -100,7 +103,10 @@ fun TextInput(
             value = value,
             onValueChange = onValueChange,
             modifier = fieldModifier.focusRequester(field).keyboardByRemote()
-                .fillMaxWidth().semantics { contentDescription = label }.onFocusChanged { onFocus(it.isFocused) },
+                .fillMaxWidth().semantics {
+                    contentDescription = label
+                    if (error) error("Check this field")
+                }.onFocusChanged { onFocus(it.isFocused) },
             enabled = enabled,
             singleLine = true,
             interactionSource = interaction,
@@ -125,7 +131,7 @@ fun TextInput(
                     else -> Color.White.copy(alpha = 0.12f + 0.58f * lit)
                 }
                 Box(
-                    Modifier.fillMaxWidth().height(maxOf(48f, layout.minTargetDp).dp).clip(shape)
+                    Modifier.fillMaxWidth().heightIn(min = maxOf(48f, layout.minTargetDp).dp).clip(shape)
                         .background(Color.White.copy(alpha = 0.06f + 0.05f * lit))
                         .border(if (focused || error) 1.5.dp else 1.dp, edge, shape)
                         .padding(horizontal = 16.dp),
