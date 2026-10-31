@@ -205,7 +205,8 @@ fun PlayerOverlay(app: AppState, session: PlaybackSession, modifier: Modifier = 
                             when {
                                 again && side < 1f / 3 -> session.handle(SemanticAction.SEEK_BACKWARD)
                                 again && side > 2f / 3 -> session.handle(SemanticAction.SEEK_FORWARD)
-                                visibleAtPress -> visible = false
+                                // A screen reader's controls stay, whatever brushes the screen.
+                                visibleAtPress && !app.platform.accessibility.screenReader -> visible = false
                             }
                         } else {
                             // Click toggles playback at once; a second click soon after also toggles fullscreen.
