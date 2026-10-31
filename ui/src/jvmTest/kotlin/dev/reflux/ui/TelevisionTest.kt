@@ -112,7 +112,7 @@ class TelevisionTest {
         assertEquals(ControllerFamily.TV_REMOTE, app.input.controllerFamily)
         awaitFocusOn("Play")
         // A remote's keys say what they do, so the screen does not.
-        assertFalse(shows("Select") || shows("OK") || shows("Sources"))
+        assertFalse(prompted("Select") || prompted("OK") || prompted("Sources"))
         // Everything is inside the overscan-safe area, and the navigation is along the top.
         val safe = AdaptiveLayout.profile(TV_WIDTH.toFloat(), TV_HEIGHT.toFloat(), true, InputModality.DIRECTIONAL).safeMarginDp
         val play = focused()
@@ -128,9 +128,9 @@ class TelevisionTest {
 
         // A controller is named in its own terms, as anywhere, and a remote takes the prompts away again.
         runOnIdle { app.onGamepadButton(GamepadButton.DPAD_UP, ControllerFamily.PLAYSTATION) }
-        awaitText("Cross")
+        await("the controller's prompts") { prompted("Cross") }
         remote(app, Key.ARROW_DOWN)
-        await("the prompts to go") { !shows("Cross") }
+        await("the prompts to go") { !prompted("Cross") }
     }
 
     @Test

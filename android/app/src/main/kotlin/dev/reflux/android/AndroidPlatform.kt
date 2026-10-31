@@ -23,6 +23,7 @@ import dev.reflux.core.source.MediaSource
 import dev.reflux.library.ArtworkCache
 import dev.reflux.library.Offline
 import dev.reflux.library.SourceConnections
+import dev.reflux.ui.state.AccessibilityPreferences
 import dev.reflux.ui.state.ArtworkLoader
 import dev.reflux.ui.state.FolderBrowser
 import dev.reflux.ui.state.FolderChoice
@@ -134,6 +135,8 @@ internal class AndroidPlatform(private val environment: AndroidEnvironment, over
 
     override val preferredLanguages: List<String> =
         LocaleList.getDefault().let { locales -> (0 until locales.size()).map { locales[it].language } }.filter { it.isNotBlank() }.distinct().ifEmpty { listOf("en") }
+
+    override val accessibility: AccessibilityPreferences get() = environment.accessibility.preferences
 
     override val canPlay: Boolean get() = true
 

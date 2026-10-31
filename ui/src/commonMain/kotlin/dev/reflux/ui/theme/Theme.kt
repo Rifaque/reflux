@@ -7,6 +7,9 @@ import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -79,8 +82,18 @@ val LocalTypography = staticCompositionLocalOf { Typography(1f) }
 val LocalLayout = compositionLocalOf<LayoutProfile> { error("No layout profile provided") }
 
 
+/**
+ * Whether motion is reduced. The one gate almost every animation already passes through ([tween]). It is held
+ * here rather than in a composition local because transition specifications are not composable and cannot read
+ * one. [dev.reflux.ui.RefluxTheme] keeps it in step with the system.
+ */
+internal object MotionPolicy {
+    var reduced by mutableStateOf(false)
+}
+
+/** The spec as Compose wants it; with motion reduced a state change takes no time at all. */
 fun <T> MotionSpec.tween(): TweenSpec<T> =
-    tween(durationMillis = durationMs, easing = CubicBezierEasing(easing.x1, easing.y1, easing.x2, easing.y2))
+    tween(durationMillis = if (MotionPolicy.reduced) 0 else durationMs, easing = CubicBezierEasing(easing.x1, easing.y1, easing.x2, easing.y2))
 
 /** Text in the Reflux type scale. The single text primitive of the experience layer. */
 @Composable

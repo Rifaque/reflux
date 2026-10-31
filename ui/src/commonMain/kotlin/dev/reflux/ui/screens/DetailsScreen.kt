@@ -47,8 +47,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.foundation.border
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.reflux.core.metadata.Credit
@@ -77,7 +79,9 @@ import dev.reflux.ui.components.ProgressRing
 import dev.reflux.ui.components.SectionHeader
 import dev.reflux.ui.components.TitleBackdrop
 import dev.reflux.ui.components.TitlePlaceholder
+import dev.reflux.ui.components.heading
 import dev.reflux.ui.components.initialFocus
+import dev.reflux.ui.components.pane
 import dev.reflux.ui.components.rememberFocusReturn
 import dev.reflux.ui.components.titleTones
 import dev.reflux.ui.state.AppState
@@ -122,7 +126,7 @@ internal fun DetailsScreen(app: AppState, itemId: MediaId) {
     }
     val list = rememberLazyListState()
     ReportPageScroll(remember { derivedStateOf { list.firstVisibleItemIndex > 0 || list.firstVisibleItemScrollOffset > 0 } }.value)
-    BoxWithConstraints(Modifier.fillMaxSize()) {
+    BoxWithConstraints(Modifier.fillMaxSize().pane(details.card.title)) {
         val television = layout.formFactor == FormFactor.TV
         // The title and Play are in the first view however short the window (a phone on its side): the header
         // never asks for more than the screen leaves above the bottom chrome.
@@ -243,7 +247,8 @@ private fun Header(
                 if (posterBeside) {
                     val shape = RoundedCornerShape(14.dp)
                     val posterWidth = if (television) 164.dp else 220.dp
-                    Box(Modifier.width(posterWidth).aspectRatio(2f / 3f).shadow(32.dp, shape).clip(shape)) {
+                    // The title is beside it, and is said there.
+                    Box(Modifier.width(posterWidth).aspectRatio(2f / 3f).shadow(32.dp, shape).clip(shape).clearAndSetSemantics { }) {
                         ArtworkImage(card.poster, posterWidth, Modifier.fillMaxSize()) { TitlePlaceholder(card.title, card.caption) }
                         Box(Modifier.matchParentSize().border(1.dp, Color.White.copy(alpha = 0.08f), shape))
                     }
@@ -255,6 +260,7 @@ private fun Header(
                     val typography = LocalTypography.current
                     Text(
                         card.title,
+                        Modifier.heading(),
                         style = listOf(typography.display, typography.headline, typography.title)[titleStep],
                         maxLines = listOf(2, 5, 8)[titleStep],
                         onTextLayout = { if (it.hasVisualOverflow && titleStep < 2) titleStep++ },
@@ -424,7 +430,7 @@ private fun VersionCard(row: VersionRow, bestReason: SelectionCriterion?, onPlay
     // The one Play uses is lifted out of the list; the rest are outlines of the same shape.
     val chosen = row.best && bestReason != null
     val pinned = chosen && bestReason == SelectionCriterion.USER_PREFERENCE
-    Pressable(onPlay, Modifier.fillMaxWidth(), shape, enabled = playable, lift = 0.15f) { active ->
+    Pressable(onPlay, Modifier.fillMaxWidth(), shape, enabled = playable, lift = 0.15f, actionLabel = "Play") { active ->
         Row(
             Modifier.fillMaxWidth()
                 .background(Color.White.copy(alpha = (if (chosen) 0.06f else 0f) + (if (active) 0.06f else 0f)))
@@ -599,7 +605,14 @@ private fun SeasonDownload(app: AppState, seasonId: MediaId, status: OfflineStat
 @Composable
 private fun EpisodeRow(app: AppState, episode: MediaCard, modifier: Modifier = Modifier) {
     val shape = RoundedCornerShape(14.dp)
-    Pressable({ app.play(episode.id) }, modifier.fillMaxWidth(), shape, enabled = !episode.offline, lift = 0.15f) { active ->
+    Pressable(
+        { app.play(episode.id) },
+        modifier.fillMaxWidth().semantics { if (episode.watched) stateDescription = "Watched" },
+        shape,
+        enabled = !episode.offline,
+        lift = 0.15f,
+        actionLabel = "Play",
+    ) { active ->
         Row(
             Modifier.fillMaxWidth().background(Color.White.copy(alpha = if (active) 0.07f else 0f)).padding(8.dp),
             horizontalArrangement = Arrangement.spacedBy(16.dp),
@@ -645,8 +658,9 @@ private fun Cast(cast: List<Credit>, modifier: Modifier = Modifier) {
         SectionHeader("Cast", Modifier.padding(horizontal = layout.safeMarginDp.dp))
         LazyRow(contentPadding = PaddingValues(horizontal = layout.safeMarginDp.dp), horizontalArrangement = Arrangement.spacedBy(18.dp)) {
             items(cast) { person ->
-                Column(Modifier.width(104.dp), verticalArrangement = Arrangement.spacedBy(6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Box(Modifier.size(84.dp).clip(CircleShape).background(RefluxColors.surfaceRaised), contentAlignment = Alignment.Center) {
+                // One stop: who, and whom they play. The picture, or the initials standing in for it, says nothing more.
+                Column(Modifier.width(104.dp).semantics(mergeDescendants = true) { }, verticalArrangement = Arrangement.spacedBy(6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Box(Modifier.size(84.dp).clip(CircleShape).background(RefluxColors.surfaceRaised).clearAndSetSemantics { }, contentAlignment = Alignment.Center) {
                         ArtworkImage(person.profileUrl?.let { ArtworkLocator.Remote(it) }, 84.dp, Modifier.fillMaxSize(), alignment = Alignment.TopCenter) {
                             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                                 Text(initials(person.name), style = LocalTypography.current.title, color = RefluxColors.textSecondary)

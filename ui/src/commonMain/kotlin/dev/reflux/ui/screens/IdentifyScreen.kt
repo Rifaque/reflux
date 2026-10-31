@@ -20,6 +20,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
@@ -122,7 +123,7 @@ private fun CandidateRow(candidate: IdentifyCandidate, enabled: Boolean, onChoos
             verticalAlignment = Alignment.CenterVertically,
         ) {
             val poster = RoundedCornerShape(8.dp)
-            Box(Modifier.width(POSTER_WIDTH).aspectRatio(2f / 3f).clip(poster)) {
+            Box(Modifier.width(POSTER_WIDTH).aspectRatio(2f / 3f).clip(poster).clearAndSetSemantics { }) {
                 // Decoded at the size it is shown: a result never costs a full-size poster.
                 ArtworkImage(candidate.poster, POSTER_WIDTH, Modifier.fillMaxSize()) { TitlePlaceholder(candidate.title, null) }
             }

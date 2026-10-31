@@ -77,7 +77,7 @@ Touch/pointer/keyboard interaction should still remain possible.
 - Gamepad buttons are modeled by **position** (`FACE_SOUTH`, `FACE_EAST`, ...). Confirm is south on PlayStation/Xbox and east on Nintendo; cancel is the other one.
 - Mappings depend on context: in `PLAYBACK`, confirm is Play/Pause and left/right seek; in `BROWSE` they select and navigate. An open player menu is a browsing context.
 - The view/create button (`SELECT`) toggles fullscreen in every context; start/options (or north) is Menu: the sources panel while browsing, the player's menus while playing.
-- Keyboard: arrows, Enter, Space, Escape/Backspace, `F` fullscreen, `M` mute, `J`/`K`/`L` seek and pause, `,`/`.` speed. Media and remote keys map directly.
+- Keyboard: arrows, Enter, Space, Escape/Backspace, `F` fullscreen, `M` mute, `J`/`K`/`L` seek and pause, `,`/`.` speed, `O` the player's lists (a keyboard need not have a Menu key; outside the player it is only a letter). Media and remote keys map directly.
 - Modality tracking: a controller button or a stick deflection of at least 50% switches to `DIRECTIONAL`; pointer input must travel 24 dp continuously to leave it; media keys never switch modality. The last controller family is remembered for glyphs.
 - A television starts out `DIRECTIONAL` with the `TV_REMOTE` family, and its arrow keys are its remote's (they never make it a keyboard). A controller used on a television is still told apart from the remote, in both directions.
 - A remote's keys are named for what they do (OK, Back, Menu), so prompts are only shown for controllers.
@@ -99,6 +99,8 @@ A remote has a D-pad, OK, Back, and sometimes play/pause, rewind, and fast-forwa
 
 - Keys are taken once, at the application level, normalized to `Key`, and handed to the experience layer. This works whichever native window has focus, including the video surface.
 - While browsing, navigation actions move toolkit focus and Back unwinds navigation; while playing, the same keys are playback actions. While a text field has focus, only Escape and Down are taken, so typing is never read as shortcuts.
+- The player is operated by its keys: on a desktop its controls are in a window that never takes keyboard focus (that is what keeps keys working over the video surface), so its buttons are not Tab stops, and every one of them has a key. Tab does nothing while playing, or it would walk the page behind the video. An open list takes the arrows, Enter, and Escape.
+- Tab walks a page in the order it is built, the page before the navigation drawn over it; an open panel holds Tab until it closes, and hands focus back to what opened it at once.
 - Keys with Ctrl, Alt, or Meta held are left to the system. `F11` is fullscreen alongside `F`.
 - The pointer: hover and focus are one "active" state; rows page with arrows that appear under the pointer; the wheel scrolls pages and is the volume in the player; a click on the video pauses and a double click toggles fullscreen; on Windows the mouse's back button is Back. An icon the pointer rests on says what it is, and in the player which key does the same ("Pause · Space"); the label goes once the icon is pressed, and is never shown for touch, a remote, or a controller.
 - Controllers are read by the shell and enter the same semantic path as keys (decision log, "Desktop controllers through platform APIs"):

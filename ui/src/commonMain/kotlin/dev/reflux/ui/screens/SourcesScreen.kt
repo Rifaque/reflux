@@ -64,6 +64,8 @@ import dev.reflux.ui.components.Icon
 import dev.reflux.ui.components.InputKind
 import dev.reflux.ui.components.Pressable
 import dev.reflux.ui.components.TextInput
+import dev.reflux.ui.components.announces
+import dev.reflux.ui.components.heading
 import dev.reflux.ui.components.initialFocus
 import dev.reflux.ui.components.rememberFocusReturn
 import dev.reflux.ui.state.AppState
@@ -105,7 +107,7 @@ internal fun Page(content: androidx.compose.foundation.lazy.LazyListScope.() -> 
 @Composable
 internal fun Heading(title: String, body: String?) {
     Column(Modifier.padding(bottom = 10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text(title, style = LocalTypography.current.headline)
+        Text(title, Modifier.heading(), style = LocalTypography.current.headline)
         body?.let { Text(it, color = RefluxColors.textSecondary) }
     }
 }
@@ -179,7 +181,12 @@ private fun SourceItem(app: AppState, row: SourceRow, expanded: Boolean, scannin
     // Down from an open card goes to its first action, never straight to Remove because it happens to be nearer.
     val firstAction = remember { FocusRequester() }
     Column(Modifier.fillMaxWidth().glass(MaterialRole.ELEVATED, shape)) {
-        Pressable(onToggle, Modifier.fillMaxWidth().focusProperties { if (expanded) down = firstAction }, shape, lift = 0f) { active ->
+        Pressable(
+            onToggle,
+            Modifier.fillMaxWidth().focusProperties { if (expanded) down = firstAction }.semantics { stateDescription = if (expanded) "Open" else "Closed" },
+            shape,
+            lift = 0f,
+        ) { active ->
             Row(
                 Modifier.fillMaxWidth().background(Color.White.copy(alpha = if (active) 0.06f else 0f)).padding(horizontal = 16.dp, vertical = 14.dp),
                 horizontalArrangement = Arrangement.spacedBy(14.dp),
@@ -390,10 +397,13 @@ internal fun ConnectScreen(app: AppState, destination: Destination.Connect) {
             }
         }
         item(key = "problem") {
-            AnimatedVisibility(setup.problem != null, enter = fadeIn(Motion.controlsShow.tween()), exit = fadeOut(Motion.controlsHide.tween())) {
-                Row(Modifier.padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Top) {
-                    Box(Modifier.padding(top = 6.dp).size(6.dp).background(RefluxColors.error, CircleShape))
-                    Text(setup.problem.orEmpty(), color = RefluxColors.textPrimary)
+            // What went wrong is said when it happens, not only where someone is looking.
+            Box(Modifier.fillMaxWidth().announces(setup.problem)) {
+                AnimatedVisibility(setup.problem != null, enter = fadeIn(Motion.controlsShow.tween()), exit = fadeOut(Motion.controlsHide.tween())) {
+                    Row(Modifier.padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Top) {
+                        Box(Modifier.padding(top = 6.dp).size(6.dp).background(RefluxColors.error, CircleShape))
+                        Text(setup.problem.orEmpty(), color = RefluxColors.textPrimary)
+                    }
                 }
             }
         }

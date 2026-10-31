@@ -53,6 +53,8 @@ import java.awt.Toolkit
 import java.awt.event.AWTEventListener
 import java.awt.event.KeyEvent
 import java.awt.event.MouseEvent
+import java.awt.event.WindowAdapter
+import java.awt.event.WindowEvent
 import java.awt.image.BufferedImage
 import javax.swing.SwingUtilities
 
@@ -135,8 +137,15 @@ internal fun runReflux(
                     }
                 }
                 val displays = DisplayWatcher(window, environment.capabilities)
+                // A setting changed in the system's own window is seen when Reflux comes back to the front.
+                platform.refreshAccessibility()
+                val settings = object : WindowAdapter() {
+                    override fun windowGainedFocus(event: WindowEvent) = platform.refreshAccessibility()
+                }
+                window.addWindowFocusListener(settings)
                 onStarted(RunningReflux(app, window, ::exitApplication))
                 onDispose {
+                    window.removeWindowFocusListener(settings)
                     displays.close()
                     controllers?.close()
                     Toolkit.getDefaultToolkit().removeAWTEventListener(mouse)

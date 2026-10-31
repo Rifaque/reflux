@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -56,8 +57,11 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.setProgress
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTag
@@ -71,6 +75,7 @@ import androidx.compose.ui.window.PopupPositionProvider
 import kotlinx.coroutines.delay
 import androidx.compose.ui.unit.dp
 import dev.reflux.core.input.InputModality
+import dev.reflux.design.FormFactor
 import dev.reflux.design.MaterialRole
 import dev.reflux.design.Motion
 import dev.reflux.ui.theme.LocalLayout
@@ -114,6 +119,8 @@ fun Pressable(
     enabled: Boolean = true,
     lift: Float = 1f,
     role: Role = Role.Button,
+    /** What activating it does, for a screen reader's "double tap to …", where its name does not say. */
+    actionLabel: String? = null,
     content: @Composable BoxScope.(active: Boolean) -> Unit,
 ) {
     val layout = LocalLayout.current
@@ -143,7 +150,7 @@ fun Pressable(
             .focusGlow(shape, glow)
             .then(if (ring) Modifier.focusRing(shape) else Modifier)
             .clip(shape)
-            .clickable(interactionSource = interaction, indication = null, enabled = enabled, role = role, onClick = onClick),
+            .clickable(interactionSource = interaction, indication = null, enabled = enabled, onClickLabel = actionLabel, role = role, onClick = onClick),
         content = { content(active) },
     )
 }
@@ -230,7 +237,8 @@ fun Button(
             else -> RefluxColors.textPrimary
         }
         Row(
-            Modifier.then(surface).height(height).padding(horizontal = if (style == ButtonStyle.QUIET) 14.dp else 22.dp),
+            // At least this tall, so a large text size grows the button rather than cutting its words.
+            Modifier.then(surface).heightIn(min = height).padding(horizontal = if (style == ButtonStyle.QUIET) 14.dp else 22.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -255,13 +263,29 @@ fun IconButton(
     selected: Boolean = false,
     /** The key that does the same, named in the pointer's label ("Space"); null where there is none. */
     shortcut: String? = null,
+    /** [Role.Tab] where the button is one of a set of places to be, as Search is among the sections. */
+    role: Role = Role.Button,
+    /** Whether what it opens is open, where it opens something in place (a list in the player); null otherwise. */
+    expanded: Boolean? = null,
 ) {
     val layout = LocalLayout.current
     val target = maxOf(size.value, minOf(layout.minTargetDp, 56f)).dp
     // A pointer can rest on an icon and ask what it is; a finger or a remote cannot, and is not shown labels.
     // The pointer is always followed, so the input changing mid-press never changes what is being pressed.
     val pointer = remember { HoverState() }
-    Pressable(onClick, modifier.semantics { contentDescription = description }.followPointer(pointer), CircleShape, enabled, lift = 0.8f) { active ->
+    Pressable(
+        onClick,
+        modifier.semantics {
+            contentDescription = description
+            // Only what is on says so: "not selected" on every button would be noise. A tab always says.
+            if (selected || role == Role.Tab) this.selected = selected
+            expanded?.let { stateDescription = if (it) "Open" else "Closed" }
+        }.followPointer(pointer),
+        CircleShape,
+        enabled,
+        lift = 0.8f,
+        role = role,
+    ) { active ->
         if (layout.modality == InputModality.POINTER) HoverLabel(pointer, if (shortcut != null) "$description  ·  $shortcut" else description)
         Box(
             Modifier.size(target)
@@ -376,10 +400,13 @@ fun ProgressRing(fraction: Float, modifier: Modifier = Modifier, stroke: Dp = 2.
  */
 @Composable
 fun Tab(label: String, selected: Boolean, modifier: Modifier = Modifier, compact: Boolean = false, onClick: () -> Unit) {
+    val layout = LocalLayout.current
+    // A finger needs the height a pointer does not; words that have grown take what they need.
+    val target = if (layout.modality == InputModality.TOUCH) layout.minTargetDp.dp else if (compact) 0.dp else 36.dp
     Pressable(onClick, modifier.semantics { this.selected = selected }, CircleShape, lift = 0f, role = Role.Tab) { active ->
         Box(
-            Modifier.background(Color.White.copy(alpha = if (selected) 0.12f else if (active) 0.06f else 0f))
-                .then(if (compact) Modifier.padding(horizontal = 11.dp, vertical = 7.dp) else Modifier.height(36.dp).padding(horizontal = 16.dp)),
+            Modifier.background(Color.White.copy(alpha = if (selected) 0.12f else if (active) 0.06f else 0f)).heightIn(min = target)
+                .then(if (compact) Modifier.padding(horizontal = 11.dp, vertical = 7.dp) else Modifier.padding(horizontal = if (layout.formFactor == FormFactor.PHONE) 10.dp else 16.dp)),
             contentAlignment = Alignment.Center,
         ) {
             Text(
@@ -396,7 +423,7 @@ fun Tab(label: String, selected: Boolean, modifier: Modifier = Modifier, compact
 @Composable
 fun SectionHeader(title: String, modifier: Modifier = Modifier, action: String? = null, onAction: () -> Unit = {}) {
     Row(modifier.fillMaxWidth().defaultMinSize(minHeight = 44.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text(title, Modifier.weight(1f), style = LocalTypography.current.title, maxLines = 1)
+        Text(title, Modifier.weight(1f).heading(), style = LocalTypography.current.title, maxLines = 1)
         if (action != null) Button(action, onAction, style = ButtonStyle.QUIET)
     }
 }
@@ -406,6 +433,7 @@ fun SectionHeader(title: String, modifier: Modifier = Modifier, action: String? 
  * [onChangeFinished] reports where it was released.
  *
  * @param description names the slider for accessibility.
+ * @param valueText what the position means, as a screen reader says it ("12:04 of 45:00"); a percentage otherwise.
  * @param marks positions (0..1) to notch on the track, e.g. chapter starts.
  * @param color of the filled part.
  */
@@ -419,7 +447,10 @@ fun Slider(
     marks: List<Float> = emptyList(),
     enabled: Boolean = true,
     color: Color = Color.White,
+    valueText: String? = null,
 ) {
+    // A finger gets the height of a target; what is drawn stays a line through its middle.
+    val touch = LocalLayout.current.modality == InputModality.TOUCH
     val interaction = remember { MutableInteractionSource() }
     val hovered by interaction.collectIsHoveredAsState()
     var dragging by remember { mutableStateOf(false) }
@@ -428,10 +459,18 @@ fun Slider(
     val change by rememberUpdatedState(onChange)
     val finished by rememberUpdatedState(onChangeFinished)
     Canvas(
-        modifier.height(28.dp)
+        modifier.height(if (touch) 48.dp else 28.dp)
             .semantics {
                 contentDescription = description
                 progressBarRangeInfo = ProgressBarRangeInfo(fraction.coerceIn(0f, 1f), 0f..1f)
+                valueText?.let { stateDescription = it }
+                // A screen reader moves a slider by action: without one it could only be read.
+                if (enabled) setProgress { value ->
+                    val target = value.coerceIn(0f, 1f)
+                    change(target)
+                    finished(target)
+                    true
+                } else disabled()
             }
             .hoverable(interaction, enabled).pointerInput(enabled) {
             if (!enabled) return@pointerInput

@@ -28,6 +28,7 @@ class DesktopShellTest {
         assertEquals(Key.SPACE, press(KeyEvent.VK_SPACE).toRefluxKey())
         assertEquals(Key.ESCAPE, press(KeyEvent.VK_ESCAPE).toRefluxKey())
         assertEquals(Key.PERIOD, press(KeyEvent.VK_PERIOD).toRefluxKey())
+        assertEquals(Key.O, press(KeyEvent.VK_O).toRefluxKey(), "the player's lists, on a keyboard without a Menu key")
         assertNull(press(KeyEvent.VK_Q).toRefluxKey(), "keys without a meaning are left to the toolkit")
     }
 

@@ -54,18 +54,18 @@ class DirectionalInputTest {
     fun theFirstPressMorphsTheLayoutAndFocusesTheMainAction() = screen(populated()) { app ->
         awaitText("Recently Added")
         assertEquals(InputModality.POINTER, app.input.modality)
-        assertFalse(shows("Select"), "no button prompts for someone using a mouse")
+        assertFalse(prompted("Select"), "no button prompts for someone using a mouse")
 
         assertTrue(press(app, GamepadButton.DPAD_DOWN))
         assertEquals(InputModality.DIRECTIONAL, app.input.modality)
         onNodeWithText("Play").assertIsFocused()
         assertEquals(Destination.Home, app.navigator.current, "the same screen, now laid out for a controller")
         // Prompts name the buttons of the controller in the user's hands.
-        assertTrue(shows("Cross") && shows("Options"))
+        assertTrue(prompted("Cross") && prompted("Options"))
         save("home-controller-focus")
 
         press(app, GamepadButton.DPAD_DOWN, ControllerFamily.XBOX)
-        assertTrue(shows("A") && shows("Menu") && !shows("Cross"), "an Xbox pad is prompted in its own terms")
+        assertTrue(prompted("A ") && prompted("Menu") && !prompted("Cross"), "an Xbox pad is prompted in its own terms")
     }
 
     @Test
@@ -164,7 +164,7 @@ class DirectionalInputTest {
         waitForIdle()
         assertEquals(InputModality.KEYBOARD, app.input.modality)
         onNodeWithText("Play").assertIsFocused()
-        assertFalse(shows("Select"), "button prompts are for controllers")
+        assertFalse(prompted("Select"), "button prompts are for controllers")
         runOnIdle { app.onKey(Key.ARROW_RIGHT) }
         waitForIdle()
         onNodeWithText("Details").assertIsFocused()
@@ -186,7 +186,7 @@ class DirectionalInputTest {
             assertEquals(10_000L, player.state.value.positionMs)
             press(app, GamepadButton.DPAD_LEFT)
             assertEquals(0L, player.state.value.positionMs)
-            assertTrue(shows("Options"), "the player prompts for its own actions")
+            assertTrue(prompted("Options"), "the player prompts for its own actions")
 
             // Options opens the menus; the D-pad now moves through them instead of seeking.
             press(app, GamepadButton.START)

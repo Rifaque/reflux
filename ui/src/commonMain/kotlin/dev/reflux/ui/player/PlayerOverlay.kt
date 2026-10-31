@@ -11,10 +11,12 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -29,6 +31,8 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
@@ -55,9 +59,19 @@ import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalAccessibilityManager
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.ProgressBarRangeInfo
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.progressBarRangeInfo
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import dev.reflux.core.input.ControllerFamily
 import dev.reflux.core.input.GamepadButton
@@ -80,10 +94,14 @@ import dev.reflux.ui.components.ButtonStyle
 import dev.reflux.ui.components.FocusRingReach
 import dev.reflux.ui.components.Icon
 import dev.reflux.ui.components.IconButton
+import dev.reflux.ui.components.LocalAccessibility
 import dev.reflux.ui.components.Pressable
 import dev.reflux.ui.components.Slider
 import dev.reflux.ui.components.Tab
 import dev.reflux.ui.components.absorbsPointer
+import dev.reflux.ui.components.announces
+import dev.reflux.ui.components.pane
+import dev.reflux.ui.screens.moveToItem
 import dev.reflux.ui.state.AppState
 import dev.reflux.ui.state.Formatting
 import dev.reflux.ui.state.MenuOption
@@ -122,19 +140,27 @@ fun PlayerOverlay(app: AppState, session: PlaybackSession, modifier: Modifier = 
         var visibleAtPress by remember { mutableStateOf(true) }
         var lastPointerMs by remember { mutableLongStateOf(LONG_AGO) }
         val playing = state.status == PlayerStatus.PLAYING
-        val pinned = session.menu != null || session.upNext != null || session.error != null
+        // A screen reader finds controls by reading them: controls that left could never be found again, since
+        // the movement that brings them back is not something it makes.
+        val pinned = session.menu != null || session.upNext != null || session.error != null || LocalAccessibility.current.screenReader
+        // Someone who asked the system for longer to act gets it here too.
+        val patience = LocalAccessibilityManager.current?.calculateRecommendedTimeoutMillis(
+            Motion.CONTROLS_AUTO_HIDE_MS, containsIcons = true, containsText = true, containsControls = true,
+        ) ?: Motion.CONTROLS_AUTO_HIDE_MS
 
         // Controls appear on any interaction and leave after a pause while the video is playing.
-        LaunchedEffect(session.interactions, playing, pinned) {
+        LaunchedEffect(session.interactions, playing, pinned, patience) {
             visible = true
             if (playing && !pinned) {
-                delay(Motion.CONTROLS_AUTO_HIDE_MS)
+                delay(patience)
                 visible = false
             }
         }
 
         Box(
             Modifier.fillMaxSize()
+                // Said as the player opens, and when it moves on to the next episode; the page behind has gone.
+                .pane(if (session.title.isEmpty()) "Player" else "Playing ${session.title}")
                 .trackPointer(app)
                 .pointerInput(session) {
                     awaitPointerEventScope {
@@ -203,18 +229,19 @@ fun PlayerOverlay(app: AppState, session: PlaybackSession, modifier: Modifier = 
                 Controls(app, session, state) { bar = it }
             }
 
-            AnimatedVisibility(
-                visible = app.notice != null,
-                // Kept off the screen's edges where the window is narrower than the notice can be.
-                modifier = Modifier.align(Alignment.TopCenter).padding(top = 28.dp).padding(horizontal = LocalLayout.current.safeMarginDp.dp),
-                enter = fadeIn(Motion.controlsShow.tween()),
-                exit = fadeOut(Motion.controlsHide.tween()),
-            ) {
-                // The page's own notice is beneath the video, so what is said while playing is said here.
-                var shown by remember { mutableStateOf("") }
-                app.notice?.let { shown = it }
-                Box(Modifier.widthIn(max = 560.dp).glass(MaterialRole.MODAL, CircleShape, tint = playerTint.copy(alpha = 0.92f)).absorbsPointer().padding(horizontal = 22.dp, vertical = 12.dp)) {
-                    Text(shown, style = LocalTypography.current.bodyStrong, maxLines = 2)
+            // Kept off the screen's edges where the window is narrower than the notice can be.
+            Box(Modifier.align(Alignment.TopCenter).padding(top = 28.dp).padding(horizontal = LocalLayout.current.safeMarginDp.dp).announces(app.notice)) {
+                AnimatedVisibility(
+                    visible = app.notice != null,
+                    enter = fadeIn(Motion.controlsShow.tween()),
+                    exit = fadeOut(Motion.controlsHide.tween()),
+                ) {
+                    // The page's own notice is beneath the video, so what is said while playing is said here.
+                    var shown by remember { mutableStateOf("") }
+                    app.notice?.let { shown = it }
+                    Box(Modifier.widthIn(max = 560.dp).glass(MaterialRole.MODAL, CircleShape, tint = playerTint.copy(alpha = 0.92f)).absorbsPointer().padding(horizontal = 22.dp, vertical = 12.dp)) {
+                        Text(shown, style = LocalTypography.current.bodyStrong, maxLines = 2)
+                    }
                 }
             }
 
@@ -272,6 +299,8 @@ private fun Controls(app: AppState, session: PlaybackSession, state: PlayerState
     )
     val compact = layout.formFactor == FormFactor.PHONE
     val centre = controls.transport == Transport.CENTRE
+    // Lists the player's own keys reach; named in a pointer's label, and they are the same on every list.
+    val listsKey = "O"
     // Scrims carry the title and controls over bright scenes; the picture between them is left alone.
     Box(Modifier.fillMaxWidth().fillMaxHeight(0.24f).background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.66f), Color.Transparent))))
     Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().fillMaxHeight(0.46f).background(Brush.verticalGradient(0f to Color.Transparent, 0.45f to Color.Black.copy(alpha = 0.42f), 1f to Color.Black.copy(alpha = 0.84f))))
@@ -351,14 +380,30 @@ private fun Controls(app: AppState, session: PlaybackSession, state: PlayerState
                 .padding(horizontal = 18.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            Timeline(session, state)
+            Timeline(session, state, remote = controls.transport == Transport.REMOTE)
             if (controls.listHints) {
                 Row(Modifier.fillMaxWidth().padding(top = 2.dp, bottom = 2.dp), horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text(if (state.pauses) "" else "Paused", Modifier.weight(1f), style = LocalTypography.current.captionStrong, color = RefluxColors.textSecondary, maxLines = 1)
-                    // Down opens these; the one that is open is the one lit.
+                    Box(Modifier.weight(1f)) {
+                        if (!state.pauses) Text("Paused", style = LocalTypography.current.captionStrong, color = RefluxColors.textSecondary, maxLines = 1)
+                    }
+                    // Down opens these; the one that is open is the one lit. To the D-pad they are only names, so
+                    // they take no focus; a screen reader, which goes through what is on screen, opens them directly.
                     Icon(Icon.CHEVRON_DOWN, size = 12.dp, tint = RefluxColors.textTertiary)
                     menus.forEach { menu ->
-                        Text(menu.title, style = LocalTypography.current.captionStrong, color = if (menu == open) RefluxColors.textPrimary else RefluxColors.textSecondary, maxLines = 1)
+                        Text(
+                            menu.title,
+                            Modifier.semantics {
+                                role = Role.Tab
+                                selected = menu == open
+                                onClick {
+                                    session.toggleMenu(menu)
+                                    true
+                                }
+                            },
+                            style = LocalTypography.current.captionStrong,
+                            color = if (menu == open) RefluxColors.textPrimary else RefluxColors.textSecondary,
+                            maxLines = 1,
+                        )
                     }
                 }
             } else Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -391,17 +436,21 @@ private fun Controls(app: AppState, session: PlaybackSession, state: PlayerState
                         Button(
                             if (state.speed == 1.0) "1×" else Formatting.speed(state.speed),
                             { session.toggleMenu(menu) },
-                            Modifier.semantics { contentDescription = "Playback speed" },
+                            // What the button shows is only the value: its name is what a screen reader was missing.
+                            Modifier.semantics {
+                                contentDescription = "Playback speed"
+                                stateDescription = (if (state.speed == 1.0) "Normal" else Formatting.speed(state.speed)) + ", " + if (menu == open) "open" else "closed"
+                            },
                             style = ButtonStyle.QUIET,
                         )
                     } else {
-                        IconButton(menuIcon(menu), menu.title, { session.toggleMenu(menu) }, tint = tint)
+                        IconButton(menuIcon(menu), menu.title, { session.toggleMenu(menu) }, tint = tint, shortcut = listsKey, expanded = menu == open)
                     }
                 }
                 controls.more?.let { first ->
                     // The rest of the lists, one tap away; their tabs lead from one to another.
                     val lit = open != null && open !in controls.lists
-                    IconButton(Icon.MORE, "More options", { if (lit) session.closeMenu() else session.toggleMenu(first) }, tint = if (lit) RefluxColors.textPrimary else RefluxColors.textSecondary)
+                    IconButton(Icon.MORE, "More options", { if (lit) session.closeMenu() else session.toggleMenu(first) }, tint = if (lit) RefluxColors.textPrimary else RefluxColors.textSecondary, shortcut = listsKey, expanded = lit)
                 }
                 if (controls.fullscreen) {
                     IconButton(
@@ -419,20 +468,27 @@ private fun Controls(app: AppState, session: PlaybackSession, state: PlayerState
 /** The title of what is playing, with the episode or year beneath it. */
 @Composable
 private fun NowPlaying(session: PlaybackSession, compact: Boolean, modifier: Modifier = Modifier) {
-    Column(modifier, verticalArrangement = Arrangement.spacedBy(if (compact) 0.dp else 4.dp)) {
+    // One stop: what is playing, whichever way the two lines happen to be laid out.
+    Column(modifier.semantics(mergeDescendants = true) { }, verticalArrangement = Arrangement.spacedBy(if (compact) 0.dp else 4.dp)) {
         Text(session.title, style = if (compact) LocalTypography.current.title else LocalTypography.current.headline, maxLines = 1)
         session.subtitle?.let { Text(it, style = if (compact) LocalTypography.current.caption else LocalTypography.current.metadata, color = RefluxColors.textSecondary, maxLines = 1) }
     }
 }
 
-/** Position, scrubber with chapter marks, and time remaining. Dragging previews the time before seeking. */
+/**
+ * Position, scrubber with chapter marks, and time remaining. Dragging previews the time before seeking.
+ *
+ * @param remote where no transport is on screen (a television): the scrubber then carries what the remote's own
+ * keys do, for a screen reader, which has the keys for itself while it is on.
+ */
 @Composable
-private fun Timeline(session: PlaybackSession, state: PlayerState) {
+private fun Timeline(session: PlaybackSession, state: PlayerState, remote: Boolean) {
     val duration = state.durationMs?.takeIf { it > 0 }
     var preview by remember { mutableStateOf<Float?>(null) }
     val position = preview?.let { fraction -> duration?.let { (it * fraction).toLong() } } ?: state.positionMs
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text(Formatting.clock(position), style = LocalTypography.current.captionStrong, color = RefluxColors.textSecondary, maxLines = 1)
+        // The slider says where it is and how long it all is, so the two clocks beside it are not said again.
+        Text(Formatting.clock(position), Modifier.clearAndSetSemantics { }, style = LocalTypography.current.captionStrong, color = RefluxColors.textSecondary, maxLines = 1)
         Slider(
             fraction = if (duration == null) 0f else position.toFloat() / duration,
             description = "Timeline",
@@ -445,18 +501,27 @@ private fun Timeline(session: PlaybackSession, state: PlayerState) {
                 preview = null
                 duration?.let { session.seekTo((it * fraction).toLong()) }
             },
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.weight(1f).then(if (remote) Modifier.semantics { customActions = transportActions(session, state) } else Modifier),
+            valueText = duration?.let { Formatting.clock(position) + " of " + Formatting.clock(it) },
             marks = if (duration == null) emptyList() else state.chapters.map { it.startMs.toFloat() / duration }.filter { it > 0.005f && it < 0.995f },
             enabled = duration != null,
         )
         Text(
             duration?.let { "-" + Formatting.clock(it - position) } ?: "",
+            Modifier.clearAndSetSemantics { },
             style = LocalTypography.current.captionStrong,
             color = RefluxColors.textSecondary,
             maxLines = 1,
         )
     }
 }
+
+/** Play or pause, and the ten-second seeks, as actions on something a screen reader can land on. */
+private fun transportActions(session: PlaybackSession, state: PlayerState): List<CustomAccessibilityAction> = listOf(
+    CustomAccessibilityAction(if (state.pauses) "Pause" else "Play") { session.handle(SemanticAction.PLAY_PAUSE) },
+    CustomAccessibilityAction("Back 10 seconds") { session.handle(SemanticAction.SEEK_BACKWARD) },
+    CustomAccessibilityAction("Forward 10 seconds") { session.handle(SemanticAction.SEEK_FORWARD) },
+)
 
 /**
  * The open menu: its siblings across the top, its options beneath. The highlighted option follows
@@ -465,29 +530,37 @@ private fun Timeline(session: PlaybackSession, state: PlayerState) {
 @Composable
 private fun MenuPanel(session: PlaybackSession, menus: List<PlayerMenu>, open: PlayerMenu, options: List<MenuOption>) {
     val showsHighlight = LocalLayout.current.showsFocus
+    val touch = LocalLayout.current.modality == InputModality.TOUCH
     val list = rememberLazyListState()
     LaunchedEffect(open) { list.scrollToItem(session.highlighted.coerceIn(0, options.lastIndex.coerceAtLeast(0))) }
     LaunchedEffect(session.highlighted) {
         val visible = list.layoutInfo.visibleItemsInfo
         if (visible.isNotEmpty() && (session.highlighted <= visible.first().index || session.highlighted >= visible.last().index)) {
-            list.animateScrollToItem((session.highlighted - 2).coerceAtLeast(0))
+            list.moveToItem((session.highlighted - 2).coerceAtLeast(0))
         }
     }
+    // A list of what is in effect is one choice among its lines; one with nothing to be in effect is a list of actions.
+    val choice = options.any { it.selected }
     // Five lists across the top need more room than four.
-    Column(Modifier.width(if (menus.size > 4) 430.dp else 340.dp).glass(MaterialRole.MODAL, tint = playerTint.copy(alpha = 0.92f)).absorbsPointer().padding(8.dp)) {
-        Row(Modifier.padding(horizontal = 2.dp, vertical = 2.dp), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+    Column(
+        Modifier.width(if (menus.size > 4) 430.dp else 340.dp).glass(MaterialRole.MODAL, tint = playerTint.copy(alpha = 0.92f)).absorbsPointer()
+            .pane(open.title) { session.closeMenu() }.padding(8.dp),
+    ) {
+        // A large text size scrolls the tabs rather than cutting off the last of them.
+        Row(Modifier.horizontalScroll(rememberScrollState()).selectableGroup().padding(horizontal = 2.dp, vertical = 2.dp), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
             menus.forEach { menu -> Tab(menu.title, menu == open, compact = true) { if (menu != open) session.toggleMenu(menu) } }
         }
-        LazyColumn(Modifier.heightIn(max = 312.dp), state = list, contentPadding = PaddingValues(vertical = FocusRingReach)) {
+        LazyColumn(Modifier.heightIn(max = 312.dp).then(if (choice) Modifier.selectableGroup() else Modifier), state = list, contentPadding = PaddingValues(vertical = FocusRingReach)) {
             itemsIndexed(options) { index, option ->
                 Pressable(
                     { session.choose(open, index) },
-                    Modifier.fillMaxWidth().semantics { selected = option.selected },
+                    Modifier.fillMaxWidth().then(if (choice) Modifier.semantics { selected = option.selected } else Modifier),
                     RoundedCornerShape(10.dp),
                     lift = 0f,
+                    role = if (choice) Role.RadioButton else Role.Button,
                 ) { active ->
                     Row(
-                        Modifier.fillMaxWidth()
+                        Modifier.fillMaxWidth().heightIn(min = if (touch) 48.dp else 0.dp)
                             .background(Color.White.copy(alpha = if (active || (showsHighlight && index == session.highlighted)) 0.12f else 0f))
                             .padding(horizontal = 12.dp, vertical = 10.dp),
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -506,10 +579,13 @@ private fun MenuPanel(session: PlaybackSession, menus: List<PlayerMenu>, open: P
 @Composable
 private fun UpNextCard(session: PlaybackSession, prompt: UpNext, modifier: Modifier = Modifier) {
     val (title, caption) = remember(prompt.entry) { nextHeading(prompt) }
+    val next = listOfNotNull(caption, title).joinToString(" · ")
     Notice(
         modifier,
         if (prompt.asks) "Still watching?" else "Up next in ${ceil(prompt.remainingMs / 1000.0).toInt()}",
-        listOfNotNull(caption, title).joinToString(" · "),
+        next,
+        // The countdown changes every second; what is said is said once.
+        said = if (prompt.asks) "Still watching?" else "Up next: $next",
     ) {
         if (prompt.asks) {
             Button("Keep watching", { session.continueWatching() }, icon = Icon.PLAY, style = ButtonStyle.PRIMARY)
@@ -529,7 +605,7 @@ private fun nextHeading(prompt: UpNext): Pair<String, String?> {
 /** Why playback stopped, in the user's words, with the engine's own wording kept small for bug reports. */
 @Composable
 private fun Failure(session: PlaybackSession, error: PlaybackError, modifier: Modifier = Modifier) {
-    Notice(modifier, "Playback stopped", error.message, detail = error.detail) {
+    Notice(modifier, "Playback stopped", error.message, said = "Playback stopped. ${error.message}", detail = error.detail) {
         if (error.canRetry) {
             Button("Try again", { session.retry() }, icon = Icon.PLAY, style = ButtonStyle.PRIMARY)
             Button("Back to library", { session.close() })
@@ -540,22 +616,32 @@ private fun Failure(session: PlaybackSession, error: PlaybackError, modifier: Mo
 }
 
 @Composable
-private fun Notice(modifier: Modifier, title: String, body: String, detail: String? = null, actions: @Composable () -> Unit) {
+private fun Notice(modifier: Modifier, title: String, body: String, said: String, detail: String? = null, actions: @Composable () -> Unit) {
     Column(
-        modifier.widthIn(max = 440.dp).glass(MaterialRole.MODAL, tint = playerTint.copy(alpha = 0.92f)).absorbsPointer().padding(20.dp),
+        modifier.widthIn(max = 440.dp).glass(MaterialRole.MODAL, tint = playerTint.copy(alpha = 0.92f)).absorbsPointer().pane(said).padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Text(title, style = LocalTypography.current.captionStrong, color = RefluxColors.textSecondary)
         Text(body, style = LocalTypography.current.title, maxLines = 4)
         if (detail != null) Text("Details: $detail", style = LocalTypography.current.caption, color = RefluxColors.textTertiary, maxLines = 2)
-        Row(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) { actions() }
+        // Beneath one another rather than off the card, where a large text size leaves no room beside each other.
+        FlowRow(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) { actions() }
     }
 }
 
 @Composable
 private fun Spinner(modifier: Modifier = Modifier) {
+    val busy = Modifier.semantics {
+        contentDescription = "Loading"
+        progressBarRangeInfo = ProgressBarRangeInfo.Indeterminate
+    }
+    // That something is happening is not left to a movement some people have asked not to see.
+    if (LocalAccessibility.current.reduceMotion) {
+        Text("Loading…", modifier.then(busy), style = LocalTypography.current.bodyStrong)
+        return
+    }
     val angle by rememberInfiniteTransition().animateFloat(0f, 360f, infiniteRepeatable(tween(900, easing = LinearEasing)))
-    Canvas(modifier.size(44.dp)) {
+    Canvas(modifier.size(44.dp).then(busy)) {
         rotate(angle) {
             drawArc(Color.White.copy(alpha = 0.9f), startAngle = 0f, sweepAngle = 270f, useCenter = false, style = Stroke(3.dp.toPx(), cap = StrokeCap.Round))
         }

@@ -59,6 +59,7 @@ internal object Input {
             KeyEvent.KEYCODE_TAB -> Key.TAB
             KeyEvent.KEYCODE_F -> Key.F
             KeyEvent.KEYCODE_M -> Key.M
+            KeyEvent.KEYCODE_O -> Key.O
             KeyEvent.KEYCODE_K -> Key.K
             KeyEvent.KEYCODE_J -> Key.J
             KeyEvent.KEYCODE_L -> Key.L

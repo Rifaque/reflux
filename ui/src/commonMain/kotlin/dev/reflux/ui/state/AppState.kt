@@ -529,6 +529,8 @@ class AppState(
     fun onKey(key: Key): Boolean {
         onSignal(InputSignal.KeyPress(key))
         val browsing = playback == null
+        // The player is operated by its keys. Tab would only walk the page behind the video, which nobody can see.
+        if (!browsing && key == Key.TAB) return true
         // A field is one line: up and down move between fields, everything else is typing.
         if (browsing && textInputActive && key != Key.ESCAPE && key != Key.ARROW_DOWN && key != Key.ARROW_UP) return false
         val action = InputMapping.map(key, context) ?: return false

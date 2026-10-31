@@ -56,7 +56,7 @@ import kotlin.test.assertTrue
 private const val MINUTE = 60_000L
 
 /** A server that hands out its files, with two films nobody has on this device. */
-private class Server : CatalogSource, DownloadableSource {
+internal class Server : CatalogSource, DownloadableSource {
     var reachable = true
     val files = HashMap<String, ByteArray>()
 
@@ -95,12 +95,12 @@ private class Server : CatalogSource, DownloadableSource {
 }
 
 /** The populated library, a server next to it, and Smart Offline over both. */
-private class OfflineWorld {
+internal class OfflineWorld {
     val world = populated()
     val server = Server()
     private val directory = Files.createTempDirectory("reflux-ui-offline").toFile().also { it.deleteOnExit() }
     val offline = Offline(
-        world.library, FileDownloadStore(directory), server.transport, world.registry::resolve, { testDevice }, listOf("en"),
+        world.library, RoomyStore(FileDownloadStore(directory)), server.transport, world.registry::resolve, { testDevice }, listOf("en"),
         world.registry::register, Dispatchers.Default,
     )
     val platform = FakePlatform(offline = offline)
@@ -169,7 +169,7 @@ class OfflineUiTest {
             // It is one more version of the same film, and the one that will play.
             awaitText("Downloaded")
             assertEquals(1, app.library.movies().count { it.item.title == "Ronin" })
-            assertTrue(shows("Recommended"))
+            await("the copy to be the recommended version") { shows("Recommended") }
             save("offline-details-downloaded")
 
             // With the server away the film is still there, and still plays.

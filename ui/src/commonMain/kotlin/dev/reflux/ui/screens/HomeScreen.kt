@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
@@ -67,6 +68,7 @@ import dev.reflux.ui.components.PosterCard
 import dev.reflux.ui.components.SectionHeader
 import dev.reflux.ui.components.TitleBackdrop
 import dev.reflux.ui.components.WideCard
+import dev.reflux.ui.components.heading
 import dev.reflux.ui.components.initialFocus
 import dev.reflux.ui.state.AppState
 import dev.reflux.ui.state.ArtworkChoice
@@ -78,6 +80,7 @@ import dev.reflux.ui.state.homeModel
 import dev.reflux.ui.state.libraryState
 import dev.reflux.ui.theme.LocalLayout
 import dev.reflux.ui.theme.LocalTypography
+import dev.reflux.ui.theme.MotionPolicy
 import dev.reflux.ui.theme.RefluxColors
 import dev.reflux.ui.theme.Text
 import dev.reflux.ui.theme.tween
@@ -126,7 +129,7 @@ internal fun HomeScreen(app: AppState) {
             FocusScrollsNothing {
                 rows { index ->
                     Modifier.onFocusChanged { focus ->
-                        if (focus.hasFocus) scope.launch { list.animateScrollToItem(index, if (index == 0) 0 else -under) }
+                        if (focus.hasFocus) scope.launch { list.moveToItem(index, if (index == 0) 0 else -under) }
                     }
                 }
             }
@@ -135,6 +138,10 @@ internal fun HomeScreen(app: AppState) {
         }
     }
 }
+
+/** Brings an item to [offset] the way the page moves, or at once with motion reduced. */
+internal suspend fun LazyListState.moveToItem(index: Int, offset: Int = 0) =
+    if (MotionPolicy.reduced) scrollToItem(index, offset) else animateScrollToItem(index, offset)
 
 /**
  * How much of the artwork that opens this list (its first item, [heightPx] tall) is still on screen: 1 at the
@@ -185,17 +192,18 @@ private val ATMOSPHERE_FADE = 520.dp
 private fun Hero(app: AppState, card: MediaCard, image: ImageBitmap?, poster: ImageBitmap?, tone: () -> Color, overview: String?, height: Dp) {
     val layout = LocalLayout.current
     val compact = layout.formFactor == FormFactor.PHONE
-    Box(Modifier.fillMaxWidth().height(height)) {
-        ArtworkImage(image, Modifier.fillMaxSize(), alignment = Alignment.TopCenter) { TitleBackdrop(card.title, poster = poster) }
-        Box(Modifier.fillMaxSize().artworkScrims(tone, left = 0.9f, right = 0f))
+    // At least this tall: a large text size makes it taller rather than running its words up under the navigation.
+    Box(Modifier.fillMaxWidth().heightIn(min = height)) {
+        ArtworkImage(image, Modifier.matchParentSize(), alignment = Alignment.TopCenter) { TitleBackdrop(card.title, poster = poster) }
+        Box(Modifier.matchParentSize().artworkScrims(tone, left = 0.9f, right = 0f))
         Column(
-            Modifier.align(Alignment.BottomStart).padding(horizontal = layout.safeMarginDp.dp).padding(bottom = 4.dp).widthIn(max = 600.dp),
+            Modifier.align(Alignment.BottomStart).padding(horizontal = layout.safeMarginDp.dp).padding(top = LocalChromeInsets.current.top, bottom = 4.dp).widthIn(max = 600.dp),
             verticalArrangement = Arrangement.spacedBy(if (compact) 10.dp else 14.dp),
         ) {
             val inProgress = card.entry.watchState?.inProgress == true
             // The title speaks for itself; only something worth knowing is said above it, quietly.
             if (inProgress) Text("Continue watching", style = LocalTypography.current.metadata, color = RefluxColors.textSecondary)
-            Text(card.title, style = LocalTypography.current.display, maxLines = 2)
+            Text(card.title, Modifier.heading(), style = LocalTypography.current.display, maxLines = 2)
             val facts = (listOfNotNull("Not connected".takeIf { card.offline }, card.caption.takeIf { card.detailsId != card.id }) + Formatting.facts(card.entry) +
                 listOfNotNull(Formatting.remaining(card.entry.watchState))).distinct()
             if (facts.isNotEmpty()) Text(facts.joinToString("  ·  "), style = LocalTypography.current.metadata, color = RefluxColors.textSecondary, maxLines = 1)
@@ -300,7 +308,7 @@ internal fun EmptyLibrary(app: AppState, sources: List<SourceRecord>) {
                 else -> "Nothing to watch here yet" to
                     "No movies or shows were found in ${sources.joinToString { it.displayName }}. Add another folder, or add media to this one and it shows up by itself."
             }
-            Text(headline, style = LocalTypography.current.headline, align = TextAlign.Center)
+            Text(headline, Modifier.heading(), style = LocalTypography.current.headline, align = TextAlign.Center)
             Text(body, color = RefluxColors.textSecondary, align = TextAlign.Center)
             Spacer(Modifier.height(6.dp))
             Button(
