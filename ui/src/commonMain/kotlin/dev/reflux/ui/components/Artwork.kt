@@ -265,7 +265,8 @@ fun PosterCard(card: MediaCard, onClick: () -> Unit, modifier: Modifier = Modifi
             focusReturn.modifier.semantics { contentDescription = describe(card) },
             shape,
         ) { active ->
-            Box(Modifier.fillMaxWidth().aspectRatio(2f / 3f)) {
+            // The card says all of it; words on the artwork would be said a second time.
+            Box(Modifier.fillMaxWidth().aspectRatio(2f / 3f).clearAndSetSemantics { }) {
                 ArtworkImage(image, Modifier.fillMaxSize()) { TitlePlaceholder(card.title, null) }
                 if (active) Box(Modifier.fillMaxSize().background(Color.White.copy(alpha = 0.06f)))
                 // Progress sits on a short shadow, so it reads on the brightest poster.
@@ -309,7 +310,8 @@ fun WideCard(card: MediaCard, onClick: () -> Unit, modifier: Modifier = Modifier
     val image = rememberArtwork(ArtworkChoice.landscape(card.wide, card.poster, 16f / 9f), width)
     Column(modifier.width(width), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Pressable(onClick, Modifier.semantics { contentDescription = describe(card) }, shape, lift = 0.6f) { active ->
-            Box(Modifier.fillMaxWidth().aspectRatio(16f / 9f)) {
+            // The card says all of it; the title on the image would be said a second time.
+            Box(Modifier.fillMaxWidth().aspectRatio(16f / 9f).clearAndSetSemantics { }) {
                 ArtworkImage(image, Modifier.fillMaxSize(), alignment = Alignment.TopCenter) {
                     TitlePlaceholder(card.title, null)
                 }

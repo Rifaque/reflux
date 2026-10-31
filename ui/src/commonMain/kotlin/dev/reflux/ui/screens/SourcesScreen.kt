@@ -68,6 +68,7 @@ import dev.reflux.ui.components.announces
 import dev.reflux.ui.components.heading
 import dev.reflux.ui.components.initialFocus
 import dev.reflux.ui.components.rememberFocusReturn
+import dev.reflux.ui.components.pane
 import dev.reflux.ui.state.AppState
 import dev.reflux.ui.state.Destination
 import dev.reflux.ui.state.SourceRow
@@ -245,7 +246,7 @@ private fun SourceItem(app: AppState, row: SourceRow, expanded: Boolean, scannin
                     )
                 }
                 if (removing) {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Column(Modifier.pane("Remove ${row.name}?"), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("Remove ${row.name}?", style = LocalTypography.current.bodyStrong)
                         Text(
                             if (row.kind == ConnectionKind.SERVER) {

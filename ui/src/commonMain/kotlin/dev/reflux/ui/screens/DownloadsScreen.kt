@@ -42,6 +42,7 @@ import dev.reflux.ui.components.SectionHeader
 import dev.reflux.ui.components.titleTones
 import dev.reflux.ui.components.initialFocus
 import dev.reflux.ui.components.rememberFocusReturn
+import dev.reflux.ui.components.pane
 import dev.reflux.ui.state.AppState
 import dev.reflux.ui.state.Destination
 import dev.reflux.ui.state.DownloadItem
@@ -222,8 +223,9 @@ private fun RemoveQuestion(item: DownloadItem, onRemove: () -> Unit, onKeep: () 
     val answer = remember { FocusRequester() }
     val showsFocus = LocalLayout.current.showsFocus
     LaunchedEffect(Unit) { if (showsFocus) runCatching { answer.requestFocus() } }
-    Column(Modifier.fillMaxWidth().padding(8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text("Remove ${listOfNotNull(item.title, item.caption).joinToString(", ")} from this device?", style = LocalTypography.current.bodyStrong)
+    val question = "Remove ${listOfNotNull(item.title, item.caption).joinToString(", ")} from this device?"
+    Column(Modifier.fillMaxWidth().pane(question).padding(8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(question, style = LocalTypography.current.bodyStrong)
         Text("Only the copy goes. It stays in your library, with what you have watched.", style = LocalTypography.current.caption, color = RefluxColors.textSecondary)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Button("Remove", onRemove)

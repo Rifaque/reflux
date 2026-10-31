@@ -109,7 +109,7 @@ internal fun OfflinePanel(app: AppState) {
                     Text("Downloads", style = LocalTypography.current.captionStrong, color = RefluxColors.textSecondary)
                     model.downloads.forEach { line ->
                         if (removing == line.id) {
-                            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Column(Modifier.pane("Remove ${line.title} from this device?"), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                                 Text("Remove ${line.title} from this device?", style = LocalTypography.current.bodyStrong)
                                 Text("Only the copy goes. It stays in your library, with what you have watched.", style = LocalTypography.current.caption, color = RefluxColors.textSecondary)
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -151,7 +151,7 @@ internal fun OfflinePanel(app: AppState) {
             val kept = model.downloads.filter { it.state == DownloadState.COMPLETED }
             if (reviewing != null && kept.size > 1) {
                 if (removingAll) {
-                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Column(Modifier.pane("Remove these ${kept.size} episodes from this device?"), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text("Remove these ${kept.size} episodes from this device?", style = LocalTypography.current.bodyStrong)
                         Text("Only the copies go. They stay in your library, with what you have watched.", style = LocalTypography.current.caption, color = RefluxColors.textSecondary)
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

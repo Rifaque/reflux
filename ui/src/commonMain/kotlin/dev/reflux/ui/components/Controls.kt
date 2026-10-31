@@ -218,11 +218,13 @@ fun Button(
     icon: Icon? = null,
     style: ButtonStyle = ButtonStyle.GLASS,
     enabled: Boolean = true,
+    /** Its name for a screen reader, where [text] is only a value ("1×"); those words are then not said as well. */
+    name: String? = null,
 ) {
     val layout = LocalLayout.current
     val shape = CircleShape
     val height = maxOf(40f, layout.minTargetDp).dp
-    Pressable(onClick, modifier, shape, enabled, lift = 0.6f) { active ->
+    Pressable(onClick, if (name != null) modifier.semantics { contentDescription = name } else modifier, shape, enabled, lift = 0.6f) { active ->
         val surface = when (style) {
             // Active is the same surface lit fully; what cannot be done right now is not lit at all.
             ButtonStyle.PRIMARY -> Modifier.background(
@@ -243,7 +245,7 @@ fun Button(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             if (icon != null) Icon(icon, size = 18.dp, tint = color)
-            Text(text, style = LocalTypography.current.bodyStrong, color = color, maxLines = 1)
+            Text(text, if (name != null) Modifier.clearAndSetSemantics { } else Modifier, style = LocalTypography.current.bodyStrong, color = color, maxLines = 1)
         }
     }
 }
