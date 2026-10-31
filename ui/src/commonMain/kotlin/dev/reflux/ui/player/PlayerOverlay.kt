@@ -101,6 +101,8 @@ import dev.reflux.ui.components.Tab
 import dev.reflux.ui.components.absorbsPointer
 import dev.reflux.ui.components.announces
 import dev.reflux.ui.components.pane
+import dev.reflux.ui.components.traversal
+import dev.reflux.ui.components.Traversal
 import dev.reflux.ui.screens.moveToItem
 import dev.reflux.ui.state.AppState
 import dev.reflux.ui.state.Formatting
@@ -437,12 +439,12 @@ private fun Controls(app: AppState, session: PlaybackSession, state: PlayerState
                         Button(
                             if (state.speed == 1.0) "1×" else Formatting.speed(state.speed),
                             { session.toggleMenu(menu) },
-                            // What the button shows is only the value: its name is what a screen reader was missing.
                             Modifier.semantics {
-                                contentDescription = "Playback speed"
                                 stateDescription = (if (state.speed == 1.0) "Normal" else Formatting.speed(state.speed)) + ", " + if (menu == open) "open" else "closed"
                             },
                             style = ButtonStyle.QUIET,
+                            // What the button shows is only the value: its name is what a screen reader was missing.
+                            name = "Playback speed",
                         )
                     } else {
                         IconButton(menuIcon(menu), menu.title, { session.toggleMenu(menu) }, tint = tint, shortcut = listsKey, expanded = menu == open)
@@ -545,7 +547,7 @@ private fun MenuPanel(session: PlaybackSession, menus: List<PlayerMenu>, open: P
     // Five lists across the top need more room than four.
     Column(
         Modifier.width(if (menus.size > 4) 430.dp else 340.dp).glass(MaterialRole.MODAL, tint = playerTint.copy(alpha = 0.92f)).absorbsPointer()
-            .pane(open.title) { session.closeMenu() }.padding(8.dp),
+            .pane(open.title) { session.closeMenu() }.traversal(Traversal.AFTER_PAGE).padding(8.dp),
     ) {
         // A large text size scrolls the tabs rather than cutting off the last of them.
         Row(Modifier.horizontalScroll(rememberScrollState()).selectableGroup().padding(horizontal = 2.dp, vertical = 2.dp), horizontalArrangement = Arrangement.spacedBy(2.dp)) {

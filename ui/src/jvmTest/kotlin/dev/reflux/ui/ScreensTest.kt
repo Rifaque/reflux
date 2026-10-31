@@ -5,6 +5,7 @@ import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onFirst
@@ -72,7 +73,7 @@ class ScreensTest {
     @Test
     fun homeLooksFinishedBeforeAnyArtworkExists() = screen(populated(metadata = false), FakePlatform(artwork = false)) {
         awaitText("Recently Added")
-        onAllNodesWithText("Heat").fetchSemanticsNodes().let { assertTrue(it.isNotEmpty()) }
+        onAllNodesWithContentDescription("Heat", substring = true).fetchSemanticsNodes().let { assertTrue(it.isNotEmpty()) }
         save("home-without-artwork")
     }
 
@@ -226,7 +227,7 @@ class ScreensTest {
         },
     ) { app ->
         awaitText("Recently Added")
-        onAllNodesWithText("Not connected").fetchSemanticsNodes().let { assertTrue(it.isNotEmpty(), "cards say they cannot be played right now") }
+        onAllNodesWithContentDescription("not connected", substring = true).fetchSemanticsNodes().let { assertTrue(it.isNotEmpty(), "cards say they cannot be played right now") }
         save("home-offline")
         app.navigator.open(Destination.Details(app.library.movies().first { it.item.title == "Heat" }.item.id))
         awaitText("Versions")

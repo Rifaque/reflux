@@ -1,5 +1,8 @@
 package dev.reflux.ui
 
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.DesktopComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.click
@@ -310,6 +313,7 @@ class DownloadsUiTest {
             // Removing asks once, and takes only the copy.
             onNodeWithContentDescription("Remove Ronin, 1998 from this device").performScrollTo().performClick()
             await("the question") { shows("Only the copy goes.") }
+            assertTrue(onAllNodes(SemanticsMatcher("a question that says itself") { it.config.getOrNull(SemanticsProperties.PaneTitle) == "Remove Ronin, 1998 from this device?" }).fetchSemanticsNodes().isNotEmpty())
             onNodeWithText("Remove").performClick()
             await("the copy to be gone") { app.library.downloads().size == 2 }
             assertTrue(app.library.movies().any { it.item.id == downloads.ronin })

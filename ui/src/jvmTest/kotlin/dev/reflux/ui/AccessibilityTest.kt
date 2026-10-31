@@ -136,6 +136,41 @@ class AccessibilityTest {
     }
 
     @Test
+    fun anOpenListComesAfterTheControlsThatOpenedIt() {
+        // TalkBack stays on the button a list was opened from; the list has to be its next stop, not the start again.
+        val platform = handheld
+        screen(populated(), platform, width = 900, height = 600) { app ->
+            awaitText("Recently Added")
+            playing(app, platform)
+            runOnIdle { app.playback!!.toggleMenu(PlayerMenu.AUDIO) }
+            await("the list") { onAllNodes(titled(PlayerMenu.AUDIO.title)).fetchSemanticsNodes().isNotEmpty() }
+            assertEquals(1f, onNode(titled(PlayerMenu.AUDIO.title)).fetchSemanticsNode().config.getOrNull(SemanticsProperties.TraversalIndex))
+        }
+    }
+
+    @Test
+    fun aCardSaysItsTitleOnce() {
+        // A generated placeholder draws the title, and a wide card puts it on the image.
+        screen(populated()) { _ ->
+            awaitText("Recently Added")
+            val nodes = onAllNodes(SemanticsMatcher("a card") { SemanticsProperties.ContentDescription in it.config && SemanticsActions.OnClick in it.config }).fetchSemanticsNodes()
+            val cards = nodes.filter { it.config[SemanticsProperties.ContentDescription].single().contains("Heat") }
+            assertTrue(cards.isNotEmpty())
+            for (card in cards) assertNull(card.config.getOrNull(SemanticsProperties.Text), "said after its description as well")
+        }
+    }
+
+    @Test
+    fun theSpeedButtonSaysItsValueOnce() {
+        val platform = handheld
+        screen(populated(), platform, width = 900, height = 600) { app ->
+            awaitText("Recently Added")
+            playing(app, platform)
+            assertNull(node("Playback speed").config.getOrNull(SemanticsProperties.Text), "\"Normal\" is its state; \"1×\" would say it again")
+        }
+    }
+
+    @Test
     fun aTouchDoesNotPutThemAwayForAScreenReader() {
         val platform = FakePlatform().apply { accessibility = AccessibilityPreferences(screenReader = true) }
         screen(populated(), platform, width = 412, height = 915) { app ->
