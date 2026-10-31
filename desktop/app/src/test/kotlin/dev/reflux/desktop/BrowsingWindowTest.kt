@@ -172,12 +172,12 @@ class BrowsingWindowTest {
                 assumeTrue("the test window could not become the active window", needs("the test window as the active window", active))
 
                 // The first press morphs the layout and puts focus on the main action; no mode was switched.
-                assertFalse(shell.shows("Cross"))
+                assertFalse(shell.prompted("Cross"))
                 pad.press(GamepadButton.DPAD_DOWN)
                 shell.await("the layout to morph") { app.input.modality == InputModality.DIRECTIONAL }
                 assertEquals(ControllerFamily.PLAYSTATION, shell.ui { app.input.controllerFamily })
-                shell.awaitShown("Cross")
-                shell.awaitShown("Options")
+                shell.await("the controller's prompts") { shell.prompted("Cross") }
+                shell.await("its Options prompt") { shell.prompted("Options") }
                 assertEquals(Destination.Home, shell.ui { app.navigator.current })
                 Thread.sleep(500)
                 shell.capture("window-controller")
@@ -187,7 +187,7 @@ class BrowsingWindowTest {
                 pad.stick(1f, 0f)
                 pad.press(GamepadButton.FACE_SOUTH)
                 shell.await("details to open") { app.navigator.current is Destination.Details }
-                shell.awaitShown("Circle")
+                shell.await("the way back in its terms") { shell.prompted("Circle") }
                 pad.press(GamepadButton.FACE_EAST)
                 shell.await("Back to return Home") { app.navigator.current == Destination.Home }
 
@@ -215,7 +215,7 @@ class BrowsingWindowTest {
                 // The pointer takes over again just by being used.
                 shell.click("Movies")
                 shell.await("pointer mode") { app.input.modality == InputModality.POINTER }
-                shell.awaitGone("Cross")
+                shell.await("the prompts to go") { !shell.prompted("Cross") }
             }
         } finally {
             root.toFile().deleteRecursively()

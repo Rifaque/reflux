@@ -444,6 +444,27 @@ Investigated on 2026-10-19 on Windows 11 (125% scaling, two screens) and in the 
 
 **Seen, not changed:** an arrow pressed during a page transition is dropped rather than kept for the arriving page; the next arrow works. It predates this change and is visible only where rendering is slow. For the accessibility and performance milestones.
 
+## Accessibility baseline: what was verified
+
+2026-10-31, on `feature/engine-foundation` after `fc51bd4`. Physical devices were not attached and the Fire TV did not answer; device work below is on emulators.
+
+| What | How | Result |
+| --- | --- | --- |
+| Automated suite | `check`, plus Android debug and test APKs | 807 tests, 12 environment-gated skips; everything passes except `DesktopOfflineTest`, below; lint and API checks green |
+| What assistive technology is given | `AccessibilityTest` (`ui`): isolation, roles, states, panes, live regions, headings, traversal groups, keys, reduced motion, text size at 2×, 48 dp targets, read from the semantics tree | Pass |
+| Settings readers | `DesktopAccessibilityTest`; `reg query` and `gsettings` output parsed; a real read on Windows | Pass |
+| Isolation on Android | `Reflux_Phone` (API 36), `uiautomator dump` while a film plays: controls away, no Reflux node at all. `Reflux_TV`: player and list open, only they are in the tree, page gone | Pass; the defect recorded under "Controls composed per device" is gone |
+| TalkBack, for real | TalkBack on `Reflux_Phone`, in a real film: the app saw it (controls stayed up, no timer), and TalkBack's own log and focus box put it on "Back to library" first in the player, and on Media sources first on Home, ahead of the page | Pass |
+| Text size | `font_scale` 2.0 on `Reflux_Phone`, by eye: Home, details, player: buttons grow, Search stays in the bar, nothing cut | Pass |
+| Remote | `Reflux_TV`: focus starts on Resume; OK plays; Down opens the lists; Back closes a list, the session still playing (read from `dumpsys media_session`); Back again closes the player and focus is back on Resume; Back again leaves | Pass |
+| Windows | `:desktop:app:test -Preflux.windowTests=true` on Windows, including keyboard and controller browsing | Pass except `OfflineWindowTest`, below |
+
+**Failing here, from this machine's disk, not from this work:** `DesktopOfflineTest` and `OfflineWindowTest`. The disk has 25 GB free of 952 GB and `StoragePolicy` keeps 5% (51 GB) free, so nothing can be kept; `OfflineWindowTest` says so ("not enough room"), and `DesktopOfflineTest` plans nothing for the same reason. `ui`'s offline tests read the same disk until now, and have a fixed amount of room since this work (`RoomyStore`); these two exercise the real wiring and still need room. For M2: give them a fixed room as well.
+
+**Not verified:** a person moving through TalkBack. `adb input` does not pass through TalkBack's touch handling, and `UiAutomation` (`uiautomator dump`, `events`) suspends it, so linear swiping, how things are said, double-tap on a slider, and live regions being spoken could not be driven: the order past the first stop is tested as traversal groups, not heard. Physical Fire TV, phone, and Pad 7 (none attached): the cross-platform controls and this work are both still owed the Fire TV. TalkBack on a television (the `Reflux_TV` image has none). Reduced motion on a device (tested in the tree; the emulator setting was not exercised). A desktop screen reader: Compose reaches none on Linux, and on Windows only through the Java Access Bridge, which Narrator does not use (`jdk.accessibility` in the packaged runtime is for M2). Linux for this work (the container was not run).
+
+**Seen on the way:** a suspected double Back on Android 13+ turned out to be controls auto-hiding during a slow check; with and without a fix, `dumpsys media_session` showed one Back closing only the list, so no change was made.
+
 ## Controls composed per device: what was verified
 
 2026-10-20, from the working tree on top of `4f4a26f` (`0.9.0-alpha.2`, builds marked modified).

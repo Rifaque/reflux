@@ -22,6 +22,9 @@ import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performKeyInput
 import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.click
+import androidx.compose.ui.test.center
 import androidx.compose.ui.test.pressKey
 import dev.reflux.core.input.InputModality
 import dev.reflux.core.input.InputSignal
@@ -129,6 +132,20 @@ class AccessibilityTest {
             mainClock.advanceTimeBy(Motion.CONTROLS_AUTO_HIDE_MS * 3)
             waitForIdle()
             assertTrue(exists("Timeline"), "controls that left could never be found again")
+        }
+    }
+
+    @Test
+    fun aTouchDoesNotPutThemAwayForAScreenReader() {
+        val platform = FakePlatform().apply { accessibility = AccessibilityPreferences(screenReader = true) }
+        screen(populated(), platform, width = 412, height = 915) { app ->
+            awaitText("Recently Added")
+            playing(app, platform)
+            runOnIdle { app.onSignal(InputSignal.Touch) }
+            onRoot().performTouchInput { click(center) }
+            mainClock.advanceTimeBy(1_000)
+            waitForIdle()
+            assertTrue(exists("Timeline"))
         }
     }
 

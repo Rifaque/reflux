@@ -193,6 +193,12 @@ internal class Shell(environment: DesktopEnvironment, gamepads: GamepadReader? =
 
     fun awaitGone(text: String) = await("\"$text\" to go away") { locate(text, exact = true) == null }
 
+    /** Whether button prompts on screen say [text]. They are for the eye: tagged, and not in the tree as words. */
+    fun prompted(text: String): Boolean = ui {
+        surfaces().flatMap { (_, owners) -> owners.flatMap { it.getAllSemanticsNodes(mergingEnabled = true) } }
+            .any { node -> node.config.getOrNull(SemanticsProperties.TestTag)?.let { it.startsWith("prompts:") && text in it } == true }
+    }
+
     /** Where [text] is, in the coordinates of the surface that shows it. */
     fun boundsOf(text: String, exact: Boolean = true): Rect = ui { locate(text, exact)?.bounds ?: error("\"$text\" is not on screen: ${texts().take(40)}") }
 
