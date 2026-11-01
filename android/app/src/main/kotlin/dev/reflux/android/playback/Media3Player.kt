@@ -25,6 +25,7 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.analytics.AnalyticsListener
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.session.MediaSession
+import dev.reflux.core.net.Redaction
 import dev.reflux.core.playback.DecoderInUse
 import dev.reflux.core.playback.DeviceCapabilities
 import dev.reflux.core.playback.PlaybackFailure
@@ -141,7 +142,8 @@ class Media3Player(context: Context, override val capabilities: DeviceCapabiliti
 
         override fun onPlayerError(error: PlaybackException) {
             mutableState.update {
-                it.copy(status = PlayerStatus.ERROR, failure = failureOf(error.errorCode), error = "${error.errorCodeName}: ${error.message.orEmpty()}")
+                // An engine's message can quote the address it failed on, and a server's stream has its key in it.
+                it.copy(status = PlayerStatus.ERROR, failure = failureOf(error.errorCode), error = Redaction.redact("${error.errorCodeName}: ${error.message.orEmpty()}"))
             }
         }
     }

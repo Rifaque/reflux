@@ -5,6 +5,13 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class PlaybackComparisonTest {
+    @Test
+    fun aTargetPrintsNeitherItsKeyNorItsToken() {
+        val target = dev.reflux.core.source.PlaybackTarget("http://server/master.m3u8?ApiKey=secret-key&Tag=1", mapOf("Authorization" to "MediaBrowser Token=\"secret-token\""))
+        val printed = PlaybackRequest(target, "Film").toString()
+        assertTrue("secret-key" !in printed && "secret-token" !in printed, printed)
+    }
+
     private val original = PlannedPlayback(
         PlanOutcome.PLAYS, DeliveryMode.DIRECT_PLAY, VideoPlan.ORIGINAL_HARDWARE_DECODE, AudioPlan.ORIGINAL_LOCAL_DECODE, SubtitlePlan.NONE, RangePlan.PRESERVED, audioIndex = 0,
     )

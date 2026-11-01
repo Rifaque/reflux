@@ -2,6 +2,7 @@ package dev.reflux.core.source
 
 import dev.reflux.core.model.Availability
 import dev.reflux.core.model.SourceId
+import dev.reflux.core.net.Redaction
 import kotlinx.coroutines.flow.Flow
 
 /** How close a source is to the device. Used to prefer local copies when versions are otherwise equivalent. */
@@ -61,7 +62,10 @@ data class PlaybackTarget(
     /** A `file:` URI, `content:` URI, or network URL. */
     val uri: String,
     val headers: Map<String, String> = emptyMap(),
-)
+) {
+    /** Addresses carry keys and headers carry tokens: what prints is neither. */
+    override fun toString(): String = "PlaybackTarget(${Redaction.redact(uri)}, ${headers.size} headers)"
+}
 
 /** A source adapter. Adapters translate a concrete backend into Media Core concepts. */
 interface MediaSource {

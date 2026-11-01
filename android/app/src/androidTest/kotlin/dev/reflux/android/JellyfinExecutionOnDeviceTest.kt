@@ -56,8 +56,9 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
- * Planned playback on this device's real engine. The server's address and account arrive as instrumentation arguments
- * (`refluxLiveUrl`, `refluxLiveUser`, `refluxLivePassword`) and appear in no log; without them those tests skip.
+ * Planned playback on this device's real engine. The server and account are never arguments, which would put them in
+ * process listings: `tools/live/run-on-device.py` leaves them in a shell-only file for the length of the run, read
+ * here through the shell. Without it those tests skip.
  */
 @RunWith(AndroidJUnit4::class)
 class JellyfinExecutionOnDeviceTest {
@@ -70,6 +71,13 @@ class JellyfinExecutionOnDeviceTest {
     fun cleanUp() {
         players.forEach(Media3Player::close)
         scope.cancel()
+    }
+
+    /** What the runner left, read as the shell user, who alone can. Empty where it left nothing. */
+    private fun liveSettings(): Map<String, String> {
+        val pipe = InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand("cat /data/local/tmp/reflux-live.env")
+        return android.os.ParcelFileDescriptor.AutoCloseInputStream(pipe).bufferedReader().readLines()
+            .filter { '=' in it }.associate { it.substringBefore('=') to it.substringAfter('=') }
     }
 
     private fun report(line: String) {
@@ -132,12 +140,12 @@ class JellyfinExecutionOnDeviceTest {
 
     @Test
     fun plansAreCarriedOutThroughARealServer() = runBlocking {
-        val arguments = InstrumentationRegistry.getArguments()
-        val url = arguments.getString("refluxLiveUrl")
+        val live = liveSettings()
+        val url = live["REFLUX_JELLYFIN_TEST"]
         assumeTrue("no live server named", !url.isNullOrBlank())
         val http = AndroidFetcher(context, "Reflux test")
         report("connecting")
-        val server = JellyfinSource(JellyfinSource.connect(url!!, arguments.getString("refluxLiveUser")!!, arguments.getString("refluxLivePassword").orEmpty(), http, "reflux-device-test"), http, "Live")
+        val server = JellyfinSource(JellyfinSource.connect(url!!, live.getValue("REFLUX_JELLYFIN_TEST_USER"), live["REFLUX_JELLYFIN_TEST_PASSWORD"].orEmpty(), http, "reflux-device-test"), http, "Live")
         report("connected")
         val listed = server.catalog().toList().flatMap { it.versions }
         report("listed ${listed.size} versions")
