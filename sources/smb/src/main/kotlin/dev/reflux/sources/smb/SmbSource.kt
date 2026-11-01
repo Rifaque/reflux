@@ -42,6 +42,8 @@ data class SmbShareConfig(
     val domain: String? = null,
     val port: Int = 445,
 ) {
+    override fun toString(): String = "SmbShareConfig(host=$host, share=$share)"
+
     fun encode(): String = listOfNotNull(
         "host=$host", "share=$share", "path=$path", "port=$port",
         username?.let { "user=$it" }, password?.let { "password=$it" }, domain?.let { "domain=$it" },

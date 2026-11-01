@@ -182,6 +182,12 @@ class JellyfinPlaybackTest {
     }
 
     @Test
+    fun credentialsDoNotPrintTheirToken() {
+        val printed = JellyfinCredentials("https://jf.example.com", "srv1", "u1", "secret-token", "dev1").toString()
+        assertFalse("secret-token" in printed, printed)
+    }
+
+    @Test
     fun theKeyInATranscodingUrlIsNeverPrinted() {
         val answer = parsed(answer(false, false, url("AudioCodecNotSupported")))
         val evidence = evidence(answer, session(videoDirect = true, audioDirect = false, "AudioCodecNotSupported"))

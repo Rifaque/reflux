@@ -28,6 +28,9 @@ data class JellyfinCredentials(
     /** The server's libraries the user left out, by id. Empty: everything the account can see. */
     val excludedLibraries: Set<String> = emptySet(),
 ) {
+    /** Everything but what proves who is signed in, so that an exception or a log line cannot carry it. */
+    override fun toString(): String = "JellyfinCredentials(serverId=$serverId, userId=$userId, deviceId=$deviceId)"
+
     /** Compact persisted form (`key=value` lines). The access token is a secret; see SECURITY.md. */
     fun encode(): String = listOfNotNull(
         "server=$serverUrl", "serverId=$serverId", "user=$userId", "token=$accessToken", "device=$deviceId", userName?.let { "name=$it" },

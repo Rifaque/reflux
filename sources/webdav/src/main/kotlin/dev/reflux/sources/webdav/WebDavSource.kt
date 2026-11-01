@@ -29,6 +29,8 @@ import javax.xml.parsers.DocumentBuilderFactory
 
 /** Connection settings for a WebDAV share. Persisted as the source configuration. */
 data class WebDavConfig(val url: String, val username: String? = null, val password: String? = null) {
+    override fun toString(): String = "WebDavConfig(<redacted>)"
+
     fun encode(): String = listOfNotNull("url=$url", username?.let { "user=$it" }, password?.let { "password=$it" }).joinToString("\n")
 
     companion object {
