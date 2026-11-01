@@ -1,6 +1,6 @@
 # Playback compatibility
 
-What Reflux can really play, how it decides, and how it explains that. This is the specification for milestone M2P (ROADMAP.md). It began as the M2.0 audit of 2026-11-01. Sections 3a, 6, and 7 are built; sections 8 to 10 are a proposal until DECISIONS.md and the code say otherwise.
+What Reflux can really play, how it decides, and how it explains that. This is the specification for milestone M2P (ROADMAP.md). It began as the M2.0 audit of 2026-11-01. Sections 3a, 6, 7, and 8 are built; section 9's report and section 10's open decisions are not.
 
 The rule: **decode locally when possible, preserve original streams when possible, transcode only when genuinely necessary.** Success is that Reflux knows what the client can actually play, preserves the original whenever possible, degrades the smallest necessary part when it cannot, and can explain why. "Every codec works everywhere" is not the goal.
 
@@ -34,7 +34,7 @@ Direct Play is not hardware decoding. Delivery (how bytes reach the device) and 
 | 7 | `AndroidCapabilities.kt:52` | **Fixed.** `video/dolby-vision` was unmapped, and a display's DV flag stood in for DV decoding | DV assessment ignores the decoder |
 | 8 | `AndroidEnvironment.kt:191` | **Fixed.** Capabilities were read once per process; outputs and displays are now read again after a change | An AVR or television connected later is not seen |
 | 9 | `DesktopCapabilities.kt:36` | **Fixed.** `maxOutputChannels` was always 2. It is now learned from real playbacks, with 2 as the floor | 5.1 on a 5.1 desktop counts as a downmix and is capped in Best Version's audio score |
-| 10 | `PlaybackAssessment.kt:7`, `:96` | `NO_PLAYABLE_AUDIO` is only degraded, and any playable track satisfies the check, not the one that will be chosen | A version can be recommended whose chosen track is silent |
+| 10 | `PlaybackAssessment.kt:7`, `:96` | **Fixed.** Any playable track satisfied the check, not the one that will be chosen. `NO_PLAYABLE_AUDIO` stays degraded | A version could be recommended whose chosen track is silent |
 | 11 | `PlaybackAssessment.kt:45` | Subtitles are never assessed | A wanted track the engine cannot show is invisible to planning |
 | 12 | `MpvPlayer.kt:56`, `MpvProbe.kt:27` | **Confirmed and fixed.** `http-header-fields` is a comma-separated list, and Jellyfin's `Authorization` value contains commas, unescaped: a server received `MediaBrowser Client="Reflux"` and the token never left the engine | Masked because Jellyfin 12.2.0 serves static streams with no authentication at all (section 3) |
 | 13 | `SubtitleStream` | **Fixed.** No hearing-impaired flag; no server stream index on audio or subtitle tracks | A plan cannot address a track on the server |
@@ -318,7 +318,7 @@ Read 2026-11-01 through `CapabilityReportOnDeviceTest`. Not rules: nothing reads
 
 ## 7. Playback planner
 
-Built in M2P.3. `PlaybackPlanner.plan` is pure, deterministic, and platform-neutral, and **nothing executes its plan yet**: what plays is still the original file. Its result is `PlannedPlayback`. (`PlaybackPlan` already names the library's "what to start now", and these are different things.)
+Built in M2P.3 and executed since M2P.4 (section 8). `PlaybackPlanner.plan` is pure, deterministic, and platform-neutral. Its result is `PlannedPlayback`. (`PlaybackPlan` already names the library's "what to start now", and these are different things.)
 
 ### Inputs
 
@@ -407,7 +407,7 @@ In order, the first that applies:
 | A subtitle's renderer | Try it. Never a burn-in |
 | Choosing between tracks | A track known to play beats one that may |
 
-Unknown never causes a conversion and never blocks playback: both would be acting on something not known. A failure is how an unknown is resolved, which is the next slices' escalation (Evidence, then a new plan). It would be wrong to convert first, since it costs quality and server time for what may play.
+Unknown never causes a conversion and never blocks playback: both would be acting on something not known. A failure is how an unknown is resolved (section 8, failures). It would be wrong to convert first, since it costs quality and server time for what may play.
 
 ### Sources
 
@@ -416,19 +416,87 @@ Unknown never causes a conversion and never blocks playback: both would be actin
 | Local, SMB, WebDAV | Declare no `SERVER_` capability. Plans describe client handling alone; what the client cannot do is `CANNOT_PLAY`, `PLAYS_WITHOUT_AUDIO`, or a subtitle unavailable |
 | Jellyfin | Declares all six. Plans say what the server would need to do. Negotiating it is section 8 |
 
-Jellyfin's declaration is what a server can do, seen live, and not what Reflux asks of it yet. A server's per-user limits are not known at planning time: they will come from negotiation.
+A server's per-user limits are not known at planning time: a refusal comes from negotiation, and the plan falls back to what the client can do alone.
 
-## 8. Jellyfin negotiation (proposal)
+## 8. Execution
 
-A new optional `NegotiatedSource : MediaSource`, declared by a capability, implemented only by Jellyfin. Everything Jellyfin stays in `sources/jellyfin`.
+Built in M2P.4. The planner decides, executors carry it out, and evidence records what happened. No executor chooses a codec or a track.
 
-- **Profile, built from `DeviceCapabilities`:** `DirectPlayProfiles` from containers and decoders (mpv may send wildcards, as the desktop row of section 3 did); `CodecProfiles` for level, depth, profile, and range conditions only where the device has limits; `SubtitleProfiles` `External` for every format Reflux can draw; `TranscodingProfiles` HLS, listing the source's video codec first so copy stays possible, and only codecs the client decodes.
-- **Request:** `POST Items/{id}/PlaybackInfo` with `SubtitleStreamIndex: -1` and the chosen `AudioStreamIndex`. Keep `PlaySessionId`.
-- **Reading the answer:** `SupportsDirectPlay` true gives the static stream as today. Otherwise follow `TranscodingUrl`; classify from `TranscodeReasons` and then from `TranscodingInfo`. If what the server did differs from the plan, the diagnostics say so.
-- **Failure:** if `PlaybackInfo` fails or times out (a short budget, under start-up patience), fall back to the static stream, today's behavior. Negotiation must never make a file that plays today stop playing, and a fast path may skip the call only if it is measured to matter.
-- **Reporting:** `PlaySessionId`, the true `PlayMethod`, and `DELETE Videos/ActiveEncodings` on stop, so no encode outlives a viewer. A failed report never touches local watch state (WATCH_STATE.md).
-- **Track changes under conversion:** a converted stream carries one audio track and no subtitles. Changing audio means a new `PlaybackInfo` at the same position. The menu's data must come from `StreamInfo`, not the engine, in that case. Original delivery is unchanged. Subtitles stay out of band, so changing them needs no new stream.
-- **Android dependency:** `media3-exoplayer-hls` (Apache-2.0, same version catalog). Required: Media3 cannot open `master.m3u8` without it. E-AC-3 and HEVC in HLS-TS on Media3 are unverified.
+```text
+Library.planPlayback
+  Best Version → PlaybackPlanner.plan → NegotiatingSource.negotiate (where there is one)
+        ↓
+PlaybackRequest: target, attachments, TrackDirective
+        ↓
+PlaybackController → Media3Player / MpvPlayer
+        ↓
+PlaybackSession: PlaybackEvidence + engine state → PlaybackComparison
+```
+
+### Sources
+
+A source's real `descriptor.capabilities` reach the planner, and a source that cannot negotiate has any `SERVER_` capability removed, so a conversion is only planned where something can ask for it. Local, SMB, and WebDAV open the file. What they cannot do is a stated outcome, never a worse track. There is no remux for them: nothing provides one.
+
+### Tracks
+
+`PlayerTrack.position` is a track's place among the media's tracks of its type, counted before an engine leaves any out, so a plan's track means the same on every engine. `TrackDirective` carries the plan to `PlaybackController`.
+
+| Plan | Directive | When the engine lacks it |
+| --- | --- | --- |
+| Automatic track | `Track(position)` | Default selection, for media the facts do not match |
+| A viewer's track | `Track(position, explicit)` | No audio: `selectNoAudio`, and `audioUnavailable` says so |
+| No track can play | `None` | |
+| A converted stream | `EngineChoice`: it carries the one track asked for | |
+
+Hardware and software decoding are not forced on either engine. Each takes what it finds, and the comparison checks it against the plan.
+
+**On a converted stream** the menus list the file's tracks, not the stream's. Choosing one plans again from the same place, with that track explicit.
+
+**A subtitle a server extracts arrives late.** The first request for a PGS track in a 5.6 GB file took 48.9 s, and 0.1 s once cached. `sub-files` would hold the picture for that long, past the 30-second patience, so such an attachment is `arrivesLate`: mpv adds it with `sub-add` after the file opens, and the controller selects it when it appears, unless the viewer chose something meanwhile. Media3 loads attachments without holding the picture.
+
+### Jellyfin negotiation
+
+`JellyfinSource.negotiate` runs before playback starts, within 3 seconds.
+
+| Sent | From |
+| --- | --- |
+| `DirectPlayProfiles` | `DeviceCapabilities`' containers, decoders, and audio |
+| `CodecProfiles` | Bit depth and frame size only. Level and frame rate are left out because Reflux tries past them, and a server told of them would transcode what the plan says to try |
+| `SubtitleProfiles` | Formats whose renderer is known to work. Unknown ones are not claimed |
+| `TranscodingProfiles` | HLS in TS, only when the plan converts, with what is kept listed first so that it can be copied |
+| `MaxAudioChannels` | The larger of the output and the kept track: a smaller number makes a server convert audio this client downmixes itself |
+| `AudioStreamIndex`, `SubtitleStreamIndex` | The plan's tracks. A subtitle only for a planned burn-in, `-1` otherwise |
+| `AllowVideoStreamCopy`, `AllowAudioStreamCopy`, `EnableDirectPlay` | The plan |
+| `MaxStreamingBitrate` | Unlimited, except a video transcode: twice the original, at least 10 Mbit/s |
+
+- A plan for the original opens the static stream whatever the server's flags say. If the server disagrees, the comparison shows it.
+- A conversion the server will not agree to, or a server that does not answer, falls back to a plan for the client alone, with `NEGOTIATION_FAILED`.
+- The session reports the true `PlayMethod` and `PlaySessionId`, and a conversion is stopped at `Sessions/Playing/Stopped` and when the player closes.
+- `SupportsDirectStream` is reported, and decides nothing.
+
+**Android:** `media3-exoplayer-hls` is the one new dependency, at the same version. `DefaultMediaSourceFactory` finds it by itself for a `.m3u8` address. No engine code handles HLS.
+
+### Failures
+
+| Failure | What happens |
+| --- | --- |
+| `UNSUPPORTED` from an engine, on the original, source has `SERVER_TRANSCODE` | Planned again once, with `originalFailed = VIDEO`, from the same place. Reason `ORIGINAL_FAILED` |
+| Picture with no sound, on the original, source converts audio | Planned again once, with `originalFailed = AUDIO`, keeping the track that was playing |
+| Either, and the source cannot convert | The stated failure, or the "no sound" notice, as before |
+| A second failure of a work | Hard: the stated failure |
+| `UNREACHABLE`, `OUTPUT`, `UNKNOWN` | Hard: a conversion would not help. `UNREACHABLE` keeps Try again |
+| A failure on a stream already converted | Hard |
+
+There is no retry, backoff, or lower-quality ladder. `PlanOutcome.CANNOT_PLAY` stops before anything starts. A re-plan never changes the audio language.
+
+### Planned against actual
+
+`PlaybackComparison` holds the plan, `PlaybackEvidence`, and the engine's decoder. Five seconds into playing, `PlaybackSession.comparison` is set, and a mismatch goes to the diagnostics log.
+
+- `mismatches`: shown to differ. `DELIVERY`, `VIDEO`, `AUDIO`, `SUBTITLES` (a burn-in not planned, or a planned one that did not happen), `AUDIO_TRACK`, `DECODER`.
+- `unconfirmed`: could not be shown either way.
+
+A source with no account of itself still has the engine's side compared. A planned original the server transcodes is a mismatch, and tests hold that. Live, this found a real defect: a planned remux whose audio the server converted.
 
 ## 9. Diagnostics (proposal)
 
@@ -514,16 +582,17 @@ The ranking does not need changing, and M2P changes no policy. Its inputs do:
 - **Inputs left as they were:** hardware decoding on the desktop was already observed (2026-10-19). HDR on the desktop was already not claimed. `canToneMap` on Android stays false. Frame rate, level, and profile are not assessed, for the reason in section 6.
 - `PlaybackAssessor` and the planner must not disagree. The assessor stays "how well does this device play it locally"; the planner answers the delivery question using the assessor's checks, sharing one function.
 - **One answer to "can this play".** `PlaybackAssessor` is the only implementation, reading `Capabilities`. `RankedVersion.playable` reads it, and `PlaybackPlanner` plans from it. A test holds that a client-only plan is `CANNOT_PLAY` exactly when the assessor says unsupported, over 720 combinations. Its audio check moved to `Capabilities`, which corrected two things: audio that may pass through is no longer unplayable, and a declared decoder limit now counts.
-- **Why Best Version does not ask with a server's abilities.** It stays with what plays today. A version a server could convert is still unplayable to it, because nothing can play that stream yet. Calling it playable would start a playback that fails.
-- **Still any track, not the chosen one:** the assessor asks whether any track plays (defect 10). The plan answers for the chosen track.
+- **A source's abilities count.** A version this device cannot play is playable where its source's real capabilities make a plan possible (`RankedVersion.throughSource`). It stays a compromise, so anything the device plays itself ranks first. The criteria and their order are unchanged. Smart Offline passes no capabilities: a copy must play here as it is.
+- **The chosen track is assessed** (defect 10, fixed): with the viewer's languages, a version is judged by the track the planner would choose. Falling back to another language is the compromise `AUDIO_OTHER_LANGUAGE`.
+- **No executor has compatibility logic.** Engines report; `PlaybackAssessor` and `Capabilities` remain the only answers.
 - **One open question, to settle with evidence:** today a version needing conversion and one playing unchanged are ranked with no knowledge of delivery. On a phone with no DTS decoder, a DTS-only version is `NO_PLAYABLE_AUDIO` although Jellyfin could convert it. Whether "server can fix it" affects ranking is a policy change: it is left out until a real case shows a wrong choice.
 
 ## 14. Order of work
 
 1. **Truth first (small, no new behavior):** done. The truth layer (section 3a), and defects 1 and 12.
 2. **Capability model and stream facts:** done (section 6). Defects 2 to 9, 13, and 14.
-3. **Planner:** done (section 7): pure and tested. Not wired into playback: nothing reads a plan yet.
-4. **Jellyfin negotiation:** profile, `PlaybackInfo`, HLS dependency, session reporting, escalation. This is where behavior changes.
+3. **Planner:** done (section 7).
+4. **Execution and Jellyfin negotiation:** done (section 8).
 5. **Diagnostics:** the report, planned against observed, in the log and the CLI.
 6. **Audio outputs on desktop, then the Android decoder decision** with measurements.
 7. **Corpus and validation:** sections 11 and 12, and the exit criteria in ROADMAP.md.

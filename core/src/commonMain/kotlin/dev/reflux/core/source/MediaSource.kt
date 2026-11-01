@@ -89,6 +89,29 @@ interface PlaybackEvidenceSource : MediaSource {
     suspend fun playbackEvidence(path: String): dev.reflux.core.playback.PlaybackEvidence?
 }
 
+/** What a source agreed to deliver for a plan. */
+data class NegotiatedDelivery(
+    val target: PlaybackTarget,
+    /** A subtitle the source delivers beside the stream, for a plan that needs one. */
+    val subtitle: PlaybackTarget? = null,
+)
+
+/**
+ * A source that delivers what a plan needs, rather than only its files. The plan is decided already: this carries it
+ * out with the source, and chooses nothing.
+ */
+interface NegotiatingSource : MediaSource {
+    /** What to open for [plan], or null when the source could not agree to it. Never fails. */
+    suspend fun negotiate(
+        version: dev.reflux.core.model.MediaVersion,
+        plan: dev.reflux.core.playback.PlannedPlayback,
+        device: dev.reflux.core.playback.DeviceCapabilities,
+    ): NegotiatedDelivery?
+
+    /** The playback of [path] is over: nothing may keep converting for it. Never fails. */
+    suspend fun release(path: String)
+}
+
 /** A file reported by a file-enumerating source. */
 data class SourceFile(
     /** Source-relative path with `/` separators. */

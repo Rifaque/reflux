@@ -5,22 +5,31 @@ import dev.reflux.core.identify.ParsedMedia
 import dev.reflux.core.model.ArtworkKind
 import dev.reflux.core.model.Availability
 import dev.reflux.core.model.CalendarDate
+import dev.reflux.core.model.MediaVersion
 import dev.reflux.core.model.StableIds
 import dev.reflux.core.net.HttpFetcher
 import dev.reflux.core.playback.AudioCodec
+import dev.reflux.core.playback.AudioPlan
 import dev.reflux.core.playback.AudioStream
 import dev.reflux.core.playback.Container
+import dev.reflux.core.playback.DeliveryMode
+import dev.reflux.core.playback.DeviceCapabilities
 import dev.reflux.core.playback.DynamicRange
+import dev.reflux.core.playback.PlannedPlayback
 import dev.reflux.core.playback.PlaybackEvidence
 import dev.reflux.core.playback.StreamInfo
 import dev.reflux.core.playback.SubtitleFormat
+import dev.reflux.core.playback.SubtitlePlan
 import dev.reflux.core.playback.SubtitleStream
 import dev.reflux.core.playback.VideoCodec
+import dev.reflux.core.playback.VideoPlan
 import dev.reflux.core.playback.VideoProfile
 import dev.reflux.core.playback.VideoStream
 import dev.reflux.core.source.CatalogEntry
 import dev.reflux.core.source.CatalogSource
 import dev.reflux.core.source.DownloadableSource
+import dev.reflux.core.source.NegotiatedDelivery
+import dev.reflux.core.source.NegotiatingSource
 import dev.reflux.core.source.CatalogSubtitle
 import dev.reflux.core.source.CatalogVersion
 import dev.reflux.core.source.SectionKind
@@ -60,14 +69,14 @@ class JellyfinSource(
     http: HttpFetcher,
     displayName: String = "Jellyfin",
     deviceName: String = "Reflux",
-) : CatalogSource, WatchStateSyncSource, DownloadableSource, SectionedSource, PlaybackEvidenceSource {
+) : CatalogSource, WatchStateSyncSource, DownloadableSource, SectionedSource, PlaybackEvidenceSource, NegotiatingSource {
     private val api = JellyfinApi(credentials.serverUrl, http, credentials.deviceId, deviceName, credentials.accessToken)
     private val startedSessions = mutableSetOf<String>()
 
     /** What the server answered when each open playback began. */
     private val asked = mutableMapOf<String, Asked>()
 
-    private class Asked(val answer: JellyfinPlaybackAnswer?, val authenticated: Boolean?)
+    private class Asked(val answer: JellyfinPlaybackAnswer?, val authenticated: Boolean?, val delivery: DeliveryMode = DeliveryMode.DIRECT_PLAY)
 
     override val descriptor: SourceDescriptor = SourceDescriptor(
         id = StableIds.sourceId(TYPE, "${credentials.serverId}/${credentials.userId}"),
@@ -191,7 +200,7 @@ class JellyfinSource(
     override suspend fun reportProgress(path: String, positionMs: Long, paused: Boolean) {
         val (itemId, sourceId) = versionIds(path) ?: return
         if (startedSessions.add(path)) {
-            asked[path] = ask(path)
+            if (path !in asked) asked[path] = ask(path)
             api.post("Sessions/Playing", playbackBody(path, itemId, sourceId, positionMs, paused))
         } else {
             api.post("Sessions/Playing/Progress", playbackBody(path, itemId, sourceId, positionMs, paused))
@@ -200,10 +209,11 @@ class JellyfinSource(
 
     override suspend fun reportStopped(path: String, positionMs: Long) {
         val (itemId, sourceId) = versionIds(path) ?: return
-        startedSessions.remove(path)
+        val open = startedSessions.remove(path)
         val body = playbackBody(path, itemId, sourceId, positionMs, paused = false)
-        asked.remove(path)
         api.post("Sessions/Playing/Stopped", body)
+        // A position brought up to date has nothing to do with a stream being opened for that file.
+        if (open) release(path)
     }
 
     /**
@@ -231,14 +241,17 @@ class JellyfinSource(
         return if (segments.size == 4 && segments[0] == "items" && segments[2] == "sources") segments[1] to segments[3] else null
     }
 
-    /** Reflux opens the file itself ([playbackTarget]), which in Jellyfin's words is Direct Play. */
+    /**
+     * What Reflux is really doing, in Jellyfin's words: it opens the file itself ([playbackTarget]), or the stream
+     * [negotiate] agreed.
+     */
     private fun playbackBody(path: String, itemId: String, mediaSourceId: String, positionMs: Long, paused: Boolean) = JsonObject(
         buildMap {
             put("ItemId", JsonPrimitive(itemId))
             put("MediaSourceId", JsonPrimitive(mediaSourceId))
             put("PositionTicks", JsonPrimitive(positionMs * TICKS_PER_MS))
             put("IsPaused", JsonPrimitive(paused))
-            put("PlayMethod", JsonPrimitive("DirectPlay"))
+            put("PlayMethod", JsonPrimitive(playMethod(asked[path]?.delivery ?: DeliveryMode.DIRECT_PLAY)))
             put("CanSeek", JsonPrimitive(true))
             asked[path]?.answer?.playSessionId?.let { put("PlaySessionId", JsonPrimitive(it)) }
         },
@@ -259,13 +272,74 @@ class JellyfinSource(
                 put("DeviceProfile", Json.parseToJsonElement(request.deviceProfile))
                 put("SubtitleStreamIndex", JsonPrimitive(request.subtitleStreamIndex))
                 request.audioStreamIndex?.let { put("AudioStreamIndex", JsonPrimitive(it)) }
-                put("EnableDirectPlay", JsonPrimitive(true))
+                put("EnableDirectPlay", JsonPrimitive(request.allowDirectPlay))
                 put("EnableDirectStream", JsonPrimitive(request.allowConversion))
                 put("EnableTranscoding", JsonPrimitive(request.allowConversion))
+                put("AllowVideoStreamCopy", JsonPrimitive(request.copyVideo))
+                put("AllowAudioStreamCopy", JsonPrimitive(request.copyAudio))
+                put("MaxStreamingBitrate", JsonPrimitive(request.maxBitrate))
                 put("AutoOpenLiveStream", JsonPrimitive(false))
             },
         )
         return api.post("Items/$itemId/PlaybackInfo", body).obj()?.let { JellyfinPlaybackAnswer.parse(it, sourceId) }
+    }
+
+    /**
+     * Carries out [plan] with the server: the plan is decided, and this only says what it needs, with a true account
+     * of the client. The answer is kept for reports and evidence. A plan for the original opens the file whatever
+     * the server's flags say; if the server disagrees, evidence will show it.
+     */
+    override suspend fun negotiate(version: MediaVersion, plan: PlannedPlayback, device: DeviceCapabilities): NegotiatedDelivery? {
+        val path = version.location.path
+        val (itemId, sourceId) = versionIds(path) ?: return null
+        val original = plan.delivery == DeliveryMode.DIRECT_PLAY
+        val subtitleTrack = plan.subtitleIndex?.takeIf { !plan.subtitleExternal }?.let(version.stream.subtitles::getOrNull)
+        val request = JellyfinPlaybackAsk(
+            deviceProfile = JellyfinProfile.of(device, plan, version.stream),
+            audioStreamIndex = plan.audioIndex?.let(version.stream.audio::getOrNull)?.sourceIndex,
+            subtitleStreamIndex = subtitleTrack?.sourceIndex?.takeIf { plan.subtitles == SubtitlePlan.BURN_IN } ?: -1,
+            allowConversion = !original,
+            allowDirectPlay = original,
+            copyVideo = plan.video != VideoPlan.TRANSCODE,
+            copyAudio = plan.audio != AudioPlan.CONVERT,
+            maxBitrate = JellyfinProfile.bitrateFor(plan, version.stream),
+        )
+        val answer = ask(path, request, plan.delivery)
+        asked[path] = answer
+        val subtitle = subtitleTarget(itemId, sourceId, version, plan)
+        if (original) return NegotiatedDelivery(playbackTarget(path), subtitle)
+        val target = answer.answer?.let(::transcodingTarget) ?: run {
+            asked.remove(path)
+            return null
+        }
+        return NegotiatedDelivery(target, subtitle)
+    }
+
+    /** The file a plan's subtitle is fetched as: as it is, or in a text format for a conversion. */
+    private fun subtitleTarget(itemId: String, sourceId: String, version: MediaVersion, plan: PlannedPlayback): PlaybackTarget? {
+        val converted = plan.subtitles == SubtitlePlan.CONVERT
+        if (plan.subtitles != SubtitlePlan.EXTERNAL && !converted) return null
+        // A sidecar is the client's to open, unless it needs converting.
+        if (plan.subtitleExternal && !converted) return null
+        val index = plan.subtitleIndex ?: return null
+        val track = if (plan.subtitleExternal) null else version.stream.subtitles.getOrNull(index)
+        val stream = track?.sourceIndex ?: return null
+        val format = if (converted) "vtt" else JellyfinProfile.subtitleExtension(track.format)
+        return PlaybackTarget(api.url("Videos/$itemId/$sourceId/Subtitles/$stream/0/Stream.$format"), mapOf("Authorization" to api.authorization))
+    }
+
+    override suspend fun release(path: String) {
+        startedSessions.remove(path)
+        val done = asked.remove(path) ?: return
+        val session = done.answer?.playSessionId ?: return
+        if (done.delivery == DeliveryMode.DIRECT_PLAY) return
+        try {
+            stopConversion(session)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            // The server ends an abandoned conversion by itself; this only makes it sooner.
+        }
     }
 
     /** This device's session on the server, or null when the server lists none. */
@@ -290,24 +364,32 @@ class JellyfinSource(
         } catch (_: Exception) {
             null
         }
-        return JellyfinDelivery.evidence("the original file (static stream)", originalRequested = true, itemId, answer.answer, session, answer.authenticated)
+        val original = answer.delivery == DeliveryMode.DIRECT_PLAY
+        val requested = if (original) "the original file (static stream)" else "a server stream (${answer.delivery})"
+        return JellyfinDelivery.evidence(requested, originalRequested = original, itemId, answer.answer, session, answer.authenticated)
     }
 
     /**
      * Best effort, with a short limit: this only observes, and a server that does not answer must not hold up
      * the report behind it, let alone the playback.
      */
-    private suspend fun ask(path: String): Asked = try {
+    private suspend fun ask(path: String, request: JellyfinPlaybackAsk = JellyfinPlaybackAsk(), delivery: DeliveryMode = DeliveryMode.DIRECT_PLAY): Asked = try {
         withTimeoutOrNull(ASK_WITHIN_MS) {
-            val answer = playbackInfo(path)
-            Asked(answer, authenticated = answer != null)
-        } ?: Asked(null, null)
+            val answer = playbackInfo(path, request)
+            Asked(answer, authenticated = answer != null, delivery)
+        } ?: Asked(null, null, delivery)
     } catch (e: CancellationException) {
         throw e
     } catch (e: JellyfinException) {
-        Asked(null, if (e.status == 401 || e.status == 403) false else null)
+        Asked(null, if (e.status == 401 || e.status == 403) false else null, delivery)
     } catch (_: Exception) {
-        Asked(null, null)
+        Asked(null, null, delivery)
+    }
+
+    private fun playMethod(delivery: DeliveryMode): String = when (delivery) {
+        DeliveryMode.REMUX -> "DirectStream"
+        DeliveryMode.AUDIO_CONVERSION, DeliveryMode.VIDEO_TRANSCODE -> "Transcode"
+        else -> "DirectPlay"
     }
 
     private class Series(val name: String, val year: Int?, val providerIds: Map<String, String>, val artwork: Map<ArtworkKind, String>)

@@ -2,7 +2,25 @@ package dev.reflux.ui.state
 
 import dev.reflux.core.input.Key
 import dev.reflux.core.input.SemanticAction
+import dev.reflux.core.model.MediaVersion
+import dev.reflux.core.playback.AudioCodec
+import dev.reflux.core.playback.AudioPlan
+import dev.reflux.core.playback.AudioStream
+import dev.reflux.core.playback.Container
 import dev.reflux.core.playback.DeliveryMode
+import dev.reflux.core.playback.DeviceCapabilities
+import dev.reflux.core.playback.PlanReason
+import dev.reflux.core.playback.PlannedPlayback
+import dev.reflux.core.playback.StreamInfo
+import dev.reflux.core.playback.SubtitleFormat
+import dev.reflux.core.playback.SubtitleStream
+import dev.reflux.core.playback.VideoCodec
+import dev.reflux.core.playback.VideoPlan
+import dev.reflux.core.playback.VideoStream
+import dev.reflux.core.source.NegotiatedDelivery
+import dev.reflux.core.source.NegotiatingSource
+import dev.reflux.core.source.PlaybackTarget
+import dev.reflux.core.source.SourceCapability
 import dev.reflux.core.playback.PlaybackEvidence
 import dev.reflux.core.playback.PlaybackFailure
 import dev.reflux.core.playback.StreamFate
@@ -100,6 +118,146 @@ class PlaybackSessionTest {
         playing.session.playNext()
         runCurrent()
         assertFalse(playing.session.silent)
+    }
+
+    /** A server of the tests' own: it can convert, and it remembers being asked. */
+    private class Converting(private val files: MediaSource) : MediaSource by files, NegotiatingSource {
+        val plans = mutableListOf<PlannedPlayback>()
+        var released = 0
+        override val descriptor = files.descriptor.copy(
+            capabilities = files.descriptor.capabilities + setOf(SourceCapability.SERVER_TRANSCODE, SourceCapability.SERVER_AUDIO_CONVERSION, SourceCapability.SERVER_REMUX),
+        )
+
+        override suspend fun negotiate(version: MediaVersion, plan: PlannedPlayback, device: DeviceCapabilities): NegotiatedDelivery {
+            plans += plan
+            return NegotiatedDelivery(PlaybackTarget(if (plan.delivery == DeliveryMode.DIRECT_PLAY) "file:///original" else "http://server/master.m3u8"))
+        }
+
+        override suspend fun release(path: String) {
+            released++
+        }
+    }
+
+    private class Served(val playing: Playing, val server: Converting)
+
+    private suspend fun TestScope.served(): Served {
+        val world = TestWorld().apply { populate() }
+        val platform = FakePlatform()
+        var server: Converting? = null
+        val app = AppState(
+            world.library, world.pipeline, { id -> world.registry.resolve(id)?.let { real -> server ?: Converting(real).also { server = it } } },
+            platform, backgroundScope, StandardTestDispatcher(testScheduler),
+        )
+        val episode = world.episodes("Breaking Bad")[0]
+        val version = world.library.versions(episode.item.id).single().version
+        world.library.recordProbe(
+            version.id,
+            StreamInfo(
+                Container.MATROSKA, VideoStream(VideoCodec.H264, 1280, 720, 8), listOf(AudioStream(AudioCodec.AAC, 2, "en", default = true), AudioStream(AudioCodec.AAC, 2, "fr")),
+                listOf(SubtitleStream(SubtitleFormat.SRT, "es")),
+            ),
+        )
+        app.play(episode.item.id)
+        runCurrent()
+        return Served(Playing(world, platform, app), server!!)
+    }
+
+    @Test
+    fun anOriginalTheEngineCannotPlayIsPlannedAroundOnceFromTheSamePlace() = runTest {
+        val served = served()
+        val player = served.playing.player
+        assertEquals(DeliveryMode.DIRECT_PLAY, served.server.plans.single().delivery)
+        player.fail("no decoder took it", PlaybackFailure.UNSUPPORTED)
+        runCurrent()
+        assertEquals(DeliveryMode.VIDEO_TRANSCODE, served.server.plans.last().delivery)
+        assertTrue(PlanReason.ORIGINAL_FAILED in served.server.plans.last().reasons)
+        assertEquals("http://server/master.m3u8", player.requests.last().target.uri)
+        assertNull(served.playing.session.error, "nothing to tell the viewer yet")
+
+        player.fail("that did not play either", PlaybackFailure.UNSUPPORTED)
+        runCurrent()
+        assertEquals(2, served.server.plans.size, "once")
+        assertNotNull(served.playing.session.error, "and then it is the failure it is")
+    }
+
+    @Test
+    fun aSourceThatGoesAwayIsNotPlannedAround() = runTest {
+        val served = served()
+        served.playing.player.fail("gone", PlaybackFailure.UNREACHABLE)
+        runCurrent()
+        assertEquals(1, served.server.plans.size)
+        assertNotNull(served.playing.session.error)
+    }
+
+    @Test
+    fun anOutputThatWillNotStartIsNotPlannedAround() = runTest {
+        val served = served()
+        served.playing.player.fail("no audio device", PlaybackFailure.OUTPUT)
+        runCurrent()
+        assertEquals(1, served.server.plans.size)
+    }
+
+    @Test
+    fun aFileSourceHasNothingToPlanAroundAndStatesTheFailure() = runTest {
+        val playing = playing("Breaking Bad", 0)
+        playing.player.fail("no decoder took it", PlaybackFailure.UNSUPPORTED)
+        runCurrent()
+        assertEquals(1, playing.player.requests.size)
+        assertNotNull(playing.session.error)
+    }
+
+    @Test
+    fun audioAnAttemptShowedCannotPlayIsConvertedAndKeepsItsTrack() = runTest {
+        val served = served()
+        val session = served.playing.session
+        session.selectAudio("2")
+        served.playing.player.loseSound()
+        advanceTimeBy(3_100)
+        runCurrent()
+        val plan = served.server.plans.last()
+        assertEquals(AudioPlan.CONVERT, plan.audio)
+        assertEquals(1, plan.audioIndex, "the French the viewer chose, not the English that plays")
+        assertFalse(session.silent, "there is sound on its way")
+        assertNull(served.playing.app.notice)
+    }
+
+    @Test
+    fun onAConvertedStreamTheMenusAreTheFiles() = runTest {
+        val served = served()
+        val session = served.playing.session
+        served.playing.player.fail("no decoder took it", PlaybackFailure.UNSUPPORTED)
+        runCurrent()
+        assertEquals(DeliveryMode.VIDEO_TRANSCODE, served.server.plans.last().delivery)
+        assertTrue(PlayerMenu.AUDIO in session.menus())
+        assertEquals(2, session.options(PlayerMenu.AUDIO).size, "both of the file's tracks, whatever the stream carries")
+        assertEquals(2, session.options(PlayerMenu.SUBTITLES).size)
+
+        session.choose(PlayerMenu.AUDIO, 1)
+        runCurrent()
+        assertEquals(1, served.server.plans.last().audioIndex)
+        assertEquals(VideoPlan.TRANSCODE, served.server.plans.last().video, "what failed stays failed")
+        assertEquals(3, served.server.plans.size)
+    }
+
+    @Test
+    fun whatIsConvertedStopsWhenThePlayerCloses() = runTest {
+        val served = served()
+        val released = served.server.released
+        served.playing.session.close()
+        runCurrent()
+        assertEquals(released + 1, served.server.released)
+    }
+
+    @Test
+    fun aMismatchBetweenPlanAndEngineIsReported() = runTest {
+        val playing = playing("Breaking Bad", 0)
+        val world = playing.world
+        val version = world.library.versions(world.episodes("Breaking Bad")[0].item.id).single().version
+        assertNotNull(version)
+        playing.player.selectAudio("2")
+        advanceTimeBy(5_100)
+        runCurrent()
+        assertNotNull(playing.session.comparison, "a source with no account still has the engine's side")
     }
 
     private class Evidencing(source: MediaSource, val found: PlaybackEvidence) : MediaSource by source, PlaybackEvidenceSource {

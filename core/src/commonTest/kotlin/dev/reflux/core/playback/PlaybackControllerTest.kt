@@ -6,6 +6,7 @@ import dev.reflux.core.source.PlaybackTarget
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -28,6 +29,7 @@ private class FakePlayer : Player {
     override fun setVolume(volume: Int) { commands += "volume:$volume"; state.value = state.value.copy(volume = volume) }
     override fun setMuted(muted: Boolean) { commands += "muted:$muted"; state.value = state.value.copy(muted = muted) }
     override fun selectAudio(trackId: String) { commands += "audio:$trackId"; state.value = state.value.copy(selectedAudioId = trackId) }
+    override fun selectNoAudio() { commands += "audio:none"; state.value = state.value.copy(selectedAudioId = null) }
     override fun selectSubtitle(trackId: String?) { commands += "sub:$trackId"; state.value = state.value.copy(selectedSubtitleId = trackId) }
     override fun stop() { commands += "stop"; state.value = PlayerState() }
     override fun close() = Unit
@@ -39,7 +41,91 @@ private class RecordingReporter : WatchReporter {
     override fun stopped(itemId: MediaId, positionMs: Long, durationMs: Long?) { events += "stopped:$positionMs" }
 }
 
+@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class PlaybackControllerTest {
+    private val fileTracks = listOf(
+        PlayerTrack("11", TrackType.AUDIO, "en", position = 0),
+        PlayerTrack("12", TrackType.AUDIO, "fr", position = 1),
+        PlayerTrack("21", TrackType.SUBTITLE, "en", position = 0),
+        PlayerTrack("22", TrackType.SUBTITLE, "en", external = true, position = 0),
+    )
+
+    private fun TestScope.directed(directive: TrackDirective, tracks: List<PlayerTrack> = fileTracks) {
+        controller.start(backgroundScope, request.copy(tracks = directive))
+        runCurrent()
+        player.state.value = player.state.value.copy(status = PlayerStatus.PLAYING, tracks = tracks)
+        runCurrent()
+    }
+
+    @Test
+    fun thePlansAudioTrackIsTheOneSelectedWhateverDefaultSelectionWouldTake() = runTest {
+        directed(TrackDirective(AudioDirective.Track(1), SubtitleDirective.Off))
+        assertTrue("audio:12" in player.commands, "${player.commands}")
+    }
+
+    @Test
+    fun aViewersTrackTheEngineDoesNotHaveIsNotReplaced() = runTest {
+        directed(TrackDirective(AudioDirective.Track(5, explicit = true), SubtitleDirective.Off))
+        assertTrue("audio:none" in player.commands, "${player.commands}")
+        assertTrue(player.commands.none { it == "audio:11" || it == "audio:12" })
+    }
+
+    @Test
+    fun aPlansTrackTheEngineDoesNotHaveFallsBackToSelectionWhenAutomatic() = runTest {
+        directed(TrackDirective(AudioDirective.Track(5), SubtitleDirective.Off))
+        assertTrue("audio:11" in player.commands, "${player.commands}")
+    }
+
+    @Test
+    fun aPlanWithoutAudioPlaysNone() = runTest {
+        directed(TrackDirective(AudioDirective.None, SubtitleDirective.Off))
+        assertTrue("audio:none" in player.commands, "${player.commands}")
+    }
+
+    @Test
+    fun aConvertedStreamsOneTrackIsLeftAlone() = runTest {
+        directed(TrackDirective(AudioDirective.EngineChoice, SubtitleDirective.Off), listOf(PlayerTrack("1", TrackType.AUDIO, "en")))
+        assertTrue("audio:none" !in player.commands, "${player.commands}")
+    }
+
+    @Test
+    fun thePlansSubtitleIsTheOneSelected() = runTest {
+        directed(TrackDirective(AudioDirective.Track(0), SubtitleDirective.Embedded(0)))
+        assertTrue("sub:21" in player.commands, "${player.commands}")
+    }
+
+    @Test
+    fun anAttachedSubtitleIsFoundAmongTheAttachments() = runTest {
+        directed(TrackDirective(AudioDirective.Track(0), SubtitleDirective.Attached(0)))
+        assertTrue("sub:22" in player.commands, "${player.commands}")
+    }
+
+    @Test
+    fun anAttachmentThatArrivesLateIsSelectedWhenItComes() = runTest {
+        directed(TrackDirective(AudioDirective.Track(0), SubtitleDirective.Attached(0)), fileTracks.filterNot { it.external })
+        assertTrue(player.commands.none { it.startsWith("sub:2") }, "${player.commands}")
+        player.state.value = player.state.value.copy(tracks = fileTracks)
+        runCurrent()
+        assertTrue("sub:22" in player.commands, "${player.commands}")
+    }
+
+    @Test
+    fun aSubtitleChosenMeanwhileIsNotTakenAwayByOneThatArrivesLate() = runTest {
+        directed(TrackDirective(AudioDirective.Track(0), SubtitleDirective.Attached(0)), fileTracks.filterNot { it.external })
+        player.selectSubtitle("21")
+        runCurrent()
+        player.state.value = player.state.value.copy(tracks = fileTracks)
+        runCurrent()
+        assertTrue("sub:22" !in player.commands, "${player.commands}")
+    }
+
+    @Test
+    fun subtitlesOffStayOffWhereTheFileWouldTurnThemOn() = runTest {
+        val tracks = fileTracks.map { if (it.id == "21") it.copy(forced = true) else it }
+        directed(TrackDirective(AudioDirective.Track(0), SubtitleDirective.Off), tracks)
+        assertTrue(player.commands.none { it == "sub:21" || it == "sub:22" }, "${player.commands}")
+    }
+
     private val player = FakePlayer()
     private val reporter = RecordingReporter()
     private var skipped: Boolean? = null

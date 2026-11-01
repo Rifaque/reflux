@@ -12,8 +12,16 @@ import dev.reflux.core.model.MediaId
 import dev.reflux.core.model.MediaItem
 import dev.reflux.core.model.SourceId
 import dev.reflux.core.playback.AutoplayPolicy
+import dev.reflux.core.model.VersionId
+import dev.reflux.core.playback.AudioChoice
+import dev.reflux.core.playback.DeliveryMode
+import dev.reflux.core.playback.PlanPart
+import dev.reflux.core.playback.PlaybackComparison
 import dev.reflux.core.playback.PlaybackController
 import dev.reflux.core.playback.PlaybackEvidence
+import dev.reflux.core.playback.PlayerTrack
+import dev.reflux.core.playback.SubtitleChoice
+import dev.reflux.core.playback.TrackType
 import dev.reflux.core.playback.PlaybackFailure
 import dev.reflux.core.playback.Player
 import dev.reflux.core.playback.PlayerState
@@ -21,7 +29,9 @@ import dev.reflux.core.playback.PlayerStatus
 import dev.reflux.core.playback.SkipSegment
 import dev.reflux.core.playback.SkipSegments
 import dev.reflux.core.playback.WatchReporter
+import dev.reflux.core.source.NegotiatingSource
 import dev.reflux.core.source.PlaybackEvidenceSource
+import dev.reflux.core.source.SourceCapability
 import dev.reflux.library.Library
 import dev.reflux.library.LibraryEntry
 import dev.reflux.library.PlaybackPlan
@@ -77,8 +87,14 @@ class PlaybackSession internal constructor(
     private var begun = false
     private var endHandled = false
     private var silence: Job? = null
-    private var evidenceSource: Pair<PlaybackEvidenceSource, String>? = null
     private var evidenceAsked = false
+    private var current: PlaybackPlan? = null
+
+    /** A failure has already been planned around once for this work: once is all it gets. */
+    private var replanned = false
+
+    /** The audio track last asked for by position, which is the viewer's if they chose one in the player. */
+    private var chosenAudio: Int? = null
     private var closing: Job? = null
     private val closed: Boolean get() = closing != null
 
@@ -124,6 +140,10 @@ class PlaybackSession internal constructor(
     var evidence: PlaybackEvidence? by mutableStateOf(null)
         private set
 
+    /** What was planned beside what happened, once the source has been asked. For diagnostics and tests. */
+    var comparison: PlaybackComparison? by mutableStateOf(null)
+        private set
+
     /** Advances on every user interaction, so the player UI can reveal its controls. */
     var interactions by mutableIntStateOf(0)
         private set
@@ -154,8 +174,13 @@ class PlaybackSession internal constructor(
         silence = null
         silent = false
         evidence = null
+        comparison = null
         evidenceAsked = false
-        evidenceSource = (plan.source as? PlaybackEvidenceSource)?.let { it to plan.version.version.location.path }
+        if (this.itemId != itemId) {
+            replanned = false
+            chosenAudio = null
+        }
+        current = plan
         this.itemId = itemId
         entry = details.entry
         title = details.heading.first
@@ -228,6 +253,8 @@ class PlaybackSession internal constructor(
                 delay(SILENCE_MS)
                 val now = player.state.value
                 if (!now.audioUnavailable) return@launch
+                // An attempt has shown this audio does not play here: the source may still convert it.
+                if (planAround(PlanPart.AUDIO)) return@launch
                 silent = true
                 app.notify(Problems.NO_SOUND)
                 val codecs = (now.audioTracks.map { it.codec ?: "unknown" } + now.unsupportedAudioCodecs).distinct().joinToString(" ")
@@ -236,17 +263,60 @@ class PlaybackSession internal constructor(
         }
     }
 
-    /** Asks the source once what really happened, off the player's way, after its first report has reached it. */
+    /**
+     * Compares what happened with what was planned, once, off the player's way, after the first report has reached
+     * the source. A source that keeps no account still has the engine's side to compare.
+     */
     private fun askForEvidence() {
-        val (source, path) = evidenceSource ?: return
+        val plan = current ?: return
         if (evidenceAsked) return
         evidenceAsked = true
         scope.launch {
             delay(EVIDENCE_AFTER_MS)
-            val found = withContext(app.background) { source.playbackEvidence(path) } ?: return@launch
+            val path = plan.version.version.location.path
+            val found = (plan.source as? PlaybackEvidenceSource)?.let { source -> withContext(app.background) { source.playbackEvidence(path) } }
             evidence = found
-            app.platform.report("Playback evidence: ${found.summary()}")
+            found?.let { app.platform.report("Playback evidence: ${it.summary()}") }
+            val planned = plan.planned ?: return@launch
+            val compared = PlaybackComparison.of(planned, found, player.state.value)
+            comparison = compared
+            if (compared.mismatches.isNotEmpty()) app.platform.report("Playback of \"$title\" is not what was planned: ${compared.summary()}")
         }
+    }
+
+    /**
+     * The one way a run-time failure changes a plan: an attempt at the original has shown that [part] cannot play it,
+     * which is an unknown resolved, and the source can convert it. It happens once for a work, keeps the track that
+     * was playing, and never moves to another language. Anything else stays the failure it is (docs/PLAYBACK.md).
+     *
+     * @return whether a new plan is on its way.
+     */
+    private fun planAround(part: PlanPart): Boolean {
+        val plan = current ?: return false
+        val planned = plan.planned ?: return false
+        val requirements = plan.requirements ?: return false
+        val item = itemId ?: return false
+        val needed = if (part == PlanPart.VIDEO) SourceCapability.SERVER_TRANSCODE else SourceCapability.SERVER_AUDIO_CONVERSION
+        if (replanned || needed !in requirements.source || planned.delivery != DeliveryMode.DIRECT_PLAY) return false
+        val track = chosenAudio ?: planned.audioIndex
+        if (part == PlanPart.AUDIO && track == null) return false
+        replanned = true
+        app.platform.report("Playback of \"$title\": the original $part did not play, so it is being planned again")
+        controller?.stop(final = false)
+        replan(
+            item, "Planning playback again failed", "This couldn't be played right now.", continuing = true, version = plan.version.version.id,
+            audio = if (part == PlanPart.AUDIO) AudioChoice.Explicit(track!!) else requirements.audio,
+            subtitle = requirements.subtitle,
+            originalFailed = requirements.originalFailed + part,
+        )
+        return true
+    }
+
+    /** Stops whatever a source is doing for the stream now open. */
+    private suspend fun releaseStream() {
+        val plan = current ?: return
+        val source = plan.source as? NegotiatingSource ?: return
+        withContext(app.background) { source.release(plan.version.version.location.path) }
     }
 
     /**
@@ -331,10 +401,40 @@ class PlaybackSession internal constructor(
     fun menus(state: PlayerState = player.state.value): List<PlayerMenu> = listOfNotNull(
         PlayerMenu.EPISODES.takeIf { next != null || previous != null },
         PlayerMenu.CHAPTERS.takeIf { state.chapters.size > 1 },
-        PlayerMenu.AUDIO.takeIf { state.audioTracks.size > 1 },
-        PlayerMenu.SUBTITLES.takeIf { state.subtitleTracks.isNotEmpty() },
+        PlayerMenu.AUDIO.takeIf { (fileAudio() ?: state.audioTracks).size > 1 },
+        PlayerMenu.SUBTITLES.takeIf { (fileSubtitles() ?: state.subtitleTracks).isNotEmpty() },
         PlayerMenu.SPEED,
     )
+
+    /** A converted stream carries one audio track and no subtitles: what can be chosen is what the file has. */
+    private val converted: Boolean get() = current?.planned?.let { it.delivery != DeliveryMode.DIRECT_PLAY } == true
+
+    private fun fileAudio(): List<PlayerTrack>? = if (!converted) null else current?.version?.version?.stream?.audio?.mapIndexed { index, track ->
+        PlayerTrack(index.toString(), TrackType.AUDIO, track.language, codec = track.codec.name.lowercase(), channels = track.channels, default = track.default, position = index)
+    }
+
+    private fun fileSubtitles(): List<PlayerTrack>? {
+        if (!converted) return null
+        val version = current?.version?.version ?: return null
+        return version.stream.subtitles.mapIndexed { index, track ->
+            PlayerTrack("e$index", TrackType.SUBTITLE, track.language, codec = track.format.name.lowercase(), forced = track.forced, hearingImpaired = track.hearingImpaired, position = index)
+        } + version.externalSubtitles.mapIndexed { index, track ->
+            PlayerTrack("x$index", TrackType.SUBTITLE, track.language, codec = track.format.name.lowercase(), forced = track.forced, hearingImpaired = track.hearingImpaired, external = true, position = index)
+        }
+    }
+
+    /** Another track of a converted stream is another stream, from where the viewer is. */
+    private fun chooseInFile(audio: AudioChoice?, subtitle: SubtitleChoice?) {
+        val plan = current ?: return
+        val requirements = plan.requirements ?: return
+        val item = itemId ?: return
+        touch()
+        controller?.stop(final = false)
+        replan(
+            item, "Changing a track failed", "That track couldn't be played right now.", continuing = true, version = plan.version.version.id,
+            audio = audio ?: requirements.audio, subtitle = subtitle ?: requirements.subtitle, originalFailed = requirements.originalFailed,
+        )
+    }
 
     fun options(menu: PlayerMenu, state: PlayerState = player.state.value): List<MenuOption> = when (menu) {
         PlayerMenu.EPISODES -> neighbours().map { (entry, forward) -> MenuOption(episodeLabel(entry), if (forward) "Next" else "Previous") }
@@ -344,9 +444,16 @@ class PlaybackSession internal constructor(
                 MenuOption(chapter.title?.takeIf { it.isNotBlank() } ?: "Chapter ${index + 1}", Formatting.clock(chapter.startMs), index == current)
             }
         }
-        PlayerMenu.AUDIO -> state.audioTracks.map { MenuOption(Formatting.track(it), selected = it.id == state.selectedAudioId) }
-        PlayerMenu.SUBTITLES -> listOf(MenuOption("Off", selected = state.selectedSubtitleId == null)) +
-            state.subtitleTracks.map { MenuOption(Formatting.track(it), selected = it.id == state.selectedSubtitleId) }
+        PlayerMenu.AUDIO -> fileAudio()?.map { MenuOption(Formatting.track(it), selected = it.position == current?.planned?.audioIndex) }
+            ?: state.audioTracks.map { MenuOption(Formatting.track(it), selected = it.id == state.selectedAudioId) }
+        PlayerMenu.SUBTITLES -> fileSubtitles()?.let { tracks ->
+            val planned = current?.planned
+            listOf(MenuOption("Off", selected = planned?.subtitleIndex == null)) +
+                tracks.map { MenuOption(Formatting.track(it), selected = it.position == planned?.subtitleIndex && it.external == planned?.subtitleExternal) }
+        } ?: (
+            listOf(MenuOption("Off", selected = state.selectedSubtitleId == null)) +
+                state.subtitleTracks.map { MenuOption(Formatting.track(it), selected = it.id == state.selectedSubtitleId) }
+            )
         PlayerMenu.SPEED -> {
             val current = PlaybackController.SPEEDS.minBy { abs(it - state.speed) }
             PlaybackController.SPEEDS.map { MenuOption(if (it == 1.0) "Normal" else Formatting.speed(it), selected = it == current) }
@@ -379,8 +486,18 @@ class PlaybackSession internal constructor(
         when (menu) {
             PlayerMenu.EPISODES -> neighbours().getOrNull(index)?.let { (_, forward) -> if (forward) playNext() else playPrevious() }
             PlayerMenu.CHAPTERS -> state.chapters.getOrNull(index)?.let { seekTo(it.startMs) }
-            PlayerMenu.AUDIO -> state.audioTracks.getOrNull(index)?.let { selectAudio(it.id) }
-            PlayerMenu.SUBTITLES -> if (index == 0) selectSubtitle(null) else state.subtitleTracks.getOrNull(index - 1)?.let { selectSubtitle(it.id) }
+            PlayerMenu.AUDIO -> {
+                val inFile = fileAudio()
+                if (inFile != null) inFile.getOrNull(index)?.let { chooseInFile(AudioChoice.Explicit(index), null) } else state.audioTracks.getOrNull(index)?.let { selectAudio(it.id) }
+            }
+            PlayerMenu.SUBTITLES -> {
+                val inFile = fileSubtitles()
+                when {
+                    inFile == null -> if (index == 0) selectSubtitle(null) else state.subtitleTracks.getOrNull(index - 1)?.let { selectSubtitle(it.id) }
+                    index == 0 -> chooseInFile(null, SubtitleChoice.Off)
+                    else -> inFile.getOrNull(index - 1)?.let { chooseInFile(null, SubtitleChoice.Explicit(it.position!!, it.external)) }
+                }
+            }
             PlayerMenu.SPEED -> PlaybackController.SPEEDS.getOrNull(index)?.let(::setSpeed)
         }
         this.menu = null
@@ -410,7 +527,8 @@ class PlaybackSession internal constructor(
     /** Switches the audio track. A track the engine no longer offers is refused with a word, not silently. */
     fun selectAudio(trackId: String) {
         touch()
-        if (player.state.value.audioTracks.none { it.id == trackId }) return app.notify(Problems.TRACK_GONE)
+        val track = player.state.value.audioTracks.firstOrNull { it.id == trackId } ?: return app.notify(Problems.TRACK_GONE)
+        chosenAudio = track.position
         player.selectAudio(trackId)
     }
 
@@ -466,10 +584,12 @@ class PlaybackSession internal constructor(
         scope.cancel()
         if (app.platform.fullscreen != wasFullscreen) app.platform.requestFullscreen(wasFullscreen)
         val pending = reporter
+        val stream = current
         val release = app.scope.launch(start = CoroutineStart.LAZY) {
             try {
                 pending?.flush()
                 app.invalidate()
+                (stream?.source as? NegotiatingSource)?.let { withContext(app.background) { it.release(stream.version.version.location.path) } }
             } finally {
                 try {
                     app.platform.releasePlayer(player)
@@ -493,14 +613,26 @@ class PlaybackSession internal constructor(
     }
 
     /** Plans [itemId] as Play does and plays it here; when nothing can be played, says why and leaves. */
-    private fun replan(itemId: MediaId, failure: String, notice: String, continuing: Boolean = false) {
+    private fun replan(
+        itemId: MediaId,
+        failure: String,
+        notice: String,
+        continuing: Boolean = false,
+        version: VersionId? = null,
+        audio: AudioChoice = AudioChoice.Automatic,
+        subtitle: SubtitleChoice = SubtitleChoice.Automatic,
+        originalFailed: Set<PlanPart> = emptySet(),
+    ) {
         countdown?.cancel()
         upNext = null
         scope.launch {
             try {
                 // What was recorded so far is written before the plan reads the work's progress.
                 reporter?.flush()
-                val plan = app.read { planPlayback(itemId, app.platform.device, app.sources, continuing = continuing, preferences = app.viewer) }
+                releaseStream()
+                val plan = app.read {
+                    planPlayback(itemId, app.platform.device, app.sources, versionId = version, continuing = continuing, preferences = app.viewer, audio = audio, subtitle = subtitle, originalFailed = originalFailed)
+                }
                 if (plan == null) {
                     app.notify(app.read { unplayableReason(itemId, app.platform.device, app.sources, app.viewer) })
                     close()
@@ -545,6 +677,7 @@ class PlaybackSession internal constructor(
      * stream ended short: it reads as the waiting limit does and offers the same Try again.
      */
     private fun onFailed(state: PlayerState) {
+        if (state.failure == PlaybackFailure.UNSUPPORTED && planAround(PlanPart.VIDEO)) return
         val unreachable = state.failure == PlaybackFailure.UNREACHABLE
         val message = if (unreachable && begun) Problems.SOURCE_STOPPED else Problems.playback(state.failure)
         error = PlaybackError(message, state.error, canRetry = unreachable)

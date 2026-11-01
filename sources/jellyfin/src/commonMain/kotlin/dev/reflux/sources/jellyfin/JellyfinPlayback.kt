@@ -27,10 +27,18 @@ class JellyfinPlaybackAsk(
     val audioStreamIndex: Int? = null,
     val subtitleStreamIndex: Int = -1,
     val allowConversion: Boolean = false,
+    /** Whether the original file may be delivered at all. A plan to convert says no. */
+    val allowDirectPlay: Boolean = true,
+    val copyVideo: Boolean = true,
+    val copyAudio: Boolean = true,
+    val maxBitrate: Long = UNLIMITED_BITRATE,
 ) {
     companion object {
         const val ORIGINAL_ONLY: String =
             """{"DirectPlayProfiles":[{"Type":"Video"}],"TranscodingProfiles":[],"CodecProfiles":[],"SubtitleProfiles":[]}"""
+
+        /** Nothing limits a stream unless a server's own rule does. */
+        const val UNLIMITED_BITRATE: Long = 1_000_000_000
     }
 }
 

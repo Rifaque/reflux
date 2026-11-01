@@ -264,6 +264,13 @@ object AndroidCapabilities {
             .filter { it.type == AudioDeviceInfo.TYPE_HDMI || it.type == AudioDeviceInfo.TYPE_HDMI_ARC || (Build.VERSION.SDK_INT >= 31 && it.type == AudioDeviceInfo.TYPE_HDMI_EARC) }
             .map { AudioOutputDescription(it.channelCounts.maxOrNull() ?: 0, it.encodings.toList()) }
 
+    private val decoderHardware by lazy {
+        MediaCodecList(MediaCodecList.ALL_CODECS).codecInfos.filter { !it.isEncoder }.associate { it.name to isHardware(it) }
+    }
+
+    /** Whether a decoder Media3 named is hardware; null for a name the device does not list. */
+    fun isHardware(decoderName: String): Boolean? = decoderHardware[decoderName]
+
     private fun isHardware(info: MediaCodecInfo): Boolean =
         if (Build.VERSION.SDK_INT >= 29) info.isHardwareAccelerated
         else !info.name.startsWith("OMX.google.", ignoreCase = true) && !info.name.startsWith("c2.android.", ignoreCase = true)

@@ -30,6 +30,10 @@ class PlaybackController(
     private var tracksApplied = false
     private var finished = false
     private var begun = false
+    private var directive: TrackDirective? = null
+
+    /** A planned attachment that was not there when tracks were applied: it may be on its way. */
+    private var awaitedSubtitle: Int? = null
 
     /** Loads [request] and starts observing the player. */
     fun start(scope: CoroutineScope, request: PlaybackRequest) {
@@ -38,6 +42,8 @@ class PlaybackController(
         finished = false
         begun = false
         lastReportedMs = -1L
+        directive = request.tracks
+        awaitedSubtitle = null
         player.load(request)
         job = scope.launch { player.state.collect(::onState) }
     }
@@ -95,6 +101,16 @@ class PlaybackController(
             tracksApplied = true
             applyDefaultTracks(state)
         }
+        awaitedSubtitle?.let { index ->
+            when {
+                // The viewer chose something meanwhile: that stands.
+                state.selectedSubtitleId != null -> awaitedSubtitle = null
+                else -> state.subtitleTracks.firstOrNull { it.external && it.position == index }?.let {
+                    awaitedSubtitle = null
+                    player.selectSubtitle(it.id)
+                }
+            }
+        }
         when (state.status) {
             PlayerStatus.PLAYING -> if (lastReportedMs < 0 || state.positionMs - lastReportedMs >= REPORT_INTERVAL_MS ||
                 state.positionMs < lastReportedMs
@@ -115,10 +131,30 @@ class PlaybackController(
         reporter.progress(itemId, state.positionMs, state.durationMs)
     }
 
+    /**
+     * Carries out what the plan chose. Default selection remains for what was not planned, or a plan's track the
+     * engine does not have, except a viewer's own: that is that track or none.
+     */
     private fun applyDefaultTracks(state: PlayerState) {
-        val audio = TrackSelector.selectAudio(state.tracks, preferences)
-        if (audio != null && audio.id != state.selectedAudioId) player.selectAudio(audio.id)
-        val subtitle = TrackSelector.selectSubtitle(state.tracks, audio, preferences)
+        val tracks = directive
+        val fallback = TrackSelector.selectAudio(state.tracks, preferences)
+        val audio = when (val wanted = tracks?.audio) {
+            AudioDirective.None -> null
+            is AudioDirective.Track -> state.audioTracks.firstOrNull { it.position == wanted.position } ?: fallback.takeUnless { wanted.explicit }
+            AudioDirective.EngineChoice, null -> fallback
+        }
+        when {
+            audio != null -> if (audio.id != state.selectedAudioId) player.selectAudio(audio.id)
+            tracks?.audio != null && tracks.audio != AudioDirective.EngineChoice -> player.selectNoAudio()
+        }
+        val subtitle = when (val wanted = tracks?.subtitle) {
+            SubtitleDirective.Off -> null
+            is SubtitleDirective.Embedded -> state.subtitleTracks.firstOrNull { !it.external && it.position == wanted.position }
+                ?: TrackSelector.selectSubtitle(state.tracks, audio, preferences)
+            is SubtitleDirective.Attached -> state.subtitleTracks.firstOrNull { it.external && it.position == wanted.index }
+                .also { if (it == null) awaitedSubtitle = wanted.index }
+            SubtitleDirective.EngineChoice, null -> TrackSelector.selectSubtitle(state.tracks, audio, preferences)
+        }
         if (subtitle?.id != state.selectedSubtitleId) player.selectSubtitle(subtitle?.id)
     }
 

@@ -4,6 +4,10 @@ What changes for people using Reflux, version by version. The rules for versions
 
 ## Unreleased
 
+- With a Jellyfin server, Reflux now asks for what your device needs. When only the audio can't play here, the server converts the audio and the original video is kept. Video is converted only when your device can't decode it.
+- Reflux keeps the audio track you chose. If it can't play and can't be converted, you're told, rather than hearing another language.
+- Subtitles a Jellyfin server has to prepare no longer hold up the picture: they appear when they're ready.
+- Changing audio or subtitles on a converted stream works, from where you were.
 - On Android, connecting a receiver or television while Reflux is running is noticed, instead of waiting for a restart.
 - Best Version no longer counts Dolby Vision or Atmos on a device that would lose them.
 - On Windows and Linux, surround sound counts for what a playback showed your speakers take, rather than always stereo.

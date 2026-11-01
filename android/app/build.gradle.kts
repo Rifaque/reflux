@@ -55,6 +55,17 @@ abstract class GenerateTestMedia : DefaultTask() {
                 "-c:a", "aac", "-b:a", "32k", "-metadata:s:a:0", "language=eng", clip.path,
             )
         }
+        // English in DTS and French in AAC: what tells a plan's track from whatever else would play.
+        exec.exec {
+            commandLine(
+                "ffmpeg", "-loglevel", "error", "-y",
+                "-f", "lavfi", "-i", "testsrc=size=320x180:rate=5", "-f", "lavfi", "-i", "sine=frequency=440", "-f", "lavfi", "-i", "sine=frequency=660",
+                "-t", "20", "-map", "0:v", "-map", "1:a", "-map", "2:a",
+                "-c:v", "libx264", "-preset", "ultrafast", "-crf", "38", "-pix_fmt", "yuv420p", "-g", "5",
+                "-c:a:0", "dca", "-strict", "-2", "-ar", "48000", "-ac", "2", "-c:a:1", "aac", "-b:a:1", "64k",
+                "-metadata:s:a:0", "language=eng", "-metadata:s:a:1", "language=fre", output.get().file("tracks.mkv").asFile.path,
+            )
+        }
         // Picture with DTS sound, which most devices cannot decode: what silent playback is tested with.
         exec.exec {
             commandLine(
@@ -224,6 +235,7 @@ dependencies {
     implementation(libs.sqldelight.android.driver)
     implementation(libs.androidx.activity.compose)
     implementation(libs.media3.exoplayer)
+    implementation(libs.media3.exoplayer.hls) // a server's converted stream; DefaultMediaSourceFactory finds it by itself
     implementation(libs.media3.session)
     // The launcher's Watch Next row on Android TV and Google TV (DECISIONS.md, 2026-10-18).
     implementation(libs.androidx.tvprovider)

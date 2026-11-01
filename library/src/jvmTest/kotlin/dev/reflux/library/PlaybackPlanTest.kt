@@ -1,20 +1,44 @@
 package dev.reflux.library
 
 import dev.reflux.core.model.Availability
+import dev.reflux.core.model.MediaVersion
 import dev.reflux.core.model.Movie
 import dev.reflux.core.model.StreamInfoOrigin
+import dev.reflux.core.playback.AudioChoice
 import dev.reflux.core.playback.AudioCodec
+import dev.reflux.core.playback.AudioDirective
+import dev.reflux.core.playback.AudioPlan
 import dev.reflux.core.playback.AudioStream
 import dev.reflux.core.playback.Container
+import dev.reflux.core.playback.DeliveryMode
 import dev.reflux.core.playback.DeviceCapabilities
 import dev.reflux.core.playback.DisplayCapabilities
 import dev.reflux.core.playback.DynamicRange
 import dev.reflux.core.playback.MediaProber
+import dev.reflux.core.playback.PlanOutcome
+import dev.reflux.core.playback.PlanPart
+import dev.reflux.core.playback.PlanReason
+import dev.reflux.core.playback.PlannedPlayback
 import dev.reflux.core.playback.StreamInfo
+import dev.reflux.core.playback.SubtitleCapabilities
+import dev.reflux.core.playback.SubtitleChoice
+import dev.reflux.core.playback.SubtitleDirective
 import dev.reflux.core.playback.SubtitleFormat
+import dev.reflux.core.playback.SubtitleMode
+import dev.reflux.core.playback.SubtitleRenderer
+import dev.reflux.core.playback.SubtitleStream
+import dev.reflux.core.playback.Support
+import dev.reflux.core.playback.TrackDirective
+import dev.reflux.core.playback.TrackPreferences
 import dev.reflux.core.playback.VideoCodec
 import dev.reflux.core.playback.VideoDecoderSupport
+import dev.reflux.core.playback.VideoPlan
 import dev.reflux.core.playback.VideoStream
+import dev.reflux.core.source.MediaSource
+import dev.reflux.core.source.NegotiatedDelivery
+import dev.reflux.core.source.NegotiatingSource
+import dev.reflux.core.source.PlaybackTarget
+import dev.reflux.core.source.SourceCapability
 import dev.reflux.sources.local.LocalFolderSource
 import kotlinx.coroutines.test.runTest
 import java.nio.file.Files
@@ -56,6 +80,115 @@ class PlaybackPlanTest {
     }
 
     private fun file(relative: String) = root.resolve(relative).also { it.parent.createDirectories(); it.writeBytes(ByteArray(8)) }
+
+    private val stereo = StreamInfo(
+        Container.MATROSKA, VideoStream(VideoCodec.HEVC, 1920, 1080, 10),
+        listOf(AudioStream(AudioCodec.DTS, 2, "en", default = true), AudioStream(AudioCodec.AAC, 2, "fr")),
+        listOf(SubtitleStream(SubtitleFormat.SRT, "fr"), SubtitleStream(SubtitleFormat.SRT, "es")),
+    )
+    private val noDts = device.copy(audioDecoders = setOf(AudioCodec.AAC))
+    private val english = TrackPreferences(listOf("en"), SubtitleMode.OFF)
+
+    private suspend fun probed(): Movie {
+        file("Heat (1995)/Heat.1995.1080p.x265.mkv")
+        library.scan(source)
+        val heat = library.movies().single().item as Movie
+        library.recordProbe(library.versions(heat.id).single().version.id, stereo)
+        return heat
+    }
+
+    @Test
+    fun aPlanComesWithItsRequestFromTheSourcesRealCapabilities() = runTest {
+        val heat = probed()
+        val plan = assertNotNull(library.planPlayback(heat.id, device, sources, preferences = english))
+        assertEquals(DeliveryMode.DIRECT_PLAY, plan.planned?.delivery)
+        assertEquals(source.descriptor.capabilities, plan.requirements?.source)
+        assertEquals(TrackDirective(AudioDirective.Track(0), SubtitleDirective.Off), plan.request.tracks)
+    }
+
+    @Test
+    fun aFileSourcesAutomaticFallbackIsThePlansAndIsNamed() = runTest {
+        val heat = probed()
+        val plan = assertNotNull(library.planPlayback(heat.id, noDts, sources, preferences = english))
+        assertEquals(AudioDirective.Track(1), plan.request.tracks?.audio)
+        assertTrue(PlanReason.AUDIO_OTHER_LANGUAGE in plan.planned!!.reasons)
+    }
+
+    @Test
+    fun aViewersTrackOnAFileSourceIsNotSwapped() = runTest {
+        val heat = probed()
+        val plan = assertNotNull(library.planPlayback(heat.id, noDts, sources, preferences = english, audio = AudioChoice.Explicit(0)))
+        assertEquals(PlanOutcome.PLAYS_WITHOUT_AUDIO, plan.planned?.outcome)
+        assertEquals(AudioDirective.None, plan.request.tracks?.audio)
+    }
+
+    @Test
+    fun aChosenSubtitleBecomesTheEnginesAndASidecarIsFoundByPlace() = runTest {
+        val heat = probed()
+        val embedded = assertNotNull(library.planPlayback(heat.id, device.copy(subtitles = drawable), sources, preferences = english, subtitle = SubtitleChoice.Explicit(1)))
+        assertEquals(SubtitleDirective.Embedded(1), embedded.request.tracks?.subtitle)
+    }
+
+    private val drawable = SubtitleCapabilities(mapOf(SubtitleFormat.SRT to SubtitleRenderer(Support.SUPPORTED, Support.SUPPORTED)))
+
+    @Test
+    fun whatAFileSourceCannotDoSaysSoAndAskesNobody() = runTest {
+        val heat = probed()
+        assertNull(library.planPlayback(heat.id, device.copy(videoDecoders = emptyList()), sources, preferences = english), "no decoder and no server")
+    }
+
+    /** A server of the test's own: it converts, or refuses to, and says what it was asked. */
+    private inner class Negotiating(private val agrees: Boolean) : MediaSource by source, NegotiatingSource {
+        val plans = mutableListOf<PlannedPlayback>()
+        override val descriptor = source.descriptor.copy(capabilities = source.descriptor.capabilities + SourceCapability.SERVER_AUDIO_CONVERSION + SourceCapability.SERVER_TRANSCODE)
+
+        override suspend fun negotiate(version: MediaVersion, plan: PlannedPlayback, device: DeviceCapabilities): NegotiatedDelivery? {
+            plans += plan
+            return NegotiatedDelivery(PlaybackTarget("http://server/master.m3u8")).takeIf { agrees || plan.delivery == DeliveryMode.DIRECT_PLAY }
+        }
+
+        override suspend fun release(path: String) = Unit
+    }
+
+    @Test
+    fun aServerDeliversWhatThePlanNeeds() = runTest {
+        val heat = probed()
+        val server = Negotiating(agrees = true)
+        val plan = assertNotNull(library.planPlayback(heat.id, noDts, { server }, preferences = english))
+        assertEquals(AudioPlan.CONVERT, plan.planned?.audio)
+        assertEquals(0, plan.planned?.audioIndex, "the viewer's language, converted, over French that plays")
+        assertEquals("http://server/master.m3u8", plan.request.target.uri)
+        assertEquals(AudioDirective.EngineChoice, plan.request.tracks?.audio, "a converted stream has its one track")
+    }
+
+    @Test
+    fun aServerThatWillNotConvertLeavesWhatThisClientCanDoAndSaysSo() = runTest {
+        val heat = probed()
+        val server = Negotiating(agrees = false)
+        val plan = assertNotNull(library.planPlayback(heat.id, noDts, { server }, preferences = english))
+        assertEquals(DeliveryMode.DIRECT_PLAY, plan.planned?.delivery)
+        assertEquals(1, plan.planned?.audioIndex)
+        assertTrue(PlanReason.NEGOTIATION_FAILED in plan.planned!!.reasons)
+    }
+
+    @Test
+    fun aVersionOnlyAServerCanPlayIsPlayableThroughIt() = runTest {
+        val heat = probed()
+        val server = Negotiating(agrees = true)
+        val noVideo = noDts.copy(videoDecoders = emptyList())
+        val plan = assertNotNull(library.planPlayback(heat.id, noVideo, { server }, preferences = english))
+        assertEquals(DeliveryMode.VIDEO_TRANSCODE, plan.planned?.delivery)
+        assertNull(library.planPlayback(heat.id, noVideo, sources, preferences = english), "and the same work on files alone is not")
+    }
+
+    @Test
+    fun whatFailedStaysFailedInThePlan() = runTest {
+        val heat = probed()
+        val server = Negotiating(agrees = true)
+        val plan = assertNotNull(library.planPlayback(heat.id, device, { server }, preferences = english, originalFailed = setOf(PlanPart.VIDEO)))
+        assertEquals(VideoPlan.TRANSCODE, plan.planned?.video)
+        assertTrue(PlanReason.ORIGINAL_FAILED in plan.planned!!.reasons)
+    }
 
     @Test
     fun plansBestVersionWithResumeAndSubtitles() = runTest {

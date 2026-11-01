@@ -952,3 +952,15 @@ The capability model (PLAYBACK.md, section 6). Media facts, capabilities, eviden
 - **Burn-in needs a viewer's choice and known impossibility.** It costs a video transcode, so it is not spent on an automatic track or on something merely unknown. Alternative rejected: burning in forced subtitles automatically; to be revisited if a real case shows a viewer missing them.
 - **Unknown is tried.** It never converts and never blocks; a failure resolves it.
 - **Whether something can play has one implementation,** `PlaybackAssessor`, and the planner reads it. Best Version does not count a server's abilities until something can play the result.
+
+## 2026-11-01 — A plan is executed, and compared with what happened
+
+Execution of the planner (PLAYBACK.md, section 8).
+
+- **Tracks are named by place, not by language or id.** Engines count a track before leaving any out, so a plan's track is the same on Media3 and libmpv. Alternative rejected: each engine choosing from the plan's language, which is track selection in the executor.
+- **A viewer's track or none.** An engine without it plays no audio and says so.
+- **Negotiation tells a server hard limits only.** Level and frame rate are left out, because a server told of them would transcode what the plan tries.
+- **A plan for the original opens the original,** whatever the server's flags say, and the comparison reports any disagreement. The server does not get a vote on a decision already made; it gets a report.
+- **A failure re-plans once.** Only `UNSUPPORTED` on the original and a silent original, and only where the source can convert, keeping the language. Alternative rejected: a retry ladder, which would be policy with nothing yet to justify it.
+- **Best Version counts what a source can really do,** now that it can be played. A version only a server can make playable stays a compromise, so the ranking's order is unchanged and offline copies are not affected.
+- **A server's extracted subtitle arrives late.** Seen live at 49 seconds; the picture does not wait for it.

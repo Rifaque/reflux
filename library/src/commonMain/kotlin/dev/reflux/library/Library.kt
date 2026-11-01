@@ -22,6 +22,7 @@ import dev.reflux.core.model.VersionId
 import dev.reflux.core.model.WatchState
 import dev.reflux.core.playback.DeviceCapabilities
 import dev.reflux.core.playback.TrackPreferences
+import dev.reflux.core.source.SourceCapability
 import dev.reflux.core.playback.MediaProber
 import dev.reflux.core.playback.StreamInfo
 import dev.reflux.core.playback.WatchReporter
@@ -340,6 +341,7 @@ class Library(
      *   the user is part-way through.
      * @param continuing playback picks up again after an interruption ([WatchRules.resumePosition]).
      * @param preferences the viewer's languages, so that versions are judged by the audio they would play.
+     * @param sourceCapabilities what each source really declares. Without it nothing counts on a source converting.
      */
     fun selectVersion(
         itemId: MediaId,
@@ -347,8 +349,9 @@ class Library(
         resuming: Boolean = true,
         continuing: Boolean = false,
         preferences: TrackPreferences? = null,
+        sourceCapabilities: (SourceId) -> Set<SourceCapability> = { emptySet() },
     ): VersionSelection {
-        val candidates = versions(itemId).map { VersionCandidate(it.version, it.availability, it.locality) }
+        val candidates = versions(itemId).map { VersionCandidate(it.version, it.availability, it.locality, sourceCapabilities(it.version.location.sourceId)) }
         val pinned = queries.preferredVersion(itemId.value).executeAsOneOrNull()?.let(::VersionId)
         // A copy on the device is the version it was made from: pinning one is honored by the other, so
         // a pinned version that was downloaded plays from the device rather than being streamed again.

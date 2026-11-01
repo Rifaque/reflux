@@ -9,11 +9,13 @@ import dev.reflux.core.playback.DeviceCapabilities
 import dev.reflux.core.playback.DynamicRange
 import dev.reflux.core.playback.PlaybackAssessment
 import dev.reflux.core.playback.PlaybackAssessor
+import dev.reflux.core.playback.PlanOutcome
 import dev.reflux.core.playback.PlaybackPlanner
 import dev.reflux.core.playback.PlaybackRequirements
 import dev.reflux.core.playback.PlaybackVerdict
 import dev.reflux.core.playback.Support
 import dev.reflux.core.playback.TrackPreferences
+import dev.reflux.core.source.SourceCapability
 import dev.reflux.core.source.SourceLocality
 import dev.reflux.core.watch.Handoff
 import dev.reflux.core.watch.TimelineMatch
@@ -23,6 +25,8 @@ data class VersionCandidate(
     val version: MediaVersion,
     val availability: Availability,
     val locality: SourceLocality,
+    /** What its source declares. A version this device cannot play may still play through its source. */
+    val source: Set<SourceCapability> = emptySet(),
 )
 
 /** The criteria Best Version uses, in priority order. The first one that differs decides. */
@@ -52,12 +56,14 @@ enum class SelectionCriterion {
 data class RankedVersion(
     val candidate: VersionCandidate,
     val assessment: PlaybackAssessment,
+    /** The device cannot play it as it is, and its source can convert it into something it can. */
+    val throughSource: Boolean = false,
 ) {
     val version: MediaVersion get() = candidate.version
 
     /** Whether Reflux should offer to play this version at all. */
     val playable: Boolean
-        get() = candidate.availability != Availability.UNAVAILABLE && assessment.verdict != PlaybackVerdict.UNSUPPORTED
+        get() = candidate.availability != Availability.UNAVAILABLE && (assessment.verdict != PlaybackVerdict.UNSUPPORTED || throughSource)
 }
 
 /** The outcome of Best Version: an ordered list plus why the winner beat the runner-up. */
@@ -99,7 +105,10 @@ object VersionSelector {
         val ranked = candidates.map { candidate ->
             val assessment = preferences?.let { PlaybackPlanner.assess(PlaybackRequirements(candidate.version, it), device) }
                 ?: PlaybackAssessor.assess(candidate.version.stream, device)
-            RankedVersion(candidate, assessment)
+            val viewer = preferences ?: TrackPreferences(emptyList())
+            val convertible = assessment.verdict == PlaybackVerdict.UNSUPPORTED &&
+                PlaybackPlanner.plan(PlaybackRequirements(candidate.version, viewer, candidate.source), device).outcome != PlanOutcome.CANNOT_PLAY
+            RankedVersion(candidate, assessment, convertible)
         }
         val criteria = criteria(device, preferred, resuming, continuing)
         val comparator = Comparator<RankedVersion> { a, b ->
@@ -149,7 +158,7 @@ object VersionSelector {
 
     private fun better(a: Boolean, b: Boolean): Int = b.compareTo(a)
 
-    private fun supported(version: RankedVersion): Boolean = version.assessment.verdict != PlaybackVerdict.UNSUPPORTED
+    private fun supported(version: RankedVersion): Boolean = version.assessment.verdict != PlaybackVerdict.UNSUPPORTED || version.throughSource
 
     private fun isPreferred(version: RankedVersion, preferred: VersionId?): Boolean =
         version.version.id == preferred && version.playable

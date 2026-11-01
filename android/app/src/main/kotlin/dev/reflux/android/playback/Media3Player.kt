@@ -22,8 +22,10 @@ import androidx.media3.common.text.CueGroup
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.analytics.AnalyticsListener
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.session.MediaSession
+import dev.reflux.core.playback.DecoderInUse
 import dev.reflux.core.playback.DeviceCapabilities
 import dev.reflux.core.playback.PlaybackFailure
 import dev.reflux.core.playback.PlaybackRequest
@@ -84,6 +86,7 @@ class Media3Player(context: Context, override val capabilities: DeviceCapabiliti
     private var session: MediaSession? = null
     private var engine: ExoPlayer? = null
     private var surface: SurfaceView? = null
+    private var videoDecoder: DecoderInUse? = null
     private var started = false
     private var closed = false
 
@@ -134,6 +137,8 @@ class Media3Player(context: Context, override val capabilities: DeviceCapabiliti
             mutableCues.value = cueGroup.cues
         }
 
+        override fun onRenderedFirstFrame() = publish()
+
         override fun onPlayerError(error: PlaybackException) {
             mutableState.update {
                 it.copy(status = PlayerStatus.ERROR, failure = failureOf(error.errorCode), error = "${error.errorCodeName}: ${error.message.orEmpty()}")
@@ -157,6 +162,10 @@ class Media3Player(context: Context, override val capabilities: DeviceCapabiliti
         if (closed) return
         val player = engine ?: create().also { engine = it }
         started = false
+        videoDecoder = null
+        // What the last plan turned off is not this one's.
+        player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
+            .clearOverridesOfType(C.TRACK_TYPE_AUDIO).setTrackTypeDisabled(C.TRACK_TYPE_AUDIO, false).build()
         mutableCues.value = emptyList()
         mutableAspect.value = null
 
@@ -236,6 +245,13 @@ class Media3Player(context: Context, override val capabilities: DeviceCapabiliti
 
     override fun selectAudio(trackId: String) = onMain { select(trackId, C.TRACK_TYPE_AUDIO) }
 
+    override fun selectNoAudio() = onMain {
+        val player = engine ?: return@onMain
+        player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
+            .clearOverridesOfType(C.TRACK_TYPE_AUDIO).setTrackTypeDisabled(C.TRACK_TYPE_AUDIO, true).build()
+        publish()
+    }
+
     override fun selectSubtitle(trackId: String?) = onMain {
         val player = engine ?: return@onMain
         if (trackId == null) {
@@ -279,6 +295,12 @@ class Media3Player(context: Context, override val capabilities: DeviceCapabiliti
         .build()
         .also { player ->
             player.addListener(listener)
+            player.addAnalyticsListener(object : AnalyticsListener {
+                override fun onVideoDecoderInitialized(eventTime: AnalyticsListener.EventTime, decoderName: String, initializedTimestampMs: Long, initializationDurationMs: Long) {
+                    videoDecoder = DecoderInUse(decoderName, AndroidCapabilities.isHardware(decoderName))
+                    publish()
+                }
+            })
             player.setVideoSurfaceView(surface)
             player.volume = if (muted) 0f else volume / 100f
             main.post(ticker)
@@ -326,6 +348,7 @@ class Media3Player(context: Context, override val capabilities: DeviceCapabiliti
                 speed = player.playbackParameters.speed.toDouble(),
                 tracks = tracks.map { it.first },
                 unsupportedAudioCodecs = unsupportedAudio(player.currentTracks),
+                videoDecoder = videoDecoder,
                 selectedAudioId = tracks.firstOrNull { it.second && it.first.type == TrackType.AUDIO }?.first?.id,
                 selectedSubtitleId = tracks.firstOrNull { it.second && it.first.type == TrackType.SUBTITLE }?.first?.id,
             )
@@ -333,14 +356,24 @@ class Media3Player(context: Context, override val capabilities: DeviceCapabiliti
     }
 
     /** Every audio and subtitle track with whether it is the one playing. */
-    private fun tracksOf(tracks: Tracks): List<Pair<PlayerTrack, Boolean>> = tracks.groups.flatMapIndexed { groupIndex, group ->
+    private fun tracksOf(tracks: Tracks): List<Pair<PlayerTrack, Boolean>> {
+        val counted = HashMap<TrackType, Int>()
+        return tracks.groups.flatMapIndexed { groupIndex, group -> tracksOf(group, groupIndex, counted) }
+    }
+
+    private fun tracksOf(group: Tracks.Group, groupIndex: Int, counted: MutableMap<TrackType, Int>): List<Pair<PlayerTrack, Boolean>> {
         val type = when (group.type) {
             C.TRACK_TYPE_AUDIO -> TrackType.AUDIO
             C.TRACK_TYPE_TEXT -> TrackType.SUBTITLE
-            else -> return@flatMapIndexed emptyList()
+            else -> return emptyList()
+        }
+        // Counted before any is left out: a track's place in the file is the same whether this device can play it.
+        val positions = (0 until group.length).associateWith { trackIndex ->
+            val attachment = group.getTrackFormat(trackIndex).id?.substringAfter("external-", "")?.toIntOrNull()
+            attachment ?: (counted[type] ?: 0).also { counted[type] = it + 1 }
         }
         // A track in use is listed whatever its support: the engine may choose one past what the device declares.
-        (0 until group.length).filter { group.isTrackSupported(it) || type == TrackType.SUBTITLE || group.isTrackSelected(it) }.map { trackIndex ->
+        return (0 until group.length).filter { group.isTrackSupported(it) || type == TrackType.SUBTITLE || group.isTrackSelected(it) }.map { trackIndex ->
             val format = group.getTrackFormat(trackIndex)
             PlayerTrack(
                 id = "${if (type == TrackType.AUDIO) "a" else "s"}:$groupIndex:$trackIndex",
@@ -353,6 +386,7 @@ class Media3Player(context: Context, override val capabilities: DeviceCapabiliti
                 forced = format.selectionFlags and C.SELECTION_FLAG_FORCED != 0,
                 hearingImpaired = format.roleFlags and (C.ROLE_FLAG_DESCRIBES_MUSIC_AND_SOUND or C.ROLE_FLAG_CAPTION) != 0,
                 external = format.id?.contains("external-") == true,
+                position = positions[trackIndex],
             ) to group.isTrackSelected(trackIndex)
         }
     }

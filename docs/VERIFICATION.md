@@ -617,3 +617,38 @@ All conversions ran in software on the server (`HardwareAccelerationType: none`)
 | Jellyfin's declaration | `JellyfinPlaybackTest` (1 new) | Pass |
 
 **Not verified:** any plan against a real playback; the capability sets for local, SMB, and WebDAV in the planner's tests are copies of what those adapters declare, not read from them; automatic burn-in of forced subtitles was decided against without a real case.
+
+## Plan execution (M2P.4): what was verified
+
+2026-11-01, on `feature/engine-foundation`, on top of `1e22dc6`. Jellyfin Server 12.2.0 on RS-X1 with the test account. "Same" means the comparison found no mismatch between the plan and the server's own session. The live cases use HEVC Main 10 files with E-AC-3 or AC-3, because the Iron Man file still answers 404 and 500.
+
+| What | How | Result |
+| --- | --- | --- |
+| Full suite | `check`, plus the Android debug APK | **Not clean.** 1024 tests, 12 skipped, 1 failed: `DesktopOfflineTest`, on a disk with 25 GB free of a 51 GB reserve, as recorded above; not rerun on a roomier disk. Window tests did not run |
+| Live, desktop | `JellyfinExecutionLiveTest`: scan, Best Version, plan, negotiation, real libmpv with no window or sound, `TranscodingInfo` | Table below; 4 of 4 |
+| Authentication | `JellyfinTruthLiveTest`, in `check`: real libmpv on an address that refuses without a token | Pass |
+
+| Live case, desktop | Planned | Server's session | First frame | Seek | Result |
+| --- | --- | --- | --- | --- | --- |
+| Direct Play | Original | No conversion listed; item playing | 0.5 s | 0.4 s | Same |
+| Audio conversion | Audio only | Video direct; HEVC + AAC | 1.3 s | 1.7 s | Same |
+| Remux | Container only | Video and audio direct; HEVC + AC-3 | 1.4 s | 0.5 s | Same, after the fix below |
+| Video transcode | Video only | Audio direct; H.264 + AC-3 | 2.7 s | 5.0 s | Same |
+| `originalFailed = VIDEO` | Video transcode | Audio direct; H.264 + AC-3 | 4.6 s | 5.7 s | Same |
+| Explicit second track | Audio only, that track | Video direct; HEVC + AAC, one track in the stream | 1.1 s | 2.1 s | Same |
+| Audio conversion, PGS chosen | PGS beside the stream | Video direct; HEVC + AAC, subtitle selected | 1.3 s | 1.3 s | Same |
+| PGS nothing can draw, chosen | Burn-in | Video converted, audio direct; `SubtitleCodecNotSupported` | 4.4 s | 8.2 s | Same |
+
+Times come from a headless engine on a file the server had just read, and are not a player's. The PGS row ran with the track already extracted; on first request, the server took 48.9 s.
+
+| Device | Plan for the real device | Second case | Result |
+| --- | --- | --- | --- |
+| Xiaomi Pad 7 | Direct Play, `c2.qti.hevc.decoder` hardware, local decode. First frame 2.1 s, seek 1.5 s | Audio conversion over HLS, same decoder. 1.6 s, 2.0 s | Same; 6 of 6 |
+| Fire TV `AFTMA08C15` | Direct Play, `OMX.MTK.VIDEO.DECODER.HEVC` hardware, passthrough. 2.1 s, 2.5 s | Audio conversion over HLS. 3.1 s, 3.5 s | Same; 6 of 6 |
+| Google TV emulator | Video transcode, because it has no 10-bit HEVC decoder. 3.1 s, 4.5 s | The same, with audio converted. 3.0 s, 5.5 s | Same; 6 of 6. Software decoders |
+
+The 6 are: both cases above; an explicit track that cannot play stays silent with French present; automatic selection reaches the planned track by its place in the file; the capability report; and silent audio plus ordinary playback. On the Fire TV and the Pad 7 these ran on the final product code; the test's own assertion was changed afterwards, for the emulator, which alone reran.
+
+**Found by live runs, not by fixtures:** `MaxAudioChannels` set to a stereo output made a server convert audio a remux was to keep; PGS extraction would have held the picture for 49 s.
+
+**Not verified:** the Nothing Phone 2a (not attached); Linux; the Iron Man file; any of this through the real application's screens, as these tests drive the engines and the planner directly; the notice on a screen; a real `UNSUPPORTED` failure from an engine re-planning live (`originalFailed` was passed in, and the session's reaction is tested with a fake); PGS through Media3; passthrough heard through a receiver. The first Pad 7 run hung past 500 s with no test output. It did not recur in two later runs, and its cause is unknown.

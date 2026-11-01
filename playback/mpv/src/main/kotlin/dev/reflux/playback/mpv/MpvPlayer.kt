@@ -2,12 +2,14 @@ package dev.reflux.playback.mpv
 
 import com.sun.jna.Pointer
 import dev.reflux.core.net.Redaction
+import dev.reflux.core.playback.DecoderInUse
 import dev.reflux.core.playback.DeviceCapabilities
 import dev.reflux.core.playback.PlaybackFailure
 import dev.reflux.core.playback.PlaybackRequest
 import dev.reflux.core.playback.Player
 import dev.reflux.core.playback.PlayerState
 import dev.reflux.core.playback.PlayerStatus
+import dev.reflux.core.playback.SubtitleAttachment
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -42,6 +44,9 @@ class MpvPlayer private constructor(
     /** Whether the current file's decoding has been reported (once per file, at its first frame). */
     private var decodeReported = false
 
+    /** What to attach once the current file is open. */
+    @Volatile private var lateSubtitles: List<SubtitleAttachment> = emptyList()
+
     /** Whether the current file's audio output has been reported (once per file, once it is known). */
     private var outputReported = false
     private val eventThread = Thread(::eventLoop, "mpv-events").apply { isDaemon = true }
@@ -56,7 +61,9 @@ class MpvPlayer private constructor(
         // `start` and `sub-files` are per-load options; reset them on every load.
         setProperty("start", request.startPositionMs?.let { "+" + (it / 1000.0) } ?: "none")
         command("change-list", "sub-files", "clr", "")
-        request.subtitles.forEach { command("change-list", "sub-files", "append", mpvPath(it.target.uri)) }
+        val (late, atOnce) = request.subtitles.partition { it.arrivesLate }
+        atOnce.forEach { command("change-list", "sub-files", "append", mpvPath(it.target.uri)) }
+        lateSubtitles = late
         setProperty("http-header-fields", headerFields(request.target.headers))
         setProperty("force-media-title", request.title)
         setProperty("pause", "no")
@@ -70,6 +77,7 @@ class MpvPlayer private constructor(
     override fun setVolume(volume: Int) = setProperty("volume", volume.coerceIn(0, 100).toString())
     override fun setMuted(muted: Boolean) = setProperty("mute", if (muted) "yes" else "no")
     override fun selectAudio(trackId: String) = setProperty("aid", trackId)
+    override fun selectNoAudio() = setProperty("aid", "no")
     override fun selectSubtitle(trackId: String?) = setProperty("sid", trackId ?: "no")
 
     // sub-pos is where the bottom of a subtitle sits, in percent of the window's height from the top.
@@ -123,9 +131,13 @@ class MpvPlayer private constructor(
                     mutableState.update {
                         it.copy(status = runningStatus(), tracks = tracks, selectedAudioId = audio, selectedSubtitleId = subtitle)
                     }
+                    // Asynchronous, unlike `sub-files`: the picture does not wait for a file a server is still making.
+                    lateSubtitles.forEach { command("sub-add", mpvPath(it.target.uri), "auto", "", it.language.orEmpty()) }
+                    lateSubtitles = emptyList()
                 }
                 LibMpv.EVENT_PLAYBACK_RESTART -> {
                     mutableState.update { it.copy(status = runningStatus()) }
+                    noteDecoder()
                     if (!decodeReported && onDecode != null) reportDecode(onDecode)
                     if (!outputReported && onAudioOutput != null) reportAudioOutput(onAudioOutput)
                 }
@@ -151,6 +163,13 @@ class MpvPlayer private constructor(
         ) ?: return
         decodeReported = true
         runCatching { onDecode(observation) }
+    }
+
+    /** What is really decoding, for comparing with the plan. */
+    private fun noteDecoder() {
+        val current = mpv.getString(handle, "hwdec-current") ?: return
+        val decoder = DecoderInUse(current.takeIf { MpvDecodeProbe.hardwareInUse(it) } ?: mpv.getString(handle, "video-codec"), MpvDecodeProbe.hardwareInUse(current))
+        mutableState.update { it.copy(videoDecoder = decoder) }
     }
 
     /** How many channels the output took, against how many there were, for what is known about this machine. */

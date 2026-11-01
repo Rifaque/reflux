@@ -30,16 +30,26 @@ internal object MpvTracks {
     fun isAlbumArt(track: JsonObject): Boolean = track.bool("albumart")
     fun isExternal(track: JsonObject): Boolean = track.bool("external")
 
-    fun playerTracks(json: String?): List<PlayerTrack> = parse(json).mapNotNull { track ->
-        val type = when (typeOf(track)) {
-            "video" -> TrackType.VIDEO
-            "audio" -> TrackType.AUDIO
-            "sub" -> TrackType.SUBTITLE
-            else -> return@mapNotNull null
+    fun playerTracks(json: String?): List<PlayerTrack> {
+        val counted = HashMap<Pair<TrackType, Boolean>, Int>()
+        return parse(json).mapNotNull { track ->
+            val type = when (typeOf(track)) {
+                "video" -> TrackType.VIDEO
+                "audio" -> TrackType.AUDIO
+                "sub" -> TrackType.SUBTITLE
+                else -> return@mapNotNull null
+            }
+            if (type == TrackType.VIDEO && track.bool("albumart")) return@mapNotNull null
+            val place = type to track.bool("external")
+            val position = counted[place] ?: 0
+            counted[place] = position + 1
+            playerTrack(track, type, position)
         }
-        if (type == TrackType.VIDEO && track.bool("albumart")) return@mapNotNull null
-        PlayerTrack(
-            id = track.int("id")?.toString() ?: return@mapNotNull null,
+    }
+
+    private fun playerTrack(track: JsonObject, type: TrackType, position: Int): PlayerTrack? {
+        return PlayerTrack(
+            id = track.int("id")?.toString() ?: return null,
             type = type,
             language = track.string("lang"),
             title = track.string("title"),
@@ -49,6 +59,7 @@ internal object MpvTracks {
             forced = track.bool("forced"),
             hearingImpaired = track.bool("hearing-impaired"),
             external = track.bool("external"),
+            position = position,
         )
     }
 

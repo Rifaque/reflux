@@ -481,6 +481,9 @@ class AppState(
         null -> null
     }
 
+    /** What each source really declares, which decides what can reach this device through it. */
+    internal val sourceCapabilities: (SourceId) -> Set<dev.reflux.core.source.SourceCapability> = { sources(it)?.descriptor?.capabilities.orEmpty() }
+
     /** The viewer's languages, which decide which audio a version would play. */
     internal val viewer: TrackPreferences get() = TrackPreferences(platform.preferredLanguages)
 
