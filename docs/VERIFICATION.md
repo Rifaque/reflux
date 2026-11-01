@@ -543,3 +543,21 @@ The two offline tests of the section below were this machine's disk, as it said,
 | Fire TV Stick | Not reachable over adb this time (moved to another address, then refusing port 5555: network debugging off on the stick, which was unavailable). Amazon has no Fire OS emulator; the Google TV emulator ran the same television branch of the policy | Not re-verified |
 
 **Seen, not changed (for the accessibility milestone):** while the player is open on Android, the library page beneath it is still in the accessibility tree (its rows appear in a uiautomator dump), so a screen reader could reach them behind the video.
+
+## Playback compatibility audit (M2P): what was verified
+
+2026-11-01, on `feature/engine-foundation` at `743b407`. No Reflux code changed and no Reflux build ran: these are direct readings with scratch scripts, not product behavior. No tests were run, because only documentation changed. Findings and their meaning are in PLAYBACK.md.
+
+| What | How | Result |
+| --- | --- | --- |
+| RS-X1 library facts | Jellyfin Server 12.2.0, dedicated non-administrator test account, `Items` with media sources | 967 versions summarized (PLAYBACK.md, section 2) |
+| `PlaybackInfo` for four client profiles | Live, the reference file and its siblings | Direct Play for the native profile; HLS with reasons otherwise. The browser-like profile is an approximation of Chrome's, not Chrome. Reasons are in the URL and in `TranscodingInfo`, not in the JSON field checked |
+| Real server sessions | A first HLS segment per case on a sibling file (HEVC Main 10, E-AC-3, Matroska), then `GET Sessions` and `ffprobe` of the segment | Audio-only: video direct, AAC 5.1. Remux: both direct. Video: H.264, audio direct. All in software on the server. Each encode stopped (204) |
+| Reference file | The same | **Static stream 404, HLS segments 500**, `PlaybackInfo` still answers; the eight other sampled files 206. Cause unknown: the account cannot read the server's log. On the first run an error path skipped stopping the encode; a later check showed no `TranscodingInfo` left |
+| Static stream without authentication | Range request with no `Authorization`, and with one lacking a token | 206 for both |
+| Desktop decode | libmpv 0.41-dev (FFmpeg N-127242) with `vo=null`, `ao=null`, on the sibling's static stream, Windows | Hardware `d3d11va-copy` (`p010`), and software (`yuv420p10`); E-AC-3 decoded to 6 channels at 48 kHz; exact seek to 30:00 in 0.25 s. No window or sound, so frame timing and first-frame latency here are not those of a real playback. That sibling has no PGS, so PGS was **not** rendered |
+| Header escaping | The same with mpv's escaped and with Reflux's unescaped `http-header-fields` | Both open, because of the row above; so this proves nothing about the header |
+| Pad 7 decoders | `dumpsys media.player`, read only (SM7675, API 36) | Dolby AC-3, E-AC-3, JOC; DV decoder; hardware H.264, HEVC, VP9; software AV1; no DTS or TrueHD; display lists all four HDR types |
+| Fire TV decoders | The same, `AFTMA08C15`, API 30, `armeabi-v7a` only | Dolby AC-3, E-AC-3, AC-4; no `eac3-joc`, DTS, or TrueHD; hardware H.264, HEVC, VP9, AV1, MPEG-2, MPEG-4; DV decoders; current display lists HDR10 |
+
+**Not verified:** anything played through Reflux; the Iron Man file itself; Media3 with any of this; the Phone 2a (not attached) and the Google TV emulator (not started); `.pgssub` delivery; passthrough; HDR output; Linux hardware decoding. "Listed" in PLAYBACK.md means only what a device lists.

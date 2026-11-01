@@ -41,6 +41,7 @@ Status words used below:
 | --- | --- | --- |
 | M0 — Rebaseline & governance | One roadmap, a versioning protocol, verification history separated, product decisions recorded, V1 acceptance criteria | Done (2026-10-17) |
 | M1 — Product completeness | Everything V1 must contain is built and tested | Partial |
+| M2P — Playback compatibility & direct play | Reflux knows what the client can actually play, preserves the original whenever possible, degrades the smallest necessary part when it cannot, and can explain why | Open: audit and design done 2026-11-01 ([PLAYBACK.md](PLAYBACK.md)) |
 | M2 — Release engineering | Signed, shrunk, installable, upgradable builds for every V1 target, in CI, legally ready | Open |
 | M3 — Real-world validation | Live services, physical devices, real controllers, real networks, large libraries | Open |
 | M4 — Beta | `0.9.0-beta.1` in testers' hands through the stores and the website | Open |
@@ -106,11 +107,29 @@ V1 contains what Reflux fundamentally is, and no more. Each row is required for 
 | Android TV / Google TV | Done (emulator) | Physical validation in M3 |
 | Fire TV / Fire OS | Partial (one physical device) | Smoke-tested on a Fire TV Stick 4K Plus (`AFTMA08C15`, Fire OS 8.1.8.5, API 30, 32-bit userland) on 2026-10-18 with a debug build: installation, launcher, remote navigation, the folder chooser, browsing, details, search, playback up to 4K60 HEVC Main10 on the hardware decoder, lifecycle, the media session, and the instrumented suite (VERIFICATION.md). Five Fire OS defects found and fixed (DECISIONS.md, 2026-10-18). Left: the Fire TV television (not reachable), a release build (M2), Jellyfin from the device (SMB was used for Smart Offline, 2026-10-18; WebDAV added, scanned, played, and removed on the device, 2026-10-19), a USB drive, HDR output, sleep and wake, Amazon's own test criteria. Fire OS has the TV provider, and Reflux writes no Watch Next programs to it; with Reflux in the background a remote's Play key is not obeyed (both DECISIONS.md, 2026-10-18). Fire OS 6 devices (`AFTMM`, API 25) are below `minSdk`; Vega OS devices (`AFTCR001`) do not run Android applications |
 | Windows and Linux | Partial | Capabilities observed since 2026-10-19 (the display the window is on, hardware decoding as the engine shows it). Left: media keys; scrollbars; HDR output |
-| Accessibility baseline | Partial | Built 2026-10-31 (DECISIONS.md): the player and panels isolate what is behind them, every control has a label, role, and state, pages and panels are named, what happens is announced, reduced motion and text size follow the system on every platform, and touch targets are 48 dp. Walked with real TalkBack on the Pad 7, with reduced motion and 200% text, 2026-11-01. The Fire TV passed on hardware by remote, with its tree and timeline actions read through the accessibility API. Left, in VERIFICATION.md: a screen reader heard on a television, where TalkBack resumes after an overlay closes (the toolkit offers no way to move it), and a person's ear on it; a desktop screen reader depends on the toolkit (Narrator is not reached at all) |
+| Accessibility baseline | Done (closed 2026-11-01; its recorded limits stand) | Built 2026-10-31 (DECISIONS.md): the player and panels isolate what is behind them, every control has a label, role, and state, pages and panels are named, what happens is announced, reduced motion and text size follow the system on every platform, and touch targets are 48 dp. Walked with real TalkBack on the Pad 7, with reduced motion and 200% text, 2026-11-01. The Fire TV passed on hardware by remote, with its tree and timeline actions read through the accessibility API. Left, in VERIFICATION.md: a screen reader heard on a television, where TalkBack resumes after an overlay closes (the toolkit offers no way to move it), and a person's ear on it; a desktop screen reader depends on the toolkit (Narrator is not reached at all) |
 | About, legal, and attribution | Done 2026-10-19; two parts wait elsewhere | About Reflux, from the media sources page: version and build, Reflux's copyright (proprietary, all rights reserved, from `LICENSE`; DECISIONS.md, "Reflux is proprietary"), the metadata provider's credit (TMDB's logo and notice, from its adapter), what Reflux keeps and sends, and the third-party software with every license text, checked against each build by `check` (DECISIONS.md, 2026-10-19). Verified as VERIFICATION.md records. Waiting elsewhere: the privacy policy and support links (the website, W3) and libmpv's notice for a bundled build (M2). A diagnostics export is not in it: the log keeps file paths and titles (M2 row) |
 | Casting | Gate | Time-boxed feasibility before beta; V1.1 if it fails the gate (DECISIONS.md, 2026-10-17, "Casting is a V1 feasibility gate") |
 
 First M1 slice, done 2026-10-17: "From the start" keeps the place (Reflux and Jellyfin), and films' versions can be pinned and unpinned on every form factor. Second, done 2026-10-18: Watch Next on Android TV / Google TV, and the Fire TV home-screen decision. Third, 2026-10-18: the Fire TV smoke test on physical hardware and its fixes. Fourth, 2026-10-18: Identify, and episodes without a show name grouped by folder. Fifth, 2026-10-18: no Watch Next programs on Fire OS, Play ignored out of sight, and an episode's versions (list and pin). Sixth, 2026-10-18: Smart Offline complete (episodes, seasons, the Downloads page, the desktop). Seventh, 2026-10-19: WebDAV on Android (phones, televisions, Fire TV). Eighth, 2026-10-19: removing a Jellyfin server signs its session out. Ninth, 2026-10-19: desktop capabilities observed, not declared. Tenth, 2026-10-19: About, legal, and attribution. Recommended order after it: accessibility, the casting spike, performance R&D.
+
+## M2P — Playback compatibility & direct play
+
+Works before release engineering: what is signed and shipped should be the playback that M2P produces. Specification, evidence, compatibility matrix, and order of work: [PLAYBACK.md](PLAYBACK.md). It does not replace an engine, rewrite watch state or sources, or change Best Version's ranking without evidence, Smart Offline, versions, or tags.
+
+| Item | State |
+| --- | --- |
+| Current-state audit, compatibility matrix, proposed capability model, planner, negotiation, and diagnostics | Done 2026-11-01 (PLAYBACK.md) |
+| The audit's truth fixes | Open |
+| Shared capability model extended, stream facts migrated | Open |
+| Explicit, tested playback planner | Open |
+| Jellyfin negotiation through `PlaybackInfo` and a device profile, server behavior read from its session | Open |
+| Diagnostics that explain a playback, planned against observed | Open |
+| Desktop audio outputs and passthrough; the Android decoder decision, with measurements | Open |
+| Test corpus, and validation on Windows, Linux, the Phone 2a, the Pad 7, the Google TV emulator, and the Fire TV | Open |
+| The real Iron Man file has a reproducible result | **Blocked**: RS-X1 answers 404 for that file (PLAYBACK.md, section 2) |
+
+**Exit criteria:** a documented shared capability model; explicit, testable planning; accurate capability information to Jellyfin; original media preferred; non-server sources on the same concepts without pretending to transcode; diagnostics that explain every conversion; evidence-based Android and desktop decoder behavior; the Iron Man file reproducible; representative combinations tested; relevant platforms validated; no unnecessary video transcoding, including because of audio or subtitles; documentation that separates supported, device-dependent, and unverified combinations.
 
 ## M2 — Release engineering
 
