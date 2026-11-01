@@ -348,8 +348,8 @@ class FakePlayer(override val capabilities: DeviceCapabilities) : Player {
 
     var durationMs = 50 * 60_000L
     var tracks = listOf(
-        PlayerTrack("1", TrackType.AUDIO, language = "en", channels = 6, default = true),
-        PlayerTrack("2", TrackType.AUDIO, language = "fr", channels = 2),
+        PlayerTrack("1", TrackType.AUDIO, language = "en", channels = 6, default = true, position = 0),
+        PlayerTrack("2", TrackType.AUDIO, language = "fr", channels = 2, position = 1),
         PlayerTrack("1", TrackType.SUBTITLE, language = "en"),
         PlayerTrack("2", TrackType.SUBTITLE, language = "es", forced = true),
     )
@@ -376,6 +376,7 @@ class FakePlayer(override val capabilities: DeviceCapabilities) : Player {
     override fun setVolume(volume: Int) = mutable.update { it.copy(volume = volume) }
     override fun setMuted(muted: Boolean) = mutable.update { it.copy(muted = muted) }
     override fun selectAudio(trackId: String) = mutable.update { it.copy(selectedAudioId = trackId) }
+    override fun selectNoAudio() = mutable.update { it.copy(selectedAudioId = null) }
     override fun selectSubtitle(trackId: String?) = mutable.update { it.copy(selectedSubtitleId = trackId) }
 
     /** Where subtitles were last asked to stay clear of the controls. */

@@ -29,6 +29,8 @@ data class PlaybackRequirements(
     val source: Set<SourceCapability> = emptySet(),
     val audio: AudioChoice = AudioChoice.Automatic,
     val subtitle: SubtitleChoice = SubtitleChoice.Automatic,
+    /** What a real attempt showed cannot be played as it is: an unknown resolved by evidence. */
+    val originalFailed: Set<PlanPart> = emptySet(),
 )
 
 enum class PlanOutcome {
@@ -84,6 +86,8 @@ enum class PlanReason {
     VIDEO_SOFTWARE_DECODE,
     VIDEO_PAST_DECLARED_LIMIT,
     AUDIO_NOT_PLAYABLE,
+    ORIGINAL_FAILED,
+    NEGOTIATION_FAILED,
     AUDIO_PASSTHROUGH,
     AUDIO_UNAVAILABLE,
     AUDIO_OTHER_TRACK_SAME_LANGUAGE,
@@ -162,7 +166,9 @@ object PlaybackPlanner {
         private val unverified = mutableSetOf<PlanPart>()
 
         fun plan(): PlannedPlayback {
-            val videoBlocked = assessment.issues.any { it in VIDEO_BLOCKS }
+            val videoFailed = PlanPart.VIDEO in requirements.originalFailed
+            val videoBlocked = videoFailed || assessment.issues.any { it in VIDEO_BLOCKS }
+            if (requirements.originalFailed.isNotEmpty()) reasons += PlanReason.ORIGINAL_FAILED
             if (videoBlocked && SourceCapability.SERVER_TRANSCODE !in source) {
                 return cannotPlay(PlanReason.VIDEO_NOT_DECODABLE, PlanReason.NO_TRANSCODE_AVAILABLE)
             }
@@ -237,6 +243,7 @@ object PlaybackPlanner {
 
         private inner class AudioPlanning(private val tracks: List<AudioStream>) {
             private val answers = tracks.map { Capabilities.audio(it, device) }
+            private val failed = PlanPart.AUDIO in requirements.originalFailed
             private val canConvert = SourceCapability.SERVER_AUDIO_CONVERSION in source
 
             fun plan(): ChosenAudio {
@@ -255,7 +262,7 @@ object PlaybackPlanner {
             private fun explicit(index: Int): ChosenAudio {
                 val answer = answers.getOrNull(index) ?: return unavailable()
                 return when {
-                    answer.plays != Support.UNSUPPORTED -> keep(index)
+                    answer.plays != Support.UNSUPPORTED && !failed -> keep(index)
                     canConvert -> convert(index)
                     else -> unavailable(index)
                 }

@@ -122,8 +122,9 @@ Works before release engineering: what is signed and shipped should be the playb
 | Current-state audit, compatibility matrix, proposed capability model, planner, negotiation, and diagnostics | Done 2026-11-01 (PLAYBACK.md) |
 | The truth layer: what the server really did, read from its session; a true `PlayMethod`; silent audio stated; the engine's token reaching the server | Done 2026-11-01 (PLAYBACK.md, section 3a) |
 | Shared capability model extended, stream facts migrated, and the audit's other defects | Done 2026-11-01 (PLAYBACK.md, section 6) |
-| Explicit, tested playback planner | Done 2026-11-01 (PLAYBACK.md, section 7): it decides and nothing executes it yet |
-| Jellyfin negotiation through `PlaybackInfo` and a device profile, server behavior read from its session | Open |
+| Explicit, tested playback planner | Done 2026-11-01 (PLAYBACK.md, section 7) |
+| The plan executed on every source and both engines, the selected track assessed | Done 2026-11-01 (PLAYBACK.md, section 8) |
+| Jellyfin negotiation through `PlaybackInfo` and a device profile, server behavior read from its session | Done 2026-11-01 (PLAYBACK.md, section 8) |
 | Diagnostics that explain a playback, planned against observed | Open |
 | Desktop audio outputs and passthrough; the Android decoder decision, with measurements | Open |
 | Test corpus, and validation on Windows, Linux, the Phone 2a, the Pad 7, the Google TV emulator, and the Fire TV | Open |

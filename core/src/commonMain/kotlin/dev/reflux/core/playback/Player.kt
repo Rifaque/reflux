@@ -23,7 +23,15 @@ data class PlayerTrack(
     val forced: Boolean = false,
     val hearingImpaired: Boolean = false,
     val external: Boolean = false,
+    /**
+     * Its place among the media's tracks of this type: in the file, or for an external track among the request's
+     * attachments. This is how a plan's track is found, whichever engine has it. Null when the engine cannot say.
+     */
+    val position: Int? = null,
 )
+
+/** The video decoder an engine is really using. [hardware] is null when it cannot be told. */
+data class DecoderInUse(val name: String?, val hardware: Boolean?)
 
 /** Why playback failed, in terms the player UI can explain. The engine's own wording goes in [PlayerState.error]. */
 enum class PlaybackFailure {
@@ -53,6 +61,7 @@ data class PlayerState(
     val chapters: List<Chapter> = emptyList(),
     /** The codecs of audio tracks the engine found and cannot decode here. They are not in [tracks]. */
     val unsupportedAudioCodecs: List<String> = emptyList(),
+    val videoDecoder: DecoderInUse? = null,
     /** Set with [PlayerStatus.ERROR]. */
     val failure: PlaybackFailure? = null,
     /** The engine's description of [failure], for diagnostics rather than for display. */
@@ -76,13 +85,44 @@ data class SubtitleAttachment(
     val language: String?,
     val forced: Boolean = false,
     val hearingImpaired: Boolean = false,
+    /**
+     * A server makes this file when asked, which can take a minute on a large film (49 s seen for PGS in 5.6 GB), so
+     * the picture must not wait for it: the engine attaches it after the media has opened, whenever it comes.
+     */
+    val arrivesLate: Boolean = false,
 )
+
+/** Which audio track a plan wants of the engine. */
+sealed interface AudioDirective {
+    /** Only one is there to take (a converted stream), or nothing is known of them. */
+    data object EngineChoice : AudioDirective
+
+    /** The track at this [PlayerTrack.position]. [explicit]: a viewer's, so it is this track or none. */
+    data class Track(val position: Int, val explicit: Boolean = false) : AudioDirective
+
+    /** The wanted track cannot play. No other takes its place. */
+    data object None : AudioDirective
+}
+
+/** Which subtitle a plan wants of the engine. */
+sealed interface SubtitleDirective {
+    data object EngineChoice : SubtitleDirective
+    data object Off : SubtitleDirective
+    data class Embedded(val position: Int) : SubtitleDirective
+
+    /** The attachment at this place in [PlaybackRequest.subtitles]. */
+    data class Attached(val index: Int) : SubtitleDirective
+}
+
+data class TrackDirective(val audio: AudioDirective, val subtitle: SubtitleDirective)
 
 data class PlaybackRequest(
     val target: PlaybackTarget,
     val title: String,
     val startPositionMs: Long? = null,
     val subtitles: List<SubtitleAttachment> = emptyList(),
+    /** What the plan chose. Null: nothing was planned, and default track selection decides. */
+    val tracks: TrackDirective? = null,
 )
 
 /**
@@ -104,6 +144,9 @@ interface Player : AutoCloseable {
     fun setVolume(volume: Int)
     fun setMuted(muted: Boolean)
     fun selectAudio(trackId: String)
+
+    /** Plays no audio: a plan's track cannot play and no other language may take its place. */
+    fun selectNoAudio() {}
 
     /** Selects a subtitle track, or turns subtitles off with null. */
     fun selectSubtitle(trackId: String?)

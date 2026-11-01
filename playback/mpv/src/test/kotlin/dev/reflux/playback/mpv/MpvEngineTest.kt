@@ -222,6 +222,71 @@ class MpvEngineTest {
     }
 
     @Test
+    fun tracksSayWhereTheyAreAmongTheirKind() {
+        val file = TestMedia.multiTrackMkv(directory)
+        val external = directory.resolve("external.srt")
+        Files.writeString(external, "1\n00:00:00,000 --> 00:00:01,000\nBonjour\n")
+        headless().use { player ->
+            player.load(PlaybackRequest(PlaybackTarget(file.toUri().toString()), "Sample", subtitles = listOf(SubtitleAttachment(PlaybackTarget(external.toUri().toString()), "fr"))))
+            val loaded = player.await { it.status == PlayerStatus.PLAYING && it.tracks.isNotEmpty() }
+            assertEquals(listOf(0, 1), loaded.audioTracks.map { it.position })
+            assertEquals(listOf(false to 0, true to 0), loaded.subtitleTracks.map { it.external to it.position })
+        }
+    }
+
+    @Test
+    fun aSubtitleThatArrivesLateDoesNotHoldUpThePicture() {
+        // The server takes its time, as one extracting a track from a large film does.
+        val file = TestMedia.multiTrackMkv(directory)
+        val subtitle = "1\n00:00:00,000 --> 00:00:01,000\nBonjour\n".encodeToByteArray()
+        val server = HttpServer.create(InetSocketAddress(InetAddress.getByName("127.0.0.1"), 0), 0)
+        server.executor = java.util.concurrent.Executors.newCachedThreadPool()
+        val answered = java.util.concurrent.CountDownLatch(1)
+        server.createContext("/") { exchange ->
+            Thread.sleep(1_500)
+            exchange.sendResponseHeaders(200, subtitle.size.toLong())
+            exchange.responseBody.use { it.write(subtitle) }
+            answered.countDown()
+        }
+        server.start()
+        try {
+            headless().use { player ->
+                val late = SubtitleAttachment(PlaybackTarget("http://127.0.0.1:${server.address.port}/Stream.srt"), "fr", arrivesLate = true)
+                player.load(PlaybackRequest(PlaybackTarget(file.toUri().toString()), "Sample", subtitles = listOf(late)))
+                val first = player.await { it.status == PlayerStatus.PLAYING }
+                assertEquals(1L, answered.count, "the picture came first")
+                assertEquals(0, first.subtitleTracks.count { it.external })
+                val arrived = player.await { state -> state.subtitleTracks.any { it.external } }
+                assertEquals(0, arrived.subtitleTracks.single { it.external }.position)
+            }
+        } finally {
+            server.stop(0)
+        }
+    }
+
+    @Test
+    fun aPlaybackCanHaveNoAudioAndSaySo() {
+        val file = TestMedia.multiTrackMkv(directory)
+        headless().use { player ->
+            player.load(PlaybackRequest(PlaybackTarget(file.toUri().toString()), "Sample"))
+            player.await { it.status == PlayerStatus.PLAYING && it.selectedAudioId != null }
+            player.selectNoAudio()
+            val silent = player.await { it.audioUnavailable }
+            assertEquals(PlayerStatus.PLAYING, silent.status)
+        }
+    }
+
+    @Test
+    fun theDecoderInUseIsReported() {
+        val file = TestMedia.multiTrackMkv(directory)
+        headless().use { player ->
+            player.load(PlaybackRequest(PlaybackTarget(file.toUri().toString()), "Sample"))
+            val decoded = player.await { it.videoDecoder != null }
+            assertNotNull(decoded.videoDecoder?.hardware)
+        }
+    }
+
+    @Test
     fun aFileWithAudioInUseIsNotSaidToBeSilent() {
         val file = TestMedia.multiTrackMkv(directory)
         headless().use { player ->
