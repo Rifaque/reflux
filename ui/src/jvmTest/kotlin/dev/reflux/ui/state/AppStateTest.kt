@@ -16,6 +16,7 @@ import dev.reflux.ui.TestWorld
 import dev.reflux.ui.testDevice
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
@@ -493,6 +494,51 @@ class AppStateTest {
         assertEquals(2, platform.players.size)
         assertEquals("Arrival", app.playback?.title)
         assertTrue(platform.players.first().closed)
+    }
+
+    @Test
+    fun leavingWaitsForAnEngineThatIsStillLettingGo() = runTest {
+        val world = TestWorld().apply { populate() }
+        val platform = FakePlatform()
+        val app = appState(world, platform)
+        app.play(world.movie("Heat").item.id)
+        runCurrent()
+        val gate = CompletableDeferred<Unit>()
+        platform.releaseGate = gate
+        app.playback?.close()
+        runCurrent()
+        assertNull(app.playback, "the viewer has gone back; the engine has not gone yet")
+
+        var left = false
+        launch {
+            app.finishPlayback()
+            left = true
+        }
+        runCurrent()
+        assertFalse(left, "the window would go from under the engine")
+        gate.complete(Unit)
+        runCurrent()
+        assertTrue(left)
+        assertTrue(platform.players.single().closed)
+    }
+
+    @Test
+    fun leavingDoesNotWaitForeverForAnEngineThatWillNotLetGo() = runTest {
+        val world = TestWorld().apply { populate() }
+        val platform = FakePlatform()
+        val app = appState(world, platform)
+        app.play(world.movie("Heat").item.id)
+        runCurrent()
+        platform.releaseGate = CompletableDeferred()
+        app.playback?.close()
+        var left = false
+        launch {
+            app.finishPlayback()
+            left = true
+        }
+        advanceTimeBy(5_100)
+        runCurrent()
+        assertTrue(left)
     }
 
     @Test
