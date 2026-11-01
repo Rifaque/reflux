@@ -89,13 +89,17 @@ class PlannedPlaybackWindowTest {
         val subtitles = environment.library.versions(film).first().version.stream.subtitles
         // The last: this server answers 404 for the film's other PGS tracks, which the first load shows being reported.
         val pgs = subtitles.indexOfLast { it.format == SubtitleFormat.PGS && !it.forced }
+        // Two languages, and AC-3, which this stand-in device must have converted.
+        val languages = environment.library.movies().first { it.item.title == "Mickey 17" }.item.id
         assertTrue(pgs >= 0, "the film has PGS")
 
         shell = Shell(environment)
         try {
             shell.awaitShown("Home", exact = false)
-            aPlanIsPlayedAndConfirmedByTheServer(film)
+            aPlanIsPlayedAndConfirmedByTheServer(languages)
             anotherLanguageCarriesOnFromThePlace()
+            closes()
+            aPlanIsPlayedAndConfirmedByTheServer(film)
             aSubtitleTheServerExtractsArrivesWithThePictureRunning(pgs)
             closes()
         } finally {

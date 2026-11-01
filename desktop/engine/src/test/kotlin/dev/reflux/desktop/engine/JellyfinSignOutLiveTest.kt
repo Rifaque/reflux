@@ -3,6 +3,7 @@ package dev.reflux.desktop.engine
 import dev.reflux.core.net.HttpRequest
 import dev.reflux.core.source.ConnectionKind
 import dev.reflux.core.source.ConnectionRequest
+import dev.reflux.library.ConfigSeal
 import dev.reflux.library.ConnectResult
 import dev.reflux.library.SignOut
 import dev.reflux.library.net.JdkHttpFetcher
@@ -80,7 +81,10 @@ class JellyfinSignOutLiveTest {
             val signOut = environment.removeSource(connected.sourceId)
             assertNull(environment.library.source(connected.sourceId), "removed here")
             assertNull(environment.registry.resolve(connected.sourceId))
-            assertEquals("", DesktopSecrets.seal(data).open(connected.sourceId, record.config), "and its token is gone from the credential store")
+            // Only asked of a real store: without one, opening hands back what it is given. Never compared by value,
+            // which would print a live token in the failure.
+            val seal = DesktopSecrets.seal(data)
+            if (seal !== ConfigSeal.None) assertTrue(seal.open(connected.sourceId, record.config).isEmpty(), "and its token is gone from the credential store")
             assertEquals(SignOut.ENDED, signOut.await(), "the server confirmed the end")
 
             // What the server says now, asked directly.
