@@ -486,6 +486,12 @@ Hardware and software decoding are not forced on either engine. Each takes what 
 | A second failure of a work | Hard: the stated failure |
 | `UNREACHABLE`, `OUTPUT`, `UNKNOWN` | Hard: a conversion would not help. `UNREACHABLE` keeps Try again |
 | A failure on a stream already converted | Hard |
+| A stream unlike its playlist (Media3's `SampleQueueMappingException`, raised as an I/O error) | `UNKNOWN`, hard: everything was reached, so it is not `UNREACHABLE` |
+| A subtitle the server was to make never arrives (`PlayerState.subtitlesNotLoaded`, from mpv's `sub-add` reply) | The picture goes on and the viewer is told once. Not a reason to plan again |
+
+A re-plan for a track change or a failure carries on from the player's exact position. The return-visit rules in `Handoff` are not for it: they restart a place under a minute, and doubt one on a stream that runs longer than its file (seen restarting a film at 1:38).
+
+**A server's stored tracks can be wrong.** When a file is rewritten and keeps its modification date, a library scan does not notice: the server goes on listing a track the file no longer has, and every stream index after it is off by one, selecting the wrong track or none. Seen on 34 live films. Reflux cannot see this ahead of time. It shows as a mismatch or the failure above; a refresh of that item on the server fixes it.
 
 There is no retry, backoff, or lower-quality ladder. `PlanOutcome.CANNOT_PLAY` stops before anything starts. A re-plan never changes the audio language.
 
