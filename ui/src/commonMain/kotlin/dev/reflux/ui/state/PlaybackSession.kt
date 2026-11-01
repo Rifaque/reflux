@@ -319,9 +319,10 @@ class PlaybackSession internal constructor(
         if (part == PlanPart.AUDIO && track == null) return false
         replanned = true
         app.platform.report("Playback of \"$title\": the original $part did not play, so it is being planned again")
+        val place = whereTheViewerIs()
         controller?.stop(final = false)
         replan(
-            item, "Planning playback again failed", "This couldn't be played right now.", continuing = true, version = plan.version.version.id,
+            item, "Planning playback again failed", "This couldn't be played right now.", continuing = true, version = plan.version.version.id, from = place,
             audio = if (part == PlanPart.AUDIO) AudioChoice.Explicit(track!!) else requirements.audio,
             subtitle = requirements.subtitle,
             originalFailed = requirements.originalFailed + part,
@@ -446,9 +447,10 @@ class PlaybackSession internal constructor(
         val requirements = plan.requirements ?: return
         val item = itemId ?: return
         touch()
+        val place = whereTheViewerIs()
         controller?.stop(final = false)
         replan(
-            item, "Changing a track failed", "That track couldn't be played right now.", continuing = true, version = plan.version.version.id,
+            item, "Changing a track failed", "That track couldn't be played right now.", continuing = true, version = plan.version.version.id, from = place,
             audio = audio ?: requirements.audio, subtitle = subtitle ?: requirements.subtitle, originalFailed = requirements.originalFailed,
         )
     }
@@ -629,6 +631,12 @@ class PlaybackSession internal constructor(
         return true
     }
 
+    /**
+     * The same film, carrying on: this is the viewer's place now, not progress to come back to. The rules for that
+     * would drop the first minute, and doubt a place on a stream that runs a little longer than its file.
+     */
+    private fun whereTheViewerIs(): Long? = player.state.value.positionMs.takeIf { it > 0 }
+
     /** Plans [itemId] as Play does and plays it here; when nothing can be played, says why and leaves. */
     private fun replan(
         itemId: MediaId,
@@ -639,6 +647,7 @@ class PlaybackSession internal constructor(
         audio: AudioChoice = AudioChoice.Automatic,
         subtitle: SubtitleChoice = SubtitleChoice.Automatic,
         originalFailed: Set<PlanPart> = emptySet(),
+        from: Long? = null,
     ) {
         countdown?.cancel()
         upNext = null
@@ -654,7 +663,7 @@ class PlaybackSession internal constructor(
                     app.notify(app.read { unplayableReason(itemId, app.platform.device, app.sources, app.viewer) })
                     close()
                 } else {
-                    load(plan)
+                    load(if (from == null) plan else plan.copy(request = plan.request.copy(startPositionMs = from)))
                 }
             } catch (e: CancellationException) {
                 throw e
