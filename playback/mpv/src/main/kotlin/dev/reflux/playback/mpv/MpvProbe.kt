@@ -24,7 +24,7 @@ class MpvProbe private constructor(private val mpv: LibMpv) {
             ).forEach { (name, value) -> mpv.mpv_set_option_string(handle, name, value) }
             if (mpv.mpv_initialize(handle) < 0) return null
             target.headers.takeIf { it.isNotEmpty() }?.let { headers ->
-                mpv.mpv_set_property_string(handle, "http-header-fields", headers.entries.joinToString(",") { "${it.key}: ${it.value}" })
+                mpv.mpv_set_property_string(handle, "http-header-fields", MpvPlayer.headerFields(headers))
             }
             mpv.mpv_command(handle, arrayOf("loadfile", MpvPlayer.mpvPath(target.uri), "replace", null))
             if (!awaitLoaded(handle, timeoutMs)) return null

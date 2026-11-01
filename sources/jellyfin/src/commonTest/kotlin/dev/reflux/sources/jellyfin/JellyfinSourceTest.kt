@@ -148,13 +148,14 @@ class JellyfinSourceTest {
         source.reportProgress("items/m1/sources/s1", 70_000, paused = true)
         source.reportStopped("items/m1/sources/s1", 80_000)
         source.setPlayed("items/m1/sources/s1", true)
-        val posts = requests.map { it.method + " " + it.url.removePrefix("https://jf.example.com/") }
+        val posts = requests.filter { "PlaybackInfo" !in it.url }.map { it.method + " " + it.url.removePrefix("https://jf.example.com/") }
         assertEquals(
             listOf("POST Sessions/Playing", "POST Sessions/Playing/Progress", "POST Sessions/Playing/Stopped", "POST UserPlayedItems/m1?userId=u1"),
             posts,
         )
-        assertTrue("\"PositionTicks\":700000000" in requests[1].body!!.decodeToString())
-        assertTrue("\"IsPaused\":true" in requests[1].body!!.decodeToString())
+        val second = requests.first { it.url.endsWith("Sessions/Playing/Progress") }.body!!.decodeToString()
+        assertTrue("\"PositionTicks\":700000000" in second)
+        assertTrue("\"IsPaused\":true" in second)
     }
 
     @Test
@@ -167,13 +168,13 @@ class JellyfinSourceTest {
         source.updatePosition(path, 65_000)
         source.reportProgress(path, 70_000, paused = false)
         source.reportStopped(path, 80_000)
-        val posts = requests.map { it.method + " " + it.url.removePrefix("https://jf.example.com/") }
+        val posts = requests.filter { "PlaybackInfo" !in it.url }.map { it.method + " " + it.url.removePrefix("https://jf.example.com/") }
         assertEquals(
             listOf("POST Sessions/Playing/Stopped", "POST Sessions/Playing", "POST Sessions/Playing/Progress", "POST Sessions/Playing/Progress", "POST Sessions/Playing/Stopped"),
             posts,
             "one session, opened once",
         )
-        assertTrue("\"PositionTicks\":650000000" in requests[2].body!!.decodeToString())
+        assertTrue(requests.any { "\"PositionTicks\":650000000" in it.body?.decodeToString().orEmpty() })
     }
 
     @Test

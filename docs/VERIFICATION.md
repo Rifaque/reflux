@@ -561,3 +561,27 @@ The two offline tests of the section below were this machine's disk, as it said,
 | Fire TV decoders | The same, `AFTMA08C15`, API 30, `armeabi-v7a` only | Dolby AC-3, E-AC-3, AC-4; no `eac3-joc`, DTS, or TrueHD; hardware H.264, HEVC, VP9, AV1, MPEG-2, MPEG-4; DV decoders; current display lists HDR10 |
 
 **Not verified:** anything played through Reflux; the Iron Man file itself; Media3 with any of this; the Phone 2a (not attached) and the Google TV emulator (not started); `.pgssub` delivery; passthrough; HDR output; Linux hardware decoding. "Listed" in PLAYBACK.md means only what a device lists.
+
+## Playback truth layer (M2P): what was verified
+
+2026-11-01, on `feature/engine-foundation`, on top of `a4435d8`. Real playback of a server's stream through libmpv, headless, and a real server's sessions; Jellyfin Server 12.2.0 on RS-X1 with the dedicated test account.
+
+| What | How | Result |
+| --- | --- | --- |
+| Full suite | `check`, plus Android debug and test APKs | 845 tests, 12 skipped, 2 failed. `Media3FailureTest`'s new case was mine and could not run off a device (`Format` needs Android classes), so it was removed; the device test below covers it. `DesktopOfflineTest` failed as the 2026-11-01 section above says it does on a disk under its 5% reserve: C: had 35 GB free of a 51 GB reserve. `OfflineWindowTest`, its partner, is a window test and did not run. The Android unit tests were rerun after the removal |
+| Focused tests | `JellyfinPlaybackTest` (20 new, fixtures), `MpvEngineTest` (4 new, real libmpv), `PlaybackSessionTest` (5 new) | Pass |
+| The token through the engine, before the fix | Loopback server recording `Authorization`, real libmpv | **Failed:** the server received `MediaBrowser Client="Reflux"`, for playback and for the probe. Token never sent |
+| The same after the fix | The same | Pass: the value arrives whole on every request |
+| The token on a real server | `JellyfinTruthLiveTest`: real libmpv on `Items/{id}/Download`, which refuses without a token (control: 401) | With the header: playing, 4 tracks. Without it: `ERROR UNREACHABLE` |
+| Direct Play | Real libmpv on the static stream, position reported, then `GET Sessions` | `DIRECT_PLAY`, video and audio preserved. Session lists the item, `playMethod=DirectPlay`, `TranscodingInfo` none. `SupportsDirectPlay=true` |
+| Audio-only conversion | HEVC Main 10, E-AC-3, Matroska, no AAC track; real first segment | `IsVideoDirect: true`, `IsAudioDirect: false`, hevc + aac, ts, `AudioCodecNotSupported`. `SupportsDirectStream: false` |
+| Remux | The same file, Matroska refused by the profile | `IsVideoDirect: true`, `IsAudioDirect: true`, hevc + eac3, ts, `ContainerNotSupported`. `SupportsDirectStream: false` |
+| Video transcode | The same file, HEVC refused by the profile | `IsVideoDirect: false`, `IsAudioDirect: true`, h264 + eac3, ts, `VideoCodecNotSupported`. `SupportsDirectStream: false` |
+| A subtitle causing a conversion | HEVC, E-AC-3, PGS, audio the only problem; PGS selected on the server | `IsVideoDirect: false`, `IsAudioDirect: false`, h264 + aac, `AudioCodecNotSupported`, `SubtitleCodecNotSupported`. Reported as subtitle-triggered |
+| The same with PGS declared External | The same file and track | `IsVideoDirect: true`, hevc + aac, `AudioCodecNotSupported` only. No burn-in |
+| Silent audio, desktop | `MpvEngineTest`, a generated file whose audio codec is unknown, real libmpv | Plays, `aid` is no, `audioUnavailable` true; a file with working audio is false |
+| Silent audio, Android | `PlaybackOnDeviceTest` on the Xiaomi Pad 7, real Media3, generated H.264 + DTS in Matroska; this device has no DTS decoder | Picture plays, `audioUnavailable` true, `unsupportedAudioCodecs` `audio/vnd.dts`. `theEnginePlaysSeeksAndEnds` still passes there |
+
+All conversions ran in software on the server (`HardwareAccelerationType: none`), and each was stopped after its first segment.
+
+**Not verified:** the notice on a real screen (the session test reads it; the engine tests stop at `audioUnavailable`); the whole session on a Jellyfin stream through the real app, with its log line; the Iron Man file, which still fails on the server, so the live cases used other files of its class; any `.pgssub` delivery being played; Media3 authenticated requests, which were not in question; the Fire TV, the phone, and Linux for this slice. The live test now starts real conversions on every `check` where a server is named: about 20 seconds.

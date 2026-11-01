@@ -325,6 +325,7 @@ class Media3Player(context: Context, override val capabilities: DeviceCapabiliti
                 durationMs = duration ?: previous.durationMs,
                 speed = player.playbackParameters.speed.toDouble(),
                 tracks = tracks.map { it.first },
+                unsupportedAudioCodecs = unsupportedAudio(player.currentTracks),
                 selectedAudioId = tracks.firstOrNull { it.second && it.first.type == TrackType.AUDIO }?.first?.id,
                 selectedSubtitleId = tracks.firstOrNull { it.second && it.first.type == TrackType.SUBTITLE }?.first?.id,
             )
@@ -338,7 +339,8 @@ class Media3Player(context: Context, override val capabilities: DeviceCapabiliti
             C.TRACK_TYPE_TEXT -> TrackType.SUBTITLE
             else -> return@flatMapIndexed emptyList()
         }
-        (0 until group.length).filter { group.isTrackSupported(it) || type == TrackType.SUBTITLE }.map { trackIndex ->
+        // A track in use is listed whatever its support: the engine may choose one past what the device declares.
+        (0 until group.length).filter { group.isTrackSupported(it) || type == TrackType.SUBTITLE || group.isTrackSelected(it) }.map { trackIndex ->
             val format = group.getTrackFormat(trackIndex)
             PlayerTrack(
                 id = "${if (type == TrackType.AUDIO) "a" else "s"}:$groupIndex:$trackIndex",
@@ -372,6 +374,11 @@ class Media3Player(context: Context, override val capabilities: DeviceCapabiliti
             in 3000..4999 -> PlaybackFailure.UNSUPPORTED
             in 5000..5999 -> PlaybackFailure.OUTPUT
             else -> PlaybackFailure.UNKNOWN
+        }
+
+        /** The codecs of the audio tracks no renderer can take. Media3 leaves them unselected and plays on in silence. */
+        fun unsupportedAudio(tracks: Tracks): List<String> = tracks.groups.filter { it.type == C.TRACK_TYPE_AUDIO }.flatMap { group ->
+            (0 until group.length).filter { !group.isTrackSupported(it, true) }.map { group.getTrackFormat(it).sampleMimeType ?: "unknown" }
         }
 
         fun subtitleMimeType(uri: String): String = when (uri.substringBefore('?').substringAfterLast('.').lowercase()) {

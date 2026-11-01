@@ -55,6 +55,15 @@ abstract class GenerateTestMedia : DefaultTask() {
                 "-c:a", "aac", "-b:a", "32k", "-metadata:s:a:0", "language=eng", clip.path,
             )
         }
+        // Picture with DTS sound, which most devices cannot decode: what silent playback is tested with.
+        exec.exec {
+            commandLine(
+                "ffmpeg", "-loglevel", "error", "-y",
+                "-f", "lavfi", "-i", "testsrc=size=320x180:rate=5", "-f", "lavfi", "-i", "sine=frequency=440",
+                "-t", "20", "-c:v", "libx264", "-preset", "ultrafast", "-crf", "38", "-pix_fmt", "yuv420p", "-g", "5",
+                "-c:a", "dca", "-strict", "-2", "-ar", "48000", "-ac", "2", output.get().file("dts.mkv").asFile.path,
+            )
+        }
     }
 }
 
