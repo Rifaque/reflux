@@ -159,9 +159,11 @@ class JellyfinExecutionLiveTest {
     @Test
     fun anExplicitTrackIsTheOneTheServerConverts() = runBlocking {
         val setup = setup("reflux-execution-track-test") ?: return@runBlocking assumeTrue("no live Jellyfin server or libmpv", false)
-        val version = setup.versions.firstOrNull { v -> v.stream.audio.size > 1 && v.stream.video?.codec == VideoCodec.HEVC && setup.server.serves(v) }
-        assumeTrue("no served file with two audio tracks", version != null)
-        setup.run("explicit second track, converted", version!!, capabilities.copy(audioDecoders = emptySet()), audio = AudioChoice.Explicit(1)) { compared, state ->
+        // Two languages, whatever the codec: which track was asked for only shows if the tracks can be told apart.
+        val version = setup.versions.firstOrNull { v -> v.stream.audio.mapNotNull { it.language }.distinct().size > 1 && setup.server.serves(v) }
+        assumeTrue("no served file with two audio languages", version != null)
+        println("LIVE explicit track of ${version!!.location.path.takeLast(24)}: ${version.stream.audio.map { it.sourceIndex to it.language }}")
+        setup.run("explicit second track, converted", version, capabilities.copy(audioDecoders = emptySet()), audio = AudioChoice.Explicit(1)) { compared, state ->
             assertEquals(1, compared.planned.audioIndex)
             assertEquals(StreamFate.CONVERTED, compared.evidence?.audio)
             assertEquals(1, state.audioTracks.size, "the converted stream carries the one track asked for")
