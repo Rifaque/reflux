@@ -25,8 +25,23 @@ enum class SourceCapability {
     /** Can synchronize watch state back to the source. */
     WATCH_STATE_SYNC,
 
-    /** Can transcode on the server side. */
+    /** Can transcode video on the server side. */
     SERVER_TRANSCODE,
+
+    /** Can put original streams in another container. */
+    SERVER_REMUX,
+
+    /** Can convert audio and leave the video as it is. */
+    SERVER_AUDIO_CONVERSION,
+
+    /** Can hand out a track inside a file as a file of its own. */
+    SERVER_SUBTITLE_EXTRACTION,
+
+    /** Can convert a text subtitle to another text format. */
+    SERVER_SUBTITLE_CONVERSION,
+
+    /** Can draw a subtitle into the picture, which means transcoding the video. */
+    SERVER_BURN_IN,
 
     /** Hands out its files whole, so that a copy can be kept on the device (see [DownloadableSource]). */
     DOWNLOAD,

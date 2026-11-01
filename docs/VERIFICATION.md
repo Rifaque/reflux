@@ -603,3 +603,17 @@ All conversions ran in software on the server (`HardwareAccelerationType: none`)
 | Fire TV `AFTMA08C15` | The same (API 30, 32-bit, through its HDMI output) | Pass. Media3 reports AC-3, E-AC-3, and Atmos passthrough and 8 channels; no receiver or ear has confirmed it |
 
 **Not verified:** the Nothing Phone 2a and the Google TV emulator (not read); `PlaybackOnDeviceTest` after these changes (the Pad 7 dropped off adb before the rerun; `audioThisDevice...` last passed on `545f721`'s tree); `AndroidCapabilitySource` reacting to a real output being plugged in (its reading is tested, the callbacks are not); desktop channels on real surround hardware (the engine test uses a null output); any claim in the model about PGS, VobSub, DVB, WebVTT, or TTML on Android, which stay unknown.
+
+## Playback planner (M2P.3): what was verified
+
+2026-11-01, on `feature/engine-foundation`, on top of `f66c5bd`. Fixtures only: nothing here played anything, because nothing executes a plan.
+
+| What | How | Result |
+| --- | --- | --- |
+| Full suite | `check` | **Not clean.** 962 tests, 12 skipped, 2 failed. `DesktopOfflineTest` failed as recorded above: C: had 27 GB free of a 51 GB reserve; it was not rerun on a roomier disk. `PlaybackAssessorTest`'s new case asserted too much and was corrected; `core` was then rerun alone and passed, and the full suite was not rerun. Window tests did not run |
+| The plan | `PlaybackPlannerTest`, 62 new tests of plans and reasons, by delivery, video, audio, subtitles, combinations, range, and source | Pass |
+| One answer to "can this play" | In the same test: a client-only plan is `CANNOT_PLAY` exactly when `PlaybackAssessor` says unsupported, over 720 combinations of device, video, audio, and container | Pass |
+| Best Version | `PlaybackAssessorTest` (2 new); `VersionSelectorTest` unchanged | Pass |
+| Jellyfin's declaration | `JellyfinPlaybackTest` (1 new) | Pass |
+
+**Not verified:** any plan against a real playback; the capability sets for local, SMB, and WebDAV in the planner's tests are copies of what those adapters declare, not read from them; automatic burn-in of forced subtitles was decided against without a real case.

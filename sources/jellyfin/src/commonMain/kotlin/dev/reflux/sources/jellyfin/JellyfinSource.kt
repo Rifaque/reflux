@@ -74,7 +74,7 @@ class JellyfinSource(
         type = TYPE,
         displayName = displayName,
         locality = localityOf(credentials.serverUrl),
-        capabilities = setOf(SourceCapability.PROVIDES_CATALOG, SourceCapability.WATCH_STATE_SYNC, SourceCapability.DOWNLOAD),
+        capabilities = setOf(SourceCapability.PROVIDES_CATALOG, SourceCapability.WATCH_STATE_SYNC, SourceCapability.DOWNLOAD) + SERVER_CONVERSIONS,
     )
 
     override suspend fun availability(): Availability = try {
@@ -511,6 +511,12 @@ class JellyfinSource(
 
     companion object {
         const val TYPE: String = "jellyfin"
+
+        /** What a Jellyfin server can do, each seen live (docs/PLAYBACK.md, section 3). Reflux does not ask for any of it yet. */
+        private val SERVER_CONVERSIONS = setOf(
+            SourceCapability.SERVER_REMUX, SourceCapability.SERVER_AUDIO_CONVERSION, SourceCapability.SERVER_TRANSCODE,
+            SourceCapability.SERVER_SUBTITLE_EXTRACTION, SourceCapability.SERVER_SUBTITLE_CONVERSION, SourceCapability.SERVER_BURN_IN,
+        )
         private const val PAGE_SIZE = 500
         private const val TICKS_PER_MS = 10_000L
         private const val ASK_WITHIN_MS = 3_000L

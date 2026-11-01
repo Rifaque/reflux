@@ -36,7 +36,9 @@ data class PlaybackAssessment(val issues: List<PlaybackIssue>) {
 }
 
 /**
- * Deterministic compatibility check between a version's streams and the device.
+ * Deterministic compatibility check between a version's streams and the device: the one answer to whether this
+ * client can play a version as it is. Best Version ranks by it and [PlaybackPlanner] plans from it, and what it
+ * compares it reads from [Capabilities].
  *
  * Unknown stream properties never produce issues: Reflux does not refuse to play a file because
  * it could not inspect it. The platform player remains the final authority.
@@ -98,7 +100,7 @@ object PlaybackAssessor {
     private fun assessAudio(tracks: List<AudioStream>, device: DeviceCapabilities): List<PlaybackIssue> {
         val known = tracks.filter { it.codec != AudioCodec.UNKNOWN }
         if (known.isEmpty()) return emptyList()
-        val playable = known.filter { it.codec in device.audioDecoders || it.codec in device.audioPassthrough }
+        val playable = known.filter { Capabilities.audio(it, device).plays != Support.UNSUPPORTED }
         if (playable.isEmpty()) return listOf(PlaybackIssue.NO_PLAYABLE_AUDIO)
         val best = playable.maxBy { it.channels ?: 0 }
         val passthrough = best.codec in device.audioPassthrough
