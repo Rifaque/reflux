@@ -397,6 +397,11 @@ class FakePlayer(override val capabilities: DeviceCapabilities) : Player {
 
     fun end() = mutable.update { it.copy(status = PlayerStatus.ENDED, positionMs = it.durationMs ?: it.positionMs) }
 
+    /** The media has sound and no track of it can be used, while the picture plays on. */
+    fun loseSound(unsupported: List<String> = emptyList()) = mutable.update { it.copy(selectedAudioId = null, unsupportedAudioCodecs = unsupported) }
+
+    fun regainSound() = mutable.update { it.copy(selectedAudioId = "1", unsupportedAudioCodecs = emptyList()) }
+
     fun fail(message: String, failure: PlaybackFailure = PlaybackFailure.UNKNOWN) =
         mutable.update { it.copy(status = PlayerStatus.ERROR, failure = failure, error = message) }
 }

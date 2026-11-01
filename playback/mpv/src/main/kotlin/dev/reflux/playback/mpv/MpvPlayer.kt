@@ -53,7 +53,7 @@ class MpvPlayer private constructor(
         setProperty("start", request.startPositionMs?.let { "+" + (it / 1000.0) } ?: "none")
         command("change-list", "sub-files", "clr", "")
         request.subtitles.forEach { command("change-list", "sub-files", "append", mpvPath(it.target.uri)) }
-        setProperty("http-header-fields", request.target.headers.entries.joinToString(",") { "${it.key}: ${it.value}" })
+        setProperty("http-header-fields", headerFields(request.target.headers))
         setProperty("force-media-title", request.title)
         setProperty("pause", "no")
         command("loadfile", mpvPath(request.target.uri), "replace")
@@ -281,6 +281,13 @@ class MpvPlayer private constructor(
             LibMpv.ERROR_AO_INIT_FAILED, LibMpv.ERROR_VO_INIT_FAILED -> PlaybackFailure.OUTPUT
             else -> PlaybackFailure.UNKNOWN
         }
+
+        /**
+         * [headers] as the value of mpv's `http-header-fields`, a comma-separated list: commas within a value
+         * are escaped, or the value is cut there and sent in pieces (a Jellyfin token never left the engine).
+         */
+        internal fun headerFields(headers: Map<String, String>): String =
+            headers.entries.joinToString(",") { "${it.key}: ${it.value}".replace("\\", "\\\\").replace(",", "\\,") }
 
         /** mpv takes plain paths for local files and URLs for everything else. */
         internal fun mpvPath(uri: String): String =

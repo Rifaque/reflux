@@ -72,6 +72,22 @@ object TestMedia {
         return output
     }
 
+    /** 3 s of H.264 with an audio track in a codec no decoder knows: its name in the file is overwritten. */
+    fun undecodableAudioMkv(directory: Path): Path {
+        val output = directory.resolve("Undecodable.mkv")
+        run(
+            "ffmpeg", "-y", "-loglevel", "error",
+            "-f", "lavfi", "-i", "testsrc=duration=3:size=320x240:rate=24",
+            "-f", "lavfi", "-i", "sine=frequency=440:duration=3",
+            "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac",
+            output.toString(),
+        )
+        val bytes = String(Files.readAllBytes(output), Charsets.ISO_8859_1)
+        check("A_AAC" in bytes) { "the file names its audio codec some other way" }
+        Files.write(output, bytes.replace("A_AAC", "A_ZZZ").toByteArray(Charsets.ISO_8859_1))
+        return output
+    }
+
     /** 2 s of 10-bit HEVC tagged as HDR10 (PQ transfer). */
     fun hdrHevcMp4(directory: Path): Path {
         val output = directory.resolve("hdr.mp4")

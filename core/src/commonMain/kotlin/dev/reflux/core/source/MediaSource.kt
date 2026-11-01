@@ -68,6 +68,12 @@ interface DownloadableSource : MediaSource {
     suspend fun downloadTarget(path: String): PlaybackTarget
 }
 
+/** A source that can say what really happened to a playback (docs/PLAYBACK.md). */
+interface PlaybackEvidenceSource : MediaSource {
+    /** What the source says of the playback of [path] now; null when [path] is not a playback. Never fails. */
+    suspend fun playbackEvidence(path: String): dev.reflux.core.playback.PlaybackEvidence?
+}
+
 /** A file reported by a file-enumerating source. */
 data class SourceFile(
     /** Source-relative path with `/` separators. */

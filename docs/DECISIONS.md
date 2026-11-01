@@ -926,4 +926,7 @@ The 2026-10-08 Jellyfin decision used static streams alone, with no server-side 
 - **`media3-exoplayer-hls` is added when negotiation lands** (Apache-2.0): Media3 cannot open a server's HLS without it, it comes from the same project at the same version, and there is no smaller way to follow the server's stream.
 - **No FFmpeg extension on Android for now.** Server conversion covers server files; what remains is DTS and TrueHD on local or share files (4 of about 1,280 real tracks, and silent rather than unplayable). `org.jellyfin.media3:media3-ffmpeg-decoder` is GPL-3.0, which proprietary Reflux cannot ship. Reopened only with measurements and legal review.
 
+- **Observing comes first, and is separate from choosing.** The truth layer (PLAYBACK.md, section 3a) reports and decides nothing. `PlaybackInfo` is asked after playback begins, with a short limit, so that seeing what a server would do can never cost a start.
+- **Direct Play has to be shown.** The server keeps no record of it, so it needs the original requested, the server listing that playback, and no conversion listed; otherwise it is unknown.
+
 Alternatives rejected: keeping static streams only (silent playback stays, and no explanation is possible); a Reflux transcoder or remuxer (a new engine, against the milestone's scope); inferring modes from a client-side table (the thing M2P exists to remove). Milestone numbering: this is M2P, ahead of M2 release engineering, so the many existing references to M2 stay correct.

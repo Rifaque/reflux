@@ -11,6 +11,7 @@ import dev.reflux.core.playback.AudioCodec
 import dev.reflux.core.playback.AudioStream
 import dev.reflux.core.playback.Container
 import dev.reflux.core.playback.DynamicRange
+import dev.reflux.core.playback.PlaybackEvidence
 import dev.reflux.core.playback.StreamInfo
 import dev.reflux.core.playback.SubtitleFormat
 import dev.reflux.core.playback.SubtitleStream
@@ -24,6 +25,7 @@ import dev.reflux.core.source.CatalogVersion
 import dev.reflux.core.source.SectionKind
 import dev.reflux.core.source.SectionedSource
 import dev.reflux.core.source.SourceSection
+import dev.reflux.core.source.PlaybackEvidenceSource
 import dev.reflux.core.source.PlaybackTarget
 import dev.reflux.core.source.SourceCapability
 import dev.reflux.core.source.SourceDescriptor
@@ -34,7 +36,10 @@ import dev.reflux.core.source.WatchStateSyncSource
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
@@ -43,7 +48,7 @@ import kotlinx.serialization.json.JsonPrimitive
  *
  * Jellyfin's items become catalog entries that Reflux identifies with its own rules; playback uses Jellyfin's
  * direct (static) streams so Reflux's own player, Best Version, and track logic apply. Server-side transcoding
- * is not used.
+ * is not used. `PlaybackInfo` is asked only to observe what the server would do and to name the session.
  *
  * Paths are adapter-defined locators: `items/{item}/sources/{mediaSource}` for versions,
  * `videos/{item}/{mediaSource}/subtitles/{index}/stream.{ext}` for external subtitles, and
@@ -54,9 +59,14 @@ class JellyfinSource(
     http: HttpFetcher,
     displayName: String = "Jellyfin",
     deviceName: String = "Reflux",
-) : CatalogSource, WatchStateSyncSource, DownloadableSource, SectionedSource {
+) : CatalogSource, WatchStateSyncSource, DownloadableSource, SectionedSource, PlaybackEvidenceSource {
     private val api = JellyfinApi(credentials.serverUrl, http, credentials.deviceId, deviceName, credentials.accessToken)
     private val startedSessions = mutableSetOf<String>()
+
+    /** What the server answered when each open playback began. */
+    private val asked = mutableMapOf<String, Asked>()
+
+    private class Asked(val answer: JellyfinPlaybackAnswer?, val authenticated: Boolean?)
 
     override val descriptor: SourceDescriptor = SourceDescriptor(
         id = StableIds.sourceId(TYPE, "${credentials.serverId}/${credentials.userId}"),
@@ -179,18 +189,20 @@ class JellyfinSource(
 
     override suspend fun reportProgress(path: String, positionMs: Long, paused: Boolean) {
         val (itemId, sourceId) = versionIds(path) ?: return
-        val body = playbackBody(itemId, sourceId, positionMs, paused)
         if (startedSessions.add(path)) {
-            api.post("Sessions/Playing", body)
+            asked[path] = ask(path)
+            api.post("Sessions/Playing", playbackBody(path, itemId, sourceId, positionMs, paused))
         } else {
-            api.post("Sessions/Playing/Progress", body)
+            api.post("Sessions/Playing/Progress", playbackBody(path, itemId, sourceId, positionMs, paused))
         }
     }
 
     override suspend fun reportStopped(path: String, positionMs: Long) {
         val (itemId, sourceId) = versionIds(path) ?: return
         startedSessions.remove(path)
-        api.post("Sessions/Playing/Stopped", playbackBody(itemId, sourceId, positionMs, paused = false))
+        val body = playbackBody(path, itemId, sourceId, positionMs, paused = false)
+        asked.remove(path)
+        api.post("Sessions/Playing/Stopped", body)
     }
 
     /**
@@ -201,7 +213,7 @@ class JellyfinSource(
     override suspend fun updatePosition(path: String, positionMs: Long) {
         val (itemId, sourceId) = versionIds(path) ?: return
         if (path in startedSessions) {
-            api.post("Sessions/Playing/Progress", playbackBody(itemId, sourceId, positionMs, paused = false))
+            api.post("Sessions/Playing/Progress", playbackBody(path, itemId, sourceId, positionMs, paused = false))
         } else {
             reportStopped(path, positionMs)
         }
@@ -218,16 +230,84 @@ class JellyfinSource(
         return if (segments.size == 4 && segments[0] == "items" && segments[2] == "sources") segments[1] to segments[3] else null
     }
 
-    private fun playbackBody(itemId: String, mediaSourceId: String, positionMs: Long, paused: Boolean) = JsonObject(
-        mapOf(
-            "ItemId" to JsonPrimitive(itemId),
-            "MediaSourceId" to JsonPrimitive(mediaSourceId),
-            "PositionTicks" to JsonPrimitive(positionMs * TICKS_PER_MS),
-            "IsPaused" to JsonPrimitive(paused),
-            "PlayMethod" to JsonPrimitive("DirectStream"),
-            "CanSeek" to JsonPrimitive(true),
-        ),
+    /** Reflux opens the file itself ([playbackTarget]), which in Jellyfin's words is Direct Play. */
+    private fun playbackBody(path: String, itemId: String, mediaSourceId: String, positionMs: Long, paused: Boolean) = JsonObject(
+        buildMap {
+            put("ItemId", JsonPrimitive(itemId))
+            put("MediaSourceId", JsonPrimitive(mediaSourceId))
+            put("PositionTicks", JsonPrimitive(positionMs * TICKS_PER_MS))
+            put("IsPaused", JsonPrimitive(paused))
+            put("PlayMethod", JsonPrimitive("DirectPlay"))
+            put("CanSeek", JsonPrimitive(true))
+            asked[path]?.answer?.playSessionId?.let { put("PlaySessionId", JsonPrimitive(it)) }
+        },
     )
+
+    /**
+     * What the server says it would do with [path] for this [request]. Nothing starts on the server until a
+     * stream is fetched.
+     *
+     * @throws JellyfinException when it could not be asked.
+     */
+    suspend fun playbackInfo(path: String, request: JellyfinPlaybackAsk = JellyfinPlaybackAsk()): JellyfinPlaybackAnswer? {
+        val (itemId, sourceId) = requireNotNull(versionIds(path)) { "not a Jellyfin version: $path" }
+        val body = JsonObject(
+            buildMap<String, JsonElement> {
+                put("UserId", JsonPrimitive(credentials.userId))
+                put("MediaSourceId", JsonPrimitive(sourceId))
+                put("DeviceProfile", Json.parseToJsonElement(request.deviceProfile))
+                put("SubtitleStreamIndex", JsonPrimitive(request.subtitleStreamIndex))
+                request.audioStreamIndex?.let { put("AudioStreamIndex", JsonPrimitive(it)) }
+                put("EnableDirectPlay", JsonPrimitive(true))
+                put("EnableDirectStream", JsonPrimitive(request.allowConversion))
+                put("EnableTranscoding", JsonPrimitive(request.allowConversion))
+                put("AutoOpenLiveStream", JsonPrimitive(false))
+            },
+        )
+        return api.post("Items/$itemId/PlaybackInfo", body).obj()?.let { JellyfinPlaybackAnswer.parse(it, sourceId) }
+    }
+
+    /** This device's session on the server, or null when the server lists none. */
+    suspend fun sessionFacts(): JellyfinSessionFacts? = JellyfinSessionFacts.parse(api.get("Sessions"), credentials.deviceId)
+
+    /** Where [answer]'s conversion is fetched. The URL carries the server's key: it is never logged unredacted. */
+    fun transcodingTarget(answer: JellyfinPlaybackAnswer): PlaybackTarget? =
+        answer.transcodingUrl?.let { PlaybackTarget(api.url(it.trimStart('/')), mapOf("Authorization" to api.authorization)) }
+
+    /** Ends a conversion this device started, so that no encode outlives its viewer. */
+    suspend fun stopConversion(playSessionId: String) {
+        api.delete("Videos/ActiveEncodings", mapOf("deviceId" to credentials.deviceId, "playSessionId" to playSessionId))
+    }
+
+    override suspend fun playbackEvidence(path: String): PlaybackEvidence? {
+        val (itemId, _) = versionIds(path) ?: return null
+        val answer = asked[path] ?: ask(path)
+        val session = try {
+            withTimeoutOrNull(ASK_WITHIN_MS) { sessionFacts() }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            null
+        }
+        return JellyfinDelivery.evidence("the original file (static stream)", originalRequested = true, itemId, answer.answer, session, answer.authenticated)
+    }
+
+    /**
+     * Best effort, with a short limit: this only observes, and a server that does not answer must not hold up
+     * the report behind it, let alone the playback.
+     */
+    private suspend fun ask(path: String): Asked = try {
+        withTimeoutOrNull(ASK_WITHIN_MS) {
+            val answer = playbackInfo(path)
+            Asked(answer, authenticated = answer != null)
+        } ?: Asked(null, null)
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: JellyfinException) {
+        Asked(null, if (e.status == 401 || e.status == 403) false else null)
+    } catch (_: Exception) {
+        Asked(null, null)
+    }
 
     private class Series(val name: String, val year: Int?, val providerIds: Map<String, String>, val artwork: Map<ArtworkKind, String>)
 
@@ -422,6 +502,7 @@ class JellyfinSource(
         const val TYPE: String = "jellyfin"
         private const val PAGE_SIZE = 500
         private const val TICKS_PER_MS = 10_000L
+        private const val ASK_WITHIN_MS = 3_000L
 
         /**
          * Signs in and returns credentials to persist. Never stores the password.

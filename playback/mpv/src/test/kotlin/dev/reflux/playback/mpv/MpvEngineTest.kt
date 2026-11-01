@@ -22,6 +22,9 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import org.junit.Assume.assumeTrue
+import com.sun.net.httpserver.HttpServer
+import java.net.InetAddress
+import java.net.InetSocketAddress
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.test.AfterTest
@@ -136,6 +139,76 @@ class MpvEngineTest {
         assertTrue(lines.any { "http-header-fields" in it }, "including the line that sets the headers")
         assertTrue(lines.none { "0123456789abcdef" in it }, "but never the token")
         assertTrue(!Files.exists(logFile), "and the engine writes no file of its own")
+    }
+
+    /** Serves [file] and keeps every value of the `Authorization` header it is sent, as a server would see them. */
+    private fun <T> serving(file: Path, seen: MutableList<List<String>>, use: (String) -> T): T {
+        val server = HttpServer.create(InetSocketAddress(InetAddress.getByName("127.0.0.1"), 0), 0)
+        val bytes = Files.readAllBytes(file)
+        server.createContext("/") { exchange ->
+            seen += exchange.requestHeaders["Authorization"].orEmpty()
+            val range = exchange.requestHeaders.getFirst("Range")?.removePrefix("bytes=")?.substringBefore('-')?.toIntOrNull()
+            val from = range ?: 0
+            exchange.responseHeaders.add("Accept-Ranges", "bytes")
+            exchange.responseHeaders.add("Content-Type", "video/x-matroska")
+            if (range != null) exchange.responseHeaders.add("Content-Range", "bytes $from-${bytes.size - 1}/${bytes.size}")
+            exchange.sendResponseHeaders(if (range != null) 206 else 200, (bytes.size - from).toLong())
+            runCatching { exchange.responseBody.use { it.write(bytes, from, bytes.size - from) } }
+        }
+        server.start()
+        try {
+            return use("http://127.0.0.1:${server.address.port}/stream")
+        } finally {
+            server.stop(0)
+        }
+    }
+
+    private val jellyfinAuthorization = """MediaBrowser Client="Reflux", Device="Desk", DeviceId="d1", Version="0.1.0", Token="tok""""
+
+    @Test
+    fun aHeaderWithCommasReachesTheServerWhole() {
+        // Jellyfin's Authorization value is full of commas, and the engine's header option is a comma-separated list.
+        val file = TestMedia.multiTrackMkv(directory)
+        val seen = java.util.Collections.synchronizedList(mutableListOf<List<String>>())
+        serving(file, seen) { url ->
+            headless().use { player ->
+                player.load(PlaybackRequest(PlaybackTarget(url, mapOf("Authorization" to jellyfinAuthorization)), "Sample"))
+                player.await { it.status == PlayerStatus.PLAYING }
+            }
+        }
+        assertTrue(seen.isNotEmpty())
+        assertTrue(seen.all { it == listOf(jellyfinAuthorization) }, "every request carried it whole: $seen")
+    }
+
+    @Test
+    fun theProbeSendsAHeaderWithCommasWholeToo() {
+        val file = TestMedia.multiTrackMkv(directory)
+        val seen = java.util.Collections.synchronizedList(mutableListOf<List<String>>())
+        val info = serving(file, seen) { url -> MpvProbe.createOrNull()!!.probe(PlaybackTarget(url, mapOf("Authorization" to jellyfinAuthorization))) }
+        assertNotNull(info)
+        assertTrue(seen.isNotEmpty() && seen.all { it == listOf(jellyfinAuthorization) }, "every request carried it whole: $seen")
+    }
+
+    @Test
+    fun aFileWhoseAudioCannotBeDecodedIsSaidToBeSilent() {
+        val file = TestMedia.undecodableAudioMkv(directory)
+        headless().use { player ->
+            player.load(PlaybackRequest(PlaybackTarget(file.toUri().toString()), "Sample"))
+            val silent = player.await { it.audioUnavailable }
+            assertEquals(PlayerStatus.PLAYING, silent.status, "the picture goes on, which is why this needs saying")
+            assertEquals(1, silent.audioTracks.size)
+            assertNull(silent.selectedAudioId)
+        }
+    }
+
+    @Test
+    fun aFileWithAudioInUseIsNotSaidToBeSilent() {
+        val file = TestMedia.multiTrackMkv(directory)
+        headless().use { player ->
+            player.load(PlaybackRequest(PlaybackTarget(file.toUri().toString()), "Sample"))
+            val playing = player.await { it.status == PlayerStatus.PLAYING && it.positionMs > 500 }
+            assertTrue(!playing.audioUnavailable, "selected audio: ${playing.selectedAudioId}")
+        }
     }
 
     @Test

@@ -2,13 +2,19 @@ package dev.reflux.ui.state
 
 import dev.reflux.core.input.Key
 import dev.reflux.core.input.SemanticAction
+import dev.reflux.core.playback.DeliveryMode
+import dev.reflux.core.playback.PlaybackEvidence
 import dev.reflux.core.playback.PlaybackFailure
+import dev.reflux.core.playback.StreamFate
+import dev.reflux.core.source.MediaSource
+import dev.reflux.core.source.PlaybackEvidenceSource
 import dev.reflux.core.playback.PlayerStatus
 import dev.reflux.core.playback.TrackType
 import dev.reflux.core.playback.SkipSegment
 import dev.reflux.ui.FakePlatform
 import dev.reflux.ui.TestWorld
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
@@ -33,6 +39,98 @@ class PlaybackSessionTest {
         app.play(world.episodes(show)[episode].item.id)
         runCurrent()
         return Playing(world, platform, app)
+    }
+
+    @Test
+    fun audioThatCannotBePlayedIsSaidOnceAndThePictureGoesOn() = runTest {
+        val playing = playing("Breaking Bad", 0)
+        val session = playing.session
+        playing.player.loseSound(listOf("audio/vnd.dts"))
+        runCurrent()
+        assertFalse(session.silent, "an engine may still be settling on its tracks")
+
+        advanceTimeBy(3_100)
+        runCurrent()
+        assertTrue(session.silent)
+        assertEquals(Problems.NO_SOUND, playing.app.notice)
+        assertEquals(PlayerStatus.PLAYING, session.state.value.status)
+        assertNull(session.error, "the picture is worth keeping")
+        assertTrue(playing.platform.reports.any { "audio/vnd.dts" in it && "none of it is playing" in it }, "${playing.platform.reports}")
+
+        val reports = playing.platform.reports.size
+        advanceTimeBy(60_000)
+        playing.player.playTo(120_000)
+        advanceTimeBy(5_000)
+        runCurrent()
+        assertEquals(reports, playing.platform.reports.size, "said once")
+    }
+
+    @Test
+    fun aMomentWithoutATrackIsNotSilence() = runTest {
+        val playing = playing("Breaking Bad", 0)
+        playing.player.loseSound()
+        advanceTimeBy(1_000)
+        runCurrent()
+        playing.player.regainSound()
+        advanceTimeBy(10_000)
+        runCurrent()
+        assertFalse(playing.session.silent)
+        assertNull(playing.app.notice)
+    }
+
+    @Test
+    fun mediaWithNoSoundAtAllIsNotSilence() = runTest {
+        val platform = FakePlatform()
+        val playing = playing("Breaking Bad", 0, platform)
+        playing.player.tracks = emptyList()
+        playing.player.load(playing.player.requests.last())
+        playing.player.loseSound()
+        advanceTimeBy(10_000)
+        runCurrent()
+        assertFalse(playing.session.silent)
+    }
+
+    @Test
+    fun aNewFileStartsWithItsOwnSound() = runTest {
+        val playing = playing("Breaking Bad", 0)
+        playing.player.loseSound()
+        advanceTimeBy(3_100)
+        runCurrent()
+        assertTrue(playing.session.silent)
+        playing.session.playNext()
+        runCurrent()
+        assertFalse(playing.session.silent)
+    }
+
+    private class Evidencing(source: MediaSource, val found: PlaybackEvidence) : MediaSource by source, PlaybackEvidenceSource {
+        var asked = 0
+        override suspend fun playbackEvidence(path: String): PlaybackEvidence {
+            asked++
+            return found
+        }
+    }
+
+    @Test
+    fun whatTheSourceSaysHappenedIsKeptAndLoggedOnce() = runTest {
+        val world = TestWorld().apply { populate() }
+        val platform = FakePlatform()
+        val found = PlaybackEvidence("the original file", "SupportsDirectPlay=true", DeliveryMode.DIRECT_PLAY, StreamFate.PRESERVED, StreamFate.PRESERVED)
+        var source: Evidencing? = null
+        val app = AppState(
+            world.library, world.pipeline, { id -> world.registry.resolve(id)?.let { real -> source ?: Evidencing(real, found).also { source = it } } },
+            platform, backgroundScope, StandardTestDispatcher(testScheduler),
+        )
+        app.play(world.episodes("Breaking Bad")[0].item.id)
+        runCurrent()
+        val session = app.playback!!
+        assertNull(session.evidence, "not before the playback's first report has reached the source")
+        advanceTimeBy(5_100)
+        runCurrent()
+        assertEquals(DeliveryMode.DIRECT_PLAY, session.evidence?.delivery)
+        assertTrue(platform.reports.any { it.startsWith("Playback evidence: ") && "DIRECT_PLAY" in it }, "${platform.reports}")
+        advanceTimeBy(30_000)
+        runCurrent()
+        assertEquals(1, source?.asked)
     }
 
     @Test

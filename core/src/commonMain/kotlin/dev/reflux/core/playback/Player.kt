@@ -51,6 +51,8 @@ data class PlayerState(
     val selectedAudioId: String? = null,
     val selectedSubtitleId: String? = null,
     val chapters: List<Chapter> = emptyList(),
+    /** The codecs of audio tracks the engine found and cannot decode here. They are not in [tracks]. */
+    val unsupportedAudioCodecs: List<String> = emptyList(),
     /** Set with [PlayerStatus.ERROR]. */
     val failure: PlaybackFailure? = null,
     /** The engine's description of [failure], for diagnostics rather than for display. */
@@ -58,6 +60,14 @@ data class PlayerState(
 ) {
     val audioTracks: List<PlayerTrack> get() = tracks.filter { it.type == TrackType.AUDIO }
     val subtitleTracks: List<PlayerTrack> get() = tracks.filter { it.type == TrackType.SUBTITLE }
+
+    /**
+     * The media has sound and none of it is playing: picture without audio, which no engine counts as a failure.
+     * Reflux has no way to turn audio off, so no track in use means none could be used.
+     */
+    val audioUnavailable: Boolean
+        get() = (status == PlayerStatus.PLAYING || status == PlayerStatus.PAUSED) && selectedAudioId == null &&
+            (audioTracks.isNotEmpty() || unsupportedAudioCodecs.isNotEmpty())
 }
 
 /** An external subtitle file to attach when a version is loaded. */

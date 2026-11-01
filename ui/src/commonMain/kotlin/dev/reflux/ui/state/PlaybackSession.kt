@@ -13,6 +13,7 @@ import dev.reflux.core.model.MediaItem
 import dev.reflux.core.model.SourceId
 import dev.reflux.core.playback.AutoplayPolicy
 import dev.reflux.core.playback.PlaybackController
+import dev.reflux.core.playback.PlaybackEvidence
 import dev.reflux.core.playback.PlaybackFailure
 import dev.reflux.core.playback.Player
 import dev.reflux.core.playback.PlayerState
@@ -21,6 +22,7 @@ import dev.reflux.core.playback.SkipSegment
 import dev.reflux.core.playback.SkipSegments
 import dev.reflux.core.playback.TrackPreferences
 import dev.reflux.core.playback.WatchReporter
+import dev.reflux.core.source.PlaybackEvidenceSource
 import dev.reflux.library.Library
 import dev.reflux.library.LibraryEntry
 import dev.reflux.library.PlaybackPlan
@@ -75,6 +77,9 @@ class PlaybackSession internal constructor(
     private var waitedTooLong = false
     private var begun = false
     private var endHandled = false
+    private var silence: Job? = null
+    private var evidenceSource: Pair<PlaybackEvidenceSource, String>? = null
+    private var evidenceAsked = false
     private var closing: Job? = null
     private val closed: Boolean get() = closing != null
 
@@ -112,6 +117,14 @@ class PlaybackSession internal constructor(
     var highlighted by mutableIntStateOf(0)
         private set
 
+    /** Playing with no sound because no audio track could be used. Said once, and the picture goes on. */
+    var silent by mutableStateOf(false)
+        private set
+
+    /** What the source says happened to this playback, once it has been asked. For diagnostics and tests. */
+    var evidence: PlaybackEvidence? by mutableStateOf(null)
+        private set
+
     /** Advances on every user interaction, so the player UI can reveal its controls. */
     var interactions by mutableIntStateOf(0)
         private set
@@ -138,6 +151,12 @@ class PlaybackSession internal constructor(
         waitedTooLong = false
         waiting?.cancel()
         waiting = null
+        silence?.cancel()
+        silence = null
+        silent = false
+        evidence = null
+        evidenceAsked = false
+        evidenceSource = (plan.source as? PlaybackEvidenceSource)?.let { it to plan.version.version.location.path }
         this.itemId = itemId
         entry = details.entry
         title = details.heading.first
@@ -194,6 +213,41 @@ class PlaybackSession internal constructor(
         // The playback failed; whether the source is there is for a check of the source to say. Only a check:
         // reading the source again would end the playback's session on a media server while it waits.
         sourceId?.let(app::checkAvailability)
+    }
+
+    /**
+     * A playback with sound and no track in use is not normal playback, though the engine calls it playing. It
+     * has to last [SILENCE_MS]: an engine settles on its tracks a moment after it starts. There is no conversion to
+     * fall back on, so the picture goes on and the viewer is told once (docs/PLAYBACK.md).
+     */
+    private fun watchSilence(state: PlayerState) {
+        if (!state.audioUnavailable) {
+            silence?.cancel()
+            silence = null
+        } else if (silence == null && !silent) {
+            silence = scope.launch {
+                delay(SILENCE_MS)
+                val now = player.state.value
+                if (!now.audioUnavailable) return@launch
+                silent = true
+                app.notify(Problems.NO_SOUND)
+                val codecs = (now.audioTracks.map { it.codec ?: "unknown" } + now.unsupportedAudioCodecs).distinct().joinToString(" ")
+                app.platform.report("Playback of \"$title\" has audio ($codecs) and none of it is playing")
+            }
+        }
+    }
+
+    /** Asks the source once what really happened, off the player's way, after its first report has reached it. */
+    private fun askForEvidence() {
+        val (source, path) = evidenceSource ?: return
+        if (evidenceAsked) return
+        evidenceAsked = true
+        scope.launch {
+            delay(EVIDENCE_AFTER_MS)
+            val found = withContext(app.background) { source.playbackEvidence(path) } ?: return@launch
+            evidence = found
+            app.platform.report("Playback evidence: ${found.summary()}")
+        }
     }
 
     /**
@@ -474,6 +528,8 @@ class PlaybackSession internal constructor(
             }
         }
         watchWaiting(state.status)
+        watchSilence(state)
+        if (state.status == PlayerStatus.PLAYING) askForEvidence()
         when (state.status) {
             PlayerStatus.ENDED -> if (!endHandled) {
                 endHandled = true
@@ -538,6 +594,12 @@ class PlaybackSession internal constructor(
         const val COUNTDOWN_TICK_MS = 250L
         /** How long the viewer is left waiting, to start or for data, before the wait is a stated failure. */
         const val PATIENCE_MS = 30_000L
+
+        /** How long sound may be missing before it is missing, not still being set up. */
+        const val SILENCE_MS = 3_000L
+
+        /** How long after playback starts the source is asked what it did: its first report has arrived by then. */
+        const val EVIDENCE_AFTER_MS = 5_000L
         val WAITING = setOf(PlayerStatus.LOADING, PlayerStatus.BUFFERING)
 
         /** After a failure the player has one or two things left to do: every "go on" takes the first, back the way back. */

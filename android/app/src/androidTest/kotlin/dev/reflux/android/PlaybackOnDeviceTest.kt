@@ -3,6 +3,7 @@ package dev.reflux.android
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import dev.reflux.android.playback.Media3Player
 import dev.reflux.core.model.SourceId
+import dev.reflux.core.playback.AudioCodec
 import dev.reflux.core.net.HttpRequest
 import dev.reflux.core.playback.PlaybackController
 import dev.reflux.core.playback.PlaybackFailure
@@ -80,6 +81,20 @@ class PlaybackOnDeviceTest {
         player.seekTo(178_500)
         val ended = player.await("the end") { it.status == PlayerStatus.ENDED }
         assertEquals(ended.durationMs, ended.positionMs, "an ending is at the end, so that it counts as watched")
+    }
+
+    @Test
+    fun audioThisDeviceCannotDecodeIsNotPassedOffAsNormalPlayback() {
+        val world = world("silent")
+        assumeTrue("this device has a DTS decoder", AudioCodec.DTS !in world.environment.capabilities.audioDecoders)
+        val file = File(context.cacheDir, "dts.mkv")
+        InstrumentationRegistry.getInstrumentation().context.assets.open("dts.mkv").use { input -> file.outputStream().use { input.copyTo(it) } }
+        val player = player(world)
+        player.load(PlaybackRequest(PlaybackTarget(android.net.Uri.fromFile(file).toString()), "DTS"))
+        val state = player.await("the picture to play") { it.status == PlayerStatus.PLAYING && it.positionMs > 1_000 }
+        assertTrue(state.audioUnavailable, "picture without sound is said: $state")
+        assertEquals(listOf("audio/vnd.dts"), state.unsupportedAudioCodecs)
+        file.delete()
     }
 
     /** How many codecs the system's resource manager counts as this process's. */

@@ -12,8 +12,8 @@ Direct Play is not hardware decoding. Delivery (how bytes reach the device) and 
 | --- | --- |
 | What is modeled | `DeviceCapabilities`: video decoders (codec, frame size, bit depth, hardware true/false/unknown), audio decoder set, passthrough set, output channels, display (size, ranges, tone mapping), containers, subtitle formats, features. No profile, level, frame rate, or sample rate. No Dolby Vision decoder, and no difference between E-AC-3 and E-AC-3 JOC |
 | Where choices are made | Once: `Library.planPlayback` (`library/.../Playback.kt`) takes Best Version and asks the source for a target. `PlaybackAssessor` is the only compatibility logic. There is no delivery choice to make, because there is one delivery |
-| How Jellyfin playback is requested | It is not negotiated. `JellyfinSource.playbackTarget` always returns `Videos/{id}/stream?static=true`. `PlaybackInfo` is never called, no device profile is ever sent, and no transcode URL can be followed. A file the client cannot play fails, or plays silently |
-| How the server session sees it | `playbackBody` reports `PlayMethod: DirectStream` for what is really Direct Play, without a `PlaySessionId`. The server shows what the client says, so that word is untrue today |
+| How Jellyfin playback is requested | It is not negotiated. `JellyfinSource.playbackTarget` always returns `Videos/{id}/stream?static=true`. Since the truth layer (section 3a) `PlaybackInfo` is called to observe only: no transcode URL is ever played. A file the client cannot play fails, or plays silently, and silence is now said |
+| How the server session sees it | Reported as `PlayMethod: DirectPlay` with a `PlaySessionId` since the truth layer; it was `DirectStream` with none. The server shows what the client says, so that word is a report and not evidence |
 | Android decoders | `MediaCodecList(REGULAR_CODECS)` read once per process (`AndroidEnvironment.capabilities` is `by lazy`). Width and height are each codec's independent maximum. Ten-bit comes from declared profiles. Media3 uses `DefaultRenderersFactory` as it comes: no extensions, no decoder fallback, no tunneling |
 | mpv decoding | `hwdec=auto-safe`; `MpvDecodeProbe` at start, then `DecodeEvidence.with` from each real first frame. This is sound and stays |
 | Audio output | Android: channels and encodings of HDMI, ARC, and eARC outputs, read once. Desktop: passthrough is an empty set, `audio-spdif` is never set, and `maxOutputChannels` is the constant 2 |
@@ -25,7 +25,7 @@ Direct Play is not hardware decoding. Delivery (how bytes reach the device) and 
 
 | # | Where | What is wrong | Consequence |
 | --- | --- | --- | --- |
-| 1 | `JellyfinSource.kt:227` | `PlayMethod` is always `DirectStream`; the stream is `static` | The server's dashboard is told something untrue |
+| 1 | `JellyfinSource.kt:227` | **Fixed.** `PlayMethod` was always `DirectStream`; the stream is `static` | The server's dashboard was told something untrue |
 | 2 | `AndroidMediaProber.kt:54` | Ten-bit is detected for HEVC and VP9 only, and `profile != null -> 8` then calls SDR 10-bit AV1 and H.264 High 10 **8-bit** | Best Version is told a false bit depth. VP9 Profile 3 is missed too |
 | 3 | `AndroidCapabilities.kt:50` | VobSub is not claimed although Media3 has a parser. Unverified on a device; three real files have it | Understates; nothing reads the set yet |
 | 4 | `AndroidCapabilities.kt:129` | Android documents an empty `encodings` list as arbitrary encodings; here it means none | Passthrough may be understated on such an output |
@@ -36,7 +36,7 @@ Direct Play is not hardware decoding. Delivery (how bytes reach the device) and 
 | 9 | `DesktopCapabilities.kt:36` | `maxOutputChannels` is always 2 | 5.1 on a 5.1 desktop counts as a downmix and is capped in Best Version's audio score |
 | 10 | `PlaybackAssessment.kt:7`, `:96` | `NO_PLAYABLE_AUDIO` is only degraded, and any playable track satisfies the check, not the one that will be chosen | A version can be recommended whose chosen track is silent |
 | 11 | `PlaybackAssessment.kt:45` | Subtitles are never assessed | A wanted track the engine cannot show is invisible to planning |
-| 12 | `MpvPlayer.kt:56`, `MpvProbe.kt:27` | `http-header-fields` is a comma-separated list, and Jellyfin's `Authorization` value contains commas, unescaped | Masked: Jellyfin 12.2.0 serves static streams with no authentication at all (section 3). May break on any endpoint that does check. Needs a real test before it is called a bug |
+| 12 | `MpvPlayer.kt:56`, `MpvProbe.kt:27` | **Confirmed and fixed.** `http-header-fields` is a comma-separated list, and Jellyfin's `Authorization` value contains commas, unescaped: a server received `MediaBrowser Client="Reflux"` and the token never left the engine | Masked because Jellyfin 12.2.0 serves static streams with no authentication at all (section 3) |
 | 13 | `SubtitleStream` | No hearing-impaired flag; no server stream index on audio or subtitle tracks | A plan cannot address a track on the server |
 | 14 | `JellyfinSource.kt:317` | `substringBefore(',')` of `Container`: a real `mov,mp4,...` becomes QuickTime, and `mpegts` or `matroska` becomes unknown | Harmless today (unknown is no evidence); wrong once containers are planned |
 
@@ -86,6 +86,35 @@ What this settles:
 - The server encodes in software (`HardwareAccelerationType: none`): a video transcode is real CPU on RS-X1, which raises the price of an unnecessary one.
 
 The same class on the desktop, through libmpv headless over the static stream: hardware decoded (`d3d11va-copy`, `p010`), software decoded (`yuv420p10`) on request, E-AC-3 decoded locally to 6 channels at 48 kHz, an exact seek 30 minutes in landing within 0.25 s. This is "Reflux Desktop: server Direct Play" as evidence, on a sibling of the reference file.
+
+## 3a. The truth layer
+
+Built after the audit, before any capability or planning work. It reports; it decides nothing, and playback is still the original file.
+
+**What Reflux now knows.** `core/playback/PlaybackEvidence.kt` holds the delivery terms (`DIRECT_PLAY`, `REMUX`, `AUDIO_CONVERSION`, `VIDEO_TRANSCODE`, `UNKNOWN`), what became of video and audio (`PRESERVED`, `CONVERTED`, `UNKNOWN`), and each subtitle's handling. `JellyfinDelivery` is the only code that turns Jellyfin's answers into them.
+
+| Question | Where the answer comes from |
+| --- | --- |
+| What did Reflux request? | `PlaybackEvidence.requested`, and `JellyfinPlaybackAsk`: the original, no subtitle in the stream, no subtitle format claimed, no conversion allowed |
+| What did Jellyfin return? | `JellyfinPlaybackAnswer`, whose flags are reported and never classified from |
+| Video and audio preserved or converted? | `TranscodingInfo`: `IsVideoDirect`, `IsAudioDirect` |
+| Is it Direct Play? | Only if the original was requested, the server lists this device playing that item, and no `TranscodingInfo` is listed. Anything less is `UNKNOWN` |
+| Did a subtitle cause a conversion? | The video is being converted, and either `SubtitleStreamIndex` with `SubtitleMethod=Encode` is in the URL or the server gave `SubtitleCodecNotSupported`. `SubtitleMethod=Encode` alone means nothing: servers write it with no subtitle selected |
+| Did authentication work? | `PlaybackInfo` needs a token: answered is true, 401 or 403 is false, unreachable is not tested |
+
+**When it runs.** `PlaybackInfo` goes with a playback's first report, limited to 3 seconds, so it cannot delay the start and a failure changes nothing but the evidence. Five seconds into playing, `PlaybackSession` asks the source once and writes `PlaybackEvidence.summary()` to the diagnostics log; the same value is `PlaybackSession.evidence` for tests. No address or key is in either. `JellyfinTruthLiveTest` drives each mode on a real server.
+
+**Silent audio.** `PlayerState.audioUnavailable` is true when the media has sound and no track is in use while the engine plays; `unsupportedAudioCodecs` names what Media3 refused, since those tracks are not in the menus. `PlaybackSession` needs it to hold for 3 seconds, then sets `silent`, tells the viewer once, logs the codecs, and leaves the picture playing. No conversion is attempted.
+
+**What it deliberately does not know yet.**
+
+- Whether this client can draw a subtitle. Reflux claims no format, so a PGS track in a file reads `CAPABILITY_UNKNOWN`, even under Direct Play. Whether a chosen track was really drawn is not observed.
+- `DIRECT_PLAY` is the server's view of delivery. It says nothing of decoding: hardware or software, and whether audio is decoded or passed through.
+- The evidence is about the first moments of a playback, asked once.
+- A preferred track that cannot be decoded while another can: Media3 plays the other, with no notice, possibly in another language. Only total silence is reported.
+- A decoder that is declared and then fails: that is an engine failure, as before, not silence.
+
+**Remaining server limitations.** Static streams need no authentication on Jellyfin 12.2.0, so a server's answer to them proves nothing about a client's token; `Items/{id}/Download` is what checks. `TranscodingInfo` exists only while a conversion runs. `PlayMethod` is an echo. The Iron Man file still answers 404 and 500.
 
 ## 4. Compatibility matrix
 
@@ -193,7 +222,7 @@ There is no HDR in the real library, so everything here rests on fixtures. HDR d
 
 ## 5. Vocabulary
 
-Four independent axes, plus the reason. For a source without a transcoder only the first value of delivery exists.
+Four independent axes, plus the reason. The truth layer's `DeliveryMode` names the same four delivery values (`DIRECT_PLAY` for `ORIGINAL`, and so on, with `UNKNOWN`); they become one set when the planner is built. For a source without a transcoder only the first value of delivery exists.
 
 | Axis | Values |
 | --- | --- |
@@ -289,7 +318,7 @@ One `PlaybackReport`, for development first: written to the diagnostics log thro
 
 | Part | Planned | Observed from |
 | --- | --- | --- |
-| Delivery | `PlannedPlayback.delivery` | `TranscodingInfo` (Jellyfin); fixed `ORIGINAL` elsewhere |
+| Delivery | `PlannedPlayback.delivery` | `TranscodingInfo` (Jellyfin, built: section 3a); fixed `ORIGINAL` elsewhere |
 | Video | Original codec, profile, depth, size, rate, range; output codec if changed | `hwdec-current` (mpv), `onVideoDecoderInitialized` name (Media3), `TranscodingInfo` |
 | Audio | Original codec, output codec, channels | `audio-codec-name`, `audio-params`, or the renderer's format and whether it is bypassing the decoder |
 | Subtitles | Format, processing | Selected track |
@@ -368,7 +397,7 @@ The ranking does not need changing, and M2P changes no policy. Its inputs do:
 
 ## 14. Order of work
 
-1. **Truth first (small, no new behavior):** defects 1, 2, 3, 5, 9, 12, 13, 14, with tests.
+1. **Truth first (small, no new behavior):** the truth layer (section 3a) and defects 1 and 12 are done. Defects 2, 3, 5, 9, 13, and 14, with tests, are still open and belong with step 2.
 2. **Capability model and stream facts:** section 6, the migration, Android size and rate and level and DV reading, re-reading on output change.
 3. **Planner:** pure, tested, wired so it decides nothing yet and only reports.
 4. **Jellyfin negotiation:** profile, `PlaybackInfo`, HLS dependency, session reporting, escalation. This is where behavior changes.
