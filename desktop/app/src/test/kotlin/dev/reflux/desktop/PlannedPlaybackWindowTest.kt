@@ -114,6 +114,46 @@ class PlannedPlaybackWindowTest {
         }
     }
 
+    /**
+     * How the player goes away, one way per process, since what this looks for ends the process: `REFLUX_TEARDOWN` is
+     * `<hls|file>-<quick|wait|window>`. On libmpv 0.37 the engine has been seen to assert in its X11 code after a run.
+     */
+    @Test
+    fun aPlayerGoesAwayCleanly() {
+        val mode = System.getenv("REFLUX_TEARDOWN")
+        assumeTrue("not asked for", mode != null && windowTestsRequested)
+        val settings = assertNotNull(live(), "no live server named")
+        val environment = DesktopEnvironment(
+            root.resolve("data"),
+            sealFor = { directory, _ -> KeychainSeal(Memory(), directory) },
+            deviceFilter = { device ->
+                val gone = if (mode!!.startsWith("hls")) setOf(AudioCodec.AC3, AudioCodec.EAC3) else emptySet()
+                device.copy(audioDecoders = device.audioDecoders - gone, audioPassthrough = device.audioPassthrough - gone, audioPassthroughKnown = true)
+            },
+        )
+        val request = ConnectionRequest(settings.getValue("REFLUX_JELLYFIN_TEST"), settings["REFLUX_JELLYFIN_TEST_USER"], settings["REFLUX_JELLYFIN_TEST_PASSWORD"])
+        assertIs<ConnectResult.Connected>(runBlocking { environment.connections.connect(ConnectionKind.SERVER, request) })
+        runBlocking { environment.pipeline.refresh() }
+        val film = environment.library.movies().first { it.item.title == "Mission: Impossible - Fallout" }.item.id
+        shell = Shell(environment)
+        try {
+            shell.awaitShown("Home", exact = false)
+            shell.ui { shell.app.play(film, resume = false) }
+            awaitPlayer("playback to start") { it.status == PlayerStatus.PLAYING && it.positionMs > 1_000 }
+            Thread.sleep(4_000)
+            println("TEARDOWN $mode playing, ${shell.ui { session.comparison?.planned?.delivery }}")
+            if (!mode!!.endsWith("window")) {
+                shell.ui { session.close() }
+                shell.await("the player to close", 20_000) { shell.app.playback == null }
+            }
+            if (mode.endsWith("wait")) Thread.sleep(6_000)
+        } finally {
+            shell.close()
+            root.toFile().deleteRecursively()
+        }
+        println("TEARDOWN $mode closed")
+    }
+
     private fun aPlanIsPlayedAndConfirmedByTheServer(film: MediaId) {
         shell.ui { shell.app.play(film, resume = false) }
         awaitPlayer("playback to start") { it.status == PlayerStatus.PLAYING && it.positionMs > 1_000 }
