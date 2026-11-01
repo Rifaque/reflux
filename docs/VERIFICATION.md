@@ -652,3 +652,23 @@ The 6 are: both cases above; an explicit track that cannot play stays silent wit
 **Found by live runs, not by fixtures:** `MaxAudioChannels` set to a stereo output made a server convert audio a remux was to keep; PGS extraction would have held the picture for 49 s.
 
 **Not verified:** the Nothing Phone 2a (not attached); Linux; the Iron Man file; any of this through the real application's screens, as these tests drive the engines and the planner directly; the notice on a screen; a real `UNSUPPORTED` failure from an engine re-planning live (`originalFailed` was passed in, and the session's reaction is tested with a fake); PGS through Media3; passthrough heard through a receiver. The first Pad 7 run hung past 500 s with no test output. It did not recur in two later runs, and its cause is unknown.
+
+## M2P.4 gaps, real application (2026-11-01)
+
+Dedicated non-admin test account; the real app's screens, on a real server.
+
+| Check | Device | Result |
+| --- | --- | --- |
+| PGS, embedded, 1920x818 film | Fire TV `AFTMA08C15` | Pass: both lines drawn whole, the second below the picture |
+| Explicit language on a converted stream | Google TV emulator | Pass after a fix: Hindi plan `track 0`; place kept from 1:41, server reported 123 s |
+| External subtitle by server extraction, converted stream | Google TV emulator | Pass, on screen |
+| Planned burn-in, PGS | Google TV emulator | Pass: plan `BURN_IN`, server says a subtitle caused the conversion, text in the picture |
+| Server stream stops | Fire TV | Pass: error with Try again after 30 s, no re-plan, no loop |
+| Back and close, place kept | Fire TV | Pass |
+| Stream unlike its playlist | Fire TV | Was reported as a moved file; now `UNKNOWN`. Unit-tested; not re-seen, as the film's metadata was then repaired |
+
+**Found:** a track change on a converted stream restarted the film (fixed). The server's stored audio tracks had drifted from the file on 4 of the 9 films checked, phantom Hindi tracks shifting every index; a library scan does not re-probe them. Those 4 were re-probed one by one, with no `.nfo` written. Movies has the NFO saver on and was not re-probed as a whole; Marvel was. The server intermittently stops serving file data for a minute or more while its API answers, measured without Reflux; this explains the earlier "did not start within 30 s".
+
+**Suite:** Windows `check`: 1034 tests, 12 skipped, 7 failed. 6 were server timeouts during a stall; all 10 live tests passed on rerun with the server answering. 1 is `DesktopOfflineTest`, low disk: 32 GB free against a 51.1 GB reserve. Emulator on-device 5 of 5. Fire TV 4 of 4 execution tests after a reboot, which cleared an engine timeout on the stick. The capability class was not separately rerun after that reboot.
+
+**Not verified:** Linux (not run in this pass); the planned flow in a real desktop window, including PGS in mpv on screen; the Nothing Phone 2a (not attached); a real `OUTPUT` failure; drift across the rest of Movies and in Shows.
