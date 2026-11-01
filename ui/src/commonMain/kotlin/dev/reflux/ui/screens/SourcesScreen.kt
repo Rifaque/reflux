@@ -31,6 +31,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -181,6 +182,19 @@ private fun SourceItem(app: AppState, row: SourceRow, expanded: Boolean, scannin
     var removing by remember(row.id) { mutableStateOf(false) }
     // Down from an open card goes to its first action, never straight to Remove because it happens to be nearer.
     val firstAction = remember { FocusRequester() }
+    // The button pressed goes when the question comes, and comes back when it goes, so focus has to be taken
+    // across each way. With a remote it lands on Keep, so that a press too many keeps the source.
+    val keep = remember { FocusRequester() }
+    val asks = remember { FocusRequester() }
+    val showsFocus = LocalLayout.current.showsFocus
+    var asked by remember(row.id) { mutableStateOf(false) }
+    LaunchedEffect(removing) {
+        if (showsFocus && (removing || asked)) {
+            withFrameNanos { }
+            runCatching { (if (removing) keep else asks).requestFocus() }
+        }
+        asked = removing
+    }
     Column(Modifier.fillMaxWidth().glass(MaterialRole.ELEVATED, shape)) {
         Pressable(
             onToggle,
@@ -262,7 +276,7 @@ private fun SourceItem(app: AppState, row: SourceRow, expanded: Boolean, scannin
                                 removing = false
                                 app.removeSource(row.id)
                             }, Modifier.focusRequester(firstAction))
-                            Button("Keep", { removing = false }, style = ButtonStyle.QUIET)
+                            Button("Keep", { removing = false }, Modifier.focusRequester(keep), style = ButtonStyle.QUIET)
                         }
                     }
                 } else {
@@ -272,7 +286,7 @@ private fun SourceItem(app: AppState, row: SourceRow, expanded: Boolean, scannin
                         row.kind?.let { kind ->
                             Button(if (kind == ConnectionKind.SERVER) "Sign in again" else "Change", { app.navigator.open(Destination.Connect(kind, row.id)) })
                         }
-                        Button("Remove", { removing = true }, style = ButtonStyle.QUIET)
+                        Button("Remove", { removing = true }, Modifier.focusRequester(asks), style = ButtonStyle.QUIET)
                     }
                 }
             }

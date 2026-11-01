@@ -5,6 +5,7 @@ What changes for people using Reflux, version by version. The rules for versions
 ## Unreleased
 
 - Screen readers: while a video plays, or a sheet is open, only what is in front can be reached, not the page behind it. Pages, sheets, the player, and its lists say their name as they open; notices, failures, and how many results a search found are spoken; every control says what it is and whether it is on, open, or selected.
+- With a remote, asking to remove a source puts focus on Keep, and Keep returns to Remove, instead of focus falling to the navigation.
 - Screen readers: cards and the player's speed button say their title or value once, an open player list comes right after its button, and a question that appears in place is announced.
 - With a screen reader on, the player's controls stay on screen instead of fading away, and the timeline and volume can be moved from it. On a TV, play, pause, and the ten-second seeks are offered as actions.
 - On a desktop, O opens the player's audio, subtitle, and speed lists, on any keyboard. Tab no longer wanders through the page hidden behind the video.
