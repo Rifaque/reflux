@@ -425,10 +425,7 @@ class AppState(
         starting = true
         try {
             // One engine and one video surface at a time: the player that was just closed is gone first.
-            // An engine that will not let go is left behind rather than waited for; playing must stay possible.
-            releasing?.let { release ->
-                if (withTimeoutOrNull(RELEASE_PATIENCE_MS) { release.join() } == null) platform.report("The previous playback engine did not shut down in time")
-            }
+            awaitRelease()
             val playable = read { playableFor(itemId) } ?: return@attempt notify(Problems.NOTHING_TO_PLAY)
             val plan = read { planPlayback(playable, platform.device, sources, versionId, resume, preferences = viewer) }
                 ?: return@attempt notify(read { unplayableReason(playable, platform.device, sources, viewer) })
@@ -462,6 +459,23 @@ class AppState(
         navigator.show(Destination.Home)
         navigator.open(Destination.Details(itemId))
         play(itemId).join()
+    }
+
+    /** An engine that will not let go is left behind rather than waited for; nothing may hang on it. */
+    private suspend fun awaitRelease() {
+        releasing?.let { release ->
+            if (withTimeoutOrNull(RELEASE_PATIENCE_MS) { release.join() } == null) platform.report("The previous playback engine did not shut down in time")
+        }
+    }
+
+    /**
+     * Ends what is playing, and what has only just stopped: a player closed a moment ago may still be letting go of
+     * its video surface, and an application that leaves then takes the surface from under the engine (libmpv 0.37
+     * aborts the process on X11).
+     */
+    suspend fun finishPlayback() {
+        playback?.close()?.join()
+        awaitRelease()
     }
 
     internal fun playbackClosed(session: PlaybackSession, release: Job) {

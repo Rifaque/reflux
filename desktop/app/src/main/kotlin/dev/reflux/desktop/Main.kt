@@ -98,13 +98,17 @@ internal fun runReflux(
         }
         val windowState = rememberWindowState(size = DpSize(1360.dp, 860.dp), position = WindowPosition.Aligned(Alignment.Center))
 
+        // What was playing is saved, and its engine gone, before the process goes away.
+        val leave: () -> Unit = {
+            scope.launch {
+                app.finishPlayback()
+                exitApplication()
+            }
+        }
+
         Window(
             onCloseRequest = {
-                // What was playing is saved before the process goes away.
-                scope.launch {
-                    app.playback?.close()?.join()
-                    exitApplication()
-                }
+                leave()
             },
             state = windowState,
             title = "Reflux",
@@ -143,7 +147,7 @@ internal fun runReflux(
                     override fun windowGainedFocus(event: WindowEvent) = platform.refreshAccessibility()
                 }
                 window.addWindowFocusListener(settings)
-                onStarted(RunningReflux(app, window, ::exitApplication))
+                onStarted(RunningReflux(app, window, leave))
                 onDispose {
                     window.removeWindowFocusListener(settings)
                     displays.close()
