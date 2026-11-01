@@ -7,6 +7,7 @@ import dev.reflux.core.playback.DeliveryMode
 import dev.reflux.core.playback.PlaybackEvidence
 import dev.reflux.core.playback.StreamFate
 import dev.reflux.core.playback.SubtitleHandling
+import dev.reflux.core.source.SourceCapability
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
@@ -246,6 +247,14 @@ class JellyfinPlaybackTest {
         quiet.reportProgress(path, 60_000, paused = false)
         assertTrue(requests.any { it.url.endsWith("Sessions/Playing") }, "the report goes on without the answer")
         assertTrue(testScheduler.currentTime < 10_000, "after ${testScheduler.currentTime} ms")
+    }
+
+    @Test
+    fun aServerDeclaresWhatItCanConvert() {
+        val declared = source.descriptor.capabilities
+        for (capability in listOf(SourceCapability.SERVER_REMUX, SourceCapability.SERVER_AUDIO_CONVERSION, SourceCapability.SERVER_TRANSCODE, SourceCapability.SERVER_SUBTITLE_EXTRACTION, SourceCapability.SERVER_BURN_IN)) {
+            assertTrue(capability in declared, "$capability")
+        }
     }
 
     @Test

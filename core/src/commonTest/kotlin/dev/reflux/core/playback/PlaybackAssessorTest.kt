@@ -2,8 +2,26 @@ package dev.reflux.core.playback
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 class PlaybackAssessorTest {
+    private val noDts = Devices.oldPhone
+
+    @Test
+    fun audioThatMayStillPassThroughIsNotCalledUnplayable() {
+        val dts = StreamInfo(audio = listOf(AudioStream(AudioCodec.DTS, 6)))
+        assertEquals(listOf(PlaybackIssue.NO_PLAYABLE_AUDIO), PlaybackAssessor.assess(dts, noDts).issues)
+        val unsure = PlaybackAssessor.assess(dts, noDts.copy(audioPassthroughKnown = false))
+        assertTrue(PlaybackIssue.NO_PLAYABLE_AUDIO !in unsure.issues, "unknown is not counted against it: ${unsure.issues}")
+    }
+
+    @Test
+    fun audioPastEveryDecodersDeclaredLimitIsNotPlayable() {
+        val aac = StreamInfo(audio = listOf(AudioStream(AudioCodec.AAC, 8)))
+        val limited = noDts.copy(audioDecoderLimits = mapOf(AudioCodec.AAC to AudioDecoderLimit(maxChannels = 6)))
+        assertEquals(listOf(PlaybackIssue.NO_PLAYABLE_AUDIO), PlaybackAssessor.assess(aac, limited).issues)
+    }
+
     private fun video(codec: VideoCodec, height: Int, range: DynamicRange = DynamicRange.SDR, bitDepth: Int? = null, dv: Int? = null) =
         StreamInfo(
             container = Container.MATROSKA,

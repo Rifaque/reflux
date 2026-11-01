@@ -941,3 +941,14 @@ The capability model (PLAYBACK.md, section 6). Media facts, capabilities, eviden
 - **Passthrough on Android is what Media3 says it will do,** not what an output lists, because that is what will happen. Its answer has not been checked against a receiver.
 - **Not done is unsupported.** The desktop does not ask libmpv for passthrough or HDR, so neither is claimed however capable the hardware.
 - **Stream facts are migrated, not backfilled.** A library's existing versions read unknown for profile, level, and sample rate until a file is next read or a server next scanned. Local files are not probed again for this: only changed files are.
+
+## 2026-11-01 — The playback planner
+
+`PlaybackPlanner` (PLAYBACK.md, section 7): a pure decision over facts, a client, and what a source declares, with a result nothing executes yet.
+
+- **Named `PlannedPlayback`, not `PlaybackPlan`.** That name is the library's "what to start now", and is a different thing.
+- **A source says what it can do through `SourceCapability`.** The unused `SERVER_TRANSCODE` gained five neighbours. Alternative rejected: a transcoder interface that every source implements, most of them with nothing.
+- **Language outranks avoiding a conversion.** Automatically, a track in the viewer's language is converted before another language is played. A viewer's own choice is never replaced at all.
+- **Burn-in needs a viewer's choice and known impossibility.** It costs a video transcode, so it is not spent on an automatic track or on something merely unknown. Alternative rejected: burning in forced subtitles automatically; to be revisited if a real case shows a viewer missing them.
+- **Unknown is tried.** It never converts and never blocks; a failure resolves it.
+- **Whether something can play has one implementation,** `PlaybackAssessor`, and the planner reads it. Best Version does not count a server's abilities until something can play the result.
