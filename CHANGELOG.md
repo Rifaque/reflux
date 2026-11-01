@@ -4,6 +4,11 @@ What changes for people using Reflux, version by version. The rules for versions
 
 ## Unreleased
 
+- Changing audio or subtitles on a converted stream now always carries on from the exact place, including in the first minute.
+- If subtitles a server was preparing never arrive, Reflux says so and keeps playing.
+- On Android, image subtitles on a cropped film are no longer cut off at the bottom of the picture.
+- On Android, a server stream that doesn't match its own description is no longer reported as a moved or deleted file.
+- The player no longer says Paused while it is loading.
 - With a Jellyfin server, Reflux now asks for what your device needs. When only the audio can't play here, the server converts the audio and the original video is kept. Video is converted only when your device can't decode it.
 - Reflux keeps the audio track you chose. If it can't play and can't be converted, you're told, rather than hearing another language.
 - Subtitles a Jellyfin server has to prepare no longer hold up the picture: they appear when they're ready.
