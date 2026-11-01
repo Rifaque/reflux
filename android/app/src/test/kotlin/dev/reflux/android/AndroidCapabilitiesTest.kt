@@ -124,10 +124,25 @@ class AndroidCapabilitiesTest {
     fun bitmapSubtitlesAreNotClaimedBeyondWhatWasSeen() {
         val device = AndroidCapabilities.of(emptyList(), display, pictureInPicture = false)
         assertEquals(Support.UNSUPPORTED, Capabilities.subtitle(SubtitleFormat.PGS, external = true, device).render, "the player would read one as SubRip")
-        assertEquals(Support.UNKNOWN, Capabilities.subtitle(SubtitleFormat.PGS, external = false, device).render)
+        assertEquals(Support.SUPPORTED, Capabilities.subtitle(SubtitleFormat.PGS, external = false, device).render, "seen on a real film")
         assertEquals(Support.UNKNOWN, Capabilities.subtitle(SubtitleFormat.VOBSUB, external = false, device).render)
         assertEquals(SubtitleFidelity.PLAIN, Capabilities.subtitle(SubtitleFormat.ASS, external = false, device).fidelity)
         assertEquals(Support.SUPPORTED, Capabilities.subtitle(SubtitleFormat.SRT, external = true, device).render)
+    }
+
+    @Test
+    fun anImageSubtitleKeepsToTheCanvasItWasAuthoredFor() {
+        // Seen on a real film: 1920x818 picture, PGS for 1920x1080, a 600x100 image near the bottom of the canvas.
+        val place = imagePlacement(left = 0.34f, top = 0.85f, size = 600f / 1920f, bitmapHeight = 100f / 1080f, imageWidth = 600, imageHeight = 100, boxWidth = 1920f, boxHeight = 818f)
+        assertEquals(1080f, (818f - 2 * place.y + 2 * 0.85f * 1080f), 1f, "the canvas is 1080 tall, centred on the picture")
+        assertEquals(100f, place.height, 0.5f)
+        assertTrue(place.y + place.height > 818f, "and its last line may lie below the picture, which is why it must not be clipped there")
+    }
+
+    @Test
+    fun anImageSubtitleWithNoCanvasIsPlacedOnThePicture() {
+        val place = imagePlacement(0f, 0.5f, 1f, androidx.media3.common.text.Cue.DIMEN_UNSET, 100, 10, 1000f, 500f)
+        assertEquals(Placement(0f, 250f, 1000f, 100f), place)
     }
 
     @Test

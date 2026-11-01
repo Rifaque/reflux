@@ -34,6 +34,9 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.wrapContentSize
+import androidx.compose.foundation.layout.requiredSize
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.text.BasicText
@@ -350,6 +353,23 @@ private fun VideoLayer(player: Media3Player) {
     }
 }
 
+/** Where an image subtitle goes on a picture of [Placement]'s box, in the box's units. */
+internal data class Placement(val x: Float, val y: Float, val width: Float, val height: Float)
+
+/**
+ * Image subtitles are placed on the canvas they were authored for, which is not always the picture: a 1920x818 film
+ * carries PGS for 1920x1080, and placed by the picture their last line falls off it. The fractions a cue gives say
+ * how tall that canvas is, and it is centred on the picture, as the film was on it.
+ *
+ * @param bitmapHeight the image's height as a share of its canvas; unset, the canvas is taken to be the picture.
+ */
+internal fun imagePlacement(left: Float, top: Float, size: Float, bitmapHeight: Float, imageWidth: Int, imageHeight: Int, boxWidth: Float, boxHeight: Float): Placement {
+    val width = boxWidth * size.coerceIn(0f, 1f)
+    val height = width * imageHeight / imageWidth.coerceAtLeast(1)
+    val canvas = if (bitmapHeight == Cue.DIMEN_UNSET || bitmapHeight <= 0f) boxHeight else height / bitmapHeight
+    return Placement(boxWidth * left, (boxHeight - canvas) / 2 + canvas * top, width, height)
+}
+
 /** Subtitle text along the bottom of the picture, and image subtitles where their stream places them. */
 @Composable
 private fun Subtitles(cues: List<Cue>, textSize: Float, lift: Dp) {
@@ -359,11 +379,14 @@ private fun Subtitles(cues: List<Cue>, textSize: Float, lift: Dp) {
             val left = if (cue.position == Cue.DIMEN_UNSET) 0f else cue.position
             val top = if (cue.line == Cue.DIMEN_UNSET || cue.lineType != Cue.LINE_TYPE_FRACTION) 0f else cue.line
             val width = if (cue.size == Cue.DIMEN_UNSET) 1f else cue.size
+            val place = imagePlacement(left, top, width, cue.bitmapHeight, image.width, image.height, maxWidth.value, maxHeight.value)
             Image(
                 bitmap = image.asImageBitmap(),
                 contentDescription = null,
-                contentScale = ContentScale.FillWidth,
-                modifier = Modifier.padding(start = maxWidth * left, top = maxHeight * top).fillMaxWidth(width.coerceIn(0f, 1f - left)),
+                contentScale = ContentScale.FillBounds,
+                // Not limited to the box: a cropped film's subtitles sit on a taller canvas than its picture.
+                modifier = Modifier.wrapContentSize(Alignment.TopStart, unbounded = true)
+                    .offset(place.x.dp, place.y.dp).requiredSize(place.width.dp, place.height.dp),
             )
         }
         val text = cues.mapNotNull { it.text?.toString()?.trim()?.takeIf(String::isNotEmpty) }.joinToString("\n")
