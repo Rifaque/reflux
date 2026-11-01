@@ -16,6 +16,7 @@ import dev.reflux.core.model.VersionId
 import dev.reflux.core.playback.AudioChoice
 import dev.reflux.core.playback.DeliveryMode
 import dev.reflux.core.playback.PlanPart
+import dev.reflux.core.playback.PlanReason
 import dev.reflux.core.playback.PlaybackComparison
 import dev.reflux.core.playback.PlaybackController
 import dev.reflux.core.playback.PlaybackEvidence
@@ -226,6 +227,8 @@ class PlaybackSession internal constructor(
         }
     }
 
+    private var subtitlesLost = 0
+
     private fun giveUpWaiting() {
         if (error != null || player.state.value.status !in WAITING) return
         waitedTooLong = true
@@ -263,6 +266,15 @@ class PlaybackSession internal constructor(
         }
     }
 
+    /** A subtitle a server was making and never delivered is a thing the viewer chose and is not getting. */
+    private fun watchSubtitles(state: PlayerState) {
+        val lost = state.subtitlesNotLoaded > subtitlesLost
+        subtitlesLost = state.subtitlesNotLoaded
+        if (!lost) return
+        app.notify(Problems.SUBTITLE_UNAVAILABLE)
+        app.platform.report("Playback of \"$title\": a subtitle the source was to deliver did not arrive")
+    }
+
     /**
      * Compares what happened with what was planned, once, off the player's way, after the first report has reached
      * the source. A source that keeps no account still has the engine's side to compare.
@@ -280,7 +292,10 @@ class PlaybackSession internal constructor(
             val planned = plan.planned ?: return@launch
             val compared = PlaybackComparison.of(planned, found, player.state.value)
             comparison = compared
-            if (compared.mismatches.isNotEmpty()) app.platform.report("Playback of \"$title\" is not what was planned: ${compared.summary()}")
+            when {
+                compared.mismatches.isNotEmpty() -> app.platform.report("Playback of \"$title\" is not what was planned: ${compared.summary()}")
+                found != null -> app.platform.report("Planned against actual: ${compared.summary()}")
+            }
         }
     }
 
@@ -298,6 +313,8 @@ class PlaybackSession internal constructor(
         val item = itemId ?: return false
         val needed = if (part == PlanPart.VIDEO) SourceCapability.SERVER_TRANSCODE else SourceCapability.SERVER_AUDIO_CONVERSION
         if (replanned || needed !in requirements.source || planned.delivery != DeliveryMode.DIRECT_PLAY) return false
+        // The server has already said no: asking again would only restart the picture.
+        if (PlanReason.NEGOTIATION_FAILED in planned.reasons) return false
         val track = chosenAudio ?: planned.audioIndex
         if (part == PlanPart.AUDIO && track == null) return false
         replanned = true
@@ -660,6 +677,7 @@ class PlaybackSession internal constructor(
         }
         watchWaiting(state.status)
         watchSilence(state)
+        watchSubtitles(state)
         if (state.status == PlayerStatus.PLAYING) askForEvidence()
         when (state.status) {
             PlayerStatus.ENDED -> if (!endHandled) {

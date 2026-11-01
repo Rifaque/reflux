@@ -387,7 +387,7 @@ private fun Controls(app: AppState, session: PlaybackSession, state: PlayerState
             if (controls.listHints) {
                 Row(Modifier.fillMaxWidth().padding(top = 2.dp, bottom = 2.dp), horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
                     Box(Modifier.weight(1f)) {
-                        if (!state.pauses) Text("Paused", style = LocalTypography.current.captionStrong, color = RefluxColors.textSecondary, maxLines = 1)
+                        if (state.status == PlayerStatus.PAUSED) Text("Paused", style = LocalTypography.current.captionStrong, color = RefluxColors.textSecondary, maxLines = 1)
                     }
                     // Down opens these; the one that is open is the one lit. To the D-pad they are only names, so
                     // they take no focus; a screen reader, which goes through what is on screen, opens them directly.

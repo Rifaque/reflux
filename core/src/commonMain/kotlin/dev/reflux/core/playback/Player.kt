@@ -66,6 +66,8 @@ data class PlayerState(
     val failure: PlaybackFailure? = null,
     /** The engine's description of [failure], for diagnostics rather than for display. */
     val error: String? = null,
+    /** How many [SubtitleAttachment.arrivesLate] files never arrived. The media plays on without them. */
+    val subtitlesNotLoaded: Int = 0,
 ) {
     val audioTracks: List<PlayerTrack> get() = tracks.filter { it.type == TrackType.AUDIO }
     val subtitleTracks: List<PlayerTrack> get() = tracks.filter { it.type == TrackType.SUBTITLE }

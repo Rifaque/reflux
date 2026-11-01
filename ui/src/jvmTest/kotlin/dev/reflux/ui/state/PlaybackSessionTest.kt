@@ -60,6 +60,20 @@ class PlaybackSessionTest {
     }
 
     @Test
+    fun aSubtitleThatNeverCameIsSaidAndNothingElseChanges() = runTest {
+        val playing = playing("Breaking Bad", 0)
+        val session = playing.session
+        val requests = playing.player.requests.size
+        playing.player.loseSubtitle()
+        runCurrent()
+        assertEquals(Problems.SUBTITLE_UNAVAILABLE, playing.app.notice)
+        assertEquals(PlayerStatus.PLAYING, session.state.value.status)
+        assertNull(session.error, "the picture is worth keeping")
+        assertEquals(requests, playing.player.requests.size, "and it is not a reason to plan again")
+        assertTrue(playing.platform.reports.any { "did not arrive" in it }, "${playing.platform.reports}")
+    }
+
+    @Test
     fun audioThatCannotBePlayedIsSaidOnceAndThePictureGoesOn() = runTest {
         val playing = playing("Breaking Bad", 0)
         val session = playing.session
@@ -75,12 +89,11 @@ class PlaybackSessionTest {
         assertNull(session.error, "the picture is worth keeping")
         assertTrue(playing.platform.reports.any { "audio/vnd.dts" in it && "none of it is playing" in it }, "${playing.platform.reports}")
 
-        val reports = playing.platform.reports.size
         advanceTimeBy(60_000)
         playing.player.playTo(120_000)
         advanceTimeBy(5_000)
         runCurrent()
-        assertEquals(reports, playing.platform.reports.size, "said once")
+        assertEquals(1, playing.platform.reports.count { "none of it is playing" in it }, "said once")
     }
 
     @Test
@@ -124,12 +137,14 @@ class PlaybackSessionTest {
     private class Converting(private val files: MediaSource) : MediaSource by files, NegotiatingSource {
         val plans = mutableListOf<PlannedPlayback>()
         var released = 0
+        var agrees = true
         override val descriptor = files.descriptor.copy(
             capabilities = files.descriptor.capabilities + setOf(SourceCapability.SERVER_TRANSCODE, SourceCapability.SERVER_AUDIO_CONVERSION, SourceCapability.SERVER_REMUX),
         )
 
-        override suspend fun negotiate(version: MediaVersion, plan: PlannedPlayback, device: DeviceCapabilities): NegotiatedDelivery {
+        override suspend fun negotiate(version: MediaVersion, plan: PlannedPlayback, device: DeviceCapabilities): NegotiatedDelivery? {
             plans += plan
+            if (!agrees && plan.delivery != DeliveryMode.DIRECT_PLAY) return null
             return NegotiatedDelivery(PlaybackTarget(if (plan.delivery == DeliveryMode.DIRECT_PLAY) "file:///original" else "http://server/master.m3u8"))
         }
 
@@ -219,6 +234,22 @@ class PlaybackSessionTest {
         assertEquals(1, plan.audioIndex, "the French the viewer chose, not the English that plays")
         assertFalse(session.silent, "there is sound on its way")
         assertNull(served.playing.app.notice)
+    }
+
+    @Test
+    fun aServerThatAlreadySaidNoIsNotAskedAgainWhenTheSoundGoes() = runTest {
+        val served = served()
+        served.server.agrees = false
+        served.playing.session.selectAudio("2")
+        served.playing.player.loseSound()
+        advanceTimeBy(3_100)
+        runCurrent()
+        val attempts = served.server.plans.size
+        served.playing.player.loseSound()
+        advanceTimeBy(10_000)
+        runCurrent()
+        assertEquals(attempts, served.server.plans.size)
+        assertTrue(served.playing.session.silent)
     }
 
     @Test

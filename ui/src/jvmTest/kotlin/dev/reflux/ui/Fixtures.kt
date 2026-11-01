@@ -358,6 +358,11 @@ class FakePlayer(override val capabilities: DeviceCapabilities) : Player {
     /** False makes the engine accept a file and then never get anywhere with it. */
     var starts = true
 
+    /** A subtitle the source was making never came. */
+    fun loseSubtitle() {
+        mutable.value = mutable.value.copy(subtitlesNotLoaded = mutable.value.subtitlesNotLoaded + 1)
+    }
+
     override fun load(request: PlaybackRequest) {
         requests += request
         if (!starts) return mutable.update { PlayerState(status = PlayerStatus.LOADING, volume = it.volume, muted = it.muted) }
