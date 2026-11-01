@@ -191,6 +191,7 @@ object Formatting {
         PlaybackIssue.HDR_NOT_DISPLAYABLE -> "HDR colors may look washed out on this display"
         PlaybackIssue.DOLBY_VISION_BASE_LAYER -> "Plays as HDR10 instead of Dolby Vision"
         PlaybackIssue.AUDIO_DOWNMIXED -> "Surround sound mixed down for this output"
+        PlaybackIssue.AUDIO_OTHER_LANGUAGE -> "Plays with audio in another language"
     }
 
     /** Why Best Version preferred the chosen version over the runner-up. */

@@ -19,6 +19,7 @@ import dev.reflux.core.playback.PlaybackAssessor
 import dev.reflux.core.playback.PlaybackIssue
 import dev.reflux.core.playback.StreamInfo
 import dev.reflux.core.playback.Support
+import dev.reflux.core.playback.TrackPreferences
 import dev.reflux.core.playback.VideoCodec
 import dev.reflux.core.playback.VideoDecoderSupport
 import dev.reflux.core.playback.VideoStream
@@ -43,6 +44,20 @@ class VersionSelectorTest {
         assertEquals(emptyList(), PlaybackAssessor.assess(stream(DynamicRange.DOLBY_VISION, 8), device.copy(dolbyVisionProfiles = setOf(8))).issues)
         assertEquals(emptyList(), PlaybackAssessor.assess(stream(DynamicRange.DOLBY_VISION, 8), device).issues, "decoders not read: unknown is not counted against it")
         assertEquals(listOf(PlaybackIssue.DOLBY_VISION_UNSUPPORTED), PlaybackAssessor.assess(stream(DynamicRange.DOLBY_VISION, 5), device.copy(dolbyVisionProfiles = emptySet())).issues, "profile 5 has no base layer to fall back on")
+    }
+
+    @Test
+    fun aVersionIsJudgedByTheTrackItWouldPlayForThisViewer() {
+        fun version(id: String, vararg audio: AudioStream) = VersionCandidate(
+            MediaVersion(VersionId(id), MediaId("m"), MediaLocation(SourceId("s"), id), 1, 0, StreamInfo(audio = audio.toList()), StreamInfoOrigin.PROBE),
+            Availability.AVAILABLE, SourceLocality.LOCAL_NETWORK,
+        )
+        val french = version("a-french-only-plays", AudioStream(AudioCodec.DTS, 6, "en"), AudioStream(AudioCodec.AC3, 6, "fr"))
+        val english = version("b-english-plays", AudioStream(AudioCodec.AC3, 6, "en"))
+        val device = Devices.oldPhone
+        assertEquals("a-french-only-plays", VersionSelector.select(listOf(french, english), device).best?.version?.id?.value, "any track will do, without the viewer's languages")
+        val viewer = TrackPreferences(listOf("en"))
+        assertEquals("b-english-plays", VersionSelector.select(listOf(french, english), device, preferences = viewer).best?.version?.id?.value, "ranking's own order, with a true input")
     }
 
     @Test

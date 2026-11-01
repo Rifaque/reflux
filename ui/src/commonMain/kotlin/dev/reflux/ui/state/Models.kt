@@ -13,6 +13,7 @@ import dev.reflux.core.model.Season
 import dev.reflux.core.model.Show
 import dev.reflux.core.model.SourceId
 import dev.reflux.core.playback.DeviceCapabilities
+import dev.reflux.core.playback.TrackPreferences
 import dev.reflux.core.search.SmartQuery
 import dev.reflux.core.versions.RankedVersion
 import dev.reflux.core.versions.SelectionCriterion
@@ -199,7 +200,7 @@ data class DetailsModel(
  * Everything a details page shows, or null when the work is not in the library: unknown, or remembered only
  * for its watch history because its last file is gone.
  */
-internal fun Library.detailsModel(itemId: MediaId, device: DeviceCapabilities): DetailsModel? {
+internal fun Library.detailsModel(itemId: MediaId, device: DeviceCapabilities, preferences: TrackPreferences? = null): DetailsModel? {
     val entry = entry(itemId) ?: return null
     val card = cards(listOf(entry)).single()
     val metadata = entry.metadata
@@ -236,7 +237,7 @@ internal fun Library.detailsModel(itemId: MediaId, device: DeviceCapabilities): 
             )
         }
         is Movie -> {
-            val selection = selectVersion(item.id, device)
+            val selection = selectVersion(item.id, device, preferences = preferences)
             if (selection.ranked.isEmpty()) return null
             val runtime = metadata?.runtimeMinutes ?: selection.ranked.firstNotNullOfOrNull { it.version.stream.durationMs }?.let { (it / 60_000).toInt() }
             val resumes = WatchRules.resumePosition(entry.watchState) != null
@@ -263,7 +264,7 @@ internal fun Library.detailsModel(itemId: MediaId, device: DeviceCapabilities): 
         // An episode's own page: its versions, as a film's, under its show's name. Reached from the episode's
         // row when it has several, and from outside Reflux (Watch Next), which names the episode.
         is Episode -> {
-            val selection = selectVersion(item.id, device)
+            val selection = selectVersion(item.id, device, preferences = preferences)
             if (selection.ranked.isEmpty()) return null
             val runtime = metadata?.runtimeMinutes ?: selection.ranked.firstNotNullOfOrNull { it.version.stream.durationMs }?.let { (it / 60_000).toInt() }
             val resumes = WatchRules.resumePosition(entry.watchState) != null

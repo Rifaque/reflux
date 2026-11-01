@@ -21,6 +21,7 @@ import dev.reflux.core.model.SourceId
 import dev.reflux.core.model.VersionId
 import dev.reflux.core.model.WatchState
 import dev.reflux.core.playback.DeviceCapabilities
+import dev.reflux.core.playback.TrackPreferences
 import dev.reflux.core.playback.MediaProber
 import dev.reflux.core.playback.StreamInfo
 import dev.reflux.core.playback.WatchReporter
@@ -338,8 +339,15 @@ class Library(
      * @param resuming false ranks the versions for playing from the start, without regard to which cut
      *   the user is part-way through.
      * @param continuing playback picks up again after an interruption ([WatchRules.resumePosition]).
+     * @param preferences the viewer's languages, so that versions are judged by the audio they would play.
      */
-    fun selectVersion(itemId: MediaId, device: DeviceCapabilities, resuming: Boolean = true, continuing: Boolean = false): VersionSelection {
+    fun selectVersion(
+        itemId: MediaId,
+        device: DeviceCapabilities,
+        resuming: Boolean = true,
+        continuing: Boolean = false,
+        preferences: TrackPreferences? = null,
+    ): VersionSelection {
         val candidates = versions(itemId).map { VersionCandidate(it.version, it.availability, it.locality) }
         val pinned = queries.preferredVersion(itemId.value).executeAsOneOrNull()?.let(::VersionId)
         // A copy on the device is the version it was made from: pinning one is honored by the other, so
@@ -348,7 +356,7 @@ class Library(
             queries.downloadOfOrigin(pin.value).executeAsOneOrNull()?.toModel()?.let(::copyOf)
                 ?.takeIf { it.availability != Availability.UNAVAILABLE }?.version?.id ?: pin
         }
-        return VersionSelector.select(candidates, device, preferred, if (resuming) watchState(itemId) else null, continuing)
+        return VersionSelector.select(candidates, device, preferred, if (resuming) watchState(itemId) else null, continuing, preferences)
     }
 
     fun setPreferredVersion(itemId: MediaId, versionId: VersionId?) {

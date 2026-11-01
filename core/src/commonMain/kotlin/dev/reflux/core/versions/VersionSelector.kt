@@ -9,8 +9,11 @@ import dev.reflux.core.playback.DeviceCapabilities
 import dev.reflux.core.playback.DynamicRange
 import dev.reflux.core.playback.PlaybackAssessment
 import dev.reflux.core.playback.PlaybackAssessor
+import dev.reflux.core.playback.PlaybackPlanner
+import dev.reflux.core.playback.PlaybackRequirements
 import dev.reflux.core.playback.PlaybackVerdict
 import dev.reflux.core.playback.Support
+import dev.reflux.core.playback.TrackPreferences
 import dev.reflux.core.source.SourceLocality
 import dev.reflux.core.watch.Handoff
 import dev.reflux.core.watch.TimelineMatch
@@ -83,6 +86,7 @@ object VersionSelector {
      * @param preferred the version the user pinned for this work.
      * @param resuming the viewer's progress, when playback is going to continue from it.
      * @param continuing playback picks up again after an interruption ([WatchRules.resumePosition]).
+     * @param preferences the viewer's languages, so that a version is judged by the audio track it would play.
      */
     fun select(
         candidates: List<VersionCandidate>,
@@ -90,8 +94,13 @@ object VersionSelector {
         preferred: VersionId? = null,
         resuming: WatchState? = null,
         continuing: Boolean = false,
+        preferences: TrackPreferences? = null,
     ): VersionSelection {
-        val ranked = candidates.map { RankedVersion(it, PlaybackAssessor.assess(it.version.stream, device)) }
+        val ranked = candidates.map { candidate ->
+            val assessment = preferences?.let { PlaybackPlanner.assess(PlaybackRequirements(candidate.version, it), device) }
+                ?: PlaybackAssessor.assess(candidate.version.stream, device)
+            RankedVersion(candidate, assessment)
+        }
         val criteria = criteria(device, preferred, resuming, continuing)
         val comparator = Comparator<RankedVersion> { a, b ->
             for ((_, compare) in criteria) {

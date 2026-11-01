@@ -139,6 +139,21 @@ object PlaybackPlanner {
     fun plan(requirements: PlaybackRequirements, device: DeviceCapabilities): PlannedPlayback =
         Planning(requirements, device).plan()
 
+    /**
+     * The assessment of what will really play: the audio track this plan chose, not whether any track could. Being
+     * left with no sound, or with another language, is a compromise of this version for this viewer.
+     */
+    fun assess(requirements: PlaybackRequirements, device: DeviceCapabilities): PlaybackAssessment {
+        val plan = plan(requirements, device)
+        val stream = requirements.version.stream
+        val assessed = PlaybackAssessor.assess(stream, device, plan.audioIndex)
+        val extra = listOfNotNull(
+            PlaybackIssue.NO_PLAYABLE_AUDIO.takeIf { plan.outcome == PlanOutcome.PLAYS_WITHOUT_AUDIO },
+            PlaybackIssue.AUDIO_OTHER_LANGUAGE.takeIf { PlanReason.AUDIO_OTHER_LANGUAGE in plan.reasons },
+        )
+        return PlaybackAssessment((assessed.issues + extra).distinct())
+    }
+
     private class Planning(private val requirements: PlaybackRequirements, private val device: DeviceCapabilities) {
         private val stream = requirements.version.stream
         private val source = requirements.source

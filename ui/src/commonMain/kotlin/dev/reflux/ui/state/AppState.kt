@@ -35,6 +35,7 @@ import dev.reflux.library.LibraryPipeline
 import dev.reflux.library.Offline
 import dev.reflux.library.PipelineActivity
 import dev.reflux.library.pinVersion
+import dev.reflux.core.playback.TrackPreferences
 import dev.reflux.library.planPlayback
 import dev.reflux.library.setWatchedEverywhere
 import kotlinx.coroutines.CancellationException
@@ -429,8 +430,8 @@ class AppState(
                 if (withTimeoutOrNull(RELEASE_PATIENCE_MS) { release.join() } == null) platform.report("The previous playback engine did not shut down in time")
             }
             val playable = read { playableFor(itemId) } ?: return@attempt notify(Problems.NOTHING_TO_PLAY)
-            val plan = read { planPlayback(playable, platform.device, sources, versionId, resume) }
-                ?: return@attempt notify(read { unplayableReason(playable, platform.device, sources) })
+            val plan = read { planPlayback(playable, platform.device, sources, versionId, resume, preferences = viewer) }
+                ?: return@attempt notify(read { unplayableReason(playable, platform.device, sources, viewer) })
             if (!platform.canPlay) return@attempt notify(Problems.noEngine(platform.playbackSetupHint))
             val player = platform.createPlayer() ?: run {
                 platform.report("The playback engine is installed but could not be started")
@@ -479,6 +480,9 @@ class AppState(
         }
         null -> null
     }
+
+    /** The viewer's languages, which decide which audio a version would play. */
+    internal val viewer: TrackPreferences get() = TrackPreferences(platform.preferredLanguages)
 
     /** Shows [message] briefly; longer messages stay long enough to be read. */
     fun notify(message: String) {
