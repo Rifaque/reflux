@@ -41,7 +41,7 @@ Status words used below:
 | --- | --- | --- |
 | M0 — Rebaseline & governance | One roadmap, a versioning protocol, verification history separated, product decisions recorded, V1 acceptance criteria | Done (2026-10-17) |
 | M1 — Product completeness | Everything V1 must contain is built and tested | Partial |
-| M2P — Playback compatibility & direct play | Reflux knows what the client can actually play, preserves the original whenever possible, degrades the smallest necessary part when it cannot, and can explain why | Open: audit and design done 2026-11-01 ([PLAYBACK.md](PLAYBACK.md)) |
+| M2P — Playback compatibility & direct play | Reflux knows what the client can actually play, preserves the original whenever possible, degrades the smallest necessary part when it cannot, and can explain why | Partial: execution (M2P.4) closed 2026-11-02, physical Linux waived; the rows below say what is left ([PLAYBACK.md](PLAYBACK.md)) |
 | M2 — Release engineering | Signed, shrunk, installable, upgradable builds for every V1 target, in CI, legally ready | Open |
 | M3 — Real-world validation | Live services, physical devices, real controllers, real networks, large libraries | Open |
 | M4 — Beta | `0.9.0-beta.1` in testers' hands through the stores and the website | Open |
@@ -127,7 +127,7 @@ Works before release engineering: what is signed and shipped should be the playb
 | Jellyfin negotiation through `PlaybackInfo` and a device profile, server behavior read from its session | Done 2026-11-01 (PLAYBACK.md, section 8) |
 | Diagnostics that explain a playback, planned against observed | Open |
 | Desktop audio outputs and passthrough; the Android decoder decision, with measurements | Open |
-| Test corpus, and validation on Windows, Linux, the Phone 2a, the Pad 7, the Google TV emulator, and the Fire TV | In progress: real-application runs on the Phone 2a, the Pad 7, the Fire TV, and the Google TV emulator done 2026-11-02 (VERIFICATION.md); Linux on physical hardware is left |
+| Test corpus, and validation on Windows, Linux, the Phone 2a, the Pad 7, the Google TV emulator, and the Fire TV | In progress: real-application runs on the Phone 2a, the Pad 7, the Fire TV, and the Google TV emulator done 2026-11-02 (VERIFICATION.md). Linux for M2P.4: **waived**, physical hardware unavailable, virtual Linux validation accepted (VERIFICATION.md, "M2P.4 physical Linux gate"); hardware decoding and real audio output on Linux stay unproven |
 | The real Iron Man file has a reproducible result | **Blocked**: RS-X1 answers 404 for that file (PLAYBACK.md, section 2) |
 
 **Exit criteria:** a documented shared capability model; explicit, testable planning; accurate capability information to Jellyfin; original media preferred; non-server sources on the same concepts without pretending to transcode; diagnostics that explain every conversion; evidence-based Android and desktop decoder behavior; the Iron Man file reproducible; representative combinations tested; relevant platforms validated; no unnecessary video transcoding, including because of audio or subtitles; documentation that separates supported, device-dependent, and unverified combinations.

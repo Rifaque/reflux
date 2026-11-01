@@ -736,11 +736,13 @@ The owner's Hindi remux finished at 14:19 UTC. Nothing in the libraries changed 
 
 **Not physical evidence:** the Linux runs are a container with a virtual display, software decoding, and no sound device.
 
-## M2P.4 physical Linux gate: not run (2026-11-02)
+## M2P.4 physical Linux gate: waived (2026-11-02)
 
-M2P.4 stays NOT COMPLETE until this has been run. Everything Linux above is a container with a virtual display, software decoding, and no sound device, and does not count.
+**WAIVED: physical Linux hardware unavailable; virtual Linux validation accepted for M2P.4.** The owner decided this on 2026-11-02, and M2P.4 is closed on it. The gate was not run and did not pass. RS-X1 is a live media server and will not be changed to run it.
 
-`tools/live/physical-linux-gate.sh`, on a real machine in a graphical session at that machine, runs `PhysicalLinuxGateTest` and the teardown cases.
+What was accepted is the Linux evidence above: real window tests and real playback in a container with a virtual display, the teardown fix, and a `check` of 994 tests with 3 environment failures left (the table above). What the waiver leaves unproven on Linux: a hardware decoder, a real audio output, a real desktop session, and teardown outside the container. It covers M2P.4 only. It is not evidence for those, and it does not change M3's clean Linux install or the V1 acceptance criteria.
+
+The gate stays in the repository as an optional tool for when such a machine exists. `tools/live/physical-linux-gate.sh`, on a real machine in a graphical session at that machine, runs `PhysicalLinuxGateTest` and the teardown cases.
 
 | Requirement | Evidence the gate takes |
 | --- | --- |
