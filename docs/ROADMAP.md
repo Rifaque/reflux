@@ -127,7 +127,7 @@ Works before release engineering: what is signed and shipped should be the playb
 | Jellyfin negotiation through `PlaybackInfo` and a device profile, server behavior read from its session | Done 2026-11-01 (PLAYBACK.md, section 8) |
 | Diagnostics that explain a playback, planned against observed | Open |
 | Desktop audio outputs and passthrough; the Android decoder decision, with measurements | Open |
-| Test corpus, and validation on Windows, Linux, the Phone 2a, the Pad 7, the Google TV emulator, and the Fire TV | In progress: real-application runs on the Fire TV and Google TV emulator done 2026-11-01 (VERIFICATION.md); the Phone 2a is left |
+| Test corpus, and validation on Windows, Linux, the Phone 2a, the Pad 7, the Google TV emulator, and the Fire TV | In progress: real-application runs on the Phone 2a, the Pad 7, the Fire TV, and the Google TV emulator done 2026-11-02 (VERIFICATION.md); Linux on physical hardware is left |
 | The real Iron Man file has a reproducible result | **Blocked**: RS-X1 answers 404 for that file (PLAYBACK.md, section 2) |
 
 **Exit criteria:** a documented shared capability model; explicit, testable planning; accurate capability information to Jellyfin; original media preferred; non-server sources on the same concepts without pretending to transcode; diagnostics that explain every conversion; evidence-based Android and desktop decoder behavior; the Iron Man file reproducible; representative combinations tested; relevant platforms validated; no unnecessary video transcoding, including because of audio or subtitles; documentation that separates supported, device-dependent, and unverified combinations.
