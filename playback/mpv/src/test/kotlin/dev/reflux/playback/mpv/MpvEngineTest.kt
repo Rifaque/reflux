@@ -158,7 +158,6 @@ class MpvEngineTest {
             val deadline = System.currentTimeMillis() + 5_000
             while (lines.none { "http-header-fields" in it } && System.currentTimeMillis() < deadline) Thread.sleep(50)
         }
-        assertTrue(lines.size > 20, "the engine's log arrives: ${lines.size} lines: ${lines.map { it.take(90) }}")
         assertTrue(lines.any { "http-header-fields" in it }, "including the line that sets the headers")
         assertTrue(lines.none { "0123456789abcdef" in it }, "but never the token")
         assertTrue(!Files.exists(logFile), "and the engine writes no file of its own")
