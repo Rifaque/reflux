@@ -736,3 +736,28 @@ The owner's Hindi remux finished at 14:19 UTC. Nothing in the libraries changed 
 
 **Not physical evidence:** the Linux runs are a container with a virtual display, software decoding, and no sound device.
 
+## M2P.4 physical Linux gate: not run (2026-11-02)
+
+M2P.4 stays NOT COMPLETE until this has been run. Everything Linux above is a container with a virtual display, software decoding, and no sound device, and does not count.
+
+`tools/live/physical-linux-gate.sh`, on a real machine in a graphical session at that machine, runs `PhysicalLinuxGateTest` and the teardown cases.
+
+| Requirement | Evidence the gate takes |
+| --- | --- |
+| 1. Launches | The real window shows Home |
+| 2. Hardware decoder | `PlaybackComparison.decoder.hardware` true on the Direct Play film; the engine log's `Using hardware decoding` |
+| 3. Real audio output | A card in `/proc/asound/cards`; the engine log names an `AO` that is not `null`; a person hears it |
+| 4. Direct Play | Plan and evidence both `DIRECT_PLAY`, no mismatch |
+| 5. Audio conversion | `AUDIO_CONVERSION`, no mismatch, with AC-3 withheld as a device needing conversion would lack it |
+| 6. Subtitles | A PGS track the server extracts, selected, in saved frames a person looks at |
+| 7. Seek and resume | Seek to 5:00, close, reopen near that place |
+| 8. Teardown | 6 runs each with HLS and the original file, exiting at once: no abort |
+| 9. Planned against actual | The comparisons in 2, 4, and 5 |
+| 10. No leak | The log, and every result file, searched for the password and tokens; counts only |
+
+Asked for elsewhere, the gate refuses rather than skips: it refused a container (not a virtual display, sound card, or render node), and fails on Windows. A gap on a real machine is reported as what is missing, not as UNSUPPORTED. Two things stay with a person: hearing sound, and seeing the subtitle in the frames.
+
+**Hardware seen.** RS-X1 is bare metal: a ThinkPad X1 Yoga 1st gen, Intel HD Graphics 520, HDA Intel audio, an eDP panel, Ubuntu 26.04. It is the only physical Linux machine reachable, and it cannot run the gate as it is: `rifaque` is not in `video`, `render`, or `audio`; there is no display server, audio service, libmpv, or Java on the path; and these need `sudo` on the live media server. `mimikyu`, a Linux node on the tailnet, was offline and its hardware is unknown.
+
+**To run it on any machine:** install libmpv and ffmpeg; join `video`, `render`, and `audio`; start a real desktop session with a working audio output; copy `~/.reflux-live/jellyfin.env` (mode 600) naming `reflux-test`; then run the script from a checkout at the same commit, at the machine.
+
