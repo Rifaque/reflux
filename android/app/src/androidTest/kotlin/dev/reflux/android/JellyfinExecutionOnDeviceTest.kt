@@ -1,5 +1,7 @@
 package dev.reflux.android
 
+import android.media.AudioFormat
+import android.media.AudioTrack
 import android.util.Log
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -22,6 +24,7 @@ import dev.reflux.core.playback.DeviceCapabilities
 import dev.reflux.core.playback.PlanOutcome
 import dev.reflux.core.playback.PlanReason
 import dev.reflux.core.playback.PlaybackComparison
+import dev.reflux.core.playback.PlaybackFailure
 import dev.reflux.core.playback.PlaybackController
 import dev.reflux.core.playback.PlaybackPlanner
 import dev.reflux.core.playback.PlaybackRequest
@@ -114,6 +117,41 @@ class JellyfinExecutionOnDeviceTest {
         val player = Media3Player(context, device).also { players += it }
         PlaybackController(player, MediaId("m"), Nothing, viewer).start(scope, PlaybackRequest(PlaybackTarget(clip()), "Tracks", tracks = directive))
         return player
+    }
+
+    /**
+     * A real output that will not start, on request (`-e refluxOutput true`): this process takes every audio track the
+     * system will give it, so the engine's own is refused by the platform. Nothing outside the process changes, and
+     * it ends with the test.
+     */
+    @Test
+    fun anOutputThePlatformRefusesIsAnOutputFailure() {
+        assumeTrue("not asked for", InstrumentationRegistry.getArguments().getString("refluxOutput") == "true")
+        val held = ArrayList<AudioTrack>()
+        val format = AudioFormat.Builder().setEncoding(AudioFormat.ENCODING_PCM_16BIT).setSampleRate(48_000).setChannelMask(AudioFormat.CHANNEL_OUT_STEREO).build()
+        // Large to small: what is left after the large ones still fits the engine's own, smaller track.
+        for (size in listOf(1 shl 20, 1 shl 18, 1 shl 16, 1 shl 14, 1 shl 12)) {
+            try {
+                repeat(2_000) {
+                    val track = AudioTrack.Builder().setAudioFormat(format).setBufferSizeInBytes(size).setTransferMode(AudioTrack.MODE_STREAM).build()
+                    held += track
+                    if (track.state != AudioTrack.STATE_INITIALIZED) error("refused")
+                }
+            } catch (_: Exception) {
+                // The platform has given all it will at this size.
+            }
+        }
+        report("held ${held.size} audio tracks")
+        try {
+            val device = AndroidCapabilities.of(context)
+            val player = play(device, TrackDirective(AudioDirective.Track(1), SubtitleDirective.Off))
+            val state = player.await("the output to fail or play", 60_000) { it.status == PlayerStatus.ERROR || (it.status == PlayerStatus.PLAYING && it.positionMs > 1_500) }
+            report("output: status=${state.status} failure=${state.failure} error=${state.error}")
+            assertEquals(PlayerStatus.ERROR, state.status, "the engine played with every track taken: $state")
+            assertEquals(PlaybackFailure.OUTPUT, state.failure, "$state")
+        } finally {
+            held.forEach(AudioTrack::release)
+        }
     }
 
     /**
