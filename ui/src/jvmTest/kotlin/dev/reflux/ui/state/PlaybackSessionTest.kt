@@ -196,6 +196,30 @@ class PlaybackSessionTest {
     }
 
     @Test
+    fun anotherTrackOfAConvertedStreamCarriesOnFromTheExactPlace() = runTest {
+        val served = served()
+        val player = served.playing.player
+        player.fail("no decoder took it", PlaybackFailure.UNSUPPORTED)
+        runCurrent()
+        player.playTo(38_000)
+        runCurrent()
+        served.playing.session.choose(PlayerMenu.AUDIO, 1)
+        runCurrent()
+        assertEquals(38_000, player.requests.last().startPositionMs, "under a minute, which a return visit would start over")
+    }
+
+    @Test
+    fun anOriginalThatFailsPartWayIsPlannedAroundFromThatPlace() = runTest {
+        val served = served()
+        val player = served.playing.player
+        player.playTo(38_000)
+        runCurrent()
+        player.fail("no decoder took it", PlaybackFailure.UNSUPPORTED)
+        runCurrent()
+        assertEquals(38_000, player.requests.last().startPositionMs)
+    }
+
+    @Test
     fun aSourceThatGoesAwayIsNotPlannedAround() = runTest {
         val served = served()
         served.playing.player.fail("gone", PlaybackFailure.UNREACHABLE)
