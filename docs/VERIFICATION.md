@@ -689,3 +689,50 @@ The first Windows attempt sat in `LOADING` for 90 s and did not recur; its cause
 **Suite:** the last Windows `check`: 7 failed, all in `desktop:engine`; 6 live tests whose film or server had changed under them, and `DesktopOfflineTest`, low disk: 36 GB free against a 51.1 GB reserve. An earlier run: 1034 tests, 12 skipped, with `DesktopOfflineTest` and 6 server timeouts failing, and all 10 live tests passing on rerun; no run was fully clean. Emulator on-device 5 of 5. Fire TV 4 of 4 execution tests after a reboot, which cleared an engine timeout on the stick.
 
 **Not verified:** the Nothing Phone 2a (not attached); a real `OUTPUT` failure; Linux on real hardware; stream indexes accurate across the library, which needs the files to stop changing first.
+
+## M2P.4 on a stable library (2026-11-01 to 02)
+
+The owner's Hindi remux finished at 14:19 UTC. Nothing in the libraries changed in the 30 minutes before this began. Jellyfin was scanned; no media was modified. Devices ran a side-by-side debug build (`dev.reflux.m2p`, signed in only as `reflux-test`, uninstalled afterwards), because the Pad's and Phone's own Reflux hold the owner's real library and watch state.
+
+**Index baseline.** Every file on disk was read with ffprobe and compared with Jellyfin by stream index: 1,003 of 1,003 versions match, no size differs, none is missing, and films with Hindi audio agree at 215 on both sides. Embedded cover art (`mjpeg`) is an image to Jellyfin and is excluded. The stale tracks are gone. Reflux itself lists 1,003 versions, all with stream indexes, on each device.
+
+**Fallout's PGS.** All five tracks return 200 (first extraction 50.9 s, the rest under a second). Four returned 404 while the indexes were stale, so that was the cause.
+
+**Explicit language, server evidence.** Mickey 17 has Spanish at `0:1` and English at `0:2`. Asking for the second, the server's own ffmpeg ran `-map 0:2`, `-codec:v:0 copy`. On the Phone, choosing Spanish at 0:55 of a converted stream ran `-map 0:1`, `-codec:v:0 copy`, `-ss 00:01:01`, and the timeline went on at 1:10. `anExplicitTrackIsTheOneTheServerConverts` had begun to skip itself, as no HEVC film has two audio tracks now; it takes any file with two languages, and runs.
+
+| Check, real application | Nothing Phone 2a (A142, Android 16, Wi-Fi) | Xiaomi Pad 7 |
+| --- | --- | --- |
+| Direct Play | Pass, `c2.mtk.avc.decoder` hardware | Pass, `c2.qti.avc.decoder` hardware |
+| HEVC original | Pass in the suite, `c2.mtk.hevc.decoder` | Pass, `c2.qti.hevc.decoder` |
+| Audio conversion, video preserved | Pass: AC-3 and DTS, no decoder here | Pass: DTS |
+| Same film, Mickey 17 (AC-3) | Conversion | Direct Play: this device decodes it |
+| Explicit audio | Pass, server evidence above | Pass, in the file, no new stream |
+| Subtitles | PGS on screen, whole; VOBSUB burned in by plan (`overlay`, `SubtitleCodecNotSupported`) | SRT on screen |
+| Plan against actual | Agree | Agree |
+| Seek, resume, close | Pass; close released the server's conversion | Pass |
+| Suite | 5 of 5 | 5 of 5 |
+
+**Phone capabilities, declared by this device:** hardware H.264 (10-bit too), HEVC Main and Main 10 to 4096x2176, VP9; software AV1 to 1920x1088, VP8; no Dolby Vision decoder. Audio AAC, ALAC, FLAC, MP3, Opus, PCM, Vorbis: no AC-3, E-AC-3, or DTS. Passthrough none, two output channels. Display 2412x1084, HDR10, HLG, HDR10+. A seen capability, a declared one, and UNKNOWN stay separate in the report: AC-3 is UNSUPPORTED because the list was read; VOBSUB rendering stays UNKNOWN.
+
+**Not seen on the Phone:** the no-sound notice, as every film it cannot decode was converted by the server; that notice was last seen on the Google TV emulator.
+
+**Failure, one re-plan (Google TV emulator, real application).** Dexter with its video facts forgotten: Media3 failed on HEVC 10-bit, "the original VIDEO did not play, so it is being planned again", then `VIDEO_TRANSCODE`, audio preserved, `VideoBitDepthNotSupported`, plan and actual agreeing. Second-failure and no-loop behaviour was seen earlier (above); that code is unchanged. Emulator suite 6 of 6.
+
+**`OUTPUT`, real.** `anOutputThePlatformRefusesIsAnOutputFailure` on the Phone (`-e refluxOutput true`): the process holds every audio track the platform gives it (40), the engine's own is refused, Media3 raises `ERROR_CODE_AUDIO_TRACK_INIT_FAILED`, and the player reports `OUTPUT`. This proves the engine and classification on hardware. The session's hard failure is covered by `anOutputThatWillNotStartIsNotPlannedAround`; the error screen on a real output failure was not seen.
+
+**A false mismatch, explained.** A force-stopped application leaves its session on the server: the next film's evidence read the dead conversion's `TranscodingInfo`, reporting a mismatch on a static stream, which a server cannot convert. With a normal close the same sequence agrees. It takes a crash, and it only misreports a diagnostic line, so it is noted, not changed.
+
+**Linux teardown assertion.** `vo_x11_config_vo_window: Assertion x11->window failed` was reproduced: 1 of 3 runs with HLS, 1 of 3 with the original file, 0 of 3 waiting 6 s after closing, 0 of 3 closing the window mid-playback. So it is not specific to HLS. Cause, in Reflux: leaving waited for a player still open, and not for one the viewer had just closed, whose engine might still be letting go of the surface. `AppState.finishPlayback` waits for both, bounded so a stuck engine cannot hold the application; `leavingWaitsForAnEngineThatIsStillLettingGo` fails without it. After it, 0 of 12 runs aborted (6 HLS, 6 original file), against 2 of 6 before. The race is intermittent, so that is strong evidence and not proof, and it is in a container with libmpv 0.37.
+
+**Suites on the final code.** Windows `check`: 1,038 tests, 14 skipped, 0 failed, the first fully clean run, including `DesktopOfflineTest` and every live test. Windows real-window tests: 38 run, 0 failed, 2 skipped (`PlannedPlaybackWindowTest` teardown, `PhysicalControllerTest`-style gates). Linux container `check`: 994 tests, 17 skipped, 4 failed; window round: all window tests pass, `PlannedPlaybackWindowTest` included, on a real server and without an abort.
+
+| Linux failure | Category |
+| --- | --- |
+| `theEnginesLogCarriesNoCredentials` | Stale test, fixed: it demanded a line count it stopped waiting for. 5 of 5 after, with the header line present |
+| `probeReadsWhatCapabilityQuestionsNeed` | Environment: libmpv 0.37 reports no `codec-profile`. Profile stays unknown, which is the right degradation; the test still fails there |
+| `AboutUiTest` (2) | Environment: headless focus and timing, on Linux only; pass on Windows. Unrelated to M2P |
+
+`JellyfinSignOutLiveTest` printed a stored credential when it failed, by comparing it by value; it no longer can. Its failure in the container was false: with no Secret Service, `ConfigSeal.None` hands back what it is given.
+
+**Not physical evidence:** the Linux runs are a container with a virtual display, software decoding, and no sound device.
+
