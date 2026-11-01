@@ -149,6 +149,27 @@ class AccessibilityTest {
     }
 
     @Test
+    fun aRemoteIsTakenToKeepWhenASourceAsksAndBackToRemoveAfterwards() = television { app ->
+        awaitText("Recently Added")
+        runOnIdle { app.navigator.open(Destination.Sources) }
+        awaitText("Add media")
+        fun on(text: String) = await("focus on $text") { onAllNodes(isFocused() and hasText(text)).fetchSemanticsNodes().isNotEmpty() }
+        on("Add media")
+        remote(app, Key.ARROW_DOWN)
+        remote(app, Key.DPAD_CENTER)
+        awaitText("Refresh")
+        remote(app, Key.ARROW_DOWN)
+        on("Refresh")
+        remote(app, Key.ARROW_RIGHT)
+        on("Remove")
+        remote(app, Key.DPAD_CENTER)
+        on("Keep")
+        remote(app, Key.DPAD_CENTER)
+        on("Remove")
+        assertTrue(app.library.sources().isNotEmpty(), "a press too many kept it")
+    }
+
+    @Test
     fun aCardSaysItsTitleOnce() {
         // A generated placeholder draws the title, and a wide card puts it on the image.
         screen(populated()) { _ ->
