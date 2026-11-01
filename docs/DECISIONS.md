@@ -135,6 +135,8 @@ Media servers are catalog sources whose items are converted into the same identi
 
 ## 2026-10-08 — Jellyfin adapter
 
+> Server-side conversion: superseded by "Playback may ask a server to convert the smallest necessary part" (2026-11-01).
+
 Jellyfin is integrated as a catalog source, not as the application model. Reflux reads the user's catalog (movies, episodes, every media source of an item as a version), plays Jellyfin's direct static streams in its own player, and reports progress and played state back best-effort; Reflux's local state is always updated first. Server-side transcoding is intentionally not used in v1: Best Version and the device capability model decide what to play. Passwords are used only to sign in; the access token is kept with the source configuration.
 
 ## 2026-10-08 — Identity aliases
@@ -911,3 +913,17 @@ An audit of every screen and the player (VERIFICATION.md) found the labels large
 Alternatives rejected: a description on each call site (what the roadmap's line asked for, and what would have left every structural gap in place); a global "accessibility mode" setting (the system already knows, and AGENTS.md prefers a default to a setting); making the desktop overlay window focusable for Tab (it would take keys from the video surface, which is why it does not); `invisibleToUser` or a separate hidden announcer (a second stop for the same words, or none at all).
 
 Known limits, for the record: Compose Desktop reaches screen readers through the Java Access Bridge on Windows, which Narrator does not use, and has no AT-SPI bridge on Linux; so the labels are there, but a desktop screen reader pass depends on the toolkit (M3). TalkBack restores its own focus when a panel closes, and Reflux cannot move it: in touch mode a control cannot take input focus. Scrolling that focus starts is not reduced on a desktop (the toolkit's own animation, short, and what the user asked for).
+
+## 2026-11-01 — Playback may ask a server to convert the smallest necessary part
+
+The 2026-10-08 Jellyfin decision used static streams alone, with no server-side conversion. A file whose audio a device cannot decode then plays with no sound and no word about it, and Reflux has no way to say what a server would do. Decided for M2P: Reflux negotiates with a server through what the server already has (Jellyfin's `PlaybackInfo` and device profile; no separate capability mechanism), and a server may remux, convert audio, or as a last resort transcode video, in that order. Reflux still has no transcoder of its own (ROADMAP.md).
+
+- **Four axes, not one word.** Delivery, video, audio, and subtitles are separate, with reasons. Hardware decoding is never a condition of original delivery. Jellyfin's four terms stay in its adapter and do not apply to local, SMB, or WebDAV sources.
+- **What happened is read from the server.** `TranscodingInfo` (`IsVideoDirect`, `IsAudioDirect`, reasons), never `SupportsDirectStream` or a `PlayMethod`, which is only what a client said (PLAYBACK.md, section 3).
+- **Subtitles stay out of the server's stream.** Reflux declares External for what it can draw and never selects a subtitle in a server stream URL: asked otherwise, the live server planned a burn-in, and with it a video transcode, for an audio-only problem.
+- **A failed negotiation is today's behavior:** the static stream. Copies for Smart Offline stay the file byte for byte.
+- **A device is described by what it reports,** extending `DeviceCapabilities`. Nothing is keyed by brand, model, or Android version.
+- **`media3-exoplayer-hls` is added when negotiation lands** (Apache-2.0): Media3 cannot open a server's HLS without it, it comes from the same project at the same version, and there is no smaller way to follow the server's stream.
+- **No FFmpeg extension on Android for now.** Server conversion covers server files; what remains is DTS and TrueHD on local or share files (4 of about 1,280 real tracks, and silent rather than unplayable). `org.jellyfin.media3:media3-ffmpeg-decoder` is GPL-3.0, which proprietary Reflux cannot ship. Reopened only with measurements and legal review.
+
+Alternatives rejected: keeping static streams only (silent playback stays, and no explanation is possible); a Reflux transcoder or remuxer (a new engine, against the milestone's scope); inferring modes from a client-side table (the thing M2P exists to remove). Milestone numbering: this is M2P, ahead of M2 release engineering, so the many existing references to M2 stay correct.
