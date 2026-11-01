@@ -13,6 +13,7 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.MimeTypes
 import androidx.media3.common.PlaybackException
+import androidx.media3.exoplayer.hls.SampleQueueMappingException
 import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.TrackSelectionOverride
 import androidx.media3.common.Tracks
@@ -143,7 +144,7 @@ class Media3Player(context: Context, override val capabilities: DeviceCapabiliti
         override fun onPlayerError(error: PlaybackException) {
             mutableState.update {
                 // An engine's message can quote the address it failed on, and a server's stream has its key in it.
-                it.copy(status = PlayerStatus.ERROR, failure = failureOf(error.errorCode), error = Redaction.redact("${error.errorCodeName}: ${error.message.orEmpty()}"))
+                it.copy(status = PlayerStatus.ERROR, failure = failureOf(error.cause, error.errorCode), error = Redaction.redact("${error.errorCodeName}: ${error.message.orEmpty()}"))
             }
         }
     }
@@ -399,6 +400,14 @@ class Media3Player(context: Context, override val capabilities: DeviceCapabiliti
 
     companion object {
         private const val POSITION_INTERVAL_MS = 500L
+
+        /**
+         * A stream that is not what its playlist declared arrives as an I/O error, though everything was reached. Seen
+         * on a real server whose stored tracks had drifted from the file: the playlist promised audio, the segments
+         * had none. Nothing here says why, and it does not mean the file is gone.
+         */
+        fun failureOf(cause: Throwable?, errorCode: Int): PlaybackFailure =
+            if (generateSequence(cause) { it.cause }.any { it is SampleQueueMappingException }) PlaybackFailure.UNKNOWN else failureOf(errorCode)
 
         /**
          * Says what went wrong in the player's terms, from the engine's error code ([PlaybackException]).
