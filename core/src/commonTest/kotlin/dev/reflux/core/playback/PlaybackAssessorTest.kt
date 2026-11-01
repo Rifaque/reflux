@@ -1,11 +1,51 @@
 package dev.reflux.core.playback
 
+import dev.reflux.core.model.MediaId
+import dev.reflux.core.model.MediaLocation
+import dev.reflux.core.model.MediaVersion
+import dev.reflux.core.model.SourceId
+import dev.reflux.core.model.StreamInfoOrigin
+import dev.reflux.core.model.VersionId
+import dev.reflux.core.source.SourceCapability
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class PlaybackAssessorTest {
     private val noDts = Devices.oldPhone
+
+    private val dtsAndFrench = StreamInfo(audio = listOf(AudioStream(AudioCodec.DTS, 2, "en", default = true), AudioStream(AudioCodec.AC3, 2, "fr")))
+    private fun version(stream: StreamInfo) = MediaVersion(VersionId("v"), MediaId("m"), MediaLocation(SourceId("s"), "a.mkv"), 1, 0, stream, StreamInfoOrigin.PROBE)
+    private fun requirements(audio: AudioChoice = AudioChoice.Automatic, source: Set<SourceCapability> = emptySet()) =
+        PlaybackRequirements(version(dtsAndFrench), TrackPreferences(listOf("en")), source, audio)
+
+    @Test
+    fun theTrackAskedAboutIsTheOneAssessedAndNotAnyOther() {
+        assertEquals(emptyList(), PlaybackAssessor.assess(dtsAndFrench, noDts).issues, "without one, any track will do")
+        assertEquals(listOf(PlaybackIssue.NO_PLAYABLE_AUDIO), PlaybackAssessor.assess(dtsAndFrench, noDts, audioIndex = 0).issues)
+        assertEquals(emptyList(), PlaybackAssessor.assess(dtsAndFrench, noDts, audioIndex = 1).issues)
+    }
+
+    @Test
+    fun anExplicitTrackIsAssessedAsItselfAndNoOtherLanguageRescuesIt() {
+        val assessed = PlaybackPlanner.assess(requirements(AudioChoice.Explicit(0)), noDts)
+        assertEquals(listOf(PlaybackIssue.NO_PLAYABLE_AUDIO), assessed.issues)
+        assertEquals(emptyList(), PlaybackPlanner.assess(requirements(AudioChoice.Explicit(1)), noDts).issues)
+    }
+
+    @Test
+    fun aTrackThatIsGoneIsNotPlayable() {
+        assertEquals(listOf(PlaybackIssue.NO_PLAYABLE_AUDIO), PlaybackPlanner.assess(requirements(AudioChoice.Explicit(5)), noDts).issues)
+    }
+
+    @Test
+    fun automaticSelectionIsAssessedByThePlannersTrack() {
+        val assessed = PlaybackPlanner.assess(requirements(), noDts)
+        assertEquals(listOf(PlaybackIssue.AUDIO_OTHER_LANGUAGE), assessed.issues, "French is what would play, and that is a compromise")
+        val own = PlaybackRequirements(version(StreamInfo(audio = listOf(AudioStream(AudioCodec.DTS, 2, "en"), AudioStream(AudioCodec.AC3, 2, "en")))), TrackPreferences(listOf("en")))
+        assertEquals(emptyList(), PlaybackPlanner.assess(own, noDts).issues, "the other English track plays")
+    }
+
 
     @Test
     fun audioThatMayStillPassThroughIsNotCalledUnplayable() {

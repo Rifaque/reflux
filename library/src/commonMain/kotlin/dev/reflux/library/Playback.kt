@@ -8,6 +8,7 @@ import dev.reflux.core.model.VersionId
 import dev.reflux.core.playback.DeviceCapabilities
 import dev.reflux.core.playback.PlaybackRequest
 import dev.reflux.core.playback.SubtitleAttachment
+import dev.reflux.core.playback.TrackPreferences
 import dev.reflux.core.source.MediaSource
 import dev.reflux.core.versions.RankedVersion
 import dev.reflux.core.versions.VersionSelection
@@ -37,6 +38,7 @@ data class PlaybackPlan(
  * @param resume false starts from the beginning ("Play from start").
  * @param continuing picks up a playback that was interrupted (Try again after a failure): the position is
  *   where the viewer is even near the end, where Play would otherwise start the work over.
+ * @param preferences the viewer's languages.
  * @return null when no version is currently playable (e.g. its source is offline).
  */
 suspend fun Library.planPlayback(
@@ -46,8 +48,9 @@ suspend fun Library.planPlayback(
     versionId: VersionId? = null,
     resume: Boolean = true,
     continuing: Boolean = false,
+    preferences: TrackPreferences? = null,
 ): PlaybackPlan? {
-    val selection = selectVersion(itemId, device, resuming = resume, continuing = continuing)
+    val selection = selectVersion(itemId, device, resuming = resume, continuing = continuing, preferences = preferences)
     val chosen = if (versionId != null) {
         selection.ranked.firstOrNull { it.version.id == versionId && it.playable }
     } else {

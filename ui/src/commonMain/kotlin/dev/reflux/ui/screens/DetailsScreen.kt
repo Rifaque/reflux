@@ -109,7 +109,7 @@ import dev.reflux.ui.theme.Text
  */
 @Composable
 internal fun DetailsScreen(app: AppState, itemId: MediaId) {
-    val loaded by app.libraryState(itemId) { Loaded(detailsModel(itemId, app.platform.device)) }
+    val loaded by app.libraryState(itemId) { Loaded(detailsModel(itemId, app.platform.device, app.viewer)) }
     // Null while loading; a loaded page without details is a work that has left the library.
     val details = (loaded ?: return).details ?: return Gone(app)
     val layout = LocalLayout.current

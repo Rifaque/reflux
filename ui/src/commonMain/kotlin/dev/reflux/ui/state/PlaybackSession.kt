@@ -20,7 +20,6 @@ import dev.reflux.core.playback.PlayerState
 import dev.reflux.core.playback.PlayerStatus
 import dev.reflux.core.playback.SkipSegment
 import dev.reflux.core.playback.SkipSegments
-import dev.reflux.core.playback.TrackPreferences
 import dev.reflux.core.playback.WatchReporter
 import dev.reflux.core.source.PlaybackEvidenceSource
 import dev.reflux.library.Library
@@ -174,7 +173,7 @@ class PlaybackSession internal constructor(
             player = player,
             itemId = itemId,
             reporter = reporter,
-            preferences = TrackPreferences(app.platform.preferredLanguages),
+            preferences = app.viewer,
             onSkip = { forward -> switchTo(if (forward) next else previous) },
         ).also { it.start(scope, plan.request) }
         // The engine may already say what it said for the last load; the wait for this one starts now.
@@ -501,9 +500,9 @@ class PlaybackSession internal constructor(
             try {
                 // What was recorded so far is written before the plan reads the work's progress.
                 reporter?.flush()
-                val plan = app.read { planPlayback(itemId, app.platform.device, app.sources, continuing = continuing) }
+                val plan = app.read { planPlayback(itemId, app.platform.device, app.sources, continuing = continuing, preferences = app.viewer) }
                 if (plan == null) {
-                    app.notify(app.read { unplayableReason(itemId, app.platform.device, app.sources) })
+                    app.notify(app.read { unplayableReason(itemId, app.platform.device, app.sources, app.viewer) })
                     close()
                 } else {
                     load(plan)

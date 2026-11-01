@@ -24,6 +24,9 @@ enum class PlaybackIssue(val verdict: PlaybackVerdict) {
     /** Dolby Vision played through its HDR10/SDR base layer. */
     DOLBY_VISION_BASE_LAYER(PlaybackVerdict.DEGRADED),
 
+    /** The viewer's language cannot be played, and another language is what will be heard. */
+    AUDIO_OTHER_LANGUAGE(PlaybackVerdict.DEGRADED),
+
     /** More channels than the output has. Normal for stereo devices, so informational only. */
     AUDIO_DOWNMIXED(PlaybackVerdict.OPTIMAL),
 }
@@ -44,13 +47,17 @@ data class PlaybackAssessment(val issues: List<PlaybackIssue>) {
  * it could not inspect it. The platform player remains the final authority.
  */
 object PlaybackAssessor {
-    fun assess(stream: StreamInfo, device: DeviceCapabilities): PlaybackAssessment {
+    /**
+     * @param audioIndex the track that will play, by position in `StreamInfo.audio`. Null asks whether any could,
+     *   which is all there is to say where no viewer's languages are known ([PlaybackPlanner.assess] knows them).
+     */
+    fun assess(stream: StreamInfo, device: DeviceCapabilities, audioIndex: Int? = null): PlaybackAssessment {
         val issues = mutableListOf<PlaybackIssue>()
         if (stream.container != Container.UNKNOWN && stream.container !in device.containers) {
             issues += PlaybackIssue.CONTAINER_UNSUPPORTED
         }
         stream.video?.let { issues += assessVideo(it, device) }
-        issues += assessAudio(stream.audio, device)
+        issues += assessAudio(audioIndex?.let { stream.audio.getOrNull(it) }?.let(::listOf) ?: stream.audio, device)
         return PlaybackAssessment(issues.distinct())
     }
 
