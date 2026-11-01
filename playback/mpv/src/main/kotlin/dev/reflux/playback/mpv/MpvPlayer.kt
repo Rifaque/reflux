@@ -32,6 +32,7 @@ class MpvPlayer private constructor(
     override val capabilities: DeviceCapabilities,
     private val log: ((String) -> Unit)?,
     private val onDecode: ((DecodeObservation) -> Unit)?,
+    private val onAudioOutput: ((source: Int, output: Int) -> Unit)?,
 ) : Player {
     private val mutableState = MutableStateFlow(PlayerState())
     override val state: StateFlow<PlayerState> = mutableState.asStateFlow()
@@ -40,6 +41,9 @@ class MpvPlayer private constructor(
 
     /** Whether the current file's decoding has been reported (once per file, at its first frame). */
     private var decodeReported = false
+
+    /** Whether the current file's audio output has been reported (once per file, once it is known). */
+    private var outputReported = false
     private val eventThread = Thread(::eventLoop, "mpv-events").apply { isDaemon = true }
 
     init {
@@ -106,6 +110,7 @@ class MpvPlayer private constructor(
                 }
                 LibMpv.EVENT_START_FILE -> {
                     decodeReported = false
+                    outputReported = false
                     mutableState.update { it.copy(status = PlayerStatus.LOADING, failure = null, error = null) }
                 }
                 // Read tracks synchronously so external subtitles and status become visible together, and with
@@ -122,6 +127,7 @@ class MpvPlayer private constructor(
                 LibMpv.EVENT_PLAYBACK_RESTART -> {
                     mutableState.update { it.copy(status = runningStatus()) }
                     if (!decodeReported && onDecode != null) reportDecode(onDecode)
+                    if (!outputReported && onAudioOutput != null) reportAudioOutput(onAudioOutput)
                 }
                 LibMpv.EVENT_END_FILE -> event.data?.let { onEndFile(MpvEventEndFile(it)) }
                 LibMpv.EVENT_PROPERTY_CHANGE -> event.data?.let { onProperty(event.replyUserdata.toInt(), MpvEventProperty(it)) }
@@ -145,6 +151,14 @@ class MpvPlayer private constructor(
         ) ?: return
         decodeReported = true
         runCatching { onDecode(observation) }
+    }
+
+    /** How many channels the output took, against how many there were, for what is known about this machine. */
+    private fun reportAudioOutput(onAudioOutput: (Int, Int) -> Unit) {
+        val source = mpv.getString(handle, "audio-params/channel-count")?.toIntOrNull()?.takeIf { it > 0 } ?: return
+        val output = mpv.getString(handle, "audio-out-params/channel-count")?.toIntOrNull()?.takeIf { it > 0 } ?: return
+        outputReported = true
+        runCatching { onAudioOutput(source, output) }
     }
 
     private fun onEndFile(end: MpvEventEndFile) {
@@ -251,12 +265,14 @@ class MpvPlayer private constructor(
          *   `log-file` is not used for it: what it writes cannot be redacted, and it records every option it is
          *   given, the HTTP headers of a server's stream with its access token among them.
          * @param onDecode told, once per file, how its video was decoded (from the engine's event thread).
+         * @param onAudioOutput told, once per file, how many channels went in and came out (likewise).
          */
         fun create(
             capabilities: DeviceCapabilities,
             options: Map<String, String> = emptyMap(),
             log: ((String) -> Unit)? = null,
             onDecode: ((DecodeObservation) -> Unit)? = null,
+            onAudioOutput: ((source: Int, output: Int) -> Unit)? = null,
         ): MpvPlayer? {
             val mpv = LibMpv.loadOrNull() ?: return null
             val handle = mpv.mpv_create() ?: return null
@@ -266,7 +282,7 @@ class MpvPlayer private constructor(
                 return null
             }
             if (log != null) mpv.mpv_request_log_messages(handle, "debug")
-            return MpvPlayer(mpv, handle, capabilities, log, onDecode)
+            return MpvPlayer(mpv, handle, capabilities, log, onDecode, onAudioOutput)
         }
 
         /** How far short of its running time a file may end and still have played to its end. */

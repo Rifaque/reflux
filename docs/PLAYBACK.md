@@ -1,6 +1,6 @@
 # Playback compatibility
 
-What Reflux can really play, how it decides, and how it explains that. This is the specification for milestone M2P (ROADMAP.md). It began as the M2.0 audit of 2026-11-01; sections 6 to 10 are a proposal until DECISIONS.md and the code say otherwise.
+What Reflux can really play, how it decides, and how it explains that. This is the specification for milestone M2P (ROADMAP.md). It began as the M2.0 audit of 2026-11-01. Sections 3a and 6 are built; sections 7 to 10 are a proposal until DECISIONS.md and the code say otherwise.
 
 The rule: **decode locally when possible, preserve original streams when possible, transcode only when genuinely necessary.** Success is that Reflux knows what the client can actually play, preserves the original whenever possible, degrades the smallest necessary part when it cannot, and can explain why. "Every codec works everywhere" is not the goal.
 
@@ -26,19 +26,19 @@ Direct Play is not hardware decoding. Delivery (how bytes reach the device) and 
 | # | Where | What is wrong | Consequence |
 | --- | --- | --- | --- |
 | 1 | `JellyfinSource.kt:227` | **Fixed.** `PlayMethod` was always `DirectStream`; the stream is `static` | The server's dashboard was told something untrue |
-| 2 | `AndroidMediaProber.kt:54` | Ten-bit is detected for HEVC and VP9 only, and `profile != null -> 8` then calls SDR 10-bit AV1 and H.264 High 10 **8-bit** | Best Version is told a false bit depth. VP9 Profile 3 is missed too |
-| 3 | `AndroidCapabilities.kt:50` | VobSub is not claimed although Media3 has a parser. Unverified on a device; three real files have it | Understates; nothing reads the set yet |
-| 4 | `AndroidCapabilities.kt:129` | Android documents an empty `encodings` list as arbitrary encodings; here it means none | Passthrough may be understated on such an output |
-| 5 | `AndroidCapabilities.kt:82` | E-AC-3 and E-AC-3 JOC merge into one codec | Atmos passthrough cannot be told from plain E-AC-3 |
-| 6 | `AndroidCapabilities.kt:140` | Independent maximum width and height, with no frame rate. `areSizeAndRateSupported` and profile-levels are not used | 4K60 is claimed where only 4K30 fits, and the reverse cannot be expressed |
-| 7 | `AndroidCapabilities.kt:52` | `video/dolby-vision` is unmapped, and a display's DV flag stands in for DV decoding. The Pad 7 has `c2.dolby.decoder.hevc`, which Reflux cannot see | DV assessment ignores the decoder |
-| 8 | `AndroidEnvironment.kt:191` | Capabilities are read once per process | An AVR or television connected later is not seen |
-| 9 | `DesktopCapabilities.kt:36` | `maxOutputChannels` is always 2 | 5.1 on a 5.1 desktop counts as a downmix and is capped in Best Version's audio score |
+| 2 | `AndroidMediaProber.kt:54` | **Fixed.** Ten-bit was detected for HEVC and VP9 only, and `profile != null -> 8` then called SDR 10-bit AV1 and H.264 High 10 **8-bit** | Best Version is told a false bit depth. VP9 Profile 3 is missed too |
+| 3 | `AndroidCapabilities.kt:50` | **Answered as unknown.** Media3 has a VobSub parser, unverified on a device; three real files have it. `SubtitleRenderer` says embedded unknown, external unsupported | Stays unknown until seen |
+| 4 | `AndroidCapabilities.kt:129` | **Fixed.** Android documents an empty `encodings` list as arbitrary encodings; it was read as none. It now leaves passthrough unknown | Passthrough may be understated on such an output |
+| 5 | `AndroidCapabilities.kt:82` | **Fixed for output.** E-AC-3 and E-AC-3 JOC merged into one codec. `atmosPassthrough` is now its own answer | Atmos passthrough cannot be told from plain E-AC-3 |
+| 6 | `AndroidCapabilities.kt:140` | **Fixed in the model.** Independent maximum width and height, with no frame rate. Profiles, levels, and frame rates are now read per decoder. Width and height themselves are still each one's own maximum, and only 1080p and 2160p are asked about | 4K60 is claimed where only 4K30 fits, and the reverse cannot be expressed |
+| 7 | `AndroidCapabilities.kt:52` | **Fixed.** `video/dolby-vision` was unmapped, and a display's DV flag stood in for DV decoding | DV assessment ignores the decoder |
+| 8 | `AndroidEnvironment.kt:191` | **Fixed.** Capabilities were read once per process; outputs and displays are now read again after a change | An AVR or television connected later is not seen |
+| 9 | `DesktopCapabilities.kt:36` | **Fixed.** `maxOutputChannels` was always 2. It is now learned from real playbacks, with 2 as the floor | 5.1 on a 5.1 desktop counts as a downmix and is capped in Best Version's audio score |
 | 10 | `PlaybackAssessment.kt:7`, `:96` | `NO_PLAYABLE_AUDIO` is only degraded, and any playable track satisfies the check, not the one that will be chosen | A version can be recommended whose chosen track is silent |
 | 11 | `PlaybackAssessment.kt:45` | Subtitles are never assessed | A wanted track the engine cannot show is invisible to planning |
 | 12 | `MpvPlayer.kt:56`, `MpvProbe.kt:27` | **Confirmed and fixed.** `http-header-fields` is a comma-separated list, and Jellyfin's `Authorization` value contains commas, unescaped: a server received `MediaBrowser Client="Reflux"` and the token never left the engine | Masked because Jellyfin 12.2.0 serves static streams with no authentication at all (section 3) |
-| 13 | `SubtitleStream` | No hearing-impaired flag; no server stream index on audio or subtitle tracks | A plan cannot address a track on the server |
-| 14 | `JellyfinSource.kt:317` | `substringBefore(',')` of `Container`: a real `mov,mp4,...` becomes QuickTime, and `mpegts` or `matroska` becomes unknown | Harmless today (unknown is no evidence); wrong once containers are planned |
+| 13 | `SubtitleStream` | **Fixed.** No hearing-impaired flag; no server stream index on audio or subtitle tracks | A plan cannot address a track on the server |
+| 14 | `JellyfinSource.kt:317` | **Fixed.** `substringBefore(',')` of `Container`: a real `mov,mp4,...` became QuickTime, and `mpegts` or `matroska` became unknown | Harmless today (unknown is no evidence); wrong once containers are planned |
 
 The last two rows of the matrix's "today" behavior matter most: **Reflux has no answer when a file's audio is undecodable.** On Android the engine disables the track and plays the picture in silence.
 
@@ -136,12 +136,12 @@ Columns: Desktop is libmpv 0.41-dev on Windows (Linux headless only, as noted). 
 | Format | Desktop | Pad 7 | Fire TV |
 | --- | --- | --- | --- |
 | H.264 8-bit | Played; hardware | Listed; hardware | Played |
-| H.264 High 10 | Software (Direct3D path); hardware through NVDEC is unusable by this output | ? Profile to be read at M2.6 | ? Profile to be read at M2.6 |
+| H.264 High 10 | Software (Direct3D path); hardware through NVDEC is unusable by this output | **No decoder** (no High 10 declared) | **No decoder** (no High 10 declared) |
 | HEVC 8-bit | Probed hardware | Listed; hardware | Played (720p/1080p test media) |
 | HEVC Main 10 | **Played** to 1080p; probed hardware to 4K | Listed; hardware | **Played** 4K60, `OMX.MTK.VIDEO.DECODER.HEVC` |
 | VP8 | Software | Software only | Listed; hardware |
 | VP9 8/10-bit | Probed hardware | Listed; hardware | Listed; hardware |
-| AV1 8/10-bit | Probed hardware; libdav1d in software | Software only (`dav1d`) | Listed; hardware |
+| AV1 8/10-bit | Probed hardware; libdav1d in software | Software only (`dav1d`), declared to 2048 wide and 1080p30 | Listed; hardware to level 13 (5.1), 2160p66 |
 | MPEG-2 | Software; hardware not probed | **None listed** | Listed; hardware |
 | VC-1 | Software | None listed | None listed |
 | MPEG-4 Part 2 | Software | Software | Listed; hardware |
@@ -240,35 +240,81 @@ Jellyfin's words are a mapping in the adapter and never leave it:
 | Direct Stream | `AUDIO_CONVERTED` | `IsVideoDirect` true, `IsAudioDirect` false |
 | Transcode | `VIDEO_TRANSCODED` | `IsVideoDirect` false, even with audio kept |
 
-## 6. Shared capability model (proposal)
+## 6. Shared capability model
 
-Extend `DeviceCapabilities`; do not replace it. Best Version and the UI keep working, and each addition has a real source.
+Built in M2P.2. It answers questions and decides nothing. There is no planner yet.
 
-```kotlin
-data class VideoDecoderSupport(
-    val codec: VideoCodec, val maxWidth: Int, val maxHeight: Int, val maxBitDepth: Int = 8,
-    val hardware: Boolean?,
-    val maxFrameRateAtMax: Double? = null,       // null: not known, nothing capped
-    val profiles: Set<VideoProfile>? = null,     // null: not known, nothing refused
-    val maxLevel: Int? = null,
-    val dolbyVision: Set<Int>? = null,           // DV profiles this decoder takes
-    val evidence: Evidence = Evidence.REPORTED,
-)
-enum class Evidence { OBSERVED, REPORTED, ENGINE_DECLARED }
+### Four things kept apart
 
-data class AudioOutput(
-    val maxPcmChannels: Int?,                    // null: not known, no downmix claimed
-    val passthrough: Set<PassthroughFormat>,     // AC3, EAC3, EAC3_JOC, DTS, DTS_HD, TRUEHD
-)
-data class SubtitleSupport(val format: SubtitleFormat, val fidelity: Fidelity) // FULL, PLAIN
-enum class Fidelity { FULL, PLAIN }
-```
+| Term | Means | Lives in | Changes when |
+| --- | --- | --- | --- |
+| **Media facts** | What a file contains | `StreamInfo` and its streams, on `MediaVersion` | The file does |
+| **Capabilities** | What this client can handle, as far as anything shows | `DeviceCapabilities`, asked through `Capabilities` | The device, engine, or output does |
+| **Evidence** | What happened to this playback | `PlaybackEvidence`, `PlayerState` | Each playback |
+| **Planning** | What Reflux should request or do | Nothing yet (section 7) | |
 
-`StreamInfo` gains what planning needs: video `profile`, `level`, `interlaced`, chroma; audio `sampleRate`, `profile`, and `sourceIndex`; subtitle `hearingImpaired`, `external`, and `sourceIndex`. That is a database migration on `track` and `version`; a rescan of a Jellyfin source refills them.
+None holds another. `Capabilities` takes facts and a device and returns an answer; `PlaybackEvidence` knows neither. One crossing is deliberate: on the desktop, what real playbacks showed feeds what the machine is known to do (`DecodeEvidence`, `ObservedAudioOutput`). That is past playbacks becoming a capability, for this launch. Despite its name `DecodeEvidence` is a capability input; the current playback's account is `PlaybackEvidence`.
 
-Rules kept from the existing model: unknown is a value, neither for nor against; unknown never blocks playback; hardware is about quality, never about whether something is "direct"; there is no table keyed by brand, model, or Android version. Non-server sources use exactly the same model.
+### Supported, unsupported, unknown
 
-**Network:** `maxStreamingBitrate` is null by default, so nothing is capped on a local network. A real limit may come from the server's own per-user remote limit, which then arrives as a reason (`ContainerBitrateExceedsLimit`) rather than as a guess of Reflux's.
+`Support` has three values, and `UNKNOWN` is an answer.
+
+| Value | Means | Comes from |
+| --- | --- | --- |
+| `SUPPORTED` | Every limit that applies is known and met | Facts and declared limits that agree |
+| `UNSUPPORTED` | A limit is known and gone past, or the thing does not exist | A declared limit, a missing decoder, what the engine is not set up to do |
+| `UNKNOWN` | Neither can be said | A fact the file does not state, a limit nobody declares, something not asked or not seen |
+
+- Unknown is never read as supported and never as unsupported. What to do about it is the planner's decision.
+- A limit gone past decides even with other things unknown.
+- Several ways of doing one thing combine by `Support.best`: any that works is enough.
+- Not done is `UNSUPPORTED`, not unknown: the desktop does not pass audio through because Reflux does not ask libmpv to, whatever the receiver could take.
+- `frameAndDepthOnly` tells a decoder with no such limits from one that declares nothing. FFmpeg's software decoders have only those limits, and so does a hardware decoder seen decoding that codec and depth on this machine. For it a missing profile or level is not unknown. This is a judgement about what was observed: hardware frame rate on the desktop was not tested.
+- `PlaybackAssessor` keeps its existing rule: unknown is no evidence of a problem. It still refuses only on codec, frame size, and bit depth. A declared level or frame rate is what a decoder promises, and Media3 tries past it, so those limits are answers for a planner and not refusals.
+
+### The model
+
+Everything is an addition to `DeviceCapabilities`, with unknown as its default. Best Version's existing fields keep their meaning.
+
+| Question | Facts | Capability | Answer |
+| --- | --- | --- | --- |
+| **Video** | Codec, profile, level, bit depth, size, frame rate | `VideoDecoderSupport`: frame, depth, `hardware` (true, false, null), `profiles` with highest levels, `frameRates`, `frameAndDepthOnly` | `Capabilities.video`: `decode`, `hardware`, `software`, and `limits` saying which was passed |
+| **Audio** | Codec, channels, sample rate, Atmos | `audioDecoders`, `audioDecoderLimits`, `audioPassthrough` and `audioPassthroughKnown`, `atmosPassthrough`, `maxOutputChannels` and `maxOutputChannelsKnown` | `Capabilities.audio`: `decode`, `passthrough`, `plays`, `channels` (unsupported is a downmix, which plays), `atmos` |
+| **Subtitles** | Format (text or bitmap by format), forced, hearing-impaired, embedded or external | `SubtitleCapabilities`: per format `embedded`, `external`, `fidelity`; `forcedTracks`, `hearingImpairedTracks` | `Capabilities.subtitle`: `render`, `fidelity`, `bitmap` |
+| **Container** | Container | `containers`, `containerSeek` | `Capabilities.container`: `demux`, `seek` |
+| **Display** | Dynamic range, Dolby Vision profile | `DisplayCapabilities` with `dynamicRangesKnown`, `canToneMap`; `dolbyVisionProfiles` | `Capabilities.display`: `show`, `toneMap` |
+
+`Capabilities.of` gives one stream's answers together. Levels are the bitstream's own numbers (HEVC 4.0 is 120, H.264 and VP9 4.0 are 40, AV1 4.0 is 8), as servers report them.
+
+**Left out on purpose:** audio offload (Media3's is for long audio playback, and video has no use for it); bit rate (nothing limits it on a local network, and a server's limit arrives as a reason); chroma and interlacing (no real case decided by them yet). A per-output model of several displays or audio routes is not built: there is one current reading.
+
+### Where each platform's answers come from
+
+No answer comes from a device name, brand, or system version.
+
+| Answer | Android | Desktop |
+| --- | --- | --- |
+| Video decoders | `MediaCodecList`: per decoder, `profileLevels`, sizes, `getSupportedFrameRatesFor` at 1080p and 2160p, `isHardwareAccelerated` | `decoder-list` for software; `MpvDecodeProbe` and real first frames for hardware. A GPU being there proves nothing |
+| Dolby Vision | Decoders under `video/dolby-vision` | Not decoded: tone-mapped |
+| Audio decoders | `MediaCodecList`, with declared channels and sample rates | `decoder-list`, so a build without a decoder does not claim it |
+| Passthrough, Atmos | Media3's own `AudioCapabilities.isPassthroughPlaybackSupported`, the code that will do it | None: `audio-spdif` is not set |
+| Output channels | HDMI, ARC, and eARC outputs; stereo otherwise | Real playbacks: `audio-params` against `audio-out-params`. Unknown above what was used until one downmixes |
+| Subtitles | Written from Media3's parsers and `Media3Player`, unknown where nobody has seen it work | Written from libass and mpv's renderers |
+| Containers | Written from Media3's extractors, which ship with Reflux; FLV's lack of seeking read from its class | `Container.entries`: FFmpeg |
+| Display | `Display` modes and HDR types | The window's monitor; HDR not claimed (`ENGINE_OUTPUTS_HDR`) |
+| Freshness | Decoders once; outputs and display again after a change (`AndroidCapabilitySource`) | `ObservedCapabilities`, this launch only |
+
+### What the devices say
+
+Read 2026-11-01 through `CapabilityReportOnDeviceTest`. Not rules: nothing reads this table.
+
+| The reference file's class, and two hard cases | Pad 7 | Fire TV (this HDMI output) |
+| --- | --- | --- |
+| HEVC Main 10 level 120, 1080p24 | Hardware | Hardware |
+| E-AC-3 5.1 Atmos | Decoded; stereo output, so a downmix; no passthrough | Decoded; passthrough and Atmos **as Media3 reports them**, not heard |
+| H.264 High 10 (one real file) | Unsupported: bit depth, profile | Unsupported: bit depth, profile |
+| DTS | Does not play | Does not play: no decoder, and Media3 reports no passthrough |
+| Dolby Vision profiles | 5, 8 | 4, 5, 8, 9, 10 |
 
 ## 7. Playback planner (proposal)
 
@@ -391,14 +437,16 @@ Each run records: started, first-frame latency, seeking, buffering, dropped fram
 
 The ranking does not need changing, and M2P changes no policy. Its inputs do:
 
-- It keeps reading `DeviceCapabilities`, the same object the planner reads, so no capability logic is duplicated. Fixing defects 2, 6, 7, and 9 changes outcomes by making inputs true, which is the evidence-based change allowed.
+- It reads `DeviceCapabilities` and `PlaybackAssessor`, and the assessor reads its limits from the same code as `Capabilities`, so no capability logic is duplicated. Its criteria and their order are unchanged.
+- **Inputs found wrong and corrected:** a display listing Dolby Vision stood in for decoding it, so a profile with no decoder was counted as DV; it now counts as its base layer, and profile 5 as unsupported. Atmos scored on any passthrough; it now needs Atmos not known to be lost. Desktop output was a fixed 2 channels; it now rises to what playback showed. Desktop audio decoders were every codec; they are the engine's list. Android called 10-bit AV1 and H.264 8-bit. Android read outputs once.
+- **Inputs left as they were:** hardware decoding on the desktop was already observed (2026-10-19). HDR on the desktop was already not claimed. `canToneMap` on Android stays false. Frame rate, level, and profile are not assessed, for the reason in section 6.
 - `PlaybackAssessor` and the planner must not disagree. The assessor stays "how well does this device play it locally"; the planner answers the delivery question using the assessor's checks, sharing one function.
 - **One open question, to settle with evidence:** today a version needing conversion and one playing unchanged are ranked with no knowledge of delivery. On a phone with no DTS decoder, a DTS-only version is `NO_PLAYABLE_AUDIO` although Jellyfin could convert it. Whether "server can fix it" affects ranking is a policy change: it is left out until a real case shows a wrong choice.
 
 ## 14. Order of work
 
-1. **Truth first (small, no new behavior):** the truth layer (section 3a) and defects 1 and 12 are done. Defects 2, 3, 5, 9, 13, and 14, with tests, are still open and belong with step 2.
-2. **Capability model and stream facts:** section 6, the migration, Android size and rate and level and DV reading, re-reading on output change.
+1. **Truth first (small, no new behavior):** done. The truth layer (section 3a), and defects 1 and 12.
+2. **Capability model and stream facts:** done (section 6). Defects 2 to 9, 13, and 14.
 3. **Planner:** pure, tested, wired so it decides nothing yet and only reports.
 4. **Jellyfin negotiation:** profile, `PlaybackInfo`, HLS dependency, session reporting, escalation. This is where behavior changes.
 5. **Diagnostics:** the report, planned against observed, in the log and the CLI.

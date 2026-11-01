@@ -585,3 +585,21 @@ The two offline tests of the section below were this machine's disk, as it said,
 All conversions ran in software on the server (`HardwareAccelerationType: none`), and each was stopped after its first segment.
 
 **Not verified:** the notice on a real screen (the session test reads it; the engine tests stop at `audioUnavailable`); the whole session on a Jellyfin stream through the real app, with its log line; the Iron Man file, which still fails on the server, so the live cases used other files of its class; any `.pgssub` delivery being played; Media3 authenticated requests, which were not in question; the Fire TV, the phone, and Linux for this slice. The live test now starts real conversions on every `check` where a server is named: about 20 seconds.
+
+## Shared capability model (M2P.2): what was verified
+
+2026-11-01, on `feature/engine-foundation`, on top of `545f721`. Nothing here played media beyond the engine tests' generated clips: this is what clients report, not what they play.
+
+| What | How | Result |
+| --- | --- | --- |
+| Full suite | `check`, plus the Android debug APK | **Not clean.** 897 tests, 12 skipped, 1 failed: `DesktopOfflineTest`, on a disk with 27 GB free of a 51 GB reserve, the failure recorded above. Not rerun on a roomier disk. Gradle reused results for modules already tested on this tree, and the counts are read from the latest result of each. `OfflineWindowTest` and the other window tests did not run |
+| The shared model | `PlaybackCapabilitiesTest` (29 new) | Pass |
+| Android's mapping | `AndroidCapabilitiesTest` (13 new, as listed by real devices) | Pass |
+| Desktop | `DesktopCapabilitiesTest` (6 new), `MpvEngineTest` (2 new, real libmpv): profile and sample rate probed, channels reported once per file | Pass |
+| Best Version | `VersionSelectorTest` (2 new); its existing tests unchanged | Pass |
+| Persistence | `WatchHandoffTest`: a library one schema back keeps its version and reads unknown for the new facts; the two older migration tests now start from the right older schema | Pass |
+| Android lint | `lintDebug` | Pass |
+| Xiaomi Pad 7 | `CapabilityReportOnDeviceTest`, real platform and Media3 (Android 16) | Pass; logged in PLAYBACK.md, section 6 |
+| Fire TV `AFTMA08C15` | The same (API 30, 32-bit, through its HDMI output) | Pass. Media3 reports AC-3, E-AC-3, and Atmos passthrough and 8 channels; no receiver or ear has confirmed it |
+
+**Not verified:** the Nothing Phone 2a and the Google TV emulator (not read); `PlaybackOnDeviceTest` after these changes (the Pad 7 dropped off adb before the rerun; `audioThisDevice...` last passed on `545f721`'s tree); `AndroidCapabilitySource` reacting to a real output being plugged in (its reading is tested, the callbacks are not); desktop channels on real surround hardware (the engine test uses a null output); any claim in the model about PGS, VobSub, DVB, WebVTT, or TTML on Android, which stay unknown.

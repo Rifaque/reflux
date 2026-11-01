@@ -1,0 +1,6 @@
+-- Media facts that capability questions need. What is not known yet stays null until a file is next read.
+ALTER TABLE version ADD COLUMN video_profile TEXT;
+ALTER TABLE version ADD COLUMN video_level INTEGER;
+ALTER TABLE track ADD COLUMN sample_rate INTEGER;
+ALTER TABLE track ADD COLUMN hearing_impaired INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE track ADD COLUMN source_index INTEGER;

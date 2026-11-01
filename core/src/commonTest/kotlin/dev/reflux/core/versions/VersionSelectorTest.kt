@@ -7,13 +7,20 @@ import dev.reflux.core.model.MediaVersion
 import dev.reflux.core.model.SourceId
 import dev.reflux.core.model.StableIds
 import dev.reflux.core.model.StreamInfoOrigin
+import dev.reflux.core.model.VersionId
 import dev.reflux.core.playback.AudioCodec
 import dev.reflux.core.playback.AudioStream
 import dev.reflux.core.playback.Container
+import dev.reflux.core.playback.DeviceCapabilities
 import dev.reflux.core.playback.Devices
+import dev.reflux.core.playback.DisplayCapabilities
 import dev.reflux.core.playback.DynamicRange
+import dev.reflux.core.playback.PlaybackAssessor
+import dev.reflux.core.playback.PlaybackIssue
 import dev.reflux.core.playback.StreamInfo
+import dev.reflux.core.playback.Support
 import dev.reflux.core.playback.VideoCodec
+import dev.reflux.core.playback.VideoDecoderSupport
 import dev.reflux.core.playback.VideoStream
 import dev.reflux.core.source.SourceLocality
 import dev.reflux.core.watch.WatchRules
@@ -22,6 +29,41 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
 class VersionSelectorTest {
+    private fun stream(range: DynamicRange, profile: Int?) = StreamInfo(video = VideoStream(VideoCodec.HEVC, 3840, 2160, 10, range, profile))
+
+    @Test
+    fun dolbyVisionIsNotCountedWhereThereIsNoDecoderForIt() {
+        val display = DisplayCapabilities(3840, 2160, setOf(DynamicRange.SDR, DynamicRange.HDR10, DynamicRange.DOLBY_VISION))
+        val device = DeviceCapabilities(
+            listOf(VideoDecoderSupport(VideoCodec.HEVC, 3840, 2160, 10, hardware = true)), emptySet(), display = display,
+            containers = emptySet(), subtitleFormats = emptySet(),
+        )
+        val dolby = PlaybackAssessor.assess(stream(DynamicRange.DOLBY_VISION, 8), device.copy(dolbyVisionProfiles = setOf(5)))
+        assertEquals(listOf(PlaybackIssue.DOLBY_VISION_BASE_LAYER), dolby.issues, "what a decoder for another profile leaves is the base layer")
+        assertEquals(emptyList(), PlaybackAssessor.assess(stream(DynamicRange.DOLBY_VISION, 8), device.copy(dolbyVisionProfiles = setOf(8))).issues)
+        assertEquals(emptyList(), PlaybackAssessor.assess(stream(DynamicRange.DOLBY_VISION, 8), device).issues, "decoders not read: unknown is not counted against it")
+        assertEquals(listOf(PlaybackIssue.DOLBY_VISION_UNSUPPORTED), PlaybackAssessor.assess(stream(DynamicRange.DOLBY_VISION, 5), device.copy(dolbyVisionProfiles = emptySet())).issues, "profile 5 has no base layer to fall back on")
+    }
+
+    @Test
+    fun atmosOnlyCountsWhereItSurvives() {
+        val atmos = AudioStream(AudioCodec.EAC3, 6, atmos = true)
+        val plain = AudioStream(AudioCodec.EAC3, 6)
+        fun device(atmosPassthrough: Support) = DeviceCapabilities(
+            emptyList(), setOf(AudioCodec.EAC3), audioPassthrough = setOf(AudioCodec.EAC3), maxOutputChannels = 8, atmosPassthrough = atmosPassthrough,
+            display = DisplayCapabilities(1920, 1080), containers = emptySet(), subtitleFormats = emptySet(),
+        )
+        fun version(id: String, audio: AudioStream) = VersionCandidate(
+            MediaVersion(VersionId(id), MediaId("m"), MediaLocation(SourceId("s"), id), 1, 0, StreamInfo(audio = listOf(audio)), StreamInfoOrigin.PROBE),
+            Availability.AVAILABLE, SourceLocality.LOCAL_NETWORK,
+        )
+        // Told apart by audio alone where the objects get through; where they do not, nothing sets the two apart until later criteria.
+        val candidates = listOf(version("a-plain", plain), version("b-atmos", atmos))
+        assertEquals("b-atmos", VersionSelector.select(candidates, device(Support.SUPPORTED)).best?.version?.id?.value)
+        assertEquals("b-atmos", VersionSelector.select(candidates, device(Support.UNKNOWN)).best?.version?.id?.value, "unknown is not counted against it")
+        assertEquals("a-plain", VersionSelector.select(candidates, device(Support.UNSUPPORTED)).best?.version?.id?.value)
+    }
+
     private val item = MediaId("m1")
 
     private fun candidate(

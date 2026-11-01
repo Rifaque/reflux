@@ -7,6 +7,7 @@ import dev.reflux.core.playback.SubtitleFormat
 import dev.reflux.core.playback.SubtitleStream
 import dev.reflux.core.playback.TrackType
 import dev.reflux.core.playback.VideoCodec
+import dev.reflux.core.playback.VideoProfile
 import dev.reflux.core.playback.VideoStream
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -63,6 +64,7 @@ internal object MpvTracks {
         height = track.int("demux-h"),
         frameRate = track.double("demux-fps"),
         dolbyVisionProfile = track.int("dolby-vision-profile"),
+        profile = VideoProfile.fromName(track.string("codec-profile")),
     )
 
     fun audio(track: JsonObject): AudioStream {
@@ -73,6 +75,7 @@ internal object MpvTracks {
             language = track.string("lang"),
             atmos = "atmos" in profile,
             default = track.bool("default"),
+            sampleRate = track.int("demux-samplerate"),
         )
     }
 
@@ -81,6 +84,7 @@ internal object MpvTracks {
         language = track.string("lang"),
         forced = track.bool("forced"),
         default = track.bool("default"),
+        hearingImpaired = track.bool("hearing-impaired"),
     )
 
     fun videoCodec(name: String?): VideoCodec = when (name?.lowercase()) {

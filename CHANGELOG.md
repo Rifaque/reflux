@@ -4,6 +4,9 @@ What changes for people using Reflux, version by version. The rules for versions
 
 ## Unreleased
 
+- On Android, connecting a receiver or television while Reflux is running is noticed, instead of waiting for a restart.
+- Best Version no longer counts Dolby Vision or Atmos on a device that would lose them.
+- On Windows and Linux, surround sound counts for what a playback showed your speakers take, rather than always stereo.
 - When a video's audio can't be decoded on your device, Reflux now says so instead of playing the picture in silence with no explanation.
 - On Windows and Linux, Reflux now sends your Jellyfin sign-in with video streams. Before, it was cut off on the way, which went unnoticed only because the server doesn't ask for it there.
 - Your Jellyfin server now shows Reflux as Direct Play, which is what it's doing, rather than Direct Stream.

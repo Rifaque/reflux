@@ -15,6 +15,7 @@ import dev.reflux.core.playback.SubtitleFormat
 import dev.reflux.core.playback.TrackPreferences
 import dev.reflux.core.playback.TrackType
 import dev.reflux.core.playback.VideoCodec
+import dev.reflux.core.playback.VideoProfile
 import dev.reflux.core.playback.WatchReporter
 import dev.reflux.core.source.PlaybackTarget
 import kotlinx.coroutines.delay
@@ -80,6 +81,25 @@ class MpvEngineTest {
         assertEquals(6, info.audio[1].channels)
         assertEquals(SubtitleFormat.SRT, info.subtitles.single().format)
         assertTrue(info.durationMs!! in 2_900..3_200, "duration ${info.durationMs}")
+    }
+
+    @Test
+    fun probeReadsWhatCapabilityQuestionsNeed() {
+        val info = MpvProbe.createOrNull()!!.probe(PlaybackTarget(TestMedia.multiTrackMkv(directory).toUri().toString()))!!
+        assertEquals(VideoProfile.HIGH, info.video?.profile)
+        assertEquals(44_100, info.audio.first().sampleRate)
+    }
+
+    @Test
+    fun aPlaybackSaysHowManyChannelsWentInAndCameOut() {
+        val seen = java.util.Collections.synchronizedList(mutableListOf<Pair<Int, Int>>())
+        val options = mapOf("vo" to "null", "ao" to "null")
+        MpvPlayer.create(capabilities, options, onAudioOutput = { source, output -> seen += source to output })!!.use { player ->
+            player.load(PlaybackRequest(PlaybackTarget(TestMedia.multiTrackMkv(directory).toUri().toString()), "Sample"))
+            player.await { it.status == PlayerStatus.PLAYING && it.positionMs > 500 }
+        }
+        assertEquals(1, seen.size, "once per file: $seen")
+        assertTrue(seen.single().first > 0 && seen.single().second > 0, "$seen")
     }
 
     @Test

@@ -11,6 +11,7 @@ import dev.reflux.core.playback.Container
 import dev.reflux.core.playback.DynamicRange
 import dev.reflux.core.playback.SubtitleFormat
 import dev.reflux.core.playback.VideoCodec
+import dev.reflux.core.playback.VideoProfile
 import dev.reflux.core.source.SourceLocality
 import dev.reflux.core.source.SourceUnavailableException
 import kotlinx.coroutines.flow.toList
@@ -35,11 +36,11 @@ class JellyfinSourceTest {
          "MediaSources":[
            {"Id":"s1","Name":"Heat 4K","Container":"mkv","Size":40000000000,"Bitrate":60000000,
             "MediaStreams":[
-              {"Type":"Video","Codec":"hevc","Width":3840,"Height":2160,"BitDepth":10,"VideoRange":"HDR","VideoRangeType":"DOVIWithHDR10","DvProfile":8,"RealFrameRate":23.976},
-              {"Type":"Audio","Codec":"truehd","Channels":8,"Language":"eng","IsDefault":true,"Profile":"TrueHD + Atmos"},
-              {"Type":"Subtitle","Codec":"PGSSUB","Language":"eng","IsForced":false,"IsExternal":false,"Index":2},
+              {"Type":"Video","Codec":"hevc","Width":3840,"Height":2160,"BitDepth":10,"VideoRange":"HDR","VideoRangeType":"DOVIWithHDR10","DvProfile":8,"RealFrameRate":23.976,"Profile":"Main 10","Level":153},
+              {"Type":"Audio","Codec":"truehd","Channels":8,"Language":"eng","IsDefault":true,"Profile":"TrueHD + Atmos","SampleRate":48000,"Index":1},
+              {"Type":"Subtitle","Codec":"PGSSUB","Language":"eng","IsForced":false,"IsExternal":false,"IsHearingImpaired":true,"Index":2},
               {"Type":"Subtitle","Codec":"subrip","Language":"fre","IsForced":true,"IsExternal":true,"Index":3}]},
-           {"Id":"s2","Name":"Heat 1080p","Container":"mp4","Size":8000000000,
+           {"Id":"s2","Name":"Heat 1080p","Container":"mov,mp4,m4a,3gp,3g2,mj2","Size":8000000000,
             "MediaStreams":[{"Type":"Video","Codec":"h264","Width":1920,"Height":1080,"VideoRange":"SDR"},
                             {"Type":"Audio","Codec":"ac3","Channels":6,"Language":"eng"}]}]}
     """.trimIndent()
@@ -104,6 +105,13 @@ class JellyfinSourceTest {
         assertEquals(AudioCodec.TRUEHD, uhd.stream.audio.single().codec)
         assertTrue(uhd.stream.audio.single().atmos)
         assertEquals(SubtitleFormat.PGS, uhd.stream.subtitles.single().format)
+        assertEquals(VideoProfile.MAIN_10, uhd.stream.video?.profile)
+        assertEquals(153, uhd.stream.video?.level)
+        assertEquals(48_000, uhd.stream.audio.single().sampleRate)
+        assertEquals(1, uhd.stream.audio.single().sourceIndex)
+        assertTrue(uhd.stream.subtitles.single().hearingImpaired)
+        assertEquals(2, uhd.stream.subtitles.single().sourceIndex)
+        assertEquals(Container.MP4, heat.versions.last().stream.container, "a server's whole list of a demuxer's names")
         assertEquals(10_200_000L, uhd.stream.durationMs)
         assertEquals("videos/m1/s1/subtitles/3/stream.srt", uhd.subtitles.single().path)
         assertTrue(uhd.subtitles.single().forced)
