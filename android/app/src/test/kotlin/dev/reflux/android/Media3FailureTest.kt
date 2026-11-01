@@ -13,6 +13,13 @@ import kotlin.test.assertEquals
  */
 class Media3FailureTest {
     @Test
+    fun aStreamThatIsNotWhatItsPlaylistDeclaredIsNotAnUnreachableFile() {
+        val mismatch = java.io.IOException(androidx.media3.exoplayer.hls.SampleQueueMappingException("audio/mp4a-latm"))
+        assertEquals(PlaybackFailure.UNKNOWN, Media3Player.failureOf(mismatch, PlaybackException.ERROR_CODE_IO_UNSPECIFIED))
+        assertEquals(PlaybackFailure.UNREACHABLE, Media3Player.failureOf(java.io.IOException("reset"), PlaybackException.ERROR_CODE_IO_UNSPECIFIED))
+    }
+
+    @Test
     fun aSourceThatWentSilentIsUnreachable() {
         for (code in listOf(
             PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT,
