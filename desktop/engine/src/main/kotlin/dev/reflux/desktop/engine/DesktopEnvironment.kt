@@ -81,6 +81,8 @@ class DesktopEnvironment(
     dataDirectory: Path = AppDirectories.data(),
     /** Where source connections are kept; by default the system's credential store (see [DesktopSecrets]). */
     sealFor: (Path, (String) -> Unit) -> ConfigSeal = { directory, report -> DesktopSecrets.seal(directory, report = report) },
+    /** Narrows what this machine is said to play. For tests that need a plan a desktop would not otherwise make. */
+    private val deviceFilter: (DeviceCapabilities) -> DeviceCapabilities = { it },
 ) {
     val http = JdkHttpFetcher(userAgent = USER_AGENT)
 
@@ -157,7 +159,7 @@ class DesktopEnvironment(
     val capabilities = ObservedCapabilities(report = diagnostics::record).also { it.observeDisplay(null) }
 
     /** What Best Version is told now. */
-    fun deviceCapabilities(): DeviceCapabilities = capabilities.current()
+    fun deviceCapabilities(): DeviceCapabilities = deviceFilter(capabilities.current())
 
     /**
      * Asks the engine which codecs this machine's hardware decodes ([MpvDecodeProbe]), once. Blocking, about a
@@ -187,7 +189,7 @@ class DesktopEnvironment(
             store = downloads,
             transport = HttpDownloadTransport(USER_AGENT),
             sources = registry::resolve,
-            device = { capabilities.current() },
+            device = { deviceCapabilities() },
             preferredLanguages = listOf(Locale.getDefault().language).filter { it.isNotBlank() },
             register = registry::register,
             dispatcher = Dispatchers.IO,
