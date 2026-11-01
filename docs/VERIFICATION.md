@@ -667,8 +667,25 @@ Dedicated non-admin test account; the real app's screens, on a real server.
 | Back and close, place kept | Fire TV | Pass |
 | Stream unlike its playlist | Fire TV | Was reported as a moved file; now `UNKNOWN`. Unit-tested; not re-seen, as the film's metadata was then repaired |
 
-**Found:** a track change on a converted stream restarted the film (fixed). The server's stored audio tracks had drifted from the file on 4 of the 9 films checked, phantom Hindi tracks shifting every index; a library scan does not re-probe them. Those 4 were re-probed one by one, with no `.nfo` written. Movies has the NFO saver on and was not re-probed as a whole; Marvel was. The server intermittently stops serving file data for a minute or more while its API answers, measured without Reflux; this explains the earlier "did not start within 30 s".
+**Found:** a track change on a converted stream restarted the film (fixed). A subtitle the server refuses was silent on desktop (fixed: the first load of the film below got 404 and the viewer was told).
 
-**Suite:** Windows `check`: 1034 tests, 12 skipped, 7 failed. 6 were server timeouts during a stall; all 10 live tests passed on rerun with the server answering. 1 is `DesktopOfflineTest`, low disk: 32 GB free against a 51.1 GB reserve. Emulator on-device 5 of 5. Fire TV 4 of 4 execution tests after a reboot, which cleared an engine timeout on the stick. The capability class was not separately rerun after that reboot.
+**The server's files changed during this verification.** By the end, 33 of 69 multi-audio films listed an audio track their file did not have (Ghost Protocol had been found and refreshed before that count). Compared directly, Murder Mystery went from a recorded 2.002 GB to 1.533 GB, Fallout from 5.590 to 4.884, and Skyfall from 4.654 to 4.172, each without its Hindi track and each keeping an old modification date, which is why a scan does not notice. Murder Mystery's Hindi track played earlier the same day. Something on the server is rewriting files; what it is could not be seen from a client, and nothing in this verification writes to media. Results that name those tracks describe the files as they then were. It is the likely cause, not established, of the stalls in which the server stops serving file data for a minute or more while its API answers (measured without Reflux), the 404s for PGS tracks, and the three `JellyfinExecutionLiveTest` failures at the end. Four films were re-probed one by one, with no `.nfo` written, and Marvel as a library. Movies has the NFO saver on and was not re-probed as a whole, and re-probing is pointless until the files stop changing.
 
-**Not verified:** Linux (not run in this pass); the planned flow in a real desktop window, including PGS in mpv on screen; the Nothing Phone 2a (not attached); a real `OUTPUT` failure; drift across the rest of Movies and in Shows.
+**Desktop, real window (`PlannedPlaybackWindowTest`, a device without AC-3 standing in for one needing audio converted):**
+
+| Check | Windows, `d3d11va` | Linux container, Xvfb, software decode, libmpv 0.37 |
+| --- | --- | --- |
+| Plan `AUDIO_CONVERSION`, server evidence agrees, no mismatch | Pass | Pass |
+| Another language, from the place | Pass (304.6 to 309.7 s) | Pass (304.7 to 312.1 s) |
+| Server-extracted PGS with the picture running | Pass, 9 s | Pass, 10 s; seen on screen in mpv |
+| Close | Pass | Assertion, below |
+
+The first Windows attempt sat in `LOADING` for 90 s and did not recur; its cause is not established.
+
+**Linux container:** `check` 991 tests, 25 skipped, 4 failed; one window round, its 8 window tests passing. The container has no GPU, no sound device, and is not a real Linux desktop. Failures: `AboutUiTest` and `IdentifyUiTest` wait for focus, headless and unrelated to this work. `probeReadsWhatCapabilityQuestionsNeed`: libmpv 0.37 reports no `codec-profile`, so profile stays unknown, which degrades correctly but leaves the test failing there. `theEnginesLogCarriesNoCredentials` closed before the log arrived, so it proved nothing; it now waits, and passes on Linux with the header line present.
+
+**Open, Linux:** after the planned window test had passed, the test process aborted in libmpv 0.37: `vo_x11_config_vo_window: Assertion x11->window failed` (exit 134). The embedded window went while the engine used it. Closing during HLS playback may abort the application on that libmpv; not reproduced outside this test.
+
+**Suite:** the last Windows `check`: 7 failed, all in `desktop:engine`; 6 live tests whose film or server had changed under them, and `DesktopOfflineTest`, low disk: 36 GB free against a 51.1 GB reserve. An earlier run: 1034 tests, 12 skipped, with `DesktopOfflineTest` and 6 server timeouts failing, and all 10 live tests passing on rerun; no run was fully clean. Emulator on-device 5 of 5. Fire TV 4 of 4 execution tests after a reboot, which cleared an engine timeout on the stick.
+
+**Not verified:** the Nothing Phone 2a (not attached); a real `OUTPUT` failure; Linux on real hardware; stream indexes accurate across the library, which needs the files to stop changing first.
