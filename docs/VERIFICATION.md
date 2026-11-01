@@ -763,3 +763,19 @@ Asked for elsewhere, the gate refuses rather than skips: it refused a container 
 
 **To run it on any machine:** install libmpv and ffmpeg; join `video`, `render`, and `audio`; start a real desktop session with a working audio output; copy `~/.reflux-live/jellyfin.env` (mode 600) naming `reflux-test`; then run the script from a checkout at the same commit, at the machine.
 
+
+## M2P.5 real media matrix, first walk (2026-11-02)
+
+Jellyfin 12.2.0 on RS-X1, 1,003 versions after the remux, as `reflux-test`. No media changed. Results per target: PLAYBACK.md, section 15.
+
+| What | How | Result |
+| --- | --- | --- |
+| Survey | `PlaybackSurveyTest`, 7 tests | Pass |
+| Windows | `MediaMatrixLiveTest`, `REFLUX_MATRIX=1`: libmpv, no window or sound, a declared 1920x1080 display | 49 cases, 21 walked, 21 as planned, all Direct Play and hardware decoded |
+| Fire TV `AFTMA08C15` | `MediaMatrixOnDeviceTest` through `tools/live/run-on-device.py`, with its real capabilities; a private library, the application's left alone | 48 cases, 24 walked, 23 as planned, 1 failed (seek) |
+| Iron Man, the reference file | The same tests for that title: no subtitles, PGS, SRT | 3 of 3 on each. First frame 0.4 to 0.5 s on Windows, 1.6 to 2.6 s on the Fire TV. Static stream 206 |
+| Matroska structure | Read-only on RS-X1: first 256 KB and last 4 MB of each of 992 files | 989 name Cues in the SeekHead; 3 do not, all Moon Knight |
+
+"Walked" means started, seeked, and compared with the server's session, plus the chosen track selected and sound present. **The failure:** The Goldfish Problem ignored a seek in both cases of a repeat run on the Fire TV, position 89 s after 90 s, with a target of 120 s.
+
+**Not verified:** the Phone 2a, the Pad 7, and the Google TV emulator were not walked (not attached, or not started); Linux; the two other Moon Knight files; Media3's seekable answer; any picture, as subtitles count as selected and nobody looked; passthrough heard; the full `check`, as this added one pure class and two gated tests, and ran `PlaybackSurveyTest` and compiled the rest.
