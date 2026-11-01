@@ -1,6 +1,6 @@
 # Playback compatibility
 
-What Reflux can really play, how it decides, and how it explains that. This is the specification for milestone M2P (ROADMAP.md). It began as the M2.0 audit of 2026-11-01. Sections 3a, 6, 7, and 8 are built; section 9's report and section 10's open decisions are not.
+What Reflux can really play, how it decides, and how it explains that. This is the specification for milestone M2P (ROADMAP.md). It began as the M2.0 audit of 2026-11-01. Sections 3a, 6, 7, and 8 are built; section 9's report and section 10's open decisions are not. Section 15 is the current real-media evidence: sections 2 and 3a describe the library before the owner's remux.
 
 The rule: **decode locally when possible, preserve original streams when possible, transcode only when genuinely necessary.** Success is that Reflux knows what the client can actually play, preserves the original whenever possible, degrades the smallest necessary part when it cannot, and can explain why. "Every codec works everywhere" is not the goal.
 
@@ -551,9 +551,9 @@ libmpv needs no redesign. `DecodeEvidence` is the right model and the live run c
 
 | Required case | Real file available? |
 | --- | --- |
-| HEVC Main 10 + E-AC-3 Atmos + MKV + PGS | **Iron Man; server answers 404** |
+| HEVC Main 10 + E-AC-3 Atmos + MKV + PGS | Yes: Iron Man, served since the remux (section 15) |
 | HEVC Main 10 + E-AC-3 + MKV + PGS | Yes |
-| HEVC Main 10 + E-AC-3 **7.1** | **Not in the library** (E-AC-3 tops out at 5.1) |
+| HEVC Main 10 + E-AC-3 **7.1** | Yes: 3 tracks (section 15) |
 | HEVC + DTS | DTS exists on H.264; HEVC pairing to be checked |
 | HEVC + TrueHD | **No: needs a licensed sample** |
 | H.264 + AAC + MP4 | Yes |
@@ -604,6 +604,51 @@ The ranking does not need changing, and M2P changes no policy. Its inputs do:
 7. **Corpus and validation:** sections 11 and 12, and the exit criteria in ROADMAP.md.
 
 Risk to watch: every playback now making a network call before it starts. Start-up time is measured before and after step 4.
+
+## 15. Compatibility expansion (M2P.5)
+
+Evidence first: what a real library contains, what the real planner says for each real device, and what the real engine then does. This adds no decision. `PlaybackSurvey` groups versions into cases of the same media and plan, and `MediaMatrixLiveTest` and `MediaMatrixOnDeviceTest` play one file of each, on request. Nothing here feeds logic.
+
+### The library after the remux
+
+Read 2026-11-02: 1,003 versions, Matroska 992, QuickTime 11; all SDR; 275 at 1080p, the rest smaller.
+
+| Kind | Found |
+| --- | --- |
+| Video | H.264 8-bit 830, HEVC Main 10 141, HEVC Main 31, **H.264 High 10: 1** |
+| Level | H.264 3.1 to 5.0, HEVC 93 and 120 |
+| Audio tracks | AAC 1116 (HE-AAC 837; 5.1 493, 7.1 4), AC-3 64, E-AC-3 41 (Atmos 34, 7.1 3), DTS 2 |
+| Subtitle tracks | SRT 4715, ASS 738, PGS 168, VobSub 3. None external |
+| Not present | **TrueHD, DTS-HD, AV1, VP9, VC-1, HDR, Dolby Vision, 4K, WebM, MPEG-TS** |
+
+### State by target
+
+| Target | Real tracks | Windows | Fire TV | Phone 2a, Pad 7, Google TV emulator | Linux |
+| --- | --- | --- | --- | --- | --- |
+| DTS | 2 | Verified, local decode | Verified, audio conversion, video kept | Phone and Pad verified, conversion (VERIFICATION.md); emulator unknown | Waived on hardware |
+| AC-3, E-AC-3, 5.1 and 7.1 | 105 | Verified, local decode | Verified, plays; passthrough planned | Phone converts, Pad decodes; 7.1 unknown | Waived on hardware |
+| Atmos | 34 | Bed only, verified | Plays; objects unverified | Unknown | Waived on hardware |
+| HE-AAC 5.1 and 7.1 | 497 | Verified | Verified | Unknown | Waived on hardware |
+| PGS | 168 | Selected, in the file | Selected, in the file | Phone and Pad seen (VERIFICATION.md) | Container only |
+| VobSub | 3 | Selected, in the file | Selected in the file; burned in when the stream is converted | Phone burn-in seen | Unknown |
+| ASS | 738 | Selected | Selected on one film; fidelity unknown | Unknown | Unknown |
+| H.264 High 10 | 1 | Verified, NVDEC | Verified, transcoded, audio kept | Unknown | Waived on hardware |
+| Passthrough heard | None | Unavailable: not done, no receiver | Unavailable: no receiver | Unavailable | Unavailable |
+| TrueHD, DTS-HD | 0 | Unknown | Unknown | Unknown | Unknown |
+| AV1, VP9, 4K | 0 | Unknown | Unknown | Unknown | Unknown |
+| HDR, Dolby Vision | 0 | Unknown | Unknown | Unknown | Unknown |
+
+"Selected" means the engine took the track. No one looked at this walk's picture. Unknown stays unknown: it is not unsupported.
+
+**Findings.** The architecture held: 49 cases on Windows and 48 on the Fire TV needed no new concept. No level changed a plan. Conversions on the Fire TV were the 5 cases that need one, and audio never touched the video. VobSub in a converted stream burns in, as section 7 says: the same track is drawn from the file under Direct Play. The evidence still does not justify an FFmpeg extension: 2 DTS tracks and no TrueHD, all converted on Jellyfin. The local, SMB, and WebDAV gap in section 10 stands.
+
+**A real gap: seeking on Media3 in a file with no reachable cue index.** The Goldfish Problem (Moon Knight) plays and ignores a seek on the Fire TV, on every run, and seeks on Windows. Its SeekHead names no Cues, and the only Cues identifier is 56 bytes from the end of the file. Two other Moon Knight files share that shape, 3 of 992 Matroska files. They were not walked, and Media3's own seekable answer was not read, so the cause is strongly suggested and not proven. Jellyfin does not report this, so no plan can see it ahead of time; only the engine can. A resume on such a file probably starts from the beginning. Not fixed yet.
+
+### Next
+
+1. The seek gap: read Media3's answer, then state it, and on a converting source consider a remux from the same place. It must not become a retry ladder.
+2. Run the walks on the Phone 2a, the Pad 7, and the Google TV emulator (none walked yet).
+3. Generated fixtures, played locally on each engine, for what the library lacks: AV1, VP9, 4K, HDR signalling, TrueHD (section 11). Dolby Vision needs a licensed sample.
 
 ## Sources
 
