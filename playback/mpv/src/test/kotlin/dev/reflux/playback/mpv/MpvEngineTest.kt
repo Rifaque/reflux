@@ -265,6 +265,29 @@ class MpvEngineTest {
     }
 
     @Test
+    fun aSubtitleThatNeverArrivesIsReportedAndThePictureGoesOn() {
+        val file = TestMedia.multiTrackMkv(directory)
+        val server = HttpServer.create(InetSocketAddress(InetAddress.getByName("127.0.0.1"), 0), 0)
+        server.createContext("/") { exchange ->
+            exchange.sendResponseHeaders(500, -1)
+            exchange.close()
+        }
+        server.start()
+        try {
+            headless().use { player ->
+                val late = SubtitleAttachment(PlaybackTarget("http://127.0.0.1:${server.address.port}/Stream.srt"), "fr", arrivesLate = true)
+                player.load(PlaybackRequest(PlaybackTarget(file.toUri().toString()), "Sample", subtitles = listOf(late)))
+                val lost = player.await { it.subtitlesNotLoaded == 1 }
+                assertEquals(0, lost.subtitleTracks.count { it.external })
+                assertNull(lost.failure, "a film without its subtitle is still a film")
+                player.await { it.status == PlayerStatus.PLAYING }
+            }
+        } finally {
+            server.stop(0)
+        }
+    }
+
+    @Test
     fun aPlaybackCanHaveNoAudioAndSaySo() {
         val file = TestMedia.multiTrackMkv(directory)
         headless().use { player ->

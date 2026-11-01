@@ -36,6 +36,7 @@ internal object Problems {
     const val TRACK_GONE ="That track is no longer available."
     const val PLAYBACK_STALLED = "Playback isn't starting. The file may be slow to reach, or video couldn't be started on this device."
     const val NO_SOUND = "This is playing without sound. Its audio can't be decoded on this device."
+    const val SUBTITLE_UNAVAILABLE = "These subtitles couldn't be loaded. Playback continues without them."
     const val SOURCE_STOPPED = "The source stopped sending this. It may be asleep, busy, or no longer connected."
     const val IDENTIFY_SEARCH = "That search didn't work. Try again in a moment."
     const val IDENTIFY_APPLY = "That couldn't be changed. Your library is as it was."

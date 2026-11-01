@@ -47,6 +47,9 @@ class MpvPlayer private constructor(
     /** What to attach once the current file is open. */
     @Volatile private var lateSubtitles: List<SubtitleAttachment> = emptyList()
 
+    /** Which load a late subtitle's answer belongs to: one can outlive the file it was asked for. */
+    @Volatile private var loads = 0L
+
     /** Whether the current file's audio output has been reported (once per file, once it is known). */
     private var outputReported = false
     private val eventThread = Thread(::eventLoop, "mpv-events").apply { isDaemon = true }
@@ -57,6 +60,7 @@ class MpvPlayer private constructor(
     }
 
     override fun load(request: PlaybackRequest) {
+        loads++
         mutableState.value = PlayerState(status = PlayerStatus.LOADING, volume = state.value.volume, muted = state.value.muted)
         // `start` and `sub-files` are per-load options; reset them on every load.
         setProperty("start", request.startPositionMs?.let { "+" + (it / 1000.0) } ?: "none")
@@ -107,6 +111,10 @@ class MpvPlayer private constructor(
         if (!closed) mpv.mpv_command_async(handle, 0, arrayOf(*args, null))
     }
 
+    private fun addLate(subtitle: SubtitleAttachment) {
+        if (!closed) mpv.mpv_command_async(handle, loads, arrayOf("sub-add", mpvPath(subtitle.target.uri), "auto", "", subtitle.language.orEmpty(), null))
+    }
+
     private fun eventLoop() {
         while (!closed) {
             val event = MpvEvent(mpv.mpv_wait_event(handle, -1.0))
@@ -132,8 +140,12 @@ class MpvPlayer private constructor(
                         it.copy(status = runningStatus(), tracks = tracks, selectedAudioId = audio, selectedSubtitleId = subtitle)
                     }
                     // Asynchronous, unlike `sub-files`: the picture does not wait for a file a server is still making.
-                    lateSubtitles.forEach { command("sub-add", mpvPath(it.target.uri), "auto", "", it.language.orEmpty()) }
+                    lateSubtitles.forEach { addLate(it) }
                     lateSubtitles = emptyList()
+                }
+                // The only word of a late subtitle that failed: unlike `sub-files`, nothing else stops or logs it.
+                LibMpv.EVENT_COMMAND_REPLY -> if (event.error < 0 && event.replyUserdata == loads) {
+                    mutableState.update { it.copy(subtitlesNotLoaded = it.subtitlesNotLoaded + 1) }
                 }
                 LibMpv.EVENT_PLAYBACK_RESTART -> {
                     mutableState.update { it.copy(status = runningStatus()) }
