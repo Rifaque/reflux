@@ -60,10 +60,13 @@ def main() -> int:
     classes = sys.argv[2] if len(sys.argv) > 2 else DEFAULT_CLASSES
     seconds = int(os.environ.get("RUN_SECONDS", "240"))
     device.adb("logcat", "-c")
+    if os.environ.get("RUN_ADDRESS"):
+        settings["REFLUX_JELLYFIN_TEST"] = os.environ["RUN_ADDRESS"]  # a local relay in front of the server
     body = "".join("%s=%s\n" % (key, value) for key, value in settings.items())
     try:
         device.adb("shell", "umask 077; cat > " + ON_DEVICE, stdin=body)
-        print(device.adb("shell", "am instrument -w -e class " + classes + " " + RUNNER, timeout=seconds)[-1800:])
+        extra = os.environ.get("RUN_ARGS", "")
+        print(device.adb("shell", "am instrument -w -e class " + classes + " " + extra + " " + RUNNER, timeout=seconds)[-1800:])
     finally:
         device.adb("shell", "rm -f " + ON_DEVICE)
     for line in device.adb("logcat", "-d", "-s", "RefluxExecution:I", "RefluxCapabilities:I").splitlines():

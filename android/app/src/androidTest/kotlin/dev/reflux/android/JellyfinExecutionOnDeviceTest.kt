@@ -37,7 +37,10 @@ import dev.reflux.core.playback.VideoCodec
 import dev.reflux.core.playback.VideoPlan
 import dev.reflux.core.playback.AudioStream
 import dev.reflux.core.playback.WatchReporter
+import dev.reflux.core.source.ConnectionKind
+import dev.reflux.core.source.ConnectionRequest
 import dev.reflux.core.source.PlaybackTarget
+import dev.reflux.library.ConnectResult
 import dev.reflux.sources.jellyfin.JellyfinSource
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -111,6 +114,42 @@ class JellyfinExecutionOnDeviceTest {
         val player = Media3Player(context, device).also { players += it }
         PlaybackController(player, MediaId("m"), Nothing, viewer).start(scope, PlaybackRequest(PlaybackTarget(clip()), "Tracks", tracks = directive))
         return player
+    }
+
+    /**
+     * Not a test: the way to connect the installed application for a walk through its real screens, on request
+     * (`-e refluxApp true`), without a password being typed through adb. It uses the application's own connection,
+     * so the password goes no further than a sealed token, and lists what is on the server by what makes it a case.
+     * `-e refluxForgetFacts <item>` leaves a work with no known video, so that playing it is a real attempt at an unknown.
+     */
+    @Test
+    fun prepareTheInstalledApplication() = runBlocking<Unit> {
+        val arguments = InstrumentationRegistry.getArguments()
+        assumeTrue("not asked for", arguments.getString("refluxApp") == "true")
+        val live = liveSettings()
+        assumeTrue("no live server named", live["REFLUX_JELLYFIN_TEST"] != null)
+        val environment = (context.applicationContext as RefluxApplication).environment
+        val result = environment.connections.connect(
+            ConnectionKind.SERVER, ConnectionRequest(live.getValue("REFLUX_JELLYFIN_TEST"), live["REFLUX_JELLYFIN_TEST_USER"], live["REFLUX_JELLYFIN_TEST_PASSWORD"]),
+        )
+        report("connected: ${result is ConnectResult.Connected}")
+        environment.pipeline.refresh()
+        val episodes = environment.library.shows().flatMap { show -> environment.library.showDetail(show.item.id)?.seasons.orEmpty().flatMap { it.episodes } }
+        val versions = (environment.library.movies() + episodes).flatMap { environment.library.versions(it.item.id) }.map { it.version }
+        report("films: ${versions.size}; with stream indexes: ${versions.count { v -> v.stream.audio.isNotEmpty() && v.stream.audio.all { it.sourceIndex != null } }}")
+        fun list(name: String, match: (StreamInfo) -> Boolean) = versions.filter { match(it.stream) }.take(3).forEach { report("case $name ${it.itemId.value} ${it.location.fileName.take(0)}audio=${it.stream.audio.map { a -> a.codec.name + ":" + a.language }} subs=${it.stream.subtitles.map { s -> s.format.name + ":" + s.language + (if (s.forced) ":forced" else "") }}") }
+        list("h264-aac") { it.video?.codec == VideoCodec.H264 && it.video?.bitDepth == 8 && it.audio.firstOrNull()?.codec == AudioCodec.AAC && it.audio.size == 1 }
+        list("h264-dts") { it.video?.codec == VideoCodec.H264 && it.audio.any { a -> a.codec == AudioCodec.DTS } }
+        list("hevc10-eac3") { it.video?.codec == VideoCodec.HEVC && it.video?.bitDepth == 10 && it.audio.none { a -> a.codec == AudioCodec.AAC } && it.audio.firstOrNull()?.codec == AudioCodec.EAC3 }
+        list("hevc10-aac") { it.video?.codec == VideoCodec.HEVC && it.video?.bitDepth == 10 && it.audio.firstOrNull()?.codec == AudioCodec.AAC }
+        list("hevc-pgs") { it.video?.codec == VideoCodec.HEVC && it.subtitles.any { s -> s.format == dev.reflux.core.playback.SubtitleFormat.PGS } }
+        list("ass") { it.subtitles.any { s -> s.format == dev.reflux.core.playback.SubtitleFormat.ASS } }
+        list("two-languages") { it.audio.map { a -> a.language }.distinct().size > 1 }
+        arguments.getString("refluxForgetFacts")?.let { item ->
+            val version = environment.library.versions(MediaId(item)).first().version
+            environment.library.recordProbe(version.id, StreamInfo(Container.UNKNOWN, null, version.stream.audio, version.stream.subtitles))
+            report("forgot the video of $item")
+        }
     }
 
     @Test
