@@ -444,6 +444,29 @@ Investigated on 2026-10-19 on Windows 11 (125% scaling, two screens) and in the 
 
 **Seen, not changed:** an arrow pressed during a page transition is dropped rather than kept for the arriving page; the next arrow works. It predates this change and is visible only where rendering is slow. For the accessibility and performance milestones.
 
+## Fire TV: the device-specific controls and the accessibility baseline
+
+2026-11-01, on the physical stick: `AFTMA08C15`, Fire OS 8.1.8.5, API 30, 32-bit, at `192.168.1.176`. The debug build was installed over alpha.1 without clearing data, and driven by remote keys over adb. Its library is generated test media. This closes the Fire TV item of the closing pass above.
+
+| What | Result |
+| --- | --- |
+| Upgrade | alpha.1 to alpha.2 kept the library: 2 sources, 22 items, 12 versions, 13 tracks, identical before and after by id |
+| Browsing | Home, Movies, Shows, Search, Media sources, Add media, a film's and a show's page, by remote alone; each page starts on its main action or first item |
+| Player, per device | Timeline, Episodes, Speed and a Paused state; no Back, volume, fullscreen, or on-screen transport buttons, and no focus stops; video fills the screen |
+| Play and seek | OK pauses and resumes; Left and Right, Rewind and Fast Forward seek by 10 s, read from the media session |
+| Lists | Down opens them on what is in effect; Left and Right change list, Up and Down move, OK chooses: speed 1.5 in the session, and back to 1.0; an episode chosen from the list starts |
+| Up Next | Countdown, Play now and Cancel over a player that stays; the next episode followed |
+| Back | One press closes a list with the session still playing; the next closes the player, with focus back on the page's main action; from a film's page, back on its poster |
+| Isolation | With the player or a list open the tree holds only them; with the folder picker open, only it, focus cannot leave it, and Back returns to the row that opened it |
+| Semantics | Roles, selected and checked states read from the tree; the timeline, through the Android accessibility API on the device: "Pause", "Back 10 seconds", "Forward 10 seconds" are named actions, each performed (0:13 to 0:03 to 0:13), value "0:13 of 1:30", and not focusable |
+| Stability | No crash or ANR in the log |
+
+**Found and fixed:** pressing Remove on a source took away the button that had focus, and focus fell to the navigation. It starts on Keep now, as Downloads does, and Keep returns to Remove. This was older than the accessibility work. `check`: 811 tests, 0 failures, 12 skips. Not rerun for that fix: the real-window suites and the Linux container.
+
+**Not verified:** Up Next answered by a specific key: OK was pressed about two seconds before the timer ended, so which of them started the episode was not told apart, and Cancel was not pressed. A playback error on this device.
+
+**Capability:** Fire OS has no TalkBack here, and the system lists one accessibility service, `com.amazon.logan`, off. It was neither forced nor enabled, so no screen reader has been heard on a Fire TV: what it would be given is verified, what it says is not.
+
 ## Accessibility closing pass: what was verified
 
 2026-11-01, on `feature/engine-foundation` after `273e5fe`, with the fixes this pass made. It closes what the section below left open, and records what stays open.
@@ -474,7 +497,7 @@ The two offline tests of the section below were this machine's disk, as it said,
 
 **Not met: where reading resumes.** Closing the player, a sheet, or a list opened from elsewhere puts TalkBack at the top of the screen, not on what opened it. Reflux can move input focus, but on Android TalkBack does not follow it on a touch screen, including with controls made focusable: tried and removed, since it worked only in a test. A double tap keeps TalkBack on a button that stays on screen, so a list closes back to its button. Moving TalkBack needs an accessibility-focus request the toolkit does not offer publicly.
 
-**Blocked by environment.** Fire TV: reachable over adb at `192.168.1.176`, but its network was degraded (its Home said it was offline, it could not reach this machine, and installs dropped), so this build could not be installed: the device-specific controls and this work are still owed the Fire TV. A 19 MB install in 1 MB pieces lost the link at the second.
+**Blocked by environment, then resolved.** The Fire TV's network was degraded for this pass, so it could not take the build. It did the same day: see "Fire TV: the device-specific controls and the accessibility baseline" above.
 
 **Not yet verifiable here.** TalkBack on a television (the `Reflux_TV` image has none). VoiceView on Fire OS.
 
