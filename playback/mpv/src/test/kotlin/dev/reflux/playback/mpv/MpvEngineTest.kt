@@ -154,8 +154,11 @@ class MpvEngineTest {
             val headers = mapOf("Authorization" to """MediaBrowser Client="Reflux", Device="Desk", DeviceId="d1", Version="0.1.0", Token="0123456789abcdef0123456789abcdef"""")
             player.load(PlaybackRequest(target = PlaybackTarget(file.toUri().toString(), headers), title = "Sample"))
             player.await { it.status == PlayerStatus.PLAYING }
+            // The log comes on its own schedule: closing at once can leave this test nothing to look at.
+            val deadline = System.currentTimeMillis() + 5_000
+            while (lines.none { "http-header-fields" in it } && System.currentTimeMillis() < deadline) Thread.sleep(50)
         }
-        assertTrue(lines.size > 20, "the engine's log arrives: ${lines.size} lines")
+        assertTrue(lines.size > 20, "the engine's log arrives: ${lines.size} lines: ${lines.map { it.take(90) }}")
         assertTrue(lines.any { "http-header-fields" in it }, "including the line that sets the headers")
         assertTrue(lines.none { "0123456789abcdef" in it }, "but never the token")
         assertTrue(!Files.exists(logFile), "and the engine writes no file of its own")
