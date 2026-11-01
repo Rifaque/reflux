@@ -260,7 +260,7 @@ class DesktopEnvironment(
             }
             sink
         }
-        return MpvPlayer.create(deviceCapabilities(), options, log, onDecode = { capabilities.decoded(it) })
+        return MpvPlayer.create(deviceCapabilities(), options, log, onDecode = { capabilities.decoded(it) }, onAudioOutput = { source, output -> capabilities.audioOutput(source, output) })
     }
 
     private fun hostName(): String = runCatching { java.net.InetAddress.getLocalHost().hostName }.getOrNull()?.takeIf { it.isNotBlank() } ?: "desktop"

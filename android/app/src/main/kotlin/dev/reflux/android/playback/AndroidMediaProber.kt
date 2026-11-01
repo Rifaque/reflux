@@ -51,12 +51,8 @@ class AndroidMediaProber(private val context: Context) : MediaProber {
         val dolbyVision = mime == "video/dolby-vision"
         val transfer = format.int(MediaFormat.KEY_COLOR_TRANSFER)
         val profile = format.int(MediaFormat.KEY_PROFILE)
-        val tenBit = when (mime) {
-            "video/hevc" -> profile == CodecProfileLevel.HEVCProfileMain10 || profile == CodecProfileLevel.HEVCProfileMain10HDR10 ||
-                profile == CodecProfileLevel.HEVCProfileMain10HDR10Plus
-            "video/x-vnd.on2.vp9" -> profile == CodecProfileLevel.VP9Profile2 || profile == CodecProfileLevel.VP9Profile2HDR
-            else -> false
-        }
+        val level = format.int(MediaFormat.KEY_LEVEL)
+        val tenBit = profile != null && AndroidProfiles.tenBit(mime, profile)
         val range = when {
             dolbyVision -> DynamicRange.DOLBY_VISION
             profile == CodecProfileLevel.HEVCProfileMain10HDR10Plus -> DynamicRange.HDR10_PLUS
@@ -74,7 +70,10 @@ class AndroidMediaProber(private val context: Context) : MediaProber {
                 else -> null
             },
             dynamicRange = range,
+            dolbyVisionProfile = profile?.takeIf { dolbyVision }?.let(AndroidProfiles::dolbyVision),
             frameRate = format.int(MediaFormat.KEY_FRAME_RATE)?.toDouble()?.takeIf { it > 0 },
+            profile = profile?.let { AndroidProfiles.profile(mime, it) },
+            level = level?.let { AndroidProfiles.level(mime, it) },
         )
     }
 
@@ -83,6 +82,7 @@ class AndroidMediaProber(private val context: Context) : MediaProber {
         channels = format.int(MediaFormat.KEY_CHANNEL_COUNT),
         language = format.string(MediaFormat.KEY_LANGUAGE)?.takeIf { it != "und" && it.isNotBlank() },
         atmos = format.mime() == "audio/eac3-joc",
+        sampleRate = format.int(MediaFormat.KEY_SAMPLE_RATE),
     )
 
     private fun subtitle(format: MediaFormat): SubtitleStream? {
@@ -96,7 +96,11 @@ class AndroidMediaProber(private val context: Context) : MediaProber {
             "application/dvbsubs" -> SubtitleFormat.DVB
             else -> return null
         }
-        return SubtitleStream(kind, format.string(MediaFormat.KEY_LANGUAGE)?.takeIf { it != "und" && it.isNotBlank() })
+        return SubtitleStream(
+            kind, format.string(MediaFormat.KEY_LANGUAGE)?.takeIf { it != "und" && it.isNotBlank() },
+            forced = format.int(MediaFormat.KEY_IS_FORCED_SUBTITLE) == 1,
+            default = format.int(MediaFormat.KEY_IS_DEFAULT) == 1,
+        )
     }
 
     private fun videoCodec(mime: String): VideoCodec = when (mime) {

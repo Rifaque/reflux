@@ -30,6 +30,7 @@ import dev.reflux.library.db.External_subtitle
 import dev.reflux.library.db.Item
 import dev.reflux.library.db.LibraryQueries
 import dev.reflux.library.db.Source
+import dev.reflux.core.playback.VideoProfile
 import dev.reflux.library.db.Track
 import dev.reflux.library.db.Watch_state
 
@@ -110,7 +111,7 @@ internal fun versionRow(
     dvProfile: Long?, frameRate: Double?, duration: Long?, bitrate: Long?, edition: String?, part: Long?,
     confidence: Double, @Suppress("UNUSED_PARAMETER") signals: String, @Suppress("UNUSED_PARAMETER") probeAttemptedAt: Long?,
     @Suppress("UNUSED_PARAMETER") sourceIdentity: String?, @Suppress("UNUSED_PARAMETER") firstSeen: Long,
-    @Suppress("UNUSED_PARAMETER") lastSeen: Long, availability: String, locality: String,
+    @Suppress("UNUSED_PARAMETER") lastSeen: Long, videoProfile: String?, videoLevel: Long?, availability: String, locality: String,
 ): VersionInfo {
     val video = if (videoCodec == null && height == null && dynamicRange == null) {
         null
@@ -123,6 +124,8 @@ internal fun versionRow(
             dynamicRange = enumOrNull<DynamicRange>(dynamicRange) ?: DynamicRange.SDR,
             dolbyVisionProfile = dvProfile?.toInt(),
             frameRate = frameRate,
+            profile = enumOrNull<VideoProfile>(videoProfile),
+            level = videoLevel?.toInt(),
         )
     }
     return VersionInfo(
@@ -159,6 +162,8 @@ internal fun VersionInfo.complete(tracks: List<Track>, subtitles: List<External_
                     language = it.language,
                     atmos = it.atmos != 0L,
                     default = it.is_default != 0L,
+                    sampleRate = it.sample_rate?.toInt(),
+                    sourceIndex = it.source_index?.toInt(),
                 )
             },
             subtitles = tracks.filter { it.type == TRACK_SUBTITLE }.map {
@@ -167,6 +172,8 @@ internal fun VersionInfo.complete(tracks: List<Track>, subtitles: List<External_
                     language = it.language,
                     forced = it.forced != 0L,
                     default = it.is_default != 0L,
+                    hearingImpaired = it.hearing_impaired != 0L,
+                    sourceIndex = it.source_index?.toInt(),
                 )
             },
         ),

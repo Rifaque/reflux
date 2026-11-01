@@ -224,6 +224,8 @@ internal class PlanApplier(private val queries: LibraryQueries, private val now:
             source_identity = sourceIdentity,
             first_seen_at = time,
             last_seen_at = time,
+            video_profile = video?.profile?.name,
+            video_level = video?.level?.toLong(),
         )
         replaceTracks(version)
     }
@@ -251,6 +253,8 @@ internal class PlanApplier(private val queries: LibraryQueries, private val now:
             signals = signals,
             sourceIdentity = sourceIdentity,
             lastSeenAt = time,
+            videoProfile = video?.profile?.name,
+            videoLevel = video?.level?.toLong(),
             id = version.id.value,
         )
         replaceTracks(version)
@@ -263,13 +267,13 @@ internal class PlanApplier(private val queries: LibraryQueries, private val now:
         stream.audio.forEachIndexed { index, track ->
             queries.insertTrack(
                 id, index.toLong(), TRACK_AUDIO, track.codec.name, track.channels?.toLong(), track.language,
-                track.atmos.toLong(), 0, track.default.toLong(),
+                track.atmos.toLong(), 0, track.default.toLong(), track.sampleRate?.toLong(), 0, track.sourceIndex?.toLong(),
             )
         }
         stream.subtitles.forEachIndexed { index, track ->
             queries.insertTrack(
                 id, index.toLong(), TRACK_SUBTITLE, track.format.name, null, track.language, 0,
-                track.forced.toLong(), track.default.toLong(),
+                track.forced.toLong(), track.default.toLong(), null, track.hearingImpaired.toLong(), track.sourceIndex?.toLong(),
             )
         }
     }
@@ -290,6 +294,8 @@ internal class PlanApplier(private val queries: LibraryQueries, private val now:
             durationMs = stream.durationMs,
             bitrateBps = stream.bitrateBps,
             probedAt = now(),
+            videoProfile = video?.profile?.name,
+            videoLevel = video?.level?.toLong(),
             id = versionId.value,
         )
         replaceTracks(versionId.value, stream)

@@ -626,6 +626,11 @@ class WatchHandoffTest {
         val file = Files.createTempDirectory("reflux-migrate").also { it.toFile().deleteOnExit() }.resolve("library.db")
         JdbcSqliteDriver("jdbc:sqlite:$file", Properties()).use { driver ->
             RefluxDatabase.Schema.create(driver)
+            driver.execute(null, "ALTER TABLE version DROP COLUMN video_profile", 0)
+            driver.execute(null, "ALTER TABLE version DROP COLUMN video_level", 0)
+            driver.execute(null, "ALTER TABLE track DROP COLUMN sample_rate", 0)
+            driver.execute(null, "ALTER TABLE track DROP COLUMN hearing_impaired", 0)
+            driver.execute(null, "ALTER TABLE track DROP COLUMN source_index", 0)
             driver.execute(null, "DROP TABLE download", 0)
             driver.execute(null, "DROP TABLE download_subtitle", 0)
             driver.execute(null, "DROP TABLE watch_sync", 0)
@@ -659,6 +664,11 @@ class WatchHandoffTest {
         val file = Files.createTempDirectory("reflux-migrate").also { it.toFile().deleteOnExit() }.resolve("library.db")
         JdbcSqliteDriver("jdbc:sqlite:$file", Properties()).use { driver ->
             RefluxDatabase.Schema.create(driver)
+            driver.execute(null, "ALTER TABLE version DROP COLUMN video_profile", 0)
+            driver.execute(null, "ALTER TABLE version DROP COLUMN video_level", 0)
+            driver.execute(null, "ALTER TABLE track DROP COLUMN sample_rate", 0)
+            driver.execute(null, "ALTER TABLE track DROP COLUMN hearing_impaired", 0)
+            driver.execute(null, "ALTER TABLE track DROP COLUMN source_index", 0)
             driver.execute(null, "DROP TABLE download", 0)
             driver.execute(null, "DROP TABLE download_subtitle", 0)
             driver.execute(null, "INSERT INTO watch_state VALUES ('m1', 1800000, 10200000, 0, 0, 1700000000000, 1700000000000, 'v1', 'extended')", 0)
@@ -668,5 +678,39 @@ class WatchHandoffTest {
         assertEquals("extended", upgraded.watchState(MediaId("m1"))?.cut)
         assertTrue(upgraded.downloads().isEmpty())
         upgraded.syncDownloads()
+    }
+
+    @Test
+    fun aLibraryFromBeforeProfilesKeepsItsVersionsAndKnowsNothingNewAboutThem() = runTest {
+        // The schema as it was one step ago, with a version and a track in it.
+        val file = Files.createTempDirectory("reflux-migrate").also { it.toFile().deleteOnExit() }.resolve("library.db")
+        JdbcSqliteDriver("jdbc:sqlite:$file", Properties()).use { driver ->
+            RefluxDatabase.Schema.create(driver)
+            driver.execute(null, "ALTER TABLE version DROP COLUMN video_profile", 0)
+            driver.execute(null, "ALTER TABLE version DROP COLUMN video_level", 0)
+            driver.execute(null, "ALTER TABLE track DROP COLUMN sample_rate", 0)
+            driver.execute(null, "ALTER TABLE track DROP COLUMN hearing_impaired", 0)
+            driver.execute(null, "ALTER TABLE track DROP COLUMN source_index", 0)
+            driver.execute(null, "INSERT INTO source (id, type, display_name, locality, config, availability, added_at) VALUES ('s1', 'local', 'Films', 'DEVICE', 'x', 'AVAILABLE', 0)", 0)
+            driver.execute(
+                null,
+                "INSERT INTO item (id, kind, title, title_key, sort_key, added_at) VALUES ('m1', 'MOVIE', 'Heat', 'heat', 'heat', 0)",
+                0,
+            )
+            driver.execute(
+                null,
+                "INSERT INTO version (id, item_id, source_id, path, size_bytes, modified_at, stream_origin, container, video_codec, height, confidence, signals, first_seen_at, last_seen_at) " +
+                    "VALUES ('v1', 'm1', 's1', 'heat.mkv', 1, 0, 'PROBE', 'MATROSKA', 'HEVC', 1080, 1.0, '', 0, 0)",
+                0,
+            )
+            driver.execute(null, "INSERT INTO track (version_id, position, type, codec, channels) VALUES ('v1', 0, 'AUDIO', 'EAC3', 6)", 0)
+            driver.execute(null, "PRAGMA user_version = 3", 0)
+        }
+        val upgraded = Library(LibraryDatabase.open(file)) { clock }
+        val version = upgraded.versions(MediaId("m1")).single().version
+        assertEquals(1080, version.stream.video?.height)
+        assertEquals(null, version.stream.video?.profile, "unknown, until the file is next read")
+        assertEquals(null, version.stream.video?.level)
+        assertEquals(null, version.stream.audio.single().sampleRate)
     }
 }

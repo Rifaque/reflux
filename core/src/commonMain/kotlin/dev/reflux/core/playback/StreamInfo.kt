@@ -1,7 +1,8 @@
 package dev.reflux.core.playback
 
 /**
- * Technical description of a version's primary streams.
+ * Technical description of a version's primary streams: the media facts, which say what a file contains and
+ * nothing about who can play it ([DeviceCapabilities]) or what happened when someone did ([PlaybackEvidence]).
  *
  * Every field may be unknown: a description inferred from file name hints is usually partial,
  * and capability checks treat unknown values as "no evidence of a problem" rather than as failures.
@@ -24,6 +25,9 @@ data class VideoStream(
     /** Dolby Vision profile (5, 7, 8, ...) when [dynamicRange] is Dolby Vision and the profile is known. */
     val dolbyVisionProfile: Int? = null,
     val frameRate: Double? = null,
+    val profile: VideoProfile? = null,
+    /** The level as the bitstream numbers it: HEVC 4.0 is 120, H.264 4.0 is 40, VP9 4.0 is 40, AV1 4.0 is 8. */
+    val level: Int? = null,
 ) {
     /**
      * The resolution class by convention: a 3840×1600 scope film is "2160p" and 1920×800 is "1080p".
@@ -49,6 +53,9 @@ data class AudioStream(
     val language: String? = null,
     val atmos: Boolean = false,
     val default: Boolean = false,
+    val sampleRate: Int? = null,
+    /** The source's own number for this track, where it has one (a server's stream index). */
+    val sourceIndex: Int? = null,
 )
 
 data class SubtitleStream(
@@ -56,6 +63,9 @@ data class SubtitleStream(
     val language: String? = null,
     val forced: Boolean = false,
     val default: Boolean = false,
+    val hearingImpaired: Boolean = false,
+    /** The source's own number for this track, where it has one (a server's stream index). */
+    val sourceIndex: Int? = null,
 )
 
 /** Reads real stream information from a playable target (libmpv on desktop, MediaExtractor on Android). */

@@ -4,11 +4,13 @@ import dev.reflux.core.model.Availability
 import dev.reflux.core.model.MediaVersion
 import dev.reflux.core.model.VersionId
 import dev.reflux.core.model.WatchState
+import dev.reflux.core.playback.Capabilities
 import dev.reflux.core.playback.DeviceCapabilities
 import dev.reflux.core.playback.DynamicRange
 import dev.reflux.core.playback.PlaybackAssessment
 import dev.reflux.core.playback.PlaybackAssessor
 import dev.reflux.core.playback.PlaybackVerdict
+import dev.reflux.core.playback.Support
 import dev.reflux.core.source.SourceLocality
 import dev.reflux.core.watch.Handoff
 import dev.reflux.core.watch.TimelineMatch
@@ -159,8 +161,15 @@ object VersionSelector {
     }
 
     private fun shownRange(version: RankedVersion, device: DeviceCapabilities): Int {
-        val range = version.version.stream.video?.dynamicRange ?: DynamicRange.SDR
-        return if (range in device.display.dynamicRanges) range.ordinal else DynamicRange.SDR.ordinal
+        val video = version.version.stream.video ?: return DynamicRange.SDR.ordinal
+        val range = video.dynamicRange
+        return when {
+            range !in device.display.dynamicRanges -> DynamicRange.SDR.ordinal
+            Capabilities.display(video, device).show != Support.UNSUPPORTED -> range.ordinal
+            // Dolby Vision the device cannot decode shows as its base layer, where it has one.
+            video.hasCompatibleBaseLayer && DynamicRange.HDR10 in device.display.dynamicRanges -> DynamicRange.HDR10.ordinal
+            else -> DynamicRange.SDR.ordinal
+        }
     }
 
     private fun audioScore(version: RankedVersion, device: DeviceCapabilities): Int =
@@ -168,7 +177,7 @@ object VersionSelector {
             val passthrough = track.codec in device.audioPassthrough
             val channels = (track.channels ?: 2).let { if (passthrough) it else minOf(it, device.maxOutputChannels) }
             val lossless = if (track.codec.lossless && (passthrough || track.codec in device.audioDecoders)) 1 else 0
-            val atmos = if (track.atmos && passthrough) 1 else 0
+            val atmos = if (track.atmos && Capabilities.audio(track, device).atmos != Support.UNSUPPORTED) 1 else 0
             channels * 100 + atmos * 10 + lossless
         } ?: 0
 }

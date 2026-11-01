@@ -57,22 +57,27 @@ object PlaybackAssessor {
         if (video.codec != VideoCodec.UNKNOWN) {
             val decoders = device.videoDecoders.filter { it.codec == video.codec }
             if (decoders.isEmpty()) return listOf(PlaybackIssue.VIDEO_CODEC_UNSUPPORTED)
-            val fitting = decoders.filter { it.fits(video) }
+            // Only frame size and bit depth refuse a version here. A declared level or frame rate is what a decoder
+            // promises, not all it does: engines try past it, so it is an answer for [Capabilities], not a refusal.
+            val fits = decoders.map { it to it.fit(video).limits }
+            val fitting = fits.filter { (_, limits) -> VideoLimit.FRAME_SIZE !in limits && VideoLimit.BIT_DEPTH !in limits }.map { it.first }
             when {
-                fitting.isEmpty() && decoders.none { it.fitsFrame(video) } ->
+                fitting.isEmpty() && fits.all { (_, limits) -> VideoLimit.FRAME_SIZE in limits } ->
                     return listOf(PlaybackIssue.VIDEO_RESOLUTION_UNSUPPORTED)
                 fitting.isEmpty() -> return listOf(PlaybackIssue.VIDEO_BIT_DEPTH_UNSUPPORTED)
                 // Only where software is all there is known to be; a decoder that may be hardware is not a compromise.
                 fitting.all { it.hardware == false } -> issues += PlaybackIssue.SOFTWARE_VIDEO_DECODE
             }
         }
-        issues += assessDynamicRange(video, device.display)
+        issues += assessDynamicRange(video, device)
         return issues
     }
 
-    private fun assessDynamicRange(video: VideoStream, display: DisplayCapabilities): List<PlaybackIssue> {
+    private fun assessDynamicRange(video: VideoStream, device: DeviceCapabilities): List<PlaybackIssue> {
+        val display = device.display
         val range = video.dynamicRange
-        if (range == DynamicRange.SDR || range in display.dynamicRanges) return emptyList()
+        if (range == DynamicRange.SDR) return emptyList()
+        if (range in display.dynamicRanges && Capabilities.display(video, device).show != Support.UNSUPPORTED) return emptyList()
         if (range == DynamicRange.DOLBY_VISION) {
             if (video.hasCompatibleBaseLayer) {
                 val baseShown = DynamicRange.HDR10 in display.dynamicRanges
@@ -104,14 +109,4 @@ object PlaybackAssessor {
             emptyList()
         }
     }
-
-    private fun VideoDecoderSupport.fitsFrame(video: VideoStream): Boolean {
-        val w = video.width ?: return true
-        val h = video.height ?: return true
-        // Allow rotated/portrait frames.
-        return (w <= maxWidth && h <= maxHeight) || (w <= maxHeight && h <= maxWidth)
-    }
-
-    private fun VideoDecoderSupport.fits(video: VideoStream): Boolean =
-        fitsFrame(video) && (video.bitDepth ?: 8) <= maxBitDepth
 }

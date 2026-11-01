@@ -1,5 +1,6 @@
 package dev.reflux.playback.mpv
 
+import dev.reflux.core.playback.AudioCodec
 import dev.reflux.core.playback.VideoCodec
 import dev.reflux.core.playback.VideoDecoderSupport
 import kotlinx.serialization.json.Json
@@ -31,18 +32,19 @@ data class DecodeObservation(val codec: VideoCodec, val bitDepth: Int, val width
  *
  * @param software null when the engine was not asked; every codec is then taken to have a software decoder,
  *   as libmpv's FFmpeg has for all of them.
+ * @param audio the audio codecs the engine was built to decode; null when it was not asked.
  */
-data class DecodeEvidence(val software: Set<VideoCodec>?, val hardware: Map<DecodeKey, HardwareDecode>) {
+data class DecodeEvidence(val software: Set<VideoCodec>?, val hardware: Map<DecodeKey, HardwareDecode>, val audio: Set<AudioCodec>? = null) {
     /** The decoders version selection sees. */
     fun decoders(): List<VideoDecoderSupport> = CODECS.flatMap { codec ->
         buildList {
-            if (software == null || codec in software) add(VideoDecoderSupport(codec, MAX_WIDTH, MAX_HEIGHT, maxBitDepth = 12, hardware = false))
+            if (software == null || codec in software) add(VideoDecoderSupport(codec, MAX_WIDTH, MAX_HEIGHT, maxBitDepth = 12, hardware = false, frameAndDepthOnly = true))
             var frame: HardwareDecode.Yes? = null
             for (depth in DEPTHS) {
                 when (val known = hardware[DecodeKey(codec, depth)]) {
                     is HardwareDecode.Yes -> {
                         frame = known
-                        add(VideoDecoderSupport(codec, known.maxWidth, known.maxHeight, maxBitDepth = depth, hardware = true))
+                        add(VideoDecoderSupport(codec, known.maxWidth, known.maxHeight, maxBitDepth = depth, hardware = true, frameAndDepthOnly = true))
                     }
                     // A decoder without this depth has none deeper either.
                     HardwareDecode.No -> break
@@ -130,6 +132,14 @@ data class DecodeEvidence(val software: Set<VideoCodec>?, val hardware: Map<Deco
         }
 
         private val HARDWARE_DRIVERS = listOf("_cuvid", "_qsv", "_mediacodec", "_v4l2m2m", "_mmal", "_rkmpp", "_amf", "_vulkan", "_mf", "_ohcodec")
+
+        /** The audio codecs in mpv's `decoder-list`. DTS's decoder takes the core of DTS-HD as well. */
+        fun audioCodecs(decoderList: String?): Set<AudioCodec>? {
+            val entries = runCatching { Json.parseToJsonElement(decoderList ?: return null) as? JsonArray }.getOrNull() ?: return null
+            val codecs = entries.mapNotNull { entry -> ((entry as? JsonObject)?.get("codec") as? JsonPrimitive)?.contentOrNull }
+                .map { MpvTracks.audioCodec(it) }.filter { it != AudioCodec.UNKNOWN }.toSet()
+            return if (AudioCodec.DTS in codecs) codecs + AudioCodec.DTS_HD_MA else codecs
+        }
 
         /**
          * What a playback showed, from the engine's properties once its first frame was decoded: the decoder in

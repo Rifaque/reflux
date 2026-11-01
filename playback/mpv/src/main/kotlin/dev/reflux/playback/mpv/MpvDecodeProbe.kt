@@ -30,7 +30,8 @@ class MpvDecodeProbe private constructor(private val mpv: LibMpv) {
                 "load-scripts" to "no", "hwdec" to hwdec,
             ).forEach { (name, value) -> mpv.mpv_set_option_string(handle, name, value) }
             if (mpv.mpv_initialize(handle) < 0) return DecodeEvidence.UNKNOWN
-            val software = DecodeEvidence.softwareCodecs(mpv.getString(handle, "decoder-list"))
+            val decoderList = mpv.getString(handle, "decoder-list")
+            val software = DecodeEvidence.softwareCodecs(decoderList)
             val hardware = mutableMapOf<DecodeKey, HardwareDecode>()
             for ((key, sizes) in samples.groupBy { it.key }) {
                 for (sample in sizes.sortedByDescending { it.width.toLong() * it.height }) {
@@ -42,7 +43,7 @@ class MpvDecodeProbe private constructor(private val mpv: LibMpv) {
                     hardware[key] = HardwareDecode.No
                 }
             }
-            return DecodeEvidence(software, hardware)
+            return DecodeEvidence(software, hardware, DecodeEvidence.audioCodecs(decoderList))
         } finally {
             mpv.mpv_terminate_destroy(handle)
         }

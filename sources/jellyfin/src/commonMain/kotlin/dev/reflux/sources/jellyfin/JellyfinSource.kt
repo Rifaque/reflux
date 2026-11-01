@@ -16,6 +16,7 @@ import dev.reflux.core.playback.StreamInfo
 import dev.reflux.core.playback.SubtitleFormat
 import dev.reflux.core.playback.SubtitleStream
 import dev.reflux.core.playback.VideoCodec
+import dev.reflux.core.playback.VideoProfile
 import dev.reflux.core.playback.VideoStream
 import dev.reflux.core.source.CatalogEntry
 import dev.reflux.core.source.CatalogSource
@@ -369,7 +370,7 @@ class JellyfinSource(
         val video = streams.firstOrNull { it.string("Type") == "Video" }?.let(::videoStream)
         val audio = streams.filter { it.string("Type") == "Audio" }.map(::audioStream)
         val embeddedSubtitles = streams.filter { it.string("Type") == "Subtitle" && !it.bool("IsExternal") }.map {
-            SubtitleStream(subtitleFormat(it.string("Codec")), it.string("Language"), it.bool("IsForced"), it.bool("IsDefault"))
+            SubtitleStream(subtitleFormat(it.string("Codec")), it.string("Language"), it.bool("IsForced"), it.bool("IsDefault"), it.bool("IsHearingImpaired"), it.int("Index"))
         }
         val externalSubtitles = streams.filter { it.string("Type") == "Subtitle" && it.bool("IsExternal") }.mapNotNull {
             val index = it.int("Index") ?: return@mapNotNull null
@@ -394,7 +395,7 @@ class JellyfinSource(
             sizeBytes = source.long("Size") ?: 0,
             modifiedAtEpochMs = instantOf(item.string("DateCreated")) ?: 0,
             stream = StreamInfo(
-                container = Container.fromExtension(source.string("Container")?.substringBefore(',').orEmpty()),
+                container = containerOf(source.string("Container")),
                 video = video,
                 audio = audio,
                 subtitles = embeddedSubtitles,
@@ -431,7 +432,15 @@ class JellyfinSource(
         },
         dolbyVisionProfile = json.int("DvProfile"),
         frameRate = json.double("RealFrameRate"),
+        profile = VideoProfile.fromName(json.string("Profile")),
+        level = json.int("Level")?.takeIf { it >= 0 },
     )
+
+    /** A server may name every format a demuxer takes (`mov,mp4,m4a,3gp`): the first one known is not the point, MP4 is. */
+    private fun containerOf(names: String?): Container {
+        val known = names.orEmpty().split(',').map { Container.fromExtension(it.trim()) }.filter { it != Container.UNKNOWN }
+        return if (Container.MP4 in known) Container.MP4 else known.firstOrNull() ?: Container.UNKNOWN
+    }
 
     private fun audioStream(json: JsonObject): AudioStream {
         val profile = json.string("Profile").orEmpty().lowercase()
@@ -455,6 +464,8 @@ class JellyfinSource(
             language = json.string("Language"),
             atmos = "atmos" in profile || "atmos" in title,
             default = json.bool("IsDefault"),
+            sampleRate = json.int("SampleRate"),
+            sourceIndex = json.int("Index"),
         )
     }
 

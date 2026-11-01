@@ -8,7 +8,7 @@ import android.net.Uri
 import android.provider.DocumentsContract
 import android.util.Log
 import app.cash.sqldelight.driver.android.AndroidSqliteDriver
-import dev.reflux.android.playback.AndroidCapabilities
+import dev.reflux.android.playback.AndroidCapabilitySource
 import dev.reflux.android.playback.AndroidMediaProber
 import dev.reflux.android.storage.ContentDocumentTree
 import dev.reflux.android.storage.DocumentTreeSource
@@ -188,7 +188,10 @@ class AndroidEnvironment(context: Context, dataDirectory: File = context.filesDi
         prefetchArtwork = { locators -> artwork.prefetch(locators, registry::resolve) },
     )
 
-    val capabilities: DeviceCapabilities by lazy { AndroidCapabilities.of(application) }
+    private val capabilitySource by lazy { AndroidCapabilitySource(application) }
+
+    /** What this device can play now: read again after an output or a display has come or gone. */
+    val capabilities: DeviceCapabilities get() = capabilitySource.current()
 
     /**
      * Smart Offline, on this device's storage and network. Copies are made while Reflux is running; one

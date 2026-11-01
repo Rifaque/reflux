@@ -9,13 +9,17 @@ import dev.reflux.core.model.StableIds
 import dev.reflux.core.model.StreamInfoOrigin
 import dev.reflux.core.playback.AudioCodec
 import dev.reflux.core.playback.AudioStream
+import dev.reflux.core.playback.Capabilities
 import dev.reflux.core.playback.Container
 import dev.reflux.core.playback.DisplayCapabilities
 import dev.reflux.core.playback.DynamicRange
 import dev.reflux.core.playback.PlaybackAssessor
 import dev.reflux.core.playback.PlaybackIssue
 import dev.reflux.core.playback.StreamInfo
+import dev.reflux.core.playback.SubtitleFormat
+import dev.reflux.core.playback.Support
 import dev.reflux.core.playback.VideoCodec
+import dev.reflux.core.playback.VideoProfile
 import dev.reflux.core.playback.VideoStream
 import dev.reflux.core.source.SourceLocality
 import dev.reflux.core.versions.SelectionCriterion
@@ -32,6 +36,79 @@ import kotlin.test.assertTrue
  * graphics card or monitor is involved: evidence and displays are written down here.
  */
 class DesktopCapabilitiesTest {
+    private val fullHdHevc = VideoStream(
+        VideoCodec.HEVC, 1920, 1080, 10, frameRate = 23.976, profile = VideoProfile.MAIN_10, level = 120,
+    )
+    private val fullHdDisplay = DisplayCapabilities(1920, 1080)
+
+    @Test
+    fun softwareDecodingIsSupportedAndHardwareIsNotUntilItHasBeenSeen() {
+        val unknown = Capabilities.video(fullHdHevc, DesktopCapabilities.of(fullHdDisplay))
+        assertEquals(Support.SUPPORTED, unknown.software, "the engine has no limit but the frame")
+        assertEquals(Support.UNKNOWN, unknown.hardware, "a GPU being there is not hardware decoding")
+    }
+
+    @Test
+    fun hardwareDecodingFollowsTheEvidence() {
+        val key = DecodeKey(VideoCodec.HEVC, 10)
+        val seen = DesktopCapabilities.of(fullHdDisplay, DecodeEvidence(null, mapOf(key to HardwareDecode.Yes(3840, 2160))))
+        assertEquals(Support.SUPPORTED, Capabilities.video(fullHdHevc, seen).hardware)
+        val refused = DesktopCapabilities.of(fullHdDisplay, DecodeEvidence(null, mapOf(key to HardwareDecode.No)))
+        assertEquals(Support.UNSUPPORTED, Capabilities.video(fullHdHevc, refused).hardware)
+        val small = DesktopCapabilities.of(fullHdDisplay, DecodeEvidence(null, mapOf(key to HardwareDecode.Yes(1920, 1080))))
+        val uhd = Capabilities.video(fullHdHevc.copy(width = 3840, height = 2160), small)
+        assertEquals(Support.UNSUPPORTED, uhd.hardware, "seen this large and no larger")
+    }
+
+    @Test
+    fun audioDecodersAreWhatTheEngineWasBuiltWith() {
+        val list = """[{"codec":"aac","driver":"aac"},{"codec":"eac3","driver":"eac3"},{"codec":"dts","driver":"dca"},{"codec":"h264","driver":"h264"},{"codec":"subrip","driver":"srt"}]"""
+        val audio = DecodeEvidence.audioCodecs(list)
+        assertEquals(setOf(AudioCodec.AAC, AudioCodec.EAC3, AudioCodec.DTS, AudioCodec.DTS_HD_MA), audio)
+        val device = DesktopCapabilities.of(fullHdDisplay, DecodeEvidence(null, emptyMap(), audio))
+        assertEquals(audio, device.audioDecoders, "an engine built without TrueHD does not claim it")
+        assertEquals(Support.UNSUPPORTED, Capabilities.audio(AudioStream(AudioCodec.TRUEHD), device).decode)
+        assertEquals(null, DecodeEvidence.audioCodecs(null))
+        assertEquals(AudioCodec.entries.size - 1, DesktopCapabilities.of(fullHdDisplay).audioDecoders.size, "not asked: as before")
+    }
+
+    @Test
+    fun passthroughIsNotDoneRatherThanNotKnown() {
+        val device = DesktopCapabilities.of(fullHdDisplay)
+        val eac3 = AudioStream(AudioCodec.EAC3, channels = 6, atmos = true)
+        val answer = Capabilities.audio(eac3, device)
+        assertEquals(Support.UNSUPPORTED, answer.passthrough, "Reflux does not ask the engine for it")
+        assertEquals(Support.UNSUPPORTED, answer.atmos)
+    }
+
+    @Test
+    fun theAudioOutputIsLearnedFromPlaybacks() {
+        val fiveOne = AudioStream(AudioCodec.EAC3, channels = 6)
+        fun channels(output: ObservedAudioOutput?) = Capabilities.audio(fiveOne, DesktopCapabilities.of(fullHdDisplay, audioOutput = output)).channels
+        assertEquals(Support.UNKNOWN, channels(null), "nothing has played")
+        assertEquals(2, DesktopCapabilities.of(fullHdDisplay).maxOutputChannels, "and Best Version keeps its stereo floor")
+
+        val stereoFile = ObservedAudioOutput.first(source = 2, output = 2)
+        assertEquals(Support.UNKNOWN, channels(stereoFile), "stereo in, stereo out says nothing of more")
+        val downmixed = stereoFile.with(source = 6, output = 2)
+        assertEquals(ObservedAudioOutput(2, exact = true), downmixed)
+        assertEquals(Support.UNSUPPORTED, channels(downmixed), "six in and two out is the limit")
+        val surround = stereoFile.with(source = 6, output = 6)
+        assertEquals(Support.SUPPORTED, channels(surround))
+        assertEquals(6, DesktopCapabilities.of(fullHdDisplay, audioOutput = surround).maxOutputChannels)
+        assertEquals(surround, surround.with(source = 2, output = 2), "a stereo file changes nothing")
+    }
+
+    @Test
+    fun subtitleRenderersAreTheEnginesAndFilesBesideAVideoAreNotClaimedForBitmaps() {
+        val device = DesktopCapabilities.of(fullHdDisplay)
+        fun render(format: dev.reflux.core.playback.SubtitleFormat, external: Boolean) = Capabilities.subtitle(format, external, device).render
+        assertEquals(Support.SUPPORTED, render(SubtitleFormat.ASS, true))
+        assertEquals(Support.SUPPORTED, render(SubtitleFormat.PGS, false))
+        assertEquals(Support.UNKNOWN, render(SubtitleFormat.PGS, true))
+        assertEquals(Support.UNKNOWN, render(SubtitleFormat.TTML, false))
+    }
+
     private val fullHd = DisplayCapabilities(1920, 1080)
     private val uhd = DisplayCapabilities(3840, 2160)
 

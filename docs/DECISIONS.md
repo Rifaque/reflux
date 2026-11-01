@@ -930,3 +930,14 @@ The 2026-10-08 Jellyfin decision used static streams alone, with no server-side 
 - **Direct Play has to be shown.** The server keeps no record of it, so it needs the original requested, the server listing that playback, and no conversion listed; otherwise it is unknown.
 
 Alternatives rejected: keeping static streams only (silent playback stays, and no explanation is possible); a Reflux transcoder or remuxer (a new engine, against the milestone's scope); inferring modes from a client-side table (the thing M2P exists to remove). Milestone numbering: this is M2P, ahead of M2 release engineering, so the many existing references to M2 stay correct.
+
+## 2026-11-01 — What a client can do is supported, unsupported, or unknown
+
+The capability model (PLAYBACK.md, section 6). Media facts, capabilities, evidence, and planning stay four separate things, and one set of pure questions (`Capabilities`) compares facts with a client, used by `PlaybackAssessor` and Best Version too.
+
+- **Unknown is an answer** and defaults everywhere, so what was not read is never claimed either way. Alternative rejected: a boolean with a conservative default, which is what made an unread decoder look absent and a missing fact look fine.
+- **`DeviceCapabilities` is extended, not replaced,** because 36 files build or read it and its fields are still true. Alternative rejected: a new top-level model beside it, which would have two answers to one question.
+- **A declared level or frame rate does not refuse a version.** Media3 tries past them, so refusing would stop files that play. Whether the planner treats them as a reason to act is the planner's question.
+- **Passthrough on Android is what Media3 says it will do,** not what an output lists, because that is what will happen. Its answer has not been checked against a receiver.
+- **Not done is unsupported.** The desktop does not ask libmpv for passthrough or HDR, so neither is claimed however capable the hardware.
+- **Stream facts are migrated, not backfilled.** A library's existing versions read unknown for profile, level, and sample rate until a file is next read or a server next scanned. Local files are not probed again for this: only changed files are.

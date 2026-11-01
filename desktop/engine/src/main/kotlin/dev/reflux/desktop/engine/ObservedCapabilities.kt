@@ -7,6 +7,7 @@ import dev.reflux.core.playback.DisplayCapabilities
 import dev.reflux.playback.mpv.DecodeEvidence
 import dev.reflux.playback.mpv.DecodeObservation
 import dev.reflux.playback.mpv.DesktopCapabilities
+import dev.reflux.playback.mpv.ObservedAudioOutput
 import java.awt.GraphicsDevice
 import java.awt.GraphicsEnvironment
 import java.awt.Window
@@ -65,6 +66,7 @@ class ObservedCapabilities(
 ) {
     @Volatile private var display: ObservedDisplay = ObservedDisplay.UNKNOWN
     @Volatile private var decode: DecodeEvidence = DecodeEvidence.UNKNOWN
+    @Volatile private var audioOutput: ObservedAudioOutput? = null
     @Volatile private var snapshot: DeviceCapabilities = build()
 
     /** Told when [current] changed. */
@@ -95,6 +97,18 @@ class ObservedCapabilities(
         return update(display, next) { "A playback changed what is known of decoding: ${next.summary()}" }
     }
 
+    /** How many channels a real playback sent out, of how many it had. */
+    @Synchronized
+    fun audioOutput(source: Int, output: Int): Boolean {
+        val next = audioOutput?.with(source, output) ?: ObservedAudioOutput.first(source, output)
+        if (next == audioOutput) return false
+        audioOutput = next
+        snapshot = build()
+        report("A playback changed what is known of the audio output: ${next.channels} channels${if (next.exact) ", its limit" else " at least"}")
+        onChange?.invoke()
+        return true
+    }
+
     @Synchronized
     private fun update(nextDisplay: ObservedDisplay, nextDecode: DecodeEvidence, describe: () -> String): Boolean {
         if (nextDisplay == display && nextDecode == decode) return false
@@ -107,7 +121,7 @@ class ObservedCapabilities(
     }
 
     private fun build(): DeviceCapabilities =
-        DesktopCapabilities.of(display.capabilities, decode, displayShowsHdr = display.hdr == HdrState.ON)
+        DesktopCapabilities.of(display.capabilities, decode, displayShowsHdr = display.hdr == HdrState.ON, audioOutput = audioOutput)
 
     private fun describe(display: ObservedDisplay): String =
         (if (display.width != null) "${display.width}x${display.height}" else "size unknown") + ", HDR " + when (display.hdr) {
