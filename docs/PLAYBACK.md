@@ -1,6 +1,6 @@
 # Playback compatibility
 
-What Reflux can really play, how it decides, and how it explains that. This is the specification for milestone M2P (ROADMAP.md). It began as the M2.0 audit of 2026-11-01. Sections 3a, 6, 7, and 8 are built; section 9's report and section 10's open decisions are not. Section 15 is the current real-media evidence: sections 2 and 3a describe the library before the owner's remux.
+What Reflux can really play, how it decides, and how it explains that. This is the specification for milestone M2P (ROADMAP.md). It began as the M2.0 audit of 2026-11-01. Every section is built or decided; M2P closed on 2026-11-02 (section 17). Section 15 is the current real-media evidence: sections 2 and 3a describe the library before the owner's remux.
 
 The rule: **decode locally when possible, preserve original streams when possible, transcode only when genuinely necessary.** Success is that Reflux knows what the client can actually play, preserves the original whenever possible, degrades the smallest necessary part when it cannot, and can explain why. "Every codec works everywhere" is not the goal.
 
@@ -409,7 +409,57 @@ In order, the first that applies:
 
 Unknown never causes a conversion and never blocks playback: both would be acting on something not known. A failure is how an unknown is resolved (section 8, failures). It would be wrong to convert first, since it costs quality and server time for what may play.
 
-### Sources
+### 16. Format fixtures
+
+What the real library cannot answer, made by FFmpeg from fixed arguments: `playback/mpv/src/test/.../FormatFixtures.kt` on the desktop, the same list in `android/app/build.gradle.kts` (`GenerateTestMedia`) on Android. Test pictures and tones only, 80 KB to 0.9 MB, generated at build or test time and never committed. `FormatFixtureTest` (desktop) and `FormatFixtureOnDeviceTest` (Android) read each, assess it, plan it as a local file, play it, and compare.
+
+| Fixture | Question |
+| --- | --- |
+| `av1-1080p-8bit.mkv`, `av1-1080p-10bit.mkv` | AV1 Main at 1080p, 8 and 10-bit |
+| `av1-2160p-10bit.mkv` | AV1 Main 10 at 4K |
+| `hevc-2160p-hdr10.mkv` | HEVC Main 10 at 4K, PQ, BT.2020, mastering metadata |
+| `hevc-2160p-hlg.mkv` | HEVC Main 10 at 4K, HLG |
+| `truehd.mkv` | TrueHD |
+| `vp9-1080p.webm` | VP9 Profile 0 with Opus in WebM |
+
+A local file has no server, so these test reading, assessing, planning, and the engine. Conversion of the same formats follows the paths the real library proved (DTS for audio, HEVC Main 10 for video). Dolby Vision has no fixture: FFmpeg cannot make one, and no licensed sample is held.
+
+## 17. What M2P proves
+
+**Verified** is seen on a real engine and device. **Unsupported** is known not to work there. **Unknown** is not seen either way. **Unavailable** could not be tested with what was here.
+
+| Capability | Windows | Fire TV | Pad 7 | Phone 2a | Google TV emulator | Linux |
+| --- | --- | --- | --- | --- | --- | --- |
+| H.264 8-bit, HEVC Main and Main 10 to 1080p | Verified | Verified | Verified | Verified | H.264 and HEVC 8-bit verified; Main 10 unsupported (no decoder): transcoded | Container only |
+| H.264 High 10 | Verified (hardware) | Unsupported: transcoded | Unsupported: transcoded | Verified (hardware) | Unsupported: transcoded | Unknown |
+| AV1 1080p, 8 and 10-bit | Verified (fixture) | Verified (fixture, hardware) | Verified (fixture, software) | Unavailable | Verified (fixture, software) | Unknown |
+| AV1 4K | Verified (fixture) | Verified (fixture, hardware) | Unsupported by declared limit (fixture played anyway, at 5 fps) | Unavailable | The same as the Pad | Unknown |
+| HEVC Main 10 4K | Verified (fixture) | Verified (fixture) | Verified (fixture) | Unavailable | Unsupported | Unknown |
+| VP9 Profile 0 | Verified (fixture) | Verified (fixture; depth unread on Fire OS 8) | Verified (fixture) | Unavailable | Verified (fixture) | Unknown |
+| HDR10 and HLG signalling read | Verified (fixture) | Verified (fixture) | Verified (fixture) | Unavailable | Verified (fixture) | Unknown |
+| HDR shown as HDR | Not claimed: tone-mapped to SDR | Unknown (display lists HDR10; HLG not shown, said) | Unknown | Unknown | Unavailable | Unknown |
+| Dolby Vision | Unknown | Unknown | Unknown | Unknown | Unknown | Unknown |
+| AAC to 7.1, AC-3, E-AC-3, Atmos bed | Verified | Verified | Verified | Unsupported for AC-3, E-AC-3: audio converted, video kept | Unsupported for AC-3, E-AC-3: converted | Container only |
+| DTS | Verified | Unsupported: converted | Unsupported: converted | Unsupported: converted | Unsupported: converted | Unknown |
+| TrueHD | Verified (fixture) | Unsupported (fixture: no decoder) | The same | Unavailable | The same | Unknown |
+| Opus | Verified (fixture) | Verified (fixture) | Verified (fixture) | Unavailable | Verified (fixture) | Unknown |
+| FLAC, ALAC, PCM in video | Unknown | Unknown | Unknown | Unknown | Unknown | Unknown |
+| Passthrough heard | Unavailable: not done | Planned; unavailable: no receiver | Not applicable | Not applicable | Not applicable | Unavailable |
+| SRT, ASS in the file | Verified | Verified | Verified (cues) | Verified (cues) | Verified, on screen | Container only |
+| PGS in the file | Verified | Verified | Verified (cues) | Verified, on screen | Verified (cues) | Container only |
+| PGS beside a converted stream | Verified | Unknown (never needed: decodes the audio) | Unknown (the same) | Verified (generated); real film unavailable | Verified, on screen | Unknown |
+| VobSub in the file | Verified | Verified (cues) | Verified (cues) | Verified (cues) | Verified, on screen | Unknown |
+| VobSub beside a converted stream | Verified | Unsupported: burned in | The same | The same | The same | Unknown |
+| Extracted text subtitles over a conversion | Verified | Verified | Verified | Verified | Verified | Unknown |
+| Chained SeekHead | Verified (seeks) | Verified (remux on seek) | Verified | Verified | Verified | Unknown |
+
+**Proves:** the capability model, assessor, planner, negotiation, execution, and evidence agree on every real kind of media and every fixture, with no mismatch; conversions happen only for what a device cannot do, and audio never converts the picture; subtitles burn in only for VobSub chosen where the audio converts; a seek or resume an engine refuses re-plans once; a viewer's language is kept; Info says why.
+
+**Does not prove:** HDR or Dolby Vision on a screen; passthrough heard; Linux on physical hardware (waived, VERIFICATION.md); the Phone 2a on fixtures (not attached); Jellyfin's conversion of the fixture formats (they are not on the server); Media3's real-time 4K AV1 in software.
+
+**Known platform limits:** Android's own extractor drops a TrueHD track from a local file's probe, so its silence is found at playback, not planned, and said then; Fire OS 8 reports no VP9 profile, so depth stays unknown; Media3 does not follow a chained SeekHead.
+
+## Sources
 
 | Source | Plan |
 | --- | --- |
@@ -506,7 +556,10 @@ There is no retry, backoff, or lower-quality ladder. `PlanOutcome.CANNOT_PLAY` s
 
 A source with no account of itself still has the engine's side compared. A planned original the server transcodes is a mismatch, and tests hold that. Live, this found a real defect: a planned remux whose audio the server converted.
 
-## 9. Diagnostics (proposal)
+## 9. Diagnostics
+
+Built as `PlaybackReport` (core): the player's **Info** list and the diagnostics log, in a viewer's words. The table below was the proposal; section 17 says what it covers.
+
 
 One `PlaybackReport`, for development first: written to the diagnostics log through `Redaction`, and printed by the developer CLI.
 
