@@ -8,6 +8,7 @@ import android.os.Looper
 import android.view.SurfaceView
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
+import androidx.media3.common.Format
 import androidx.media3.common.ForwardingPlayer
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
@@ -26,6 +27,9 @@ import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.analytics.AnalyticsListener
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import androidx.media3.exoplayer.source.MergingMediaSource
+import androidx.media3.exoplayer.source.ProgressiveMediaSource
+import androidx.media3.extractor.ExtractorsFactory
 import androidx.media3.session.MediaSession
 import dev.reflux.core.net.Redaction
 import dev.reflux.core.playback.DecoderInUse
@@ -173,11 +177,13 @@ class Media3Player(context: Context, override val capabilities: DeviceCapabiliti
         mutableCues.value = emptyList()
         mutableAspect.value = null
 
+        // A PGS file is read beside the media by Reflux's own extractor; everything else is side-loaded as it was.
+        val (sup, sideLoaded) = request.subtitles.withIndex().partition { subtitleMimeType(it.value.target.uri) == SupExtractor.MIME }
         val item = MediaItem.Builder()
             .setUri(request.target.uri)
             .setMediaMetadata(MediaMetadata.Builder().setTitle(request.title).build())
             .setSubtitleConfigurations(
-                request.subtitles.mapIndexed { index, subtitle ->
+                sideLoaded.map { (index, subtitle) ->
                     MediaItem.SubtitleConfiguration.Builder(android.net.Uri.parse(subtitle.target.uri))
                         .setId("external-$index")
                         .setMimeType(subtitleMimeType(subtitle.target.uri))
@@ -190,7 +196,18 @@ class Media3Player(context: Context, override val capabilities: DeviceCapabiliti
             .build()
         // A source's own headers (a server's token) travel with every request for this item.
         val http = DefaultHttpDataSource.Factory().setAllowCrossProtocolRedirects(true).setDefaultRequestProperties(request.target.headers)
-        val source = DefaultMediaSourceFactory(DefaultDataSource.Factory(application, http)).createMediaSource(item)
+        val media = DefaultMediaSourceFactory(DefaultDataSource.Factory(application, http)).createMediaSource(item)
+        val pgs = sup.map { (index, subtitle) ->
+            val files = DefaultDataSource.Factory(
+                application, DefaultHttpDataSource.Factory().setAllowCrossProtocolRedirects(true).setDefaultRequestProperties(subtitle.target.headers),
+            )
+            val format = Format.Builder().setId("external-$index").setLanguage(subtitle.language)
+                .setSelectionFlags(if (subtitle.forced) C.SELECTION_FLAG_FORCED else 0)
+                .setRoleFlags(if (subtitle.hearingImpaired) C.ROLE_FLAG_DESCRIBES_MUSIC_AND_SOUND else 0).build()
+            ProgressiveMediaSource.Factory({ OpenOnRead(files.createDataSource()) }, ExtractorsFactory { arrayOf(SupExtractor(format)) })
+                .createMediaSource(MediaItem.fromUri(subtitle.target.uri))
+        }
+        val source = if (pgs.isEmpty()) media else MergingMediaSource(media, *pgs.toTypedArray())
         val start = request.startPositionMs
         if (start != null && start > 0) player.setMediaSource(source, start) else player.setMediaSource(source)
         player.playWhenReady = true
@@ -450,6 +467,7 @@ class Media3Player(context: Context, override val capabilities: DeviceCapabiliti
             "ass", "ssa" -> MimeTypes.TEXT_SSA
             "vtt" -> MimeTypes.TEXT_VTT
             "ttml", "dfxp", "xml" -> MimeTypes.APPLICATION_TTML
+            "sup", "pgssub", "pgs" -> SupExtractor.MIME
             else -> MimeTypes.APPLICATION_SUBRIP
         }
     }

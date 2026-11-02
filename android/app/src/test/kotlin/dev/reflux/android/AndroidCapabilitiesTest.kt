@@ -123,8 +123,10 @@ class AndroidCapabilitiesTest {
     @Test
     fun bitmapSubtitlesAreNotClaimedBeyondWhatWasSeen() {
         val device = AndroidCapabilities.of(emptyList(), display, pictureInPicture = false)
-        assertEquals(Support.UNSUPPORTED, Capabilities.subtitle(SubtitleFormat.PGS, external = true, device).render, "the player would read one as SubRip")
+        assertEquals(Support.SUPPORTED, Capabilities.subtitle(SubtitleFormat.PGS, external = true, device).render, "a server's PGS file, read by SupExtractor")
         assertEquals(Support.SUPPORTED, Capabilities.subtitle(SubtitleFormat.PGS, external = false, device).render, "seen on a real film")
+        assertEquals(Support.UNSUPPORTED, Capabilities.subtitle(SubtitleFormat.VOBSUB, external = true, device).render, "no reader for a VobSub file")
+        assertEquals("application/x-reflux-sup", dev.reflux.android.playback.Media3Player.subtitleMimeType("https://server/Videos/1/2/Subtitles/3/0/Stream.pgssub?api_key=x"))
         assertEquals(Support.UNKNOWN, Capabilities.subtitle(SubtitleFormat.VOBSUB, external = false, device).render)
         assertEquals(SubtitleFidelity.PLAIN, Capabilities.subtitle(SubtitleFormat.ASS, external = false, device).fidelity)
         assertEquals(Support.SUPPORTED, Capabilities.subtitle(SubtitleFormat.SRT, external = true, device).render)
