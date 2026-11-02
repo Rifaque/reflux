@@ -857,3 +857,44 @@ Not one walked playback was a mismatch, a silent track, an unnecessary conversio
 **Found:** on Android, external PGS is declared unsupported, because the attachment path types a file by its extension and has no bitmap type. So a PGS track chosen on a film whose audio this device cannot decode burns in, and the video is transcoded: 30 to 48 versions on the Phone and the emulator, 0 on the Pad. That is the one subtitle-forced video conversion in the matrix. Real files exist to test a change. Not changed here.
 
 **Not verified:** any subtitle picture. A real-application pass on the Pad captured only black frames, with the tablet asleep and its session paused, and is not counted. The Phone's last 9 edge cases, its second language, and its Best Version. Whether the Phone's network failures were the phone's or the network's.
+
+## M2P closure (2026-11-02)
+
+Side-by-side `dev.reflux.m2p` builds on the devices, signed in only as `reflux-test`, removed afterwards; the devices' own libraries were not touched. No media changed. Generated media are test pictures and tones (PLAYBACK.md, section 16).
+
+**PGS beside a converted stream, Android.** Jellyfin serves an extracted PGS track as a `.sup` (2 Fast 2 Furious: 31.8 MB, 2,422 presentations, `PG` framing throughout).
+
+| Check | Device | Result |
+| --- | --- | --- |
+| `SupDisplaySetsTest`, the framing | JVM | 5 of 5 |
+| `PgsAttachmentOnDeviceTest`: a generated `.sup` beside a clip, drawn at 2 s and cleared at 4 s, the picture not held | Fire TV, Google TV emulator, Pad 7 | Pass on each |
+| H.264 + AC-3 + PGS, The Vow, English PGS tracks 0 and 1 | Google TV emulator | Planned and actual `AUDIO_CONVERSION`, video preserved, subtitles `EXTERNAL`; bitmap cues 703x60 and 586x123. First run: none within 45 s, the server extracting the track for the first time; the picture did not wait |
+| The same, real application, the subtitle chosen from the player's menu | Google TV emulator, screenshots | Whole lines drawn on the picture |
+| VobSub in the file (Casino Royale), ASS in the file over a seek's remux (Moon Knight) | Google TV emulator, real application, screenshots | Drawn |
+| Every PGS class, plans | Google TV emulator | H.264 + AC-3 or E-AC-3 + PGS: audio conversion, video kept (before: video transcode). HEVC Main 10 + PGS: video transcode, as the emulator has no 10-bit HEVC decoder; PGS external, not burned in |
+
+**Format fixtures.**
+
+| Device | Result |
+| --- | --- |
+| Windows (`FormatFixtureTest`) | 7 of 7 read, planned Direct Play, played in hardware (`d3d11va-copy`); HDR10 and HLG read and planned tone-mapped |
+| Fire TV | 7 of 7 as planned: AV1 to 4K, HEVC 4K, VP9 in hardware; HLG not shown on this display, said; TrueHD silent and reported. One run of three, the first AV1 clip after an install did not start within 45 s; the next two passed |
+| Xiaomi Pad 7 | 7 of 7: AV1 1080p in software, 4K AV1 refused by its declared limit, HEVC 4K HDR10 and HLG in hardware, VP9 in hardware |
+| Google TV emulator | 7 of 7: AV1 in software, HEVC Main 10 refused (no decoder), VP9 |
+| Nothing Phone 2a | Not run: not attached |
+
+**Found and decided:** Android's own extractor drops a TrueHD track from a local file's probe (the platform lists only the video); Media3 sees it and reports it at playback, and the no-sound notice says so. Fire OS 8 reports no VP9 profile. Neither is changed (DECISIONS.md, "M2P's last decisions").
+
+**Info.** `PlaybackReportTest` (10), `ScreensTest.playbackInfoSaysHowItPlaysAndWhy` rendered and reviewed; the menu test walks to it. The report is also written to the diagnostics log beside "Planned against actual".
+
+**Security.** The test account's password, the server's address, and its host are in no tracked file and nowhere in unpushed history; 42 scratch logs held no password or key. The one key-shaped value in the tree is a test's made-up one, there to show the report leaves keys out.
+
+**Suites at closure.**
+
+| Suite | Result |
+| --- | --- |
+| Windows `check`, with the live server | 1,082 tests, 16 skipped, 0 failed |
+| Windows real-window tests (`-Preflux.windowTests=true`) | 41, 3 skipped, 0 failed. Skipped: the controller test (none connected), the physical Linux gate (refuses Windows), the teardown test (on request) |
+| Android unit tests | 50 of 50 (in `check`) |
+| On-device: fixtures, PGS attachment, seekability | Fire TV, Pad 7, Google TV emulator: 5 of 5 each |
+| Linux container | Not rerun at closure: the Linux path is the desktop JVM's, which `check` covers; physical Linux is waived |

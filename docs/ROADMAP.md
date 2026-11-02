@@ -12,7 +12,7 @@ This roadmap replaces the earlier Phase 0–18 plan, which was ordered by archit
 
 ## Where Reflux is
 
-Reflux is a **pre-release**. The engine (Media Core, sources, identification, metadata, watch state, Best Version, playback, Smart Offline) is mature and heavily tested; the experience layer runs on desktop, Android phones and tablets, and Android TV. Nothing has been released: there is no signed Android build, no desktop installer, no store listing, no public website, and no tester outside the project. Android phones and Google TV have been verified on emulators only; one physical Fire TV (a Fire TV Stick 4K Plus on Fire OS 8) has had a smoke test of a debug build (2026-10-18). The current version is `0.9.0-alpha.1` ([VERSIONING.md](VERSIONING.md)).
+Reflux is a **pre-release**. The engine (Media Core, sources, identification, metadata, watch state, Best Version, playback, Smart Offline) is mature and heavily tested; the experience layer runs on desktop, Android phones and tablets, and Android TV. Nothing has been released: there is no signed Android build, no desktop installer, no store listing, no public website, and no tester outside the project. Playback has been verified on a physical Nothing Phone 2a, Xiaomi Pad 7, and Fire TV Stick 4K Plus, and on the Google TV emulator (VERIFICATION.md); a physical Google TV device has not been used. The current version is `0.9.0-alpha.2` ([VERSIONING.md](VERSIONING.md)).
 
 Status words used below:
 
@@ -41,7 +41,7 @@ Status words used below:
 | --- | --- | --- |
 | M0 — Rebaseline & governance | One roadmap, a versioning protocol, verification history separated, product decisions recorded, V1 acceptance criteria | Done (2026-10-17) |
 | M1 — Product completeness | Everything V1 must contain is built and tested | Partial |
-| M2P — Playback compatibility & direct play | Reflux knows what the client can actually play, preserves the original whenever possible, degrades the smallest necessary part when it cannot, and can explain why | Partial: execution (M2P.4) closed 2026-11-02, physical Linux waived; the rows below say what is left ([PLAYBACK.md](PLAYBACK.md)) |
+| M2P — Playback compatibility & direct play | Reflux knows what the client can actually play, preserves the original whenever possible, degrades the smallest necessary part when it cannot, and can explain why | Done (2026-11-02), with explicit waivers and unknowns (PLAYBACK.md, section 17) |
 | M2 — Release engineering | Signed, shrunk, installable, upgradable builds for every V1 target, in CI, legally ready | Open |
 | M3 — Real-world validation | Live services, physical devices, real controllers, real networks, large libraries | Open |
 | M4 — Beta | `0.9.0-beta.1` in testers' hands through the stores and the website | Open |
@@ -125,11 +125,11 @@ Works before release engineering: what is signed and shipped should be the playb
 | Explicit, tested playback planner | Done 2026-11-01 (PLAYBACK.md, section 7) |
 | The plan executed on every source and both engines, the selected track assessed | Done 2026-11-01 (PLAYBACK.md, section 8) |
 | Jellyfin negotiation through `PlaybackInfo` and a device profile, server behavior read from its session | Done 2026-11-01 (PLAYBACK.md, section 8) |
-| Diagnostics that explain a playback, planned against observed | Open |
-| Desktop audio outputs and passthrough; the Android decoder decision, with measurements | Open |
-| Test corpus, and validation on Windows, Linux, the Phone 2a, the Pad 7, the Google TV emulator, and the Fire TV | In progress: real-application runs on the Phone 2a, the Pad 7, the Fire TV, and the Google TV emulator done 2026-11-02 (VERIFICATION.md). Linux for M2P.4: **waived**, physical hardware unavailable, virtual Linux validation accepted (VERIFICATION.md, "M2P.4 physical Linux gate"); hardware decoding and real audio output on Linux stay unproven |
+| Diagnostics that explain a playback, planned against observed | Done 2026-11-02: `PlaybackReport`, the player's Info list and the diagnostics log |
+| Desktop audio outputs and passthrough; the Android decoder decision, with measurements | Decided 2026-11-02: output channels observed (section 6); passthrough deferred to M3; no new Android decoder (DECISIONS.md, "M2P's last decisions") |
+| Test corpus, and validation on Windows, Linux, the Phone 2a, the Pad 7, the Google TV emulator, and the Fire TV | Done 2026-11-02: the real library and generated fixtures on every device here (VERIFICATION.md). Linux on physical hardware waived; the Phone 2a did not run the fixtures (not attached) |
 | The real Iron Man file has a reproducible result | Done 2026-11-02: the server serves it again, and it played as planned on Windows and the Fire TV (VERIFICATION.md) |
-| M2P.5 — Compatibility expansion and real media matrix | In progress: every kind of media in the library planned and walked on Windows and the Fire TV. Media3 and chained SeekHeads resolved and validated on the Fire TV, the Phone 2a, the Pad 7, and the Google TV emulator, 2026-11-02. The matrix walked on the Pad 7, the Google TV emulator, and most of the Phone 2a, 2026-11-02. Left: external PGS on Android (burn-in where audio converts), subtitles seen in the picture, and fixtures for what the library lacks (PLAYBACK.md, section 15) |
+| M2P.5 — Compatibility expansion and real media matrix | Done 2026-11-02: the real library walked on Windows, the Fire TV, the Pad 7, the Phone 2a, and the Google TV emulator; chained SeekHeads; PGS beside a conversion on Android; fixtures for AV1, HEVC 4K HDR10 and HLG, TrueHD, VP9 (PLAYBACK.md, sections 15 to 17) |
 
 **Exit criteria:** a documented shared capability model; explicit, testable planning; accurate capability information to Jellyfin; original media preferred; non-server sources on the same concepts without pretending to transcode; diagnostics that explain every conversion; evidence-based Android and desktop decoder behavior; the Iron Man file reproducible; representative combinations tested; relevant platforms validated; no unnecessary video transcoding, including because of audio or subtitles; documentation that separates supported, device-dependent, and unverified combinations.
 

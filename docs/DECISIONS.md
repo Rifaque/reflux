@@ -983,3 +983,13 @@ A server delivers an extracted PGS track as a `.sup` file (`PG`-framed segments;
 `SupExtractor` reads the file one presentation at a time and hands each to Media3's own `PgsParser`, the decoder Matroska's PGS already uses. It is merged beside the media, and opens its connection on the first read, so a slow extraction does not hold the picture. Reflux owns only the framing. External PGS on Android is now supported, so the planner keeps the original video and converts only the audio.
 
 Alternatives rejected: burn-in (a transcode for what the client can draw); Media3's side-loading (the whole file, gigabytes of bitmaps); converting bitmaps to text (lossy, and against PLAYBACK.md, section 7). VobSub files beside a stream stay unsupported: there is no reader, and burn-in remains for them.
+
+## 2026-11-02 — M2P's last decisions
+
+- **No new Android decoder.** The library has 2 DTS tracks and no TrueHD; both convert on a server, and the fixtures show TrueHD would too. Only local, SMB, and WebDAV files on devices without those decoders lose sound, and they say so. An FFmpeg extension would need an LGPL build per ABI and legal review (PLAYBACK.md, section 10) for that. Not justified; revisit on evidence.
+- **Desktop passthrough stays unimplemented and unclaimed.** mpv can (`audio-spdif`), but whether an output accepts it cannot be read without trying, and no receiver was here to hear it. Desktop decodes every format locally, so nothing converts for want of it. Deferred to M3, where real receivers are in scope.
+- **HDR is four separate questions.** Codec and decoder (verified: HEVC Main 10 at 4K and AV1 10-bit decode where listed); display (read on Android, not claimed on desktop); signalling (HDR10 and HLG read correctly from files on every platform); and HDR on a screen (not seen anywhere). The last stays unknown, not unsupported.
+- **Dolby Vision stays unknown.** No legitimate sample is held, and FFmpeg cannot make one.
+- **A declared decoder limit still refuses.** The Pad and the emulator played a 5 fps 4K AV1 clip past their decoders' declared 2048 width. That is not evidence of real-time 4K, so the plan's refusal stands (PLAYBACK.md, section 6).
+- **Android's probe of a local file is not replaced.** Its platform extractor drops a TrueHD track and, on Fire OS 8, a VP9 profile. The engine reports the first at playback and the no-sound notice says it; the second leaves depth unknown, which degrades correctly. Reading local files with Media3's extractors instead is a wider change than a format the library does not have. Revisit with evidence.
+- **M2P is complete** with these waived or unknown: Linux on physical hardware, HDR and DV on a screen, passthrough heard, the Phone 2a on fixtures. M3 owns physical validation.
