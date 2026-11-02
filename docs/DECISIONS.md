@@ -975,3 +975,11 @@ Real files can be valid and still unseekable on one engine: Media3 does not foll
 - A saved place is acted on at once, inside the first minute, where the watch rules still keep it.
 
 Alternatives rejected: a remux from the start for such files (they cannot be known, and it costs Direct Play for those who never seek); scanning files for this (a media problem for an engine's limit, and it needs the file's bytes); a patched extractor or a player-side index (forking Media3 for 3 of 992 files); leaving it as a known limit on Jellyfin (the saved place was lost, and the server could carry it).
+
+## 2026-11-02 — Android reads a server's PGS file itself
+
+A server delivers an extracted PGS track as a `.sup` file (`PG`-framed segments; 31.8 MB and 2,422 presentations on one real film). Media3 parses PGS only as Matroska carries it, and side-loads a subtitle by parsing all of it at once, which for PGS means every full-width bitmap together. So Android declared external PGS unsupported, and a PGS track chosen where the audio converts was burned in, transcoding the video.
+
+`SupExtractor` reads the file one presentation at a time and hands each to Media3's own `PgsParser`, the decoder Matroska's PGS already uses. It is merged beside the media, and opens its connection on the first read, so a slow extraction does not hold the picture. Reflux owns only the framing. External PGS on Android is now supported, so the planner keeps the original video and converts only the audio.
+
+Alternatives rejected: burn-in (a transcode for what the client can draw); Media3's side-loading (the whole file, gigabytes of bitmaps); converting bitmaps to text (lossy, and against PLAYBACK.md, section 7). VobSub files beside a stream stay unsupported: there is no reader, and burn-in remains for them.
