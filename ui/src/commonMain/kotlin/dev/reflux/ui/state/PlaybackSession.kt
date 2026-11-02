@@ -60,7 +60,7 @@ data class UpNext(val entry: LibraryEntry, val totalMs: Long, val remainingMs: L
  * The player's lists, one level below the transport controls. [EPISODES] is the way to the episode before
  * and after for hands that hold nothing with a next button on it.
  */
-enum class PlayerMenu(val title: String) { EPISODES("Episodes"), CHAPTERS("Chapters"), AUDIO("Audio"), SUBTITLES("Subtitles"), INFO("Playback info"), SPEED("Speed") }
+enum class PlayerMenu(val title: String) { EPISODES("Episodes"), CHAPTERS("Chapters"), AUDIO("Audio"), SUBTITLES("Subtitles"), INFO("Info"), SPEED("Speed") }
 
 /** One line of a [PlayerMenu]; [selected] marks what is in effect now. */
 data class MenuOption(val label: String, val detail: String? = null, val selected: Boolean = false)

@@ -211,6 +211,23 @@ class ScreensTest {
     }
 
     @Test
+    fun playbackInfoSaysHowItPlaysAndWhy() {
+        val platform = FakePlatform()
+        screen(populated(), platform) { app ->
+            awaitText("Recently Added")
+            app.play(app.library.shows().first { it.item.title == "Breaking Bad" }.item.id)
+            awaitText("S1 · E1 · Pilot")
+            platform.players.single().apply { playTo(95_000) }.pause()
+            waitForIdle()
+            app.playback!!.toggleMenu(dev.reflux.ui.state.PlayerMenu.INFO)
+            awaitText("The original file, as it is.")
+            onNodeWithText("How it plays").assertExists()
+            onNodeWithText("Planned against actual").assertExists()
+            save("player-info")
+        }
+    }
+
+    @Test
     fun aFolderWithoutMediaSaysSoAndOffersAnother() = screen(TestWorld().also { runBlocking { it.pipeline.refresh() } }) {
         awaitText("Nothing to watch here yet")
         onNodeWithText("Add another folder").assertIsDisplayed()
