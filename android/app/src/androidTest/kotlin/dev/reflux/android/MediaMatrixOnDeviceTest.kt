@@ -160,6 +160,12 @@ class MediaMatrixOnDeviceTest {
 
             val walk = Walk(library, server, http, device, world)
             val only = arguments.getString("refluxMatrixOnly")
+            // One subtitle of one title, chosen by the viewer: `-e refluxMatrixTitle <title> -e refluxMatrixSubtitle <index>`.
+            arguments.getString("refluxMatrixSubtitle")?.toIntOrNull()?.let { index ->
+                versions.forEach { walk.play("subtitle $index ${it.stream.subtitles.getOrNull(index)?.let { s -> "${s.format}/${s.language}" }}", it, SubtitleChoice.Explicit(index)) }
+                assertEquals(emptyList(), walk.failed)
+                return@runBlocking
+            }
             for (case in PlaybackSurvey.walk(cases).filter { only == null || only in it.media }) walk.play(case.media, case.example, case.subtitle)
             if (only == null) {
                 for ((label, version) in PlaybackSurvey.edges(versions)) walk.play("edge $label", version)

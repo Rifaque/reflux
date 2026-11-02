@@ -77,8 +77,8 @@ object AndroidCapabilities {
     /**
      * What Media3 and the shell's drawing make of subtitles, independent of the device. A file beside a video is
      * typed by [Media3Player.subtitleMimeType], which has no bitmap format: one would be read as SubRip. ASS keeps
-     * words, position, and some style, as Media3's parser does. PGS in a file was seen on a real film. Formats
-     * with a parser that nobody has seen work here are unknown.
+     * words, position, and some style, as Media3's parser does. PGS in a file was seen on a real film, and a PGS
+     * file beside one is read by [SupExtractor]. Formats with a parser that nobody has seen work here are unknown.
      */
     private val subtitleRenderers = SubtitleCapabilities(
         renderers = mapOf(
@@ -86,7 +86,7 @@ object AndroidCapabilities {
             SubtitleFormat.ASS to SubtitleRenderer(Support.SUPPORTED, Support.SUPPORTED, SubtitleFidelity.PLAIN),
             SubtitleFormat.WEBVTT to SubtitleRenderer(Support.UNKNOWN, Support.SUPPORTED, SubtitleFidelity.PLAIN),
             SubtitleFormat.TTML to SubtitleRenderer(Support.UNKNOWN, Support.SUPPORTED, SubtitleFidelity.PLAIN),
-            SubtitleFormat.PGS to SubtitleRenderer(Support.SUPPORTED, Support.UNSUPPORTED, SubtitleFidelity.FULL),
+            SubtitleFormat.PGS to SubtitleRenderer(Support.SUPPORTED, Support.SUPPORTED, SubtitleFidelity.FULL),
             SubtitleFormat.VOBSUB to SubtitleRenderer(Support.UNKNOWN, Support.UNSUPPORTED, SubtitleFidelity.FULL),
             SubtitleFormat.DVB to SubtitleRenderer(Support.UNKNOWN, Support.UNSUPPORTED, SubtitleFidelity.FULL),
         ),
