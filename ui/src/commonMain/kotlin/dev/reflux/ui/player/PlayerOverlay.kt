@@ -277,7 +277,7 @@ private fun menuIcon(menu: PlayerMenu): Icon = when (menu) {
     PlayerMenu.CHAPTERS -> Icon.CHAPTERS
     PlayerMenu.AUDIO -> Icon.AUDIO
     PlayerMenu.SUBTITLES -> Icon.SUBTITLES
-    PlayerMenu.SPEED, PlayerMenu.EPISODES -> error("not an icon in the bar")
+    PlayerMenu.SPEED, PlayerMenu.EPISODES, PlayerMenu.INFO -> error("not an icon in the bar")
 }
 
 @Composable

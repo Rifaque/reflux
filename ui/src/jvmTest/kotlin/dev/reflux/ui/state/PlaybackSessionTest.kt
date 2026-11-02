@@ -772,7 +772,7 @@ class PlaybackSessionTest {
         val playing = playing("Breaking Bad", 0)
         val session = playing.session
         val player = playing.player
-        assertEquals(listOf(PlayerMenu.EPISODES, PlayerMenu.CHAPTERS, PlayerMenu.AUDIO, PlayerMenu.SUBTITLES, PlayerMenu.SPEED), session.menus())
+        assertEquals(listOf(PlayerMenu.EPISODES, PlayerMenu.CHAPTERS, PlayerMenu.AUDIO, PlayerMenu.SUBTITLES, PlayerMenu.SPEED, PlayerMenu.INFO), session.menus())
 
         session.handle(SemanticAction.MENU)
         assertEquals(PlayerMenu.SUBTITLES, session.menu)
@@ -792,7 +792,12 @@ class PlaybackSessionTest {
         session.handle(SemanticAction.NAVIGATE_RIGHT)
         assertEquals(PlayerMenu.SPEED, session.menu)
         session.handle(SemanticAction.NAVIGATE_RIGHT)
-        assertEquals(PlayerMenu.SPEED, session.menu, "there is no menu past the last")
+        assertEquals(PlayerMenu.INFO, session.menu, "why it plays as it does is the last list")
+        assertEquals("How it plays", session.options(PlayerMenu.INFO).first().detail)
+        session.handle(SemanticAction.NAVIGATE_RIGHT)
+        assertEquals(PlayerMenu.INFO, session.menu, "there is no menu past the last")
+        session.handle(SemanticAction.NAVIGATE_LEFT)
+        assertEquals(PlayerMenu.SPEED, session.menu)
         assertEquals("Normal", session.options(PlayerMenu.SPEED)[session.highlighted].label)
         session.handle(SemanticAction.NAVIGATE_DOWN)
         session.handle(SemanticAction.SELECT)
