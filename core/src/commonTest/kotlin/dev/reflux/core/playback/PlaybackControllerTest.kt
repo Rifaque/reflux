@@ -252,6 +252,20 @@ class PlaybackControllerTest {
     }
 
     @Test
+    fun aSeekTheEngineCannotDoIsNotSentToIt() {
+        val refused = mutableListOf<Long>()
+        val controller = PlaybackController(player, MediaId("m"), RecordingReporter(), TrackPreferences(listOf("en")), onSeekRefused = { refused += it })
+        player.state.value = PlayerState(status = PlayerStatus.PLAYING, positionMs = 30_000, durationMs = 60_000, seekable = false)
+        controller.handle(SemanticAction.SEEK_FORWARD)
+        assertEquals(listOf(40_000L), refused)
+        assertFalse(player.commands.any { it.startsWith("seek") }, "${player.commands}")
+
+        player.state.value = player.state.value.copy(seekable = null)
+        controller.handle(SemanticAction.SEEK_FORWARD)
+        assertEquals(listOf("seek:40000"), player.commands, "an engine that has not said is asked")
+    }
+
+    @Test
     fun speedStepsAreBounded() {
         assertEquals(2.0, PlaybackController.nextSpeed(2.0, up = true))
         assertEquals(0.5, PlaybackController.nextSpeed(0.5, up = false))

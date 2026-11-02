@@ -776,6 +776,27 @@ Jellyfin 12.2.0 on RS-X1, 1,003 versions after the remux, as `reflux-test`. No m
 | Iron Man, the reference file | The same tests for that title: no subtitles, PGS, SRT | 3 of 3 on each. First frame 0.4 to 0.5 s on Windows, 1.6 to 2.6 s on the Fire TV. Static stream 206 |
 | Matroska structure | Read-only on RS-X1: first 256 KB and last 4 MB of each of 992 files | 989 name Cues in the SeekHead; 3 do not, all Moon Knight |
 
-"Walked" means started, seeked, and compared with the server's session, plus the chosen track selected and sound present. **The failure:** The Goldfish Problem ignored a seek in both cases of a repeat run on the Fire TV, position 89 s after 90 s, with a target of 120 s.
+"Walked" means started, seeked, and compared with the server's session, plus the chosen track selected and sound present. **The failure:** The Goldfish Problem did not reach a seek in both cases of a repeat run on the Fire TV, position 89 s after 90 s, with a target of 120 s. It had restarted (next section). "3 do not" below names Cues in the first SeekHead only: they do in a second.
 
 **Not verified:** the Phone 2a, the Pad 7, and the Google TV emulator were not walked (not attached, or not started); Linux; the two other Moon Knight files; Media3's seekable answer; any picture, as subtitles count as selected and nobody looked; passthrough heard; the full `check`, as this added one pure class and two gated tests, and ran `PlaybackSurveyTest` and compiled the rest.
+
+## Media3 and chained SeekHeads (2026-11-02)
+
+Fire TV `AFTMA08C15`, Jellyfin 12.2.0 on RS-X1, as `reflux-test`. The file structure was read with a read-only walk of every top-level element. No media changed. E01 was copied to the device for one run and deleted. Saved places were set on the test account for this and put back to 0. The cause and tables: PLAYBACK.md, section 15.
+
+| What | How | Result |
+| --- | --- | --- |
+| Media3's own answers | `SeekabilityOnDeviceTest`, `-e refluxSeekProbe true`: 6 episodes, a film, E01 as a local file, E01 by server remux | E01, E03, E04 false, on Jellyfin and as a file; all others true |
+| Real application, unfixed | Deep link, remote fast-forward, close | Saved 300 s: opened at 2.8 s; fast-forward to 0. Past a minute: Reflux 81.6 s, server 0 |
+| Real application, fixed | The same, with saved places | E01 81.6 s, E03 400.0 s, E04 500.0 s, each landing there; fast-forward moved on; closed at 142 s, 462 s, 559 s, and both sides agreed |
+| Control, fixed | E02, saved 300 s | Direct Play, plan and server agreeing; fast-forward moved on |
+| What the server did | Jellyfin's ffmpeg logs (read over ssh) | `FFmpeg.Remux`, `-codec:v:0 copy`, `-codec:a:0 copy`: nothing converted |
+| Windows | `MediaMatrixLiveTest`, each file with and without ASS | 8 of 8: Direct Play, seek under 0.4 s |
+| Regression, no hardware | `PlaybackSessionTest`, `PlaybackPlannerTest`, `PlaybackControllerTest`, `Media3FailureTest` | Pass |
+| Regression, Media3 | `SeekabilityOnDeviceTest`: a generated clip rewritten to the same shape, and the plain clip | 2 of 2 |
+| Full suite | `check` on Windows, with the live server | 1,064 tests, 16 skipped, 0 failed. Window tests and the Linux container were not run |
+| Each guard removed in turn | Tests rerun, then restored and compared | Every one fails a test. Without `Media3Player`'s guard the generated clip goes from 1.6 s to 0.6 s |
+
+Also found and fixed: the first load's evidence check outlived a re-plan and logged a false mismatch of a Direct Play plan against the remux. Forced-stopping the application between runs gave a control `UNKNOWN` evidence, as recorded above. Without it, Direct Play was confirmed.
+
+**Not verified:** Reflux's own evidence read after this re-plan, which was `UNKNOWN`; any device but the Fire TV (the Phone, the Pad, and the emulator have the same extractor, and were not run); a server refusing the remux, live; the notices on a screen.

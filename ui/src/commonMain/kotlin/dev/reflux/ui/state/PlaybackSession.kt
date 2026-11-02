@@ -89,10 +89,14 @@ class PlaybackSession internal constructor(
     private var endHandled = false
     private var silence: Job? = null
     private var evidenceAsked = false
+    private var evidenceJob: Job? = null
     private var current: PlaybackPlan? = null
 
     /** A failure has already been planned around once for this work: once is all it gets. */
     private var replanned = false
+
+    /** The engine's refusal of this load's starting place has been dealt with. */
+    private var placeChecked = false
 
     /** The audio track last asked for by position, which is the viewer's if they chose one in the player. */
     private var chosenAudio: Int? = null
@@ -177,6 +181,10 @@ class PlaybackSession internal constructor(
         evidence = null
         comparison = null
         evidenceAsked = false
+        // What it would find now is this load's stream, and it would hold that against the last load's plan.
+        evidenceJob?.cancel()
+        evidenceJob = null
+        placeChecked = false
         if (this.itemId != itemId) {
             replanned = false
             chosenAudio = null
@@ -201,6 +209,7 @@ class PlaybackSession internal constructor(
             reporter = reporter,
             preferences = app.viewer,
             onSkip = { forward -> switchTo(if (forward) next else previous) },
+            onSeekRefused = ::seekRefused,
         ).also { it.start(scope, plan.request) }
         // The engine may already say what it said for the last load; the wait for this one starts now.
         watchWaiting(player.state.value.status)
@@ -283,7 +292,7 @@ class PlaybackSession internal constructor(
         val plan = current ?: return
         if (evidenceAsked) return
         evidenceAsked = true
-        scope.launch {
+        evidenceJob = scope.launch {
             delay(EVIDENCE_AFTER_MS)
             val path = plan.version.version.location.path
             val found = (plan.source as? PlaybackEvidenceSource)?.let { source -> withContext(app.background) { source.playbackEvidence(path) } }
@@ -304,14 +313,19 @@ class PlaybackSession internal constructor(
      * which is an unknown resolved, and the source can convert it. It happens once for a work, keeps the track that
      * was playing, and never moves to another language. Anything else stays the failure it is (docs/PLAYBACK.md).
      *
+     * @param from where the new plan starts, if not where the viewer is now.
      * @return whether a new plan is on its way.
      */
-    private fun planAround(part: PlanPart): Boolean {
+    private fun planAround(part: PlanPart, from: Long? = whereTheViewerIs()): Boolean {
         val plan = current ?: return false
         val planned = plan.planned ?: return false
         val requirements = plan.requirements ?: return false
         val item = itemId ?: return false
-        val needed = if (part == PlanPart.VIDEO) SourceCapability.SERVER_TRANSCODE else SourceCapability.SERVER_AUDIO_CONVERSION
+        val needed = when (part) {
+            PlanPart.VIDEO -> SourceCapability.SERVER_TRANSCODE
+            PlanPart.CONTAINER -> SourceCapability.SERVER_REMUX
+            else -> SourceCapability.SERVER_AUDIO_CONVERSION
+        }
         if (replanned || needed !in requirements.source || planned.delivery != DeliveryMode.DIRECT_PLAY) return false
         // The server has already said no: asking again would only restart the picture.
         if (PlanReason.NEGOTIATION_FAILED in planned.reasons) return false
@@ -319,15 +333,42 @@ class PlaybackSession internal constructor(
         if (part == PlanPart.AUDIO && track == null) return false
         replanned = true
         app.platform.report("Playback of \"$title\": the original $part did not play, so it is being planned again")
-        val place = whereTheViewerIs()
         controller?.stop(final = false)
         replan(
-            item, "Planning playback again failed", "This couldn't be played right now.", continuing = true, version = plan.version.version.id, from = place,
-            audio = if (part == PlanPart.AUDIO) AudioChoice.Explicit(track!!) else requirements.audio,
+            item, "Planning playback again failed", "This couldn't be played right now.", continuing = true, version = plan.version.version.id, from = from,
+            audio = when {
+                part == PlanPart.AUDIO -> AudioChoice.Explicit(track!!)
+                // A remux carries one track: the one the viewer moved to in the player, if they did.
+                part == PlanPart.CONTAINER && chosenAudio != null -> AudioChoice.Explicit(chosenAudio!!)
+                else -> requirements.audio
+            },
             subtitle = requirements.subtitle,
             originalFailed = requirements.originalFailed + part,
         )
         return true
+    }
+
+    /**
+     * The viewer asked for a place in media the engine has said it cannot move in. A seek sent to it would go back to
+     * the beginning, so none is: the source remuxes from there if it can, and otherwise the viewer is told and stays put.
+     */
+    private fun seekRefused(positionMs: Long) {
+        if (planAround(PlanPart.CONTAINER, from = positionMs)) return
+        app.notify(Problems.CANNOT_SEEK)
+        app.platform.report("Playback of \"$title\": the engine cannot seek in this media")
+    }
+
+    /**
+     * Playback was to start at a place and the engine, which cannot move in this media, began at the beginning. It is
+     * dealt with at once, inside the first minute, where [dev.reflux.core.watch.WatchRules] still keeps the saved place.
+     */
+    private fun watchPlace(state: PlayerState) {
+        if (placeChecked || state.status != PlayerStatus.PLAYING || state.seekable == null) return
+        placeChecked = true
+        val wanted = current?.request?.startPositionMs?.takeIf { it > 0 } ?: return
+        if (state.seekable == true || planAround(PlanPart.CONTAINER, from = wanted)) return
+        app.notify(Problems.PLACE_NOT_REACHED)
+        app.platform.report("Playback of \"$title\": the engine cannot start at the saved place in this media")
     }
 
     /** Stops whatever a source is doing for the stream now open. */
@@ -527,7 +568,8 @@ class PlaybackSession internal constructor(
     fun seekTo(positionMs: Long) {
         touch()
         cancelUpNext()
-        player.seekTo(positionMs.coerceAtLeast(0))
+        val target = positionMs.coerceAtLeast(0)
+        if (player.state.value.seekable == false) seekRefused(target) else player.seekTo(target)
     }
 
     fun skip(segment: SkipSegment) = seekTo(segment.endMs)
@@ -687,6 +729,7 @@ class PlaybackSession internal constructor(
         watchWaiting(state.status)
         watchSilence(state)
         watchSubtitles(state)
+        watchPlace(state)
         if (state.status == PlayerStatus.PLAYING) askForEvidence()
         when (state.status) {
             PlayerStatus.ENDED -> if (!endHandled) {

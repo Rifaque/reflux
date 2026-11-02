@@ -22,6 +22,8 @@ class PlaybackController(
     private val itemId: MediaId,
     private val reporter: WatchReporter,
     private val preferences: TrackPreferences,
+    /** Called with the place asked for when the engine has said it cannot move in this media. */
+    private val onSeekRefused: (positionMs: Long) -> Unit = {},
     /** Called for NEXT / PREVIOUS, e.g. to move through episodes. Returns whether it was handled. */
     private val onSkip: (forward: Boolean) -> Boolean = { false },
 ) {
@@ -160,7 +162,8 @@ class PlaybackController(
 
     private fun seekBy(state: PlayerState, deltaMs: Long) {
         val upper = state.durationMs ?: Long.MAX_VALUE
-        player.seekTo((state.positionMs + deltaMs).coerceIn(0, upper))
+        val target = (state.positionMs + deltaMs).coerceIn(0, upper)
+        if (state.seekable == false) onSeekRefused(target) else player.seekTo(target)
     }
 
     companion object {

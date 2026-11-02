@@ -37,6 +37,8 @@ internal object Problems {
     const val PLAYBACK_STALLED = "Playback isn't starting. The file may be slow to reach, or video couldn't be started on this device."
     const val NO_SOUND = "This is playing without sound. Its audio can't be decoded on this device."
     const val SUBTITLE_UNAVAILABLE = "These subtitles couldn't be loaded. Playback continues without them."
+    const val CANNOT_SEEK = "You can't skip through this file on this device."
+    const val PLACE_NOT_REACHED = "This file can't start partway through on this device, so it's playing from the beginning."
     const val SOURCE_STOPPED = "The source stopped sending this. It may be asleep, busy, or no longer connected."
     const val IDENTIFY_SEARCH = "That search didn't work. Try again in a moment."
     const val IDENTIFY_APPLY = "That couldn't be changed. Your library is as it was."

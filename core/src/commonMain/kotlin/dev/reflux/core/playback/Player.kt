@@ -68,6 +68,11 @@ data class PlayerState(
     val error: String? = null,
     /** How many [SubtitleAttachment.arrivesLate] files never arrived. The media plays on without them. */
     val subtitlesNotLoaded: Int = 0,
+    /**
+     * Whether the engine can move within this media: false when it has said it cannot, null when it has not said.
+     * Only the engine knows: Media3 can find no index in a file that FFmpeg seeks through, and no source reports that.
+     */
+    val seekable: Boolean? = null,
 ) {
     val audioTracks: List<PlayerTrack> get() = tracks.filter { it.type == TrackType.AUDIO }
     val subtitleTracks: List<PlayerTrack> get() = tracks.filter { it.type == TrackType.SUBTITLE }

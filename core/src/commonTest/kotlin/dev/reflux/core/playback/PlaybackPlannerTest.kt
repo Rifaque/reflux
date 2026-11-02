@@ -611,4 +611,35 @@ class PlaybackPlannerTest {
         assertEquals(plan(stream, source = jellyfin, subtitle = chosen), plan(stream, source = jellyfin, subtitle = chosen))
         assertFalse(plan(stream, source = jellyfin, subtitle = chosen) == plan(stream, source = local, subtitle = chosen))
     }
+
+    // A container the engine opened and could not move in ---------------------------------------------------------------
+
+    private fun afterRefusedSeek(source: Set<SourceCapability>) = PlaybackPlanner.plan(
+        PlaybackRequirements(version(file(h264, listOf(aac), listOf(pgs))), TrackPreferences(listOf("en")), source, originalFailed = setOf(PlanPart.CONTAINER)),
+        client,
+    )
+
+    @Test
+    fun aContainerThatCouldNotBeMovedInIsRemuxedAndNothingElseChanges() {
+        val plan = afterRefusedSeek(jellyfin)
+        assertEquals(DeliveryMode.REMUX, plan.delivery)
+        assertEquals(AudioPlan.ORIGINAL_LOCAL_DECODE, plan.audio)
+        assertTrue(plan.video != VideoPlan.TRANSCODE, "$plan")
+        assertTrue(PlanReason.SEEKING_LIMITED in plan.reasons && PlanReason.ORIGINAL_FAILED in plan.reasons, "${plan.reasons}")
+        assertFalse(PlanReason.CONTAINER_NOT_DEMUXABLE in plan.reasons, "it opened")
+    }
+
+    @Test
+    fun withNoRemuxTheFileStillPlaysAsItIs() {
+        val plan = afterRefusedSeek(local)
+        assertEquals(PlanOutcome.PLAYS, plan.outcome)
+        assertEquals(DeliveryMode.DIRECT_PLAY, plan.delivery)
+        assertTrue(PlanReason.SEEKING_LIMITED in plan.reasons, "${plan.reasons}")
+    }
+
+    @Test
+    fun theSameFileIsDirectPlayUntilAnAttemptSaysOtherwise() {
+        val plan = PlaybackPlanner.plan(PlaybackRequirements(version(file(h264, listOf(aac))), TrackPreferences(listOf("en")), jellyfin), client)
+        assertEquals(DeliveryMode.DIRECT_PLAY, plan.delivery)
+    }
 }

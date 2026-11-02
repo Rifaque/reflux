@@ -15,6 +15,7 @@ import androidx.media3.common.MimeTypes
 import androidx.media3.common.PlaybackException
 import androidx.media3.exoplayer.hls.SampleQueueMappingException
 import androidx.media3.common.PlaybackParameters
+import androidx.media3.common.Timeline
 import androidx.media3.common.TrackSelectionOverride
 import androidx.media3.common.Tracks
 import androidx.media3.common.VideoSize
@@ -230,7 +231,10 @@ class Media3Player(context: Context, override val capabilities: DeviceCapabiliti
     }
 
     override fun seekTo(positionMs: Long) = onMain {
-        engine?.seekTo(positionMs.coerceAtLeast(0))
+        val player = engine ?: return@onMain
+        // Media3 accepts this and then goes to the beginning: only the beginning can be asked for.
+        if (positionMs > 0 && seekableOf(player) == false) return@onMain
+        player.seekTo(positionMs.coerceAtLeast(0))
         publish()
     }
 
@@ -354,8 +358,16 @@ class Media3Player(context: Context, override val capabilities: DeviceCapabiliti
                 videoDecoder = videoDecoder,
                 selectedAudioId = tracks.firstOrNull { it.second && it.first.type == TrackType.AUDIO }?.first?.id,
                 selectedSubtitleId = tracks.firstOrNull { it.second && it.first.type == TrackType.SUBTITLE }?.first?.id,
+                seekable = seekableOf(player),
             )
         }
+    }
+
+    private fun seekableOf(player: ExoPlayer): Boolean? {
+        val timeline = player.currentTimeline
+        if (timeline.isEmpty) return null
+        val window = timeline.getWindow(player.currentMediaItemIndex, Timeline.Window())
+        return seekableOf(window.isPlaceholder, window.isSeekable)
     }
 
     /** Every audio and subtitle track with whether it is the one playing. */
@@ -400,6 +412,13 @@ class Media3Player(context: Context, override val capabilities: DeviceCapabiliti
 
     companion object {
         private const val POSITION_INTERVAL_MS = 500L
+
+        /**
+         * Media3's own answer. While it prepares, its window is a stand-in that says not seekable about media it has
+         * not read, and that is not an answer. A Matroska file whose first SeekHead only points at a second one really
+         * is not seekable here: its extractor does not follow the chain to the cues (docs/PLAYBACK.md, section 15).
+         */
+        internal fun seekableOf(placeholder: Boolean, seekable: Boolean): Boolean? = if (placeholder) null else seekable
 
         /**
          * A stream that is not what its playlist declared arrives as an I/O error, though everything was reached. Seen
