@@ -657,7 +657,7 @@ E01 as a local file on the device behaved as it did over Jellyfin, so delivery o
 
 Media3 is the cause and could not be changed from here. What was Reflux's was sending a seek the engine had declared it could not do, and not noticing a place it had lost. The real application, unfixed: a saved place of 300 s opened at 2.8 s, fast-forward went to 0, and after a minute and a half the saved place was overwritten by 81.6 s, with the server's cleared. Fixed as section 8 says. `PlayerState.seekable` is Media3's own answer, null while its window is a stand-in and always null on mpv. Nothing guesses at this from a file, and Best Version and plans for a first attempt do not change.
 
-**Left:** the evidence Reflux reads after this re-plan said `UNKNOWN`, shown as unconfirmed and not a mismatch. Jellyfin's own logs show a remux with video and audio copied. A remux that a server refuses restarts the film, with a word: seen in a test, not live. A subtitle chosen in the player does not carry over this re-plan, the same as the other re-plans. On a source with no remux, these files cannot be moved in on Media3: a known limit, and stated.
+**Left:** the evidence Reflux reads after this re-plan is a true `UNKNOWN`, shown as unconfirmed and not a mismatch: a remux that only copies can finish in seconds, and `TranscodingInfo` goes with the job (VERIFICATION.md, "Chained SeekHeads across devices"). Jellyfin's own logs show the remux with video and audio copied. A remux that a server refuses restarts the film, with a word: seen in a test, not live. A subtitle chosen in the player does not carry over this re-plan, the same as the other re-plans. On a source with no remux, these files cannot be moved in on Media3: a known limit, and stated.
 
 ### Next
 

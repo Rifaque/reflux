@@ -799,4 +799,34 @@ Fire TV `AFTMA08C15`, Jellyfin 12.2.0 on RS-X1, as `reflux-test`. The file struc
 
 Also found and fixed: the first load's evidence check outlived a re-plan and logged a false mismatch of a Direct Play plan against the remux. Forced-stopping the application between runs gave a control `UNKNOWN` evidence, as recorded above. Without it, Direct Play was confirmed.
 
-**Not verified:** Reflux's own evidence read after this re-plan, which was `UNKNOWN`; any device but the Fire TV (the Phone, the Pad, and the emulator have the same extractor, and were not run); a server refusing the remux, live; the notices on a screen.
+**Not verified:** a server refusing the remux, live. Other devices, the notices, and the evidence read: next section.
+
+## Chained SeekHeads across devices (2026-11-02)
+
+The build of `79fc739`, as a side-by-side `dev.reflux.m2p` signed in only as `reflux-test`, so the devices' own libraries were not touched. The devices ran one at a time, as they share the account's watch state. Saved places were put back to 0.
+
+| Check, real application | Google TV emulator | Nothing Phone 2a | Xiaomi Pad 7 |
+| --- | --- | --- | --- |
+| E01, E03, E04: fast-forward from about 13 s | Re-plan to remux, landed about 10 s on. 3 of 3 | The same. 3 of 3 | **Not run:** the install is refused until someone allows it on the tablet |
+| E02, control: fast-forward | Direct Play, no re-plan, plan and server agree | The same | Not run |
+| Resume from a place on the server | E01 400.0 s, E03 503.8 s (first reading), both landing; closed at 464 s and 566 s, both sides agreeing | **Not run:** the phone locked during the run, so nothing played, and no place was lost. Then it left adb | Not run |
+| E02, control: resume | 300 s, Direct Play, both sides agreeing | Not run | Not run |
+| Audio | Plan track 1, English, not the default Hindi; server `-map 0:2` | Plan track 1, as the emulator | Not run |
+| False mismatch | None | None | Not run |
+| Media3's own answer | E01, E03, E04 false; E02, E05, E06, the server's remux true | The same; Doctor Strange true | Not run |
+| Regression, generated clip | 2 of 2 | 2 of 2 | Not run |
+
+An attempt at resume on the emulator and the Phone was thrown away: seek walks had left a newer local state of 0, which rightly outranked a place edited on the server, so no resume was tested. It was redone from a cleared application on the emulator.
+
+**No remux, Fire TV, real application and real screen.** A copy of E01 in the device's own folder, a source with no remux, then removed.
+
+| Check | Result |
+| --- | --- |
+| Seek | "You can't skip through this file on this device." at the top of the picture, within 2 s, twice. The position went on from 27 s to 55 s |
+| Saved place | "This file can't start partway through on this device, so it's playing from the beginning." within 1.3 s, over the first frames at 0:00 |
+| Retry | No re-plan, no loop, no restart, no mismatch logged |
+| Watch state | 69.7 s kept through a run under a minute |
+
+The language of this run was not read: the plan and the file allow only what the same tests show elsewhere, and no comparison with a source exists here. A first press during a cold start (position 3.8 s at 14 s) logged no refusal and restarted nothing. What it did is not established.
+
+**Evidence after a re-plan: a true `UNKNOWN`.** Polling the server during a re-plan listed `TranscodingInfo` for about 6 s, and the stream played on after it had gone. Jellyfin's own log says why: a remux copies, and the last one wrote the remaining 33:50 in 3.46 s, at 587 times speed, then exited. Reflux asks 5 s into playing, so the job is usually over. `TranscodingInfo` exists only while a job runs, and `PlayMethod` is an echo, so nothing left can show a remux. Shown as `unconfirmed`, never as a mismatch. It was not changed. Server evidence is `FFmpeg.Remux`, `-map 0:0 -map 0:2`, `-codec:v:0 copy`, `-codec:a:0 copy`.
