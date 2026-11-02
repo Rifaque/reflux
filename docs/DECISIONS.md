@@ -964,3 +964,14 @@ Execution of the planner (PLAYBACK.md, section 8).
 - **A failure re-plans once.** Only `UNSUPPORTED` on the original and a silent original, and only where the source can convert, keeping the language. Alternative rejected: a retry ladder, which would be policy with nothing yet to justify it.
 - **Best Version counts what a source can really do,** now that it can be played. A version only a server can make playable stays a compromise, so the ranking's order is unchanged and offline copies are not affected.
 - **A server's extracted subtitle arrives late.** Seen live at 49 seconds; the picture does not wait for it.
+
+## 2026-11-02 — What an engine cannot move in is not asked to, and a remux may carry it
+
+Real files can be valid and still unseekable on one engine: Media3 does not follow a chained SeekHead, and takes a seek it cannot do to the beginning (PLAYBACK.md, section 15). Files of this shape cannot be told in advance, as no source reports it.
+
+- **The engine says, and Reflux believes it.** `PlayerState.seekable` is Media3's own answer. Null is not an answer, so libmpv is unchanged.
+- **A seek the engine refuses is not sent.** The film stays where it is.
+- **A seek, or a saved place, that needs it may re-plan once to a remux,** with `originalFailed = CONTAINER`, on a source that remuxes. It is the existing one re-plan, logged, and in the plan's reasons. Only the container changes, and the viewer has to need it: a viewer who never seeks stays on Direct Play. Elsewhere the viewer is told.
+- A saved place is acted on at once, inside the first minute, where the watch rules still keep it.
+
+Alternatives rejected: a remux from the start for such files (they cannot be known, and it costs Direct Play for those who never seek); scanning files for this (a media problem for an engine's limit, and it needs the file's bytes); a patched extractor or a player-side index (forking Media3 for 3 of 992 files); leaving it as a known limit on Jellyfin (the saved place was lost, and the server could carry it).

@@ -27,6 +27,7 @@ import dev.reflux.core.playback.StreamFate
 import dev.reflux.core.source.MediaSource
 import dev.reflux.core.source.PlaybackEvidenceSource
 import dev.reflux.core.playback.PlayerStatus
+import dev.reflux.core.playback.PlaybackRequest
 import dev.reflux.core.playback.TrackType
 import dev.reflux.core.playback.SkipSegment
 import dev.reflux.ui.FakePlatform
@@ -133,8 +134,51 @@ class PlaybackSessionTest {
         assertFalse(playing.session.silent)
     }
 
+    @Test
+    fun whereNothingCanRemuxASeekIsRefusedWithAWordAndThePlaceKept() = runTest {
+        val platform = FakePlatform().apply { seekable = { false } }
+        val playing = playing("Breaking Bad", 0, platform)
+        val requests = playing.player.requests.size
+        playing.player.playTo(30_000)
+        runCurrent()
+        playing.session.seekTo(600_000)
+        runCurrent()
+        assertEquals(30_000L, playing.player.state.value.positionMs, "not back to the beginning")
+        assertEquals(Problems.CANNOT_SEEK, playing.app.notice)
+        assertEquals(requests, playing.player.requests.size, "nothing is planned again")
+        assertNull(playing.session.error, "the film goes on")
+    }
+
+    @Test
+    fun whereNothingCanRemuxALostPlaceIsSaidAndKeptForTheFirstMinute() = runTest {
+        val world = TestWorld().apply { populate() }
+        val platform = FakePlatform().apply { seekable = { false } }
+        val app = appState(world, platform)
+        val item = world.episodes("Breaking Bad")[0].item.id
+        world.library.progress(item, 300_000, 50 * 60_000L)
+        app.play(item)
+        runCurrent()
+        assertEquals(Problems.PLACE_NOT_REACHED, app.notice)
+        assertEquals(1, platform.players.last().requests.size)
+        platform.players.last().playTo(20_000)
+        runCurrent()
+        app.playback!!.close().join()
+        assertEquals(300_000L, world.library.watchState(item)?.positionMs, "a minute of starting over does not erase the place")
+    }
+
+    @Test
+    fun theBeginningCanStillBeAskedForInMediaThatCannotBeMovedIn() = runTest {
+        val platform = FakePlatform().apply { seekable = { false } }
+        val playing = playing("Breaking Bad", 0, platform)
+        playing.player.playTo(30_000)
+        runCurrent()
+        playing.session.handle(SemanticAction.PREVIOUS)
+        runCurrent()
+        assertEquals(0L, playing.player.state.value.positionMs)
+    }
+
     /** A server of the tests' own: it can convert, and it remembers being asked. */
-    private class Converting(private val files: MediaSource) : MediaSource by files, NegotiatingSource {
+    private class Converting(private val files: MediaSource) : MediaSource by files, NegotiatingSource, PlaybackEvidenceSource {
         val plans = mutableListOf<PlannedPlayback>()
         var released = 0
         var agrees = true
@@ -151,13 +195,18 @@ class PlaybackSessionTest {
         override suspend fun release(path: String) {
             released++
         }
+
+        /** Only of a remux: what a real server says of the stream now open, whichever plan is asking. */
+        override suspend fun playbackEvidence(path: String): PlaybackEvidence? =
+            if (plans.lastOrNull()?.delivery == DeliveryMode.REMUX) PlaybackEvidence("a server stream", null, DeliveryMode.REMUX, StreamFate.PRESERVED, StreamFate.PRESERVED) else null
     }
 
     private class Served(val playing: Playing, val server: Converting)
 
-    private suspend fun TestScope.served(): Served {
+    private suspend fun TestScope.served(seekable: (PlaybackRequest) -> Boolean? = { null }, savedAt: Long? = null): Served {
         val world = TestWorld().apply { populate() }
         val platform = FakePlatform()
+        platform.seekable = seekable
         var server: Converting? = null
         val app = AppState(
             world.library, world.pipeline, { id -> world.registry.resolve(id)?.let { real -> server ?: Converting(real).also { server = it } } },
@@ -172,9 +221,124 @@ class PlaybackSessionTest {
                 listOf(SubtitleStream(SubtitleFormat.SRT, "es")),
             ),
         )
+        savedAt?.let { world.library.progress(episode.item.id, it, 50 * 60_000L) }
         app.play(episode.item.id)
         runCurrent()
         return Served(Playing(world, platform, app), server!!)
+    }
+
+    /** As Media3 and a real file whose index it cannot reach: the original cannot be moved in, and a server's remux can. */
+    private val originalWillNotSeek: (PlaybackRequest) -> Boolean? = { request -> "master.m3u8" in request.target.uri }
+
+    @Test
+    fun aSeekInAnOriginalTheEngineCannotMoveInGoesThereByRemux() = runTest {
+        val served = served(originalWillNotSeek)
+        val player = served.playing.player
+        assertEquals(DeliveryMode.DIRECT_PLAY, served.server.plans.single().delivery, "nothing changes for a viewer who never seeks")
+        player.playTo(30_000)
+        runCurrent()
+
+        served.playing.session.seekTo(600_000)
+        runCurrent()
+
+        val plan = served.server.plans.last()
+        assertEquals(DeliveryMode.REMUX, plan.delivery)
+        assertTrue(plan.video != VideoPlan.TRANSCODE, "$plan")
+        assertEquals(AudioPlan.ORIGINAL_LOCAL_DECODE, plan.audio)
+        assertTrue(PlanReason.ORIGINAL_FAILED in plan.reasons && PlanReason.SEEKING_LIMITED in plan.reasons, "${plan.reasons}")
+        assertEquals("http://server/master.m3u8", player.requests.last().target.uri)
+        assertEquals(600_000L, player.requests.last().startPositionMs)
+        assertEquals(600_000L, player.state.value.positionMs, "the place the viewer asked for")
+        assertNull(served.playing.app.notice)
+    }
+
+    @Test
+    fun theSeekKeysReachTheSamePlaceByRemux() = runTest {
+        val served = served(originalWillNotSeek)
+        served.playing.player.playTo(30_000)
+        runCurrent()
+        served.playing.session.handle(SemanticAction.SEEK_FORWARD)
+        runCurrent()
+        assertEquals(DeliveryMode.REMUX, served.server.plans.last().delivery)
+        assertEquals(40_000L, served.playing.player.requests.last().startPositionMs)
+    }
+
+    @Test
+    fun aResumeThatFellToTheBeginningGoesBackByRemuxBeforeThePlaceIsLost() = runTest {
+        val served = served(originalWillNotSeek, savedAt = 300_000)
+        val player = served.playing.player
+        assertEquals(listOf(DeliveryMode.DIRECT_PLAY, DeliveryMode.REMUX), served.server.plans.map { it.delivery })
+        assertEquals(300_000L, player.requests.last().startPositionMs)
+        assertEquals(300_000L, player.state.value.positionMs)
+        served.playing.session.recorded()
+        val item = served.playing.world.episodes("Breaking Bad")[0].item.id
+        assertEquals(300_000L, served.playing.world.library.watchState(item)?.positionMs, "the saved place is untouched")
+    }
+
+    @Test
+    fun aPlanLeftBehindIsNotComparedWithTheStreamThatReplacedIt() = runTest {
+        val served = served(originalWillNotSeek, savedAt = 300_000)
+        val platform = served.playing.platform
+        advanceTimeBy(30_000)
+        runCurrent()
+        assertEquals(DeliveryMode.REMUX, served.playing.session.comparison?.planned?.delivery, "the plan on screen is the one compared")
+        assertFalse(platform.reports.any { "not what was planned" in it }, "${platform.reports}")
+    }
+
+    @Test
+    fun aViewersOwnAudioTrackGoesWithTheRemux() = runTest {
+        val served = served(originalWillNotSeek)
+        val session = served.playing.session
+        session.selectAudio("2")
+        session.seekTo(600_000)
+        runCurrent()
+        assertEquals(1, served.server.plans.last().audioIndex)
+    }
+
+    @Test
+    fun aMoveInMediaThatCanBeMovedInChangesNothing() = runTest {
+        val served = served({ true }, savedAt = 300_000)
+        served.playing.session.seekTo(600_000)
+        runCurrent()
+        assertEquals(1, served.server.plans.size, "still Direct Play")
+        assertEquals(600_000L, served.playing.player.state.value.positionMs)
+    }
+
+    @Test
+    fun anEngineThatHasNotSaidIsSeekedAsItAlwaysWas() = runTest {
+        val served = served({ null }, savedAt = 300_000)
+        served.playing.session.seekTo(600_000)
+        runCurrent()
+        assertEquals(DeliveryMode.DIRECT_PLAY, served.server.plans.single().delivery)
+        assertEquals(600_000L, served.playing.player.state.value.positionMs)
+    }
+
+    @Test
+    fun aRemuxIsOnceForAWork() = runTest {
+        val served = served({ false })
+        val session = served.playing.session
+        session.seekTo(600_000)
+        runCurrent()
+        assertEquals(2, served.server.plans.size)
+        session.seekTo(700_000)
+        runCurrent()
+        assertEquals(2, served.server.plans.size, "no ladder")
+        assertEquals(Problems.CANNOT_SEEK, served.playing.app.notice)
+    }
+
+    @Test
+    fun aServerThatRefusesTheRemuxLeavesTheFilmPlaying() = runTest {
+        val served = served(originalWillNotSeek)
+        served.server.agrees = false
+        served.playing.player.playTo(30_000)
+        runCurrent()
+        served.playing.session.seekTo(600_000)
+        runCurrent()
+        assertEquals(DeliveryMode.REMUX, served.server.plans[1].delivery)
+        assertEquals(DeliveryMode.DIRECT_PLAY, served.server.plans.last().delivery, "what the client can do alone")
+        assertEquals(PlayerStatus.PLAYING, served.playing.player.state.value.status)
+        assertNull(served.playing.session.error, "it plays, and it can say so")
+        assertEquals(Problems.PLACE_NOT_REACHED, served.playing.app.notice)
     }
 
     @Test

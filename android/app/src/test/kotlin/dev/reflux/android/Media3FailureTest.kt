@@ -39,4 +39,11 @@ class Media3FailureTest {
         assertEquals(PlaybackFailure.OUTPUT, Media3Player.failureOf(PlaybackException.ERROR_CODE_AUDIO_TRACK_INIT_FAILED))
         assertEquals(PlaybackFailure.UNKNOWN, Media3Player.failureOf(PlaybackException.ERROR_CODE_UNSPECIFIED))
     }
+
+    @Test
+    fun aWindowStillBeingPreparedSaysNothingAboutSeeking() {
+        assertEquals(null, Media3Player.seekableOf(placeholder = true, seekable = false), "a stand-in for media not read yet")
+        assertEquals(false, Media3Player.seekableOf(placeholder = false, seekable = false))
+        assertEquals(true, Media3Player.seekableOf(placeholder = false, seekable = true))
+    }
 }

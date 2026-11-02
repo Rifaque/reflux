@@ -75,6 +75,44 @@ abstract class GenerateTestMedia : DefaultTask() {
                 "-c:a", "dca", "-strict", "-2", "-ar", "48000", "-ac", "2", output.get().file("dts.mkv").asFile.path,
             )
         }
+        // A plain Matroska file, and the same file laid out as some real ones are: its first SeekHead only points to a
+        // second one at the end, which is the one that names the cues. Valid, and the same media byte for byte.
+        val seekable = output.get().file("seekable.mkv").asFile
+        exec.exec {
+            commandLine(
+                "ffmpeg", "-loglevel", "error", "-y", "-f", "lavfi", "-i", "testsrc=size=320x180:rate=5", "-f", "lavfi", "-i", "sine=frequency=440",
+                "-t", "60", "-c:v", "libx264", "-preset", "ultrafast", "-crf", "38", "-pix_fmt", "yuv420p", "-g", "5", "-c:a", "aac", "-b:a", "32k", seekable.path,
+            )
+        }
+        output.get().file("chained-seekhead.mkv").asFile.writeBytes(chainSeekHead(seekable.readBytes()))
+    }
+
+    private fun chainSeekHead(file: ByteArray): ByteArray {
+        fun find(id: Int, from: Int = 0): Int = (from until file.size - 4).first { at -> (0..3).all { file[at + it] == (id ushr (24 - 8 * it)).toByte() } }
+        fun length(at: Int): Int = Integer.numberOfLeadingZeros(file[at].toInt() and 0xFF) - 23
+        val segmentSize = find(0x18538067) + 4
+        val data = segmentSize + length(segmentSize)
+        val head = find(0x114D9B74, data)
+        check(head == data && length(segmentSize) == 8) { "ffmpeg laid this file out differently" }
+        val sizeBytes = length(head + 4)
+        val body = (1 until sizeBytes).fold(file[head + 4].toInt() and (0xFF ushr sizeBytes)) { size, it -> (size shl 8) or (file[head + 4 + it].toInt() and 0xFF) }
+        val headEnd = head + 4 + sizeBytes + body
+        val tail = file.copyOfRange(head, headEnd)
+        val tailAt = (file.size - data).toLong()
+        val seekId = byteArrayOf(0x53, 0xAB.toByte(), 0x84.toByte(), 0x11, 0x4D, 0x9B.toByte(), 0x74)
+        val seekPosition = byteArrayOf(0x53, 0xAC.toByte(), 0x88.toByte()) + ByteArray(8) { (tailAt ushr (56 - 8 * it)).toByte() }
+        val seek = byteArrayOf(0x4D, 0xBB.toByte(), (0x80 or (seekId.size + seekPosition.size)).toByte()) + seekId + seekPosition
+        val chain = byteArrayOf(0x11, 0x4D, 0x9B.toByte(), 0x74, (0x80 or seek.size).toByte()) + seek
+        val rest = headEnd - head - chain.size - 2
+        check(rest in 0..126) { "no room for the chain" }
+        val out = file + tail
+        chain.copyInto(out, head)
+        out[head + chain.size] = 0xEC.toByte()
+        out[head + chain.size + 1] = (0x80 or rest).toByte()
+        out.fill(0, head + chain.size + 2, headEnd)
+        val size = (out.size - data).toLong()
+        for (at in 1..7) out[segmentSize + at] = (size ushr (56 - 8 * at)).toByte()
+        return out
     }
 }
 

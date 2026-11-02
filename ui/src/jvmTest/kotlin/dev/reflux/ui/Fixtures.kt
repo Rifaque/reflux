@@ -302,7 +302,10 @@ class FakePlatform(
     /** False gives every new engine a file it accepts and never gets anywhere with ([FakePlayer.starts]). */
     var starts = true
 
-    override suspend fun createPlayer(): Player? = if (failToStart) null else FakePlayer(device).also { it.starts = starts; players += it }
+    /** What every new engine says about moving in what it is given ([FakePlayer.seekable]). */
+    var seekable: (PlaybackRequest) -> Boolean? = { null }
+
+    override suspend fun createPlayer(): Player? = if (failToStart) null else FakePlayer(device).also { it.starts = starts; it.seekable = seekable; players += it }
 
     /** Completes when the engine may go; lets a test hold a player in the middle of being released. */
     var releaseGate: CompletableDeferred<Unit>? = null
@@ -358,6 +361,9 @@ class FakePlayer(override val capabilities: DeviceCapabilities) : Player {
     /** False makes the engine accept a file and then never get anywhere with it. */
     var starts = true
 
+    /** What the engine says about moving in this media. Where it says it cannot, it does as Media3 does: a place is lost. */
+    var seekable: (PlaybackRequest) -> Boolean? = { null }
+
     /** A subtitle the source was making never came. */
     fun loseSubtitle() {
         mutable.value = mutable.value.copy(subtitlesNotLoaded = mutable.value.subtitlesNotLoaded + 1)
@@ -368,15 +374,15 @@ class FakePlayer(override val capabilities: DeviceCapabilities) : Player {
         if (!starts) return mutable.update { PlayerState(status = PlayerStatus.LOADING, volume = it.volume, muted = it.muted) }
         mutable.update {
             PlayerState(
-                status = PlayerStatus.PLAYING, positionMs = request.startPositionMs ?: 0, durationMs = durationMs,
-                volume = it.volume, muted = it.muted, tracks = tracks, selectedAudioId = "1", chapters = chapters,
+                status = PlayerStatus.PLAYING, positionMs = if (seekable(request) == false) 0 else request.startPositionMs ?: 0, durationMs = durationMs,
+                volume = it.volume, muted = it.muted, tracks = tracks, selectedAudioId = "1", chapters = chapters, seekable = seekable(request),
             )
         }
     }
 
     override fun play() = mutable.update { it.copy(status = PlayerStatus.PLAYING) }
     override fun pause() = mutable.update { it.copy(status = PlayerStatus.PAUSED) }
-    override fun seekTo(positionMs: Long) = mutable.update { it.copy(positionMs = positionMs) }
+    override fun seekTo(positionMs: Long) = mutable.update { it.copy(positionMs = if (it.seekable == false) 0 else positionMs) }
     override fun setSpeed(speed: Double) = mutable.update { it.copy(speed = speed) }
     override fun setVolume(volume: Int) = mutable.update { it.copy(volume = volume) }
     override fun setMuted(muted: Boolean) = mutable.update { it.copy(muted = muted) }

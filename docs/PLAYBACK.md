@@ -483,6 +483,8 @@ Hardware and software decoding are not forced on either engine. Each takes what 
 | `UNSUPPORTED` from an engine, on the original, source has `SERVER_TRANSCODE` | Planned again once, with `originalFailed = VIDEO`, from the same place. Reason `ORIGINAL_FAILED` |
 | Picture with no sound, on the original, source converts audio | Planned again once, with `originalFailed = AUDIO`, keeping the track that was playing |
 | Either, and the source cannot convert | The stated failure, or the "no sound" notice, as before |
+| Media3 says it cannot move in the original, and a seek or a saved place needs it (`PlayerState.seekable` false), source remuxes | Planned again once, with `originalFailed = CONTAINER`, from the place wanted. Video and audio are kept. A viewer who never seeks stays on Direct Play |
+| The same, and the source cannot remux, or has already | The seek is not sent, as Media3 would go to the beginning. The viewer is told, and the film goes on |
 | A second failure of a work | Hard: the stated failure |
 | `UNREACHABLE`, `OUTPUT`, `UNKNOWN` | Hard: a conversion would not help. `UNREACHABLE` keeps Try again |
 | A failure on a stream already converted | Hard |
@@ -642,13 +644,25 @@ Read 2026-11-02: 1,003 versions, Matroska 992, QuickTime 11; all SDR; 275 at 108
 
 **Findings.** The architecture held: 49 cases on Windows and 48 on the Fire TV needed no new concept. No level changed a plan. Conversions on the Fire TV were the 5 cases that need one, and audio never touched the video. VobSub in a converted stream burns in, as section 7 says: the same track is drawn from the file under Direct Play. The evidence still does not justify an FFmpeg extension: 2 DTS tracks and no TrueHD, all converted on Jellyfin. The local, SMB, and WebDAV gap in section 10 stands.
 
-**A real gap: seeking on Media3 in a file with no reachable cue index.** The Goldfish Problem (Moon Knight) plays and ignores a seek on the Fire TV, on every run, and seeks on Windows. Its SeekHead names no Cues, and the only Cues identifier is 56 bytes from the end of the file. Two other Moon Knight files share that shape, 3 of 992 Matroska files. They were not walked, and Media3's own seekable answer was not read, so the cause is strongly suggested and not proven. Jellyfin does not report this, so no plan can see it ahead of time; only the engine can. A resume on such a file probably starts from the beginning. Not fixed yet.
+**A real gap, found and fixed: Media3 does not follow a chained SeekHead.** A Matroska file may have a first SeekHead that names only a second SeekHead, at the end of the file, which names the Cues. That is valid, and 3 of 992 real files are like this: Moon Knight E01, E03, and E04. Each has a whole index (E01: 1,319 points). `MatroskaExtractor` takes a SeekHead entry only if it names Cues (read in the 1.11.1 bytecode), so at the first cluster it knows of none and declares the file unseekable.
+
+| On the Fire TV, plain ExoPlayer, the same calls as `Media3Player` | E01, E03, E04 | E02, E05, E06, Doctor Strange | E01 by server remux |
+| --- | --- | --- | --- |
+| `isCurrentMediaItemSeekable`, `window.isSeekable`, `COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM` | **false** | true | true |
+| Duration | Known | Known | Known |
+| Seek to 120 s | Accepted, 120,000 shown, then adjusted to **0** | Lands | Lands |
+| Start at 120 s | Starts at **0** | Lands | Lands |
+
+E01 as a local file on the device behaved as it did over Jellyfin, so delivery of the file is not the cause. Windows, on FFmpeg, seeks all three by Direct Play. This was first recorded here as a missing cue index, which was wrong: the index is there.
+
+Media3 is the cause and could not be changed from here. What was Reflux's was sending a seek the engine had declared it could not do, and not noticing a place it had lost. The real application, unfixed: a saved place of 300 s opened at 2.8 s, fast-forward went to 0, and after a minute and a half the saved place was overwritten by 81.6 s, with the server's cleared. Fixed as section 8 says. `PlayerState.seekable` is Media3's own answer, null while its window is a stand-in and always null on mpv. Nothing guesses at this from a file, and Best Version and plans for a first attempt do not change.
+
+**Left:** the evidence Reflux reads after this re-plan said `UNKNOWN`, shown as unconfirmed and not a mismatch. Jellyfin's own logs show a remux with video and audio copied. A remux that a server refuses restarts the film, with a word: seen in a test, not live. A subtitle chosen in the player does not carry over this re-plan, the same as the other re-plans. On a source with no remux, these files cannot be moved in on Media3: a known limit, and stated.
 
 ### Next
 
-1. The seek gap: read Media3's answer, then state it, and on a converting source consider a remux from the same place. It must not become a retry ladder.
-2. Run the walks on the Phone 2a, the Pad 7, and the Google TV emulator (none walked yet).
-3. Generated fixtures, played locally on each engine, for what the library lacks: AV1, VP9, 4K, HDR signalling, TrueHD (section 11). Dolby Vision needs a licensed sample.
+1. Run the walks on the Phone 2a, the Pad 7, and the Google TV emulator (none walked yet).
+2. Generated fixtures, played locally on each engine, for what the library lacks: AV1, VP9, 4K, HDR signalling, TrueHD (section 11). Dolby Vision needs a licensed sample.
 
 ## Sources
 

@@ -172,11 +172,15 @@ object PlaybackPlanner {
             if (videoBlocked && SourceCapability.SERVER_TRANSCODE !in source) {
                 return cannotPlay(PlanReason.VIDEO_NOT_DECODABLE, PlanReason.NO_TRANSCODE_AVAILABLE)
             }
-            val containerBlocked = PlaybackIssue.CONTAINER_UNSUPPORTED in assessment.issues
-            if (containerBlocked && !videoBlocked && SourceCapability.SERVER_REMUX !in source) {
+            val containerRefused = PlaybackIssue.CONTAINER_UNSUPPORTED in assessment.issues
+            if (containerRefused && !videoBlocked && SourceCapability.SERVER_REMUX !in source) {
                 return cannotPlay(PlanReason.CONTAINER_NOT_DEMUXABLE, PlanReason.NO_REMUX_AVAILABLE)
             }
-            if (containerBlocked) reasons += PlanReason.CONTAINER_NOT_DEMUXABLE
+            if (containerRefused) reasons += PlanReason.CONTAINER_NOT_DEMUXABLE
+            // The engine opened this file and could not move in it: it still plays, and a remux gives it what it lacks.
+            val containerFailed = PlanPart.CONTAINER in requirements.originalFailed
+            if (containerFailed) reasons += PlanReason.SEEKING_LIMITED
+            val containerBlocked = containerRefused || (containerFailed && SourceCapability.SERVER_REMUX in source)
             if (stream.container != Container.UNKNOWN && !containerBlocked) {
                 if (Capabilities.container(stream.container, device).seek == Support.UNSUPPORTED) reasons += PlanReason.SEEKING_LIMITED
             } else if (stream.container == Container.UNKNOWN) {
