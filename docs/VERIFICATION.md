@@ -807,16 +807,21 @@ The build of `79fc739`, as a side-by-side `dev.reflux.m2p` signed in only as `re
 
 | Check, real application | Google TV emulator | Nothing Phone 2a | Xiaomi Pad 7 |
 | --- | --- | --- | --- |
-| E01, E03, E04: fast-forward from about 13 s | Re-plan to remux, landed about 10 s on. 3 of 3 | The same. 3 of 3 | **Not run:** the install is refused until someone allows it on the tablet |
-| E02, control: fast-forward | Direct Play, no re-plan, plan and server agree | The same | Not run |
-| Resume from a place on the server | E01 400.0 s, E03 503.8 s (first reading), both landing; closed at 464 s and 566 s, both sides agreeing | **Not run:** the phone locked during the run, so nothing played, and no place was lost. Then it left adb | Not run |
-| E02, control: resume | 300 s, Direct Play, both sides agreeing | Not run | Not run |
-| Audio | Plan track 1, English, not the default Hindi; server `-map 0:2` | Plan track 1, as the emulator | Not run |
-| False mismatch | None | None | Not run |
-| Media3's own answer | E01, E03, E04 false; E02, E05, E06, the server's remux true | The same; Doctor Strange true | Not run |
-| Regression, generated clip | 2 of 2 | 2 of 2 | Not run |
+| E01, E03, E04: fast-forward from about 13 s | Re-plan to remux, landed about 10 s on. 3 of 3 | The same. 3 of 3 | The same. 3 of 3 |
+| E02, control: fast-forward | Direct Play, no re-plan, plan and server agree | The same | The same, and the server has no remux of E02 |
+| E01 resume, saved 400 s | Landed at 400.0 s; closed at 464 s | Landed at about 400 s (first reading 403.0 s); closed at 458 s | Landed at 400.0 s; closed at 464 s |
+| E03 resume, saved 500 s | First reading 503.8 s; closed at 566 s | First reading 502.9 s; closed at 566 s | First reading 502.8 s; closed at 567 s |
+| E02, control: resume, saved 300 s | Direct Play, plan and server agree; closed at 366 s | The same; landed at 300.1 s, closed at 367 s | The same; landed at 300.2 s, closed at 365 s |
+| Watch state | Reflux and the server agreed at every close | The same | The same |
+| Re-plans | One for each chained playback | One | One |
+| Audio | Plan track 1, English, not the default Hindi; server `-map 0:2` | The same | The same |
+| False mismatch | None | None | None |
+| Media3's own answer | E01, E03, E04 false; E02, E05, E06, the server's remux true | The same; Doctor Strange true | The same; Doctor Strange true |
+| Regression, generated clip | 2 of 2 | 2 of 2 | 2 of 2 |
 
-An attempt at resume on the emulator and the Phone was thrown away: seek walks had left a newer local state of 0, which rightly outranked a place edited on the server, so no resume was tested. It was redone from a cleared application on the emulator.
+Each saved place was read back from the application before it was played: a cleared application, a place set on the server, a sync, and only then playback. Resume on E04 was not run on these three; it ran on the Fire TV. The stay-awake setting was on for the Phone and the Pad during their runs, and turned off afterwards.
+
+An attempt at resume on the emulator and the Phone was thrown away: seek walks had left a newer local state of 0, which rightly outranked a place edited on the server, so no resume was tested. A second attempt on the Phone did not play, as it had locked. Both were redone from a cleared application.
 
 **No remux, Fire TV, real application and real screen.** A copy of E01 in the device's own folder, a source with no remux, then removed.
 
