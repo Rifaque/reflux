@@ -18,6 +18,7 @@ import dev.reflux.core.playback.DeliveryMode
 import dev.reflux.core.playback.PlanPart
 import dev.reflux.core.playback.PlanReason
 import dev.reflux.core.playback.PlaybackComparison
+import dev.reflux.core.playback.PlaybackReport
 import dev.reflux.core.playback.PlaybackController
 import dev.reflux.core.playback.PlaybackEvidence
 import dev.reflux.core.playback.PlayerTrack
@@ -59,7 +60,7 @@ data class UpNext(val entry: LibraryEntry, val totalMs: Long, val remainingMs: L
  * The player's lists, one level below the transport controls. [EPISODES] is the way to the episode before
  * and after for hands that hold nothing with a next button on it.
  */
-enum class PlayerMenu(val title: String) { EPISODES("Episodes"), CHAPTERS("Chapters"), AUDIO("Audio"), SUBTITLES("Subtitles"), SPEED("Speed") }
+enum class PlayerMenu(val title: String) { EPISODES("Episodes"), CHAPTERS("Chapters"), AUDIO("Audio"), SUBTITLES("Subtitles"), INFO("Playback info"), SPEED("Speed") }
 
 /** One line of a [PlayerMenu]; [selected] marks what is in effect now. */
 data class MenuOption(val label: String, val detail: String? = null, val selected: Boolean = false)
@@ -302,8 +303,8 @@ class PlaybackSession internal constructor(
             val compared = PlaybackComparison.of(planned, found, player.state.value)
             comparison = compared
             when {
-                compared.mismatches.isNotEmpty() -> app.platform.report("Playback of \"$title\" is not what was planned: ${compared.summary()}")
-                found != null -> app.platform.report("Planned against actual: ${compared.summary()}")
+                compared.mismatches.isNotEmpty() -> app.platform.report("Playback of \"$title\" is not what was planned: ${compared.summary()}. Playback info: ${info(planned, compared)}")
+                found != null -> app.platform.report("Planned against actual: ${compared.summary()}. Playback info: ${info(planned, compared)}")
             }
         }
     }
@@ -463,7 +464,14 @@ class PlaybackSession internal constructor(
         PlayerMenu.AUDIO.takeIf { (fileAudio() ?: state.audioTracks).size > 1 },
         PlayerMenu.SUBTITLES.takeIf { (fileSubtitles() ?: state.subtitleTracks).isNotEmpty() },
         PlayerMenu.SPEED,
+        PlayerMenu.INFO.takeIf { current?.planned != null },
     )
+
+    private fun info(planned: dev.reflux.core.playback.PlannedPlayback, compared: PlaybackComparison) = PlaybackReport.summary(PlaybackReport.of(planned, compared, player.state.value))
+
+    /** Why this playback is what it is, in words, for the Playback info list (PlaybackReport). */
+    fun report(state: PlayerState = player.state.value): List<PlaybackReport.Line> =
+        current?.planned?.let { PlaybackReport.of(it, comparison, state) }.orEmpty()
 
     /** A converted stream carries one audio track and no subtitles: what can be chosen is what the file has. */
     private val converted: Boolean get() = current?.planned?.let { it.delivery != DeliveryMode.DIRECT_PLAY } == true
@@ -514,6 +522,7 @@ class PlaybackSession internal constructor(
             listOf(MenuOption("Off", selected = state.selectedSubtitleId == null)) +
                 state.subtitleTracks.map { MenuOption(Formatting.track(it), selected = it.id == state.selectedSubtitleId) }
             )
+        PlayerMenu.INFO -> report(state).map { MenuOption(it.text, it.heading) }
         PlayerMenu.SPEED -> {
             val current = PlaybackController.SPEEDS.minBy { abs(it - state.speed) }
             PlaybackController.SPEEDS.map { MenuOption(if (it == 1.0) "Normal" else Formatting.speed(it), selected = it == current) }
@@ -559,6 +568,8 @@ class PlaybackSession internal constructor(
                 }
             }
             PlayerMenu.SPEED -> PlaybackController.SPEEDS.getOrNull(index)?.let(::setSpeed)
+            // Read, not chosen.
+            PlayerMenu.INFO -> Unit
         }
         this.menu = null
     }

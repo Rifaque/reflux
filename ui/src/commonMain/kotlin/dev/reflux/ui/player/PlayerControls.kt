@@ -65,7 +65,8 @@ object PlayerControls {
         val phone = formFactor == FormFactor.PHONE
         // Episodes are a tab among the lists; Previous and Next are their buttons in the bar.
         val lists = menus.filter { it != PlayerMenu.EPISODES }
-        val inline = if (phone) lists.filter { it in phoneLists } else lists
+        // Playback info is read, not used while watching: it is always one step away, behind the other lists.
+        val inline = (if (phone) lists.filter { it in phoneLists } else lists).filter { it != PlayerMenu.INFO }
         return PlayerControlSet(
             transport = if (phone || modality == InputModality.TOUCH) Transport.CENTRE else Transport.BAR,
             back = true,
@@ -80,7 +81,8 @@ object PlayerControls {
                 FullscreenMode.NONE -> false
             },
             lists = inline,
-            more = lists.firstOrNull { it !in inline },
+            // Playback info is reached from the tabs of any list, and is never what a button opens.
+            more = lists.firstOrNull { it !in inline && it != PlayerMenu.INFO },
             listHints = false,
         )
     }
