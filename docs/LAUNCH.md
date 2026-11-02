@@ -11,7 +11,7 @@ The website is a launch track from the start, not a task for after 1.0. It exist
 | Stage | What it is | Done when |
 | --- | --- | --- |
 | **W0 — Foundation** | Type, color, spacing, and motion rules for the site; the page skeleton; hosting and the domain; a privacy-respecting analytics decision (none, or a cookieless one) | The empty skeleton is deployed at the domain and every later page is built from its rules |
-| **W1 — Early landing page** | One page: what Reflux is in a sentence, a few real screenshots, supported platforms ("coming"), and a quiet way to hear about the beta | Live before beta preparation (during M1–M2) |
+| **W1 — Early landing page** | One page: what Reflux is in a sentence, a few real screenshots, supported platforms ("coming"), and a quiet way to hear about the beta | Live before beta preparation (during M3–M6) |
 | **W2 — Demo video** | The product demo (below) | Approved by the product owner; embedded on the site |
 | **W3 — Beta launch** | Beta signup (platform, device, sources, so testers can be chosen for coverage), what the beta is and is not, how to install on each platform, how to report problems, the changelog, privacy policy, support contact | Live when `0.9.0-beta.1` ships (M4 entry) |
 | **W4 — 1.0 site** | The product site: the demo, the core ideas (your media wherever it lives, understood automatically, played well), platforms with store badges and desktop downloads, changelog, privacy, support, legal and attribution | Live with `1.0.0` (M7) |
@@ -51,7 +51,7 @@ Required for the beta website (W2/W3) and the 1.0 site.
 - **Versions:** `0.9.0-beta.N` ([VERSIONING.md](VERSIONING.md)); every build has a changelog entry and a tag.
 - **Feedback:** an in-app "Send feedback" link (to a form or email) next to an export of the diagnostics log, which is already redacted; a short form per beta (what you played, what failed, what confused you). Reports are triaged into blocker / critical / normal / later.
 - **Cadence:** a beta build when there is something worth testing, at most weekly; the changelog says what to look at.
-- **Exit:** the M5 exit criteria in ROADMAP.md.
+- **Exit:** the M8 exit criteria in ROADMAP.md.
 
 Store testing requirements change; check the current Google Play Console and Amazon Appstore documentation when setting the tracks up, and record what was required in RELEASE.md.
 
@@ -71,8 +71,8 @@ Fire TV is a V1 target in its own right (DECISIONS.md, 2026-10-17). It runs the 
 1. **Inspect the developer's hardware first** (a Fire TV Stick 4K and a Fire TV television): model, Fire OS version, and Android API level (`adb shell getprop ro.product.model`, `ro.build.version.sdk`, `ro.build.version.name`). Reflux's `minSdk` is 26 (Android 8): Fire OS 7 (API 28) and Fire OS 8 (API 30) and later qualify; Fire OS 6 (API 25) does not; a Vega OS device does not run Android applications at all. Record the result; do not assume. Done for the stick on 2026-10-18: a Fire TV Stick 4K Plus (`AFTMA08C15`), Fire OS 8.1.8.5, API 30, a 32-bit (`armeabi-v7a`) userland, 1.7 GB of memory (VERIFICATION.md). The television: not yet.
 2. **Check what Fire OS lacks or does differently**: no Google Play services (Reflux uses none; keep it that way), no system folder picker (Reflux's own television picker already covers this), storage permissions by API level (on Fire OS 7 `READ_EXTERNAL_STORAGE` also reads sidecar artwork and subtitles), the launcher's banner and icon sizes, the remote's keys (menu, rewind/fast-forward, the microphone button), and Amazon's media-session and audio-focus expectations.
 3. **Continue watching on the Fire TV home screen**: evaluated 2026-10-18. Amazon's Watch Activity needs catalog integration, which an application for personal media cannot have, so Fire TV ships without a home-screen continue row (DECISIONS.md, 2026-10-18).
-4. **Build and lifecycle validation on the hardware** (M3): install, first run, a folder on a USB drive if supported, Jellyfin, playback including 4K/HDR on the television, leaving and returning with the Home button, sleep and wake. The stick's smoke test (2026-10-18) covered install, first run with a folder, playback including 4K60 HEVC, and Home and Back; USB, Jellyfin from the device, HDR output, and sleep and wake remain.
-5. **Appstore preparation** (M2): listing, screenshots at Amazon's sizes, device support list, content rating, privacy policy link, and Amazon's current submission requirements, read from Amazon's documentation at the time. A build installed from outside the Appstore got a generic launcher tile on Fire OS 8, whatever its banner (seen 2026-10-18); community reports say the launcher takes an Appstore application's icon from its listing, which the first Appstore test build should confirm.
-6. **Beta through Amazon's testing path** (M4) with Fire TV testers.
+4. **Build and lifecycle validation on the hardware** (M7): install, first run, a folder on a USB drive if supported, Jellyfin, playback including 4K/HDR on the television, leaving and returning with the Home button, sleep and wake. The stick's smoke test (2026-10-18) covered install, first run with a folder, playback including 4K60 HEVC, and Home and Back; USB, Jellyfin from the device, HDR output, and sleep and wake remain.
+5. **Appstore preparation** (M6): listing, screenshots at Amazon's sizes, device support list, content rating, privacy policy link, and Amazon's current submission requirements, read from Amazon's documentation at the time. A build installed from outside the Appstore got a generic launcher tile on Fire OS 8, whatever its banner (seen 2026-10-18); community reports say the launcher takes an Appstore application's icon from its listing, which the first Appstore test build should confirm.
+6. **Beta through Amazon's testing path** (M8) with Fire TV testers.
 
 Vega OS is tracked separately as a future compatibility track (ROADMAP.md, Platforms).
