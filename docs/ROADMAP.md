@@ -5,7 +5,7 @@ The one source of truth for what Reflux is building, in what order, and what is 
 - What was run to verify each piece of work is in [VERIFICATION.md](VERIFICATION.md); it is not repeated here.
 - What a release build needs is in [RELEASE.md](RELEASE.md), and the release and beta checklists are there.
 - How versions are numbered and promoted is [VERSIONING.md](VERSIONING.md).
-- The website, demo video, and beta program are planned in [LAUNCH.md](LAUNCH.md).
+- The website is a release workstream across M6, M7, and M8 (below, "The Reflux website"); its visual direction, the demo video, and the beta program are in [LAUNCH.md](LAUNCH.md).
 - Decisions behind the plan are in [DECISIONS.md](DECISIONS.md): the first rebaseline (2026-10-17) and the milestone rebaseline (2026-11-02).
 
 **Current state: M2P complete → M3 next.**
@@ -49,14 +49,14 @@ Status words used below:
 | M3 — Navigation & Source Libraries | How the viewer moves through Reflux and controls the media universe playback works on: global and platform navigation, the unified library and each source's own, source inclusion | **Next** |
 | M4 — Visual System 2.0 | A higher-end visual system around that structure | Future |
 | M5 — Library Depth & Reflux Magic | A richer library and the features that set Reflux apart | Future |
-| M6 — Release Engineering / Security / Legal | Production builds, packaging, signing, security hardening, legal and licensing, store preparation | Future |
-| M7 — Compatibility / Performance / Release Proof | The final platform matrix proven: compatibility, performance, stability, production readiness | Future |
-| M8 — Beta | `0.9.0-beta.N` in testers' hands until the beta exit criteria hold | Future |
+| M6 — Release Engineering / Security / Legal | Production builds, packaging, signing, security hardening, legal and licensing, store preparation; the website's foundation and its legal and privacy pages | Future |
+| M7 — Compatibility / Performance / Release Proof | The final platform matrix proven: compatibility, performance, stability, production readiness; the website ready for the public and for testers | Future |
+| M8 — Beta | `0.9.0-beta.N` in testers' hands until the beta exit criteria hold, with the website operating as their entry point | Future |
 | M9 — Release Candidate | `0.9.0-rc.N`, feature freeze, final validation, submissions prepared | Future |
 | M10 — 1.0 | `1.0.0` on every V1 target | Future |
-| W0–W4 — Website | reflux.rsxdevelops.dev from foundation to launch, in parallel ([LAUNCH.md](LAUNCH.md)) | Open |
+| The Reflux website | Release infrastructure, not a milestone of its own: foundation in M6, public and tester readiness in M7, required before M8 begins, kept in M8 to M10 (below, "The Reflux website") | Open |
 
-**How they relate.** M2P established playback truth and compatibility. M3 establishes how the viewer navigates and controls the media universe that playback operates on. M4 improves the visual system around that product structure. M5 deepens the library experience. M6 prepares the mature product for production release, and M7 proves it across the final production matrix. M8, M9, and M10 are the release stages.
+**How they relate.** M2P established playback truth and compatibility. M3 establishes how the viewer navigates and controls the media universe that playback operates on. M4 improves the visual system around that product structure. M5 deepens the library experience. M6 prepares the mature product for production release, with its security, legal, and the website's foundation. M7 proves it across the final production matrix and brings the website to public and tester readiness. M8 is the beta, with the website operating as the testers' entry point; M9 and M10 are the release candidate and 1.0.
 
 **Why release engineering is M6, not M2.** The roadmap separates building the product from hardening it for release. Release engineering, security, and legal work come after navigation, the source model, the visual system, and the library's depth are settled, so that what is signed, packaged, reviewed, and submitted is the product as it will ship. Security is not deferred: foundational security work continues whenever it is needed (credentials in the system store, redaction, sign-out on removal, and the checks in VERIFICATION.md are in place now). It does not define the current milestone.
 
@@ -129,6 +129,7 @@ Its working slices (M2P.2 to M2P.5 in PLAYBACK.md and VERIFICATION.md) are imple
 
 - Global navigation, and navigation shaped for each platform (desktop, phone, tablet, television).
 - The unified Reflux library, and each source's own libraries.
+- Plex as a source, on the same source model.
 - Source management and navigation.
 - Source and library inclusion controls (below).
 - Show → Season → Episode navigation.
@@ -204,6 +205,31 @@ Future. This is the work the 2026-10-17 roadmap called M2. Production release en
 | A diagnostics export for bug reports, with file paths and titles redacted, and the in-app feedback link (beta entry, RELEASE.md) | Open |
 | Release checklist (RELEASE.md) exercised end to end once before beta | Open |
 
+### Reflux Website Foundation
+
+M6 establishes the production foundation of the website, so that it can become the canonical public reference before the beta.
+
+- Website architecture: the simplest that serves. A static site is enough while nothing needs a backend.
+- Domain and hosting. The domain is decided: reflux.rsxdevelops.dev (LAUNCH.md). Hosting is not: no provider is established in the repository or its infrastructure. GitHub Pages is a viable choice for a static site and supports custom domains; the decision is made here, against what RSX Develops already runs, and recorded in DECISIONS.md.
+- A deployment pipeline, HTTPS, and a production environment.
+- Content structure and documentation structure (the routes under "The Reflux website").
+- Privacy and legal pages, and a support and contact surface.
+- Release and version information from one source (`CHANGELOG.md` and the version in `gradle.properties`, as VERSIONING.md defines them), not typed by hand.
+- Basic routing to downloads and tester channels.
+- A security review of the site and its pipeline.
+- Ownership of the website's infrastructure: who holds the domain, the hosting account, and the deploy keys.
+
+### Public legal information
+
+Planned here, worded in the legal work of M6 and M7 (RELEASE.md, "Legal review"); not written to fill the roadmap:
+
+- A privacy policy at a public URL that store distribution accepts (Google Play requires one, and requires its Data safety answers to match what the app does).
+- Terms or an EULA, where the legal review finds them required.
+- Ownership and copyright (RSX Develops; DECISIONS.md, "Reflux is proprietary").
+- Support and contact, and a release and support contact for the stores.
+- Third-party and open-source notices, as the About page already lists them.
+- Data handling disclosures consistent with the app: what it stores, what it sends and to whom (TMDB, the user's own servers), and that it has no account and sends nothing to RSX Develops.
+
 ## M7 — Compatibility / Performance / Release Proof
 
 Future. The final production matrix proven: broad compatibility, performance, stability, and production readiness. It is broader than M2P, which proved playback; M7 proves the whole product on what it ships to. This holds the 2026-10-17 roadmap's M3, "Real-world validation".
@@ -223,35 +249,99 @@ Future. The final production matrix proven: broad compatibility, performance, st
 | A visual regression strategy for the offscreen renderings | Open |
 | Broader compatibility: other Jellyfin versions, NAS SMB servers, HDR/DV and passthrough on real hardware and receivers, physical Linux | Open |
 
+### Reflux Website — Public Release & Tester Readiness
+
+M7 turns the M6 foundation into the production website used for the beta and for 1.0.
+
+**Public product surface:** what Reflux is; its key features; supported platforms; supported media and source types; compatibility information (from PLAYBACK.md's established boundaries, never claiming more); screenshots and the demo video where they help; Reflux's local-first, source-aware model, explained plainly.
+
+**Tester hub:** what build a tester is testing; how to join the right testing channel; how to install the right version on each platform; known issues; supported platforms; how to report a bug and send feedback. Google Play's internal and closed tests are joined by opt-in links that ordinary search does not find, so the site routes each tester to the right entry point.
+
+**Documentation**, written for the site or linked, without copying the engineering documents wholesale: getting started; setting up sources; compatibility; playback limitations; FAQ and troubleshooting; privacy and legal; support and feedback; release notes and the changelog.
+
+**Release information:** the current stable version; the current beta or release status; release notes; what is available to test or install, where; supported platforms; known limitations.
+
+**Before M8:** final security and accessibility checks of the site, and its production validation on desktop and mobile browsers.
+
 ## M8 — Beta
 
-Future. `0.9.0-beta.1`, then `beta.2`, `beta.3`, … Entry requires the beta checklist in RELEASE.md, and the casting feasibility gate decided (time-boxed; V1.1 if it fails; DECISIONS.md, 2026-10-17, "Casting is a V1 feasibility gate").
+Future. `0.9.0-beta.1`, then `beta.2`, `beta.3`, … Entry requires the beta checklist in RELEASE.md, the website ready to serve testers (below), and the casting feasibility gate decided (time-boxed; V1.1 if it fails; DECISIONS.md, 2026-10-17, "Casting is a V1 feasibility gate").
 
 - Google Play closed testing track; Amazon Appstore testing (Live App Testing) for Fire TV; desktop builds from the website.
 - About 15–20 testers, recruited through the website's beta signup, covering phones, tablets, Google TV, Fire TV, Windows, and Linux, local folders and servers.
-- The beta website (W3) with the demo video (W2), signup, supported platforms, and the changelog.
+- The website operating as the testers' entry point: announcements per build, test instructions, known issues kept current, and the feedback loop.
 - A feedback path (in-app link to a form or email, a diagnostics export) and a public changelog per beta.
+**The website before the beta.** M8 does not begin until the official website can:
+
+1. explain Reflux clearly;
+2. show the supported platforms;
+3. provide, or route testers to, the right test build;
+4. give tester instructions;
+5. show known limitations;
+6. offer a feedback channel;
+7. show the required privacy and legal information;
+8. show the right current version and release status;
+9. work in desktop and mobile browsers;
+10. serve over HTTPS on a stable public domain.
+
+It does not have to be visually finished; it has to be operationally trustworthy. A placeholder page is not enough when the site is the testers' entry point.
+
 - Iteration: bug fixes, compatibility, UX, performance, accessibility. New features enter only by an explicit decision recorded in DECISIONS.md; otherwise they wait for V1.x. **Exit:** no open blocker or critical bug, the V1 acceptance criteria hold, and the last beta ran at least a week without a new critical report.
 
 ## M9 — Release Candidate
 
-Future. `0.9.0-rc.1`, then `rc.N` only for fixes. Feature freeze, final validation on every target, store listings and submissions prepared, legal pages final.
+Future. `0.9.0-rc.1`, then `rc.N` only for fixes. Feature freeze, final validation on every target, store listings and submissions prepared, legal pages final; the website presents the release candidate and its notes.
 
 ## M10 — 1.0
 
-Future. `1.0.0`, built from the final release candidate's commit with only the version changed ([VERSIONING.md](VERSIONING.md)). Google Play (phones, tablets, Google TV), Amazon Appstore (Fire TV on Fire OS), Windows, Linux; reflux.rsxdevelops.dev in its launch state (W4).
+Future. `1.0.0`, built from the final release candidate's commit with only the version changed ([VERSIONING.md](VERSIONING.md)). Google Play (phones, tablets, Google TV), Amazon Appstore (Fire TV on Fire OS), Windows, Linux; reflux.rsxdevelops.dev in its 1.0 state: stable store and download links, final documentation, public release notes, and support and legal pages kept current.
 
-## Website track (parallel)
+## The Reflux website
 
-| Stage | Outcome | Needed by |
-| --- | --- | --- |
-| W0 | Design system and site foundation | Before beta preparation |
-| W1 | Early public landing page | During M3–M6 |
-| W2 | Product demo video | M8 entry |
-| W3 | Beta signup and launch content | M8 entry |
-| W4 | Final 1.0 product site | M10 |
+A required product and release surface, not marketing and not optional. Before the beta, testers need one stable public place to learn what Reflux is, which platforms and sources it supports, what version is being tested and how to get it, how to install it, what its limits are, where its compatibility information and documentation are, how to report a problem and send feedback, what its release notes say, how it handles privacy and security, and where its official support is. It is a workstream across milestones, with no milestone of its own.
 
-Requirements and the visual direction are in [LAUNCH.md](LAUNCH.md).
+### Stages
+
+| Stage | When | What | LAUNCH.md's deliverable |
+| --- | --- | --- | --- |
+| Planning | During M3 to M5 | Lightweight: what the site must say, as navigation, sources, the visual system, and the library settle. Nothing here blocks product work | — |
+| Foundation | M6 | Architecture, domain and hosting, deployment, legal and privacy infrastructure, content model, documentation structure, support and feedback infrastructure, the source of release and version data | W0 foundation; W1 a first public page on it |
+| Public and tester readiness | M7 | The production site, product pages, compatibility information, routing to downloads and tests, the tester hub, documentation, feedback and support, release notes, final security and accessibility checks, production validation | W2 the demo video; W3 the beta launch content |
+| Beta operation | M8 | The live entry point for testers, build announcements, test instructions, known issues kept current, the feedback loop | W3 in operation |
+| Release | M9, M10 | Release candidate and 1.0 presentation, stable store and download links, final documentation, public release notes, support and legal pages maintained | W4 the 1.0 site |
+
+The W labels name the website's deliverables in LAUNCH.md; the milestones say when they are due.
+
+### How it relates to the product milestones
+
+- M3 defines navigation and the source information architecture inside Reflux; M4 establishes the product's visual system, which the site may later use; M5 develops the product and library story it tells. None of them waits for the website, and the website's design is not M3's.
+- M6 builds the foundation and the legal and release infrastructure; it is not a product-design milestone. M7 brings the site to polished public and testing readiness. M8 requires it.
+
+### Structure
+
+The target routes, so that the site is planned and does not become a landing page assembled before the beta. Not all are needed at once:
+
+Home · Features · Platforms and compatibility · Sources · Download and test · Documentation · Changelog and releases · FAQ and troubleshooting · Support and feedback · Privacy · Terms or EULA where applicable · Third-party notices where applicable
+
+### Sources on the site
+
+Reflux's sources are local folders, Jellyfin, Plex (M3), SMB, WebDAV, and adapters to come. The site documents each supported source and its compatibility boundaries, and never calls a source supported before the app supports it.
+
+### Feedback
+
+A deliberate path, the simplest that can be kept up, chosen in M6 and M7 from: GitHub issues where appropriate, a feedback form or service, a support email, Google Play's testing feedback, and tester documentation. No custom backend only to collect feedback. The app's own feedback link and redacted diagnostics export (M6) point to the same place.
+
+### Privacy
+
+The site adds no tracking it does not need. If analytics are proposed, the proposal says exactly what is collected, why, whether it is necessary, which third party receives it, and how it changes the privacy disclosures; the default is none. The site's data practices match the app's privacy model and its store disclosures.
+
+### Distribution
+
+- **The website** is the canonical public source of information.
+- **The app stores** are the canonical distribution and update channel where they exist: Google Play (phones, tablets, Google TV) and the Amazon Appstore (Fire TV).
+- **Tester channels:** Google Play's internal, closed, or open tests and Amazon's Live App Testing.
+
+The site routes people to the right channel and does not mirror store packages. Windows and Linux have no store, so their signed, checksummed builds are downloaded from the site, by the existing decision (LAUNCH.md, "Store and distribution tracks"); any other mirroring needs its own decision.
 
 ## Earlier numbering
 
@@ -291,7 +381,7 @@ What V1 contains, as built from 2026-10-17 to 2026-11-01. Each row is required f
 | Fire TV / Fire OS | Partial (one physical device) | Smoke-tested on a Fire TV Stick 4K Plus (`AFTMA08C15`, Fire OS 8.1.8.5, API 30, 32-bit userland) on 2026-10-18 with a debug build; five Fire OS defects found and fixed (DECISIONS.md, 2026-10-18); playback validated in M2P. The rest moved to M7 (hardware) and M6 (a release build, Amazon's criteria). Fire OS has the TV provider, and Reflux writes no Watch Next programs to it; with Reflux in the background a remote's Play key is not obeyed (both DECISIONS.md, 2026-10-18). Fire OS 6 devices (`AFTMM`, API 25) are below `minSdk`; Vega OS devices (`AFTCR001`) do not run Android applications |
 | Windows and Linux | Partial | Capabilities observed since 2026-10-19. Media keys, scrollbars, and HDR output moved to M7 |
 | Accessibility baseline | Done | Now M1 |
-| About, legal, and attribution | Done 2026-10-19; two parts wait elsewhere | About Reflux: version and build, Reflux's copyright (proprietary, all rights reserved; DECISIONS.md, "Reflux is proprietary"), the metadata provider's credit, what Reflux keeps and sends, and every third-party license text, checked against each build by `check` (DECISIONS.md, 2026-10-19). Waiting: the privacy policy and support links (W3) and libmpv's notice for a bundled build (M6) |
+| About, legal, and attribution | Done 2026-10-19; two parts wait elsewhere | About Reflux: version and build, Reflux's copyright (proprietary, all rights reserved; DECISIONS.md, "Reflux is proprietary"), the metadata provider's credit, what Reflux keeps and sends, and every third-party license text, checked against each build by `check` (DECISIONS.md, 2026-10-19). Waiting: the privacy policy and support links (the website: M6 foundation, live by M8) and libmpv's notice for a bundled build (M6) |
 | Casting | Gate | Decided before M8 (above) |
 
 The 2026-10-17 M1 was built in slices, recorded in VERIFICATION.md: "From the start" and film version pins (2026-10-17); Watch Next and the Fire TV home-screen decision; the Fire TV smoke test; Identify and folder grouping; Fire OS Watch Next and an episode's versions; Smart Offline complete (all 2026-10-18); WebDAV on Android; Jellyfin sign-out on removal; desktop capabilities observed; About, legal, and attribution (all 2026-10-19); then accessibility (2026-10-31 to 11-01).
@@ -325,7 +415,7 @@ Candidates after 1.0, each needing its own decision to be promoted:
 - Background audio playback on Android.
 - Sidecar artwork and subtitles on Android 13+ televisions without broad storage access (embedded cover art, video frames).
 - Multi-part files (CD1/CD2) as one version; disc structures (BDMV/VIDEO_TS) playable.
-- Emby and DLNA sources. (Plex is among the source kinds M3's model must allow for; its adapter is not yet scheduled.)
+- Emby and DLNA sources. (Plex is in M3.)
 - Linux credential storage without a Secret Service.
 
 ## Future

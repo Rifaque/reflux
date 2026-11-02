@@ -15,7 +15,7 @@ What stands between the source tree and builds that can be handed to testers and
 - [ ] At least one physical phone, one physical Google TV / Android TV device, one Fire TV device, and one physical controller verified (VERIFICATION.md).
 - [ ] CI green on GitHub, including Android.
 - [ ] Google Play closed testing track and Amazon Appstore testing set up with the current store requirements read and recorded here.
-- [ ] Beta website (W3) live with the demo video, signup, install instructions, privacy policy, changelog, and support.
+- [ ] The website meets the ten conditions in ROADMAP.md, M8, "The website before the beta" (HTTPS on a stable domain, tester routing and instructions, known limitations, feedback, privacy and legal, the current version), with the demo video, signup, install instructions, changelog, and support.
 - [ ] Feedback path in the app (link and diagnostics export) works on every platform.
 - [ ] `CHANGELOG.md` has the beta's entry; the `release: 0.9.0-beta.1` commit and tag exist.
 
@@ -35,7 +35,7 @@ What stands between the source tree and builds that can be handed to testers and
 - [ ] The V1 acceptance criteria in ROADMAP.md hold on every V1 target.
 - [ ] `1.0.0` is the final release candidate's commit with only the version changed.
 - [ ] Store listings final on Google Play and the Amazon Appstore; desktop downloads on the website.
-- [ ] Website in its 1.0 state (W4).
+- [ ] Website in its 1.0 state (W4, M10): stable store and download links, final documentation, release notes, support and legal pages current.
 
 ## Store requirements
 

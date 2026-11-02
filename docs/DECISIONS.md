@@ -996,6 +996,12 @@ Decided by the product owner. The milestones of 2026-10-17 had drifted: M2P was 
 
 Entries before this one, and VERIFICATION.md sections before it, use the numbering of their day: there "M2" means release engineering (now M6), "M3" real-world validation (now M7), "M4" and "M5" the beta (now M8), "M6" the release candidate (now M9), and "M7" 1.0 (now M10). They are left as written; ROADMAP.md, "Earlier numbering", maps them.
 
+## 2026-11-02 — The website is release infrastructure
+
+Decided by the product owner. The website was a parallel track (W0–W4) with no milestone responsible for it, which let it become a last-minute landing page before the beta. It is now part of the release roadmap, with no milestone of its own: its foundation (architecture, hosting, deployment, HTTPS, legal and privacy pages, support, release data, documentation structure) belongs to M6; its public product surface, tester hub, documentation, and release information to M7; and M8 does not begin until it meets ten stated conditions (ROADMAP.md). Before a beta, testers need a stable public place to learn what they are testing, get the right build, read its limits, and send feedback; Google Play's tests are joined through links search does not find, and its distribution requires a public privacy policy consistent with the app.
+
+The domain stays reflux.rsxdevelops.dev; the hosting provider is decided in M6, with a static site preferred while nothing needs a backend. The site adds no tracking by default, routes to the stores rather than mirroring them, and downloads desktop builds only because desktop has no store. The W labels remain the names of its deliverables (LAUNCH.md), due at the milestones the roadmap gives them. Plex is in M3's source scope; the site never calls a source supported before the app supports it.
+
 ## 2026-11-02 — M2P's last decisions
 
 - **No new Android decoder.** The library has 2 DTS tracks and no TrueHD; both convert on a server, and the fixtures show TrueHD would too. Only local, SMB, and WebDAV files on devices without those decoders lose sound, and they say so. An FFmpeg extension would need an LGPL build per ABI and legal review (PLAYBACK.md, section 10) for that. Not justified; revisit on evidence.

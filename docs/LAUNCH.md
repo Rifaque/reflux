@@ -4,17 +4,17 @@ The tracks that take Reflux from a working tree to a public product beside the e
 
 ## Website: reflux.rsxdevelops.dev
 
-The website is a launch track from the start, not a task for after 1.0. It exists before the beta, carries the beta, and becomes Reflux's permanent public home.
+The website is release infrastructure, not a task for after 1.0 and not optional. It exists before the beta, carries the beta, and becomes Reflux's permanent public home. When each part is due, and what the site must do before the beta may begin, is in ROADMAP.md ("The Reflux website", M6, M7, and M8); this section keeps its deliverables and its visual direction.
 
 ### Stages
 
-| Stage | What it is | Done when |
+| Stage | What it is | Done when (milestone) |
 | --- | --- | --- |
-| **W0 — Foundation** | Type, color, spacing, and motion rules for the site; the page skeleton; hosting and the domain; a privacy-respecting analytics decision (none, or a cookieless one) | The empty skeleton is deployed at the domain and every later page is built from its rules |
-| **W1 — Early landing page** | One page: what Reflux is in a sentence, a few real screenshots, supported platforms ("coming"), and a quiet way to hear about the beta | Live before beta preparation (during M3–M6) |
-| **W2 — Demo video** | The product demo (below) | Approved by the product owner; embedded on the site |
-| **W3 — Beta launch** | Beta signup (platform, device, sources, so testers can be chosen for coverage), what the beta is and is not, how to install on each platform, how to report problems, the changelog, privacy policy, support contact | Live when `0.9.0-beta.1` ships (M4 entry) |
-| **W4 — 1.0 site** | The product site: the demo, the core ideas (your media wherever it lives, understood automatically, played well), platforms with store badges and desktop downloads, changelog, privacy, support, legal and attribution | Live with `1.0.0` (M7) |
+| **W0 — Foundation** | Type, color, spacing, and motion rules for the site; the page skeleton; hosting and the domain; an analytics decision, none by default (ROADMAP.md, "The Reflux website", Privacy) | The empty skeleton is deployed at the domain, over HTTPS, and every later page is built from its rules (M6) |
+| **W1 — Early landing page** | One page: what Reflux is in a sentence, a few real screenshots, supported platforms ("coming"), and a quiet way to hear about the beta | Live on the M6 foundation |
+| **W2 — Demo video** | The product demo (below) | Approved by the product owner; embedded on the site before the beta (M7) |
+| **W3 — Beta launch** | Beta signup (platform, device, sources, so testers can be chosen for coverage), what the beta is and is not, how to install on each platform, how to report problems, the changelog, privacy policy, support contact | Live before `0.9.0-beta.1` (built in M7, required for M8 entry, operated through M8) |
+| **W4 — 1.0 site** | The product site: the demo, the core ideas (your media wherever it lives, understood automatically, played well), platforms with store badges and desktop downloads, changelog, privacy, support, legal and attribution | Live with `1.0.0` (M10; presented from the release candidate, M9) |
 
 ### Visual direction
 
