@@ -4,6 +4,7 @@ What changes for people using Reflux, version by version. The rules for versions
 
 ## Unreleased
 
+- On Android, choosing image subtitles (PGS) on a film whose sound a server converts no longer re-encodes the picture: the subtitles arrive beside the stream, and the original video plays.
 - On Android, a few video files that can't be skipped through no longer go back to the beginning when you try, and no longer lose your place. With a Jellyfin server, Reflux carries on from where you asked. Otherwise it tells you.
 - On Windows and Linux, quitting right after leaving the player no longer takes the video window away while the player is still shutting down. On Linux that could crash Reflux.
 - Changing audio or subtitles on a converted stream now always carries on from the exact place, including in the first minute.
