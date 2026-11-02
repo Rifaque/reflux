@@ -85,7 +85,31 @@ abstract class GenerateTestMedia : DefaultTask() {
             )
         }
         output.get().file("chained-seekhead.mkv").asFile.writeBytes(chainSeekHead(seekable.readBytes()))
+        // Formats the real library lacks, each answering one question (docs/PLAYBACK.md, section 16). The desktop's
+        // FormatFixtures makes the same files from the same arguments.
+        for ((name, arguments) in formatFixtures) {
+            exec.exec { commandLine(listOf("ffmpeg", "-loglevel", "error", "-y") + arguments + output.get().file(name).asFile.path) }
+        }
     }
+
+    private val mastering = "master-display=G(13250,34500)B(7500,3000)R(34000,16000)WP(15635,16450)L(10000000,1):max-cll=1000,400"
+    private fun picture(size: String, rate: Int, seconds: Int) = listOf("-f", "lavfi", "-i", "testsrc2=size=$size:rate=$rate", "-f", "lavfi", "-i", "sine=frequency=440", "-t", "$seconds")
+    private val aac = listOf("-c:a", "aac", "-ac", "2", "-b:a", "64k")
+    private val formatFixtures = listOf(
+        "av1-1080p-8bit.mkv" to picture("1920x1080", 24, 2) + listOf("-c:v", "libaom-av1", "-cpu-used", "8", "-row-mt", "1", "-b:v", "400k", "-pix_fmt", "yuv420p") + aac,
+        "av1-1080p-10bit.mkv" to picture("1920x1080", 24, 2) + listOf("-c:v", "libaom-av1", "-cpu-used", "8", "-row-mt", "1", "-b:v", "400k", "-pix_fmt", "yuv420p10le") + aac,
+        "av1-2160p-10bit.mkv" to picture("3840x2160", 5, 1) + listOf("-c:v", "libaom-av1", "-cpu-used", "8", "-row-mt", "1", "-tiles", "2x2", "-b:v", "800k", "-pix_fmt", "yuv420p10le") + aac,
+        "hevc-2160p-hdr10.mkv" to picture("3840x2160", 5, 1) + listOf(
+            "-c:v", "libx265", "-preset", "ultrafast", "-pix_fmt", "yuv420p10le", "-color_primaries", "bt2020", "-color_trc", "smpte2084", "-colorspace", "bt2020nc",
+            "-x265-params", "log-level=error:colorprim=bt2020:transfer=smpte2084:colormatrix=bt2020nc:hdr10=1:$mastering",
+        ) + aac,
+        "hevc-2160p-hlg.mkv" to picture("3840x2160", 5, 1) + listOf(
+            "-c:v", "libx265", "-preset", "ultrafast", "-pix_fmt", "yuv420p10le", "-color_primaries", "bt2020", "-color_trc", "arib-std-b67", "-colorspace", "bt2020nc",
+            "-x265-params", "log-level=error:colorprim=bt2020:transfer=arib-std-b67:colormatrix=bt2020nc",
+        ) + aac,
+        "truehd.mkv" to picture("320x180", 10, 2) + listOf("-c:v", "libx264", "-preset", "ultrafast", "-pix_fmt", "yuv420p", "-c:a", "truehd", "-strict", "-2", "-ar", "48000", "-ac", "2"),
+        "vp9-1080p.webm" to picture("1920x1080", 24, 2) + listOf("-c:v", "libvpx-vp9", "-deadline", "realtime", "-cpu-used", "8", "-b:v", "400k", "-pix_fmt", "yuv420p", "-c:a", "libopus", "-b:a", "64k"),
+    )
 
     private fun chainSeekHead(file: ByteArray): ByteArray {
         fun find(id: Int, from: Int = 0): Int = (from until file.size - 4).first { at -> (0..3).all { file[at + it] == (id ushr (24 - 8 * it)).toByte() } }
