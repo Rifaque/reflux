@@ -8,6 +8,7 @@ Rules for adding to it:
 - Say what ran (command, device, server, by hand or automated) and the result, including what was **not** verified and why.
 - A result from an emulator, a container, or a fixture is never recorded as a physical-device, live-service, or real-hardware result.
 - Do not edit an old section to make it current; add a new one. Test counts in old sections are counts at that time.
+- Milestone labels are those of the day a section was written. Before 2026-11-02, "M2" means release engineering (now M6) and "M3" real-world validation (now M7); ROADMAP.md, "Earlier numbering", maps every one.
 
 ## Desktop Vertical Slice 0.2: what was verified
 

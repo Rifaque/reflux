@@ -984,12 +984,24 @@ A server delivers an extracted PGS track as a `.sup` file (`PG`-framed segments;
 
 Alternatives rejected: burn-in (a transcode for what the client can draw); Media3's side-loading (the whole file, gigabytes of bitmaps); converting bitmaps to text (lossy, and against PLAYBACK.md, section 7). VobSub files beside a stream stay unsupported: there is no reader, and burn-in remains for them.
 
+## 2026-11-02 — The milestone rebaseline
+
+Decided by the product owner. The milestones of 2026-10-17 had drifted: M2P was inserted before an M2 that meant release engineering, so two different "M2"s were current, and M1 ("Product completeness") had become a mix of finished work and open items no milestone owned. The authoritative list is now M0 Governance & Rebaseline, M1 Accessibility & Interaction Baseline, M2P Playback Compatibility & Direct Play (all complete), M3 Navigation & Source Libraries (next), M4 Visual System 2.0, M5 Library Depth & Reflux Magic, M6 Release Engineering / Security / Legal, M7 Compatibility / Performance / Release Proof, M8 Beta, M9 Release Candidate, M10 1.0 (ROADMAP.md).
+
+- **Building the product comes before hardening it.** Release engineering, security, and legal (the old M2) become M6, after navigation, the source model, the visual system, and library depth are settled, so what is signed and submitted is what ships. Foundational security work continues whenever it is needed; it does not define the current milestone.
+- **The old M3, "Real-world validation", becomes M7**, widened to the final production matrix: compatibility, performance, stability, release proof. M2P proved playback; M7 proves the product.
+- **Beta and its iterations are one milestone, M8**; the release candidate is M9 and 1.0 is M10.
+- **The old M1's open items were assigned**, so none is left without an owner: serious playback parity to M5; Android's plain-HTTP policy and Watch Next certification to M6; physical devices, Fire TV's remaining checks, and desktop media keys, scrollbars, and HDR output to M7; the casting gate to M8's entry. Its accessibility baseline is M1.
+- **M3 keeps four source questions apart:** connection, availability, inclusion in the unified library, and browsing a source on its own. A viewer can exclude a source, or one of its libraries, from the unified library without disconnecting, signing out, forgetting credentials or metadata, touching files, stopping playback, changing watch state, or hiding it from Sources; one media model and one playback path remain.
+
+Entries before this one, and VERIFICATION.md sections before it, use the numbering of their day: there "M2" means release engineering (now M6), "M3" real-world validation (now M7), "M4" and "M5" the beta (now M8), "M6" the release candidate (now M9), and "M7" 1.0 (now M10). They are left as written; ROADMAP.md, "Earlier numbering", maps them.
+
 ## 2026-11-02 — M2P's last decisions
 
 - **No new Android decoder.** The library has 2 DTS tracks and no TrueHD; both convert on a server, and the fixtures show TrueHD would too. Only local, SMB, and WebDAV files on devices without those decoders lose sound, and they say so. An FFmpeg extension would need an LGPL build per ABI and legal review (PLAYBACK.md, section 10) for that. Not justified; revisit on evidence.
-- **Desktop passthrough stays unimplemented and unclaimed.** mpv can (`audio-spdif`), but whether an output accepts it cannot be read without trying, and no receiver was here to hear it. Desktop decodes every format locally, so nothing converts for want of it. Deferred to M3, where real receivers are in scope.
+- **Desktop passthrough stays unimplemented and unclaimed.** mpv can (`audio-spdif`), but whether an output accepts it cannot be read without trying, and no receiver was here to hear it. Desktop decodes every format locally, so nothing converts for want of it. Deferred to M7, where real receivers are in scope.
 - **HDR is four separate questions.** Codec and decoder (verified: HEVC Main 10 at 4K and AV1 10-bit decode where listed); display (read on Android, not claimed on desktop); signalling (HDR10 and HLG read correctly from files on every platform); and HDR on a screen (not seen anywhere). The last stays unknown, not unsupported.
 - **Dolby Vision stays unknown.** No legitimate sample is held, and FFmpeg cannot make one.
 - **A declared decoder limit still refuses.** The Pad and the emulator played a 5 fps 4K AV1 clip past their decoders' declared 2048 width. That is not evidence of real-time 4K, so the plan's refusal stands (PLAYBACK.md, section 6).
 - **Android's probe of a local file is not replaced.** Its platform extractor drops a TrueHD track and, on Fire OS 8, a VP9 profile. The engine reports the first at playback and the no-sound notice says it; the second leaves depth unknown, which degrades correctly. Reading local files with Media3's extractors instead is a wider change than a format the library does not have. Revisit with evidence.
-- **M2P is complete** with these waived or unknown: Linux on physical hardware, HDR and DV on a screen, passthrough heard, the Phone 2a on fixtures. M3 owns physical validation.
+- **M2P is complete** with these waived or unknown: Linux on physical hardware, HDR and DV on a screen, passthrough heard, the Phone 2a on fixtures. M7 owns physical validation.

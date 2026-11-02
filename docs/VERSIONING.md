@@ -92,7 +92,7 @@ Windows installers need a numeric `MAJOR.MINOR.BUILD` that increases for upgrade
 - `CHANGELOG.md` keeps an `Unreleased` section. User-visible changes are added there as they are made, in plain words (what a person notices, not commit messages). Cutting a version moves `Unreleased` under a heading `## <version> — <date>`.
 - Promotion is a single commit, `release: <version>`, that changes `reflux.version` and the changelog heading and nothing else.
 - Promotion order is always alpha → beta → rc → release. Skipping a stage (alpha straight to rc, beta straight to release) needs a decision recorded in DECISIONS.md.
-- Entering beta requires the beta checklist in RELEASE.md; entering rc requires the beta exit criteria in ROADMAP.md (M5); releasing requires the release checklist in RELEASE.md and the V1 acceptance criteria.
+- Entering beta requires the beta checklist in RELEASE.md; entering rc requires the beta exit criteria in ROADMAP.md (M8); releasing requires the release checklist in RELEASE.md and the V1 acceptance criteria.
 
 ## Rules for AI agents
 

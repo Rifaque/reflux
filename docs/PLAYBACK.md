@@ -1,6 +1,6 @@
 # Playback compatibility
 
-What Reflux can really play, how it decides, and how it explains that. This is the specification for milestone M2P (ROADMAP.md). It began as the M2.0 audit of 2026-11-01. Every section is built or decided; M2P closed on 2026-11-02 (section 17). Section 15 is the current real-media evidence: sections 2 and 3a describe the library before the owner's remux.
+What Reflux can really play, how it decides, and how it explains that. This is the specification for milestone M2P (ROADMAP.md). It began as the playback audit of 2026-11-01. Every section is built or decided; M2P closed on 2026-11-02 (section 17). Section 15 is the current real-media evidence: sections 2 and 3a describe the library before the owner's remux.
 
 The rule: **decode locally when possible, preserve original streams when possible, transcode only when genuinely necessary.** Success is that Reflux knows what the client can actually play, preserves the original whenever possible, degrades the smallest necessary part when it cannot, and can explain why. "Every codec works everywhere" is not the goal.
 
@@ -129,7 +129,7 @@ This is a record of evidence, **never an input to logic**. Capabilities come fro
 | **None** | Not available there |
 | ? | Unverified |
 
-Columns: Desktop is libmpv 0.41-dev on Windows (Linux headless only, as noted). Pad 7 is SM7675, API 36, read 2026-11-01. Fire TV is `AFTMA08C15`, API 30, 32-bit only (`armeabi-v7a`), read 2026-11-01, plus what VERIFICATION.md recorded. The Nothing Phone 2a was not attached and the Google TV emulator was not started: they are `?` until M2.9, and an emulator says nothing of hardware decoding.
+Columns: Desktop is libmpv 0.41-dev on Windows (Linux headless only, as noted). Pad 7 is SM7675, API 36, read 2026-11-01. Fire TV is `AFTMA08C15`, API 30, 32-bit only (`armeabi-v7a`), read 2026-11-01, plus what VERIFICATION.md recorded. The Nothing Phone 2a was not attached and the Google TV emulator was not started: they are `?` until the validation in section 12, and an emulator says nothing of hardware decoding.
 
 ### Video
 
@@ -588,7 +588,7 @@ Each field says planned or observed; a mismatch is the most useful line in it. U
 
 libmpv needs no redesign. `DecodeEvidence` is the right model and the live run confirmed it.
 
-- **Release builds:** the dev build has libdav1d and native decoders for every audio format. The LGPL build (M2) must keep `libdav1d`, because FFmpeg's own `av1` needs hardware. Worth a test against the released library.
+- **Release builds:** the dev build has libdav1d and native decoders for every audio format. The LGPL build (M6) must keep `libdav1d`, because FFmpeg's own `av1` needs hardware. Worth a test against the released library.
 - **Passthrough:** mpv has `audio-spdif`; Reflux never sets it. Whether a Windows or Linux output takes it cannot be read reliably without trying, so this needs a receiver and a decision. Until then, not claimed.
 - **Channels:** mpv defaults to `audio-channels=auto-safe`; `audio-device-list` and `audio-out-params` can report the real layout (defect 9).
 - **HDR:** unchanged from 2026-10-19. Needs a real HDR display session.
@@ -617,7 +617,7 @@ libmpv needs no redesign. `DecodeEvidence` is the right model and the live run c
 | HDR | **No: licensed sample** (Blender's open films have HDR masters) |
 | Seek, resume, audio and subtitle switching | Yes |
 
-## 12. Validation plan (M2.9)
+## 12. Validation plan
 
 Run after the planner and negotiation exist: the meaningful combinations by what each device reports, not all of them.
 

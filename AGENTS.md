@@ -253,7 +253,7 @@ V1 platform targets:
 
 Not V1: Vega OS (a future compatibility track) and iOS/iPadOS.
 
-The milestones are outcome-based and defined in `docs/ROADMAP.md`: M0 rebaseline and governance, M1 product completeness, M2 release engineering, M3 real-world validation, M4 beta, M5 beta iteration, M6 release candidate, M7 public 1.0, with the website track W0–W4 in parallel. Work on the next incomplete milestone there.
+The milestones are outcome-based and defined in `docs/ROADMAP.md`: M0 Governance & Rebaseline, M1 Accessibility & Interaction Baseline, M2P Playback Compatibility & Direct Play (all complete), M3 Navigation & Source Libraries (next), M4 Visual System 2.0, M5 Library Depth & Reflux Magic, M6 Release Engineering / Security / Legal, M7 Compatibility / Performance / Release Proof, M8 Beta, M9 Release Candidate, M10 1.0, with the website track W0–W4 in parallel. Work on the next incomplete milestone there. There is no milestone called M2: release engineering is M6.
 
 Do not reorder foundational work merely to produce a flashy demo.
 

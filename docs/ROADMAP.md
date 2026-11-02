@@ -6,9 +6,11 @@ The one source of truth for what Reflux is building, in what order, and what is 
 - What a release build needs is in [RELEASE.md](RELEASE.md), and the release and beta checklists are there.
 - How versions are numbered and promoted is [VERSIONING.md](VERSIONING.md).
 - The website, demo video, and beta program are planned in [LAUNCH.md](LAUNCH.md).
-- Decisions behind the plan are in [DECISIONS.md](DECISIONS.md) (the rebaseline: 2026-10-17).
+- Decisions behind the plan are in [DECISIONS.md](DECISIONS.md): the first rebaseline (2026-10-17) and the milestone rebaseline (2026-11-02).
 
-This roadmap replaces the earlier Phase 0–18 plan, which was ordered by architectural layer and no longer matched the state of the code (DECISIONS.md, 2026-10-17, "Roadmap rebaseline").
+**Current state: M2P complete → M3 next.**
+
+This milestone list replaces the one of 2026-10-17 (M0 to M7, with M2 as release engineering and M3 as real-world validation), which replaced the earlier Phase 0–18 plan. Documents and verification sections written before 2026-11-02 use the older numbering; how each old milestone maps to this one is under "Earlier numbering", and DECISIONS.md, 2026-11-02, "The milestone rebaseline", says why.
 
 ## Where Reflux is
 
@@ -18,7 +20,9 @@ Status words used below:
 
 | Word | Meaning |
 | --- | --- |
-| **Done** | Implemented, tested, documented, and verified as far as the environment allowed (VERIFICATION.md says how far) |
+| **Complete** / **Done** | Implemented, tested, documented, and verified as far as the environment allowed (VERIFICATION.md says how far) |
+| **Next** | The milestone to work on now |
+| **Future** | Planned, not started |
 | **Partial** | Some of it exists; the gap is stated |
 | **Open** | Not started |
 | **Gate** | A decision point with criteria; the outcome moves the item into V1 or to V1.x |
@@ -39,18 +43,22 @@ Status words used below:
 
 | Milestone | Outcome | State |
 | --- | --- | --- |
-| M0 — Rebaseline & governance | One roadmap, a versioning protocol, verification history separated, product decisions recorded, V1 acceptance criteria | Done (2026-10-17) |
-| M1 — Product completeness | Everything V1 must contain is built and tested | Partial |
-| M2P — Playback compatibility & direct play | Reflux knows what the client can actually play, preserves the original whenever possible, degrades the smallest necessary part when it cannot, and can explain why | Done (2026-11-02), with explicit waivers and unknowns (PLAYBACK.md, section 17) |
-| M2 — Release engineering | Signed, shrunk, installable, upgradable builds for every V1 target, in CI, legally ready | Open |
-| M3 — Real-world validation | Live services, physical devices, real controllers, real networks, large libraries | Open |
-| M4 — Beta | `0.9.0-beta.1` in testers' hands through the stores and the website | Open |
-| M5 — Beta iteration | `beta.2`, `beta.3`, … until the beta exit criteria hold | Open |
-| M6 — Release candidate | `0.9.0-rc.1`, feature freeze, final validation, store submissions prepared | Open |
-| M7 — Public 1.0 | `1.0.0` on Google Play, the Amazon Appstore, Windows, and Linux; the website in its launch state | Open |
-| W0–W4 — Website | reflux.rsxdevelops.dev from foundation to launch, in parallel with M1–M7 ([LAUNCH.md](LAUNCH.md)) | Open |
+| M0 — Governance & Rebaseline | Product governance, versioning, development rules, roadmap governance, release and version discipline | **Complete** (2026-10-17; milestones rebaselined 2026-11-02) |
+| M1 — Accessibility & Interaction Baseline | Accessibility foundation, TalkBack and television accessibility, keyboard and focus behavior, interaction semantics, reduced motion and text size, screen-reader isolation, touch and focus targets | **Complete** (2026-11-01) |
+| M2P — Playback Compatibility & Direct Play | Reflux knows what the client can actually play, preserves the original whenever possible, degrades the smallest necessary part when it cannot, and can explain why | **Complete** (2026-11-02), with explicit waivers and unknowns (PLAYBACK.md, section 17) |
+| M3 — Navigation & Source Libraries | How the viewer moves through Reflux and controls the media universe playback works on: global and platform navigation, the unified library and each source's own, source inclusion | **Next** |
+| M4 — Visual System 2.0 | A higher-end visual system around that structure | Future |
+| M5 — Library Depth & Reflux Magic | A richer library and the features that set Reflux apart | Future |
+| M6 — Release Engineering / Security / Legal | Production builds, packaging, signing, security hardening, legal and licensing, store preparation | Future |
+| M7 — Compatibility / Performance / Release Proof | The final platform matrix proven: compatibility, performance, stability, production readiness | Future |
+| M8 — Beta | `0.9.0-beta.N` in testers' hands until the beta exit criteria hold | Future |
+| M9 — Release Candidate | `0.9.0-rc.N`, feature freeze, final validation, submissions prepared | Future |
+| M10 — 1.0 | `1.0.0` on every V1 target | Future |
+| W0–W4 — Website | reflux.rsxdevelops.dev from foundation to launch, in parallel ([LAUNCH.md](LAUNCH.md)) | Open |
 
-M1, M2, and M3 overlap: release engineering and validation start as soon as the work they depend on is stable, not after M1 is finished. Beta (M4) starts only when the beta entry checklist in RELEASE.md holds.
+**How they relate.** M2P established playback truth and compatibility. M3 establishes how the viewer navigates and controls the media universe that playback operates on. M4 improves the visual system around that product structure. M5 deepens the library experience. M6 prepares the mature product for production release, and M7 proves it across the final production matrix. M8, M9, and M10 are the release stages.
+
+**Why release engineering is M6, not M2.** The roadmap separates building the product from hardening it for release. Release engineering, security, and legal work come after navigation, the source model, the visual system, and the library's depth are settled, so that what is signed, packaged, reviewed, and submitted is the product as it will ship. Security is not deferred: foundational security work continues whenever it is needed (credentials in the system store, redaction, sign-out on removal, and the checks in VERIFICATION.md are in place now). It does not define the current milestone.
 
 ## Done
 
@@ -65,18 +73,18 @@ What the product already does, everywhere it runs unless a platform is named. De
 - **Universal watch state**: one state per work, carried between copies by timeline, never blindly onto another cut, reconciled with sources that keep their own.
 - **Continue Watching and Next Up** inside the application (Home and details).
 - **Search**: deterministic smart search over metadata, credits, stream facts, and watch state.
-- **Playback**: libmpv on desktop, Media3 on Android; default track selection, chapters (desktop), skip intro/recap/credits, next-episode autoplay and "still watching?", a source that goes silent becomes a stated failure, picture-in-picture on Android handhelds.
+- **Playback**: libmpv on desktop, Media3 on Android; planned, negotiated, and explained (M2P); default track selection, chapters (desktop), skip intro/recap/credits, next-episode autoplay and "still watching?", a source that goes silent becomes a stated failure, picture-in-picture on Android handhelds.
 - **Versions**: every version of a film or an episode listed and playable by choice, the recommended one explained, any one pinned.
 - **Smart Offline (Android, Windows, Linux)**: films, single episodes, whole seasons, and a show's next episodes; the review sheet; status counted per episode; a Downloads page with every copy and its actions; copies as versions; playback and resume with the source away.
 - **Input**: pointer, keyboard, touch, controllers (desktop readers, Android key events), television remotes; the controller morph.
 - **Form factors**: desktop, phone, tablet, television layouts of one experience layer, with the neutral-first visual system.
 - **Developer CLI**, **Linux CI workflow** (written and run in its container; never run on GitHub), regression tests for everything the 2026-10-17 stress cycle found.
 
-## M0 — Rebaseline & governance
+## M0 — Governance & Rebaseline
 
-Done on 2026-10-17:
+Complete. Done on 2026-10-17:
 
-- This roadmap, replacing the Phase 0–18 plan.
+- A roadmap replacing the Phase 0–18 plan.
 - Verification history moved to [VERIFICATION.md](VERIFICATION.md).
 - [VERSIONING.md](VERSIONING.md), linked from AGENTS.md as mandatory for version and release changes; the version single-sourced in `gradle.properties`.
 - [LAUNCH.md](LAUNCH.md): website track, demo video, beta program, store tracks.
@@ -85,37 +93,19 @@ Done on 2026-10-17:
 - Product decisions recorded (DECISIONS.md, 2026-10-17): "From the start", television sidecar subtitles, desktop Smart Offline, collections in 1.0, episodes without a show name, the casting gate, Jellyfin sign-out on removal, truthful desktop capabilities, Watch Next, Fire TV, Vega OS, the beta stage.
 - V1 acceptance criteria (below).
 
-## M1 — Product completeness
+On 2026-11-02 the milestones were rebaselined to the list above (DECISIONS.md, "The milestone rebaseline").
 
-V1 contains what Reflux fundamentally is, and no more. Each row is required for V1 unless marked as a gate.
+## M1 — Accessibility & Interaction Baseline
 
-| Item | State | What is left |
-| --- | --- | --- |
-| Automatic organization and identification | Done | — (episodes without a show name are grouped per folder and offered to Identify, 2026-10-18) |
-| Identify / fix match | Done (automated) | Built on every form factor (the shared experience layer): search, results told apart, choose, undo, reached from every details page and offered plainly where Reflux is unsure (DECISIONS.md, 2026-10-18). Verified with fixtures on the desktop renderer, including a remote-only television path; not yet against live TMDB (no credential here, M3) nor driven on a device, which needs a build with the credential. Episodes' own numbers cannot be corrected from it (their show can) |
-| Continue Watching and Next Up | Done | — |
-| **Watch Next** (the platform's own "continue" row) | Done (emulator) | Android TV / Google TV: programs derived from Continue Watching and Next Up, added, updated, and removed with watch state, opening Reflux on the work (DECISIONS.md, 2026-10-18). What Google TV's launcher draws is unseen: it shows only certified integrations, so Google's Watch Next certification belongs to the Play submission (M2), and a physical Google TV check to M3. Fire TV: no home-screen row, because Amazon's Watch Activity needs a content catalog Reflux does not have, and no programs written to Fire OS's TV provider (DECISIONS.md, 2026-10-18) |
-| Cross-source watch state | Done | — ("From the start" keeps the place, 2026-10-17) |
-| Best Version | Done | Desktop capabilities are observed since 2026-10-19: hardware decoding from a start-up probe and real playbacks, unknown until then; the display the window is on (DECISIONS.md, "How the desktop observes what it can show and decode"). HDR output on the desktop is not claimed: the engine does not output HDR yet |
-| Visible version selection | Done | Films and episodes list every version and play any of them; an episode's are on its own page, offered from its row where it has more than one (DECISIONS.md, 2026-10-18) |
-| Version pinning | Done | Films (2026-10-17) and episodes (2026-10-18): "Always play this" and "Let Reflux choose"; a pin set aside is said and kept; an episode's pin follows it through Identify |
-| Smart Offline, user-facing | Done | Films, single episodes (from their row or their own page), whole seasons, and a show's next episodes; a show or season counted per episode; a Downloads page; Windows and Linux wired like Android (DECISIONS.md, 2026-10-18). Verified offscreen and in the engine on the desktop, and physically on the Fire TV as VERIFICATION.md records |
-| Serious playback parity | Partial | Television: an explanation where sidecar subtitles cannot be read (decided); held seek acceleration; chapters on Android where Media3 can supply them; media keys on desktop |
-| Jellyfin correctness and security | Partial | Removing a server signs its session out since 2026-10-19 (DECISIONS.md, "How a Jellyfin server is signed out of"; verified live, VERIFICATION.md). Left: the plain-HTTP policy on Android (RELEASE.md) |
-| Source onboarding and management | Done | WebDAV can be added on Android since 2026-10-19 (its own transport on OkHttp; DECISIONS.md, 2026-10-18, "Web shares on Android"), verified on the Fire TV and the phone emulator (VERIFICATION.md) |
-| Android phone and tablet | Done (emulator) | Physical validation in M3 |
-| Android TV / Google TV | Done (emulator) | Physical validation in M3 |
-| Fire TV / Fire OS | Partial (one physical device) | Smoke-tested on a Fire TV Stick 4K Plus (`AFTMA08C15`, Fire OS 8.1.8.5, API 30, 32-bit userland) on 2026-10-18 with a debug build: installation, launcher, remote navigation, the folder chooser, browsing, details, search, playback up to 4K60 HEVC Main10 on the hardware decoder, lifecycle, the media session, and the instrumented suite (VERIFICATION.md). Five Fire OS defects found and fixed (DECISIONS.md, 2026-10-18). Left: the Fire TV television (not reachable), a release build (M2), Jellyfin from the device (SMB was used for Smart Offline, 2026-10-18; WebDAV added, scanned, played, and removed on the device, 2026-10-19), a USB drive, HDR output, sleep and wake, Amazon's own test criteria. Fire OS has the TV provider, and Reflux writes no Watch Next programs to it; with Reflux in the background a remote's Play key is not obeyed (both DECISIONS.md, 2026-10-18). Fire OS 6 devices (`AFTMM`, API 25) are below `minSdk`; Vega OS devices (`AFTCR001`) do not run Android applications |
-| Windows and Linux | Partial | Capabilities observed since 2026-10-19 (the display the window is on, hardware decoding as the engine shows it). Left: media keys; scrollbars; HDR output |
-| Accessibility baseline | Done (closed 2026-11-01; its recorded limits stand) | Built 2026-10-31 (DECISIONS.md): the player and panels isolate what is behind them, every control has a label, role, and state, pages and panels are named, what happens is announced, reduced motion and text size follow the system on every platform, and touch targets are 48 dp. Walked with real TalkBack on the Pad 7, with reduced motion and 200% text, 2026-11-01. The Fire TV passed on hardware by remote, with its tree and timeline actions read through the accessibility API. Left, in VERIFICATION.md: a screen reader heard on a television, where TalkBack resumes after an overlay closes (the toolkit offers no way to move it), and a person's ear on it; a desktop screen reader depends on the toolkit (Narrator is not reached at all) |
-| About, legal, and attribution | Done 2026-10-19; two parts wait elsewhere | About Reflux, from the media sources page: version and build, Reflux's copyright (proprietary, all rights reserved, from `LICENSE`; DECISIONS.md, "Reflux is proprietary"), the metadata provider's credit (TMDB's logo and notice, from its adapter), what Reflux keeps and sends, and the third-party software with every license text, checked against each build by `check` (DECISIONS.md, 2026-10-19). Verified as VERIFICATION.md records. Waiting elsewhere: the privacy policy and support links (the website, W3) and libmpv's notice for a bundled build (M2). A diagnostics export is not in it: the log keeps file paths and titles (M2 row) |
-| Casting | Gate | Time-boxed feasibility before beta; V1.1 if it fails the gate (DECISIONS.md, 2026-10-17, "Casting is a V1 feasibility gate") |
+Complete (closed 2026-11-01; its recorded limits stand). Built 2026-10-31 (DECISIONS.md): the player and panels isolate what is behind them, every control has a label, role, and state, pages and panels are named, what happens is announced, reduced motion and text size follow the system on every platform, and touch targets are 48 dp. Walked with real TalkBack on the Pad 7, with reduced motion and 200% text, 2026-11-01. The Fire TV passed on hardware by remote, with its tree and timeline actions read through the accessibility API.
 
-First M1 slice, done 2026-10-17: "From the start" keeps the place (Reflux and Jellyfin), and films' versions can be pinned and unpinned on every form factor. Second, done 2026-10-18: Watch Next on Android TV / Google TV, and the Fire TV home-screen decision. Third, 2026-10-18: the Fire TV smoke test on physical hardware and its fixes. Fourth, 2026-10-18: Identify, and episodes without a show name grouped by folder. Fifth, 2026-10-18: no Watch Next programs on Fire OS, Play ignored out of sight, and an episode's versions (list and pin). Sixth, 2026-10-18: Smart Offline complete (episodes, seasons, the Downloads page, the desktop). Seventh, 2026-10-19: WebDAV on Android (phones, televisions, Fire TV). Eighth, 2026-10-19: removing a Jellyfin server signs its session out. Ninth, 2026-10-19: desktop capabilities observed, not declared. Tenth, 2026-10-19: About, legal, and attribution. Recommended order after it: accessibility, the casting spike, performance R&D.
+Recorded limits, in VERIFICATION.md: a screen reader heard on a television, where TalkBack resumes after an overlay closes (the toolkit offers no way to move it), and a person's ear on it; a desktop screen reader depends on the toolkit (Narrator is not reached at all).
 
-## M2P — Playback compatibility & direct play
+## M2P — Playback Compatibility & Direct Play
 
-Works before release engineering: what is signed and shipped should be the playback that M2P produces. Specification, evidence, compatibility matrix, and order of work: [PLAYBACK.md](PLAYBACK.md). It does not replace an engine, rewrite watch state or sources, or change Best Version's ranking without evidence, Smart Offline, versions, or tags.
+Complete. Named M2P to tell it from the earlier M2, which was release engineering and is now M6. Specification, evidence, compatibility matrix, and what it does and does not prove: [PLAYBACK.md](PLAYBACK.md), section 17. Physical Linux hardware validation was waived for M2P, and virtual Linux validation accepted (VERIFICATION.md, "M2P.4 physical Linux gate: waived"). Reopened only for a regression a later milestone finds.
+
+It contains: the capability model; `PlaybackAssessor`; `PlannedPlayback` and the deterministic planner; Best Version integration; source negotiation and Jellyfin's `PlaybackInfo`; Direct Play, remux, audio conversion, and video transcode; subtitle planning; playback evidence and `PlaybackComparison`; track directives; the one-time re-plan; Android Media3 and desktop mpv; the real-media compatibility matrix; generated compatibility fixtures; diagnostics (the player's Info list); chained-SeekHead handling; the Android PGS fix; and documented compatibility boundaries.
 
 | Item | State |
 | --- | --- |
@@ -126,14 +116,73 @@ Works before release engineering: what is signed and shipped should be the playb
 | The plan executed on every source and both engines, the selected track assessed | Done 2026-11-01 (PLAYBACK.md, section 8) |
 | Jellyfin negotiation through `PlaybackInfo` and a device profile, server behavior read from its session | Done 2026-11-01 (PLAYBACK.md, section 8) |
 | Diagnostics that explain a playback, planned against observed | Done 2026-11-02: `PlaybackReport`, the player's Info list and the diagnostics log |
-| Desktop audio outputs and passthrough; the Android decoder decision, with measurements | Decided 2026-11-02: output channels observed (section 6); passthrough deferred to M3; no new Android decoder (DECISIONS.md, "M2P's last decisions") |
+| Desktop audio outputs and passthrough; the Android decoder decision, with measurements | Decided 2026-11-02: output channels observed (section 6); passthrough deferred to M7, where real receivers are in scope; no new Android decoder (DECISIONS.md, "M2P's last decisions") |
 | Test corpus, and validation on Windows, Linux, the Phone 2a, the Pad 7, the Google TV emulator, and the Fire TV | Done 2026-11-02: the real library and generated fixtures on every device here (VERIFICATION.md). Linux on physical hardware waived; the Phone 2a did not run the fixtures (not attached) |
 | The real Iron Man file has a reproducible result | Done 2026-11-02: the server serves it again, and it played as planned on Windows and the Fire TV (VERIFICATION.md) |
-| M2P.5 — Compatibility expansion and real media matrix | Done 2026-11-02: the real library walked on Windows, the Fire TV, the Pad 7, the Phone 2a, and the Google TV emulator; chained SeekHeads; PGS beside a conversion on Android; fixtures for AV1, HEVC 4K HDR10 and HLG, TrueHD, VP9 (PLAYBACK.md, sections 15 to 17) |
+| Compatibility expansion and real media matrix | Done 2026-11-02: the real library walked on Windows, the Fire TV, the Pad 7, the Phone 2a, and the Google TV emulator; chained SeekHeads; PGS beside a conversion on Android; fixtures for AV1, HEVC 4K HDR10 and HLG, TrueHD, VP9 (PLAYBACK.md, sections 15 to 17) |
 
-**Exit criteria:** a documented shared capability model; explicit, testable planning; accurate capability information to Jellyfin; original media preferred; non-server sources on the same concepts without pretending to transcode; diagnostics that explain every conversion; evidence-based Android and desktop decoder behavior; the Iron Man file reproducible; representative combinations tested; relevant platforms validated; no unnecessary video transcoding, including because of audio or subtitles; documentation that separates supported, device-dependent, and unverified combinations.
+Its working slices (M2P.2 to M2P.5 in PLAYBACK.md and VERIFICATION.md) are implementation history, not roadmap milestones.
 
-## M2 — Release engineering
+## M3 — Navigation & Source Libraries
+
+**Next.** How the viewer moves through Reflux, and controls which media the library is made of. Scope, to be specified in its own document before implementation:
+
+- Global navigation, and navigation shaped for each platform (desktop, phone, tablet, television).
+- The unified Reflux library, and each source's own libraries.
+- Source management and navigation.
+- Source and library inclusion controls (below).
+- Show → Season → Episode navigation.
+- Back-stack behavior, and returning from the player to where the viewer was.
+- Downloads navigation.
+- Search integration.
+- Navigation that keeps the M1 accessibility baseline.
+
+### Sources: four separate questions
+
+Reflux has several kinds of source (local folders, Jellyfin, Plex, SMB, WebDAV, and adapters to come), and M3 keeps these apart:
+
+| Concept | Question |
+| --- | --- |
+| **Connection** | Can Reflux connect to the source (it is configured, and its credentials work)? |
+| **Availability** | Is the source reachable now? |
+| **Inclusion** | Does content from this source, or this library of it, take part in the unified Reflux library? |
+| **Source browsing** | Can the viewer open and browse this source or library on its own? |
+
+A source is never "disabled" by deleting its credentials or disconnecting it.
+
+### Source inclusion
+
+**Viewers can include or exclude a source in the unified Reflux library.**
+
+- **Included:** its content takes part in the unified Movies and Shows, the library's aggregations, and every unified browsing surface.
+- **Excluded:** the source stays configured, connected, and reachable under Sources, where its own library can still be opened and played; its content does not take part in the unified library.
+- For a source with several libraries: a source-level master toggle, and a toggle per library where practical. Source off excludes all of its libraries; a library off excludes only that library. The exact relationship (what a library toggle shows while its source is off, what happens to a library the source adds later) is to be defined in M3's specification before implementation.
+
+Exclusion is about aggregation only. It does not delete the source, remove or forget credentials, sign out, destroy cached metadata, delete or touch local files, disable playback, prevent browsing the source on its own, change watch state, or remove the source from source management.
+
+### Architecture
+
+No source gets a playback system of its own:
+
+```text
+Source adapter → source and library contents → unified Reflux media model → Best Version → playback planner → existing engines
+```
+
+Navigation shows source context without fragmenting the media model or playback.
+
+## M4 — Visual System 2.0
+
+Future. A higher-end visual system around M3's structure: adaptive, functional glass; richer large-screen layouts; spatial motion; capability tiers; large-screen presentation; restrained artwork and environment treatment; Media Atmosphere where appropriate. Its work is not pulled into M3.
+
+## M5 — Library Depth & Reflux Magic
+
+Future. A richer media and library experience: deeper metadata and artwork, episode artwork, more of Reflux's own intelligence above the deterministic engine, further library features, and what sets Reflux apart. Its features are not pulled forward because they are attractive.
+
+Carried here at the rebaseline: **serious playback parity**, Partial: on television an explanation where sidecar subtitles cannot be read (decided); held seek acceleration; chapters on Android where Media3 can supply them; media keys on desktop.
+
+## M6 — Release Engineering / Security / Legal
+
+Future. This is the work the 2026-10-17 roadmap called M2. Production release engineering, packaging and distribution, signing, security hardening, legal and EULA, licensing review, privacy and security review, store preparation, and production release infrastructure.
 
 | Item | State |
 | --- | --- |
@@ -148,60 +197,104 @@ Works before release engineering: what is signed and shipped should be the playb
 | Google Play readiness: listing, data safety form, content rating, target API, TV quality checklist, Watch Next certification for Google TV, closed-testing track | Open |
 | Fire OS / Amazon Appstore readiness: listing, Fire TV device targeting, Amazon's app review requirements, test on the declared devices | Open |
 | Desktop packaging: Windows installer (signed), Linux package(s) | Open |
-| libmpv distribution with provenance (LGPL build, license texts, source offer), and its line in `legal/components.txt` | Open |
+| libmpv distribution with provenance (LGPL build, license texts, source offer), and its line in `legal/components.txt` and the About page | Open |
 | Desktop metadata: version, icon, file associations if any, data directory | Open |
 | TMDB credential injected into release builds, never committed | Open |
+| The plain-HTTP policy on Android (RELEASE.md); carried from Jellyfin correctness and security | Open |
 | A diagnostics export for bug reports, with file paths and titles redacted, and the in-app feedback link (beta entry, RELEASE.md) | Open |
 | Release checklist (RELEASE.md) exercised end to end once before beta | Open |
 
-## M3 — Real-world validation
+## M7 — Compatibility / Performance / Release Proof
+
+Future. The final production matrix proven: broad compatibility, performance, stability, and production readiness. It is broader than M2P, which proved playback; M7 proves the whole product on what it ships to. This holds the 2026-10-17 roadmap's M3, "Real-world validation".
 
 | Item | State |
 | --- | --- |
 | TMDB against the live service, with attribution in place | Open |
-| A real Android phone and tablet | Open |
+| A real Android phone and tablet across the product (playback on the Phone 2a and Pad 7: M2P) | Partial |
 | A real Google TV / Android TV device | Open |
-| Real Fire TV hardware (the developer's Fire TV Stick 4K Plus and Fire TV television) | Partial: the stick smoke-tested with a debug build (2026-10-18); the television not yet reachable |
+| Real Fire TV hardware (the developer's Fire TV Stick 4K Plus and Fire TV television): the television, Jellyfin from the device, a USB drive, HDR output, sleep and wake, Amazon's own test criteria | Partial: the stick smoke-tested (2026-10-18) and its playback validated (M2P); the television not yet reachable |
+| Windows and Linux: media keys, scrollbars, HDR output | Partial |
 | Physical Xbox and PlayStation controllers on desktop, Android, and television | Open |
 | Desktop installation from the package on a clean Windows and a clean Linux machine | Open |
 | Network failure and recovery on real networks (Wi-Fi drop, server sleep, VPN) | Open |
 | A large-library performance baseline (scan, browse, search, start-up) recorded for regression | Open |
 | A reproducible stress harness: the 2026-10-17 fuzzing and race runs were not committed (only the regression tests for what they found are in the suite); decide whether to keep a seeded harness in the tree | Open |
 | A visual regression strategy for the offscreen renderings | Open |
-| Broader compatibility: other Jellyfin versions, NAS SMB servers, HDR/DV/passthrough on real hardware | Open |
+| Broader compatibility: other Jellyfin versions, NAS SMB servers, HDR/DV and passthrough on real hardware and receivers, physical Linux | Open |
 
-## M4 — Beta
+## M8 — Beta
 
-`0.9.0-beta.1`. Entry requires the beta checklist in RELEASE.md.
+Future. `0.9.0-beta.1`, then `beta.2`, `beta.3`, … Entry requires the beta checklist in RELEASE.md, and the casting feasibility gate decided (time-boxed; V1.1 if it fails; DECISIONS.md, 2026-10-17, "Casting is a V1 feasibility gate").
 
 - Google Play closed testing track; Amazon Appstore testing (Live App Testing) for Fire TV; desktop builds from the website.
 - About 15–20 testers, recruited through the website's beta signup, covering phones, tablets, Google TV, Fire TV, Windows, and Linux, local folders and servers.
 - The beta website (W3) with the demo video (W2), signup, supported platforms, and the changelog.
 - A feedback path (in-app link to a form or email, a diagnostics export) and a public changelog per beta.
+- Iteration: bug fixes, compatibility, UX, performance, accessibility. New features enter only by an explicit decision recorded in DECISIONS.md; otherwise they wait for V1.x. **Exit:** no open blocker or critical bug, the V1 acceptance criteria hold, and the last beta ran at least a week without a new critical report.
 
-## M5 — Beta iteration
+## M9 — Release Candidate
 
-`0.9.0-beta.2`, `beta.3`, … Bug fixes, compatibility, UX, performance, accessibility. New features enter only by an explicit decision recorded in DECISIONS.md; otherwise they wait for V1.x. Exit: no open blocker or critical bug, the V1 acceptance criteria hold, and the last beta ran at least a week without a new critical report.
+Future. `0.9.0-rc.1`, then `rc.N` only for fixes. Feature freeze, final validation on every target, store listings and submissions prepared, legal pages final.
 
-## M6 — Release candidate
+## M10 — 1.0
 
-`0.9.0-rc.1`, then `rc.N` only for fixes. Feature freeze, final validation on every target, store listings and submissions prepared, legal pages final.
-
-## M7 — Public 1.0
-
-`1.0.0`, built from the final release candidate's commit with only the version changed ([VERSIONING.md](VERSIONING.md)). Google Play (phones, tablets, Google TV), Amazon Appstore (Fire TV on Fire OS), Windows, Linux; reflux.rsxdevelops.dev in its launch state (W4).
+Future. `1.0.0`, built from the final release candidate's commit with only the version changed ([VERSIONING.md](VERSIONING.md)). Google Play (phones, tablets, Google TV), Amazon Appstore (Fire TV on Fire OS), Windows, Linux; reflux.rsxdevelops.dev in its launch state (W4).
 
 ## Website track (parallel)
 
 | Stage | Outcome | Needed by |
 | --- | --- | --- |
 | W0 | Design system and site foundation | Before beta preparation |
-| W1 | Early public landing page | During M1–M2 |
-| W2 | Product demo video | M4 entry |
-| W3 | Beta signup and launch content | M4 entry |
-| W4 | Final 1.0 product site | M7 |
+| W1 | Early public landing page | During M3–M6 |
+| W2 | Product demo video | M8 entry |
+| W3 | Beta signup and launch content | M8 entry |
+| W4 | Final 1.0 product site | M10 |
 
 Requirements and the visual direction are in [LAUNCH.md](LAUNCH.md).
+
+## Earlier numbering
+
+What each milestone of the 2026-10-17 roadmap became. Older documents and VERIFICATION.md sections keep the labels they were written with.
+
+| 2026-10-17 | Now |
+| --- | --- |
+| M0 — Rebaseline & governance | M0 — Governance & Rebaseline |
+| M1 — Product completeness | Its accessibility baseline is M1. Its other items are recorded below; each open one moved to a milestone |
+| M2P — Playback compatibility & direct play | M2P — Playback Compatibility & Direct Play (unchanged) |
+| M2 — Release engineering | M6 — Release Engineering / Security / Legal |
+| M3 — Real-world validation | M7 — Compatibility / Performance / Release Proof |
+| M4 — Beta, M5 — Beta iteration | M8 — Beta |
+| M6 — Release candidate | M9 — Release Candidate |
+| M7 — Public 1.0 | M10 — 1.0 |
+
+### The product-completeness record (the 2026-10-17 M1)
+
+What V1 contains, as built from 2026-10-17 to 2026-11-01. Each row is required for V1 unless marked as a gate.
+
+| Item | State | What is left, and where it is now |
+| --- | --- | --- |
+| Automatic organization and identification | Done | — (episodes without a show name are grouped per folder and offered to Identify, 2026-10-18) |
+| Identify / fix match | Done (automated) | Built on every form factor (the shared experience layer): search, results told apart, choose, undo, reached from every details page and offered plainly where Reflux is unsure (DECISIONS.md, 2026-10-18). Verified with fixtures on the desktop renderer, including a remote-only television path. Left: live TMDB and a device run with the credential (M7). Episodes' own numbers cannot be corrected from it (their show can) |
+| Continue Watching and Next Up | Done | — |
+| **Watch Next** (the platform's own "continue" row) | Done (emulator) | Android TV / Google TV: programs derived from Continue Watching and Next Up, added, updated, and removed with watch state, opening Reflux on the work (DECISIONS.md, 2026-10-18). What Google TV's launcher draws is unseen: it shows only certified integrations, so Google's Watch Next certification belongs to the Play submission (M6), and a physical Google TV check to M7. Fire TV: no home-screen row, because Amazon's Watch Activity needs a content catalog Reflux does not have, and no programs written to Fire OS's TV provider (DECISIONS.md, 2026-10-18) |
+| Cross-source watch state | Done | — ("From the start" keeps the place, 2026-10-17) |
+| Best Version | Done | Desktop capabilities are observed since 2026-10-19 (DECISIONS.md, "How the desktop observes what it can show and decode"); playback since M2P. HDR output on the desktop is not claimed: the engine does not output HDR yet (M7) |
+| Visible version selection | Done | Films and episodes list every version and play any of them; an episode's are on its own page, offered from its row where it has more than one (DECISIONS.md, 2026-10-18) |
+| Version pinning | Done | Films (2026-10-17) and episodes (2026-10-18): "Always play this" and "Let Reflux choose"; a pin set aside is said and kept; an episode's pin follows it through Identify |
+| Smart Offline, user-facing | Done | Films, single episodes, whole seasons, and a show's next episodes; a show or season counted per episode; a Downloads page; Windows and Linux wired like Android (DECISIONS.md, 2026-10-18). Downloads navigation is M3 |
+| Serious playback parity | Partial | Moved to M5 |
+| Jellyfin correctness and security | Partial | Removing a server signs its session out since 2026-10-19 (DECISIONS.md, "How a Jellyfin server is signed out of"; verified live). The plain-HTTP policy on Android moved to M6 |
+| Source onboarding and management | Done | WebDAV can be added on Android since 2026-10-19 (DECISIONS.md, 2026-10-18, "Web shares on Android"). Source navigation and inclusion are M3 |
+| Android phone and tablet | Done (emulator); playback physical (M2P) | Physical validation across the product: M7 |
+| Android TV / Google TV | Done (emulator) | Physical validation: M7 |
+| Fire TV / Fire OS | Partial (one physical device) | Smoke-tested on a Fire TV Stick 4K Plus (`AFTMA08C15`, Fire OS 8.1.8.5, API 30, 32-bit userland) on 2026-10-18 with a debug build; five Fire OS defects found and fixed (DECISIONS.md, 2026-10-18); playback validated in M2P. The rest moved to M7 (hardware) and M6 (a release build, Amazon's criteria). Fire OS has the TV provider, and Reflux writes no Watch Next programs to it; with Reflux in the background a remote's Play key is not obeyed (both DECISIONS.md, 2026-10-18). Fire OS 6 devices (`AFTMM`, API 25) are below `minSdk`; Vega OS devices (`AFTCR001`) do not run Android applications |
+| Windows and Linux | Partial | Capabilities observed since 2026-10-19. Media keys, scrollbars, and HDR output moved to M7 |
+| Accessibility baseline | Done | Now M1 |
+| About, legal, and attribution | Done 2026-10-19; two parts wait elsewhere | About Reflux: version and build, Reflux's copyright (proprietary, all rights reserved; DECISIONS.md, "Reflux is proprietary"), the metadata provider's credit, what Reflux keeps and sends, and every third-party license text, checked against each build by `check` (DECISIONS.md, 2026-10-19). Waiting: the privacy policy and support links (W3) and libmpv's notice for a bundled build (M6) |
+| Casting | Gate | Decided before M8 (above) |
+
+The 2026-10-17 M1 was built in slices, recorded in VERIFICATION.md: "From the start" and film version pins (2026-10-17); Watch Next and the Fire TV home-screen decision; the Fire TV smoke test; Identify and folder grouping; Fire OS Watch Next and an episode's versions; Smart Offline complete (all 2026-10-18); WebDAV on Android; Jellyfin sign-out on removal; desktop capabilities observed; About, legal, and attribution (all 2026-10-19); then accessibility (2026-10-31 to 11-01).
 
 ## V1 acceptance criteria
 
@@ -232,7 +325,7 @@ Candidates after 1.0, each needing its own decision to be promoted:
 - Background audio playback on Android.
 - Sidecar artwork and subtitles on Android 13+ televisions without broad storage access (embedded cover art, video frames).
 - Multi-part files (CD1/CD2) as one version; disc structures (BDMV/VIDEO_TS) playable.
-- Plex, Emby, and DLNA sources.
+- Emby and DLNA sources. (Plex is among the source kinds M3's model must allow for; its adapter is not yet scheduled.)
 - Linux credential storage without a Secret Service.
 
 ## Future

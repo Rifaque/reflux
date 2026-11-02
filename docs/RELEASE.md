@@ -1,10 +1,10 @@
 # Reflux Release Readiness
 
-What stands between the source tree and builds that can be handed to testers and the public, and the checklists each stage must pass. The milestones themselves are in [ROADMAP.md](ROADMAP.md) (M2 release engineering, M3 validation, M4–M7 beta to 1.0); version rules are in [VERSIONING.md](VERSIONING.md); the website, beta program, and store tracks are in [LAUNCH.md](LAUNCH.md).
+What stands between the source tree and builds that can be handed to testers and the public, and the checklists each stage must pass. The milestones themselves are in [ROADMAP.md](ROADMAP.md) (M6 release engineering, security, and legal; M7 compatibility, performance, and release proof; M8–M10 beta to 1.0); version rules are in [VERSIONING.md](VERSIONING.md); the website, beta program, and store tracks are in [LAUNCH.md](LAUNCH.md).
 
 ## Beta entry checklist (`0.9.0-beta.1`)
 
-- [ ] Every M1 item in ROADMAP.md is Done, or decided out of V1 in DECISIONS.md.
+- [ ] Every V1 item in ROADMAP.md (the product-completeness record and M3 to M7) is Done, or decided out of V1 in DECISIONS.md.
 - [x] Reflux's own terms are in the repository: `LICENSE`, proprietary, all rights reserved (DECISIONS.md, 2026-10-19); third-party notices are done (`legal/`, checked by the build, below).
 - [ ] The legal review below is done, or each item decided as not needed for the beta.
 - [ ] About page with version and build, Reflux's copyright, third-party licenses, TMDB attribution, privacy and support links (done 2026-10-19 apart from the privacy policy and support links, which wait for the website to have them).
