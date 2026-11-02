@@ -54,6 +54,18 @@ object PlaybackSurvey {
         cases.filter { it.subtitleFormat == null } +
             cases.filter { it.subtitleFormat != null }.distinctBy { Triple(it.subtitleFormat, it.plan.delivery, it.plan.subtitles) }
 
+    /**
+     * One version for each video size, frame rate, profile, and level the library has. A plan only tells these apart
+     * when a decoder declares a limit, and an engine may not keep to what it declares.
+     */
+    fun edges(versions: List<MediaVersion>): List<Pair<String, MediaVersion>> =
+        versions.sortedBy { it.id.value }.mapNotNull { version ->
+            version.stream.video?.let { video ->
+                val height = video.height?.let { if (it > 730) "1080" else if (it > 500) "720" else "SD" } ?: "?"
+                "${video.codec}/${video.bitDepth ?: "?"} ${video.profile ?: "?"} L${video.level ?: "?"} ${height}p${video.frameRate?.let { kotlin.math.round(it).toInt() } ?: "?"}" to version
+            }
+        }.distinctBy { it.first }.sortedBy { it.first }
+
     private fun describe(stream: StreamInfo, audioIndex: Int?, format: SubtitleFormat?): String = buildString {
         append(stream.container)
         append(' ').append(stream.video?.let { "${it.codec}/${it.bitDepth ?: "?"} ${it.dynamicRange}" } ?: "no video")

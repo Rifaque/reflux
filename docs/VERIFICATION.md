@@ -835,3 +835,25 @@ An attempt at resume on the emulator and the Phone was thrown away: seek walks h
 The language of this run was not read: the plan and the file allow only what the same tests show elsewhere, and no comparison with a source exists here. A first press during a cold start (position 3.8 s at 14 s) logged no refusal and restarted nothing. What it did is not established.
 
 **Evidence after a re-plan: a true `UNKNOWN`.** Polling the server during a re-plan listed `TranscodingInfo` for about 6 s, and the stream played on after it had gone. Jellyfin's own log says why: a remux copies, and the last one wrote the remaining 33:50 in 3.46 s, at 587 times speed, then exited. Reflux asks 5 s into playing, so the job is usually over. `TranscodingInfo` exists only while a job runs, and `PlayMethod` is an echo, so nothing left can show a remux. Shown as `unconfirmed`, never as a mismatch. It was not changed. Server evidence is `FFmpeg.Remux`, `-map 0:0 -map 0:2`, `-codec:v:0 copy`, `-codec:a:0 copy`.
+
+## M2P.5 real media matrix on Android (2026-11-02)
+
+`MediaMatrixOnDeviceTest` as a side-by-side `dev.reflux.m2p`, a private library, one device at a time, against Jellyfin 12.2.0 on RS-X1 as `reflux-test`. The walk now also plays one version per video size, frame rate, profile, and level (`PlaybackSurvey.edges`), a viewer's own second language, and records Best Version for each work with two versions. Subtitles are judged by the cues Media3 hands over: there is no surface, so no picture.
+
+| | Google TV emulator | Xiaomi Pad 7 | Nothing Phone 2a |
+| --- | --- | --- | --- |
+| Classes planned | 51 | 48 | 51 |
+| Walked, as planned | 50 of 50 | 46 of 46 | 38 of 40, and 9 not reached |
+| Versions by first plan | Direct Play 809, audio conversion 52, video transcode 142 | Direct Play 1,000, audio conversion 2, video transcode 1 | Direct Play 909, audio conversion 94 |
+| Conversions walked | AC-3, E-AC-3, DTS: audio only. HEVC Main 10 and H.264 High 10: video, audio kept where it decodes | DTS: audio only. High 10: video, AC-3 kept | AC-3, E-AC-3, DTS: audio only. High 10: audio only, decoded in hardware |
+| Subtitles, cues delivered | SRT, ASS text; PGS and VobSub bitmaps; extracted SRT and ASS over a conversion | The same; PGS (Doctor Strange, Hindi forced first): none in 45 s, expected | The same |
+| Burn-in | PGS or VobSub chosen where audio converts | VobSub chosen where DTS converts | PGS or VobSub chosen where audio converts |
+| Viewer's second language | Spanish, converted, kept | Spanish, in the file, kept | Not reached |
+| Best Version, works with two versions | H.264 over HEVC 10-bit it cannot decode | HEVC 10-bit with E-AC-3 | Not reached |
+| Failures | None | None | 3, all network: `ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT` and server unreachable mid-run, which ended the run 9 cases early. Ping was clean afterwards. None on the other devices |
+
+Not one walked playback was a mismatch, a silent track, an unnecessary conversion, a remux, or a change of language. The chained Moon Knight file walked as `engine-unseekable`, as designed.
+
+**Found:** on Android, external PGS is declared unsupported, because the attachment path types a file by its extension and has no bitmap type. So a PGS track chosen on a film whose audio this device cannot decode burns in, and the video is transcoded: 30 to 48 versions on the Phone and the emulator, 0 on the Pad. That is the one subtitle-forced video conversion in the matrix. Real files exist to test a change. Not changed here.
+
+**Not verified:** any subtitle picture. A real-application pass on the Pad captured only black frames, with the tablet asleep and its session paused, and is not counted. The Phone's last 9 edge cases, its second language, and its Best Version. Whether the Phone's network failures were the phone's or the network's.

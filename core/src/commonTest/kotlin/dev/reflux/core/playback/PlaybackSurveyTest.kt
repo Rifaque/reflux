@@ -76,6 +76,19 @@ class PlaybackSurveyTest {
     }
 
     @Test
+    fun theEdgesAreOneVersionForEachSizeRateAndLevel() {
+        val films = listOf(
+            version("a"), version("b"),
+            version("c", h264.copy(level = 50)),
+            version("d", h264.copy(height = 720)),
+            version("e", h264.copy(frameRate = 25.0)),
+        )
+        val edges = PlaybackSurvey.edges(films)
+        assertEquals(4, edges.size, "${edges.map { it.first }}")
+        assertEquals("a", edges.first { it.second.id.value in setOf("a", "b") }.second.id.value)
+    }
+
+    @Test
     fun theOrderIsTheSameOnEveryRun() {
         val films = (1..5).map { version("f$it", audio = if (it % 2 == 0) AudioCodec.AC3 else AudioCodec.AAC) }
         val once = PlaybackSurvey.of(films, viewer, server, client)
