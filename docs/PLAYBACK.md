@@ -659,6 +659,8 @@ Media3 is the cause and could not be changed from here. What was Reflux's was se
 
 **Left:** the evidence Reflux reads after this re-plan is a true `UNKNOWN`, shown as unconfirmed and not a mismatch: a remux that only copies can finish in seconds, and `TranscodingInfo` goes with the job (VERIFICATION.md, "Chained SeekHeads across devices"). Jellyfin's own logs show the remux with video and audio copied. A remux that a server refuses restarts the film, with a word: seen in a test, not live. A subtitle chosen in the player does not carry over this re-plan, the same as the other re-plans. On a source with no remux, these files cannot be moved in on Media3: a known limit, and stated.
 
+**Android matrix (VERIFICATION.md, "M2P.5 real media matrix on Android").** The Google TV emulator, the Pad 7, and the Phone 2a walked as planned, case by case. VobSub in the file delivered bitmaps on all three, so its `UNKNOWN` renderer on Android now has device evidence; it is unchanged until a picture is seen. External PGS on Android is unsupported by Reflux's own attachment path, so PGS chosen beside converted audio is burned in.
+
 ### Next
 
 1. Run the walks on the Phone 2a, the Pad 7, and the Google TV emulator (none walked yet).
