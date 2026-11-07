@@ -2,6 +2,8 @@ package dev.reflux.desktop
 
 import com.sun.jna.Library
 import com.sun.jna.Native
+import com.sun.jna.Pointer
+import com.sun.jna.Structure
 import com.sun.jna.ptr.IntByReference
 import dev.reflux.ui.state.AccessibilityPreferences
 import java.util.concurrent.TimeUnit
@@ -26,10 +28,16 @@ internal object DesktopAccessibility {
             val value = IntByReference()
             return if (user32.SystemParametersInfoW(action, 0, value, 0)) value.value != 0 else otherwise
         }
+        val contrast = HighContrast().also { it.cbSize = it.size() }
         return AccessibilityPreferences(
             screenReader = flag(SPI_GETSCREENREADER, otherwise = false),
             reduceMotion = !flag(SPI_GETCLIENTAREAANIMATION, otherwise = true),
             textScale = run("reg", "query", "HKCU\\SOFTWARE\\Microsoft\\Accessibility", "/v", "TextScaleFactor")?.let(::windowsTextScale) ?: 1f,
+            // Settings, Personalization, Colors, "Transparency effects".
+            reduceTransparency = run("reg", "query", "HKCU\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize", "/v", "EnableTransparency")
+                ?.let(::windowsDword) == 0,
+            // A contrast theme (Settings, Accessibility, Contrast themes).
+            highContrast = user32.SystemParametersInfoW(SPI_GETHIGHCONTRAST, contrast.size(), contrast, 0) && (contrast.dwFlags and HCF_HIGHCONTRASTON) != 0,
         )
     }
 
@@ -37,7 +45,12 @@ internal object DesktopAccessibility {
         screenReader = gsetting("org.gnome.desktop.a11y.applications", "screen-reader-enabled") == "true",
         reduceMotion = gsetting("org.gnome.desktop.interface", "enable-animations") == "false",
         textScale = gsetting("org.gnome.desktop.interface", "text-scaling-factor")?.let(::linuxTextScale) ?: 1f,
+        // GNOME has high contrast and no reduce-transparency setting.
+        highContrast = gsetting("org.gnome.desktop.a11y.interface", "high-contrast") == "true",
     )
+
+    /** "    EnableTransparency    REG_DWORD    0x0" to 0. Null when it is not that. */
+    fun windowsDword(output: String): Int? = Regex("""REG_DWORD\s+0x([0-9a-fA-F]+)""").find(output)?.groupValues?.get(1)?.toIntOrNull(16)
 
     /** "    TextScaleFactor    REG_DWORD    0x96" (a percentage, 100 to 225) to 1.5. Null when it is not that. */
     fun windowsTextScale(output: String): Float? =
@@ -61,9 +74,20 @@ internal object DesktopAccessibility {
     @Suppress("FunctionName")
     private interface User32 : Library {
         fun SystemParametersInfoW(action: Int, param: Int, value: IntByReference, winIni: Int): Boolean
+        fun SystemParametersInfoW(action: Int, param: Int, value: HighContrast, winIni: Int): Boolean
+    }
+
+    /** Windows' HIGHCONTRASTW. */
+    @Structure.FieldOrder("cbSize", "dwFlags", "lpszDefaultScheme")
+    class HighContrast : Structure() {
+        @JvmField var cbSize: Int = 0
+        @JvmField var dwFlags: Int = 0
+        @JvmField var lpszDefaultScheme: Pointer? = null
     }
 
     private const val COMMAND_PATIENCE_MS = 2_000L
     private const val SPI_GETSCREENREADER = 0x0046
     private const val SPI_GETCLIENTAREAANIMATION = 0x1042
+    private const val SPI_GETHIGHCONTRAST = 0x0042
+    private const val HCF_HIGHCONTRASTON = 0x1
 }

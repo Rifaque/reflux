@@ -91,27 +91,27 @@ internal fun OfflinePanel(app: AppState) {
             Text(
                 if (reviewing != null) Problems.OFFLINE_PREPARING else "Reflux keeps a copy on this device, in the version that plays best here. Where you are in it carries over, both ways.",
                 style = LocalTypography.current.caption,
-                color = RefluxColors.textSecondary,
+                color = RefluxColors.contentSecondary,
             )
         }
         if (model == null) return@Column
         Column(Modifier.heightIn(max = 300.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             if (model.proposal != null) {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    if (reviewing == null) Text("Ready to keep", style = LocalTypography.current.captionStrong, color = RefluxColors.textSecondary)
+                    if (reviewing == null) Text("Ready to keep", style = LocalTypography.current.captionStrong, color = RefluxColors.contentSecondary)
                     model.proposed.forEach { Line(it) }
-                    model.room?.let { Text(it, style = LocalTypography.current.caption, color = RefluxColors.textSecondary) }
+                    model.room?.let { Text(it, style = LocalTypography.current.caption, color = RefluxColors.contentSecondary) }
                 }
             }
-            model.leftOut.forEach { Text(it, style = LocalTypography.current.caption, color = if (reviewing != null) RefluxColors.textSecondary else RefluxColors.textTertiary) }
+            model.leftOut.forEach { Text(it, style = LocalTypography.current.caption, color = if (reviewing != null) RefluxColors.contentSecondary else RefluxColors.contentTertiary) }
             if (model.downloads.isNotEmpty()) {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Downloads", style = LocalTypography.current.captionStrong, color = RefluxColors.textSecondary)
+                    Text("Downloads", style = LocalTypography.current.captionStrong, color = RefluxColors.contentSecondary)
                     model.downloads.forEach { line ->
                         if (removing == line.id) {
                             Column(Modifier.pane("Remove ${line.title} from this device?"), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                                 Text("Remove ${line.title} from this device?", style = LocalTypography.current.bodyStrong)
-                                Text("Only the copy goes. It stays in your library, with what you have watched.", style = LocalTypography.current.caption, color = RefluxColors.textSecondary)
+                                Text("Only the copy goes. It stays in your library, with what you have watched.", style = LocalTypography.current.caption, color = RefluxColors.contentSecondary)
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                     Button("Remove", {
                                         removing = null
@@ -124,16 +124,16 @@ internal fun OfflinePanel(app: AppState) {
                             Line(line) {
                                 when (line.state) {
                                     DownloadState.QUEUED, DownloadState.PREPARING, DownloadState.DOWNLOADING ->
-                                        IconButton(Icon.PAUSE, "Pause the download of ${line.title}", { app.pauseDownload(line.id) }, size = 32.dp, tint = RefluxColors.textSecondary)
+                                        IconButton(Icon.PAUSE, "Pause the download of ${line.title}", { app.pauseDownload(line.id) }, size = 32.dp, tint = RefluxColors.contentSecondary)
                                     DownloadState.PAUSED, DownloadState.FAILED, DownloadState.UNAVAILABLE ->
-                                        IconButton(Icon.REFRESH, "Try the download of ${line.title} again", { app.resumeDownload(line.id) }, size = 32.dp, tint = RefluxColors.textSecondary)
+                                        IconButton(Icon.REFRESH, "Try the download of ${line.title} again", { app.resumeDownload(line.id) }, size = 32.dp, tint = RefluxColors.contentSecondary)
                                     else -> Unit
                                 }
                                 // A copy that is not finished goes at once; one that is asks first.
                                 if (line.state == DownloadState.COMPLETED || line.state == DownloadState.UNAVAILABLE) {
-                                    IconButton(Icon.CLOSE, "Remove ${line.title} from this device", { removing = line.id }, size = 32.dp, tint = RefluxColors.textSecondary)
+                                    IconButton(Icon.CLOSE, "Remove ${line.title} from this device", { removing = line.id }, size = 32.dp, tint = RefluxColors.contentSecondary)
                                 } else {
-                                    IconButton(Icon.CLOSE, "Cancel the download of ${line.title}", { app.removeDownload(line.id) }, size = 32.dp, tint = RefluxColors.textSecondary)
+                                    IconButton(Icon.CLOSE, "Cancel the download of ${line.title}", { app.removeDownload(line.id) }, size = 32.dp, tint = RefluxColors.contentSecondary)
                                 }
                             }
                         }
@@ -144,7 +144,7 @@ internal fun OfflinePanel(app: AppState) {
                 Text(
                     "Nothing you are part-way through needs keeping right now. Use Download on a movie, an episode, or a season to keep it for later.",
                     style = LocalTypography.current.caption,
-                    color = RefluxColors.textSecondary,
+                    color = RefluxColors.contentSecondary,
                 )
             }
             // A season or a show kept episode by episode goes the same way, once, rather than one copy at a time.
@@ -153,7 +153,7 @@ internal fun OfflinePanel(app: AppState) {
                 if (removingAll) {
                     Column(Modifier.pane("Remove these ${kept.size} episodes from this device?"), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text("Remove these ${kept.size} episodes from this device?", style = LocalTypography.current.bodyStrong)
-                        Text("Only the copies go. They stay in your library, with what you have watched.", style = LocalTypography.current.caption, color = RefluxColors.textSecondary)
+                        Text("Only the copies go. They stay in your library, with what you have watched.", style = LocalTypography.current.caption, color = RefluxColors.contentSecondary)
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Button("Remove all", {
                                 removingAll = false
@@ -193,9 +193,9 @@ private fun Line(line: OfflineLine, actions: @Composable () -> Unit = {}) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(line.title, style = LocalTypography.current.bodyStrong, maxLines = 1)
-            line.caption?.let { Text(it, style = LocalTypography.current.caption, color = RefluxColors.textTertiary, maxLines = 1) }
-            Text(line.detail, style = LocalTypography.current.caption, color = if (line.state == DownloadState.FAILED) RefluxColors.unavailable else RefluxColors.textSecondary, maxLines = 1)
-            line.note?.let { Text(it, style = LocalTypography.current.caption, color = RefluxColors.textSecondary, maxLines = 2) }
+            line.caption?.let { Text(it, style = LocalTypography.current.caption, color = RefluxColors.contentTertiary, maxLines = 1) }
+            Text(line.detail, style = LocalTypography.current.caption, color = if (line.state == DownloadState.FAILED) RefluxColors.unavailable else RefluxColors.contentSecondary, maxLines = 1)
+            line.note?.let { Text(it, style = LocalTypography.current.caption, color = RefluxColors.contentSecondary, maxLines = 2) }
             line.progress?.let { ProgressBar(it, Modifier.padding(top = 3.dp)) }
         }
         actions()

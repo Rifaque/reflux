@@ -20,63 +20,139 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.unit.dp
 import dev.reflux.design.Argb
+import dev.reflux.design.ColorRoles
+import dev.reflux.design.FormFactor
+import dev.reflux.design.MaterialTier
+import dev.reflux.design.Motion
+import dev.reflux.design.Radius
+import dev.reflux.design.StateLayers
+import dev.reflux.design.TypeScale
+import dev.reflux.design.TypeSpec
 import dev.reflux.design.LayoutProfile
 import dev.reflux.design.MotionSpec
-import dev.reflux.design.Palette
 
 fun Argb.toColor(): Color = Color(value.toInt())
 
-/** The design tokens of `design` as Compose colors. */
-object RefluxColors {
-    val background = Palette.background.toColor()
-    val surface = Palette.surface.toColor()
-    val surfaceRaised = Palette.surfaceRaised.toColor()
-    val textPrimary = Palette.textPrimary.toColor()
-    val textSecondary = Palette.textSecondary.toColor()
-    val textTertiary = Palette.textTertiary.toColor()
-    val primaryAction = Palette.primaryAction.toColor()
-    val onPrimaryAction = Palette.onPrimaryAction.toColor()
-    val focusRing = Palette.focusRing.toColor()
-    val progress = Palette.progress.toColor()
-    val hairline = Palette.hairline.toColor()
-    val unavailable = Palette.unavailable.toColor()
-    val error = Palette.error.toColor()
+/**
+ * The appearance in force: the color roles and the material tier. Held here rather than only in composition locals
+ * because drawing code (scrims, rings) is not composable and cannot read one; [dev.reflux.ui.RefluxTheme] keeps it
+ * in step with the system's settings. There is one appearance, [ColorRoles.Reflux]; high contrast is that same
+ * appearance answering an accessibility setting (DECISIONS.md, 2026-11-07, "One visual identity; themes are V2").
+ */
+internal object AppearancePolicy {
+    var roles by mutableStateOf(ColorRoles.Reflux)
 }
 
 /**
- * The type scale. Sizes are multiplied by [LayoutProfile.textScale] (10-foot UI on TVs); [displaySize] lets a
- * phone set its featured titles smaller than a wide window does.
+ * The semantic color roles (`design`'s [ColorRoles]) as Compose colors. Components name a role, never a value.
+ * Each read follows the appearance in force, so a change of it repaints what reads it.
+ */
+object RefluxColors {
+    private val roles get() = AppearancePolicy.roles
+    val background get() = roles.background.toColor()
+    val backgroundElevated get() = roles.backgroundElevated.toColor()
+    val surface get() = roles.surface.toColor()
+    val surfaceElevated get() = roles.surfaceElevated.toColor()
+    val contentPrimary get() = roles.contentPrimary.toColor()
+    val contentSecondary get() = roles.contentSecondary.toColor()
+    val contentTertiary get() = roles.contentTertiary.toColor()
+    val contentDisabled get() = roles.contentDisabled.toColor()
+    val divider get() = roles.divider.toColor()
+    val focused get() = roles.focused.toColor()
+    val primaryAction get() = roles.primaryAction.toColor()
+    val onPrimaryAction get() = roles.onPrimaryAction.toColor()
+    val progress get() = roles.progress.toColor()
+    val unavailable get() = roles.unavailable.toColor()
+    val error get() = roles.error.toColor()
+    val success get() = roles.success.toColor()
+    val warning get() = roles.warning.toColor()
+    val scrim get() = roles.scrim.toColor()
+}
+
+/**
+ * Interaction state layers ([StateLayers]): the light a hovered, pressed, selected, or switched-on surface is lit
+ * by. Stronger at high contrast. Every component lights its states from here, so they look alike everywhere.
+ */
+object States {
+    /** The state layer at [alpha] ([StateLayers]' values, or a sum of them). */
+    fun layer(alpha: Float): Color {
+        val roles = AppearancePolicy.roles
+        return roles.stateLayer.toColor().copy(alpha = (alpha * roles.stateStrength).coerceIn(0f, 1f))
+    }
+
+    val rest get() = layer(StateLayers.REST)
+    val hover get() = layer(StateLayers.HOVER)
+    val pressed get() = layer(StateLayers.PRESSED)
+    val selected get() = layer(StateLayers.SELECTED)
+    val on get() = layer(StateLayers.ON)
+    val disabled get() = layer(StateLayers.DISABLED)
+}
+
+/** The radius family (`design`'s [Radius]) as shapes. A component takes one of these or a pill. */
+object Shapes {
+    val small = RoundedCornerShape(Radius.SMALL.dp)
+    val medium = RoundedCornerShape(Radius.MEDIUM.dp)
+    val large = RoundedCornerShape(Radius.LARGE.dp)
+    val xlarge = RoundedCornerShape(Radius.XLARGE.dp)
+}
+
+/**
+ * The type roles (`design`'s [TypeScale]). Sizes are multiplied by [LayoutProfile.textScale] (a step up on a
+ * television); only the featured title changes with the window ([TypeScale.display]).
  *
  * Type carries the hierarchy: a title is large and tight, what describes it is a step down in size, weight,
  * and tone, so it supports the title rather than competing with it.
  */
 @Immutable
-class Typography(private val scale: Float, displaySize: Float = 52f) {
-    private fun style(size: Float, weight: FontWeight, lineHeight: Float, tracking: Float = 0f) = TextStyle(
-        fontSize = (size * scale).sp,
-        fontWeight = weight,
-        lineHeight = (size * lineHeight * scale).sp,
-        letterSpacing = tracking.em,
+class Typography(private val scale: Float, formFactor: FormFactor = FormFactor.DESKTOP) {
+    private fun style(spec: TypeSpec) = TextStyle(
+        fontSize = (spec.size * scale).sp,
+        fontWeight = FontWeight(spec.weight),
+        lineHeight = (spec.size * spec.lineHeight * scale).sp,
+        letterSpacing = spec.tracking.em,
     )
 
-    /** Featured titles on Home and details pages. */
-    val display = style(displaySize, FontWeight.Bold, 1.04f, -0.028f)
-    val headline = style(30f, FontWeight.SemiBold, 1.12f, -0.02f)
-    val title = style(20f, FontWeight.SemiBold, 1.25f, -0.01f)
-    val body = style(15f, FontWeight.Normal, 1.55f)
-    val bodyStrong = style(15f, FontWeight.SemiBold, 1.4f)
+    /** Featured titles on Home and details pages: the hero title. */
+    val display = style(TypeScale.display(formFactor))
+
+    /** A page's own title. */
+    val headline = style(TypeScale.pageTitle)
+
+    /** A section of a page. */
+    val title = style(TypeScale.sectionTitle)
+    val body = style(TypeScale.body)
+    val bodyStrong = style(TypeScale.bodyStrong)
 
     /** What describes a title (year, runtime, rating, how much is left): quieter than the title, not tiny. */
-    val metadata = style(14f, FontWeight.Medium, 1.35f, 0.01f)
-    val caption = style(13f, FontWeight.Normal, 1.35f)
-    val captionStrong = style(13f, FontWeight.SemiBold, 1.35f)
+    val metadata = style(TypeScale.metadata)
+    val caption = style(TypeScale.caption)
+
+    /** A card's title under its artwork. */
+    val captionStrong = style(TypeScale.mediaTitle)
 
     /** Small labels: badges, button prompts, the titles of menus and notices. Sentence case, lightly tracked. */
-    val label = style(12f, FontWeight.SemiBold, 1.3f, 0.02f)
+    val label = style(TypeScale.utility)
+
+    /** A destination's name beside its icon. */
+    val navigation = style(TypeScale.navigation)
+
+    /** A destination's name beneath its icon. */
+    val navigationCompact = style(TypeScale.navigationCompact)
+
+    /** A label read from across a room. */
+    val tvLabel = style(TypeScale.tvLabel)
 }
 
 val LocalTypography = staticCompositionLocalOf { Typography(1f) }
+
+/** How much of the material system this device draws ([MaterialTiers]); internal, never a setting. */
+val LocalMaterialTier = staticCompositionLocalOf { MaterialTier.ENHANCED }
+
+/** How motion is applied on this form factor ([Motion.profile]). */
+val LocalMotion = staticCompositionLocalOf { Motion.profile(FormFactor.DESKTOP) }
 
 /** The current adaptive layout: recomputed when the window or the input modality changes. */
 val LocalLayout = compositionLocalOf<LayoutProfile> { error("No layout profile provided") }
@@ -101,7 +177,7 @@ fun Text(
     text: String,
     modifier: Modifier = Modifier,
     style: TextStyle = LocalTypography.current.body,
-    color: Color = RefluxColors.textPrimary,
+    color: Color = RefluxColors.contentPrimary,
     maxLines: Int = Int.MAX_VALUE,
     align: TextAlign? = null,
     onTextLayout: ((TextLayoutResult) -> Unit)? = null,

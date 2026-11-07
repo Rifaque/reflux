@@ -38,6 +38,16 @@ import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
+import androidx.compose.foundation.layout.displayCutout
+import androidx.compose.foundation.layout.exclude
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.union
+import androidx.compose.ui.platform.LocalLayoutDirection
+import dev.reflux.ui.SystemBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
@@ -198,7 +208,17 @@ class MainActivity : ComponentActivity() {
         val session = app.playback
         val player = platform.player
         Box(Modifier.fillMaxSize().background(RefluxColors.background)) {
-            RefluxApp(app, Modifier.windowInsetsPadding(WindowInsets.safeDrawing))
+            // Edge to edge: Reflux draws under the system's bars and keeps its controls clear of them itself. Only the
+            // keyboard, beyond the bars it covers, still makes room.
+            val insets = WindowInsets.systemBars.union(WindowInsets.displayCutout).asPaddingValues()
+            val direction = LocalLayoutDirection.current
+            val bars = SystemBars(
+                top = insets.calculateTopPadding(),
+                bottom = insets.calculateBottomPadding(),
+                start = insets.calculateStartPadding(direction),
+                end = insets.calculateEndPadding(direction),
+            )
+            RefluxApp(app, Modifier.windowInsetsPadding(WindowInsets.ime.exclude(WindowInsets.systemBars)), bars = bars)
             // Video is a platform surface beneath the controls: the engine keeps its direct path to the display.
             if (player != null) VideoLayer(player)
             // A picture-in-picture window is the picture; its controls are the system's own.

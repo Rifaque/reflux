@@ -493,6 +493,14 @@ class Library(
         }
     }
 
+    /** One of Reflux's own preferences, or null when the viewer never chose ([setSetting]). */
+    fun setting(key: String): String? = queries.settingValue(key).executeAsOneOrNull()
+
+    /** Keeps one of Reflux's own preferences; null forgets it, so its default applies again. */
+    fun setSetting(key: String, value: String?) {
+        if (value == null) queries.deleteSetting(key) else queries.setSetting(key, value)
+    }
+
     fun setFavorite(itemId: MediaId, favorite: Boolean) {
         if (favorite) queries.insertFavorite(itemId.value, now()) else queries.deleteFavorite(itemId.value)
     }

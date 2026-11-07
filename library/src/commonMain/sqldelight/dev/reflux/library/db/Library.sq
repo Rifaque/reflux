@@ -961,3 +961,20 @@ DELETE FROM download_subtitle WHERE download_id = ?;
 
 sourceOfType:
 SELECT * FROM source WHERE type = ? ORDER BY added_at, id LIMIT 1;
+
+-- Settings ----------------------------------------------------------------------------------------
+
+-- Reflux's own preferences, by name. Few, and never about media (a choice about a work lives with the work).
+CREATE TABLE setting (
+    key TEXT NOT NULL PRIMARY KEY,
+    value TEXT NOT NULL
+);
+
+settingValue:
+SELECT value FROM setting WHERE key = ?;
+
+setSetting:
+INSERT OR REPLACE INTO setting(key, value) VALUES (?, ?);
+
+deleteSetting:
+DELETE FROM setting WHERE key = ?;

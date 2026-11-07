@@ -1,5 +1,7 @@
 package dev.reflux.ui.components
 
+import dev.reflux.ui.theme.States
+import dev.reflux.ui.theme.Shapes
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -87,7 +89,7 @@ fun TextInput(
     val interaction = remember { MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
     val lit by animateFloatAsState(if (focused) 1f else 0f, Motion.focusChange.tween())
-    val shape = RoundedCornerShape(14.dp)
+    val shape = Shapes.medium
     // The label is part of the field: touching or clicking it is touching the field.
     val field = remember { FocusRequester() }
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -96,7 +98,7 @@ fun TextInput(
             // The field below is named after it: said once, there.
             Modifier.clearAndSetSemantics { }.pointerInput(enabled) { detectTapGestures { if (enabled) runCatching { field.requestFocus() } } },
             style = LocalTypography.current.captionStrong,
-            color = RefluxColors.textSecondary,
+            color = RefluxColors.contentSecondary,
             maxLines = 1,
         )
         BasicTextField(
@@ -110,8 +112,8 @@ fun TextInput(
             enabled = enabled,
             singleLine = true,
             interactionSource = interaction,
-            textStyle = LocalTypography.current.body.copy(color = RefluxColors.textPrimary),
-            cursorBrush = SolidColor(RefluxColors.textPrimary),
+            textStyle = LocalTypography.current.body.copy(color = RefluxColors.contentPrimary),
+            cursorBrush = SolidColor(RefluxColors.contentPrimary),
             visualTransformation = if (kind == InputKind.SECRET) PasswordVisualTransformation() else VisualTransformation.None,
             keyboardOptions = KeyboardOptions(
                 capitalization = KeyboardCapitalization.None,
@@ -128,17 +130,17 @@ fun TextInput(
             decorationBox = { inner ->
                 val edge = when {
                     error -> RefluxColors.error
-                    else -> Color.White.copy(alpha = 0.12f + 0.58f * lit)
+                    else -> States.layer(0.12f + 0.58f * lit)
                 }
                 Box(
                     Modifier.fillMaxWidth().heightIn(min = maxOf(48f, layout.minTargetDp).dp).clip(shape)
-                        .background(Color.White.copy(alpha = 0.06f + 0.05f * lit))
+                        .background(States.layer(0.06f + 0.05f * lit))
                         .border(if (focused || error) 1.5.dp else 1.dp, edge, shape)
                         .padding(horizontal = 16.dp),
                     contentAlignment = Alignment.CenterStart,
                 ) {
                     if (value.isEmpty() && placeholder != null) {
-                        Text(placeholder, style = LocalTypography.current.body, color = RefluxColors.textTertiary, maxLines = 1)
+                        Text(placeholder, style = LocalTypography.current.body, color = RefluxColors.contentTertiary, maxLines = 1)
                     }
                     inner()
                 }

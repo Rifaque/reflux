@@ -33,7 +33,10 @@ import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.unit.dp
 import dev.reflux.design.MaterialRole
 import dev.reflux.design.Materials
-import dev.reflux.design.Palette
+import dev.reflux.design.Argb
+import dev.reflux.design.Motion
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.ui.platform.LocalDensity
 
 /**
  * The content that glass materials float above. It is recorded as it draws, so materials can blur what is
@@ -83,9 +86,23 @@ fun GlassScene(
 }
 
 /**
- * Draws a liquid-glass material: the blurred backdrop (inside a [GlassScene] overlay), a tint, a top-lit
- * hairline highlight, and a shadow. The tint is raised until secondary text stays readable over bright
- * artwork, so glass never costs legibility.
+ * What a functional material is floating over, where a page knows it: a grey as bright as the brightest part of the
+ * artwork beneath the navigation ([Materials.backdropOf]). PREMIUM material is made just strong enough for it;
+ * everywhere else, and wherever nothing is known, the worst case (bright artwork) is assumed.
+ */
+class MaterialBackdrop {
+    var color: Argb? by mutableStateOf(null)
+}
+
+val LocalMaterialBackdrop = staticCompositionLocalOf<MaterialBackdrop?> { null }
+
+/**
+ * Draws functional material (docs/DESIGN.md, "Material system"): as the device's [MaterialTier] allows, the blurred
+ * backdrop (inside a [GlassScene] overlay), a tint, a top-lit hairline highlight, and a shadow. The tint is raised
+ * until secondary text stays readable over what is behind it, so material never costs legibility; on BASIC it is
+ * opaque. A change of strength (the artwork behind changing) is a short transition, not a jump.
+ *
+ * For what floats: navigation, bars, sheets, panels, notices, transient controls. Never for cards, rows, or posters.
  *
  * @param tint overrides the material's tint, e.g. over video, where the backdrop cannot be sampled.
  */
@@ -95,11 +112,18 @@ fun Modifier.glass(
     shape: Shape = RoundedCornerShape(Materials.spec(role).cornerRadiusDp.dp),
     tint: Color? = null,
 ): Modifier {
-    val spec = Materials.spec(role)
+    val tier = LocalMaterialTier.current
+    val roles = AppearancePolicy.roles
+    val spec = Materials.spec(role, tier, roles)
     val backdrop = LocalGlassBackdrop.current
-    val tintColor = tint ?: spec.tint.toColor().copy(alpha = Materials.scrimFor(role, Palette.textSecondary))
+    val measured = if (tier.adaptsToBackdrop && backdrop != null) LocalMaterialBackdrop.current?.color else null
+    val strength by animateFloatAsState(
+        Materials.scrimFor(role, roles.contentSecondary, tier = tier, backdrop = measured ?: Materials.BRIGHT_ARTWORK),
+        Motion.materialChange.tween(),
+    )
+    val tintColor = tint ?: spec.tint.toColor().copy(alpha = strength)
     val highlight = Brush.verticalGradient(
-        listOf(Color.White.copy(alpha = spec.highlightAlpha), Color.White.copy(alpha = spec.highlightAlpha * 0.3f)),
+        listOf(States.layer(spec.highlightAlpha), States.layer(spec.highlightAlpha * 0.3f)),
     )
     val base = if (spec.shadowElevationDp > 0f) shadow(spec.shadowElevationDp.dp, shape, clip = false) else this
     if (backdrop == null || spec.blurRadiusDp <= 0f) {
@@ -112,13 +136,14 @@ fun Modifier.glass(
     }
     val blurred = rememberGraphicsLayer()
     var position by remember { mutableStateOf(Offset.Zero) }
+    val radius = with(LocalDensity.current) { spec.blurRadiusDp.dp.toPx() }
+    val effect = remember(radius) { BlurEffect(radius, radius, TileMode.Clamp) }
     return base
         .onGloballyPositioned { position = it.positionInRoot() }
         .clip(shape)
         .drawBehind {
             backdrop.frame // read: redraw whenever the backdrop does
-            val radius = spec.blurRadiusDp.dp.toPx()
-            blurred.renderEffect = BlurEffect(radius, radius, TileMode.Clamp)
+            blurred.renderEffect = effect
             val offset = backdrop.origin - position
             blurred.record { translate(offset.x, offset.y) { drawLayer(backdrop.layer) } }
             // The recording is transparent wherever the page drew nothing, and the page itself is right

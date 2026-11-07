@@ -31,7 +31,7 @@ enum class Icon {
 }
 
 @Composable
-fun Icon(icon: Icon, modifier: Modifier = Modifier, size: Dp = 20.dp, tint: Color = RefluxColors.textPrimary) {
+fun Icon(icon: Icon, modifier: Modifier = Modifier, size: Dp = 20.dp, tint: Color = RefluxColors.contentPrimary) {
     Canvas(modifier.size(size)) {
         scale(this.size.minDimension / 24f, pivot = Offset.Zero) { draw(icon, tint) }
     }

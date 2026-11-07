@@ -1,5 +1,7 @@
 package dev.reflux.ui.player
 
+import dev.reflux.ui.theme.States
+import dev.reflux.ui.theme.Shapes
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloat
@@ -379,7 +381,7 @@ private fun Controls(app: AppState, session: PlaybackSession, state: PlayerState
         if (failed) return@Column
         Column(
             // Clicks on the panel itself must not reach the video's click-to-pause.
-            Modifier.fillMaxWidth().glass(MaterialRole.FLOATING, RoundedCornerShape(26.dp), tint = playerTint).absorbsPointer()
+            Modifier.fillMaxWidth().glass(MaterialRole.FLOATING, Shapes.xlarge, tint = playerTint).absorbsPointer()
                 .padding(horizontal = 18.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
@@ -387,11 +389,11 @@ private fun Controls(app: AppState, session: PlaybackSession, state: PlayerState
             if (controls.listHints) {
                 Row(Modifier.fillMaxWidth().padding(top = 2.dp, bottom = 2.dp), horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
                     Box(Modifier.weight(1f)) {
-                        if (state.status == PlayerStatus.PAUSED) Text("Paused", style = LocalTypography.current.captionStrong, color = RefluxColors.textSecondary, maxLines = 1)
+                        if (state.status == PlayerStatus.PAUSED) Text("Paused", style = LocalTypography.current.captionStrong, color = RefluxColors.contentSecondary, maxLines = 1)
                     }
                     // Down opens these; the one that is open is the one lit. To the D-pad they are only names, so
                     // they take no focus; a screen reader, which goes through what is on screen, opens them directly.
-                    Icon(Icon.CHEVRON_DOWN, size = 12.dp, tint = RefluxColors.textTertiary)
+                    Icon(Icon.CHEVRON_DOWN, size = 12.dp, tint = RefluxColors.contentTertiary)
                     menus.forEach { menu ->
                         Text(
                             menu.title,
@@ -404,7 +406,7 @@ private fun Controls(app: AppState, session: PlaybackSession, state: PlayerState
                                 }
                             },
                             style = LocalTypography.current.captionStrong,
-                            color = if (menu == open) RefluxColors.textPrimary else RefluxColors.textSecondary,
+                            color = if (menu == open) RefluxColors.contentPrimary else RefluxColors.contentSecondary,
                             maxLines = 1,
                         )
                     }
@@ -434,7 +436,7 @@ private fun Controls(app: AppState, session: PlaybackSession, state: PlayerState
                     )
                 }
                 controls.lists.forEach { menu ->
-                    val tint = if (menu == open || (menu == PlayerMenu.SUBTITLES && state.selectedSubtitleId != null)) RefluxColors.textPrimary else RefluxColors.textSecondary
+                    val tint = if (menu == open || (menu == PlayerMenu.SUBTITLES && state.selectedSubtitleId != null)) RefluxColors.contentPrimary else RefluxColors.contentSecondary
                     if (menu == PlayerMenu.SPEED) {
                         Button(
                             if (state.speed == 1.0) "1×" else Formatting.speed(state.speed),
@@ -453,7 +455,7 @@ private fun Controls(app: AppState, session: PlaybackSession, state: PlayerState
                 controls.more?.let { first ->
                     // The rest of the lists, one tap away; their tabs lead from one to another.
                     val lit = open != null && open !in controls.lists
-                    IconButton(Icon.MORE, "More options", { if (lit) session.closeMenu() else session.toggleMenu(first) }, tint = if (lit) RefluxColors.textPrimary else RefluxColors.textSecondary, shortcut = listsKey, expanded = lit)
+                    IconButton(Icon.MORE, "More options", { if (lit) session.closeMenu() else session.toggleMenu(first) }, tint = if (lit) RefluxColors.contentPrimary else RefluxColors.contentSecondary, shortcut = listsKey, expanded = lit)
                 }
                 if (controls.fullscreen) {
                     IconButton(
@@ -474,7 +476,7 @@ private fun NowPlaying(session: PlaybackSession, compact: Boolean, modifier: Mod
     // One stop: what is playing, whichever way the two lines happen to be laid out.
     Column(modifier.semantics(mergeDescendants = true) { }, verticalArrangement = Arrangement.spacedBy(if (compact) 0.dp else 4.dp)) {
         Text(session.title, style = if (compact) LocalTypography.current.title else LocalTypography.current.headline, maxLines = 1)
-        session.subtitle?.let { Text(it, style = if (compact) LocalTypography.current.caption else LocalTypography.current.metadata, color = RefluxColors.textSecondary, maxLines = 1) }
+        session.subtitle?.let { Text(it, style = if (compact) LocalTypography.current.caption else LocalTypography.current.metadata, color = RefluxColors.contentSecondary, maxLines = 1) }
     }
 }
 
@@ -491,7 +493,7 @@ private fun Timeline(session: PlaybackSession, state: PlayerState, remote: Boole
     val position = preview?.let { fraction -> duration?.let { (it * fraction).toLong() } } ?: state.positionMs
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         // The slider says where it is and how long it all is, so the two clocks beside it are not said again.
-        Text(Formatting.clock(position), Modifier.clearAndSetSemantics { }, style = LocalTypography.current.captionStrong, color = RefluxColors.textSecondary, maxLines = 1)
+        Text(Formatting.clock(position), Modifier.clearAndSetSemantics { }, style = LocalTypography.current.captionStrong, color = RefluxColors.contentSecondary, maxLines = 1)
         Slider(
             fraction = if (duration == null) 0f else position.toFloat() / duration,
             description = "Timeline",
@@ -513,7 +515,7 @@ private fun Timeline(session: PlaybackSession, state: PlayerState, remote: Boole
             duration?.let { "-" + Formatting.clock(it - position) } ?: "",
             Modifier.clearAndSetSemantics { },
             style = LocalTypography.current.captionStrong,
-            color = RefluxColors.textSecondary,
+            color = RefluxColors.contentSecondary,
             maxLines = 1,
         )
     }
@@ -558,20 +560,20 @@ private fun MenuPanel(session: PlaybackSession, menus: List<PlayerMenu>, open: P
                 Pressable(
                     { session.choose(open, index) },
                     Modifier.fillMaxWidth().then(if (choice) Modifier.semantics { selected = option.selected } else Modifier),
-                    RoundedCornerShape(10.dp),
+                    Shapes.small,
                     lift = 0f,
                     role = if (choice) Role.RadioButton else Role.Button,
                 ) { active ->
                     Row(
                         Modifier.fillMaxWidth().heightIn(min = if (touch) 48.dp else 0.dp)
-                            .background(Color.White.copy(alpha = if (active || (showsHighlight && index == session.highlighted)) 0.12f else 0f))
+                            .background(States.layer(if (active || (showsHighlight && index == session.highlighted)) 0.12f else 0f))
                             .padding(horizontal = 12.dp, vertical = 10.dp),
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text(option.label, Modifier.weight(1f), style = LocalTypography.current.bodyStrong, color = if (option.selected) RefluxColors.textPrimary else RefluxColors.textSecondary, maxLines = 1)
-                        option.detail?.let { Text(it, style = LocalTypography.current.caption, color = RefluxColors.textTertiary, maxLines = 1) }
-                        if (option.selected) Icon(Icon.CHECK, size = 16.dp, tint = RefluxColors.textPrimary)
+                        Text(option.label, Modifier.weight(1f), style = LocalTypography.current.bodyStrong, color = if (option.selected) RefluxColors.contentPrimary else RefluxColors.contentSecondary, maxLines = 1)
+                        option.detail?.let { Text(it, style = LocalTypography.current.caption, color = RefluxColors.contentTertiary, maxLines = 1) }
+                        if (option.selected) Icon(Icon.CHECK, size = 16.dp, tint = RefluxColors.contentPrimary)
                     }
                 }
             }
@@ -624,9 +626,9 @@ private fun Notice(modifier: Modifier, title: String, body: String, said: String
         modifier.widthIn(max = 440.dp).glass(MaterialRole.MODAL, tint = playerTint.copy(alpha = 0.92f)).absorbsPointer().pane(said).padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Text(title, style = LocalTypography.current.captionStrong, color = RefluxColors.textSecondary)
+        Text(title, style = LocalTypography.current.captionStrong, color = RefluxColors.contentSecondary)
         Text(body, style = LocalTypography.current.title, maxLines = 4)
-        if (detail != null) Text("Details: $detail", style = LocalTypography.current.caption, color = RefluxColors.textTertiary, maxLines = 2)
+        if (detail != null) Text("Details: $detail", style = LocalTypography.current.caption, color = RefluxColors.contentTertiary, maxLines = 2)
         // Beneath one another rather than off the card, where a large text size leaves no room beside each other.
         FlowRow(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) { actions() }
     }
@@ -646,7 +648,7 @@ private fun Spinner(modifier: Modifier = Modifier) {
     val angle by rememberInfiniteTransition().animateFloat(0f, 360f, infiniteRepeatable(tween(900, easing = LinearEasing)))
     Canvas(modifier.size(44.dp).then(busy)) {
         rotate(angle) {
-            drawArc(Color.White.copy(alpha = 0.9f), startAngle = 0f, sweepAngle = 270f, useCenter = false, style = Stroke(3.dp.toPx(), cap = StrokeCap.Round))
+            drawArc(States.layer(0.9f), startAngle = 0f, sweepAngle = 270f, useCenter = false, style = Stroke(3.dp.toPx(), cap = StrokeCap.Round))
         }
     }
 }

@@ -138,6 +138,9 @@ internal class AndroidPlatform(private val environment: AndroidEnvironment, over
 
     override val accessibility: AccessibilityPreferences get() = environment.accessibility.preferences
 
+    // A device the system calls low on memory is spared the richest material (`design`'s MaterialTiers).
+    override val constrainedGraphics: Boolean = environment.context.getSystemService(android.app.ActivityManager::class.java)?.isLowRamDevice == true
+
     override val canPlay: Boolean get() = true
 
     override fun report(problem: String, cause: Throwable?) = environment.report(problem, cause)

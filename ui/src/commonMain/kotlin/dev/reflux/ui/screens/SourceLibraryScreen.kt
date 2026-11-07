@@ -85,7 +85,7 @@ internal fun SourceLibraryScreen(app: AppState, sourceId: SourceId, section: Str
                 }
                 Text(
                     listOfNotNull(library?.let { record.displayName }, state, inclusion, count(model.cards.size)).joinToString("  ·  "),
-                    color = RefluxColors.textTertiary,
+                    color = RefluxColors.contentTertiary,
                 )
             }
             // A source made of several libraries can be looked at one library at a time.
@@ -106,7 +106,7 @@ internal fun SourceLibraryScreen(app: AppState, sourceId: SourceId, section: Str
                 library != null && !library.included -> "This library is not in Home, Movies, Shows, or Search. It can be opened and played here."
                 else -> null
             }
-            note?.let { Text(it, color = RefluxColors.textSecondary) }
+            note?.let { Text(it, color = RefluxColors.contentSecondary) }
             if (model.cards.isEmpty()) {
                 Text(
                     when {
@@ -115,7 +115,7 @@ internal fun SourceLibraryScreen(app: AppState, sourceId: SourceId, section: Str
                             "${record.displayName} has no libraries with movies or shows."
                         else -> "No movies or shows here yet."
                     },
-                    color = RefluxColors.textTertiary,
+                    color = RefluxColors.contentTertiary,
                 )
                 if (model.libraries.size <= 1) Button("Sources", { app.navigator.back() }, Modifier.initialFocus(), icon = Icon.BACK, style = ButtonStyle.QUIET)
             }
@@ -137,7 +137,7 @@ private fun Removed(app: AppState) {
     Page {
         item(key = "gone") {
             Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                Text("This source is no longer in Reflux.", color = RefluxColors.textSecondary)
+                Text("This source is no longer in Reflux.", color = RefluxColors.contentSecondary)
                 Button("Sources", { app.go(Destination.Sources) }, Modifier.initialFocus(), icon = Icon.BACK, style = ButtonStyle.PRIMARY)
             }
         }

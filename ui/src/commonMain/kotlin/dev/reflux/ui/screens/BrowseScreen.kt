@@ -138,7 +138,7 @@ internal fun BrowseScreen(app: AppState, title: String, query: String?, shows: B
                     1 -> "1 title"
                     else -> "${cards.size} titles"
                 },
-                color = RefluxColors.textTertiary,
+                color = RefluxColors.contentTertiary,
             )
         }
     }
@@ -170,7 +170,7 @@ internal fun SearchScreen(app: AppState) {
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Icon(Icon.SEARCH, tint = RefluxColors.textSecondary)
+                Icon(Icon.SEARCH, tint = RefluxColors.contentSecondary)
                 BasicTextField(
                     value = query,
                     onValueChange = { app.searchQuery = it },
@@ -179,12 +179,12 @@ internal fun SearchScreen(app: AppState) {
                         .keyboardByRemote().semantics { contentDescription = "Search your library" },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(showKeyboardOnFocus = showsKeyboardOnFocus()),
-                    textStyle = LocalTypography.current.title.copy(color = RefluxColors.textPrimary),
-                    cursorBrush = SolidColor(RefluxColors.textPrimary),
+                    textStyle = LocalTypography.current.title.copy(color = RefluxColors.contentPrimary),
+                    cursorBrush = SolidColor(RefluxColors.contentPrimary),
                     decorationBox = { inner ->
                         Box(contentAlignment = Alignment.CenterStart) {
                             if (query.isEmpty()) {
-                                Text("Search titles, people, genres, or “4K movies I haven't watched”", style = LocalTypography.current.title, color = RefluxColors.textTertiary, maxLines = 1)
+                                Text("Search titles, people, genres, or “4K movies I haven't watched”", style = LocalTypography.current.title, color = RefluxColors.contentTertiary, maxLines = 1)
                             }
                             inner()
                         }
@@ -194,7 +194,7 @@ internal fun SearchScreen(app: AppState) {
                     IconButton(Icon.CLOSE, "Clear search", {
                         app.searchQuery = ""
                         field.requestFocus()
-                    }, tint = RefluxColors.textSecondary)
+                    }, tint = RefluxColors.contentSecondary)
                 }
             }
             val current = model
@@ -214,7 +214,7 @@ internal fun SearchScreen(app: AppState) {
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text("Try", color = RefluxColors.textTertiary)
+                    Text("Try", color = RefluxColors.contentTertiary)
                     SUGGESTIONS.forEach { suggestion -> Button(suggestion, { app.searchQuery = suggestion }) }
                 }
                 current == null -> Unit
@@ -225,11 +225,11 @@ internal fun SearchScreen(app: AppState) {
                             horizontalArrangement = Arrangement.spacedBy(6.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Text("Showing", style = LocalTypography.current.caption, color = RefluxColors.textTertiary)
+                            Text("Showing", style = LocalTypography.current.caption, color = RefluxColors.contentTertiary)
                             current.interpretation.forEach { Chip(it) }
                         }
                     }
-                    if (current.cards.isEmpty()) Text("Nothing in your library matches “$query”.", color = RefluxColors.textSecondary)
+                    if (current.cards.isEmpty()) Text("Nothing in your library matches “$query”.", color = RefluxColors.contentSecondary)
                 }
             }
         }

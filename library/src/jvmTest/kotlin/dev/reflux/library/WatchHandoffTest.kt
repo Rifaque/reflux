@@ -762,4 +762,26 @@ class WatchHandoffTest {
         assertTrue(upgraded.movies().isEmpty())
         assertEquals(2, upgraded.versions(MediaId("m1"), LibraryScope.OfSource(dev.reflux.core.model.SourceId("s1"))).size)
     }
+
+    @Test
+    fun aLibraryFromBeforeSettingsKeepsEverythingAndStartsWithTheDefaults() = runTest {
+        val file = Files.createTempDirectory("reflux-migrate").also { it.toFile().deleteOnExit() }.resolve("library.db")
+        JdbcSqliteDriver("jdbc:sqlite:$file", Properties()).use { driver ->
+            RefluxDatabase.Schema.create(driver)
+            driver.execute(null, "DROP TABLE setting", 0)
+            driver.execute(null, "INSERT INTO item (id, kind, title, title_key, sort_key, added_at) VALUES ('m1', 'MOVIE', 'Heat', 'heat', 'heat', 0)", 0)
+            driver.execute(null, "INSERT INTO favorite (item_id, added_at) VALUES ('m1', 0)", 0)
+            driver.execute(null, "PRAGMA user_version = 5", 0)
+        }
+        val upgraded = Library(LibraryDatabase.open(file)) { clock }
+        assertEquals(null, upgraded.setting("appearance.mediaAtmosphere"), "nothing chosen yet: the default applies")
+        upgraded.setSetting("appearance.mediaAtmosphere", "on")
+        assertEquals("on", upgraded.setting("appearance.mediaAtmosphere"))
+        assertEquals(listOf("m1"), upgraded.favorites().map { it.item.id.value }, "what was there is untouched")
+        upgraded.setSetting("appearance.mediaAtmosphere", null)
+        assertEquals(null, upgraded.setting("appearance.mediaAtmosphere"))
+        // Kept with the library: a library opened again has it.
+        upgraded.setSetting("appearance.mediaAtmosphere", "on")
+        assertEquals("on", Library(LibraryDatabase.open(file)) { clock }.setting("appearance.mediaAtmosphere"))
+    }
 }
