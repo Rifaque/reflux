@@ -8,7 +8,7 @@ package dev.reflux.core.net
 object Redaction {
     private val userInfo = Regex("""://[^/\s:@]+:[^/\s@]+@""")
     private val secretParameters = Regex("""(?i)\b(api_?key|access_?token|token|password|passwd|pwd|secret)=[^&\s"'<>]+""")
-    private val secretHeaders = Regex("""(?i)\b(authorization|x-emby-token|x-mediabrowser-token|x-emby-authorization)(["']?\s*[:=]\s*)[^\r\n]+""")
+    private val secretHeaders = Regex("""(?i)\b(authorization|x-emby-token|x-mediabrowser-token|x-emby-authorization|x-plex-token)(["']?\s*[:=]\s*)[^\r\n]+""")
 
     /** A token as an authorization value quotes it (`Token="..."`), with or without the header's name. */
     private val quotedSecrets = Regex("""(?i)\b(token|api_key|password|pw)(\s*=\s*)"[^"]*"""")
