@@ -14,7 +14,9 @@ import dev.reflux.core.source.SourceDescriptor
 import dev.reflux.core.source.SourceFile
 import dev.reflux.core.source.SourceLocality
 import dev.reflux.core.metadata.RemoteArtwork
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.test.advanceTimeBy
@@ -145,4 +147,27 @@ class LibraryPipelineTest {
         minimal.refresh()
         assertEquals("Heat", library.movies().single().item.title)
     }
+
+    @Test
+    fun aRefreshAlreadyWaitingIsJoinedNotQueuedAgain() = runTest {
+        // A refresh is busy (its probe waits on a gate) when a new source is asked for twice, as connecting a server
+        // and the availability check that sees it come up both ask: the source is scanned once more, not twice.
+        val gate = kotlinx.coroutines.CompletableDeferred<Unit>()
+        val busy = LibraryPipeline(library, registry, prober = MediaProber { gate.await(); StreamInfo(durationMs = 1000) })
+        source.add("Heat (1995).mkv")
+        val first = launch { busy.refresh() }
+        runCurrent()
+        val scansBefore = source.scans
+        val second = async { busy.refresh(source.descriptor.id) }
+        val third = async { busy.refresh(source.descriptor.id) }
+        runCurrent()
+        gate.complete(Unit)
+        first.join()
+        assertEquals(second.await(), third.await(), "the second request was answered by the first")
+        assertEquals(scansBefore + 1, source.scans)
+        // Asked again once that refresh is over, it runs again: there may be news.
+        busy.refresh(source.descriptor.id)
+        assertEquals(scansBefore + 2, source.scans)
+    }
 }
+
