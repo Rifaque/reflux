@@ -39,6 +39,8 @@ import dev.reflux.core.source.ScanRules
 import dev.reflux.core.source.MediaSource
 import dev.reflux.core.source.SourceFile
 import dev.reflux.core.source.SourceUnavailableException
+import dev.reflux.core.source.SourceSignInRequiredException
+import dev.reflux.core.source.SectionedSource
 import dev.reflux.core.source.WatchStateSyncSource
 import dev.reflux.core.versions.VersionCandidate
 import dev.reflux.core.versions.VersionSelection
@@ -97,7 +99,11 @@ class Library(
     fun removeSource(id: SourceId) = database.transaction {
         writer.apply(ScanPlan(id, emptyList(), emptyList(), emptyList(), emptyMap()))
         queries.deleteWatchSyncOfSource(id.value)
+        // Its inclusion goes with it: added again, it starts included (docs/NAVIGATION.md, section 5).
+        queries.deleteSourceSectionsOf(id.value)
+        queries.deleteExcludedSectionsOf(id.value)
         queries.deleteSource(id.value)
+        writer.recomputeLibraries()
     }
 
     /** Records a reachability check, e.g. on start-up or when a drive is plugged in. */
@@ -119,6 +125,7 @@ class Library(
         if (source !is FileEnumeratingSource && source !is CatalogSource) return ScanReport(id, ScanReport.Status.COMPLETED)
         if (refreshAvailability(source) != Availability.AVAILABLE) return ScanReport(id, ScanReport.Status.UNAVAILABLE)
         return try {
+            (source as? SectionedSource)?.let { rememberSections(id, it.sections()) }
             when (source) {
                 is CatalogSource -> {
                     val (report, updates) = scanCatalog(id, source.catalog().toList(), (source as? WatchStateSyncSource)?.marksPlayedPast)
@@ -128,6 +135,9 @@ class Library(
                 is FileEnumeratingSource -> scanFiles(id, source.files().toList())
                 else -> error("unreachable")
             }.also { syncDownloads() } // copies follow the works their origins belong to
+        } catch (_: SourceSignInRequiredException) {
+            queries.setSourceSignInRequired(id.value)
+            ScanReport(id, ScanReport.Status.UNAVAILABLE)
         } catch (_: SourceUnavailableException) {
             queries.setSourceAvailability(Availability.UNAVAILABLE.name, now(), id.value)
             ScanReport(id, ScanReport.Status.UNAVAILABLE)
@@ -293,9 +303,11 @@ class Library(
 
     // Reading ------------------------------------------------------------------------------------
 
-    fun movies(): List<LibraryEntry> = entries(queries.presentMovies().executeAsList().map { it.toModel() })
+    fun movies(scope: LibraryScope = LibraryScope.Unified): List<LibraryEntry> =
+        entries(queries.presentMovies(scope.sourceValue, scope.sectionValue).executeAsList().map { it.toModel() }, scope)
 
-    fun shows(): List<LibraryEntry> = entries(queries.presentShows().executeAsList().map { it.toModel() })
+    fun shows(scope: LibraryScope = LibraryScope.Unified): List<LibraryEntry> =
+        entries(queries.presentShows(scope.sourceValue, scope.sectionValue).executeAsList().map { it.toModel() }, scope)
 
     fun recentlyAdded(limit: Int = 20): List<LibraryEntry> =
         entries(queries.recentlyAdded(limit.toLong()).executeAsList().map { row ->
@@ -311,23 +323,24 @@ class Library(
 
     internal fun rawItem(id: MediaId): MediaItem? = queries.itemById(id.value).executeAsOneOrNull()?.toModel()
 
-    fun entry(id: MediaId): LibraryEntry? = item(id)?.let { entries(listOf(it)).single() }
+    fun entry(id: MediaId, scope: LibraryScope = LibraryScope.Unified): LibraryEntry? = item(id)?.let { entries(listOf(it), scope).single() }
 
-    fun showDetail(showId: MediaId): ShowDetail? {
+    /** A show with its seasons and episodes as [scope] has them: a source's page lists only what is on that source. */
+    fun showDetail(showId: MediaId, scope: LibraryScope = LibraryScope.Unified): ShowDetail? {
         val show = item(showId) as? Show ?: return null
-        val seasons = queries.presentSeasonsOfShow(showId.value).executeAsList().map { it.toModel() as Season }
+        val seasons = queries.presentSeasonsOfShow(showId.value, scope.sourceValue, scope.sectionValue).executeAsList().map { it.toModel() as Season }
         val seasonDetails = seasons.sortedBy { if (it.number == 0) Int.MAX_VALUE else it.number }.map { season ->
-            val episodes = queries.presentEpisodesOfSeason(season.id.value).executeAsList().map { it.toModel() as Episode }
-                .sortedWith(NextUp.episodeOrder)
-            SeasonDetail(season, entries(listOf(season)).single(), entries(episodes))
+            val episodes = queries.presentEpisodesOfSeason(season.id.value, scope.sourceValue, scope.sectionValue).executeAsList()
+                .map { it.toModel() as Episode }.sortedWith(NextUp.episodeOrder)
+            SeasonDetail(season, entries(listOf(season), scope).single(), entries(episodes, scope))
         }
         val allEpisodes = seasonDetails.flatMap { detail -> detail.episodes.map { it.item as Episode } }
-        return ShowDetail(entries(listOf(show)).single(), seasonDetails, NextUp.of(allEpisodes, watchStates()))
+        return ShowDetail(entries(listOf(show), scope).single(), seasonDetails, NextUp.of(allEpisodes, watchStates()))
     }
 
-    /** All versions of a playable work with source state, in stable order. */
-    fun versions(itemId: MediaId): List<VersionInfo> =
-        queries.versionsOfItem(itemId.value, ::versionRow).executeAsList().map { it.withDetails() }
+    /** The versions of a playable work in [scope], with source state, in stable order. */
+    fun versions(itemId: MediaId, scope: LibraryScope = LibraryScope.Unified): List<VersionInfo> =
+        queries.versionsOfItem(itemId.value, scope.sourceValue, scope.sectionValue, ::versionRow).executeAsList().map { it.withDetails() }
 
     fun version(id: VersionId): VersionInfo? =
         queries.versionById(id.value, ::versionRow).executeAsOneOrNull()?.withDetails()
@@ -350,8 +363,9 @@ class Library(
         continuing: Boolean = false,
         preferences: TrackPreferences? = null,
         sourceCapabilities: (SourceId) -> Set<SourceCapability> = { emptySet() },
+        scope: LibraryScope = LibraryScope.Unified,
     ): VersionSelection {
-        val candidates = versions(itemId).map { VersionCandidate(it.version, it.availability, it.locality, sourceCapabilities(it.version.location.sourceId)) }
+        val candidates = versions(itemId, scope).map { VersionCandidate(it.version, it.availability, it.locality, sourceCapabilities(it.version.location.sourceId)) }
         val pinned = queries.preferredVersion(itemId.value).executeAsOneOrNull()?.let(::VersionId)
         // A copy on the device is the version it was made from: pinning one is honored by the other, so
         // a pinned version that was downloaded plays from the device rather than being streamed again.
@@ -407,9 +421,9 @@ class Library(
 
     /** Deterministic title search across movies, shows, and episodes. */
     fun search(query: String, limit: Int = 50): List<LibraryEntry> {
-        val movies = queries.presentMovies().executeAsList()
-        val shows = queries.presentShows().executeAsList()
-        val episodes = queries.presentPlayables().executeAsList().filter { it.kind == MediaKind.EPISODE.name }
+        val movies = queries.presentMovies(null, null).executeAsList()
+        val shows = queries.presentShows(null, null).executeAsList()
+        val episodes = queries.presentPlayables(null, null).executeAsList().filter { it.kind == MediaKind.EPISODE.name }
         val metadata = metadataOf((movies + shows + episodes).map { it.id })
         val showTitles = shows.associate { it.id to (metadata[it.id]?.title ?: it.title) }
         fun document(row: Item, kind: MediaKind, aliases: List<String?> = emptyList()): SearchDocument? {
@@ -439,7 +453,7 @@ class Library(
             if (MediaKind.MOVIE in kinds) addAll(movies())
             if (MediaKind.SHOW in kinds) addAll(shows())
             if (MediaKind.EPISODE in kinds) {
-                addAll(entries(queries.presentPlayables().executeAsList().filter { it.kind == MediaKind.EPISODE.name }.map { it.toModel() }))
+                addAll(entries(queries.presentPlayables(null, null).executeAsList().filter { it.kind == MediaKind.EPISODE.name }.map { it.toModel() }))
             }
         }
         return SmartSearchResult(parsed, smartSearch.evaluate(parsed, candidates, limit))
@@ -450,7 +464,7 @@ class Library(
         queries.lowConfidenceVersions(WEAK_CONFIDENCE).executeAsList().mapNotNull { version(VersionId(it.id)) }
 
     /** Emits whenever library contents change, so UIs can refresh. */
-    fun changes(): Flow<Unit> = queries.presentPlayables().asFlow().map { }
+    fun changes(): Flow<Unit> = queries.anyPlayables().asFlow().map { }
 
     // Watch state and favorites --------------------------------------------------------------------
 
@@ -517,10 +531,10 @@ class Library(
 
     private fun hasVersions(id: MediaId): Boolean = queries.itemHasVersions(id.value).executeAsOne()
 
-    internal fun entries(items: List<MediaItem>): List<LibraryEntry> {
+    internal fun entries(items: List<MediaItem>, scope: LibraryScope = LibraryScope.Unified): List<LibraryEntry> {
         if (items.isEmpty()) return emptyList()
         val ids = items.map { it.id.value }
-        val availability = itemAvailability()
+        val availability = itemAvailability(scope)
         val favorites = queries.allFavorites().executeAsList().map { it.item_id }.toSet()
         val states = ids.chunked(QUERY_CHUNK).flatMap { queries.watchStatesOfItems(it).executeAsList() }
             .associate { it.item_id to it.toModel() }
@@ -553,10 +567,10 @@ class Library(
     }
 
     /** Availability per item: available if any version is, unknown if any might be, otherwise unavailable. */
-    private fun itemAvailability(): (MediaItem) -> Availability {
-        val rows = queries.itemAvailability().executeAsList()
+    private fun itemAvailability(scope: LibraryScope): (MediaItem) -> Availability {
+        val rows = queries.itemAvailability(scope.sourceValue, scope.sectionValue).executeAsList()
         val byItem = rows.groupBy({ it.item_id }, { enumOrNull<Availability>(it.availability) ?: Availability.UNKNOWN })
-        val episodesByParent = queries.presentPlayables().executeAsList()
+        val episodesByParent = queries.presentPlayables(scope.sourceValue, scope.sectionValue).executeAsList()
             .filter { it.kind == MediaKind.EPISODE.name }
             .flatMap { listOf(it.show_id!! to it.id, it.season_id!! to it.id) }
             .groupBy({ it.first }, { it.second })

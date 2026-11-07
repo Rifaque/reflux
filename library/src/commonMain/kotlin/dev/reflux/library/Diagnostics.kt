@@ -39,7 +39,7 @@ private fun Library.missingEpisodes(): List<MissingEpisodes> =
     queries.seasonEpisodeCounts().executeAsList().mapNotNull { row ->
         val number = row.season_number?.toInt() ?: return@mapNotNull null
         if (number == 0) return@mapNotNull null // specials are rarely complete and that is fine
-        val present = queries.presentEpisodesOfSeason(row.id).executeAsList()
+        val present = queries.presentEpisodesOfSeason(row.id, null, null).executeAsList()
             .flatMap { episode ->
                 val first = episode.episode_number?.toInt() ?: return@flatMap emptyList()
                 (first..(episode.episode_number_end?.toInt() ?: first)).toList()

@@ -35,6 +35,7 @@ import dev.reflux.core.source.CatalogVersion
 import dev.reflux.core.source.SectionKind
 import dev.reflux.core.source.SectionedSource
 import dev.reflux.core.source.SourceSection
+import dev.reflux.core.source.SourceSignInRequiredException
 import dev.reflux.core.source.PlaybackEvidenceSource
 import dev.reflux.core.source.PlaybackTarget
 import dev.reflux.core.source.SourceCapability
@@ -99,15 +100,12 @@ class JellyfinSource(
         val series = try {
             fetchSeries()
         } catch (e: JellyfinException) {
-            throw SourceUnavailableException(descriptor.id, e)
+            throw unavailable(e)
         }
-        // Everything the account sees, unless libraries were left out: then each included one in turn. An
-        // item in two libraries is listed once.
-        val parents: List<String?> = if (credentials.excludedLibraries.isEmpty()) {
-            listOf(null)
-        } else {
-            sections().map { it.id }.filter { it !in credentials.excludedLibraries }
-        }
+        // Every library of the account in turn, so each entry says which library it is in (whether it takes part
+        // in the unified library is the library's to decide). An item in two libraries is listed once, in the
+        // first. A server with no film or series library is read whole.
+        val parents: List<String?> = sections().map { it.id }.ifEmpty { listOf(null) }
         val seen = HashSet<String>()
         for (parent in parents) {
             var start = 0
@@ -128,12 +126,12 @@ class JellyfinSource(
                         ).toMap(),
                     ).obj()
                 } catch (e: JellyfinException) {
-                    throw SourceUnavailableException(descriptor.id, e)
+                    throw unavailable(e)
                 } ?: break
                 val items = page.array("Items")
                 for (item in items) {
                     if (item.string("Id")?.let(seen::add) == false) continue
-                    entry(item, series)?.let { emit(it) }
+                    entry(item, series)?.let { emit(it.copy(section = parent)) }
                 }
                 start += items.size
                 val total = page.int("TotalRecordCount") ?: start
@@ -142,7 +140,9 @@ class JellyfinSource(
         }
     }
 
-    override val excludedSections: Set<String> get() = credentials.excludedLibraries
+    /** A server that answers 401 no longer accepts this device's token: signing in again is the way back. */
+    private fun unavailable(e: JellyfinException): SourceUnavailableException =
+        if (e.status == 401) SourceSignInRequiredException(descriptor.id, e) else SourceUnavailableException(descriptor.id, e)
 
     /**
      * The account's libraries that can hold films and series. Music, books, photos, playlists, and live
@@ -153,11 +153,11 @@ class JellyfinSource(
             api.get("UserViews", mapOf("userId" to credentials.userId))
         } catch (e: JellyfinException) {
             // Servers before 10.9 only answer the older address.
-            if (e.status != 404) throw SourceUnavailableException(descriptor.id, e)
+            if (e.status != 404) throw unavailable(e)
             try {
                 api.get("Users/${credentials.userId}/Views")
             } catch (e: JellyfinException) {
-                throw SourceUnavailableException(descriptor.id, e)
+                throw unavailable(e)
             }
         }.obj() ?: return emptyList()
         return views.array("Items").mapNotNull { view ->

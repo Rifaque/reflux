@@ -111,12 +111,15 @@ class Offline(
     /** What Reflux would keep for the user if they just said "prepare for offline". */
     fun suggest(): OfflinePlan = plan(library.offlineSuggestions())
 
-    /** What it takes to keep [itemIds] (movies, episodes, shows, or seasons) for offline. */
-    fun planFor(itemIds: List<MediaId>): OfflinePlan =
-        plan(itemIds.flatMap { library.offlineSelection(it) }.distinct().map { it to OfflineReason.CHOSEN })
+    /**
+     * What it takes to keep [itemIds] (movies, episodes, shows, or seasons) for offline, from the versions [scope]
+     * has: a source's page keeps that source's copy.
+     */
+    fun planFor(itemIds: List<MediaId>, scope: LibraryScope = LibraryScope.Unified): OfflinePlan =
+        plan(itemIds.flatMap { library.offlineSelection(it, scope = scope) }.distinct().map { it to OfflineReason.CHOSEN }, scope)
 
-    private fun plan(works: List<Pair<MediaId, OfflineReason>>): OfflinePlan =
-        OfflinePlanner.plan(works.map { (id, reason) -> library.offlineRequest(id, reason, sources) }, device(), storage(), policy)
+    private fun plan(works: List<Pair<MediaId, OfflineReason>>, scope: LibraryScope = LibraryScope.Unified): OfflinePlan =
+        OfflinePlanner.plan(works.map { (id, reason) -> library.offlineRequest(id, reason, sources, scope) }, device(), storage(), policy)
 
     /** The room there is, less what downloads already accepted will still write. */
     fun storage(): StorageSnapshot = store.storage().copy(committedBytes = library.downloads().filter { it.active || it.state == DownloadState.PAUSED }.sumOf { it.remainingBytes })
@@ -188,8 +191,8 @@ class Offline(
      * Picks up again what of [itemIds] (as [planFor] reads them) was paused, did not finish, or is no longer on
      * the device: asking to keep something again asks for that too. Returns how many downloads it picked up.
      */
-    fun resumeStopped(itemIds: List<MediaId>): Int {
-        val works = itemIds.flatMap { library.offlineSelection(it) }.toSet()
+    fun resumeStopped(itemIds: List<MediaId>, scope: LibraryScope = LibraryScope.Unified): Int {
+        val works = itemIds.flatMap { library.offlineSelection(it, scope = scope) }.toSet()
         val stopped = library.downloads().filter {
             it.itemId in works && (it.state == DownloadState.PAUSED || it.state == DownloadState.FAILED || it.state == DownloadState.UNAVAILABLE)
         }

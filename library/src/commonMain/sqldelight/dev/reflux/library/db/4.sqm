@@ -1,0 +1,33 @@
+-- Navigation and source libraries (docs/NAVIGATION.md): which sources and libraries take part in the unified
+-- library, which libraries a source has, and whether a source still accepts Reflux's sign-in. Nothing here is
+-- derived from media files; none of it changes when a source is away.
+ALTER TABLE source ADD COLUMN included INTEGER NOT NULL DEFAULT 1;
+ALTER TABLE source ADD COLUMN sign_in_required INTEGER NOT NULL DEFAULT 0;
+
+CREATE TABLE source_section (
+    source_id TEXT NOT NULL,
+    section_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    kind TEXT NOT NULL,
+    position INTEGER NOT NULL,
+    PRIMARY KEY (source_id, section_id)
+);
+
+CREATE TABLE excluded_section (
+    source_id TEXT NOT NULL,
+    section_id TEXT NOT NULL,
+    PRIMARY KEY (source_id, section_id)
+);
+
+ALTER TABLE version ADD COLUMN section TEXT;
+ALTER TABLE version ADD COLUMN library_source_id TEXT NOT NULL DEFAULT '';
+ALTER TABLE version ADD COLUMN library_section TEXT;
+ALTER TABLE version ADD COLUMN included INTEGER NOT NULL DEFAULT 1;
+
+UPDATE version SET library_source_id = COALESCE(
+    (SELECT download.origin_source_id FROM download JOIN source ON source.id = version.source_id
+     WHERE source.type = 'downloads' AND download.path = version.path),
+    version.source_id
+);
+
+CREATE INDEX version_library ON version(library_source_id, library_section);

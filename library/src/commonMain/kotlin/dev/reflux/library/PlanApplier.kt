@@ -65,26 +65,26 @@ internal class PlanApplier(private val queries: LibraryQueries, private val now:
         var updated = 0
         var unchanged = 0
         val movedItems = mutableListOf<Pair<String, String>>()
-        for ((version, parsed, sourceIdentity) in plan.versions) {
+        for ((version, parsed, sourceIdentity, section) in plan.versions) {
             val previous = existing[version.location.path]
             val signals = parsed.confidence.signals.joinToString(",") { it.name }
             val fileChanged = previous == null ||
                 previous.size_bytes != version.sizeBytes || previous.modified_at != version.modifiedAtEpochMs
             when {
                 previous == null -> {
-                    insertVersion(version, parsed.confidence.score, signals, sourceIdentity, time)
+                    insertVersion(version, parsed.confidence.score, signals, sourceIdentity, section, time)
                     added++
                 }
                 !fileChanged && previous.stream_origin != version.streamOrigin.name -> {
                     // Keep probed stream data for unchanged files; only identity may change.
                     queries.updateVersionIdentity(
                         version.itemId.value, version.edition, version.part?.toLong(), parsed.confidence.score, signals,
-                        time, version.id.value,
+                        time, section, version.id.value,
                     )
                     if (previous.item_id != version.itemId.value) updated++ else unchanged++
                 }
                 else -> {
-                    updateVersion(version, parsed.confidence.score, signals, sourceIdentity, time)
+                    updateVersion(version, parsed.confidence.score, signals, sourceIdentity, section, time)
                     if (fileChanged || previous.item_id != version.itemId.value) updated++ else unchanged++
                 }
             }
@@ -141,6 +141,7 @@ internal class PlanApplier(private val queries: LibraryQueries, private val now:
         queries.deleteOrphanMetadata()
         queries.deleteOrphanCredits()
         queries.deleteOrphanAttempts()
+        recomputeLibraries()
 
         return ScanReport(
             sourceId = plan.sourceId,
@@ -163,8 +164,8 @@ internal class PlanApplier(private val queries: LibraryQueries, private val now:
         val time = now()
         val existing = queries.versionsOfSource(sourceId.value).executeAsList().associateBy { it.path }
         for (version in versions) {
-            if (existing[version.location.path] == null) insertVersion(version, COPY_CONFIDENCE, "", null, time)
-            else updateVersion(version, COPY_CONFIDENCE, "", null, time)
+            if (existing[version.location.path] == null) insertVersion(version, COPY_CONFIDENCE, "", null, null, time)
+            else updateVersion(version, COPY_CONFIDENCE, "", null, null, time)
         }
         val kept = versions.map { it.location.path }.toSet()
         for (row in existing.values.filter { it.path !in kept }) {
@@ -188,6 +189,16 @@ internal class PlanApplier(private val queries: LibraryQueries, private val now:
         queries.deleteOrphanMetadata()
         queries.deleteOrphanCredits()
         queries.deleteOrphanAttempts()
+        recomputeLibraries()
+    }
+
+    /**
+     * Which source and library each version belongs to, and whether it takes part in the unified library
+     * (docs/NAVIGATION.md). Run after anything that adds or moves versions, and after inclusion changes.
+     */
+    fun recomputeLibraries() {
+        queries.recomputeVersionLibraries()
+        queries.recomputeInclusion()
     }
 
     private fun moveWatchState(from: String, to: String) {
@@ -197,7 +208,7 @@ internal class PlanApplier(private val queries: LibraryQueries, private val now:
         queries.deleteWatchState(from)
     }
 
-    private fun insertVersion(version: MediaVersion, confidence: Double, signals: String, sourceIdentity: String?, time: Long) {
+    private fun insertVersion(version: MediaVersion, confidence: Double, signals: String, sourceIdentity: String?, section: String?, time: Long) {
         val video = version.stream.video
         queries.insertVersionIfAbsent(
             id = version.id.value,
@@ -226,11 +237,14 @@ internal class PlanApplier(private val queries: LibraryQueries, private val now:
             last_seen_at = time,
             video_profile = video?.profile?.name,
             video_level = video?.level?.toLong(),
+            section = section,
+            library_source_id = version.location.sourceId.value,
+            library_section = section,
         )
         replaceTracks(version)
     }
 
-    private fun updateVersion(version: MediaVersion, confidence: Double, signals: String, sourceIdentity: String?, time: Long) {
+    private fun updateVersion(version: MediaVersion, confidence: Double, signals: String, sourceIdentity: String?, section: String?, time: Long) {
         val video = version.stream.video
         queries.updateVersion(
             itemId = version.itemId.value,
@@ -255,6 +269,7 @@ internal class PlanApplier(private val queries: LibraryQueries, private val now:
             lastSeenAt = time,
             videoProfile = video?.profile?.name,
             videoLevel = video?.level?.toLong(),
+            section = section,
             id = version.id.value,
         )
         replaceTracks(version)

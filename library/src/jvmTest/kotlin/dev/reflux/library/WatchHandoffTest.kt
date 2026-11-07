@@ -626,6 +626,7 @@ class WatchHandoffTest {
         val file = Files.createTempDirectory("reflux-migrate").also { it.toFile().deleteOnExit() }.resolve("library.db")
         JdbcSqliteDriver("jdbc:sqlite:$file", Properties()).use { driver ->
             RefluxDatabase.Schema.create(driver)
+            withoutSourceLibraries(driver)
             driver.execute(null, "ALTER TABLE version DROP COLUMN video_profile", 0)
             driver.execute(null, "ALTER TABLE version DROP COLUMN video_level", 0)
             driver.execute(null, "ALTER TABLE track DROP COLUMN sample_rate", 0)
@@ -664,6 +665,7 @@ class WatchHandoffTest {
         val file = Files.createTempDirectory("reflux-migrate").also { it.toFile().deleteOnExit() }.resolve("library.db")
         JdbcSqliteDriver("jdbc:sqlite:$file", Properties()).use { driver ->
             RefluxDatabase.Schema.create(driver)
+            withoutSourceLibraries(driver)
             driver.execute(null, "ALTER TABLE version DROP COLUMN video_profile", 0)
             driver.execute(null, "ALTER TABLE version DROP COLUMN video_level", 0)
             driver.execute(null, "ALTER TABLE track DROP COLUMN sample_rate", 0)
@@ -686,6 +688,7 @@ class WatchHandoffTest {
         val file = Files.createTempDirectory("reflux-migrate").also { it.toFile().deleteOnExit() }.resolve("library.db")
         JdbcSqliteDriver("jdbc:sqlite:$file", Properties()).use { driver ->
             RefluxDatabase.Schema.create(driver)
+            withoutSourceLibraries(driver)
             driver.execute(null, "ALTER TABLE version DROP COLUMN video_profile", 0)
             driver.execute(null, "ALTER TABLE version DROP COLUMN video_level", 0)
             driver.execute(null, "ALTER TABLE track DROP COLUMN sample_rate", 0)
@@ -712,5 +715,51 @@ class WatchHandoffTest {
         assertEquals(null, version.stream.video?.profile, "unknown, until the file is next read")
         assertEquals(null, version.stream.video?.level)
         assertEquals(null, version.stream.audio.single().sampleRate)
+    }
+
+    /** Takes the schema back to before navigation and source libraries (migration 4). */
+    private fun withoutSourceLibraries(driver: JdbcSqliteDriver) {
+        driver.execute(null, "DROP INDEX version_library", 0)
+        for (column in listOf("section", "library_source_id", "library_section", "included")) driver.execute(null, "ALTER TABLE version DROP COLUMN $column", 0)
+        for (column in listOf("included", "sign_in_required")) driver.execute(null, "ALTER TABLE source DROP COLUMN $column", 0)
+        driver.execute(null, "DROP TABLE source_section", 0)
+        driver.execute(null, "DROP TABLE excluded_section", 0)
+    }
+
+    @Test
+    fun aLibraryFromBeforeSourceLibrariesIsAllIncludedAndCopiesBelongToTheirOrigins() = runTest {
+        // The schema as it was one step ago: a server's film, and a copy of it kept on the device.
+        val file = Files.createTempDirectory("reflux-migrate").also { it.toFile().deleteOnExit() }.resolve("library.db")
+        JdbcSqliteDriver("jdbc:sqlite:$file", Properties()).use { driver ->
+            RefluxDatabase.Schema.create(driver)
+            withoutSourceLibraries(driver)
+            driver.execute(null, "INSERT INTO source (id, type, display_name, locality, config, availability, added_at) VALUES ('s1', 'jellyfin', 'Living Room', 'LOCAL_NETWORK', 'x', 'AVAILABLE', 0)", 0)
+            driver.execute(null, "INSERT INTO source (id, type, display_name, locality, config, availability, added_at) VALUES ('d1', 'downloads', 'This device', 'DEVICE', '', 'AVAILABLE', 0)", 0)
+            driver.execute(null, "INSERT INTO item (id, kind, title, title_key, sort_key, added_at) VALUES ('m1', 'MOVIE', 'Heat', 'heat', 'heat', 0)", 0)
+            for ((id, source, path) in listOf(Triple("v1", "s1", "items/1/sources/1"), Triple("v2", "d1", "copies/heat.mkv"))) {
+                driver.execute(
+                    null,
+                    "INSERT INTO version (id, item_id, source_id, path, size_bytes, modified_at, stream_origin, container, confidence, signals, first_seen_at, last_seen_at) " +
+                        "VALUES ('$id', 'm1', '$source', '$path', 1, 0, 'SOURCE', 'MATROSKA', 1.0, '', 0, 0)",
+                    0,
+                )
+            }
+            driver.execute(
+                null,
+                "INSERT INTO download (id, item_id, origin_version_id, origin_source_id, origin_path, path, state, bytes_downloaded, created_at, updated_at) " +
+                    "VALUES ('dl1', 'm1', 'v1', 's1', 'items/1/sources/1', 'copies/heat.mkv', 'COMPLETED', 1, 0, 0)",
+                0,
+            )
+            driver.execute(null, "PRAGMA user_version = 4", 0)
+        }
+        val upgraded = Library(LibraryDatabase.open(file)) { clock }
+        assertTrue(upgraded.sources().all { it.included && !it.signInRequired }, "every source starts in the library, signed in as it was")
+        assertEquals(2, upgraded.versions(MediaId("m1")).size, "both copies take part")
+        assertEquals(listOf("Heat"), upgraded.movies().map { it.item.title })
+        // The copy belongs to the server it came from: its page lists it, and the server out of the library takes it out too.
+        assertEquals(2, upgraded.versions(MediaId("m1"), LibraryScope.OfSource(dev.reflux.core.model.SourceId("s1"))).size)
+        upgraded.setSourceIncluded(dev.reflux.core.model.SourceId("s1"), false)
+        assertTrue(upgraded.movies().isEmpty())
+        assertEquals(2, upgraded.versions(MediaId("m1"), LibraryScope.OfSource(dev.reflux.core.model.SourceId("s1"))).size)
     }
 }

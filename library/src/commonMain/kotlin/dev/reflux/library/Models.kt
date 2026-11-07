@@ -23,7 +23,25 @@ data class SourceRecord(
     val availability: Availability,
     val lastScanAtEpochMs: Long?,
     val lastAvailableAtEpochMs: Long?,
+    /** Whether it takes part in the unified library (docs/NAVIGATION.md). Independent of [availability]. */
+    val included: Boolean = true,
+    /** It answered, and no longer accepts Reflux's sign-in: signing in again is the way back. */
+    val signInRequired: Boolean = false,
 )
+
+/**
+ * Which library a read is about (docs/NAVIGATION.md, section 4): the unified library, made of what is included,
+ * or one source (or one of its libraries) as it is, whatever its inclusion.
+ */
+sealed interface LibraryScope {
+    data object Unified : LibraryScope
+
+    data class OfSource(val sourceId: SourceId, val section: String? = null) : LibraryScope
+}
+
+internal val LibraryScope.sourceValue: String? get() = (this as? LibraryScope.OfSource)?.sourceId?.value
+
+internal val LibraryScope.sectionValue: String? get() = (this as? LibraryScope.OfSource)?.section
 
 /** A work as the experience layer shows it: identity plus artwork, progress, and availability. */
 data class LibraryEntry(

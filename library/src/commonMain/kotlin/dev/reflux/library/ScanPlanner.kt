@@ -42,6 +42,8 @@ internal data class PlannedVersion(
     val parsed: ParsedMedia,
     /** For catalog sources: the encoded source description, kept for offline re-identification. */
     val sourceIdentity: String? = null,
+    /** The library of its source the version is in, for sources made of libraries. */
+    val section: String? = null,
 )
 
 /** Everything one scan of one source contributes to the library. Pure data; applying it is separate. */
@@ -65,6 +67,7 @@ private data class Candidate(
     val origin: StreamInfoOrigin,
     val subtitles: List<ExternalSubtitle>,
     val sourceIdentity: String? = null,
+    val section: String? = null,
 )
 
 /**
@@ -151,6 +154,7 @@ internal class ScanPlanner(
                         ExternalSubtitle(MediaLocation(sourceId, it.path), it.format, it.language, it.forced, it.hearingImpaired)
                     },
                     sourceIdentity = encodeCatalogEntry(entry, version),
+                    section = entry.section,
                 )
             }
         }
@@ -201,6 +205,7 @@ internal class ScanPlanner(
                 ),
                 parsed = parsed,
                 sourceIdentity = candidate.sourceIdentity,
+                section = candidate.section,
             )
         }
         val externalHints = identified.groupBy({ (_, identification) ->
@@ -372,6 +377,7 @@ internal class ScanPlanner(
                 identity.airDate?.let { put("airDate", it.toString()) }
                 identity.episodeTitle?.let { put("episodeTitle", it) }
                 (version.edition ?: identity.edition)?.let { put("edition", it) }
+                entry.section?.let { put("section", it) }
                 identity.externalIds.forEach { (key, value) -> put("id.$key", value) }
                 entry.artwork.forEach { (kind, path) -> put("art.${kind.name}", path) }
                 entry.showArtwork.forEach { (kind, path) -> put("showArt.${kind.name}", path) }
@@ -411,6 +417,7 @@ internal class ScanPlanner(
                 versions = listOf(CatalogVersion(path, size, modified, version.stream, pairs["edition"], subtitles)),
                 artwork = artwork("art."),
                 showArtwork = artwork("showArt."),
+                section = pairs["section"],
             )
         }
     }

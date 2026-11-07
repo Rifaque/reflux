@@ -158,5 +158,12 @@ interface ChangeNotifyingSource : MediaSource {
     fun changes(): Flow<Unit>
 }
 
-class SourceUnavailableException(sourceId: SourceId, cause: Throwable? = null) :
-    Exception("source unavailable: $sourceId", cause)
+open class SourceUnavailableException(sourceId: SourceId, cause: Throwable? = null, message: String = "source unavailable: $sourceId") :
+    Exception(message, cause)
+
+/**
+ * The source answered, and no longer accepts what Reflux signs in with (an expired or revoked token, a changed
+ * password). It cannot be read until the user signs in again; nothing else about it changes.
+ */
+class SourceSignInRequiredException(sourceId: SourceId, cause: Throwable? = null) :
+    SourceUnavailableException(sourceId, cause, "source needs signing in again: $sourceId")

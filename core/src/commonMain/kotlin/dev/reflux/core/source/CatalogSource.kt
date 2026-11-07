@@ -51,6 +51,8 @@ data class CatalogEntry(
     /** For episodes: artwork paths for the show. */
     val showArtwork: Map<ArtworkKind, String> = emptyMap(),
     val userState: SourceUserState? = null,
+    /** The library of the source the work is listed in ([SourceSection.id]), for sources made of libraries. */
+    val section: String? = null,
 )
 
 /** A source that lists already-identified works (media servers such as Jellyfin). */

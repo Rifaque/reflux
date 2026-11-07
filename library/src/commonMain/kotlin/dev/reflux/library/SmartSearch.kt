@@ -87,7 +87,7 @@ internal class SmartSearch(database: RefluxDatabase) {
             row.duration_ms?.let { runtime.putIfAbsent(row.item_id, (it / 60_000).toInt()) }
         }
         val states = queries.allWatchStates().executeAsList().associate { it.item_id to (it.completed != 0L) }
-        val episodes = queries.presentPlayables().executeAsList().filter { it.kind == MediaKind.EPISODE.name }
+        val episodes = queries.presentPlayables(null, null).executeAsList().filter { it.kind == MediaKind.EPISODE.name }
         val episodesWatched = episodes.groupBy { it.show_id!! }.mapValues { (_, list) ->
             list.count { states[it.id] == true } to list.size
         }
