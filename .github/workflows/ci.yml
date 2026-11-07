@@ -55,3 +55,50 @@ jobs:
         with:
           name: test-reports-${{ matrix.os }}
           path: '**/build/reports/tests/'
+
+  android:
+    name: Android (unit tests, lint, minified release)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v4
+      # The release variant is built minified and unsigned here: R8 and its keep rules are checked on every change;
+      # signing happens only in the release workflow.
+      - name: Unit tests, lint, and a release build
+        run: ./gradlew :android:app:testDebugUnitTest :android:app:lintRelease :android:app:assembleRelease --stacktrace
+
+  website:
+    name: Website (build, audit, links)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: website
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+      - run: npm audit --audit-level=moderate
+      - run: npm run build
+      - run: node scripts/check-links.mjs
+
+  secrets:
+    name: Secret scan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      # Reviewed findings (fake values in tests) are listed in .gitleaksignore; anything else fails.
+      - name: gitleaks over the whole history
+        run: docker run --rm -v "$PWD:/repo:ro" zricethezav/gitleaks:v8.24.3 git /repo --redact --no-banner --gitleaks-ignore-path /repo/.gitleaksignore
+

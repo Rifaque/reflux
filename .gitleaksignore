@@ -1,0 +1,6 @@
+# Reviewed gitleaks findings (docs/SECURITY-AUDIT.md): fake values in tests, and the throwaway Docker share's credentials.
+1ca92e11cb7ab8e6820db1a8d221dff05176157d:core/src/commonTest/kotlin/dev/reflux/core/net/RedactionTest.kt:generic-api-key:37
+98fb2a9913a396f87f66d929777341a68625d2e4:core/src/commonTest/kotlin/dev/reflux/core/playback/PlaybackReportTest.kt:generic-api-key:112
+a9a46928ee24a92f19d676bd475f0b716c1b366c:playback/mpv/src/test/kotlin/dev/reflux/playback/mpv/MpvEngineTest.kt:generic-api-key:131
+4bb920ed1f0ac1f21a4b03c249e851f1e104bd96:tools/ci/share-test-servers.sh:curl-auth-user:35
+8121c8b2a021aa48f32bf1878a82d5df8b6984d7:desktop/engine/src/test/kotlin/dev/reflux/desktop/engine/DesktopEnvironmentTest.kt:generic-api-key:121
