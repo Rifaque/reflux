@@ -934,7 +934,7 @@ Not verified for Plex: a plex.tv account sign-in or a shared server's token agai
 | Windows `check` (with the live Jellyfin server; Android module included) | 1,127 tests, 17 skipped, 0 failed (the 11 window tests in `desktop:app` run on request, below; the gated Plex live test without a server named; physical controllers) |
 | Windows real-window tests (`-Preflux.windowTests=true`) | 41, 3 skipped, 0 failed |
 | Linux real-window tests, `tools/ci` container (`window 1`; virtual, as accepted for M2P) | 41, 5 skipped, 0 failed |
-| UI tests (`:ui:jvmTest`, inside `check`) | 288 tests, 0 failed (`NavigationTest` 14, `SourcesUiTest`, `HandheldLayoutTest`, `AccessibilityTest`, `TelevisionTest`, and the rest updated to the six destinations) |
+| UI tests (`:ui:jvmTest`, inside `check`) | 288 tests, 0 failed (`NavigationTest` 13, `SourcesUiTest`, `HandheldLayoutTest`, `AccessibilityTest`, `TelevisionTest`, and the rest updated to the six destinations) |
 | Plex live test against the Docker server | Passed (above) |
 | Google TV emulator instrumented suite | 41, 0 failed |
 
