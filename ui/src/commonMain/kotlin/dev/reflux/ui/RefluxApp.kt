@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class, androidx.compose.ui.ExperimentalComposeUiApi::class)
+
 package dev.reflux.ui
 
 import androidx.compose.animation.AnimatedContent
@@ -120,6 +122,8 @@ import dev.reflux.ui.theme.glass
 import dev.reflux.ui.theme.tween
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.focusGroup
+import androidx.compose.foundation.onFocusedBoundsChanged
+import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.ui.focus.FocusRequester
@@ -248,21 +252,35 @@ fun RefluxApp(app: AppState, modifier: Modifier = Modifier) {
         val entry = remember { FocusEntry() }
         val focused = remember { FocusedControl() }
         val rail = remember { RailFocus() }
-        DisposableEffect(app, focus) {
+        val sideNavigation = LocalLayout.current.navigation.vertical
+        DisposableEffect(app, focus, sideNavigation) {
             app.moveFocus = { action ->
-                entry.enter() || entry.leaveChrome(action) || focus.moveFocus(
-                    when (action) {
-                        SemanticAction.NAVIGATE_UP -> FocusDirection.Up
-                        SemanticAction.NAVIGATE_DOWN -> FocusDirection.Down
-                        SemanticAction.NAVIGATE_LEFT -> FocusDirection.Left
-                        else -> FocusDirection.Right
-                    },
-                )
+                // From a rail, Right goes back into the page where focus was in it (each page restores its last focused item).
+                val back = action == SemanticAction.NAVIGATE_RIGHT && sideNavigation && entry.inChrome
+                entry.enter() || (back && (rail.enterPage() || entry.start())) || entry.leaveChrome(action) || if (action == SemanticAction.NAVIGATE_LEFT && sideNavigation && !entry.inChrome) {
+                    // Left is toward the rail. The toolkit's search also takes what is only partly to the left (a
+                    // button above, in a centred column); whatever is not strictly to the left of where focus was
+                    // gives way to the rail, on the destination the viewer is in.
+                    val before = rail.focusedBounds
+                    rail.leavingPage(focused)
+                    val moved = focus.moveFocus(FocusDirection.Left)
+                    val after = rail.focusedBounds
+                    if (!entry.inChrome && (!moved || (before != null && after != null && after.right > before.left + 1f))) rail.focusCurrent() || moved else moved
+                } else {
+                    focus.moveFocus(
+                        when (action) {
+                            SemanticAction.NAVIGATE_UP -> FocusDirection.Up
+                            SemanticAction.NAVIGATE_DOWN -> FocusDirection.Down
+                            SemanticAction.NAVIGATE_LEFT -> FocusDirection.Left
+                            else -> FocusDirection.Right
+                        },
+                    )
+                }
             }
             app.clearFocus = { focus.clearFocus() }
             app.activateFocused = focused::activate
             // Back on a television's destination goes to the navigation first, landing on where the viewer is.
-            app.focusNavigation = { !entry.inChrome && rail.focusCurrent() }
+            app.focusNavigation = { !entry.inChrome && rail.leavingPage(focused).let { rail.focusCurrent() } }
             onDispose {
                 app.moveFocus = null
                 app.clearFocus = null
@@ -289,8 +307,6 @@ fun RefluxApp(app: AppState, modifier: Modifier = Modifier) {
                 repeat(FOCUS_PATIENCE_FRAMES) {
                     withFrameNanos { }
                     if (!arrived && entry.hasFocus && !entry.inChrome && !entry.inPanel) return@LaunchedEffect
-                    // Focus the viewer put on the navigation stays there until they leave it.
-                    if (!arrived && entry.inChrome) return@LaunchedEffect
                     if (entry.start()) {
                         started = app.navigator.current
                         return@LaunchedEffect
@@ -323,7 +339,8 @@ fun RefluxApp(app: AppState, modifier: Modifier = Modifier) {
         val page = remember { PageScroll() }
         CompositionLocalProvider(LocalFocusEntry provides entry, LocalFocusedControl provides focused, LocalChromeInsets provides insets, LocalPageScroll provides page) {
             GlassScene(
-                Modifier.fillMaxSize().background(RefluxColors.background).trackPointer(app).onFocusChanged { entry.hasFocus = it.hasFocus },
+                Modifier.fillMaxSize().background(RefluxColors.background).trackPointer(app).onFocusChanged { entry.hasFocus = it.hasFocus }
+                    .onFocusedBoundsChanged { rail.focusedBounds = it?.takeIf { coordinates -> coordinates.isAttached }?.boundsInRoot() },
                 overlay = { Chrome(app, page, rail, navigationInert = behind, noticeInert = app.playback != null) },
             ) {
                 // Pages start beside a navigation that runs down the side; focus that scrolls a page stops short of the chrome.
@@ -342,7 +359,9 @@ fun RefluxApp(app: AppState, modifier: Modifier = Modifier) {
                             val named = accessibleTitle(destination)
                             Box(
                                 Modifier.fillMaxSize().traversal(Traversal.PAGE).inert(leaving || behind)
-                                    .then(if (named != null) Modifier.pane(named) else Modifier),
+                                    .then(if (named != null) Modifier.pane(named) else Modifier)
+                                    // Coming back into the page from the navigation lands where focus was in it (RailFocus).
+                                    .focusGroup(),
                             ) {
                                 screens.SaveableStateProvider(destination.toString()) {
                                     CompositionLocalProvider(LocalFocusScreen provides destination) {
@@ -543,7 +562,21 @@ private fun BoxScope.CompactNavigation(app: AppState) {
 internal class RailFocus {
     internal val current = FocusRequester()
 
+    /** Where what has focus is, in the window, as the toolkit reports it on every focus change. */
+    internal var focusedBounds: androidx.compose.ui.geometry.Rect? = null
+
     internal fun focusCurrent(): Boolean = runCatching { current.requestFocus() }.getOrDefault(false)
+
+    /** Where focus was in the page when it left for the navigation. */
+    private var left: FocusRequester? = null
+
+    /** Remembers where focus is in the page, before it leaves for the navigation. */
+    internal fun leavingPage(focused: FocusedControl) {
+        left = focused.requester
+    }
+
+    /** Back into the page where focus was in it; false when that is gone (another page, a closed panel). */
+    internal fun enterPage(): Boolean = runCatching { left?.requestFocus() ?: false }.getOrDefault(false)
 }
 
 /**
