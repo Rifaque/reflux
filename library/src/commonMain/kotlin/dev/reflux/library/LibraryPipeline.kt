@@ -15,6 +15,7 @@ import dev.reflux.core.source.CatalogSource
 import dev.reflux.core.source.ChangeNotifyingSource
 import dev.reflux.core.source.FileEnumeratingSource
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
@@ -75,8 +76,35 @@ class LibraryPipeline(
     /** How the metadata provider in use asks to be credited (the About page); null without one. */
     val metadataAttribution: ProviderAttribution? get() = provider?.attribution
 
-    /** Scans [sourceId] (or every source) and enriches the library. Concurrent calls run one after another. */
-    suspend fun refresh(sourceId: SourceId? = null): List<ScanReport> = mutex.withLock {
+    /** Refreshes waiting for their turn, by the source they are for (null: every source). */
+    private val waiting = mutableMapOf<SourceId?, CompletableDeferred<List<ScanReport>>>()
+    private val waitingLock = Mutex()
+
+    /**
+     * Scans [sourceId] (or every source) and enriches the library. Concurrent calls run one after another, and a call
+     * for a source whose refresh is already waiting its turn joins that one rather than queuing the same work again
+     * (a new server is asked for by its connection and by the availability check together). A refresh that has
+     * already started is not joined: what changed since may need scanning.
+     */
+    suspend fun refresh(sourceId: SourceId? = null): List<ScanReport> {
+        val (turn, mine) = waitingLock.withLock {
+            waiting[sourceId]?.let { return@withLock it to false }
+            CompletableDeferred<List<ScanReport>>().also { waiting[sourceId] = it } to true
+        }
+        if (!mine) return turn.await()
+        return try {
+            mutex.withLock {
+                waitingLock.withLock { waiting.remove(sourceId) }
+                runRefresh(sourceId)
+            }.also { turn.complete(it) }
+        } catch (e: Throwable) {
+            waitingLock.withLock { if (waiting[sourceId] === turn) waiting.remove(sourceId) }
+            turn.completeExceptionally(e)
+            throw e
+        }
+    }
+
+    private suspend fun runRefresh(sourceId: SourceId?): List<ScanReport> {
         try {
             val ids = sourceId?.let(::listOf) ?: library.sources().map { it.id }
             val reports = ids.mapNotNull { id ->
@@ -85,7 +113,7 @@ class LibraryPipeline(
                 library.scan(source)
             }
             enrich()
-            reports
+            return reports
         } finally {
             mutableActivity.value = PipelineActivity.Idle
         }
