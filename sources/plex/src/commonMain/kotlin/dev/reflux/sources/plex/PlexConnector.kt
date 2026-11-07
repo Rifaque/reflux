@@ -108,7 +108,12 @@ class PlexConnector(
     internal companion object {
         private val address = Regex("""^https?://[^\s/?#@]+(/[^\s?#]*)?$""", RegexOption.IGNORE_CASE)
 
-        /** What the server calls itself, or "Plex". */
-        fun nameOf(serverName: String?): String = serverName?.trim()?.takeIf { it.isNotEmpty() } ?: "Plex"
+        /**
+         * What the server calls itself, or "Plex". A server in a container is called by the container's generated host
+         * name ("2aad07e0258e") unless someone named it, and that says nothing.
+         */
+        fun nameOf(serverName: String?): String = serverName?.trim()?.takeUnless { it.isEmpty() || generatedHost.matches(it) } ?: "Plex"
+
+        private val generatedHost = Regex("""^[0-9a-f]{12}$""")
     }
 }
