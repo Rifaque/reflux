@@ -39,6 +39,7 @@ import dev.reflux.library.LibraryEntry
 import dev.reflux.library.PlaybackPlan
 import dev.reflux.library.SyncingWatchReporter
 import dev.reflux.library.planPlayback
+import dev.reflux.library.LibraryScope
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -75,6 +76,11 @@ data class MenuOption(val label: String, val detail: String? = null, val selecte
 class PlaybackSession internal constructor(
     private val app: AppState,
     private val player: Player,
+    /**
+     * Where playback was started from: the unified library, or a source's own page, whose playback and next
+     * episodes stay on that source (docs/NAVIGATION.md, section 8).
+     */
+    internal val libraryScope: LibraryScope = LibraryScope.Unified,
 ) {
     private val scope: CoroutineScope = app.scope + SupervisorJob(app.scope.coroutineContext[Job])
     private val autoplay = AutoplayPolicy()
@@ -164,7 +170,7 @@ class PlaybackSession internal constructor(
         val itemId = plan.itemId
         val details = app.read {
             val entry = entry(itemId)
-            Details(entry, entry?.item?.let { heading(it) } ?: (plan.request.title to null), entry?.item?.let { neighbours(it) } ?: (null to null))
+            Details(entry, entry?.item?.let { heading(it) } ?: (plan.request.title to null), entry?.item?.let { neighbours(it, libraryScope) } ?: (null to null))
         }
         controller?.stop()
         countdown?.cancel()
@@ -710,10 +716,10 @@ class PlaybackSession internal constructor(
                 reporter?.flush()
                 releaseStream()
                 val plan = app.read {
-                    planPlayback(itemId, app.platform.device, app.sources, versionId = version, continuing = continuing, preferences = app.viewer, audio = audio, subtitle = subtitle, originalFailed = originalFailed)
+                    planPlayback(itemId, app.platform.device, app.sources, versionId = version, continuing = continuing, preferences = app.viewer, audio = audio, subtitle = subtitle, originalFailed = originalFailed, scope = libraryScope)
                 }
                 if (plan == null) {
-                    app.notify(app.read { unplayableReason(itemId, app.platform.device, app.sources, app.viewer) })
+                    app.notify(app.read { unplayableReason(itemId, app.platform.device, app.sources, app.viewer, libraryScope) })
                     close()
                 } else {
                     load(if (from == null) plan else plan.copy(request = plan.request.copy(startPositionMs = from)))
@@ -829,10 +835,10 @@ internal fun Library.heading(item: MediaItem): Pair<String, String?> = when (ite
     else -> item.title to Formatting.year(item)?.toString()
 }
 
-/** The episodes before and after [item] in viewing order; specials are not part of the sequence. */
-internal fun Library.neighbours(item: MediaItem): Pair<LibraryEntry?, LibraryEntry?> {
+/** The episodes before and after [item] in viewing order, in [scope]; specials are not part of the sequence. */
+internal fun Library.neighbours(item: MediaItem, scope: LibraryScope = LibraryScope.Unified): Pair<LibraryEntry?, LibraryEntry?> {
     val episode = item as? Episode ?: return null to null
-    val episodes = showDetail(episode.showId)?.seasons.orEmpty().filter { it.season.number != 0 }.flatMap { it.episodes }
+    val episodes = showDetail(episode.showId, scope)?.seasons.orEmpty().filter { it.season.number != 0 }.flatMap { it.episodes }
     val index = episodes.indexOfFirst { it.item.id == episode.id }
     if (index < 0) return null to null
     return episodes.getOrNull(index - 1) to episodes.getOrNull(index + 1)

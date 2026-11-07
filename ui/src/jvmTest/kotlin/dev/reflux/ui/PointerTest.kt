@@ -90,7 +90,7 @@ class PointerTest {
         awaitText("Recently Added")
         assertEquals(Destination.Home, app.navigator.current)
 
-        onNodeWithText("Movies").mouseClick()
+        onNode(destination("Movies")).mouseClick()
         awaitText("10 titles")
         assertEquals(Destination.Movies, app.navigator.current)
     }
@@ -108,19 +108,24 @@ class PointerTest {
     }
 
     @Test
-    fun theSourcesAreAPageThatTheNavigationOpensAndCloses() = screen(populated()) { app ->
+    fun sourcesIsADestinationOfTheNavigation() = screen(populated()) { app ->
         awaitText("Recently Added")
-        onNodeWithContentDescription("Media sources").mouseClick()
+        onNode(destination("Sources")).mouseClick()
         awaitText("Add media")
         assertEquals(Destination.Sources, app.navigator.current)
-        onNodeWithContentDescription("Media sources").mouseClick()
+        runOnIdle { app.navigator.open(Destination.AddSource) }
+        // Choosing the destination the viewer is in goes back to its top.
+        onNode(destination("Sources")).mouseClick()
+        waitForIdle()
+        assertEquals(Destination.Sources, app.navigator.current)
+        onNode(destination("Home")).mouseClick()
         waitForIdle()
         assertEquals(Destination.Home, app.navigator.current)
     }
 
     @Test
     fun searchIsUsableWithAPointer() = screen(populated()) { app ->
-        onNodeWithContentDescription("Search").mouseClick()
+        onNode(destination("Search")).mouseClick()
         awaitText("Try")
         onNodeWithText("90s movies").mouseClick()
         awaitText("Heat")
@@ -388,7 +393,7 @@ class PointerTest {
         }
         screen(world, platform) { app ->
             awaitText("Recently Added")
-            onNodeWithContentDescription("Media sources").mouseClick()
+            onNode(destination("Sources")).mouseClick()
             awaitText("Add media")
             onNodeWithText("Media").mouseClick()
             awaitText("Remove")

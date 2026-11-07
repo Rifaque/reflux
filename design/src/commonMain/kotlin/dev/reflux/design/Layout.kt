@@ -4,6 +4,41 @@ import dev.reflux.core.input.InputModality
 
 enum class FormFactor { PHONE, TABLET, DESKTOP, TV }
 
+/**
+ * Where the global navigation sits (docs/NAVIGATION.md, section 3). The destinations are the same everywhere;
+ * only their place and how much of each is shown change.
+ */
+enum class NavigationStyle {
+    /** A phone held upright: a bar along the bottom, in reach of a thumb, of icons without words. */
+    BOTTOM_BAR,
+
+    /** A phone on its side: a narrow rail of icons on the left, leaving the short screen to the content. */
+    COMPACT_RAIL,
+
+    /** A tablet: a rail on the left, icons with their names beneath. */
+    RAIL,
+
+    /** A desktop window: a sidebar on the left, icons with their names beside. */
+    SIDEBAR,
+
+    /** A television: a rail of icons on the left that shows their names while it has focus. */
+    TV_RAIL,
+    ;
+
+    /** Whether the navigation runs down the left side, so pages start to its right. */
+    val vertical: Boolean get() = this != BOTTOM_BAR
+
+    /** How much of the window's width the navigation keeps, in dp; pages start after it. */
+    val widthDp: Float
+        get() = when (this) {
+            BOTTOM_BAR -> 0f
+            COMPACT_RAIL -> 72f
+            RAIL -> 88f
+            SIDEBAR -> 216f
+            TV_RAIL -> 64f
+        }
+}
+
 /** Concrete layout values for a window. Recomputed whenever the window size or input modality changes. */
 data class LayoutProfile(
     val formFactor: FormFactor,
@@ -23,6 +58,8 @@ data class LayoutProfile(
     val showsButtonPrompts: Boolean,
     /** Whether a persistent focus indicator is shown. */
     val showsFocus: Boolean,
+    /** Where the global navigation sits. */
+    val navigation: NavigationStyle = NavigationStyle.BOTTOM_BAR,
 ) {
     val posterHeightDp: Float get() = posterWidthDp * 1.5f
 }
@@ -65,7 +102,14 @@ object AdaptiveLayout {
             FormFactor.TV -> 18f
             else -> 16f
         }
-        val usable = widthDp - 2 * margin
+        val navigation = when (formFactor) {
+            FormFactor.TV -> NavigationStyle.TV_RAIL
+            FormFactor.PHONE -> if (widthDp > heightDp) NavigationStyle.COMPACT_RAIL else NavigationStyle.BOTTOM_BAR
+            FormFactor.TABLET -> NavigationStyle.RAIL
+            FormFactor.DESKTOP -> NavigationStyle.SIDEBAR
+        }
+        // Pages start to the right of a navigation that runs down the side.
+        val usable = widthDp - navigation.widthDp - 2 * margin
         val columns = maxOf(2, ((usable + gutter) / (posterWidth + gutter)).toInt())
         return LayoutProfile(
             formFactor = formFactor,
@@ -92,6 +136,7 @@ object AdaptiveLayout {
             textScale = if (formFactor == FormFactor.TV) 1.1f else 1f,
             showsButtonPrompts = directional,
             showsFocus = directional || modality == InputModality.KEYBOARD,
+            navigation = navigation,
         )
     }
 }

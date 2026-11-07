@@ -27,6 +27,9 @@ object InputMapping {
                 GamepadButton.DPAD_LEFT -> SemanticAction.NAVIGATE_LEFT
                 GamepadButton.DPAD_RIGHT -> SemanticAction.NAVIGATE_RIGHT
                 GamepadButton.START, GamepadButton.FACE_NORTH -> SemanticAction.MENU
+                // The bumpers step through the global destinations, as on a console.
+                GamepadButton.SHOULDER_LEFT -> SemanticAction.PREVIOUS_SECTION
+                GamepadButton.SHOULDER_RIGHT -> SemanticAction.NEXT_SECTION
                 else -> null
             }
             InputContext.PLAYBACK -> when (button) {
@@ -72,6 +75,13 @@ object InputMapping {
         Key.MEDIA_REWIND -> SemanticAction.SEEK_BACKWARD
         Key.VOLUME_UP -> SemanticAction.VOLUME_UP
         Key.VOLUME_DOWN -> SemanticAction.VOLUME_DOWN
+        // Destinations are not reached from inside the player: it is left first.
+        Key.SHORTCUT_1 -> SemanticAction.GO_HOME.takeIf { context == InputContext.BROWSE }
+        Key.SHORTCUT_2 -> SemanticAction.GO_MOVIES.takeIf { context == InputContext.BROWSE }
+        Key.SHORTCUT_3 -> SemanticAction.GO_SHOWS.takeIf { context == InputContext.BROWSE }
+        Key.SHORTCUT_4 -> SemanticAction.GO_SEARCH.takeIf { context == InputContext.BROWSE }
+        Key.SHORTCUT_5 -> SemanticAction.GO_DOWNLOADS.takeIf { context == InputContext.BROWSE }
+        Key.SHORTCUT_6 -> SemanticAction.GO_SOURCES.takeIf { context == InputContext.BROWSE }
         Key.TAB, Key.OTHER -> null
     }
 

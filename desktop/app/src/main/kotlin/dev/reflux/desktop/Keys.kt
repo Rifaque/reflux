@@ -7,9 +7,22 @@ import java.awt.event.MouseEvent
 /**
  * Normalizes an AWT key press into a Reflux [Key], or null for keys Reflux has no meaning for.
  *
- * Presses with Ctrl, Alt, or Meta held are left alone so system and toolkit shortcuts keep working.
+ * Presses with Ctrl, Alt, or Meta held are left alone so system and toolkit shortcuts keep working, except Reflux's own
+ * destination shortcuts (Ctrl or Command with 1 to 6).
  */
 internal fun KeyEvent.toRefluxKey(): Key? {
+    // Ctrl (Command on a Mac) with 1 to 6: the global destinations, as tabs are reached in a browser.
+    if ((isControlDown || isMetaDown) && !isAltDown && !isShiftDown) {
+        return when (keyCode) {
+            KeyEvent.VK_1, KeyEvent.VK_NUMPAD1 -> Key.SHORTCUT_1
+            KeyEvent.VK_2, KeyEvent.VK_NUMPAD2 -> Key.SHORTCUT_2
+            KeyEvent.VK_3, KeyEvent.VK_NUMPAD3 -> Key.SHORTCUT_3
+            KeyEvent.VK_4, KeyEvent.VK_NUMPAD4 -> Key.SHORTCUT_4
+            KeyEvent.VK_5, KeyEvent.VK_NUMPAD5 -> Key.SHORTCUT_5
+            KeyEvent.VK_6, KeyEvent.VK_NUMPAD6 -> Key.SHORTCUT_6
+            else -> null
+        }
+    }
     if (isControlDown || isAltDown || isMetaDown) return null
     return when (keyCode) {
         KeyEvent.VK_UP, KeyEvent.VK_KP_UP -> Key.ARROW_UP

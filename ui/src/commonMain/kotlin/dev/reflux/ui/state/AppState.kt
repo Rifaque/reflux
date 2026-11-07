@@ -32,6 +32,9 @@ import dev.reflux.core.source.MediaSource
 import dev.reflux.library.Library
 import dev.reflux.library.LibraryEntry
 import dev.reflux.library.LibraryPipeline
+import dev.reflux.library.LibraryScope
+import dev.reflux.library.setLibraryIncluded
+import dev.reflux.library.setSourceIncluded
 import dev.reflux.library.Offline
 import dev.reflux.library.PipelineActivity
 import dev.reflux.library.pinVersion
@@ -93,11 +96,18 @@ class AppState(
         get() = offlineShown
         set(value) {
             offlineShown = value
-            if (!value) offlineReview = null
+            if (!value) {
+                offlineReview = null
+                offlineScope = LibraryScope.Unified
+            }
         }
 
     /** The work the offline sheet is proposing to keep, while it is reviewing one before it is downloaded. */
     var offlineReview: MediaId? by mutableStateOf(null)
+        private set
+
+    /** Where the work the sheet reviews was opened from: a source's page keeps that source's copy. */
+    var offlineScope: LibraryScope by mutableStateOf(LibraryScope.Unified)
         private set
 
     /** Sources being checked or scanned because the user asked, so that their rows can say so. */
@@ -247,12 +257,57 @@ class AppState(
         }
     }
 
+    // Navigation ---------------------------------------------------------------------------------
+
+    /** Whether this platform keeps copies, and so has a Downloads destination. */
+    val keepsCopies: Boolean get() = platform.offline != null
+
+    /** The global destinations this platform has, in the navigation's order. */
+    val destinations: List<Destination.Section> get() = Destinations.filter { it != Destination.Downloads || keepsCopies }
+
+    /** Goes to a global destination, or back to its top when it is the one already shown. */
+    fun go(section: Destination.Section) {
+        if (section !in destinations) return
+        navigator.show(section)
+    }
+
+    /** The next or previous global destination, from the one the viewer is in; the ends do not wrap. */
+    private fun step(by: Int): Boolean {
+        val all = destinations
+        val here = all.indexOf(navigator.section)
+        val next = all.getOrNull(here + by) ?: return false
+        go(next)
+        return true
+    }
+
+    /**
+     * Moves focus to the navigation's current destination, where a television's Back goes first (docs/NAVIGATION.md,
+     * section 2). Installed by the root composable; returns false when focus is already there or cannot move.
+     */
+    internal var focusNavigation: (() -> Boolean)? = null
+
     // Sources ------------------------------------------------------------------------------------
 
-    /** Opens the page about where the library comes from, or leaves it when it is what is open. */
+    /** Opens Sources, or leaves it for Home when it is the destination already shown. */
     fun toggleSources() {
-        // From anywhere about the sources, back to where the user was before them.
-        if (navigator.current.aboutSources) navigator.leave { it.aboutSources } else navigator.open(Destination.Sources)
+        if (navigator.section == Destination.Sources) navigator.show(Destination.Home) else go(Destination.Sources)
+    }
+
+    /**
+     * Includes a source in the unified library, or leaves it out (docs/NAVIGATION.md, section 5). Nothing else about
+     * it changes: it stays connected and can be browsed and played from its own page.
+     */
+    fun setSourceIncluded(id: SourceId, included: Boolean, name: String): Job = attempt("That couldn't be changed. Try again.") {
+        read { setSourceIncluded(id, included) }
+        notify(if (included) "$name is in your library." else "$name is no longer in your library. You can still open it from Sources.")
+        invalidate()
+    }
+
+    /** One library of a source in the unified library, or not; it counts while its source is included. */
+    fun setLibraryIncluded(id: SourceId, section: String, included: Boolean, name: String): Job = attempt("That couldn't be changed. Try again.") {
+        read { setLibraryIncluded(id, section, included) }
+        notify(if (included) "$name is in your library." else "$name is no longer in your library.")
+        invalidate()
     }
 
     /**
@@ -267,28 +322,15 @@ class AppState(
         refresh(id)
     }
 
-    /**
-     * Includes only what is not in [excluded] from a source made of parts, then reads it again. The
-     * library catches up as the scan runs; nothing about the connection changes.
-     */
-    fun chooseSections(id: SourceId, excluded: Set<String>, all: List<dev.reflux.core.source.SourceSection>, name: String): Job = attempt("That couldn't be changed. Try again.") {
-        val connections = platform.connections ?: return@attempt
-        val changed = withContext(background) { connections.setExcludedSections(id, excluded, all) }
-        if (!changed) return@attempt notify("That couldn't be changed. Try again.")
-        if (navigator.current is Destination.SourceSections) navigator.back()
-        notify("$name is being updated with your choice.")
-        invalidate()
-        checkSource(id)
-    }
-
     private fun partOfAdding(destination: Destination) = destination is Destination.AddSource || destination is Destination.Connect
 
     // Offline ------------------------------------------------------------------------------------
 
     /** Opens the offline sheet on what Reflux would keep of [itemId], for the user to confirm. */
-    fun reviewDownload(itemId: MediaId) {
+    fun reviewDownload(itemId: MediaId, scope: LibraryScope = LibraryScope.Unified) {
         offlineOpen = true
         offlineReview = itemId
+        offlineScope = scope
     }
 
     /**
@@ -296,11 +338,11 @@ class AppState(
      * the next few episodes of a show. What of it was paused or did not finish is picked up again. Which version
      * is Reflux's to work out; the user is told that it is happening, or why not.
      */
-    fun download(itemId: MediaId): Job = attempt(Problems.OFFLINE_NOT_PREPARED) {
+    fun download(itemId: MediaId, scope: LibraryScope = LibraryScope.Unified): Job = attempt(Problems.OFFLINE_NOT_PREPARED) {
         val offline = platform.offline ?: return@attempt
         val (plan, resumed) = withContext(background) {
-            val plan = offline.planFor(listOf(itemId)).also(offline::enqueue)
-            plan to offline.resumeStopped(listOf(itemId))
+            val plan = offline.planFor(listOf(itemId), scope).also(offline::enqueue)
+            plan to offline.resumeStopped(listOf(itemId), scope)
         }
         notify(
             when {
@@ -332,9 +374,9 @@ class AppState(
     /** Removes several downloads at once (every episode of a season kept on the device). */
     fun removeDownloads(ids: List<String>): Job = changeDownload { offline -> ids.forEach { offline.remove(it) } }
 
-    /** Opens the page listing every download, or leaves it when it is what is open. */
+    /** Opens Downloads, or leaves it for Home when it is the destination already shown. */
     fun toggleDownloads() {
-        if (navigator.current == Destination.Downloads) navigator.back() else navigator.open(Destination.Downloads)
+        if (navigator.section == Destination.Downloads) navigator.show(Destination.Home) else go(Destination.Downloads)
     }
 
     private fun changeDownload(change: suspend (Offline) -> Unit): Job = attempt(Problems.DOWNLOAD_NOT_CHANGED) {
@@ -419,22 +461,23 @@ class AppState(
      *
      * @param versionId a specific version instead of Best Version.
      * @param resume false starts from the beginning.
+     * @param scope where it is played from: a source's page plays that source's copy (docs/NAVIGATION.md, section 4).
      */
-    fun play(itemId: MediaId, versionId: VersionId? = null, resume: Boolean = true): Job = attempt("This couldn't be played right now.") {
+    fun play(itemId: MediaId, versionId: VersionId? = null, resume: Boolean = true, scope: LibraryScope = LibraryScope.Unified): Job = attempt("This couldn't be played right now.") {
         if (playback != null || starting) return@attempt
         starting = true
         try {
             // One engine and one video surface at a time: the player that was just closed is gone first.
             awaitRelease()
-            val playable = read { playableFor(itemId) } ?: return@attempt notify(Problems.NOTHING_TO_PLAY)
-            val plan = read { planPlayback(playable, platform.device, sources, versionId, resume, preferences = viewer) }
-                ?: return@attempt notify(read { unplayableReason(playable, platform.device, sources, viewer) })
+            val playable = read { playableFor(itemId, scope) } ?: return@attempt notify(Problems.NOTHING_TO_PLAY)
+            val plan = read { planPlayback(playable, platform.device, sources, versionId, resume, preferences = viewer, scope = scope) }
+                ?: return@attempt notify(read { unplayableReason(playable, platform.device, sources, viewer, scope) })
             if (!platform.canPlay) return@attempt notify(Problems.noEngine(platform.playbackSetupHint))
             val player = platform.createPlayer() ?: run {
                 platform.report("The playback engine is installed but could not be started")
                 return@attempt notify(Problems.PLAYBACK_DID_NOT_START)
             }
-            val session = PlaybackSession(this@AppState, player)
+            val session = PlaybackSession(this@AppState, player, scope)
             try {
                 session.load(plan)
             } catch (e: Exception) {
@@ -483,13 +526,13 @@ class AppState(
         releasing = release
     }
 
-    private fun Library.playableFor(itemId: MediaId): MediaId? = when (val item = item(itemId)) {
+    private fun Library.playableFor(itemId: MediaId, scope: LibraryScope): MediaId? = when (val item = item(itemId)) {
         is Movie, is Episode -> item.id
-        is Show -> showDetail(item.id)?.let { detail ->
+        is Show -> showDetail(item.id, scope)?.let { detail ->
             detail.nextUp?.id ?: (detail.seasons.firstOrNull { it.season.number > 0 } ?: detail.seasons.firstOrNull())
                 ?.episodes?.firstOrNull()?.item?.id
         }
-        is Season -> showDetail(item.showId)?.seasons?.firstOrNull { it.season.id == item.id }?.let { season ->
+        is Season -> showDetail(item.showId, scope)?.seasons?.firstOrNull { it.season.id == item.id }?.let { season ->
             (season.episodes.firstOrNull { it.watchState?.completed != true } ?: season.episodes.firstOrNull())?.item?.id
         }
         null -> null
@@ -552,8 +595,9 @@ class AppState(
         val browsing = playback == null
         // The player is operated by its keys. Tab would only walk the page behind the video, which nobody can see.
         if (!browsing && key == Key.TAB) return true
-        // A field is one line: up and down move between fields, everything else is typing.
-        if (browsing && textInputActive && key != Key.ESCAPE && key != Key.ARROW_DOWN && key != Key.ARROW_UP) return false
+        // A field is one line: up and down move between fields, everything else is typing, but for the
+        // destination shortcuts, which no typing makes.
+        if (browsing && textInputActive && key != Key.ESCAPE && key != Key.ARROW_DOWN && key != Key.ARROW_UP && key !in SHORTCUTS) return false
         val action = InputMapping.map(key, context) ?: return false
         // The toolkit activates the focused control for Enter and Space itself.
         if (browsing && action == SemanticAction.SELECT) return false
@@ -588,12 +632,32 @@ class AppState(
                     offlineOpen = false
                     true
                 }
+                // On a television a destination's own page gives Back to the navigation first: Back never
+                // leaves a section, or Reflux, from the middle of a row.
+                platform.television && navigator.current is Destination.Section && focusNavigation?.invoke() == true -> true
                 else -> navigator.back()
             }
             SemanticAction.MENU -> {
                 if (folderPicker == null && !offlineOpen) toggleSources()
                 true
             }
+            SemanticAction.GO_HOME, SemanticAction.GO_MOVIES, SemanticAction.GO_SHOWS, SemanticAction.GO_SEARCH,
+            SemanticAction.GO_DOWNLOADS, SemanticAction.GO_SOURCES -> {
+                if (folderPicker != null || offlineOpen) return false
+                val section = when (action) {
+                    SemanticAction.GO_HOME -> Destination.Home
+                    SemanticAction.GO_MOVIES -> Destination.Movies
+                    SemanticAction.GO_SHOWS -> Destination.Shows
+                    SemanticAction.GO_SEARCH -> Destination.Search
+                    SemanticAction.GO_DOWNLOADS -> Destination.Downloads
+                    else -> Destination.Sources
+                }
+                if (section !in destinations) return false
+                go(section)
+                true
+            }
+            SemanticAction.NEXT_SECTION, SemanticAction.PREVIOUS_SECTION ->
+                folderPicker == null && !offlineOpen && step(if (action == SemanticAction.NEXT_SECTION) 1 else -1)
             SemanticAction.FULLSCREEN -> {
                 platform.requestFullscreen(!platform.fullscreen)
                 true
@@ -603,6 +667,7 @@ class AppState(
     }
 
     private companion object {
+        val SHORTCUTS = setOf(Key.SHORTCUT_1, Key.SHORTCUT_2, Key.SHORTCUT_3, Key.SHORTCUT_4, Key.SHORTCUT_5, Key.SHORTCUT_6)
         const val NOTICE_MS = 4_500L
         const val DOWNLOAD_PROGRESS_MS = 500L
         const val RELEASE_PATIENCE_MS = 5_000L

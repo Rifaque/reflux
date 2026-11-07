@@ -46,8 +46,6 @@ import androidx.compose.ui.unit.dp
 import dev.reflux.core.model.SourceId
 import dev.reflux.core.source.ConnectionKind
 import dev.reflux.core.source.SectionKind
-import dev.reflux.core.source.SourceSection
-import dev.reflux.library.SectionChoice
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
@@ -56,7 +54,6 @@ import dev.reflux.design.FormFactor
 import dev.reflux.design.MaterialRole
 import dev.reflux.design.Motion
 import dev.reflux.library.PipelineActivity
-import dev.reflux.library.downloads
 import dev.reflux.ui.LocalChromeInsets
 import dev.reflux.ui.ReportPageScroll
 import dev.reflux.ui.components.Button
@@ -82,6 +79,12 @@ import dev.reflux.ui.theme.RefluxColors
 import dev.reflux.ui.theme.Text
 import dev.reflux.ui.theme.glass
 import dev.reflux.ui.theme.tween
+import dev.reflux.ui.state.contents
+import dev.reflux.ui.state.Formatting
+import dev.reflux.ui.components.IconButton
+import dev.reflux.library.SourceLibrary
+import androidx.compose.ui.state.ToggleableState
+import androidx.compose.ui.semantics.toggleableState
 
 /** The width a page of rows and forms keeps to, however wide the window: a column to read, not a dashboard. */
 private val PageWidth = 640.dp
@@ -125,15 +128,13 @@ internal fun SourcesScreen(app: AppState) {
     val model = loaded ?: return
     val activity by app.activity.collectAsState()
     val metadataUnreachable by app.metadataUnreachable.collectAsState()
-    val keeps by app.libraryState { app.platform.offline?.let { it.possible() || downloads().isNotEmpty() } ?: false }
     // Kept across a visit to a page it leads to (its libraries, signing in again), so coming back finds it open.
     var open by rememberSaveable { mutableStateOf<String?>(null) }
     Page {
-        item(key = "heading") { Heading("Media sources", "Reflux only reads from these. Your files are never renamed, moved, or changed.") }
+        item(key = "heading") { Heading("Sources", "Where your library comes from. Reflux only reads from these: your files are never renamed, moved, or changed. Open one to see everything on it, in your library or not.") }
         item(key = "actions") {
             FlowRow(Modifier.padding(bottom = 8.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Button("Add media", { app.navigator.open(Destination.AddSource) }, Modifier.initialFocus(), icon = Icon.PLUS, style = ButtonStyle.PRIMARY)
-                if (keeps == true) Button("Downloads", { app.navigator.open(Destination.Downloads) }, icon = Icon.DOWNLOAD)
             }
         }
         if (model.rows.isEmpty()) {
@@ -175,17 +176,23 @@ private fun iconOf(kind: ConnectionKind?): Icon = when (kind) {
     null -> Icon.FOLDER
 }
 
-/** A source as one quiet card: what it is and whether it is there; selecting it shows the rest. */
+/**
+ * A source as one quiet card: what it is, whether it is there, and whether it is in the library; selecting it
+ * shows the rest: its switch and its libraries' (docs/NAVIGATION.md, section 5), the way into its own library, and
+ * what can be done about it.
+ */
 @Composable
 private fun SourceItem(app: AppState, row: SourceRow, expanded: Boolean, scanning: Boolean, onToggle: () -> Unit) {
     val shape = RoundedCornerShape(18.dp)
     var removing by remember(row.id) { mutableStateOf(false) }
-    // Down from an open card goes to its first action, never straight to Remove because it happens to be nearer.
+    // Down from an open card goes to its first control, never straight to Remove because it happens to be nearer.
     val firstAction = remember { FocusRequester() }
     // The button pressed goes when the question comes, and comes back when it goes, so focus has to be taken
     // across each way. With a remote it lands on Keep, so that a press too many keeps the source.
     val keep = remember { FocusRequester() }
     val asks = remember { FocusRequester() }
+    // Down from the switches is the card's first action, Open, never whatever button happens to be nearer.
+    val open = remember { FocusRequester() }
     val showsFocus = LocalLayout.current.showsFocus
     var asked by remember(row.id) { mutableStateOf(false) }
     LaunchedEffect(removing) {
@@ -207,22 +214,19 @@ private fun SourceItem(app: AppState, row: SourceRow, expanded: Boolean, scannin
                 horizontalArrangement = Arrangement.spacedBy(14.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
+                val away = !row.connected || row.signInRequired
                 Box(Modifier.size(40.dp).background(Color.White.copy(alpha = 0.07f), CircleShape), contentAlignment = Alignment.Center) {
-                    Icon(iconOf(row.kind), size = 20.dp, tint = if (row.connected) RefluxColors.textPrimary else RefluxColors.unavailable)
+                    Icon(iconOf(row.kind), size = 20.dp, tint = if (away) RefluxColors.unavailable else RefluxColors.textPrimary)
                 }
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(row.name, style = LocalTypography.current.bodyStrong, maxLines = 1)
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-                        val status = when {
-                            scanning -> if (row.connected) "Updating…" else "Connecting…"
-                            !row.connected -> "Not connected"
-                            else -> row.contents ?: if (row.kind == null) "On this device" else "Connected"
-                        }
-                        if (!row.connected && !scanning) Box(Modifier.size(6.dp).background(RefluxColors.unavailable, CircleShape))
+                        val status = if (scanning) (if (row.connected) "Updating…" else "Connecting…") else row.statusLabel
+                        if (away && !scanning) Box(Modifier.size(6.dp).background(RefluxColors.unavailable, CircleShape))
                         Text(
-                            "${row.kindLabel}  ·  $status",
+                            listOfNotNull(row.kindLabel, status, row.inclusionLabel).joinToString("  ·  "),
                             style = LocalTypography.current.caption,
-                            color = if (!row.connected && !scanning) RefluxColors.textSecondary else RefluxColors.textTertiary,
+                            color = if (away && !scanning) RefluxColors.textSecondary else RefluxColors.textTertiary,
                             maxLines = 1,
                         )
                     }
@@ -231,42 +235,50 @@ private fun SourceItem(app: AppState, row: SourceRow, expanded: Boolean, scannin
             }
         }
         AnimatedVisibility(expanded, enter = fadeIn(Motion.controlsShow.tween()) + expandVertically(Motion.controlsShow.tween()), exit = fadeOut(Motion.controlsHide.tween()) + shrinkVertically(Motion.controlsHide.tween())) {
-            Column(Modifier.fillMaxWidth().padding(start = 70.dp, end = 16.dp, bottom = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                val facts = listOfNotNull(
-                    row.address,
-                    row.account?.let { "Signed in as $it" },
-                    when {
-                        !row.sectioned -> null
-                        row.excluded == 0 -> "All libraries"
-                        row.excluded == 1 -> "1 library left out"
-                        else -> "${row.excluded} libraries left out"
-                    },
-                    row.updated,
-                )
+            Column(Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                val facts = listOfNotNull(row.address, row.account?.let { "Signed in as $it" }, row.updated)
                 if (facts.isNotEmpty()) {
-                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Column(Modifier.padding(start = 54.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                         facts.forEach { Text(it, style = LocalTypography.current.caption, color = RefluxColors.textTertiary, maxLines = 1) }
                     }
                 }
-                if (!row.connected) {
-                    Text(
-                        if (row.kind == null) {
-                            "Its drive or folder isn't there right now. Everything from it stays in your library, and it comes back by itself when the folder does."
-                        } else {
-                            "Reflux can't reach it right now. Everything from it stays in your library, and Reflux reconnects by itself when it's back. If its password changed, sign in again."
-                        },
-                        style = LocalTypography.current.caption,
-                        color = RefluxColors.textSecondary,
-                    )
+                val note = when {
+                    row.signInRequired -> "${row.name} no longer accepts Reflux's sign-in. Everything from it stays in your library; sign in again to play from it and keep it up to date."
+                    !row.connected && row.kind == null -> "Its drive or folder isn't there right now. Everything from it stays in your library, and it comes back by itself when the folder does."
+                    !row.connected -> "Reflux can't reach it right now. Everything from it stays in your library, and Reflux reconnects by itself when it's back."
+                    else -> null
+                }
+                note?.let { Text(it, Modifier.padding(start = 54.dp), style = LocalTypography.current.caption, color = RefluxColors.textSecondary) }
+                if (!removing) {
+                    // In the library or not: the source stays connected and can always be opened here.
+                    SwitchRow(
+                        "In your library",
+                        if (row.included) "Its movies and shows are in Home, Movies, Shows, and Search." else "Its movies and shows are only here, under Sources.",
+                        row.included,
+                        Modifier.focusRequester(firstAction).then(if (row.libraries.isEmpty()) Modifier.focusProperties { down = open } else Modifier),
+                    ) { app.setSourceIncluded(row.id, !row.included, row.name) }
+                    if (row.libraries.isNotEmpty()) {
+                        Text(
+                            if (row.included) "Libraries" else "Libraries · they count again when ${row.name} is in your library",
+                            Modifier.padding(start = 4.dp, top = 4.dp).heading(),
+                            style = LocalTypography.current.captionStrong,
+                            color = RefluxColors.textSecondary,
+                        )
+                        row.libraries.forEach { library ->
+                            LibraryRow(app, row, library, if (library == row.libraries.last()) open else null)
+                        }
+                    } else if (row.sectioned && row.connected) {
+                        Text("No libraries with movies or shows yet.", Modifier.padding(start = 4.dp), style = LocalTypography.current.caption, color = RefluxColors.textTertiary)
+                    }
                 }
                 if (removing) {
                     Column(Modifier.pane("Remove ${row.name}?"), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("Remove ${row.name}?", style = LocalTypography.current.bodyStrong)
                         Text(
                             if (row.kind == ConnectionKind.SERVER) {
-                                "Its movies and shows leave your library, and Reflux signs this device out of the server. What you have watched is remembered, and your media on it is not touched."
+                                "Its movies and shows leave your library, and Reflux signs this device out of the server. What you have watched is remembered, and your media on it is not touched. To keep it connected but out of your library, switch off In your library instead."
                             } else {
-                                "Its movies and shows leave your library. What you have watched is remembered, and nothing on it is touched."
+                                "Its movies and shows leave your library. What you have watched is remembered, and nothing on it is touched. To keep it but out of your library, switch off In your library instead."
                             },
                             style = LocalTypography.current.caption,
                             color = RefluxColors.textSecondary,
@@ -281,8 +293,9 @@ private fun SourceItem(app: AppState, row: SourceRow, expanded: Boolean, scannin
                     }
                 } else {
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Button(if (row.connected) "Refresh" else "Try again", { app.checkSource(row.id) }, Modifier.focusRequester(firstAction), icon = Icon.REFRESH, enabled = !scanning)
-                        if (row.sectioned) Button("Libraries", { app.navigator.open(Destination.SourceSections(row.id)) })
+                        val back = rememberFocusReturn("sources/open/${row.id.value}")
+                        Button("Open", { back.leaving(); app.navigator.open(Destination.SourceLibrary(row.id)) }, back.modifier.focusRequester(open), icon = Icon.CHEVRON_RIGHT)
+                        Button(if (row.connected && !row.signInRequired) "Refresh" else "Try again", { app.checkSource(row.id) }, icon = Icon.REFRESH, enabled = !scanning)
                         row.kind?.let { kind ->
                             Button(if (kind == ConnectionKind.SERVER) "Sign in again" else "Change", { app.navigator.open(Destination.Connect(kind, row.id)) })
                         }
@@ -295,8 +308,61 @@ private fun SourceItem(app: AppState, row: SourceRow, expanded: Boolean, scannin
 }
 
 /**
+ * One library of a source: its own switch, kept as chosen; dimmed while its source is out of the library, where it
+ * would not count; and the way into what it holds.
+ */
+@Composable
+private fun LibraryRow(app: AppState, row: SourceRow, library: SourceLibrary, downTo: FocusRequester?) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+        val kind = when (library.kind) {
+            SectionKind.MOVIES -> "Movies"
+            SectionKind.SHOWS -> "Shows"
+            SectionKind.MIXED -> "Movies and shows"
+        }
+        SwitchRow(
+            library.name,
+            listOfNotNull(kind, Formatting.contents(library.contents.movies, library.contents.shows)).joinToString("  ·  "),
+            library.included,
+            Modifier.weight(1f).then(if (downTo != null) Modifier.focusProperties { down = downTo } else Modifier),
+            dimmed = !row.included,
+        ) { app.setLibraryIncluded(row.id, library.id, !library.included, library.name) }
+        val back = rememberFocusReturn("sources/library/${row.id.value}/${library.id}")
+        IconButton(Icon.CHEVRON_RIGHT, "Open ${library.name}", { back.leaving(); app.navigator.open(Destination.SourceLibrary(row.id, library.id)) }, back.modifier, tint = RefluxColors.textSecondary)
+    }
+}
+
+/**
+ * A switch with its name and what it means: a whole row to press, with the role and state of a switch for assistive
+ * technology. On is a filled white mark; off, an empty ring. No color is needed to tell them apart.
+ */
+@Composable
+private fun SwitchRow(title: String, body: String?, on: Boolean, modifier: Modifier = Modifier, dimmed: Boolean = false, onToggle: () -> Unit) {
+    val shape = RoundedCornerShape(14.dp)
+    Pressable(onToggle, modifier.fillMaxWidth().semantics { toggleableState = ToggleableState(on) }, shape, lift = 0f, role = Role.Switch) { active ->
+        Row(
+            Modifier.fillMaxWidth().background(Color.White.copy(alpha = if (active) 0.07f else 0.03f)).padding(horizontal = 14.dp, vertical = 11.dp),
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(title, style = LocalTypography.current.bodyStrong, color = if (on && !dimmed) RefluxColors.textPrimary else RefluxColors.textSecondary, maxLines = 1)
+                body?.let { Text(it, style = LocalTypography.current.caption, color = RefluxColors.textTertiary, maxLines = 2) }
+            }
+            val mark = if (dimmed) 0.45f else 1f
+            Box(
+                Modifier.size(44.dp, 26.dp).background(Color.White.copy(alpha = if (on) 0.9f * mark else 0f), CircleShape)
+                    .border(1.5.dp, Color.White.copy(alpha = if (on) 0f else 0.35f * mark), CircleShape).padding(3.dp),
+                contentAlignment = if (on) Alignment.CenterEnd else Alignment.CenterStart,
+            ) {
+                Box(Modifier.size(20.dp).background(if (on) RefluxColors.background else Color.White.copy(alpha = 0.55f * mark), CircleShape))
+            }
+        }
+    }
+}
+
+/**
  * What kind of media to add. A folder is first and needs nothing more; a server or a share leads to a
- * short form. Only what this platform can connect to is offered.
+ * short form. Only what this platform can connect to is offered, each server by its own name.
  */
 @Composable
 internal fun AddSourceScreen(app: AppState) {
@@ -308,10 +374,19 @@ internal fun AddSourceScreen(app: AppState) {
             Option(Icon.FOLDER, "A folder on this device", "Movies and shows stored here, or on a drive connected to it.", Modifier.initialFocus()) { app.addFolder() }
         }
         if (ConnectionKind.SERVER in kinds) {
-            val product = connections?.connectors?.firstOrNull { it.kind == ConnectionKind.SERVER }?.product
-            item(key = "server") {
-                Option(Icon.SERVER, product ?: "Media server", "Sign in to your media server. What you watch stays in step with it.") {
-                    app.navigator.open(Destination.Connect(ConnectionKind.SERVER))
+            val products = connections?.products(ConnectionKind.SERVER).orEmpty()
+            if (products.isEmpty()) {
+                item(key = "server") {
+                    Option(Icon.SERVER, "Media server", "Sign in to your media server. What you watch stays in step with it.") {
+                        app.navigator.open(Destination.Connect(ConnectionKind.SERVER))
+                    }
+                }
+            }
+            products.forEach { connector ->
+                item(key = "server/${connector.type}") {
+                    Option(Icon.SERVER, connector.product ?: "Media server", "Sign in to your ${connector.product} server. What you watch stays in step with it.") {
+                        app.navigator.open(Destination.Connect(ConnectionKind.SERVER, type = connector.type))
+                    }
                 }
             }
         }
@@ -357,7 +432,8 @@ internal fun ConnectScreen(app: AppState, destination: Destination.Connect) {
     val connections = app.platform.connections ?: return
     val record by app.libraryState(destination.editing) { destination.editing?.let { source(it) } }
     if (destination.editing != null && record == null) return
-    val setup = remember(destination) { SourceSetup(app, connections, destination.kind, record) }
+    val setup = remember(destination) { SourceSetup(app, connections, destination.kind, record, destination.type ?: record?.type) }
+    val plex = setup.product == "Plex"
     val server = setup.kind == ConnectionKind.SERVER
     val focus = LocalFocusManager.current
     val address = remember { FocusRequester() }
@@ -376,7 +452,9 @@ internal fun ConnectScreen(app: AppState, destination: Destination.Connect) {
         server -> "Connect to ${setup.product ?: "your server"}"
         else -> "Add a network share"
     }
-    val body = if (server) {
+    val body = if (plex) {
+        "Sign in with your Plex account, or put a Plex token in the password field. Leave both empty if your server lets this network in without signing in. Reflux keeps only Plex's permission to read; your password isn't stored."
+    } else if (server) {
         "Reflux signs in once and keeps only the server's permission to read. Your password isn't stored."
     } else {
         "Reflux only reads from the share. Leave the name and password empty if it doesn't ask for them."
@@ -397,12 +475,12 @@ internal fun ConnectScreen(app: AppState, destination: Destination.Connect) {
                     Text("For example ${setup.examples.joinToString(" or ")}", style = LocalTypography.current.caption, color = RefluxColors.textTertiary)
                 }
                 TextInput(
-                    setup.username, { setup.username = it }, if (setup.anonymous) "User name (if it asks)" else "User name",
+                    setup.username, { setup.username = it }, if (plex) "Plex account email or user name" else if (setup.anonymous) "User name (if it asks)" else "User name",
                     kind = InputKind.NAME, error = setup.problemField == SourceSetup.Field.USERNAME, enabled = !setup.connecting,
                     onFocus = typing, onDone = { focus.moveFocus(FocusDirection.Down) },
                 )
                 TextInput(
-                    setup.password, { setup.password = it }, if (setup.anonymous) "Password (if it asks)" else "Password",
+                    setup.password, { setup.password = it }, if (plex) "Password or Plex token" else if (setup.anonymous) "Password (if it asks)" else "Password",
                     Modifier.focusRequester(password),
                     // Down from the last field is the way to connect, not whatever button is nearest.
                     fieldModifier = Modifier.focusProperties { down = submit },
@@ -426,112 +504,6 @@ internal fun ConnectScreen(app: AppState, destination: Destination.Connect) {
             Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Button(if (setup.connecting) "Connecting…" else if (setup.editing != null && server) "Sign in" else "Connect", { setup.connect() }, Modifier.focusRequester(submit), style = ButtonStyle.PRIMARY, enabled = !setup.connecting)
                 Button("Cancel", { app.navigator.back() }, style = ButtonStyle.QUIET)
-            }
-        }
-    }
-}
-
-/**
- * Which of a server's libraries Reflux includes. Everything is included until the user says otherwise;
- * what is left out stays on the server and leaves Reflux's library, and at least one library stays in.
- */
-@Composable
-internal fun SourceSectionsScreen(app: AppState, sourceId: SourceId) {
-    val connections = app.platform.connections ?: return
-    val record by app.libraryState(sourceId) { source(sourceId) }
-    val name = record?.displayName ?: return
-    var choice by remember(sourceId) { mutableStateOf<SectionChoice?>(null) }
-    var unreachable by remember(sourceId) { mutableStateOf(false) }
-    var included by remember(sourceId) { mutableStateOf<Set<String>>(emptySet()) }
-    val save = remember { FocusRequester() }
-    LaunchedEffect(sourceId) {
-        val loaded = runCatching { withContext(app.background) { connections.sections(sourceId) } }.getOrNull()
-        if (loaded == null) {
-            unreachable = true
-        } else {
-            choice = loaded
-            included = loaded.sections.map { it.id }.toSet() - loaded.excluded
-        }
-    }
-    Page {
-        item(key = "heading") { Heading("Libraries on $name", "Choose what Reflux includes. What you leave out stays on the server, and you can add it back at any time.") }
-        val loaded = choice
-        when {
-            unreachable -> item(key = "away") {
-                Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                    Text("$name isn't connected, so its libraries can't be listed right now. Try again when it's back.", color = RefluxColors.textSecondary)
-                    Button("Back", { app.navigator.back() }, Modifier.initialFocus(), icon = Icon.BACK, style = ButtonStyle.PRIMARY)
-                }
-            }
-            loaded == null -> item(key = "loading") { Text("Asking $name for its libraries…", color = RefluxColors.textTertiary) }
-            else -> {
-                items(loaded.sections, key = { it.id }) { section ->
-                    val on = section.id in included
-                    val last = on && included.size == 1
-                    SectionRow(
-                        section,
-                        on,
-                        when (section) {
-                            loaded.sections.first() -> Modifier.initialFocus()
-                            // Down from the last library is the way to Save, not whichever button is nearer.
-                            loaded.sections.last() -> Modifier.focusProperties { down = save }
-                            else -> Modifier
-                        },
-                    ) { if (!last) included = if (on) included - section.id else included + section.id }
-                }
-                item(key = "note") {
-                    if (included.size == 1) {
-                        Text(
-                            "One library always stays included. To include nothing from $name, remove it from your sources instead.",
-                            Modifier.padding(top = 4.dp),
-                            style = LocalTypography.current.caption,
-                            color = RefluxColors.textTertiary,
-                        )
-                    }
-                }
-                item(key = "actions") {
-                    val excluded = loaded.sections.map { it.id }.toSet() - included
-                    val changed = excluded != loaded.excludedPresent
-                    Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Button("Save", { app.chooseSections(sourceId, excluded, loaded.sections, name) }, Modifier.focusRequester(save), style = ButtonStyle.PRIMARY, enabled = changed && included.isNotEmpty())
-                        Button("Cancel", { app.navigator.back() }, style = ButtonStyle.QUIET)
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun SectionRow(section: SourceSection, on: Boolean, modifier: Modifier, onToggle: () -> Unit) {
-    val shape = RoundedCornerShape(16.dp)
-    Pressable(onToggle, modifier.fillMaxWidth().semantics { stateDescription = if (on) "Included" else "Left out" }, shape, lift = 0f, role = Role.Checkbox) { active ->
-        Row(
-            Modifier.fillMaxWidth().glass(MaterialRole.ELEVATED, shape).background(Color.White.copy(alpha = if (active) 0.07f else 0f))
-                .padding(horizontal = 18.dp, vertical = 14.dp),
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(section.name, style = LocalTypography.current.bodyStrong, color = if (on) RefluxColors.textPrimary else RefluxColors.textSecondary, maxLines = 1)
-                Text(
-                    when (section.kind) {
-                        SectionKind.MOVIES -> "Movies"
-                        SectionKind.SHOWS -> "Shows"
-                        SectionKind.MIXED -> "Movies and shows"
-                    } + if (on) "" else "  ·  Left out",
-                    style = LocalTypography.current.caption,
-                    color = RefluxColors.textTertiary,
-                    maxLines = 1,
-                )
-            }
-            // Included is a filled white mark; left out, an empty ring. No color is needed to tell them apart.
-            Box(
-                Modifier.size(26.dp).background(if (on) Color.White.copy(alpha = 0.92f) else Color.Transparent, CircleShape)
-                    .border(1.5.dp, Color.White.copy(alpha = if (on) 0f else 0.35f), CircleShape),
-                contentAlignment = Alignment.Center,
-            ) {
-                if (on) Icon(Icon.CHECK, size = 16.dp, tint = RefluxColors.background)
             }
         }
     }

@@ -23,6 +23,18 @@ enum class SemanticAction {
     VOLUME_DOWN,
     MUTE,
     FULLSCREEN,
+
+    /** The global destinations (docs/NAVIGATION.md), reached directly. */
+    GO_HOME,
+    GO_MOVIES,
+    GO_SHOWS,
+    GO_SEARCH,
+    GO_DOWNLOADS,
+    GO_SOURCES,
+
+    /** The next or previous global destination, in the navigation's order. */
+    NEXT_SECTION,
+    PREVIOUS_SECTION,
 }
 
 /** The UI context interpreting input. The same button can mean different things while browsing or playing. */
@@ -54,5 +66,8 @@ enum class Key {
     MEDIA_PLAY_PAUSE, MEDIA_PLAY, MEDIA_PAUSE, MEDIA_STOP, MEDIA_NEXT, MEDIA_PREVIOUS,
     MEDIA_FAST_FORWARD, MEDIA_REWIND,
     VOLUME_UP, VOLUME_DOWN, VOLUME_MUTE,
+
+    /** A destination shortcut: Ctrl (Command on a Mac) with a number key, normalized by the shell. */
+    SHORTCUT_1, SHORTCUT_2, SHORTCUT_3, SHORTCUT_4, SHORTCUT_5, SHORTCUT_6,
     OTHER,
 }

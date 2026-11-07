@@ -68,8 +68,8 @@ class AboutUiTest {
             onNodeWithText("About Reflux").performClick()
             awaitText("Version ${RefluxBuild.VERSION} (8bd4bba)")
             assertEquals(Destination.About, app.navigator.current)
-            // No section of the library is lit while Reflux itself is open.
-            assertNull(app.navigator.highlighted)
+            // About is reached from Sources, which stays the destination the viewer is in.
+            assertEquals(Destination.Sources, app.navigator.highlighted)
             save("about-${width}x$height")
             runOnIdle { app.navigator.back() }
             awaitText("About Reflux")
@@ -202,7 +202,7 @@ class AboutUiTest {
     fun aRemoteReadsALicenseLongerThanTheScreenAndFindsItsWayBack() = television { app ->
         awaitText("Recently Added")
         runOnIdle { app.toggleSources() }
-        awaitText("Media sources")
+        awaitText("Add media")
         // Down the sources page to Reflux itself.
         repeat(12) { if (focusedText()?.contains("About Reflux") != true) remote(app, Key.ARROW_DOWN) }
         awaitFocusOn("About Reflux")

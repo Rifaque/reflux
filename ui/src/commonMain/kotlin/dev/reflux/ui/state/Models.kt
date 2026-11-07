@@ -206,14 +206,15 @@ internal fun Library.detailsModel(
     device: DeviceCapabilities,
     preferences: TrackPreferences? = null,
     sourceCapabilities: (SourceId) -> Set<SourceCapability> = { emptySet() },
+    scope: dev.reflux.library.LibraryScope = dev.reflux.library.LibraryScope.Unified,
 ): DetailsModel? {
-    val entry = entry(itemId) ?: return null
+    val entry = entry(itemId, scope) ?: return null
     val card = cards(listOf(entry)).single()
     val metadata = entry.metadata
     val names = mutableMapOf<SourceId, String>()
     return when (val item = entry.item) {
         is Show -> {
-            val detail = showDetail(item.id) ?: return null
+            val detail = showDetail(item.id, scope) ?: return null
             val choices = episodeVersionChoices(item.id).filterValues { it > 1 }
             val seasons = detail.seasons.map { season ->
                 SeasonModel(season.season, cards(season.episodes), season.episodes.mapNotNull { e -> choices[e.item.id]?.let { e.item.id to it } }.toMap())
@@ -243,7 +244,7 @@ internal fun Library.detailsModel(
             )
         }
         is Movie -> {
-            val selection = selectVersion(item.id, device, preferences = preferences, sourceCapabilities = sourceCapabilities)
+            val selection = selectVersion(item.id, device, preferences = preferences, sourceCapabilities = sourceCapabilities, scope = scope)
             if (selection.ranked.isEmpty()) return null
             val runtime = metadata?.runtimeMinutes ?: selection.ranked.firstNotNullOfOrNull { it.version.stream.durationMs }?.let { (it / 60_000).toInt() }
             val resumes = WatchRules.resumePosition(entry.watchState) != null
@@ -270,7 +271,7 @@ internal fun Library.detailsModel(
         // An episode's own page: its versions, as a film's, under its show's name. Reached from the episode's
         // row when it has several, and from outside Reflux (Watch Next), which names the episode.
         is Episode -> {
-            val selection = selectVersion(item.id, device, preferences = preferences, sourceCapabilities = sourceCapabilities)
+            val selection = selectVersion(item.id, device, preferences = preferences, sourceCapabilities = sourceCapabilities, scope = scope)
             if (selection.ranked.isEmpty()) return null
             val runtime = metadata?.runtimeMinutes ?: selection.ranked.firstNotNullOfOrNull { it.version.stream.durationMs }?.let { (it / 60_000).toInt() }
             val resumes = WatchRules.resumePosition(entry.watchState) != null

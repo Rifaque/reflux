@@ -25,6 +25,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.staticCompositionLocalOf
+import dev.reflux.library.LibraryScope
 import androidx.compose.runtime.key
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -108,8 +111,19 @@ import dev.reflux.ui.theme.Text
  * exist. An episode's own page is its versions under its show's name, reached from its row on the show's page.
  */
 @Composable
-internal fun DetailsScreen(app: AppState, itemId: MediaId) {
-    val loaded by app.libraryState(itemId) { Loaded(detailsModel(itemId, app.platform.device, app.viewer, app.sourceCapabilities)) }
+internal fun DetailsScreen(app: AppState, itemId: MediaId, scope: LibraryScope = LibraryScope.Unified) {
+    CompositionLocalProvider(LocalLibraryScope provides scope) { DetailsPage(app, itemId, scope) }
+}
+
+/**
+ * Where the page was opened from (docs/NAVIGATION.md, section 4): what it lists, plays, and keeps is the unified
+ * library's, or one source's, and the pages it leads to stay there.
+ */
+private val LocalLibraryScope = staticCompositionLocalOf<LibraryScope> { LibraryScope.Unified }
+
+@Composable
+private fun DetailsPage(app: AppState, itemId: MediaId, scope: LibraryScope) {
+    val loaded by app.libraryState(itemId, scope) { Loaded(detailsModel(itemId, app.platform.device, app.viewer, app.sourceCapabilities, scope)) }
     // Null while loading; a loaded page without details is a work that has left the library.
     val details = (loaded ?: return).details ?: return Gone(app)
     val layout = LocalLayout.current
@@ -117,10 +131,10 @@ internal fun DetailsScreen(app: AppState, itemId: MediaId) {
     val shown = details.seasons.getOrNull(season)
     val episodes = shown?.episodes.orEmpty()
     // Whether it is, or is being, kept on this device; null where the platform keeps nothing.
-    val offline by app.offlineState(itemId) { app.platform.offline?.let { offlineStatus(itemId, it) } }
+    val offline by app.offlineState(itemId, scope) { app.platform.offline?.let { offlineStatus(itemId, it, scope) } }
     // For a show: the season shown, and each of its episodes that can be or is kept.
     val seasonId = shown?.season?.id
-    val seasonOffline by app.offlineState(seasonId) { seasonId?.let { id -> app.platform.offline?.let { offlineStatus(id, it) } } }
+    val seasonOffline by app.offlineState(seasonId, scope) { seasonId?.let { id -> app.platform.offline?.let { offlineStatus(id, it, scope) } } }
     val episodeMarks by app.offlineState(itemId, details.seasons.isNotEmpty()) {
         app.platform.offline?.takeIf { details.seasons.isNotEmpty() }?.let { episodeOffline(itemId, it) }
     }
@@ -230,6 +244,7 @@ private fun Header(
     viewport: Dp,
     modifier: Modifier = Modifier,
 ) {
+    val libraryScope = LocalLibraryScope.current
     val layout = LocalLayout.current
     val card = details.card
     Box(modifier.fillMaxWidth()) {
@@ -296,8 +311,8 @@ private fun Header(
                     val gap = if (LocalLayout.current.formFactor == FormFactor.TV) 22.dp else 12.dp
                     FlowRow(Modifier.padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(gap), verticalArrangement = Arrangement.spacedBy(10.dp), itemVerticalAlignment = Alignment.CenterVertically) {
                         val playId = details.playId
-                        Button(details.playLabel, { playId?.let { app.play(it) } }, Modifier.initialFocus(), icon = Icon.PLAY, style = ButtonStyle.PRIMARY, enabled = playId != null && !card.offline)
-                        if (details.resumes && playId != null) Button("From the start", { app.play(playId, resume = false) })
+                        Button(details.playLabel, { playId?.let { app.play(it, scope = libraryScope) } }, Modifier.initialFocus(), icon = Icon.PLAY, style = ButtonStyle.PRIMARY, enabled = playId != null && !card.offline)
+                        if (details.resumes && playId != null) Button("From the start", { app.play(playId, resume = false, scope = libraryScope) })
                         IconButton(
                             Icon.CHECK,
                             if (card.watched) "Mark as unwatched" else "Mark as watched",
@@ -327,7 +342,7 @@ private fun Header(
                                 // What Reflux would keep, to confirm, and what of it is kept already, with what can be done about it.
                                 {
                                     entry?.afterPanel = download
-                                    app.reviewDownload(card.id)
+                                    app.reviewDownload(card.id, libraryScope)
                                 },
                                 Modifier.focusRequester(download),
                                 glass = true,
@@ -338,7 +353,7 @@ private fun Header(
                         // An episode is identified through its show, which its page leads back to.
                         val showId = details.showId
                         if (showId != null) {
-                            Button("All episodes", { app.navigator.open(Destination.Details(showId)) }, style = ButtonStyle.QUIET)
+                            Button("All episodes", { app.navigator.open(Destination.Details(showId, libraryScope)) }, style = ButtonStyle.QUIET)
                         } else if (app.canIdentify && !details.weak) {
                             Button("Identify", { app.navigator.open(Destination.Identify(card.id)) }, style = ButtonStyle.QUIET)
                         }
@@ -377,6 +392,7 @@ private fun credit(credits: List<Credit>): String? {
  */
 @Composable
 private fun Versions(app: AppState, details: DetailsModel, modifier: Modifier = Modifier) {
+    val libraryScope = LocalLibraryScope.current
     val several = details.versions.size > 1
     Column(modifier.widthIn(max = 880.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Column(Modifier.padding(bottom = 2.dp)) {
@@ -391,7 +407,7 @@ private fun Versions(app: AppState, details: DetailsModel, modifier: Modifier = 
             VersionItem(
                 version,
                 details.bestReason,
-                onPlay = { app.play(details.card.id, version.ranked.version.id) },
+                onPlay = { app.play(details.card.id, version.ranked.version.id, scope = libraryScope) },
                 onPin = { app.pinVersion(details.card.id, version.ranked.version.id.takeUnless { version.pinned }) },
             )
         } }
@@ -492,11 +508,12 @@ private fun VersionCard(row: VersionRow, bestReason: SelectionCriterion?, onPlay
  */
 @Composable
 private fun EpisodeItem(app: AppState, episode: MediaCard, versions: Int?, room: Boolean, mark: EpisodeOffline?, keeps: Boolean, modifier: Modifier = Modifier) {
+    val libraryScope = LocalLibraryScope.current
     val choice: @Composable () -> Unit = {
         if (versions != null) {
             // Back from the episode's page comes back here, not to the top of the show's.
             val back = rememberFocusReturn("versions/${episode.id.value}")
-            Button("$versions versions", { back.leaving(); app.navigator.open(Destination.Details(episode.id)) }, back.modifier, style = ButtonStyle.QUIET)
+            Button("$versions versions", { back.leaving(); app.navigator.open(Destination.Details(episode.id, libraryScope)) }, back.modifier, style = ButtonStyle.QUIET)
         }
     }
     val download: @Composable () -> Unit = { Box(Modifier.width(MarkWidth), contentAlignment = Alignment.Center) { mark?.let { EpisodeDownload(app, episode, it) } } }
@@ -534,6 +551,7 @@ private fun episodeRowWidth(room: Boolean, keeps: Boolean): Dp = 980.dp + (if (r
  */
 @Composable
 private fun EpisodeDownload(app: AppState, episode: MediaCard, mark: EpisodeOffline) {
+    val libraryScope = LocalLibraryScope.current
     val requester = remember { FocusRequester() }
     val entry = LocalFocusEntry.current
     val name = episode.caption ?: episode.title
@@ -552,7 +570,7 @@ private fun EpisodeDownload(app: AppState, episode: MediaCard, mark: EpisodeOffl
         {
             // The sheet takes focus; when it closes, focus comes back here.
             entry?.afterPanel = requester
-            app.reviewDownload(episode.id)
+            app.reviewDownload(episode.id, libraryScope)
         },
         Modifier.focusRequester(requester).semantics { contentDescription = description },
         CircleShape,
@@ -582,6 +600,7 @@ private fun EpisodeDownload(app: AppState, episode: MediaCard, mark: EpisodeOffl
  */
 @Composable
 private fun SeasonDownload(app: AppState, seasonId: MediaId, status: OfflineStatus, modifier: Modifier = Modifier) {
+    val libraryScope = LocalLibraryScope.current
     val requester = remember { FocusRequester() }
     val entry = LocalFocusEntry.current
     Row(modifier, horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -593,7 +612,7 @@ private fun SeasonDownload(app: AppState, seasonId: MediaId, status: OfflineStat
             if (status.downloaded) "Season on this device" else "Download season",
             {
                 entry?.afterPanel = requester
-                app.reviewDownload(seasonId)
+                app.reviewDownload(seasonId, libraryScope)
             },
             Modifier.focusRequester(requester),
             icon = if (status.downloaded) Icon.DOWNLOADED else Icon.DOWNLOAD,
@@ -604,9 +623,10 @@ private fun SeasonDownload(app: AppState, seasonId: MediaId, status: OfflineStat
 
 @Composable
 private fun EpisodeRow(app: AppState, episode: MediaCard, modifier: Modifier = Modifier) {
+    val libraryScope = LocalLibraryScope.current
     val shape = RoundedCornerShape(14.dp)
     Pressable(
-        { app.play(episode.id) },
+        { app.play(episode.id, scope = libraryScope) },
         modifier.fillMaxWidth().semantics { if (episode.watched) stateDescription = "Watched" },
         shape,
         enabled = !episode.offline,

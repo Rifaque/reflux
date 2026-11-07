@@ -153,7 +153,7 @@ private fun DownloadRow(app: AppState, item: DownloadItem, focus: LineFocus, onR
     val gone: () -> Unit = { focus.removed(item.id); app.removeDownload(item.id) }
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(if (television) 24.dp else 10.dp), verticalAlignment = Alignment.CenterVertically) {
         Pressable(
-            { back.leaving(); app.navigator.open(Destination.Details(item.itemId)) },
+            { back.leaving(); app.navigator.open(Destination.Details(item.itemId, item.scope)) },
             Modifier.weight(1f).then(back.modifier).focusRequester(requester).then(if (first) Modifier.initialFocus() else Modifier),
             shape,
             lift = 0.15f,

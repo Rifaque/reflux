@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.reflux.design.MaterialRole
+import dev.reflux.library.LibraryScope
 import dev.reflux.ui.LocalChromeInsets
 import dev.reflux.ui.ReportPageScroll
 import dev.reflux.ui.components.Button
@@ -66,9 +67,18 @@ import dev.reflux.ui.theme.Text
 import dev.reflux.ui.theme.glass
 import kotlinx.coroutines.delay
 
-/** A grid of posters with a header above it. The grid's density follows the adaptive layout. */
+/**
+ * A grid of posters with a header above it. The grid's density follows the adaptive layout. Each poster opens its
+ * work's page in [scope]: from a source's own page, the work as that source has it.
+ */
 @Composable
-private fun PosterGrid(app: AppState, cards: List<MediaCard>, startsOnFirst: Boolean = true, header: @Composable () -> Unit) {
+internal fun PosterGrid(
+    app: AppState,
+    cards: List<MediaCard>,
+    startsOnFirst: Boolean = true,
+    scope: LibraryScope = LibraryScope.Unified,
+    header: @Composable () -> Unit,
+) {
     val layout = LocalLayout.current
     val grid = rememberLazyGridState()
     ReportPageScroll(remember { derivedStateOf { grid.firstVisibleItemIndex > 0 || grid.firstVisibleItemScrollOffset > 0 } }.value)
@@ -84,7 +94,7 @@ private fun PosterGrid(app: AppState, cards: List<MediaCard>, startsOnFirst: Boo
         itemsIndexed(cards, key = { _, card -> card.id.value }) { index, card ->
             PosterCard(
                 card,
-                { app.navigator.open(Destination.Details(card.detailsId)) },
+                { app.navigator.open(Destination.Details(card.detailsId, scope)) },
                 if (index == 0 && startsOnFirst) Modifier.initialFocus() else Modifier,
                 fill = true,
             )

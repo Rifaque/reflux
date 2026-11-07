@@ -90,9 +90,9 @@ class LayoutTest {
         val tv = AdaptiveLayout.profile(960f, 540f, true, InputModality.DIRECTIONAL)
         assertTrue(tv.safeMarginDp >= 960f * 0.05f)
         // A television's canvas is already scaled for the distance: type is a step up, not half again,
-        // and six titles fit across.
+        // and five titles fit across beside the navigation rail.
         assertEquals(1.1f, tv.textScale)
-        assertEquals(6, tv.columns)
+        assertEquals(5, tv.columns)
         assertTrue(tv.minTargetDp >= 44f)
         assertTrue(tv.showsFocus && tv.focusScale > 1f)
     }
@@ -104,6 +104,22 @@ class LayoutTest {
         assertTrue(columns.zipWithNext().all { (a, b) -> b >= a }, "non-decreasing: $columns")
         assertTrue(columns.all { it >= 2 })
         assertTrue(columns.last() > columns.first())
+    }
+
+    @Test
+    fun theNavigationSitsWhereEachWindowHasRoomForIt() {
+        fun navigation(width: Float, height: Float, television: Boolean = false, modality: InputModality = InputModality.TOUCH) =
+            AdaptiveLayout.profile(width, height, television, modality).navigation
+        assertEquals(NavigationStyle.BOTTOM_BAR, navigation(412f, 915f), "a phone held upright: along the bottom")
+        assertEquals(NavigationStyle.COMPACT_RAIL, navigation(915f, 412f), "on its side: a narrow rail, not the bar stretched across")
+        assertEquals(NavigationStyle.RAIL, navigation(1180f, 820f), "a tablet: a rail")
+        assertEquals(NavigationStyle.RAIL, navigation(820f, 1180f), "upright too: a tablet is not a large phone")
+        assertEquals(NavigationStyle.SIDEBAR, navigation(1440f, 900f, modality = InputModality.POINTER))
+        assertEquals(NavigationStyle.TV_RAIL, navigation(960f, 540f, television = true, modality = InputModality.DIRECTIONAL))
+        // Picking up a controller changes density, never where the navigation is.
+        assertEquals(navigation(1440f, 900f, modality = InputModality.POINTER), navigation(1440f, 900f, modality = InputModality.DIRECTIONAL))
+        assertTrue(NavigationStyle.entries.filter { it.vertical }.all { it.widthDp > 0f })
+        assertEquals(0f, NavigationStyle.BOTTOM_BAR.widthDp)
     }
 
     @Test

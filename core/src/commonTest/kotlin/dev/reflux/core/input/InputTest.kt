@@ -105,4 +105,24 @@ class InputModalityTrackerTest {
         assertEquals(InputModality.KEYBOARD, tracker.onSignal(InputSignal.KeyPress(Key.ARROW_DOWN)).modality)
         assertEquals(InputModality.DIRECTIONAL, tracker.onSignal(InputSignal.KeyPress(Key.DPAD_CENTER)).modality)
     }
+
+    @Test
+    fun theDestinationsAreReachedByShortcutsAndBumpersWhileBrowsingOnly() {
+        val shortcuts = listOf(
+            Key.SHORTCUT_1 to SemanticAction.GO_HOME, Key.SHORTCUT_2 to SemanticAction.GO_MOVIES, Key.SHORTCUT_3 to SemanticAction.GO_SHOWS,
+            Key.SHORTCUT_4 to SemanticAction.GO_SEARCH, Key.SHORTCUT_5 to SemanticAction.GO_DOWNLOADS, Key.SHORTCUT_6 to SemanticAction.GO_SOURCES,
+        )
+        for ((key, action) in shortcuts) {
+            assertEquals(action, InputMapping.map(key, InputContext.BROWSE))
+            assertEquals(null, InputMapping.map(key, InputContext.PLAYBACK), "the player is left before a destination is reached")
+        }
+        for (family in ControllerFamily.entries) {
+            assertEquals(SemanticAction.NEXT_SECTION, InputMapping.map(GamepadButton.SHOULDER_RIGHT, family, InputContext.BROWSE))
+            assertEquals(SemanticAction.PREVIOUS_SECTION, InputMapping.map(GamepadButton.SHOULDER_LEFT, family, InputContext.BROWSE))
+            // In the player the bumpers are still the episodes before and after.
+            assertEquals(SemanticAction.NEXT, InputMapping.map(GamepadButton.SHOULDER_RIGHT, family, InputContext.PLAYBACK))
+        }
+        val tracker = InputModalityTracker(InputModality.POINTER)
+        assertEquals(InputModality.POINTER, tracker.onSignal(InputSignal.KeyPress(Key.SHORTCUT_2)).modality, "a shortcut says nothing about how the viewer moves")
+    }
 }
