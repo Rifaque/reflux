@@ -36,8 +36,8 @@ class AboutWindowTest {
         assumeTrue("window tests not requested", windowTestsRequested)
         try {
             Shell(environment()).use { shell ->
-                shell.awaitShown("Media sources")
-                shell.click("Media sources")
+                shell.awaitShown("Sources")
+                shell.click("Sources")
                 shell.click("About Reflux")
                 // The build this window is: the version and the commit its build recorded.
                 shell.awaitShown("Version ${readBuildIdentity().label}")

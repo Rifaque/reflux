@@ -71,7 +71,7 @@ class BrowsingWindowTest {
                 // Navigation, details, and the ways back.
                 shell.click("Movies")
                 shell.awaitShown("12 titles")
-                shell.click("Solaris, 1972")
+                shell.click("Paper Moon, 1973")
                 shell.awaitShown("Version")
                 assertTrue(shell.ui { app.navigator.current } is Destination.Details)
                 shell.click("Add to favorites")
@@ -79,7 +79,7 @@ class BrowsingWindowTest {
                 shell.key(KeyEvent.VK_ESCAPE)
                 shell.awaitShown("12 titles")
                 assertEquals(Destination.Movies, shell.ui { app.navigator.current })
-                shell.click("Solaris, 1972")
+                shell.click("Paper Moon, 1973")
                 shell.awaitShown("Version")
                 shell.click("Back")
                 shell.awaitShown("12 titles")
@@ -103,14 +103,14 @@ class BrowsingWindowTest {
                 // Search: a suggestion, results, and clearing.
                 shell.click("Search")
                 shell.click("favorites")
-                shell.awaitShown("Solaris, 1972")
+                shell.awaitShown("Paper Moon, 1973")
                 assertFalse(shell.shows("Heat, 1995"))
                 shell.click("Clear search")
                 shell.awaitShown("Try")
                 assertEquals("", shell.ui { app.searchQuery })
 
-                // The sources are a page of their own, and the same button leaves it.
-                shell.click("Media sources")
+                // Sources is a destination of the sidebar, with pages of its own stacked on it.
+                shell.click("Sources")
                 shell.awaitShown("Add media")
                 shell.capture("window-sources")
                 shell.click("Add media")
@@ -123,8 +123,8 @@ class BrowsingWindowTest {
                 shell.await("the choice again") { app.navigator.current == Destination.AddSource }
                 shell.click("Back")
                 shell.await("the sources again") { app.navigator.current == Destination.Sources }
-                // The page's title says "Media sources" too; Back is the unambiguous way out.
-                shell.click("Back")
+                // Another destination from the sidebar leaves it.
+                shell.click("Search")
                 shell.await("the page to be left") { app.navigator.current == Destination.Search }
 
                 shell.click("Home")
