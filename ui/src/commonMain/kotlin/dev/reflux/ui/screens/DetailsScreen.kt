@@ -58,7 +58,9 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import dev.reflux.core.metadata.Credit
+import dev.reflux.library.CastMember
+import dev.reflux.core.model.Episode
+import dev.reflux.ui.state.SeasonModel
 import dev.reflux.core.metadata.CreditRole
 import dev.reflux.core.offline.DownloadState
 import dev.reflux.core.model.ArtworkLocator
@@ -205,6 +207,12 @@ private fun DetailsPage(app: AppState, itemId: MediaId, scope: LibraryScope) {
                         }
                     }
                 }
+                // What the season is, where it says more than its number: its name, when it aired, what it is about.
+                if (shown != null && (shown.name != null || shown.overview != null)) {
+                    item(key = "season-about/${shown.season.id.value}") {
+                        SeasonAbout(shown, Modifier.padding(horizontal = layout.safeMarginDp.dp).padding(start = 8.dp, bottom = 12.dp).widthIn(max = rowWidth))
+                    }
+                }
                 items(episodes, key = { it.id.value }) { episode ->
                     EpisodeItem(
                         app, episode, versions[episode.id], room = versions.isNotEmpty(), marks[episode.id], keeps = marks.isNotEmpty(),
@@ -213,7 +221,8 @@ private fun DetailsPage(app: AppState, itemId: MediaId, scope: LibraryScope) {
                 }
             }
             val cast = details.credits.filter { it.role == CreditRole.ACTOR }.take(16)
-            if (cast.isNotEmpty()) item(key = "cast") { Cast(cast, Modifier.padding(top = section)) }
+            // An episode's own cast is its guests; the show's cast is on the show's page.
+            if (cast.isNotEmpty()) item(key = "cast") { Cast(if (details.showId != null) "Guest cast" else "Cast", cast, Modifier.padding(top = section)) }
         }
     }
 }
@@ -287,6 +296,8 @@ private fun Header(
                         maxLines = listOf(2, 5, 8)[titleStep],
                         onTextLayout = { if (it.hasVisualOverflow && titleStep < 2) titleStep++ },
                     )
+                    // The name it has in its own language, quietly, where it differs ("Le Fabuleux Destin d'Amélie Poulain").
+                    details.originalTitle?.let { Text(it, style = LocalTypography.current.caption, color = RefluxColors.contentTertiary, maxLines = 1) }
                     details.tagline?.takeIf { it.isNotBlank() }?.let { Text(it, style = LocalTypography.current.title.copy(fontWeight = FontWeight.Normal), color = RefluxColors.contentSecondary, maxLines = 1) }
                     Row(
                         Modifier.horizontalScroll(rememberScrollState()),
@@ -384,8 +395,8 @@ private fun Header(
     }
 }
 
-/** "Directed by …" for movies, "Created by …" for shows. */
-private fun credit(credits: List<Credit>): String? {
+/** "Directed by …" for movies and episodes, "Created by …" for shows. */
+private fun credit(credits: List<CastMember>): String? {
     val directors = credits.filter { it.role == CreditRole.DIRECTOR }.map { it.name }.distinct()
     if (directors.isNotEmpty()) return "Directed by ${directors.take(3).joinToString()}"
     val creators = credits.filter { it.role == CreditRole.CREATOR }.map { it.name }.distinct()
@@ -661,6 +672,7 @@ private fun EpisodeRow(app: AppState, episode: MediaCard, modifier: Modifier = M
                 val facts = listOfNotNull(
                     "Not connected".takeIf { episode.offline },
                     Formatting.remaining(episode.entry.watchState) ?: episode.entry.metadata?.runtimeMinutes?.takeIf { it > 0 }?.let(Formatting::runtime),
+                    ((episode.entry.item as? Episode)?.airDate ?: episode.entry.metadata?.releaseDate)?.let(Formatting::date),
                 )
                 if (facts.isNotEmpty()) Text(facts.joinToString("  ·  "), style = LocalTypography.current.caption, color = RefluxColors.contentTertiary, maxLines = 1)
                 episode.entry.metadata?.overview?.takeIf { it.isNotBlank() }?.let { Text(it, style = LocalTypography.current.caption, color = RefluxColors.contentSecondary, maxLines = 2) }
@@ -678,17 +690,42 @@ private fun EpisodePlaceholder(episode: MediaCard) {
     }
 }
 
+/**
+ * A season's own name, when it began, and what it is about, beside its poster: read, not chosen, so nothing in
+ * it takes focus and a remote goes from the tabs straight to the episodes.
+ */
 @Composable
-private fun Cast(cast: List<Credit>, modifier: Modifier = Modifier) {
+private fun SeasonAbout(season: SeasonModel, modifier: Modifier = Modifier) {
+    val television = LocalLayout.current.formFactor == FormFactor.TV
+    Row(modifier.fillMaxWidth().semantics(mergeDescendants = true) { }, horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.Top) {
+        val shape = Shapes.small
+        val width = if (television) 64.dp else 76.dp
+        Box(Modifier.width(width).aspectRatio(2f / 3f).clip(shape).clearAndSetSemantics { }) {
+            ArtworkImage(season.poster, width, Modifier.fillMaxSize()) { TitlePlaceholder(season.season.title, null) }
+        }
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            season.name?.let { Text(it, style = LocalTypography.current.bodyStrong, maxLines = 2) }
+            val facts = listOfNotNull(
+                season.aired?.year?.toString(),
+                season.episodes.size.takeIf { it > 0 }?.let { if (it == 1) "1 episode" else "$it episodes" },
+            )
+            if (facts.isNotEmpty()) Text(facts.joinToString("  ·  "), style = LocalTypography.current.caption, color = RefluxColors.contentTertiary, maxLines = 1)
+            season.overview?.let { Text(it, style = LocalTypography.current.caption, color = RefluxColors.contentSecondary, maxLines = if (television) 2 else 3) }
+        }
+    }
+}
+
+@Composable
+private fun Cast(title: String, cast: List<CastMember>, modifier: Modifier = Modifier) {
     val layout = LocalLayout.current
     Column(modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        SectionHeader("Cast", Modifier.padding(horizontal = layout.safeMarginDp.dp))
+        SectionHeader(title, Modifier.padding(horizontal = layout.safeMarginDp.dp))
         LazyRow(contentPadding = PaddingValues(horizontal = layout.safeMarginDp.dp), horizontalArrangement = Arrangement.spacedBy(18.dp)) {
             items(cast) { person ->
                 // One stop: who, and whom they play. The picture, or the initials standing in for it, says nothing more.
                 Column(Modifier.width(104.dp).semantics(mergeDescendants = true) { }, verticalArrangement = Arrangement.spacedBy(6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     Box(Modifier.size(84.dp).clip(CircleShape).background(RefluxColors.surfaceElevated).clearAndSetSemantics { }, contentAlignment = Alignment.Center) {
-                        ArtworkImage(person.profileUrl?.let { ArtworkLocator.Remote(it) }, 84.dp, Modifier.fillMaxSize(), alignment = Alignment.TopCenter) {
+                        ArtworkImage(person.picture, 84.dp, Modifier.fillMaxSize(), alignment = Alignment.TopCenter) {
                             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                                 Text(initials(person.name), style = LocalTypography.current.title, color = RefluxColors.contentSecondary)
                             }

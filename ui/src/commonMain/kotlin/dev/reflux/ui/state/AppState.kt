@@ -1,5 +1,8 @@
 package dev.reflux.ui.state
 
+import dev.reflux.library.MetadataRefresh
+import dev.reflux.library.onlineMetadata
+import dev.reflux.library.setOnlineMetadata
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
@@ -140,8 +143,46 @@ class AppState(
     var mediaAtmosphere by mutableStateOf(false)
         private set
 
+    /**
+     * Whether Reflux may look up titles, descriptions, and artwork online (docs/METADATA.md, "Online lookups"). On
+     * unless the viewer turned it off; off, what sources say and what was fetched before is all there is.
+     */
+    var onlineMetadata by mutableStateOf(true)
+        private set
+
+    /** Whether the build has a metadata provider to look things up in, which the switch above is about. */
+    val hasMetadataProvider: Boolean get() = pipeline.hasProvider
+
     init {
         scope.launch { runCatching { read { setting(MEDIA_ATMOSPHERE) } }.getOrNull()?.let { mediaAtmosphere = it == "on" } }
+        scope.launch { runCatching { read { this.onlineMetadata } }.getOrNull()?.let { onlineMetadata = it } }
+    }
+
+    fun setOnlineMetadata(on: Boolean): Job {
+        onlineMetadata = on
+        return attempt("That couldn't be saved. Try again.") {
+            read { this.setOnlineMetadata(on) }
+            // Turned on, what was waiting for it is looked up now.
+            if (on) refresh()
+            invalidate()
+        }
+    }
+
+    /**
+     * Reads a work's details and artwork again (Identify's "Refresh details"): only when asked, and keeping
+     * everything known when the catalog cannot be reached. Says what came of it.
+     */
+    fun refreshDetails(itemId: MediaId): Job = attempt("Details couldn't be refreshed. Try again.") {
+        val result = withContext(background) { pipeline.refreshDetails(itemId) }
+        notify(
+            when (result) {
+                MetadataRefresh.REFRESHED -> "Details and artwork refreshed"
+                MetadataRefresh.UNREACHABLE -> "The catalog couldn't be reached. Nothing was changed."
+                MetadataRefresh.NOT_FOUND -> "The catalog has nothing more for this."
+                null -> "Online lookups are off."
+            },
+        )
+        invalidate()
     }
 
     fun setMediaAtmosphere(on: Boolean): Job {

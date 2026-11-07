@@ -28,7 +28,8 @@ import dev.reflux.library.identificationStatus
 import dev.reflux.library.userSources
 import dev.reflux.library.LibraryEntry
 import dev.reflux.library.SourceRecord
-import dev.reflux.library.credits
+import dev.reflux.library.CastMember
+import dev.reflux.library.cast
 import dev.reflux.library.pinnedVersions
 import dev.reflux.library.episodeVersionChoices
 import dev.reflux.library.versionChoices
@@ -92,6 +93,17 @@ internal fun Library.cards(entries: List<LibraryEntry>): List<MediaCard> {
                     downloaded = item.id in kept,
                 )
             }
+            // A season without a poster of its own shows its show's: the picture of what it is part of.
+            is Season -> MediaCard(
+                entry = entry,
+                title = item.title,
+                caption = null,
+                poster = entry.artwork[ArtworkKind.POSTER] ?: shows.getOrPut(item.showId) { entry(item.showId) }?.artwork?.get(ArtworkKind.POSTER),
+                wide = entry.artwork[ArtworkKind.BACKDROP] ?: shows.getOrPut(item.showId) { entry(item.showId) }?.artwork?.get(ArtworkKind.BACKDROP),
+                detailsId = item.showId,
+                downloaded = item.id in kept || show(item).first,
+                downloadedPartly = show(item).second,
+            )
             else -> MediaCard(
                 entry = entry,
                 title = item.title,
@@ -164,7 +176,18 @@ data class VersionRow(
  * many there are; an episode in one copy (and its download) is not in it, so its row offers nothing more.
  */
 @Immutable
-data class SeasonModel(val season: Season, val episodes: List<MediaCard>, val versions: Map<MediaId, Int> = emptyMap())
+data class SeasonModel(
+    val season: Season,
+    val episodes: List<MediaCard>,
+    val versions: Map<MediaId, Int> = emptyMap(),
+    /** The season's own name, where it has one beyond its number ("Book One: Water"). */
+    val name: String? = null,
+    val overview: String? = null,
+    /** When it began airing. */
+    val aired: dev.reflux.core.model.CalendarDate? = null,
+    /** Its poster, or the show's where it has none of its own. */
+    val poster: ArtworkLocator? = null,
+)
 
 @Immutable
 data class DetailsModel(
@@ -175,7 +198,8 @@ data class DetailsModel(
     val genres: List<String>,
     val badges: List<String>,
     val backdrop: ArtworkLocator?,
-    val credits: List<Credit>,
+    /** Who is in it, directors and creators first, with their pictures wherever those live. */
+    val credits: List<CastMember>,
     /** What the main button plays, and how it is labelled ("Resume", "Continue S1 · E3"). */
     val playId: MediaId?,
     val playLabel: String,
@@ -195,6 +219,8 @@ data class DetailsModel(
      * away, this device cannot play it, another cut is being resumed); the choice itself is kept.
      */
     val pinNote: String? = null,
+    /** Its title in its own language, where that is not the title shown. */
+    val originalTitle: String? = null,
 )
 
 /**
@@ -217,7 +243,16 @@ internal fun Library.detailsModel(
             val detail = showDetail(item.id, scope) ?: return null
             val choices = episodeVersionChoices(item.id).filterValues { it > 1 }
             val seasons = detail.seasons.map { season ->
-                SeasonModel(season.season, cards(season.episodes), season.episodes.mapNotNull { e -> choices[e.item.id]?.let { e.item.id to it } }.toMap())
+                val described = season.entry.metadata
+                SeasonModel(
+                    season.season,
+                    cards(season.episodes),
+                    season.episodes.mapNotNull { e -> choices[e.item.id]?.let { e.item.id to it } }.toMap(),
+                    name = described?.title?.takeUnless { Formatting.genericSeasonName(it, season.season.number) },
+                    overview = described?.overview,
+                    aired = described?.releaseDate,
+                    poster = season.entry.artwork[ArtworkKind.POSTER] ?: entry.artwork[ArtworkKind.POSTER],
+                )
             }
             if (seasons.none { it.episodes.isNotEmpty() }) return null
             val next = detail.nextUp ?: (detail.seasons.firstOrNull { it.season.number > 0 } ?: detail.seasons.firstOrNull())
@@ -227,12 +262,15 @@ internal fun Library.detailsModel(
                 card = card,
                 overview = metadata?.overview,
                 tagline = metadata?.tagline,
-                facts = Formatting.facts(entry, runtimeMinutes = null) +
+                // When it aired, on what, and how much of it there is: what a show is, said once.
+                facts = listOfNotNull(Formatting.airedYears(metadata?.releaseDate?.year ?: Formatting.year(item), metadata?.endDate?.year)) +
+                    Formatting.facts(entry, runtimeMinutes = null).drop(if (Formatting.year(item) != null) 1 else 0) +
+                    listOfNotNull(metadata?.studios?.firstOrNull()) +
                     listOfNotNull(seasons.count { it.season.number > 0 }.takeIf { it > 0 }?.let { if (it == 1) "1 season" else "$it seasons" }),
                 genres = metadata?.genres.orEmpty(),
                 badges = emptyList(),
                 backdrop = entry.artwork[ArtworkKind.BACKDROP],
-                credits = credits(itemId),
+                credits = cast(itemId),
                 playId = next?.id,
                 playLabel = next?.let { (if (started) "Continue " else "Play ") + Formatting.episodeNumber(it) } ?: "Play",
                 resumes = false,
@@ -241,6 +279,7 @@ internal fun Library.detailsModel(
                 seasons = seasons,
                 initialSeason = seasons.indexOfFirst { it.season.id == next?.seasonId }.coerceAtLeast(0),
                 weak = identificationStatus(itemId)?.weak == true,
+                originalTitle = Formatting.originalTitle(metadata?.originalTitle, card.title),
             )
         }
         is Movie -> {
@@ -256,7 +295,7 @@ internal fun Library.detailsModel(
                 genres = metadata?.genres.orEmpty(),
                 badges = Formatting.qualityBadges(selection.ranked.map { it.version }),
                 backdrop = entry.artwork[ArtworkKind.BACKDROP],
-                credits = credits(itemId),
+                credits = cast(itemId),
                 playId = item.id,
                 playLabel = if (resumes) "Resume" else "Play",
                 resumes = resumes,
@@ -266,6 +305,7 @@ internal fun Library.detailsModel(
                 initialSeason = 0,
                 weak = identificationStatus(itemId)?.weak == true,
                 pinNote = pinNote(item.id, selection),
+                originalTitle = Formatting.originalTitle(metadata?.originalTitle, card.title),
             )
         }
         // An episode's own page: its versions, as a film's, under its show's name. Reached from the episode's
@@ -279,11 +319,14 @@ internal fun Library.detailsModel(
                 card = card,
                 overview = metadata?.overview,
                 tagline = card.caption,
-                facts = Formatting.facts(entry, runtime),
+                // When it aired and how long it is: an episode's year is its show's, so its date says more.
+                facts = listOfNotNull(item.airDate?.let(Formatting::date) ?: metadata?.releaseDate?.let(Formatting::date)) +
+                    Formatting.facts(entry, runtime).drop(if (Formatting.year(item) != null) 1 else 0),
                 genres = entry(item.showId)?.metadata?.genres.orEmpty(),
                 badges = Formatting.qualityBadges(selection.ranked.map { it.version }),
                 backdrop = card.wide,
-                credits = emptyList(),
+                // Its own credits: guest cast and directors, not the show's whole cast again.
+                credits = cast(itemId),
                 playId = item.id,
                 playLabel = if (resumes) "Resume" else "Play",
                 resumes = resumes,

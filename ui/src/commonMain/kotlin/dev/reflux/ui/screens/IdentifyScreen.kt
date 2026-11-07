@@ -99,6 +99,8 @@ internal fun IdentifyScreen(app: AppState, itemId: MediaId) {
             Row(Modifier.padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
                 // What the user said can be taken back; Reflux then identifies it from its files again.
                 if (session.corrected) Button("Let Reflux identify it", { session.undo() }, enabled = !session.applying)
+                // What it is matched to, read again: new artwork, a corrected description. Never a new search.
+                if (target.match != null) Button("Refresh details", { app.refreshDetails(itemId) }, icon = Icon.REFRESH, enabled = !session.applying)
                 Button("Cancel", { app.navigator.back() }, style = ButtonStyle.QUIET)
                 if (session.applying) Note("Applying…")
             }

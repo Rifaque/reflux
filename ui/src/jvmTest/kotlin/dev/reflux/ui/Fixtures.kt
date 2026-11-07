@@ -81,7 +81,7 @@ class TestWorld(metadata: Boolean = true) {
     /** How sources are recreated from what the library stored; tests add the kinds they connect. */
     val factories = mutableMapOf<String, (dev.reflux.library.SourceRecord) -> dev.reflux.core.source.MediaSource?>()
     val registry = SourceRegistry(factories).apply { register(source) }
-    val pipeline = LibraryPipeline(library, registry, metadata = FakeCatalog.takeIf { metadata })
+    val pipeline = LibraryPipeline(library, registry, metadata = FakeCatalog.takeIf { metadata }?.let { dev.reflux.library.ProviderGate(it, spacingMs = 0) })
 
     init {
         library.addSource(source, media.toString())
@@ -207,11 +207,21 @@ object FakeCatalog : MetadataProvider {
     override suspend fun season(ref: ProviderRef, seasonNumber: Int, language: String): SeasonMetadata? {
         val work = works.firstOrNull { ref(it) == ref } ?: return null
         val titles = work.episodes[seasonNumber] ?: return null
+        // Severance's first season has a name of its own and says what it is about; Breaking Bad's episodes
+        // have stills, and its pilot a guest cast.
+        val named = work.key == "21" && seasonNumber == 1
         return SeasonMetadata(
             number = seasonNumber,
-            title = "Season $seasonNumber",
+            title = if (named) "The First Season" else "Season $seasonNumber",
+            overview = if (named) "Mark leads a team whose memories are split between work and home." else null,
+            airDate = CalendarDate(work.year + seasonNumber - 1, 2, 18),
             episodes = titles.mapIndexed { index, title ->
-                EpisodeMetadata(seasonNumber, index + 1, title, overview = "In which $title happens.", runtimeMinutes = work.runtime)
+                EpisodeMetadata(
+                    seasonNumber, index + 1, title, overview = "In which $title happens.", runtimeMinutes = work.runtime,
+                    airDate = CalendarDate(work.year + seasonNumber - 1, 2, 18 + index),
+                    stillUrl = "art://still/${work.title}/$seasonNumber/${index + 1}".takeIf { work.key == "20" },
+                    guestStars = if (work.key == "20" && seasonNumber == 1 && index == 0) listOf(Credit("Raymond Cruz", CreditRole.ACTOR, "Tuco")) else emptyList(),
+                )
             },
         )
     }

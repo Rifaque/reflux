@@ -171,6 +171,17 @@ internal fun SourcesScreen(app: AppState) {
                 Modifier.padding(top = 12.dp),
             ) { app.setMediaAtmosphere(!app.mediaAtmosphere) }
         }
+        // Whether titles, descriptions, and artwork may be looked up online: a privacy choice, so it is the viewer's
+        // to make. Only where the build has a provider to ask (docs/METADATA.md, "Online lookups").
+        if (app.hasMetadataProvider) {
+            item(key = "online") {
+                SwitchRow(
+                    "Online metadata & artwork",
+                    "Look up titles, descriptions, and artwork by name. Off, Reflux uses what your sources provide and what it already has.",
+                    app.onlineMetadata,
+                ) { app.setOnlineMetadata(!app.onlineMetadata) }
+            }
+        }
         // Reflux itself, after everything about the library: a quiet way to its version, privacy, and credits.
         item(key = "about") {
             val back = rememberFocusReturn("sources/about")
