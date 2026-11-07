@@ -39,6 +39,8 @@ The information architecture never changes; where the navigation sits follows th
 | Desktop | A sidebar on the left: the wordmark, then icons with their names beside | In the sidebar |
 | Television | A rail on the left, icons only, which widens to show names while it has focus | In the rail |
 
+How each of these looks (M4): one family of functional material, a lit pill and a leading bar for where the viewer is, and, on capable devices, Home's hero and a work's header running under a rail or sidebar while every other page starts beside it. DESIGN.md, "Visual System 2.0 (M4)", "Navigation surfaces" and "Hero artwork and the navigation". None of it changes where the navigation is, what it holds, or how focus moves through it.
+
 - Icons without words always say their names to assistive technology, with the role of a tab and whether they are selected; a pointer resting on one shows its name.
 - Pages stacked above a section show a Back button at their top-left on touch and pointer layouts (a remote has its own Back).
 - The library-activity sign and, with a controller in hand, the button prompts sit at the top-right of the page on rail and sidebar layouts.

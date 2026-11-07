@@ -4,6 +4,13 @@ What changes for people using Reflux, version by version. The rules for versions
 
 ## Unreleased
 
+- A refreshed look across Reflux. The navigation on every device is a calm frosted layer that floats over your media, with where you are shown by a lit pill and a small bar, not by color. On tablets, desktops, and Google TV, Home's featured title and a title's page now run their artwork under the navigation.
+- On a TV, the navigation rail stays out of the way until you go to it, then widens into a frosted panel with the names.
+- On Android phones and tablets, artwork now reaches the top of the screen, under the status bar, and the navigation sits clear of the gesture area.
+- Media Atmosphere, under Sources: let a title's artwork tint the space around it on Home and on its page. It is off unless you turn it on.
+- If you've asked your system for high contrast (Android's high-contrast text or contrast setting, a Windows contrast theme, GNOME's high contrast), or turned off transparency effects on Windows, Reflux uses solid surfaces instead of frosted ones, and high contrast also brightens secondary text, edges, and the focus ring.
+- Buttons and cards now dim briefly while you press them.
+
 - Reflux has one navigation everywhere: Home, Movies, Shows, Search, Downloads, and Sources. On a phone held upright, Home, Movies, Shows, and Search are icons along the bottom, with Downloads and Sources at the top; on its side, and on tablets, they are in a rail on the left; on Windows and Linux, in a sidebar; on a TV, in a rail you reach with Left on the remote, which shows their names while you are in it.
 - On a TV, Back on Home, Movies, Shows, Search, Downloads, or Sources first goes to the navigation, so it never leaves Reflux from the middle of a row.
 - On Windows and Linux, Ctrl+1 to Ctrl+6 go straight to each place. With a controller, the bumpers step through them.

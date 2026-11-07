@@ -10,7 +10,114 @@ Reflux should combine:
 
 The goal is not to copy Apple, Netflix, Infuse, Plex, or any other product. Those products are references for principles, not visual templates. What Reflux takes from the best of them is restraint: media is the hero, artwork carries the color and the energy, and the interface stays quiet around it.
 
-In one line: let the media be colorful; let the interface be calm. Powerful underneath, calm on the surface. The interface is near-black, charcoal, graphite, soft grey, white, and selective frosted glass, with no color of its own. Artwork is the color on screen, and it may tint the page around it as atmosphere, but never the controls, the navigation, or focus.
+In one line: let the media be colorful; let the interface be calm; let depth come from layers, not decoration. Powerful underneath, calm on the surface. The interface is near-black, charcoal, graphite, soft grey, white, and selective frosted glass, with no color of its own. Artwork is the color on screen. With Media Atmosphere on (it is off by default) it may tint the page around it, but never the controls, the navigation, or focus.
+
+## Visual System 2.0 (M4)
+
+One canonical visual identity, dark and neutral-first. This section is what `design` and `ui/theme` implement; the decisions are in DECISIONS.md, 2026-11-07, "Visual System 2.0" and "One visual identity; themes are V2".
+
+### Layers
+
+Everything on screen belongs to one of four layers, and its layer decides how it may look:
+
+| Layer | What | How it looks |
+| --- | --- | --- |
+| Media | Artwork, posters, thumbnails, video | Expressive: the only color on screen |
+| Structure | The page, rows, grids, headings, text | Calm: the neutral palette, hairline edges, no boxes around text |
+| Function | Navigation, bars, sheets, panels, notices, transient controls | Functional material (glass where the tier allows), above the media |
+| Transient | What appears for a moment (hover labels, notices, a control being pressed) | Short motion, the strongest elevation |
+
+### Tokens (`design`)
+
+Components name a **role**, never a value. The roles are the extension point for any future appearance; there is exactly one appearance now.
+
+| Kind | Tokens | Where |
+| --- | --- | --- |
+| Color | `ColorRoles`: background, backgroundElevated, surface, surfaceElevated, contentPrimary, contentSecondary, contentTertiary, contentDisabled, divider, focused, primaryAction and onPrimaryAction, progress, unavailable, error, success, warning, scrim, stateLayer. `ColorRoles.Reflux` is the identity; `ColorRoles.RefluxHighContrast` is the same identity answering the system's high-contrast setting | `Roles.kt`; `RefluxColors` |
+| States | `StateLayers`: rest, hover, pressed, selected, on, active on glass, disabled. One table for every component, strengthened at high contrast | `Roles.kt`; `States` |
+| Type | `TypeScale`: display (the hero title), pageTitle, sectionTitle, body, bodyStrong, metadata, mediaTitle, caption, utility, navigation, navigationCompact, tvLabel. Only the hero title changes with the window; a television sets the whole scale one step up | `Scale.kt`; `Typography` |
+| Spacing | `Spacing`: 2, 4, 8, 12, 16, 24, 32, 48 dp | `Scale.kt` |
+| Shape | `Radius`: small 8 (badges), medium 12 (media, navigation items), large 16 (rows, interactive surfaces), xlarge 24 (functional material); otherwise a pill | `Scale.kt`; `Shapes` |
+| Depth | `Elevation`: flat, raised, floating, transient. Each step adds a tonal lift and a top-lit hairline before a shadow, so depth reads where a shadow cannot (over video, on black) | `Scale.kt` |
+| Material | `MaterialRole` (base, elevated, floating, interactive, focused, modal), drawn per `MaterialTier` | `Material.kt`; `glass()` |
+| Motion | `Motion` and `MotionProfile` (below) | `Motion.kt` |
+
+Colors outside the roles are for media only (artwork, generated artwork, the video stand-in).
+
+### Material tiers
+
+Internal, never a setting, never a different identity: the hierarchy, roles, and semantics are the same in all three. `MaterialTiers.select` decides from what the device can do and what the viewer's system asks for.
+
+| Tier | When | Functional material |
+| --- | --- | --- |
+| BASIC | No backdrop blur (Android before 12, so every Fire OS device), reduced transparency, or high contrast | Opaque neutral surface, a stronger hairline, a restrained shadow. Pages stay beside the navigation |
+| ENHANCED | A television that blurs (Google TV on Android 12 and later), or a device the system calls low on memory | Frosted: it blurs what is behind it, its tint raised until secondary text holds 4.5:1 over bright artwork |
+| PREMIUM | Phones, tablets, and desktops that blur | As ENHANCED, with a little more of the artwork through and a little more edge light, and its strength measured against the artwork actually beneath it (`MaterialBackdrop`), changing in a short transition |
+
+Legibility is never traded for the look: every tier holds secondary text at 4.5:1 over any artwork (`MaterialTierTest`), and where glass would cost legibility the material is made stronger, up to opaque.
+
+### Where glass goes
+
+Glass is a functional material, not decoration. It is for the phone's bar, the rails, the sidebar, the television's rail while it is open, the player's bars and lists, sheets, panels, notices, hover labels, and glass buttons that sit on artwork. It is not for media cards, rows, posters, text, whole backgrounds, or every dialog. A television's rail is not glass while it is closed: it is its icons over a soft shade, so the page stays content first.
+
+### Navigation surfaces
+
+One family: functional material, a lit pill for where the viewer is, and focus as a ring.
+
+- **Where the viewer is** is shown by shape and light together, never by a color or a brightness alone: a lit pill (`StateLayers.SELECTED`) and, in rails and the sidebar, a short bar at the item's leading edge. Hover and focus are the quieter active state; focus adds the ring for input that needs one.
+- **Phone, upright:** a floating capsule of FLOATING material above the gesture area; each destination a pill 64 dp wide. Downloads and Sources stay in the top corner (M3).
+- **Phone on its side, and tablet:** a floating rail of FLOATING material with xlarge corners; icons alone (compact) or with their names beneath (tablet), at the widths M3 set.
+- **Desktop:** the same material as a sidebar, with the wordmark and names beside the icons.
+- **Television:** closed, its icons over a shade that fades into the page; open, it widens to 208 dp over the page as FLOATING material with rounded trailing corners, the names in the television label style. It widens in 180 ms; with motion reduced, at once.
+
+### Hero artwork and the navigation
+
+On ENHANCED and PREMIUM, where the navigation runs down the side, a page that opens on artwork (Home's hero, a work's header) runs that artwork under the navigation: the page is the whole window, its content starts after the navigation (`ChromeInsets.contentStart`), and the navigation is a foreground layer of material over the artwork. The artwork's text scrim is darkest where the text starts and light beneath the navigation, whose own material keeps its labels readable. Every other page starts beside the navigation. On BASIC the hero stays beside it: an opaque rail over artwork would cut the artwork rather than float over it.
+
+### Media Atmosphere
+
+Off by default. The canonical page around artwork is neutral: artwork is the color, and its scrims dissolve into the plain page. Turned on (Sources, "Media Atmosphere"), Home's hero and a work's page wash the page around their artwork with its dominant hue as a deep, muted tone (`ArtworkAtmosphere`; primary text holds 7:1 on it), receding as the artwork scrolls away. It never tints controls, navigation, badges, or focus: functional material picks it up only through what it blurs. It is the only appearance choice Reflux has, and it is not a theme.
+
+### Edge to edge
+
+On Android the application is drawn under the status and navigation bars: the shell hands their sizes to the experience layer (`SystemBars`) rather than padding the application for them. Artwork reaches the top of the screen under a soft protection for the status bar's icons; pages start their content clear of the bars; the phone's bar, the rails, the top buttons, sheets, and notices sit inside them; only the keyboard still pushes the application up. The player keeps its own safe area. Televisions and desktop windows have no bars.
+
+### Motion
+
+| Motion | Duration | For |
+| --- | --- | --- |
+| `focusChange` | 140 ms | Focus and hover, a page leaving, a control pressed |
+| `controlsShow`, `controlsHide` | 180, 240 ms | The player's controls, notices |
+| `navigation` | 320 ms | A page arriving (desktop, handhelds) |
+| `railExpand` | 220 ms (180 on a television) | A rail widening and narrowing |
+| `materialChange` | 200 ms | Material changing strength |
+| `artworkReveal` | 240 ms | Artwork arriving over its placeholder |
+| `sheetEnter`, `sheetExit` | 260, 200 ms | Sheets and panels |
+| `inputMorph` | 360 ms | The controller morph |
+
+`MotionProfile` applies it per form factor: a television's pages fade in place in 240 ms without travelling, its sheets fade, and its rail widens fastest. Nothing moves on its own: no background motion, no per-card animation, no staggering. With the system's reduce-motion setting every one of these takes no time and the end state is drawn as it would have been, so a state is never left ambiguous.
+
+A pressed control dims briefly under the finger or the click. It never changes size: a control that shrank while pressed made the list that keeps focus in view scroll out from under the press (found by the UI tests).
+
+### Accessibility in the visual system
+
+- **High contrast** (Android's high-contrast text or contrast level, a Windows contrast theme, GNOME's high contrast): `ColorRoles.RefluxHighContrast` (brighter secondary and tertiary content, stronger hairlines and state layers), a 3 dp focus ring, and BASIC material.
+- **Reduced transparency** (Windows' "Transparency effects" off): BASIC material, opaque, with pages beside the navigation. Android and GNOME have no such setting.
+- **Reduced motion:** above. **Text size:** fixed heights are minimums (M1); the navigation stops growing at 1.5×.
+- Nothing important rests on blur, transparency, color, shadow, or animation alone: selection is a pill and a bar, focus a ring, depth a tone and a hairline.
+
+### Performance guardrails
+
+- Blur only on functional material: a handful of surfaces per screen, none per list item. Material inside scrolling content is a tint alone; BASIC has no blur at all.
+- A television's closed rail draws no material; the open one exists only while open.
+- Artwork's pixels are read once per decoded image, for its hue and its brightness together (`ArtworkSamples`, held by a test), and not at all for the page's tone while Media Atmosphere is off.
+- Lazy lists keep their stable keys; scroll position reaches drawing code as a lambda, so scrolling repaints the scrims and the wash without recomposing.
+- The blur effect is remembered per radius rather than made on every frame.
+
+### Themes
+
+User-selectable themes are deferred past 1.0 (V2). M4 ships one canonical identity. The roles above are what a theme layer would provide another instance of; nothing in M4 depends on one.
+
 
 ## Material system
 
@@ -84,10 +191,10 @@ Not from forcing identical layouts onto every screen.
 - **Palette:** neutral and dark. No chrome token has a hue (a test holds every one of them to near-zero saturation), so nothing the interface draws competes with artwork; only errors are red. Text tokens are tested to meet WCAG AA on every surface, and glass materials raise their tint over bright artwork until text stays at 4.5:1.
 - **Emphasis without color:** the one action a screen exists for (Play, Resume, Connect, Use this folder) is bright neutral (`primaryAction`, near-white with near-black text). Progress is white on a translucent track. The section the user is in, a season, or a player list is white on a soft pill (`Tab`). Switched-on toggles are a lit surface; a favorite is a filled heart. The version Play will use is lifted out of the list and marked with a filled neutral badge. Focus is a white ring. If something can be said in white and grey, it is; there is nothing else to say it in.
 - **Type carries the hierarchy:** size, weight, and tone, not capitals, boxes, or rules. Featured titles are large and tight (54 on a desktop, 48 at ten feet before the TV step, 40 on a phone); what describes them is the `metadata` style, a size, a weight, and a tone below; supporting text is quieter still. A title needs no label above it; labels are sentence case.
-- **Materials:** Base, Elevated, Floating, Interactive, Focused, and Modal, each with tint, backdrop blur, highlight, shadow, and corner radius. Blur applies to what is behind a material, never to its content.
-- **Motion:** standard, emphasized, and exit curves; focus changes 140 ms, navigation 320 ms, poster-to-details 420 ms, input morph 360 ms; player controls auto-hide after 3.5 s.
+- **Materials:** Base, Elevated, Floating, Interactive, Focused, and Modal, each with tint, backdrop blur, highlight, shadow, and corner radius, drawn per material tier (above). Blur applies to what is behind a material, never to its content.
+- **Motion:** the vocabulary above; standard, emphasized, and exit curves; player controls auto-hide after 3.5 s.
 - **Adaptive layout:** form factor (phone, tablet, desktop, TV) comes from the window and device; input modality only changes density, focus scale, target size, and button prompts. That is what makes the controller morph a transition rather than a mode. A television's canvas is 960 by 540 whatever its resolution, so the distance is already in its density: it keeps a 5% overscan-safe margin, shows six titles across, sizes controls to be read rather than hit, and sets type one step (1.1×) above the desk.
-- **Artwork atmosphere:** a deterministic, saturation-weighted hue histogram over a sparse sample of the artwork picks its dominant hue, which becomes a deep, muted tone (`ArtworkAtmosphere`: dark enough for primary text at 7:1). Grey artwork has none. A work with a poster but no backdrop takes the poster's hue, both for the page and for the backdrop generated behind it (graphite for a grey poster), so the page never disagrees with the artwork on it; only a work without any artwork takes its title's hue.
+- **Artwork atmosphere** (what Media Atmosphere uses; off by default): a deterministic, saturation-weighted hue histogram over a sparse sample of the artwork picks its dominant hue, which becomes a deep, muted tone (`ArtworkAtmosphere`: dark enough for primary text at 7:1). Grey artwork has none. A work with a poster but no backdrop takes the poster's hue, both for the page and for the backdrop generated behind it (graphite for a grey poster), so the page never disagrees with the artwork on it; only a work without any artwork takes its title's hue.
 
 ## Rendering (`ui`)
 
@@ -96,9 +203,9 @@ Not from forcing identical layouts onto every screen.
 - **The best real image for the frame, then the other one, then a designed one.** A poster card shows the poster, else the backdrop's middle; a wide frame the backdrop, else the poster where the frame is no wider than 16:9 (a phone's details header held upright, a wide card); a header with room for a poster shows it beside the title. An image that cannot be read now gives way to the next. The same rule (`ArtworkChoice`) on every form factor; only when no real image is left is the work generated. A television reads no images beside local videos (it does not ask for image access), so there a local work is pictured by provider artwork or generated.
 - **No artwork is a designed state.** A work without artwork is drawn as its title on a color derived from the title, and Home opens on a generated backdrop, so a library with no metadata yet looks intentional rather than broken. A placeholder already says the title, so only the caption is repeated under it. Empty states (first run, an empty folder, a work that left the library) sit on a quiet ambient glow.
 - **Grids use columns of exactly equal width,** so posters in a row are the same height and their captions share a baseline.
-- **Artwork tints the page, never the controls.** Home's hero and a details page wash the page behind them with their artwork's atmosphere (a fifth of its strength over the base), down to the bottom of the artwork and fading out over the next 520 dp; the artwork's scrims end in the same tone, so the image dissolves into the page without a seam. The wash belongs to the artwork: it recedes as the artwork scrolls away, and rows, versions, and episodes further down sit on the plain base. Buttons, navigation, badges, and focus look the same on every page.
+- **Artwork may tint the page, never the controls** (Media Atmosphere, off by default). With it on, Home's hero and a details page wash the page behind them with their artwork's atmosphere (a fifth of its strength over the base), down to the bottom of the artwork and fading out over the next 520 dp; the artwork's scrims end in the same tone, so the image dissolves into the page without a seam. The wash belongs to the artwork: it recedes as the artwork scrolls away, and rows, versions, and episodes further down sit on the plain base. Off, the scrims end in the plain page. Buttons, navigation, badges, and focus look the same on every page either way.
 - **Buttons:** `PRIMARY` (bright neutral) for the one main action of a screen, whether that is playing, connecting, or choosing a folder; `GLASS` (frosted) for secondary actions that sit on artwork; `QUIET` for the rest. A screen has at most one `PRIMARY`.
-- **Glass is for what floats.** The navigation bar (once the page has moved under it), the player's bar and lists, panels, sheets, and notices are frosted; content is not put in glass cards, and rows of text sit directly on the page. Over a page that opens on artwork, the navigation bar is just its labels until the page scrolls, so the artwork reaches the top of the window.
+- **Glass is for what floats.** The navigation, the player's bar and lists, panels, sheets, and notices are functional material (above); content is not put in glass cards, and rows of text sit directly on the page.
 - **Edges are hairlines.** Posters, episode thumbnails, version rows, and badges are defined against the black by a hairline of white at 7–14%, never by a frame or a colored border.
 - **Active state:** pointer hover and keyboard or controller focus are one "active" state shown by a small lift; a focus ring is added only for input that needs one.
 - **Focus from across a room:** with a controller or a remote, what has focus is lifted, ringed in white with a sliver of the page between the ring and the control (so it reads the same around a white button as around a poster), and lit from behind by a soft glow that fades outwards. None of it is large: a focused poster grows by 8%, a button by less.
