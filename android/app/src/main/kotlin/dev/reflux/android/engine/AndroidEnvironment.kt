@@ -27,6 +27,7 @@ import dev.reflux.library.HttpDownloadTransport
 import dev.reflux.library.Offline
 import dev.reflux.library.Library
 import dev.reflux.library.LibraryPipeline
+import dev.reflux.library.onlineMetadata
 import dev.reflux.library.SourceConnections
 import dev.reflux.library.SourceRecord
 import dev.reflux.library.SignOut
@@ -129,7 +130,8 @@ class AndroidEnvironment(context: Context, dataDirectory: File = context.filesDi
 
     /** [databaseName] null keeps the library in memory, for tests. */
     val library = Library(RefluxDatabase(AndroidSqliteDriver(RefluxDatabase.Schema, application, databaseName))) { System.currentTimeMillis() }
-    val artwork = ArtworkCache(dataDirectory.resolve(ARTWORK_DIRECTORY).also { it.mkdirs() }.toPath(), http)
+    // Provider pictures are fetched only while the viewer allows online lookups; what is kept is always shown.
+    val artwork = ArtworkCache(dataDirectory.resolve(ARTWORK_DIRECTORY).also { it.mkdirs() }.toPath(), http, remoteAllowed = { library.onlineMetadata })
     val language: String = Locale.getDefault().toLanguageTag().takeIf { it != "und" } ?: "en-US"
     val deviceId: String = dataDirectory.resolve("device-id").let { file ->
         if (file.exists()) file.readText().trim() else UUID.randomUUID().toString().also(file::writeText)

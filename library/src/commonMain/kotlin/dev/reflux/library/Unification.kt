@@ -51,6 +51,8 @@ fun Library.unifyWorks(): Int {
             for (other in members.drop(1)) {
                 val otherKey = other.identity_key ?: continue
                 queries.insertAlias(otherKey, survivor.identity_key!!, now())
+                // What the user said the absorbed work is stays said of the one it became.
+                queries.moveMetadataPin(survivor.id, other.id)
                 queries.moveFavorite(survivor.id, other.id)
                 queries.deleteFavorite(other.id)
                 queries.moveCollectionMembership(survivor.id, other.id)

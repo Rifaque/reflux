@@ -59,9 +59,13 @@ data class WorkMetadata(
     val genres: List<String> = emptyList(),
     val runtimeMinutes: Int? = null,
     val releaseDate: CalendarDate? = null,
+    /** A show's last air date. */
+    val endDate: CalendarDate? = null,
     /** Community rating on a 0–10 scale. */
     val rating: Double? = null,
     val contentRating: String? = null,
+    /** A show's networks or a film's production companies, most important first. */
+    val studios: List<String> = emptyList(),
     val credits: List<Credit> = emptyList(),
     val artwork: List<RemoteArtwork> = emptyList(),
     val externalIds: Map<String, String> = emptyMap(),
@@ -77,6 +81,10 @@ data class EpisodeMetadata(
     val airDate: CalendarDate? = null,
     val runtimeMinutes: Int? = null,
     val stillUrl: String? = null,
+    /** Community rating on a 0–10 scale. */
+    val rating: Double? = null,
+    /** The episode's guest cast, top-billed first. */
+    val guestStars: List<Credit> = emptyList(),
 )
 
 data class SeasonMetadata(
@@ -85,6 +93,8 @@ data class SeasonMetadata(
     val overview: String? = null,
     val posterUrl: String? = null,
     val episodes: List<EpisodeMetadata> = emptyList(),
+    /** When the season began airing. */
+    val airDate: CalendarDate? = null,
 )
 
 /**
@@ -123,3 +133,10 @@ data class ProviderLogo(val pathData: String, val width: Float, val height: Floa
 
 /** Thrown when a provider cannot be reached or refuses requests; the caller retries later. */
 class MetadataUnavailableException(message: String, cause: Throwable? = null) : Exception(message, cause)
+
+/** A work's metadata as a [Description] layer, the shape every witness is resolved in. */
+fun WorkMetadata.description(): Description = Description(
+    title = title, originalTitle = originalTitle, overview = overview, tagline = tagline, genres = genres,
+    runtimeMinutes = runtimeMinutes, releaseDate = releaseDate, endDate = endDate, rating = rating,
+    contentRating = contentRating, studios = studios, credits = credits,
+)

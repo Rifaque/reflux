@@ -213,8 +213,37 @@ CREATE TABLE metadata (
     -- For seasons: how many episodes the provider lists as aired.
     episode_count INTEGER,
     match_score REAL NOT NULL,
-    fetched_at INTEGER NOT NULL
+    fetched_at INTEGER NOT NULL,
+    -- Added by a migration (6.sqm): how the provider entry was found (core MatchEvidence), a show's last air
+    -- date, and a show's networks or a film's studios (newline separated).
+    match_evidence TEXT,
+    end_date TEXT,
+    studios TEXT NOT NULL DEFAULT ''
 );
+
+-- What a source itself says a work is about (a media server's own metadata), one row per work and source. It is
+-- rebuilt by each scan of its source, kept while the source is away, and resolved field by field with the
+-- provider's (core MetadataResolver); it never decides identity. Credits are lines of name, role, character,
+-- and a picture's path in the source, tab separated.
+CREATE TABLE source_metadata (
+    item_id TEXT NOT NULL,
+    source_id TEXT NOT NULL,
+    title TEXT,
+    original_title TEXT,
+    overview TEXT,
+    tagline TEXT,
+    genres TEXT NOT NULL DEFAULT '',
+    runtime_minutes INTEGER,
+    release_date TEXT,
+    end_date TEXT,
+    rating REAL,
+    content_rating TEXT,
+    studios TEXT NOT NULL DEFAULT '',
+    credits TEXT NOT NULL DEFAULT '',
+    PRIMARY KEY (item_id, source_id)
+);
+
+CREATE INDEX source_metadata_source ON source_metadata(source_id);
 
 CREATE TABLE provider_collection (
     id TEXT NOT NULL PRIMARY KEY,
@@ -601,8 +630,46 @@ DELETE FROM artwork WHERE item_id = ? AND origin = ?;
 upsertMetadata:
 INSERT OR REPLACE INTO metadata(
     item_id, provider_ref, title, sort_key, original_title, overview, tagline, genres, runtime_minutes,
-    release_date, rating, content_rating, external_ids, collection_id, episode_count, match_score, fetched_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+    release_date, rating, content_rating, external_ids, collection_id, episode_count, match_score, fetched_at,
+    match_evidence, end_date, studios
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+-- Source metadata -----------------------------------------------------------------------------------
+
+upsertSourceMetadata:
+INSERT OR REPLACE INTO source_metadata(
+    item_id, source_id, title, original_title, overview, tagline, genres, runtime_minutes, release_date, end_date,
+    rating, content_rating, studios, credits
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+sourceMetadataOfItems:
+SELECT * FROM source_metadata WHERE item_id IN ?;
+
+sourceMetadataOfSource:
+SELECT * FROM source_metadata WHERE source_id = ?;
+
+deleteSourceMetadataOfSource:
+DELETE FROM source_metadata WHERE source_id = ?;
+
+deleteOrphanSourceMetadata:
+DELETE FROM source_metadata WHERE item_id NOT IN (SELECT id FROM item);
+
+-- The order sources are weighed in where they disagree: the oldest first (core MetadataResolver).
+sourceOrder:
+SELECT id FROM source ORDER BY added_at, id;
+
+-- Matched works whose provider metadata is older than :staleBefore, oldest first, for a gentle re-read.
+staleMetadata:
+SELECT item.* FROM item JOIN metadata ON metadata.item_id = item.id
+WHERE item.kind IN ('MOVIE', 'SHOW') AND metadata.fetched_at < :staleBefore
+  AND NOT EXISTS (
+    SELECT 1 FROM metadata_attempt WHERE metadata_attempt.item_id = item.id AND metadata_attempt.attempted_at > :retryBefore
+  )
+ORDER BY metadata.fetched_at, item.id
+LIMIT :limit;
+
+moveMetadataPin:
+INSERT OR IGNORE INTO metadata_pin(item_id, provider_ref) SELECT :to, provider_ref FROM metadata_pin WHERE item_id = :from;
 
 upsertProviderCollection:
 INSERT OR REPLACE INTO provider_collection(id, name, poster_url, backdrop_url) VALUES (?, ?, ?, ?);

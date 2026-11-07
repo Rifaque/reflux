@@ -4,7 +4,10 @@ import dev.reflux.core.identify.TitleText
 import dev.reflux.core.metadata.Credit
 import dev.reflux.core.metadata.CreditRole
 import dev.reflux.core.metadata.EpisodeMetadata
+import dev.reflux.core.metadata.MatchEvidence
 import dev.reflux.core.metadata.MatchResult
+import dev.reflux.core.metadata.MetadataField
+import dev.reflux.core.metadata.Provenance
 import dev.reflux.core.metadata.MetadataKind
 import dev.reflux.core.metadata.MetadataMatcher
 import dev.reflux.core.metadata.MetadataProvider
@@ -34,6 +37,14 @@ data class ItemMetadata(
     val rating: Double?,
     val contentRating: String?,
     val externalIds: Map<String, String>,
+    /** A show's last air date. */
+    val endDate: CalendarDate? = null,
+    /** A show's networks, or a film's studios. */
+    val studios: List<String> = emptyList(),
+    /** How the provider entry was found, when there is one. */
+    val evidence: MatchEvidence? = null,
+    /** Where each value came from (core MetadataResolver). */
+    val provenance: Map<MetadataField, Provenance> = emptyMap(),
 )
 
 /** Outcome of a metadata refresh. */
@@ -81,27 +92,56 @@ internal class MetadataSync(database: RefluxDatabase, private val now: () -> Lon
         return report
     }
 
-    /** Looks up one movie or show. [pinned] forces a provider entry (from the Identify flow). */
+    /**
+     * Looks up one movie or show, strongest evidence first (docs/METADATA.md, "Matching evidence"): the entry the
+     * user chose, then one already matched (a refresh re-reads it and never searches again, so a weaker guess
+     * cannot replace it), then IDs in names or from a server, then a title search. [pinned] forces an entry (from
+     * the Identify flow).
+     */
     suspend fun refreshWork(row: Item, provider: MetadataProvider, language: String, pinned: ProviderRef?): AttemptOutcome {
         val kind = if (row.kind == MediaKind.SHOW.name) MetadataKind.SHOW else MetadataKind.MOVIE
         val hints = decodePairs(row.external_hints)
         var score = 1.0
-        val ref = pinned
-            ?: queries.metadataPinOf(row.id).executeAsOneOrNull()?.let(ProviderRef::parse)?.takeIf { it.provider == provider.id }
-            ?: hints[provider.id]?.let { ProviderRef(provider.id, kind, it) }
-            ?: hints.entries.firstNotNullOfOrNull { (source, id) -> provider.findByExternalId(kind, source, id) }
+        val known = queries.metadataOf(row.id).executeAsOneOrNull()
+        val chosen = pinned ?: queries.metadataPinOf(row.id).executeAsOneOrNull()?.let(ProviderRef::parse)?.takeIf { it.provider == provider.id }
+        var evidence = MatchEvidence.USER
+        val hinted = hints[provider.id]?.let { ProviderRef(provider.id, kind, it) }
+        // What is known stands unless the provider's own ID is now named and what is known is weaker than that.
+        val knownRef = known?.provider_ref?.let(ProviderRef::parse)?.takeIf { it.provider == provider.id && it.kind == kind }
+            ?.takeIf { hinted == null || (known.evidence() ?: MatchEvidence.TITLE) <= MatchEvidence.PROVIDER_ID }
+        val ref = chosen
+            ?: knownRef?.also { evidence = known.evidence() ?: MatchEvidence.TITLE; score = known.match_score }
+            ?: hinted?.also { evidence = MatchEvidence.PROVIDER_ID }
+            ?: hints.entries.firstNotNullOfOrNull { (source, id) -> provider.findByExternalId(kind, source, id) }?.also { evidence = MatchEvidence.EXTERNAL_ID }
             ?: run {
                 val query = MetadataQuery(kind, row.title, row.year?.toInt(), hints, language)
                 when (val result = MetadataMatcher.match(query, provider.search(query))) {
-                    is MatchResult.Accepted -> result.candidate.ref.also { score = result.score }
+                    is MatchResult.Accepted -> result.candidate.ref.also {
+                        score = result.score
+                        evidence = if (row.year != null) MatchEvidence.TITLE_YEAR else MatchEvidence.TITLE
+                    }
                     is MatchResult.Ambiguous -> return record(row.id, AttemptOutcome.AMBIGUOUS)
                     MatchResult.NoMatch -> return record(row.id, AttemptOutcome.NO_MATCH)
                 }
             }
-        val details = provider.details(ref, language) ?: return record(row.id, AttemptOutcome.NO_MATCH)
-        store(row.id, details, score, provider.id, language)
-        if (kind == MetadataKind.SHOW) syncEpisodes(row.id, ref, provider, language)
+        // An entry the provider no longer has keeps what was known of it: nothing better has been learned.
+        val details = provider.details(ref, language) ?: return record(row.id, if (known != null) AttemptOutcome.MATCHED else AttemptOutcome.NO_MATCH)
+        store(row.id, details, score, provider.id, language, evidence)
+        if (kind == MetadataKind.SHOW) syncEpisodes(row.id, ref, provider, language, evidence = evidence)
         return AttemptOutcome.MATCHED
+    }
+
+    /**
+     * Re-reads matched works whose provider metadata is older than [staleAfterMs], a few at a time, oldest first.
+     * Only the entry already matched is read again; a failure keeps everything as it was.
+     */
+    suspend fun refreshStale(provider: MetadataProvider, language: String, staleAfterMs: Long, limit: Int, retryAfterMs: Long): Int {
+        val rows = queries.staleMetadata(now() - staleAfterMs, now() - retryAfterMs, limit.toLong()).executeAsList()
+        var refreshed = 0
+        for (row in rows) {
+            if (refreshWork(row, provider, language, pinned = null) == AttemptOutcome.MATCHED) refreshed++
+        }
+        return refreshed
     }
 
     private fun record(itemId: String, outcome: AttemptOutcome): AttemptOutcome {
@@ -109,7 +149,7 @@ internal class MetadataSync(database: RefluxDatabase, private val now: () -> Lon
         return outcome
     }
 
-    private fun store(itemId: String, details: WorkMetadata, score: Double, providerId: String, language: String) =
+    private fun store(itemId: String, details: WorkMetadata, score: Double, providerId: String, language: String, evidence: MatchEvidence) =
         db.transaction {
             queries.upsertMetadata(
                 item_id = itemId,
@@ -129,6 +169,9 @@ internal class MetadataSync(database: RefluxDatabase, private val now: () -> Lon
                 episode_count = null,
                 match_score = score,
                 fetched_at = now(),
+                match_evidence = evidence.name,
+                end_date = details.endDate?.toString(),
+                studios = details.studios.joinToString("\n"),
             )
             details.collection?.let { queries.upsertProviderCollection(it.id, it.name, it.posterUrl, it.backdropUrl) }
             queries.deleteCredits(itemId)
@@ -154,7 +197,12 @@ internal class MetadataSync(database: RefluxDatabase, private val now: () -> Lon
         provider: MetadataProvider,
         language: String,
         onlyMissing: Boolean = false,
+        evidence: MatchEvidence? = null,
+        /** Only this season and its episodes. */
+        onlySeason: Int? = null,
     ): Int {
+        // Seasons and episodes are as certain as the show's entry: the user's, where they chose the show.
+        val known = evidence ?: queries.metadataOf(showId).executeAsOneOrNull()?.evidence()
         val rows = queries.presentSeasonsAndEpisodesOfShow(showId).executeAsList()
         val described = if (onlyMissing) {
             queries.metadataOfItems(rows.map { it.id }).executeAsList().map { it.item_id }.toSet()
@@ -162,6 +210,7 @@ internal class MetadataSync(database: RefluxDatabase, private val now: () -> Lon
             emptySet()
         }
         val episodes = rows.filter { it.kind == MediaKind.EPISODE.name && it.id !in described }
+            .filter { onlySeason == null || it.season_number?.toInt() == onlySeason }
         val wantedSeasons = episodes.map { it.season_number!!.toInt() }.toSet()
         val seasons = rows.filter { it.kind == MediaKind.SEASON.name && it.season_number!!.toInt() in wantedSeasons }
             .associateBy { it.season_number!!.toInt() }
@@ -171,7 +220,7 @@ internal class MetadataSync(database: RefluxDatabase, private val now: () -> Lon
         var stored = 0
         for ((number, seasonRow) in seasons) {
             val metadata = season(number) ?: continue
-            storeSeason(seasonRow.id, metadata, provider.id)
+            storeSeason(seasonRow.id, metadata, provider.id, known)
         }
         for (episode in episodes) {
             val match = when {
@@ -184,7 +233,7 @@ internal class MetadataSync(database: RefluxDatabase, private val now: () -> Lon
             if (match == null) {
                 queries.recordMetadataAttempt(episode.id, now(), AttemptOutcome.NO_MATCH.name)
             } else {
-                storeEpisode(episode.id, match, ref, provider.id)
+                storeEpisode(episode.id, match, ref, provider.id, known)
                 stored++
             }
         }
@@ -216,21 +265,26 @@ internal class MetadataSync(database: RefluxDatabase, private val now: () -> Lon
         return null
     }
 
-    private fun storeSeason(itemId: String, season: SeasonMetadata, providerId: String) = db.transaction {
+    private fun storeSeason(itemId: String, season: SeasonMetadata, providerId: String, evidence: MatchEvidence?) = db.transaction {
         val today = todayFromClock()
         val aired = season.episodes.count { episode -> episode.airDate.let { it == null || it <= today } }
         upsertSimple(
-            itemId, season.title, season.overview, null, null, "$providerId:season:${season.number}",
-            episodeCount = aired.takeIf { season.episodes.isNotEmpty() },
+            itemId, season.title, season.overview, season.airDate, null, "$providerId:season:${season.number}",
+            episodeCount = aired.takeIf { season.episodes.isNotEmpty() }, evidence = evidence,
         )
         storeArtwork(itemId, providerId, listOfNotNull(season.posterUrl?.let { ArtworkKind.POSTER to it }).toMap())
     }
 
-    private fun storeEpisode(itemId: String, episode: EpisodeMetadata, show: ProviderRef, providerId: String) = db.transaction {
+    private fun storeEpisode(itemId: String, episode: EpisodeMetadata, show: ProviderRef, providerId: String, evidence: MatchEvidence?) = db.transaction {
         upsertSimple(
             itemId, episode.title, episode.overview, episode.airDate, episode.runtimeMinutes,
-            "$show/${episode.seasonNumber}/${episode.episodeNumber}",
+            "$show/${episode.seasonNumber}/${episode.episodeNumber}", rating = episode.rating, evidence = evidence,
         )
+        // An episode's credits are its guest cast, a few names, never the show's whole cast again.
+        queries.deleteCredits(itemId)
+        episode.guestStars.forEachIndexed { index, credit ->
+            queries.insertCredit(itemId, index.toLong(), credit.name, credit.role.name, credit.character, credit.profileUrl)
+        }
         storeArtwork(itemId, providerId, listOfNotNull(episode.stillUrl?.let { ArtworkKind.THUMBNAIL to it }).toMap())
         queries.recordMetadataAttempt(itemId, now(), AttemptOutcome.MATCHED.name)
     }
@@ -243,12 +297,15 @@ internal class MetadataSync(database: RefluxDatabase, private val now: () -> Lon
         runtime: Int?,
         ref: String,
         episodeCount: Int? = null,
+        rating: Double? = null,
+        evidence: MatchEvidence? = null,
     ) {
         queries.upsertMetadata(
             item_id = itemId, provider_ref = ref, title = title, sort_key = title?.let(TitleText::sortKey),
             original_title = null, overview = overview, tagline = null, genres = "", runtime_minutes = runtime?.toLong(),
-            release_date = date?.toString(), rating = null, content_rating = null, external_ids = "",
+            release_date = date?.toString(), rating = rating, content_rating = null, external_ids = "",
             collection_id = null, episode_count = episodeCount?.toLong(), match_score = 1.0, fetched_at = now(),
+            match_evidence = evidence?.name, end_date = null, studios = "",
         )
     }
 
@@ -298,4 +355,7 @@ internal fun Metadata.toModel(): ItemMetadata =
         rating = rating,
         contentRating = content_rating,
         externalIds = decodePairs(external_ids),
+        endDate = end_date?.let(CalendarDate::parse),
+        studios = studios.lines().filter { it.isNotBlank() },
+        evidence = evidence(),
     )

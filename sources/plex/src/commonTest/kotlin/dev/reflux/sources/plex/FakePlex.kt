@@ -29,6 +29,9 @@ internal class FakePlex {
         "ratingKey":"$key","key":"/library/metadata/$key","type":"movie","title":"$title","year":$year,
         "thumb":"/library/metadata/$key/thumb/1700000000","art":"/library/metadata/$key/art/1700000000",
         "addedAt":1690000000,"updatedAt":1700000000,"duration":6000000,$extra
+        "summary":"About $title.","tagline":"$title, the tagline","contentRating":"R","audienceRating":7.9,"rating":8.8,"studio":"A Studio",
+        "originallyAvailableAt":"$year-12-15","Genre":[{"tag":"Crime"},{"tag":"Drama"}],
+        "Director":[{"tag":"Michael Mann"}],"Role":[{"tag":"Al Pacino","role":"Vincent Hanna","thumb":"https://metadata-static.plex.tv/p.jpg"},{"tag":"Val Kilmer","thumb":"/library/people/2/thumb"}],
         "Guid":[{"id":"imdb://tt$key"},{"id":"tmdb://$key"}],
         "Media":[{"id":$part,"duration":6000000,"bitrate":8000,"width":1920,"height":1080,"container":"mkv","videoCodec":"h264","audioCodec":"ac3","audioChannels":6,
           "Part":[{"id":$part,"key":"/library/parts/$part/1700000000/file.mkv","size":4000000000,"container":"mkv","duration":6000000,
@@ -43,6 +46,7 @@ internal class FakePlex {
     private fun episode(key: String, show: String, showKey: String, season: Int, number: Int, part: Int, extra: String = "") = """{
         "ratingKey":"$key","type":"episode","title":"Episode $number","grandparentTitle":"$show","grandparentRatingKey":"$showKey",
         "parentIndex":$season,"index":$number,"thumb":"/library/metadata/$key/thumb/1","addedAt":1690000000,"updatedAt":1700000000,$extra
+        "parentRatingKey":"210","summary":"Episode $number happens.","originallyAvailableAt":"2022-02-18","duration":2700000,
         "Media":[{"id":$part,"duration":2700000,"bitrate":12000,"width":3840,"height":2160,"container":"mkv","videoCodec":"hevc","audioCodec":"eac3","audioChannels":6,
           "Part":[{"id":$part,"key":"/library/parts/$part/1700000000/file.mkv","size":2000000000,"container":"mkv",
             "Stream":[
@@ -83,8 +87,11 @@ internal class FakePlex {
                 {"key":"3","type":"artist","title":"Music"},
                 {"key":"2","type":"show","title":"TV Shows"}]}}"""
             path == "library/sections/1/all" -> page(listOf("101", "102", "103"), query["X-Plex-Container-Start"]!!.toInt(), query["X-Plex-Container-Size"]!!.toInt().coerceAtMost(2))
+            path == "library/sections/2/all" && query["type"] == "3" -> """{"MediaContainer":{"Metadata":[
+                {"ratingKey":"210","type":"season","title":"Season 1","summary":"Mark leads a team.","thumb":"/library/metadata/210/thumb/1","index":1}]}}"""
             path == "library/sections/2/all" && query["type"] == "2" -> """{"MediaContainer":{"Metadata":[
                 {"ratingKey":"200","type":"show","title":"Severance","year":2022,"thumb":"/library/metadata/200/thumb/1","art":"/library/metadata/200/art/1",
+                 "summary":"Work and life, severed.","studio":"Apple TV+","contentRating":"TV-MA","audienceRating":8.7,"originallyAvailableAt":"2022-02-18",
                  "Guid":[{"id":"tvdb://371980"},{"id":"tmdb://95396"}]}]}}"""
             path == "library/sections/2/all" -> page(listOf("201", "202"), query["X-Plex-Container-Start"]!!.toInt(), query["X-Plex-Container-Size"]!!.toInt())
             path.startsWith("library/metadata/") -> {

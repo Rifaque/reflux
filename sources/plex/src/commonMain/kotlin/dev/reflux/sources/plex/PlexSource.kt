@@ -3,6 +3,10 @@ package dev.reflux.sources.plex
 import dev.reflux.core.identify.ParsedKind
 import dev.reflux.core.identify.ParsedMedia
 import dev.reflux.core.model.ArtworkKind
+import dev.reflux.core.metadata.Credit
+import dev.reflux.core.metadata.CreditRole
+import dev.reflux.core.metadata.Description
+import dev.reflux.core.source.CatalogSeason
 import dev.reflux.core.model.Availability
 import dev.reflux.core.model.CalendarDate
 import dev.reflux.core.model.StableIds
@@ -98,6 +102,7 @@ class PlexSource(
     override fun catalog(): Flow<CatalogEntry> = flow {
         for (section in sections()) {
             val shows = if (section.kind == SectionKind.SHOWS) fetchShows(section.id) else emptyMap()
+            val seasons = if (section.kind == SectionKind.SHOWS) fetchSeasons(section.id) else emptyMap()
             val type = if (section.kind == SectionKind.SHOWS) EPISODE else MOVIE
             var start = 0
             while (true) {
@@ -110,7 +115,7 @@ class PlexSource(
                     throw unavailable(e)
                 } ?: break
                 val keys = page.array("Metadata").mapNotNull { it.string("ratingKey") }
-                for (item in details(keys)) entry(item, shows)?.let { emit(it.copy(section = section.id)) }
+                for (item in details(keys)) entry(item, shows, seasons)?.let { emit(it.copy(section = section.id)) }
                 start += page.array("Metadata").size
                 val total = page.int("totalSize") ?: page.int("size") ?: start
                 if (keys.isEmpty() || start >= total) break
@@ -130,7 +135,13 @@ class PlexSource(
         }
     }
 
-    private class Series(val title: String, val year: Int?, val externalIds: Map<String, String>, val artwork: Map<ArtworkKind, String>)
+    private class Series(
+        val title: String,
+        val year: Int?,
+        val externalIds: Map<String, String>,
+        val artwork: Map<ArtworkKind, String>,
+        val description: Description?,
+    )
 
     private suspend fun fetchShows(section: String): Map<String, Series> {
         val answer = try {
@@ -141,11 +152,62 @@ class PlexSource(
         return answer.container()?.array("Metadata").orEmpty().mapNotNull { show ->
             val key = show.string("ratingKey") ?: return@mapNotNull null
             val (title, year) = titleAndYear(show.string("title") ?: return@mapNotNull null, show.int("year"))
-            key to Series(title, year, externalIds(show), artwork(show, episode = false))
+            key to Series(title, year, externalIds(show), artwork(show, episode = false), description(show, title, episode = false))
         }.toMap()
     }
 
-    private fun entry(item: JsonObject, shows: Map<String, Series>): CatalogEntry? {
+    /** A show library's seasons, by key: their own names, summaries, and posters. Optional: without them, episodes still list. */
+    private suspend fun fetchSeasons(section: String): Map<String, CatalogSeason> {
+        val answer = try {
+            api.get("library/sections/$section/all", mapOf("type" to SEASON.toString()))
+        } catch (e: PlexException) {
+            if (e.status == 401) throw unavailable(e)
+            return emptyMap()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            return emptyMap()
+        }
+        return answer.container()?.array("Metadata").orEmpty().mapNotNull { season ->
+            val key = season.string("ratingKey") ?: return@mapNotNull null
+            key to CatalogSeason(
+                title = season.string("title")?.takeIf { it.isNotBlank() },
+                overview = season.string("summary")?.takeIf { it.isNotBlank() },
+                artwork = season.string("thumb")?.let { mapOf(ArtworkKind.POSTER to "images/${it.trimStart('/')}") }.orEmpty(),
+            )
+        }.toMap()
+    }
+
+    /**
+     * What the server says an item is about. People's pictures are where the server says they are: a path on the
+     * server, or an address of Plex's own. An episode's credits are its own (directors, guest cast), a few names.
+     */
+    private fun description(item: JsonObject, title: String?, episode: Boolean): Description? {
+        fun tags(key: String) = item.array(key).mapNotNull { it.string("tag")?.takeIf(String::isNotBlank) }
+        fun picture(thumb: String?) = thumb?.takeIf { it.isNotBlank() }?.let { if ("://" in it) it else "images/${it.trimStart('/')}" }
+        val directors = item.array("Director").mapNotNull { person ->
+            person.string("tag")?.takeIf(String::isNotBlank)?.let { Credit(it, CreditRole.DIRECTOR, null, picture(person.string("thumb"))) }
+        }
+        val actors = item.array("Role").mapNotNull { person ->
+            person.string("tag")?.takeIf(String::isNotBlank)?.let { Credit(it, CreditRole.ACTOR, person.string("role")?.takeIf(String::isNotBlank), picture(person.string("thumb"))) }
+        }.take(if (episode) MAX_GUESTS else MAX_ACTORS)
+        return Description(
+            title = title,
+            originalTitle = item.string("originalTitle")?.takeIf { it.isNotBlank() && it != title },
+            overview = item.string("summary")?.takeIf { it.isNotBlank() },
+            tagline = item.string("tagline")?.takeIf { it.isNotBlank() },
+            genres = tags("Genre"),
+            runtimeMinutes = item.long("duration")?.div(60_000)?.toInt()?.takeIf { it > 0 },
+            releaseDate = dateOf(item.string("originallyAvailableAt")),
+            // The audience's rating where there is one; a critics' score is another measure.
+            rating = (item.double("audienceRating") ?: item.double("rating"))?.takeIf { it > 0 },
+            contentRating = item.string("contentRating")?.takeIf { it.isNotBlank() },
+            studios = listOfNotNull(item.string("studio")?.takeIf { it.isNotBlank() }),
+            credits = directors.distinctBy { it.name } + actors,
+        ).takeUnless { it.empty }
+    }
+
+    private fun entry(item: JsonObject, shows: Map<String, Series>, seasons: Map<String, CatalogSeason> = emptyMap()): CatalogEntry? {
         val ratingKey = item.string("ratingKey") ?: return null
         val versions = item.array("Media").mapNotNull { version(ratingKey, item, it) }
         if (versions.isEmpty()) return null
@@ -170,13 +232,24 @@ class PlexSource(
             )
             else -> return null
         }
+        val episode = identity.kind == ParsedKind.EPISODE
         return CatalogEntry(
             identity = identity,
             versions = versions,
-            artwork = artwork(item, episode = identity.kind == ParsedKind.EPISODE),
+            artwork = artwork(item, episode = episode),
             showArtwork = show?.artwork.orEmpty(),
             userState = userState(item),
+            description = description(item, if (episode) identity.episodeTitle else identity.title, episode),
+            showDescription = show?.description,
+            season = if (episode) seasonOf(item, seasons) else null,
         )
+    }
+
+    /** An episode's season: as the season list has it, or failing that, its poster as the episode names it. */
+    private fun seasonOf(item: JsonObject, seasons: Map<String, CatalogSeason>): CatalogSeason? {
+        item.string("parentRatingKey")?.let(seasons::get)?.let { return it }
+        val poster = item.string("parentThumb")?.let { mapOf(ArtworkKind.POSTER to "images/${it.trimStart('/')}") } ?: return null
+        return CatalogSeason(title = item.string("parentTitle")?.takeIf { it.isNotBlank() }, artwork = poster)
     }
 
     /** One version per media of an item that is a single file; a film split into parts is not one version yet (ROADMAP.md, V1.x). */
@@ -307,7 +380,10 @@ class PlexSource(
         const val TYPE: String = "plex"
         private const val MOVIE = 1
         private const val SHOW = 2
+        private const val SEASON = 3
         private const val EPISODE = 4
+        private const val MAX_ACTORS = 20
+        private const val MAX_GUESTS = 6
         private const val PAGE_SIZE = 200
         private const val DETAIL_CHUNK = 50
         private const val LIBRARY_IDENTIFIER = "com.plexapp.plugins.library"

@@ -12,6 +12,10 @@ import dev.reflux.core.identify.ParsedKind
 import dev.reflux.core.identify.ParsedMedia
 import dev.reflux.core.identify.SidecarMatcher
 import dev.reflux.core.identify.TitleText
+import dev.reflux.core.metadata.Credit
+import dev.reflux.core.metadata.CreditRole
+import dev.reflux.core.metadata.Description
+import dev.reflux.core.source.CatalogSeason
 import dev.reflux.core.model.Artwork
 import dev.reflux.core.model.ArtworkKind
 import dev.reflux.core.model.ArtworkLocator
@@ -58,7 +62,12 @@ internal data class ScanPlan(
     val externalHints: Map<MediaId, Map<String, String>> = emptyMap(),
     /** The (canonical) identity key of each movie and show. */
     val identityKeys: Map<MediaId, String> = emptyMap(),
+    /** What the source itself says each work is about (catalog sources), at most one per work. */
+    val descriptions: List<PlannedDescription> = emptyList(),
 )
+
+/** A source's own description of one work (movie, show, season, or episode). */
+internal data class PlannedDescription(val itemId: MediaId, val description: Description)
 
 /** A playable file or stream with what is known about it, before identification. */
 private data class Candidate(
@@ -161,13 +170,26 @@ internal class ScanPlanner(
         val assembled = assemble(sourceId, candidates, externalYearHints)
         val origin = sourceArtworkOrigin(sourceId)
         val known = assembled.items.map { it.id }.toSet()
-        val artwork = entries.flatMap { entry ->
-            val identification = entry.versions.firstNotNullOfOrNull { assembled.identificationByPath[it.path] } ?: return@flatMap emptyList()
-            val showId = (identification as? Identification.OfEpisode)?.show?.id
-            entry.artwork.map { (kind, path) -> Artwork(identification.playable.id, kind, ArtworkLocator.SourceFile(MediaLocation(sourceId, path)), origin) } +
-                (showId?.let { id -> entry.showArtwork.map { (kind, path) -> Artwork(id, kind, ArtworkLocator.SourceFile(MediaLocation(sourceId, path)), origin) } } ?: emptyList())
+        fun art(id: MediaId?, images: Map<ArtworkKind, String>) =
+            id?.let { images.map { (kind, path) -> Artwork(id, kind, ArtworkLocator.SourceFile(MediaLocation(sourceId, path)), origin) } }.orEmpty()
+        val identified = entries.mapNotNull { entry ->
+            entry.versions.firstNotNullOfOrNull { assembled.identificationByPath[it.path] }?.let { entry to it }
+        }
+        val artwork = identified.flatMap { (entry, identification) ->
+            val episode = identification as? Identification.OfEpisode
+            art(identification.playable.id, entry.artwork) + art(episode?.show?.id, entry.showArtwork) +
+                art(episode?.season?.id, entry.season?.artwork.orEmpty())
         }.filter { it.itemId in known }.distinctBy { it.itemId to it.kind }
-        return ScanPlan(sourceId, assembled.items, assembled.versions, artwork, emptyMap(), assembled.externalHints, assembled.identityKeys)
+        // A work listed several times (its versions, or every episode naming its show) is described by its first listing.
+        val descriptions = identified.flatMap { (entry, identification) ->
+            val episode = identification as? Identification.OfEpisode
+            listOfNotNull(
+                entry.description?.let { PlannedDescription(identification.playable.id, it) },
+                episode?.let { e -> entry.showDescription?.let { PlannedDescription(e.show.id, it) } },
+                episode?.let { e -> entry.season?.description()?.let { PlannedDescription(e.season.id, it) } },
+            )
+        }.filter { it.itemId in known && !it.description.empty }.distinctBy { it.itemId }
+        return ScanPlan(sourceId, assembled.items, assembled.versions, artwork, emptyMap(), assembled.externalHints, assembled.identityKeys, descriptions)
     }
 
     private class Assembled(
@@ -381,6 +403,14 @@ internal class ScanPlanner(
                 identity.externalIds.forEach { (key, value) -> put("id.$key", value) }
                 entry.artwork.forEach { (kind, path) -> put("art.${kind.name}", path) }
                 entry.showArtwork.forEach { (kind, path) -> put("showArt.${kind.name}", path) }
+                entry.description?.let { encodeDescription("desc.", it, this) }
+                entry.showDescription?.let { encodeDescription("showDesc.", it, this) }
+                entry.season?.let { season ->
+                    season.title?.let { put("season.title", it) }
+                    season.overview?.let { put("season.overview", it) }
+                    season.airDate?.let { put("season.airDate", it.toString()) }
+                    season.artwork.forEach { (kind, path) -> put("seasonArt.${kind.name}", path) }
+                }
                 version.subtitles.forEachIndexed { index, sub ->
                     put("sub.$index", listOf(sub.path, sub.format.name, sub.language.orEmpty(), sub.forced, sub.hearingImpaired).joinToString("\t"))
                 }
@@ -418,10 +448,73 @@ internal class ScanPlanner(
                 artwork = artwork("art."),
                 showArtwork = artwork("showArt."),
                 section = pairs["section"],
+                description = decodeDescription("desc.", pairs),
+                showDescription = decodeDescription("showDesc.", pairs),
+                season = CatalogSeason(
+                    title = pairs["season.title"],
+                    overview = pairs["season.overview"],
+                    airDate = pairs["season.airDate"]?.let(CalendarDate::parse),
+                    artwork = artwork("seasonArt."),
+                ).takeIf { it.title != null || it.overview != null || it.airDate != null || it.artwork.isNotEmpty() },
             )
+        }
+
+        /** Separates the values of a list, and the parts of a credit, in an encoded description. */
+        private const val LIST = "\t"
+
+        private fun encodeDescription(prefix: String, d: Description, into: MutableMap<String, String>) {
+            fun put(key: String, value: Any?) {
+                if (value != null && value.toString().isNotEmpty()) into["$prefix$key"] = value.toString()
+            }
+            put("title", d.title)
+            put("originalTitle", d.originalTitle)
+            put("overview", d.overview)
+            put("tagline", d.tagline)
+            put("genres", d.genres.joinToString(LIST))
+            put("runtime", d.runtimeMinutes)
+            put("released", d.releaseDate)
+            put("ended", d.endDate)
+            put("rating", d.rating)
+            put("contentRating", d.contentRating)
+            put("studios", d.studios.joinToString(LIST))
+            d.credits.forEachIndexed { index, credit -> put("credit.${index.toString().padStart(3, '0')}", encodeCredit(credit)) }
+        }
+
+        private fun decodeDescription(prefix: String, pairs: Map<String, String>): Description? {
+            fun get(key: String) = pairs["$prefix$key"]
+            val credits = pairs.filterKeys { it.startsWith("${prefix}credit.") }.toSortedMap().values.mapNotNull(::decodeCredit)
+            return Description(
+                title = get("title"),
+                originalTitle = get("originalTitle"),
+                overview = get("overview"),
+                tagline = get("tagline"),
+                genres = get("genres")?.split(LIST).orEmpty().filter { it.isNotBlank() },
+                runtimeMinutes = get("runtime")?.toIntOrNull(),
+                releaseDate = get("released")?.let(CalendarDate::parse),
+                endDate = get("ended")?.let(CalendarDate::parse),
+                rating = get("rating")?.toDoubleOrNull(),
+                contentRating = get("contentRating"),
+                studios = get("studios")?.split(LIST).orEmpty().filter { it.isNotBlank() },
+                credits = credits,
+            ).takeUnless { it.empty }
+        }
+
+        /** A credit as one line: name, role, character, and its picture, tab separated. */
+        internal fun encodeCredit(credit: Credit): String =
+            listOf(credit.name, credit.role.name, credit.character.orEmpty(), credit.profileUrl.orEmpty())
+                .joinToString(LIST) { it.replace('\t', ' ').replace('\n', ' ') }
+
+        internal fun decodeCredit(line: String): Credit? {
+            val parts = line.split(LIST)
+            if (parts.size != 4 || parts[0].isBlank()) return null
+            return Credit(parts[0], enumOrNull<CreditRole>(parts[1]) ?: CreditRole.ACTOR, parts[2].ifEmpty { null }, parts[3].ifEmpty { null })
         }
     }
 }
+
+/** A season's description, as a catalog source gives it. */
+internal fun CatalogSeason.description(): Description? =
+    Description(title = title, overview = overview, releaseDate = airDate).takeUnless { it.empty }
 
 internal fun MediaItem.titleKey(): String = TitleText.key(title)
 

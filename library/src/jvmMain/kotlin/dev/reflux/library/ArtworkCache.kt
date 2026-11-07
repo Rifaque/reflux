@@ -6,6 +6,9 @@ import dev.reflux.core.net.HttpFetcher
 import dev.reflux.core.net.get
 import dev.reflux.core.source.MediaSource
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -23,18 +26,44 @@ import kotlin.io.path.isRegularFile
 import kotlin.io.path.listDirectoryEntries
 
 /**
- * A disk cache of artwork images, so posters and backdrops stay visible while offline.
+ * A disk cache of artwork images, so posters and backdrops stay visible while offline (docs/METADATA.md,
+ * "Artwork cache").
  *
  * Remote images are downloaded; images inside sources (e.g. `poster.jpg` on a USB drive) are copied, so they
- * survive the drive being unplugged. Least recently used files are evicted beyond [maxBytes].
+ * survive the drive being unplugged. Each image's file is named by a digest of where it comes from, so the same
+ * picture is kept once, and a picture that changes where it comes from is a new file. Least recently used files
+ * are evicted beyond [maxBytes]. Nothing is ever written anywhere but [directory]: never beside media.
+ *
+ * Asked for the same picture while it is on its way, a caller waits for that download rather than starting
+ * another; a picture that could not be fetched is not asked for again for [retryAfterMs]. While [remoteAllowed]
+ * says no (online lookups turned off), provider images already kept are served and no new ones are fetched;
+ * images in the user's own sources are fetched as ever.
  */
 class ArtworkCache(
     private val directory: Path,
     private val http: HttpFetcher,
     private val maxBytes: Long = 2L * 1024 * 1024 * 1024,
+    private val remoteAllowed: () -> Boolean = { true },
+    private val retryAfterMs: Long = 10 * 60_000L,
+    private val clock: () -> Long = System::currentTimeMillis,
 ) {
     init {
         Files.createDirectories(directory)
+    }
+
+    private val inFlight = ConcurrentHashMap<Path, CompletableDeferred<Path?>>()
+    private val failedAt = ConcurrentHashMap<Path, Long>()
+
+    /** How many downloads or copies were started, for tests and diagnostics. */
+    val fetches = AtomicInteger()
+
+    /** What the cache holds now: files and bytes. */
+    data class Usage(val files: Int, val bytes: Long)
+
+    fun usage(): Usage {
+        if (!Files.isDirectory(directory)) return Usage(0, 0)
+        val files = directory.listDirectoryEntries().filter { it.isRegularFile() && !it.fileName.toString().endsWith(".part") }
+        return Usage(files.size, files.sumOf { runCatching { Files.size(it) }.getOrDefault(0L) })
     }
 
     /** The cached file for [locator], if present. Never touches the network or sources. */
@@ -47,12 +76,31 @@ class ArtworkCache(
      */
     suspend fun get(locator: ArtworkLocator, sources: (SourceId) -> MediaSource?): Path? {
         cached(locator)?.let { return it }
+        if (locator is ArtworkLocator.Remote && !remoteAllowed()) return null
         val target = fileFor(locator)
+        // A source's own picture is tried again sooner: the source coming back is the usual reason it failed.
+        val retry = if (locator is ArtworkLocator.Remote) retryAfterMs else retryAfterMs / 10
+        failedAt[target]?.let { if (clock() - it < retry) return null else failedAt.remove(target) }
+        val mine = CompletableDeferred<Path?>()
+        val running = inFlight.putIfAbsent(target, mine)
+        if (running != null) return running.await()
         return try {
+            fetch(locator, target, sources).also { mine.complete(it) }
+        } catch (e: Throwable) {
+            mine.complete(null)
+            throw e
+        } finally {
+            inFlight.remove(target, mine)
+        }
+    }
+
+    private suspend fun fetch(locator: ArtworkLocator, target: Path, sources: (SourceId) -> MediaSource?): Path? {
+        fetches.incrementAndGet()
+        val fetched = try {
             val bytes = when (locator) {
                 is ArtworkLocator.Remote -> http.get(locator.url, emptyMap()).takeIf { it.ok }?.body
                 is ArtworkLocator.SourceFile -> {
-                    val source = sources(locator.location.sourceId) ?: return null
+                    val source = sources(locator.location.sourceId) ?: return@fetch null
                     val playable = source.playbackTarget(locator.location.path)
                     if (playable.uri.startsWith("file:")) {
                         withContext(Dispatchers.IO) { Files.readAllBytes(Paths.get(URI(playable.uri))) }
@@ -60,7 +108,7 @@ class ArtworkCache(
                         http.get(playable.uri, playable.headers).takeIf { it.ok }?.body
                     }
                 }
-            } ?: return null
+            } ?: return null.also { failedAt[target] = clock() }
             withContext(Dispatchers.IO) { write(target, bytes) }
             target
         } catch (e: CancellationException) {
@@ -68,6 +116,8 @@ class ArtworkCache(
         } catch (_: Exception) {
             null // offline, removed, or unreadable: the UI shows its placeholder
         }
+        if (fetched == null) failedAt[target] = clock()
+        return fetched
     }
 
     /** Fetches many images with bounded concurrency, then trims the cache. Returns how many are available. */

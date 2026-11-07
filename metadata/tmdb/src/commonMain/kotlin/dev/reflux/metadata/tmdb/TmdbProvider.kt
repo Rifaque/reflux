@@ -101,6 +101,7 @@ class TmdbProvider(
             title = json.string("name"),
             overview = json.string("overview"),
             posterUrl = image(json.string("poster_path"), POSTER_SIZE),
+            airDate = date(json.string("air_date")),
             episodes = json.array("episodes").orEmpty().mapNotNull { element ->
                 val episode = element as? JsonObject ?: return@mapNotNull null
                 EpisodeMetadata(
@@ -111,6 +112,11 @@ class TmdbProvider(
                     airDate = date(episode.string("air_date")),
                     runtimeMinutes = episode.int("runtime"),
                     stillUrl = image(episode.string("still_path"), STILL_SIZE),
+                    rating = episode.double("vote_average")?.takeIf { it > 0 && (episode.int("vote_count") ?: 1) > 0 },
+                    guestStars = episode.array("guest_stars").orEmpty().mapNotNull { it as? JsonObject }
+                        .sortedBy { it.int("order") ?: Int.MAX_VALUE }
+                        .take(MAX_GUESTS)
+                        .mapNotNull { person(it, CreditRole.ACTOR) },
                 )
             },
         )
@@ -151,6 +157,7 @@ class TmdbProvider(
             releaseDate = date(json.string("release_date")),
             rating = json.double("vote_average")?.takeIf { it > 0 },
             contentRating = certification,
+            studios = names(json, "production_companies").take(2),
             credits = crew.filter { it.string("job") == "Director" }.mapNotNull { person(it, CreditRole.DIRECTOR) } +
                 cast(json),
             artwork = artwork(json),
@@ -182,13 +189,18 @@ class TmdbProvider(
             genres = genres(json),
             runtimeMinutes = json.array("episode_run_time").orEmpty().firstNotNullOfOrNull { (it as? JsonPrimitive)?.intOrNull },
             releaseDate = date(json.string("first_air_date")),
+            endDate = date(json.string("last_air_date")),
             rating = json.double("vote_average")?.takeIf { it > 0 },
             contentRating = rating?.takeIf { it.isNotBlank() },
+            studios = names(json, "networks").take(2),
             credits = creators + cast(json),
             artwork = artwork(json),
             externalIds = externalIds(json),
         )
     }
+
+    private fun names(json: JsonObject, key: String): List<String> =
+        json.array(key).orEmpty().mapNotNull { (it as? JsonObject)?.string("name")?.takeIf(String::isNotBlank) }
 
     private fun genres(json: JsonObject): List<String> =
         json.array("genres").orEmpty().mapNotNull { (it as? JsonObject)?.string("name") }
@@ -269,6 +281,7 @@ class TmdbProvider(
     companion object {
         const val ID: String = "tmdb"
         private const val MAX_ATTEMPTS = 3
+        private const val MAX_GUESTS = 6
         private const val POSTER_SIZE = "w780"
         private const val RESULT_POSTER_SIZE = "w185"
         private const val BACKDROP_SIZE = "w1280"

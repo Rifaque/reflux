@@ -10,6 +10,7 @@ import dev.reflux.core.metadata.MetadataKind
 import dev.reflux.core.metadata.MetadataMatcher
 import dev.reflux.core.metadata.MetadataProvider
 import dev.reflux.core.metadata.MetadataQuery
+import dev.reflux.core.metadata.MetadataUnavailableException
 import dev.reflux.core.metadata.ProviderRef
 import dev.reflux.core.metadata.ScoredCandidate
 import dev.reflux.core.model.Episode
@@ -31,7 +32,79 @@ suspend fun Library.refreshMetadata(
     retryAfterMs: Long = 7 * 24 * 3_600_000L,
 ): MetadataReport = metadataSync.refresh(provider, language, limit, retryAfterMs)
 
-fun Library.metadata(itemId: MediaId): ItemMetadata? = queries.metadataOf(itemId.value).executeAsOneOrNull()?.toModel()
+/** What [itemId] is described as, resolved from its provider entry and its sources' own descriptions. */
+fun Library.metadata(itemId: MediaId): ItemMetadata? = resolvedMetadata(listOf(itemId.value))[itemId.value]
+
+/**
+ * Re-reads matched works whose provider metadata is older than [staleAfterMs] (90 days by default: well within
+ * the six months TMDB's terms allow a copy to be kept), at most [limit] of them. Only the entry already matched is
+ * read; a failure changes nothing. Returns how many were refreshed, or null when the provider was out of reach.
+ */
+suspend fun Library.refreshStaleMetadata(
+    provider: MetadataProvider,
+    language: String,
+    staleAfterMs: Long = 90 * 24 * 3_600_000L,
+    limit: Int = 10,
+    retryAfterMs: Long = 24 * 3_600_000L,
+): Int? = try {
+    metadataSync.refreshStale(provider, language, staleAfterMs, limit, retryAfterMs)
+} catch (_: MetadataUnavailableException) {
+    null
+}
+
+/** The preference that allows Reflux to look things up online (metadata and artwork from a provider). */
+const val ONLINE_METADATA: String = "metadata.online"
+
+/**
+ * Whether Reflux may look up metadata and artwork online (docs/METADATA.md, "Online lookups"). On unless the
+ * viewer turned it off. Off, nothing is sent to a metadata provider: what sources say, what was fetched before,
+ * and the file names are what the library shows, and nothing already known is forgotten.
+ */
+val Library.onlineMetadata: Boolean get() = setting(ONLINE_METADATA) != "off"
+
+fun Library.setOnlineMetadata(on: Boolean) = setSetting(ONLINE_METADATA, if (on) null else "off")
+
+/** What asking for a work's details again did. */
+enum class MetadataRefresh {
+    /** Its details and artwork were read again and kept. */
+    REFRESHED,
+
+    /** The provider could not be reached; everything known is kept as it was. */
+    UNREACHABLE,
+
+    /** The provider has no entry for it; what its sources say still stands. */
+    NOT_FOUND,
+}
+
+/**
+ * Reads a movie's or show's details and artwork again, or one season's ([itemId] a season or an episode of it):
+ * the provider entry it is matched to (or the one the user chose), never a new search, so a refresh cannot turn
+ * a known identity into a guess. Watch state, sources, and files are untouched, and nothing is removed until
+ * what replaces it has arrived. The sources' own descriptions are refreshed by scanning them.
+ */
+suspend fun Library.refreshDetails(itemId: MediaId, provider: MetadataProvider, language: String): MetadataRefresh {
+    val row = queries.itemById(itemId.value).executeAsOneOrNull() ?: return MetadataRefresh.NOT_FOUND
+    return try {
+        when (row.kind) {
+            MediaKind.MOVIE.name, MediaKind.SHOW.name -> {
+                queries.clearMetadataAttempt(row.id)
+                when (metadataSync.refreshWork(row, provider, language, pinned = null)) {
+                    AttemptOutcome.MATCHED -> MetadataRefresh.REFRESHED
+                    else -> MetadataRefresh.NOT_FOUND
+                }
+            }
+            else -> {
+                val showId = row.show_id ?: return MetadataRefresh.NOT_FOUND
+                val ref = queries.metadataOf(showId).executeAsOneOrNull()?.provider_ref?.let(ProviderRef::parse)
+                    ?.takeIf { it.provider == provider.id } ?: return MetadataRefresh.NOT_FOUND
+                metadataSync.syncEpisodes(showId, ref, provider, language, onlySeason = row.season_number?.toInt())
+                MetadataRefresh.REFRESHED
+            }
+        }
+    } catch (_: MetadataUnavailableException) {
+        MetadataRefresh.UNREACHABLE
+    }
+}
 
 fun Library.credits(itemId: MediaId): List<Credit> = queries.creditsOf(itemId.value).executeAsList().map {
     Credit(it.name, enumOrNull<CreditRole>(it.role) ?: CreditRole.ACTOR, it.character, it.profile_url)
