@@ -196,8 +196,10 @@ class JellyfinSource(
             )
             segments.size == 6 && segments[0] == "videos" && segments[3] == "subtitles" ->
                 api.url("Videos/${segments[1]}/${segments[2]}/Subtitles/${segments[4]}/${segments[5].replaceFirstChar { it.uppercase() }}")
+            // At most as large as Reflux ever shows it, not the original a server keeps: a still or a poster a
+            // few hundred kilobytes, so a large library's pictures do not fill the cache (docs/METADATA.md).
             segments.size == 4 && segments[0] == "items" && segments[2] == "images" ->
-                api.url("Items/${segments[1]}/Images/${segments[3]}")
+                api.url("Items/${segments[1]}/Images/${segments[3]}", mapOf("maxWidth" to (IMAGE_WIDTHS[segments[3]] ?: 780).toString(), "quality" to "90"))
             else -> throw IllegalArgumentException("not a Jellyfin locator: $path")
         }
         return PlaybackTarget(url, mapOf("Authorization" to api.authorization))
@@ -675,6 +677,9 @@ class JellyfinSource(
             SourceCapability.SERVER_SUBTITLE_EXTRACTION, SourceCapability.SERVER_SUBTITLE_CONVERSION, SourceCapability.SERVER_BURN_IN,
         )
         private const val PAGE_SIZE = 500
+
+        /** The widest each kind of picture is asked for: a backdrop fills a large screen; the rest are smaller. */
+        private val IMAGE_WIDTHS = mapOf("Backdrop" to 1920, "Logo" to 800, "Primary" to 780)
 
         /** What a description is made of, asked for with the catalog (and the series). */
         private const val DESCRIPTION_FIELDS = "Overview,Genres,Taglines,People,Studios,OriginalTitle"
