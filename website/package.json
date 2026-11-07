@@ -1,0 +1,23 @@
+{
+  "name": "reflux-website",
+  "private": true,
+  "version": "0.0.0",
+  "description": "reflux.rsxdevelops.dev: the Reflux website. Its version data comes from the repository (scripts/release-data.mjs), never typed here.",
+  "type": "module",
+  "scripts": {
+    "data": "node scripts/release-data.mjs",
+    "dev": "node scripts/release-data.mjs && vite",
+    "build": "node scripts/release-data.mjs && vite build",
+    "preview": "vite preview",
+    "check-links": "node scripts/check-links.mjs"
+  },
+  "dependencies": {
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "react-router-dom": "7.18.5"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "6.2.1",
+    "vite": "8.3.6"
+  }
+}
