@@ -981,3 +981,50 @@ Verified on 2026-11-07, on the tree that closes M4 (`feature/engine-foundation`,
 | Google TV emulator instrumented suite (side-by-side build) | 41, 0 failed |
 
 **Not verified in M4:** a screen reader walk over the new surfaces, whose names, roles, and selected states are covered by the automated tests and the devices' accessibility trees; physical Linux (waived as for M2P); a physical Google TV device; release-build performance (M6, M7).
+
+## M5: Library depth
+
+Verified on 2026-11-07 and 08, on the tree that closes M5 (`feature/engine-foundation`, unpushed). Specification: METADATA.md, "Library depth (M5)". Real media is the developer's Jellyfin server (Jellyfin 12.2, the `reflux-test` account): 187 films, 38 shows, 63 seasons, 812 episodes. Everything against it was read-only (asserted: every request a GET); nothing on the server or in its media folders was changed, and every session the tests opened was ended. Devices ran a side-by-side debug build (`dev.reflux.m5`, built and reverted, never committed); its server sessions were signed out by the application ("ENDED") before it was uninstalled, and no temporary file was left on a device.
+
+**Automated (new in M5).**
+
+| Suite | What it covers | Result |
+| --- | --- | --- |
+| `core` `ProvenanceTest` | Source first, provider filling gaps; names follow identity; the user's choice outranks every source; two servers resolve the same in either order; blank and zero are not values; artwork precedence; an identification drops the IDs it corrects | 7, 0 failed |
+| `library` `LibraryDepthTest` | A server's description without a provider; provider names and fills; scan-order independence of metadata and artwork; a server away keeps what it said; Identify outranking the server and surviving rescans, refreshes, and unification; a refresh never searches; a server's provider ID replacing a weaker guess; a failed refresh changing nothing (watch state untouched); seasons and episodes described and pictured, a provider still filling a missing one, a season refresh reading one season; staleness a few at a time; online lookups off asking nothing; a removed server taking its descriptions; offline re-identification keeping them | 13, 0 failed |
+| `library` `ProviderGateTest`, `ArtworkCacheTest` (4 new), `MetadataMigrationTest` | Coalescing, memory, backoff and its growth, spacing; one download per picture at a time, failures not retried at once, provider pictures not fetched with lookups off, accounting, nothing written beside media; migration 6 keeping watch state, sources, favorites, settings, and metadata, and marking the user's choices | 5, 4, 1, 0 failed |
+| `sources:jellyfin` `JellyfinDescriptionTest`, `sources:plex` `PlexDescriptionTest`, TMDB | Descriptions, seasons, and (Plex) people read with the catalog; Jellyfin never asked for people; a server without seasons still lists episodes; TMDB end dates, networks, season dates, episode ratings, guest cast | 3, 2, extended, 0 failed |
+| `ui` `LibraryDepthUiTest`, `FormattingTest` | A show's aired years and a season's own name and story; stills, and a show's backdrop for episodes without one; an episode's date and guest cast; Identify's "Refresh details"; the online switch, and none without a provider; a season's story at tablet (1164 by 777 dp) and phone sizes | 7, 1, 0 failed |
+
+**Real library, desktop** (`LibraryDepthLiveTest`): scan completed; films 100% described by the server; shows 100%; seasons 100% with posters, 79% with overviews; episodes 100% with stills, 99% with overviews. Pictures needed by a page fetched once each, decoded, and served again with no request; with the server away, the descriptions and kept pictures stayed.
+
+**Performance, against M4 on the same server** (M4 measured from commit `c757809` in a scratch worktree; same machine, same test):
+
+| Measure | M4 | M5 first cut | M5 |
+| --- | --- | --- | --- |
+| Scan of the whole server | 2.7 to 3.2 s | 25 to 29 s | 2.9 to 3.5 s |
+| Every film, then every show's page, five times | 16.6 s | 27 s | 6.4 to 6.9 s |
+| The same 16 pictures from the server in the cache | not measured (originals, as the first cut) | 6.3 MB | 2.25 MB |
+
+Found and fixed by measuring: asking Jellyfin for people costs about 20 ms an item (films 0.5 s to 4.0 s, episodes 1.5 s to 17 s for one page; every other description field nothing measurable), so people are not asked for; descriptions kept in each version's row made every availability read scan larger rows, so they moved beside it; the source order was read twice per page read, and a show's page read its seasons one at a time (each read opens its own connection: about a millisecond a query, the dominant cost in a sampled profile).
+
+**Devices** (`LibraryDepthOnDeviceTest` after `prepareTheInstalledApplication`, side-by-side build):
+
+| Device | What ran | Result |
+| --- | --- | --- |
+| Nothing Phone 2a (Android 16), wireless adb | The live library on a real Android runtime: 187 films described by the server; 63 seasons with posters, 50 with overviews; 812 episodes with stills, 811 with overviews; every show's page read in 1,550 ms; six pictures fetched through Android's HTTP stack in 485 ms, each decoded at 780 px | Passed. No visual walk: the phone was locked, and it was not unlocked |
+| Fire TV Stick 4K Plus (Fire OS 8.1), Wi-Fi adb | The same: identical counts; every show's page in 3,519 ms (debug build); pictures 780 px. By remote: Home with the server's descriptions and an episode still in Continue Watching; Shows; The Boys: "2019–2026 · TV-MA · ★ 8.4 · Prime Video · 1 season", Season 1's own poster, "2019 · 8 episodes", and its overview; episode rows with stills, runtime, air date, and synopsis; focus from the season tab straight to the first episode, past the season's text | Passed |
+| Xiaomi Pad 7 | Not run: installing a new package there needs an approval on its screen. Tablet layout is covered by the render at its size (above) | Not verified on the device |
+| Google TV emulator | Not run in M5 (no M5 code is television-specific; the Fire TV covered the television layout with real media) | Not verified |
+
+During the Fire TV walk, a remote press meant for the navigation reached Resume and played about a minute of a film on the `reflux-test` account before it was closed with Back; that account's position in that film moved by about a minute. Focus was checked before every later press.
+
+**Not verified in M5:** TMDB against the live service (no credential; M7); Plex against a real server (fake-server tests); the Pad 7 and the Google TV emulator (above); a screen reader walk (the season's text is one merged node, covered by the automated semantics); Windows real-window tests (they put windows on the developer's screen and M5 changed nothing in the desktop shell; the Linux container's window round below ran instead); physical Linux (waived as for M2P).
+
+**Suites at closure.**
+
+| Suite | Result |
+| --- | --- |
+| Windows `check` (with the live Jellyfin server; Android unit tests included) | 1,202 tests, 17 skipped, 1 failed: `SourcesUiTest.aServerThatIsAwayOrStopsAnsweringIsRemovedAtOnce` timed out waiting for a fake server's films under the loaded run; it passed alone three times and with its class, and takes 31 s on M4 against 26 s on M5, so it is the load-sensitive class already in M6's intermittent item, not a regression. `core` 332, `library` 213, `ui` 306, `sources:jellyfin` 62, `sources:plex` 20 |
+| Linux, `tools/ci` container (`all 1`) | Not completed: started after the Windows run with 7.4 GB free and capped at 6 GB, it was stopped by Claude Code's low-memory reaper during the headless check. The partial log showed UI timeouts under that pressure (`AboutUiTest`, which passed on Windows). Not rerun. M5 adds no Linux-specific code; the same JVM suites passed on Windows. The Linux window round of M4 is the latest |
+| On devices, `LibraryDepthOnDeviceTest` | Phone 2a and Fire TV, passed (above) |

@@ -8,7 +8,7 @@ The one source of truth for what Reflux is building, in what order, and what is 
 - The website is a release workstream across M6, M7, and M8 (below, "The Reflux website"); its visual direction, the demo video, and the beta program are in [LAUNCH.md](LAUNCH.md).
 - Decisions behind the plan are in [DECISIONS.md](DECISIONS.md): the first rebaseline (2026-10-17) and the milestone rebaseline (2026-11-02).
 
-**Current state: M4 complete → M5 next.**
+**Current state: M5 complete → M6 next.**
 
 This milestone list replaces the one of 2026-10-17 (M0 to M7, with M2 as release engineering and M3 as real-world validation), which replaced the earlier Phase 0–18 plan. Documents and verification sections written before 2026-11-02 use the older numbering; how each old milestone maps to this one is under "Earlier numbering", and DECISIONS.md, 2026-11-02, "The milestone rebaseline", says why.
 
@@ -48,8 +48,8 @@ Status words used below:
 | M2P — Playback Compatibility & Direct Play | Reflux knows what the client can actually play, preserves the original whenever possible, degrades the smallest necessary part when it cannot, and can explain why | **Complete** (2026-11-02), with explicit waivers and unknowns (PLAYBACK.md, section 17) |
 | M3 — Navigation & Source Libraries | How the viewer moves through Reflux and controls the media universe playback works on: global and platform navigation, the unified library and each source's own, source inclusion | **Complete** (2026-11-07), with the limits in its section |
 | M4 — Visual System 2.0 | A higher-end visual system around that structure | **Complete** (2026-11-07), with the limits in its section |
-| M5 — Library Depth & Reflux Magic | A richer library and the features that set Reflux apart | **Next** |
-| M6 — Release Engineering / Security / Legal | Production builds, packaging, signing, security hardening, legal and licensing, store preparation; the website's foundation and its legal and privacy pages | Future |
+| M5 — Library Depth & Reflux Magic | A richer library and the features that set Reflux apart | **Complete** (2026-11-07), with the limits in its section |
+| M6 — Release Engineering / Security / Legal | Production builds, packaging, signing, security hardening, legal and licensing, store preparation; the website's foundation and its legal and privacy pages | **Next** |
 | M7 — Compatibility / Performance / Release Proof | The final platform matrix proven: compatibility, performance, stability, production readiness; the website ready for the public and for testers | Future |
 | M8 — Beta | `0.9.0-beta.N` in testers' hands until the beta exit criteria hold, with the website operating as their entry point | Future |
 | M9 — Release Candidate | `0.9.0-rc.N`, feature freeze, final validation, submissions prepared | Future |
@@ -196,9 +196,34 @@ Source adapter → source and library contents → unified Reflux media model �
 
 ## M5 — Library Depth & Reflux Magic
 
-**Next.** A richer media and library experience: deeper metadata and artwork, episode artwork, more of Reflux's own intelligence above the deterministic engine, further library features, and what sets Reflux apart. Its features are not pulled forward because they are attractive.
+**Complete** (2026-11-07), with the limits below. Sources provide media truth, metadata providers descriptive truth, and Reflux owns canonical identity, provenance, the cache, and presentation. Specification: METADATA.md, "Library depth (M5)". Decision: DECISIONS.md, 2026-11-07, "Library depth". Evidence: VERIFICATION.md, "M5: Library depth".
 
-Carried here at the rebaseline: **serious playback parity**, Partial: on television an explanation where sidecar subtitles cannot be read (decided); held seek acceleration; chapters on Android where Media3 can supply them; media keys on desktop.
+| Item | State |
+| --- | --- |
+| Canonical identity: movie, show, season, and episode works independent of files and sources; the same work on several sources one work with several versions | Done (the existing model, extended; no second identity system) |
+| Sources describe their works: Jellyfin and Plex overviews, genres, ratings, runtimes, dates, networks or studios, seasons with names, overviews, and posters, episode stills; Plex's cast | Done; verified on a real Jellyfin library |
+| Provenance for every resolved field and picture; deterministic field-level precedence (`MetadataResolver`, `ArtworkPrecedence`), independent of scan order | Done |
+| Provider-neutral contract; TMDB the one isolated adapter, with end dates, networks, season dates, episode ratings and guest cast | Done; TMDB against the live service is still M7's |
+| Identify integrated: evidence recorded, the user's choice outranking sources, durable across rescans, refreshes, and unification | Done (and a defect fixed: a correction kept the IDs it corrected) |
+| Scoped refresh (movie, show, season) that keeps everything on failure; staleness re-reads a few works at a time | Done |
+| Request gate: coalescing, memory, spacing, backing off | Done |
+| Artwork cache: one download per picture, failures not retried at once, accounting, bounded, no writes beside media, offline reuse; Jellyfin pictures at display size | Done |
+| Online metadata & artwork: one switch, a privacy choice | Done |
+| Richer movie, show, season, and episode details; episode stills in rows, pages, and Continue Watching; parent fallback | Done; verified on the Fire TV with real media |
+| Reflux Magic, kept small: one work across sources, the right picture for each place, no blank states, provider franchises on Home | Done |
+| Performance: scan no slower than M4, show pages faster | Done (measured against M4 on the same server) |
+| Licensing and privacy of the provider documented; production approval | Documented; not approved (RELEASE.md, legal review) |
+
+**Limits recorded, not blocking:**
+
+- Jellyfin's cast is not read (it would make every scan about eight times slower); cast comes from the provider when online. Reading one work's cast from its server when its page opens is possible later.
+- Plex descriptions are verified against fake-server tests only; no real Plex server was used in M5. Plex pictures are fetched at the server's size.
+- TMDB was exercised through fakes; no credential is available locally (as since M0). Its use in production waits for the legal review: non-commercial licence, six-month cache limit, attribution wording.
+- No artwork picker: the user tier of the artwork precedence is reserved. Embedded artwork (Matroska attachments, MP4 `covr`) is not read.
+- Linux was not re-verified for M5: the container run was stopped for lack of memory on the developer's machine (VERIFICATION.md). M5 has no Linux-specific code.
+- The Xiaomi Pad 7 was not walked: installing a new package there needs an on-screen approval. Tablet layouts are covered by renders at its size. The Phone 2a was locked, so it ran the on-device tests without a visual walk.
+
+**Moved out of M5:** the playback-parity items carried here at the rebaseline (on television an explanation where sidecar subtitles cannot be read, decided; held seek acceleration; chapters on Android where Media3 can supply them; media keys on desktop) are playback work, outside M5's library scope. They are open, placed in M7 before M9's feature freeze.
 
 ## M6 — Release Engineering / Security / Legal
 
@@ -211,7 +236,7 @@ Future. This is the work the 2026-10-17 roadmap called M2. Production release en
 | Android install, upgrade, and data migration tests (debug → release, release → release) | Open |
 | Android in CI (unit tests, lint, a release build; instrumented tests where a runner allows) | Open |
 | The CI workflow run on GitHub at least once, green | Open |
-| Intermittent tests fixed: `SourcesUiTest.theRemoteChoosesLibrariesToo` times out under a loaded full `check` (VERIFICATION.md, first M1 slice) | Open |
+| Intermittent tests fixed: `SourcesUiTest.theRemoteChoosesLibrariesToo` times out under a loaded full `check` (VERIFICATION.md, first M1 slice); so did `SourcesUiTest.aServerThatIsAwayOrStopsAnsweringIsRemovedAtOnce` at M5's closure (26 to 31 s alone, on M4 as on M5) | Open |
 | Linux window tests: in the `tools/ci` container a show's card on screen is never located for a click, failing `EmbeddedPlaybackTest` and `OfflineWindowTest` (already failing on `a48cd67`; VERIFICATION.md, Smart Offline) | Done 2026-10-19: harness causes, fixed (VERIFICATION.md, "Real-window browsing") |
 | Intermittent window test: `EmbeddedPlaybackTest`'s missing-file step on Linux, where the engine reported nothing within 20 s for a file deleted just before Resume (1 of 9 container rounds; VERIFICATION.md, "Real-window browsing") | Open |
 | Google Play readiness: listing, data safety form, content rating, target API, TV quality checklist, Watch Next certification for Google TV, closed-testing track | Open |
@@ -255,6 +280,7 @@ Future. The final production matrix proven: broad compatibility, performance, st
 
 | Item | State |
 | --- | --- |
+| Serious playback parity, moved from M5: held seek acceleration; chapters on Android where Media3 supplies them; media keys on desktop; on television, an explanation where sidecar subtitles cannot be read (decided) | Open (before M9) |
 | TMDB against the live service, with attribution in place | Open |
 | A real Android phone and tablet across the product (playback on the Phone 2a and Pad 7: M2P) | Partial |
 | A real Google TV / Android TV device | Open |
@@ -392,7 +418,7 @@ What V1 contains, as built from 2026-10-17 to 2026-11-01. Each row is required f
 | Visible version selection | Done | Films and episodes list every version and play any of them; an episode's are on its own page, offered from its row where it has more than one (DECISIONS.md, 2026-10-18) |
 | Version pinning | Done | Films (2026-10-17) and episodes (2026-10-18): "Always play this" and "Let Reflux choose"; a pin set aside is said and kept; an episode's pin follows it through Identify |
 | Smart Offline, user-facing | Done | Films, single episodes, whole seasons, and a show's next episodes; a show or season counted per episode; a Downloads page; Windows and Linux wired like Android (DECISIONS.md, 2026-10-18). Downloads navigation: done in M3 |
-| Serious playback parity | Partial | Moved to M5 |
+| Serious playback parity | Partial | Moved to M5, then to M7 (2026-11-07) |
 | Jellyfin correctness and security | Partial | Removing a server signs its session out since 2026-10-19 (DECISIONS.md, "How a Jellyfin server is signed out of"; verified live). The plain-HTTP policy on Android moved to M6 |
 | Source onboarding and management | Done | WebDAV can be added on Android since 2026-10-19 (DECISIONS.md, 2026-10-18, "Web shares on Android"). Source navigation and inclusion: done in M3 |
 | Android phone and tablet | Done (emulator); playback physical (M2P) | Physical validation across the product: M7 |
