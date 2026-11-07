@@ -148,7 +148,9 @@ class JellyfinSourceTest {
         assertEquals("https://jf.example.com/Videos/m1/stream?static=true&mediaSourceId=s1", target.uri)
         assertTrue("Token=\"tok\"" in target.headers.getValue("Authorization"))
         assertEquals("https://jf.example.com/Videos/m1/s1/Subtitles/3/Stream.srt", source.playbackTarget("videos/m1/s1/subtitles/3/stream.srt").uri)
-        assertEquals("https://jf.example.com/Items/m1/Images/Primary", source.playbackTarget("items/m1/images/Primary").uri)
+        // Pictures are asked for at the size Reflux shows them, never the server's original.
+        assertEquals("https://jf.example.com/Items/m1/Images/Primary?maxWidth=780&quality=90", source.playbackTarget("items/m1/images/Primary").uri)
+        assertEquals("https://jf.example.com/Items/m1/Images/Backdrop?maxWidth=1920&quality=90", source.playbackTarget("items/m1/images/Backdrop").uri)
     }
 
     @Test
