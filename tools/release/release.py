@@ -169,8 +169,9 @@ def build(args) -> int:
         "builtAt": finished.strftime("%Y-%m-%dT%H:%M:%SZ"), "builder": "local" if not os.environ.get("GITHUB_ACTIONS") else "github-actions",
         "tmdb": "disabled", "artifacts": artifacts,
     }
-    (out / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
-    (out / "SHA256SUMS").write_text("".join("%s  %s\n" % (a["sha256"], a["name"]) for a in artifacts), encoding="utf-8")
+    # LF everywhere: `sha256sum -c` on Linux and macOS reads a CRLF SHA256SUMS as names ending in \r.
+    (out / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8", newline="\n")
+    (out / "SHA256SUMS").write_text("".join("%s  %s\n" % (a["sha256"], a["name"]) for a in artifacts), encoding="utf-8", newline="\n")
     pin = dict(line.split("=", 1) for line in (ROOT / "desktop/app/packaging/libmpv-windows.properties").read_text().splitlines() if "=" in line and not line.startswith("#"))
     provenance = {
         "_type": "https://in-toto.io/Statement/v1",
@@ -191,7 +192,7 @@ def build(args) -> int:
             },
         },
     }
-    (out / "provenance.intoto.json").write_text(json.dumps(provenance, indent=2) + "\n", encoding="utf-8")
+    (out / "provenance.intoto.json").write_text(json.dumps(provenance, indent=2) + "\n", encoding="utf-8", newline="\n")
     print("wrote " + str(out))
     for a in artifacts:
         print("  %s  %s  %d bytes" % (a["sha256"], a["name"], a["size"]))
