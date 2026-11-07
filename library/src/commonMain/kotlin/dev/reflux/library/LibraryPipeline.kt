@@ -48,10 +48,18 @@ class LibraryPipeline(
     private val library: Library,
     private val registry: SourceRegistry,
     private val prober: MediaProber? = null,
-    private val metadata: MetadataProvider? = null,
+    metadata: MetadataProvider? = null,
     private val language: String = "en-US",
     private val prefetchArtwork: (suspend (List<ArtworkLocator>) -> Unit)? = null,
 ) {
+    /** The provider in the build, behind its gate (coalescing, spacing, backing off); null without one. */
+    private val provider: ProviderGate? = metadata?.let { it as? ProviderGate ?: ProviderGate(it) }
+
+    /**
+     * The provider while the viewer allows Reflux to look things up online ([Library.onlineMetadata]); null
+     * otherwise, when what is cached and what sources say is all there is.
+     */
+    private val metadata: MetadataProvider? get() = provider?.takeIf { library.onlineMetadata }
     private val mutex = Mutex()
     private val mutableActivity = MutableStateFlow<PipelineActivity>(PipelineActivity.Idle)
     val activity: StateFlow<PipelineActivity> = mutableActivity.asStateFlow()
@@ -65,7 +73,7 @@ class LibraryPipeline(
     val metadataUnreachable: StateFlow<Boolean> = mutableMetadataUnreachable.asStateFlow()
 
     /** How the metadata provider in use asks to be credited (the About page); null without one. */
-    val metadataAttribution: ProviderAttribution? get() = metadata?.attribution
+    val metadataAttribution: ProviderAttribution? get() = provider?.attribution
 
     /** Scans [sourceId] (or every source) and enriches the library. Concurrent calls run one after another. */
     suspend fun refresh(sourceId: SourceId? = null): List<ScanReport> = mutex.withLock {
@@ -90,17 +98,26 @@ class LibraryPipeline(
         }
         metadata?.let { provider ->
             mutableActivity.value = PipelineActivity.FetchingMetadata
+            var report: MetadataReport
             do {
-                val report = library.refreshMetadata(provider, language, limit = BATCH)
+                report = library.refreshMetadata(provider, language, limit = BATCH)
                 mutableMetadataUnreachable.value = report.offline
             } while (!report.offline && report.matched + report.ambiguous + report.unmatched == BATCH)
+            // A few of the oldest matches are read again each pass, so nothing kept is older than the
+            // provider's terms allow, without ever re-reading the whole library at once.
+            if (!report.offline && library.refreshStaleMetadata(provider, language, limit = STALE_BATCH) == null) {
+                mutableMetadataUnreachable.value = true
+            }
         }
         // Works that turned out to share a provider ID become one work with several versions.
         library.unifyWorks()
         prefetchArtwork?.let { prefetch ->
             mutableActivity.value = PipelineActivity.FetchingArtwork
             val kinds = setOf(ArtworkKind.POSTER, ArtworkKind.BACKDROP, ArtworkKind.LOGO)
-            prefetch((library.movies() + library.shows()).flatMap { entry -> entry.artwork.filterKeys { it in kinds }.values })
+            // Posters, backdrops, and logos of every movie and show; of episodes, only the stills of those the
+            // viewer is about to watch (Continue Watching). The rest are fetched as they come into view.
+            val stills = library.continueWatching().mapNotNull { it.artwork[ArtworkKind.THUMBNAIL] }
+            prefetch((library.movies() + library.shows()).flatMap { entry -> entry.artwork.filterKeys { it in kinds }.values } + stills)
         }
     }
 
@@ -133,8 +150,27 @@ class LibraryPipeline(
         }
     }
 
-    /** Whether works can be identified against a metadata provider here: the build supplied its credential. */
+    /**
+     * Whether works can be identified against a metadata provider here: the build supplied its credential, and
+     * the viewer allows online lookups.
+     */
     val canIdentify: Boolean get() = metadata != null
+
+    /** Whether the build has a metadata provider at all, whatever the viewer chose. */
+    val hasProvider: Boolean get() = provider != null
+
+    /**
+     * Reads [itemId]'s details and artwork again (a movie, a show, or a season: [Library.refreshDetails]), then
+     * fetches its pictures. Only when the viewer asks; nothing happens without a provider or with lookups off.
+     */
+    suspend fun refreshDetails(itemId: MediaId): MetadataRefresh? {
+        val provider = metadata ?: return null
+        this.provider?.reset()
+        val result = mutex.withLock { library.refreshDetails(itemId, provider, language) }
+        mutableMetadataUnreachable.value = result == MetadataRefresh.UNREACHABLE
+        if (result == MetadataRefresh.REFRESHED) prefetchArtwork?.let { prefetch -> library.entry(itemId)?.let { prefetch(it.artwork.values.toList()) } }
+        return result
+    }
 
     /**
      * What [itemId] could be, best first, for a title the user typed (and a year, if they gave one).
@@ -161,5 +197,6 @@ class LibraryPipeline(
 
     private companion object {
         const val BATCH = 50
+        const val STALE_BATCH = 10
     }
 }

@@ -140,3 +140,4 @@ internal fun JsonObject.double(key: String): Double? = (this[key] as? JsonPrimit
 internal fun JsonObject.bool(key: String): Boolean = (this[key] as? JsonPrimitive)?.booleanOrNull ?: false
 internal fun JsonObject.array(key: String): List<JsonObject> = (this[key] as? JsonArray).orEmpty().mapNotNull { it as? JsonObject }
 internal fun JsonObject.obj(key: String): JsonObject? = this[key] as? JsonObject
+internal fun JsonObject.strings(key: String): List<String> = (this[key] as? JsonArray).orEmpty().mapNotNull { (it as? JsonPrimitive)?.contentOrNull }

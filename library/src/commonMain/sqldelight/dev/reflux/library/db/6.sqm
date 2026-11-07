@@ -1,0 +1,33 @@
+-- Library depth (docs/METADATA.md): what a source itself says about a work, kept apart from a provider's and
+-- resolved field by field; how a provider entry was found; a show's last air date and networks. Nothing here is
+-- watch state, a source's connection, or a download; none of it touches a media file.
+ALTER TABLE metadata ADD COLUMN match_evidence TEXT;
+ALTER TABLE metadata ADD COLUMN end_date TEXT;
+ALTER TABLE metadata ADD COLUMN studios TEXT NOT NULL DEFAULT '';
+
+CREATE TABLE IF NOT EXISTS source_metadata (
+    item_id TEXT NOT NULL,
+    source_id TEXT NOT NULL,
+    title TEXT,
+    original_title TEXT,
+    overview TEXT,
+    tagline TEXT,
+    genres TEXT NOT NULL DEFAULT '',
+    runtime_minutes INTEGER,
+    release_date TEXT,
+    end_date TEXT,
+    rating REAL,
+    content_rating TEXT,
+    studios TEXT NOT NULL DEFAULT '',
+    credits TEXT NOT NULL DEFAULT '',
+    PRIMARY KEY (item_id, source_id)
+);
+
+CREATE INDEX IF NOT EXISTS source_metadata_source ON source_metadata(source_id);
+
+-- Provider entries already found carry no record of how; they were accepted by the matcher's rules, so the
+-- weakest accepted kind is assumed, except where the user chose the entry.
+UPDATE metadata SET match_evidence = CASE
+    WHEN EXISTS (SELECT 1 FROM metadata_pin WHERE metadata_pin.item_id = metadata.item_id) THEN 'USER'
+    WHEN EXISTS (SELECT 1 FROM item JOIN metadata_pin ON metadata_pin.item_id = item.show_id WHERE item.id = metadata.item_id) THEN 'USER'
+    ELSE NULL END;

@@ -3,6 +3,10 @@ package dev.reflux.sources.jellyfin
 import dev.reflux.core.identify.ParsedKind
 import dev.reflux.core.identify.ParsedMedia
 import dev.reflux.core.model.ArtworkKind
+import dev.reflux.core.metadata.Credit
+import dev.reflux.core.metadata.CreditRole
+import dev.reflux.core.metadata.Description
+import dev.reflux.core.source.CatalogSeason
 import dev.reflux.core.model.Availability
 import dev.reflux.core.model.CalendarDate
 import dev.reflux.core.model.MediaVersion
@@ -102,6 +106,14 @@ class JellyfinSource(
         } catch (e: JellyfinException) {
             throw unavailable(e)
         }
+        // A season's own name, overview, and poster, where the server has them; a server that cannot list them
+        // still lists its episodes.
+        val seasons = try {
+            fetchSeasons()
+        } catch (e: JellyfinException) {
+            if (e.status == 401) throw unavailable(e)
+            emptyMap()
+        }
         // Every library of the account in turn, so each entry says which library it is in (whether it takes part
         // in the unified library is the library's to decide). An item in two libraries is listed once, in the
         // first. A server with no film or series library is read whole.
@@ -118,7 +130,7 @@ class JellyfinSource(
                             parent?.let { "ParentId" to it },
                             "Recursive" to "true",
                             "IncludeItemTypes" to "Movie,Episode",
-                            "Fields" to "ProviderIds,MediaSources,DateCreated,PremiereDate",
+                            "Fields" to "ProviderIds,MediaSources,DateCreated,PremiereDate,$DESCRIPTION_FIELDS",
                             "EnableUserData" to "true",
                             "SortBy" to "SortName",
                             "StartIndex" to start.toString(),
@@ -131,7 +143,7 @@ class JellyfinSource(
                 val items = page.array("Items")
                 for (item in items) {
                     if (item.string("Id")?.let(seen::add) == false) continue
-                    entry(item, series)?.let { emit(it.copy(section = parent)) }
+                    entry(item, series, seasons)?.let { emit(it.copy(section = parent)) }
                 }
                 start += items.size
                 val total = page.int("TotalRecordCount") ?: start
@@ -392,7 +404,13 @@ class JellyfinSource(
         else -> "DirectPlay"
     }
 
-    private class Series(val name: String, val year: Int?, val providerIds: Map<String, String>, val artwork: Map<ArtworkKind, String>)
+    private class Series(
+        val name: String,
+        val year: Int?,
+        val providerIds: Map<String, String>,
+        val artwork: Map<ArtworkKind, String>,
+        val description: Description?,
+    )
 
     private suspend fun fetchSeries(): Map<String, Series> {
         val response = api.get(
@@ -401,17 +419,70 @@ class JellyfinSource(
                 "userId" to credentials.userId,
                 "Recursive" to "true",
                 "IncludeItemTypes" to "Series",
-                "Fields" to "ProviderIds,PremiereDate",
+                "Fields" to "ProviderIds,PremiereDate,$DESCRIPTION_FIELDS",
             ),
         ).obj() ?: return emptyMap()
         return response.array("Items").mapNotNull { item ->
             val id = item.string("Id") ?: return@mapNotNull null
             val (title, year) = titleAndYear(item.string("Name") ?: return@mapNotNull null, item.int("ProductionYear"))
-            id to Series(title, year, providerIds(item), artwork(item, episode = false))
+            id to Series(title, year, providerIds(item), artwork(item, episode = false), description(item, title, kind = DescribedKind.SHOW))
         }.toMap()
     }
 
-    private fun entry(item: JsonObject, series: Map<String, Series>): CatalogEntry? {
+    private suspend fun fetchSeasons(): Map<String, CatalogSeason> {
+        val response = api.get(
+            "Items",
+            mapOf("userId" to credentials.userId, "Recursive" to "true", "IncludeItemTypes" to "Season", "Fields" to "Overview,PremiereDate"),
+        ).obj() ?: return emptyMap()
+        return response.array("Items").mapNotNull { item ->
+            val id = item.string("Id") ?: return@mapNotNull null
+            val poster = if (item.obj("ImageTags")?.string("Primary") != null) mapOf(ArtworkKind.POSTER to "items/$id/images/Primary") else emptyMap()
+            id to CatalogSeason(
+                title = item.string("Name")?.takeIf { it.isNotBlank() },
+                overview = item.string("Overview")?.takeIf { it.isNotBlank() },
+                airDate = dateOf(item.string("PremiereDate")),
+                artwork = poster,
+            )
+        }.toMap()
+    }
+
+    private enum class DescribedKind { MOVIE, SHOW, EPISODE }
+
+    /**
+     * What the server says an item is about, in Reflux's terms. People's pictures are the server's own images
+     * (`items/{person}/images/Primary`), read through this source like any of its artwork. An episode's credits
+     * are its guest cast and directors, a few names, not the show's cast again.
+     */
+    private fun description(item: JsonObject, title: String?, kind: DescribedKind): Description? {
+        val people = item.array("People").mapNotNull { person ->
+            val name = person.string("Name")?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
+            val role = when (person.string("Type")) {
+                "Actor", "GuestStar" -> CreditRole.ACTOR
+                "Director" -> CreditRole.DIRECTOR
+                "Creator" -> CreditRole.CREATOR
+                else -> return@mapNotNull null
+            }
+            val picture = person.string("Id")?.takeIf { person.string("PrimaryImageTag") != null }?.let { "items/$it/images/Primary" }
+            Credit(name, role, person.string("Role")?.takeIf { role == CreditRole.ACTOR && it.isNotBlank() }, picture)
+        }
+        val actors = people.filter { it.role == CreditRole.ACTOR }.take(if (kind == DescribedKind.EPISODE) MAX_GUESTS else MAX_ACTORS)
+        return Description(
+            title = title,
+            originalTitle = item.string("OriginalTitle")?.takeIf { it.isNotBlank() && it != title },
+            overview = item.string("Overview")?.takeIf { it.isNotBlank() },
+            tagline = item.strings("Taglines").firstOrNull { it.isNotBlank() },
+            genres = item.strings("Genres").filter { it.isNotBlank() },
+            runtimeMinutes = item.long("RunTimeTicks")?.div(TICKS_PER_MS * 60_000)?.toInt()?.takeIf { it > 0 },
+            releaseDate = dateOf(item.string("PremiereDate")),
+            endDate = if (kind == DescribedKind.SHOW) dateOf(item.string("EndDate")) else null,
+            rating = item.double("CommunityRating")?.takeIf { it > 0 },
+            contentRating = item.string("OfficialRating")?.takeIf { it.isNotBlank() },
+            studios = item.array("Studios").mapNotNull { it.string("Name")?.takeIf(String::isNotBlank) }.take(2),
+            credits = people.filter { it.role != CreditRole.ACTOR }.distinctBy { it.name } + actors,
+        ).takeUnless { it.empty }
+    }
+
+    private fun entry(item: JsonObject, series: Map<String, Series>, seasons: Map<String, CatalogSeason> = emptyMap()): CatalogEntry? {
         val id = item.string("Id") ?: return null
         val versions = item.array("MediaSources").mapNotNull { version(id, item, it) }
         if (versions.isEmpty()) return null
@@ -437,12 +508,16 @@ class JellyfinSource(
             else -> return null
         }
         val show = item.string("SeriesId")?.let(series::get)
+        val episode = identity.kind == ParsedKind.EPISODE
         return CatalogEntry(
             identity = identity,
             versions = versions,
-            artwork = artwork(item, episode = identity.kind == ParsedKind.EPISODE),
+            artwork = artwork(item, episode = episode),
             showArtwork = show?.artwork.orEmpty(),
             userState = item.obj("UserData")?.let(::userState),
+            description = description(item, if (episode) identity.episodeTitle else identity.title, if (episode) DescribedKind.EPISODE else DescribedKind.MOVIE),
+            showDescription = show?.description,
+            season = item.string("SeasonId")?.let(seasons::get),
         )
     }
 
@@ -600,6 +675,11 @@ class JellyfinSource(
             SourceCapability.SERVER_SUBTITLE_EXTRACTION, SourceCapability.SERVER_SUBTITLE_CONVERSION, SourceCapability.SERVER_BURN_IN,
         )
         private const val PAGE_SIZE = 500
+
+        /** What a description is made of, asked for with the catalog (and the series). */
+        private const val DESCRIPTION_FIELDS = "Overview,Genres,Taglines,People,Studios,OriginalTitle"
+        private const val MAX_ACTORS = 20
+        private const val MAX_GUESTS = 6
         private const val TICKS_PER_MS = 10_000L
         private const val ASK_WITHIN_MS = 3_000L
 

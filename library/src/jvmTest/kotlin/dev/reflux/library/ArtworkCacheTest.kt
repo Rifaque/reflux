@@ -5,6 +5,9 @@ import dev.reflux.core.model.MediaLocation
 import dev.reflux.core.net.HttpFetcher
 import dev.reflux.core.net.HttpResult
 import dev.reflux.sources.local.LocalFolderSource
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.test.runTest
 import java.nio.file.Files
 import java.nio.file.Path
@@ -18,6 +21,7 @@ import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class ArtworkCacheTest {
     private val directory: Path = Files.createTempDirectory("reflux-cache")
@@ -98,5 +102,60 @@ class ArtworkCacheTest {
             sources = { null },
         )
         assertEquals(1, count)
+    }
+
+    @Test
+    fun theSamePictureAskedForAtOnceIsFetchedOnce() = runTest {
+        val slow = HttpFetcher { request ->
+            kotlinx.coroutines.delay(100)
+            downloads += request.url
+            HttpResult(200, request.url.encodeToByteArray())
+        }
+        val cache = ArtworkCache(directory.resolve("art"), slow)
+        val still = ArtworkLocator.Remote("https://img/still.jpg")
+        val files = coroutineScope { (1..12).map { async { cache.get(still) { null } } }.awaitAll() }
+        assertEquals(1, downloads.size)
+        assertEquals(1, cache.fetches.get())
+        assertEquals(1, files.filterNotNull().distinct().size)
+    }
+
+    @Test
+    fun aPictureThatFailedIsNotAskedForAgainAtOnce() = runTest {
+        var time = 0L
+        val cache = ArtworkCache(directory.resolve("art"), http, clock = { time })
+        val missing = ArtworkLocator.Remote("https://img/missing.jpg")
+        assertNull(cache.get(missing) { null })
+        assertNull(cache.get(missing) { null })
+        assertEquals(1, downloads.size, "a grid scrolled back and forth asks the server once")
+        time += 11 * 60_000
+        assertNull(cache.get(missing) { null })
+        assertEquals(2, downloads.size)
+    }
+
+    @Test
+    fun withOnlineLookupsOffOnlyWhatIsKeptIsShown() = runTest {
+        var allowed = true
+        val cache = ArtworkCache(directory.resolve("art"), http, remoteAllowed = { allowed })
+        val kept = ArtworkLocator.Remote("https://img/kept.jpg")
+        assertNotNull(cache.get(kept) { null })
+        allowed = false
+        assertNotNull(cache.get(kept) { null }, "kept before, shown now")
+        assertNull(cache.get(ArtworkLocator.Remote("https://img/new.jpg")) { null })
+        assertEquals(1, downloads.size, "nothing new was asked of the provider")
+        // A picture in the user's own source is fetched as ever.
+        media.resolve("poster.jpg").writeBytes(byteArrayOf(1, 2, 3))
+        val source = LocalFolderSource(media)
+        assertNotNull(cache.get(ArtworkLocator.SourceFile(MediaLocation(source.descriptor.id, "poster.jpg"))) { source })
+    }
+
+    @Test
+    fun whatTheCacheHoldsIsAccountedFor() = runTest {
+        val cache = ArtworkCache(directory.resolve("art"), http)
+        assertEquals(ArtworkCache.Usage(0, 0), cache.usage())
+        cache.get(ArtworkLocator.Remote("https://img/a.jpg")) { null }
+        cache.get(ArtworkLocator.Remote("https://img/b.jpg")) { null }
+        assertEquals(2, cache.usage().files)
+        assertEquals("https://img/a.jpg".length + "https://img/b.jpg".length.toLong(), cache.usage().bytes)
+        assertTrue(Files.list(media).use { it.count() } == 0L, "nothing is ever written beside media")
     }
 }

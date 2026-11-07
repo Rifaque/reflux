@@ -60,7 +60,8 @@ class LibraryPipelineTest {
     private val pipeline = LibraryPipeline(
         library, registry,
         prober = MediaProber { target -> probed += target.uri; StreamInfo(durationMs = 1000) },
-        metadata = provider,
+        // The gate's rest after a failure runs on this test's clock.
+        metadata = ProviderGate(provider, spacingMs = 0, clock = { clock }),
         prefetchArtwork = { prefetched += it },
     )
 
@@ -78,8 +79,14 @@ class LibraryPipelineTest {
         assertEquals("Heat", library.movies().single().item.title)
 
         provider.offline = false
+        // Straight away, the provider is left to rest: nothing is asked of it, nothing is lost.
+        provider.calls.clear()
         pipeline.refresh()
-        assertEquals(false, pipeline.metadataUnreachable.value, "the next refresh picks up where the last one stopped")
+        assertTrue(provider.calls.isEmpty(), "no storm against a provider that just failed")
+        assertEquals("Heat", library.movies().single().item.title)
+        clock += 61_000
+        pipeline.refresh()
+        assertEquals(false, pipeline.metadataUnreachable.value, "the next refresh after its rest picks up where the last one stopped")
         assertEquals("About Heat", library.movies().single().metadata?.overview)
     }
 

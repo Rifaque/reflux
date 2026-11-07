@@ -129,6 +129,19 @@ internal class PlanApplier(private val queries: LibraryQueries, private val now:
             queries.upsertArtwork(art.itemId.value, art.kind.name, art.origin, sourceId, locator.location.path)
         }
 
+        // What the source says about its works is its own, whole each time: replaced, never merged into a
+        // provider's or another source's (core MetadataResolver weighs them when they are read).
+        queries.deleteSourceMetadataOfSource(sourceId)
+        for ((itemId, d) in plan.descriptions) {
+            queries.upsertSourceMetadata(
+                item_id = itemId.value, source_id = sourceId, title = d.title, original_title = d.originalTitle,
+                overview = d.overview, tagline = d.tagline, genres = d.genres.joinToString("\n"),
+                runtime_minutes = d.runtimeMinutes?.toLong(), release_date = d.releaseDate?.toString(),
+                end_date = d.endDate?.toString(), rating = d.rating, content_rating = d.contentRating,
+                studios = d.studios.joinToString("\n"), credits = d.credits.joinToString("\n", transform = ScanPlanner::encodeCredit),
+            )
+        }
+
         // A work whose only file was re-identified carries its watch history to the new identity. Where
         // that identity has a history of its own (two works turned out to be one), the two become one.
         for ((from, to) in movedItems.distinct()) {
@@ -141,6 +154,7 @@ internal class PlanApplier(private val queries: LibraryQueries, private val now:
         queries.deleteOrphanMetadata()
         queries.deleteOrphanCredits()
         queries.deleteOrphanAttempts()
+        queries.deleteOrphanSourceMetadata()
         recomputeLibraries()
 
         return ScanReport(
@@ -189,6 +203,7 @@ internal class PlanApplier(private val queries: LibraryQueries, private val now:
         queries.deleteOrphanMetadata()
         queries.deleteOrphanCredits()
         queries.deleteOrphanAttempts()
+        queries.deleteOrphanSourceMetadata()
         recomputeLibraries()
     }
 

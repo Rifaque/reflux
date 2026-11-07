@@ -1,6 +1,7 @@
 package dev.reflux.core.source
 
 import dev.reflux.core.identify.ParsedMedia
+import dev.reflux.core.metadata.Description
 import dev.reflux.core.model.ArtworkKind
 import dev.reflux.core.playback.StreamInfo
 import dev.reflux.core.playback.SubtitleFormat
@@ -53,6 +54,20 @@ data class CatalogEntry(
     val userState: SourceUserState? = null,
     /** The library of the source the work is listed in ([SourceSection.id]), for sources made of libraries. */
     val section: String? = null,
+    /** What the source says the movie or episode is about. Credits' pictures are paths in the source. */
+    val description: Description? = null,
+    /** For episodes: what the source says about the show. */
+    val showDescription: Description? = null,
+    /** For episodes: the season as the source describes it, with its artwork. */
+    val season: CatalogSeason? = null,
+)
+
+/** A season as a catalog source describes it: its own name, what it is about, and its artwork (paths in the source). */
+data class CatalogSeason(
+    val title: String? = null,
+    val overview: String? = null,
+    val airDate: dev.reflux.core.model.CalendarDate? = null,
+    val artwork: Map<ArtworkKind, String> = emptyMap(),
 )
 
 /** A source that lists already-identified works (media servers such as Jellyfin). */

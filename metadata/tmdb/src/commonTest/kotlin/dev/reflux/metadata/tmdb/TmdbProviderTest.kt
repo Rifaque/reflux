@@ -131,14 +131,16 @@ class TmdbProviderTest {
         routes = mapOf(
             "tv/1396" to ok(
                 """{"id":1396,"name":"Breaking Bad","original_name":"Breaking Bad","episode_run_time":[45,47],
-                "first_air_date":"2008-01-20","vote_average":8.9,"created_by":[{"name":"Vince Gilligan"}],
+                "first_air_date":"2008-01-20","last_air_date":"2013-09-29","vote_average":8.9,"created_by":[{"name":"Vince Gilligan"}],
+                "networks":[{"name":"AMC"}],
                 "credits":{"cast":[{"name":"Bryan Cranston","character":"Walter White","order":0}]},
                 "content_ratings":{"results":[{"iso_3166_1":"US","rating":"TV-MA"}]},
                 "external_ids":{"imdb_id":"tt0903747","tvdb_id":81189}}""",
             ),
             "tv/1396/season/1" to ok(
-                """{"season_number":1,"name":"Season 1","poster_path":"/s1.jpg","episodes":[
-                {"episode_number":1,"season_number":1,"name":"Pilot","air_date":"2008-01-20","runtime":58,"still_path":"/e1.jpg"},
+                """{"season_number":1,"name":"Season 1","poster_path":"/s1.jpg","air_date":"2008-01-20","episodes":[
+                {"episode_number":1,"season_number":1,"name":"Pilot","air_date":"2008-01-20","runtime":58,"still_path":"/e1.jpg",
+                 "vote_average":8.3,"vote_count":120,"guest_stars":[{"name":"Late","order":2},{"name":"Raymond Cruz","character":"Tuco","order":1}]},
                 {"episode_number":2,"season_number":1,"name":"Cat's in the Bag...","air_date":"2008-01-27"}]}""",
             ),
         )
@@ -153,6 +155,13 @@ class TmdbProviderTest {
         assertEquals("https://image.tmdb.org/t/p/w780/s1.jpg", season.posterUrl)
         assertEquals(listOf("Pilot", "Cat's in the Bag..."), season.episodes.map { it.title })
         assertEquals("https://image.tmdb.org/t/p/w780/e1.jpg", season.episodes.first().stillUrl)
+        assertEquals(CalendarDate(2013, 9, 29), show.endDate)
+        assertEquals(listOf("AMC"), show.studios)
+        assertEquals(CalendarDate(2008, 1, 20), season.airDate)
+        assertEquals(8.3, season.episodes.first().rating)
+        assertEquals(listOf("Raymond Cruz", "Late"), season.episodes.first().guestStars.map { it.name })
+        assertEquals("Tuco", season.episodes.first().guestStars.first().character)
+        assertNull(season.episodes[1].rating)
         assertNull(tmdb.season(ref, 9, "en-US"))
     }
 

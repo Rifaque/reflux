@@ -13,6 +13,7 @@ import dev.reflux.library.HttpDownloadTransport
 import dev.reflux.library.Library
 import dev.reflux.library.LibraryDatabase
 import dev.reflux.library.LibraryPipeline
+import dev.reflux.library.onlineMetadata
 import dev.reflux.library.Offline
 import dev.reflux.library.SourceConnections
 import dev.reflux.library.SourceRecord
@@ -92,7 +93,8 @@ class DesktopEnvironment(
     /** Problems worth a developer's attention, kept next to the library. */
     val diagnostics = DiagnosticLog(dataDirectory.resolve("reflux.log"))
     val library = Library(LibraryDatabase.open(dataDirectory.resolve("library.db"))) { System.currentTimeMillis() }
-    val artwork = ArtworkCache(dataDirectory.resolve("artwork"), http)
+    // Provider pictures are fetched only while the viewer allows online lookups; what is kept is always shown.
+    val artwork = ArtworkCache(dataDirectory.resolve("artwork"), http, remoteAllowed = { library.onlineMetadata })
     val language: String = Locale.getDefault().toLanguageTag().takeIf { it != "und" } ?: "en-US"
     val deviceId: String = dataDirectory.resolve("device-id").let { file ->
         if (Files.exists(file)) Files.readString(file).trim()

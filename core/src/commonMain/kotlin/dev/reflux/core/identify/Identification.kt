@@ -24,7 +24,11 @@ data class IdentityOverride(
         require(kind != ParsedKind.EPISODE || (season != null && episode != null)) { "episodes need season and episode" }
     }
 
-    /** Applies the override on top of what the parser found, keeping technical facts from the file. */
+    /**
+     * Applies the override on top of what the parser found, keeping technical facts from the file. Provider IDs
+     * the file's name or its server claimed are dropped: they are evidence of what the user just corrected, and
+     * left in place they would unify the corrected work with the very one it was mistaken for.
+     */
     fun applyTo(parsed: ParsedMedia): ParsedMedia = parsed.copy(
         kind = kind,
         title = title,
@@ -35,6 +39,7 @@ data class IdentityOverride(
         absoluteEpisode = null,
         airDate = null,
         episodeTitle = if (kind == ParsedKind.EPISODE) parsed.episodeTitle else null,
+        externalIds = emptyMap(),
         confidence = Confidence(1.0, setOf()),
     )
 }

@@ -5,6 +5,7 @@ import dev.reflux.core.identify.IdentityOverride
 import dev.reflux.core.identify.MediaPathParser
 import dev.reflux.core.identify.ParsedKind
 import dev.reflux.core.model.ArtworkKind
+import dev.reflux.core.metadata.ArtworkPrecedence
 import dev.reflux.core.model.ArtworkLocator
 import dev.reflux.core.model.Availability
 import dev.reflux.core.model.CalendarDate
@@ -531,8 +532,7 @@ class Library(
 
     private fun subtitles(versionId: String) = queries.externalSubtitlesOfVersion(versionId).executeAsList()
 
-    private fun metadataOf(ids: List<String>): Map<String, ItemMetadata> =
-        ids.chunked(QUERY_CHUNK).flatMap { queries.metadataOfItems(it).executeAsList() }.associate { it.item_id to it.toModel() }
+    private fun metadataOf(ids: List<String>): Map<String, ItemMetadata> = resolvedMetadata(ids, QUERY_CHUNK)
 
     internal fun itemsByIds(ids: List<String>): List<MediaItem> =
         ids.chunked(QUERY_CHUNK).flatMap { queries.itemsByIds(it).executeAsList() }.map { it.toModel() }
@@ -547,19 +547,13 @@ class Library(
         val states = ids.chunked(QUERY_CHUNK).flatMap { queries.watchStatesOfItems(it).executeAsList() }
             .associate { it.item_id to it.toModel() }
         val metadata = metadataOf(ids)
+        // Each kind of picture by the artwork precedence (core ArtworkPrecedence): the sources' own, the oldest
+        // source first, then the provider's. Never the order they were scanned in.
+        val ranks = sourceRanks()
         val artwork = ids.chunked(QUERY_CHUNK).flatMap { queries.artworkOfItems(it).executeAsList() }
-            .sortedBy { if (it.origin.startsWith(ScanPlanner.SOURCE_ARTWORK_PREFIX)) 0 else 1 } // the user's own artwork wins
             .groupBy { it.item_id }
             .mapValues { (_, rows) ->
-                rows.distinctBy { it.kind }.mapNotNull { row ->
-                    val kind = enumOrNull<ArtworkKind>(row.kind) ?: return@mapNotNull null
-                    val locator = if (row.source_id != null) {
-                        ArtworkLocator.SourceFile(MediaLocation(SourceId(row.source_id), row.locator))
-                    } else {
-                        ArtworkLocator.Remote(row.locator)
-                    }
-                    kind to locator
-                }.toMap()
+                ArtworkPrecedence.choose(rows.mapNotNull { row -> row.offer(ranks) }).mapValues { it.value.locator }
             }
         return items.map { item ->
             val itemMetadata = metadata[item.id.value]
