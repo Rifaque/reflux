@@ -32,4 +32,5 @@ Java Native Access (JNA) | Apache-2.0 OR LGPL-2.1-or-later | jna.txt apache-2.0.
 JSpecify | Apache-2.0 | apache-2.0.txt | android desktop | org.jspecify:* |
 Guava | Apache-2.0 | apache-2.0.txt | android | com.google.guava:* |
 OkHttp and Okio | Apache-2.0 | apache-2.0.txt | android | com.squareup.okhttp3:* com.squareup.okio:* |
-mpv (libmpv) and FFmpeg | LGPL-2.1-or-later or GPL-2.0-or-later, as built | | desktop | | Playback uses the libmpv on this computer, which includes FFmpeg; Reflux loads it when it starts and does not include it.
+mpv (libmpv) and FFmpeg | LGPL-2.1-or-later | lgpl-2.1.txt | desktop | | On Windows, Reflux includes libmpv-2.dll, an unmodified LGPL build of mpv with FFmpeg and its libraries linked into it (third-party/libmpv-SOURCE-OFFER.txt says where its source is); Reflux loads it at run time and it can be replaced. On Linux, Reflux uses the libmpv your distribution installs.
+OpenJDK runtime (Eclipse Temurin 21) | GPL-2.0-only WITH Classpath-exception-2.0 | openjdk.txt | desktop | | The Java runtime packed with Reflux's Windows and Linux builds; its own runtime/legal folder carries the notices of the code inside it.
