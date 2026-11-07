@@ -49,7 +49,8 @@ internal class SourceLibraryModel(
 internal fun Library.sourceLibraryModel(sourceId: SourceId, section: String?): SourceLibraryModel? {
     val record = source(sourceId) ?: return null
     val scope = LibraryScope.OfSource(sourceId, section)
-    val works = (movies(scope) + shows(scope)).sortedBy { it.item.title.lowercase() }
+    // In the order the library's own grids use: by title, leading articles aside (TitleText.sortKey).
+    val works = (movies(scope) + shows(scope)).sortedBy { dev.reflux.core.identify.TitleText.sortKey(it.item.title) }
     return SourceLibraryModel(record, inclusion(sourceId)?.libraries.orEmpty(), cards(works), record.signInRequired)
 }
 

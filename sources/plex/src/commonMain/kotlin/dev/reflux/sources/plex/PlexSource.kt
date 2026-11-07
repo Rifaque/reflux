@@ -140,7 +140,8 @@ class PlexSource(
         }
         return answer.container()?.array("Metadata").orEmpty().mapNotNull { show ->
             val key = show.string("ratingKey") ?: return@mapNotNull null
-            key to Series(show.string("title") ?: return@mapNotNull null, show.int("year"), externalIds(show), artwork(show, episode = false))
+            val (title, year) = titleAndYear(show.string("title") ?: return@mapNotNull null, show.int("year"))
+            key to Series(title, year, externalIds(show), artwork(show, episode = false))
         }.toMap()
     }
 
@@ -150,13 +151,13 @@ class PlexSource(
         if (versions.isEmpty()) return null
         val show = item.string("grandparentRatingKey")?.let(shows::get)
         val identity = when (item.string("type")) {
-            "movie" -> ParsedMedia(
+            "movie" -> titleAndYear(item.string("title") ?: return null, item.int("year") ?: dateOf(item.string("originallyAvailableAt"))?.year).let { (title, year) -> ParsedMedia(
                 kind = ParsedKind.MOVIE,
-                title = item.string("title") ?: return null,
-                year = item.int("year") ?: dateOf(item.string("originallyAvailableAt"))?.year,
+                title = title,
+                year = year,
                 edition = item.string("editionTitle")?.takeIf { it.isNotBlank() },
                 externalIds = externalIds(item),
-            )
+            ) }
             "episode" -> ParsedMedia(
                 kind = ParsedKind.EPISODE,
                 title = show?.title ?: item.string("grandparentTitle") ?: return null,
@@ -337,6 +338,19 @@ class PlexSource(
         }
 
         internal fun dateOf(value: String?): CalendarDate? = value?.take(10)?.let(CalendarDate::parse)
+
+        private val trailingYear = Regex("""^(.*\S)\s*\(((?:18|19|20)\d{2})\)$""")
+
+        /**
+         * A title as a work is known by, and its year. A server with no metadata agent titles an item after its
+         * folder, year and all ("Heat (1995)"); that year is not part of the title, and left in, the server's copy
+         * would not be recognized as the work another copy is. A year that contradicts the server's is left alone.
+         */
+        internal fun titleAndYear(name: String, year: Int?): Pair<String, Int?> {
+            val match = trailingYear.matchEntire(name.trim()) ?: return name to year
+            val named = match.groupValues[2].toInt()
+            return if (year == null || year == named) match.groupValues[1] to named else name to year
+        }
 
         internal fun videoCodec(name: String?): VideoCodec = when (name?.lowercase()) {
             "h264", "avc" -> VideoCodec.H264

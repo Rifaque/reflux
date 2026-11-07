@@ -82,4 +82,11 @@ class PlexConnectorTest {
         val other = PlexConnector({ dev.reflux.core.net.HttpResult(404, ByteArray(0)) }, "dev-1")
         assertEquals(ConnectionProblem.NOT_FOUND, assertIs<Connection.Failed>(other.connect(ConnectionRequest("192.168.1.30:8096"))).problem)
     }
+
+    @Test
+    fun aContainersGeneratedHostNameIsNotAName() {
+        assertEquals("Plex", PlexConnector.nameOf("2aad07e0258e"))
+        assertEquals("Living Room", PlexConnector.nameOf(" Living Room "))
+        assertEquals("Plex", PlexConnector.nameOf(""))
+    }
 }

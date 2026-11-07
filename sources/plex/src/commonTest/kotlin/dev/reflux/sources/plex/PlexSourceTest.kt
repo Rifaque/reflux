@@ -170,4 +170,12 @@ class PlexSourceTest {
         assertEquals(credentials, PlexCredentials.decode(credentials.encode()))
         assertFalse("srv-token" in credentials.toString())
     }
+
+    @Test
+    fun aYearInAnUnmatchedTitleIsTheYearNotPartOfTheTitle() {
+        assertEquals("Heat" to 1995, PlexSource.titleAndYear("Heat (1995)", null), "a server with no agent names it after its folder")
+        assertEquals("Heat" to 1995, PlexSource.titleAndYear("Heat (1995)", 1995))
+        assertEquals("Heat (1995)" to 2001, PlexSource.titleAndYear("Heat (1995)", 2001), "a year that disagrees is left alone")
+        assertEquals("1917" to 2019, PlexSource.titleAndYear("1917", 2019))
+    }
 }

@@ -227,6 +227,9 @@ class NavigationTest {
             awaitText("Media")
             awaitText("Heat")
             assertTrue(has(hasText("not in Home, Movies, Shows, or Search", substring = true)), "the page says it is out of the library")
+            // In the order the library's grids use, leading articles aside: The Matrix is under M.
+            val order = runBlocking { app.read { dev.reflux.ui.screens.sourceLibraryModel(id, null) } }!!.cards.map { it.title }
+            assertTrue(order.indexOf("The Matrix") in 0 until order.indexOf("Parasite"), "$order")
             save("source-library-excluded")
             onNode(hasContentDescription("Heat", substring = true)).performClick()
             await("Heat's page, from its source") { (app.navigator.current as? Destination.Details)?.scope == LibraryScope.OfSource(id) }
