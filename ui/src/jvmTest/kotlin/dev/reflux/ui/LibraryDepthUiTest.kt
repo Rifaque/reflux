@@ -94,4 +94,21 @@ class LibraryDepthUiTest {
         awaitText("Media Atmosphere")
         assertTrue(onAllNodesWithText("Online metadata & artwork").fetchSemanticsNodes().isEmpty())
     }
+
+    @Test
+    fun aSeasonsStoryFitsATabletAndAPhone() {
+        // The Xiaomi Pad 7 on its side (about 1164 by 777 dp) and a phone held upright.
+        for ((name, size) in listOf("tablet" to (1164 to 777), "phone" to (412 to 915))) {
+            screen(populated(), width = size.first, height = size.second) { app ->
+                app.navigator.open(Destination.Details(app.library.shows().first { it.item.title == "Severance" }.item.id))
+                awaitText("Severance")
+                runCatching { onNode(hasScrollToNodeAction()).performScrollToNode(hasText("The First Season")) }
+                awaitText("The First Season")
+                onNodeWithText("Mark leads a team whose memories are split between work and home.").assertExists()
+                runCatching { onNode(hasScrollToNodeAction()).performScrollToNode(hasText("S1 · E1 · Good News About Hell")) }
+                awaitText("S1 · E1 · Good News About Hell")
+                save("details-show-season-$name")
+            }
+        }
+    }
 }
