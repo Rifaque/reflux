@@ -8,7 +8,7 @@ The one source of truth for what Reflux is building, in what order, and what is 
 - The website is a release workstream across M6, M7, and M8 (below, "The Reflux website"); its visual direction, the demo video, and the beta program are in [LAUNCH.md](LAUNCH.md).
 - Decisions behind the plan are in [DECISIONS.md](DECISIONS.md): the first rebaseline (2026-10-17) and the milestone rebaseline (2026-11-02).
 
-**Current state: M2P complete → M3 next.**
+**Current state: M3 complete → M4 next.**
 
 This milestone list replaces the one of 2026-10-17 (M0 to M7, with M2 as release engineering and M3 as real-world validation), which replaced the earlier Phase 0–18 plan. Documents and verification sections written before 2026-11-02 use the older numbering; how each old milestone maps to this one is under "Earlier numbering", and DECISIONS.md, 2026-11-02, "The milestone rebaseline", says why.
 
@@ -46,8 +46,8 @@ Status words used below:
 | M0 — Governance & Rebaseline | Product governance, versioning, development rules, roadmap governance, release and version discipline | **Complete** (2026-10-17; milestones rebaselined 2026-11-02) |
 | M1 — Accessibility & Interaction Baseline | Accessibility foundation, TalkBack and television accessibility, keyboard and focus behavior, interaction semantics, reduced motion and text size, screen-reader isolation, touch and focus targets | **Complete** (2026-11-01) |
 | M2P — Playback Compatibility & Direct Play | Reflux knows what the client can actually play, preserves the original whenever possible, degrades the smallest necessary part when it cannot, and can explain why | **Complete** (2026-11-02), with explicit waivers and unknowns (PLAYBACK.md, section 17) |
-| M3 — Navigation & Source Libraries | How the viewer moves through Reflux and controls the media universe playback works on: global and platform navigation, the unified library and each source's own, source inclusion | **Next** |
-| M4 — Visual System 2.0 | A higher-end visual system around that structure | Future |
+| M3 — Navigation & Source Libraries | How the viewer moves through Reflux and controls the media universe playback works on: global and platform navigation, the unified library and each source's own, source inclusion | **Complete** (2026-11-07), with the limits in its section |
+| M4 — Visual System 2.0 | A higher-end visual system around that structure | **Next** |
 | M5 — Library Depth & Reflux Magic | A richer library and the features that set Reflux apart | Future |
 | M6 — Release Engineering / Security / Legal | Production builds, packaging, signing, security hardening, legal and licensing, store preparation; the website's foundation and its legal and privacy pages | Future |
 | M7 — Compatibility / Performance / Release Proof | The final platform matrix proven: compatibility, performance, stability, production readiness; the website ready for the public and for testers | Future |
@@ -68,7 +68,8 @@ What the product already does, everywhere it runs unless a platform is named. De
 - **Identification**: films, shows, seasons, and episodes from ordinary file and folder names, with confidence; sidecar subtitles and artwork; identity keys for every script.
 - **Metadata and artwork**: deterministic matching, TMDB provider (fixture-tested), episode metadata, artwork cache, one artwork fallback rule, a designed state for works without artwork.
 - **Library**: local-first SQLite, offline and unmount safety, background pipeline (scan, probe, metadata, artwork), a source that is away stays in the library.
-- **Sources**: local folders (desktop paths, the Storage Access Framework on Android, folders by path on television), Jellyfin (catalog, libraries, direct streams, two-way watch state), SMB and WebDAV (read-only); added and managed from the application; credentials in the system store on desktop and sealed by the keystore on Android.
+- **Sources**: local folders (desktop paths, the Storage Access Framework on Android, folders by path on television), Jellyfin (catalog, libraries, direct streams, two-way watch state), Plex (catalog, libraries, direct files, two-way watch state), SMB and WebDAV (read-only); added and managed from the application; credentials in the system store on desktop and sealed by the keystore on Android.
+- **Navigation and source libraries (M3)**: six global destinations on one back stack, placed for each window; each source's and each library's own page; source and library inclusion in the unified library, kept apart from connection and availability.
 - **Cross-source unification**: one work across sources, Best Version per device, local-first among equals.
 - **Universal watch state**: one state per work, carried between copies by timeline, never blindly onto another cut, reconciled with sources that keep their own.
 - **Continue Watching and Next Up** inside the application (Home and details).
@@ -125,22 +126,28 @@ Its working slices (M2P.2 to M2P.5 in PLAYBACK.md and VERIFICATION.md) are imple
 
 ## M3 — Navigation & Source Libraries
 
-**Next.** How the viewer moves through Reflux, and controls which media the library is made of. Scope, to be specified in its own document before implementation:
+**Complete** (2026-11-07). How the viewer moves through Reflux, and controls which media the library is made of. Specification: [NAVIGATION.md](NAVIGATION.md). Decisions: DECISIONS.md, 2026-11-02, "Navigation and source libraries". Evidence: VERIFICATION.md, "M3: navigation and source libraries".
 
-- Global navigation, and navigation shaped for each platform (desktop, phone, tablet, television).
-- The unified Reflux library, and each source's own libraries.
-- Plex as a source, on the same source model.
-- Source management and navigation.
-- Source and library inclusion controls (below).
-- Show → Season → Episode navigation.
-- Back-stack behavior, and returning from the player to where the viewer was.
-- Downloads navigation.
-- Search integration.
-- Navigation that keeps the M1 accessibility baseline.
+| Item | State |
+| --- | --- |
+| Global navigation: Home, Movies, Shows, Search, Downloads, Sources, as sections of one back stack | Done |
+| Platform navigation: icon bottom bar (phone upright), compact rail (phone on its side), named rail (tablet), sidebar (desktop), widening rail (television) | Done; verified on the Phone 2a, the Pad 7, the Fire TV, the Google TV emulator, and real windows on Windows and Linux |
+| Deterministic Back: a destination's Back is Home; on a television, the rail first; Left to the rail and Right back to where focus was | Done |
+| The unified library and each source's (and library's) own page, on one index and one playback path (`LibraryScope`) | Done |
+| Connection, availability, inclusion, browsing kept apart; sign-in required stated | Done |
+| Source and per-library inclusion, with the edge cases in NAVIGATION.md, section 5; earlier left-out libraries migrated | Done |
+| Plex on the same source model | Done: fake-server tests, and a real Plex Media Server 1.43.5 in Docker (live test and the app's own connect form) |
+| Show → Season → Episode, player return, Downloads and Search as destinations | Done |
+| M1 accessibility kept: names, roles, selected state, isolation behind the player and sheets, TV focus | Done (automated semantics tests and device trees; no screen reader walk in M3) |
+
+**Limits recorded, not blocking:**
+
+- Plex: no server-side conversion (what a device cannot play directly is said by the planner), no plex.tv server discovery or PIN sign-in, the device's plex.tv token is forgotten on removal but not revoked at plex.tv (for M6's security review). Validated against one server version, in a container, without a plex.tv account; sign-in by account is covered by fake-server tests only.
+- No TalkBack or other screen-reader walk was repeated for the new navigation; its semantics are covered by the automated tests and read from device accessibility trees.
+- Linux: virtual (the `tools/ci` container), as accepted for M2P; not physical hardware.
+- `Modifier.onFocusedBoundsChanged`, used to tell a partly-left move, is deprecated in Compose; the regression test fails if it stops reporting (M7 to replace it with `getFocusedRect`).
 
 ### Sources: four separate questions
-
-Reflux has several kinds of source (local folders, Jellyfin, Plex, SMB, WebDAV, and adapters to come), and M3 keeps these apart:
 
 | Concept | Question |
 | --- | --- |
@@ -149,17 +156,7 @@ Reflux has several kinds of source (local folders, Jellyfin, Plex, SMB, WebDAV, 
 | **Inclusion** | Does content from this source, or this library of it, take part in the unified Reflux library? |
 | **Source browsing** | Can the viewer open and browse this source or library on its own? |
 
-A source is never "disabled" by deleting its credentials or disconnecting it.
-
-### Source inclusion
-
-**Viewers can include or exclude a source in the unified Reflux library.**
-
-- **Included:** its content takes part in the unified Movies and Shows, the library's aggregations, and every unified browsing surface.
-- **Excluded:** the source stays configured, connected, and reachable under Sources, where its own library can still be opened and played; its content does not take part in the unified library.
-- For a source with several libraries: a source-level master toggle, and a toggle per library where practical. Source off excludes all of its libraries; a library off excludes only that library. The exact relationship (what a library toggle shows while its source is off, what happens to a library the source adds later) is to be defined in M3's specification before implementation.
-
-Exclusion is about aggregation only. It does not delete the source, remove or forget credentials, sign out, destroy cached metadata, delete or touch local files, disable playback, prevent browsing the source on its own, change watch state, or remove the source from source management.
+A source is never "disabled" by deleting its credentials or disconnecting it. Exclusion is about aggregation only. It does not delete the source, remove or forget credentials, sign out, destroy cached metadata, delete or touch local files, disable playback, prevent browsing the source on its own, change watch state, or remove the source from source management. The exact rules, including libraries found later or removed, are in NAVIGATION.md, section 5.
 
 ### Architecture
 
@@ -169,11 +166,9 @@ No source gets a playback system of its own:
 Source adapter → source and library contents → unified Reflux media model → Best Version → playback planner → existing engines
 ```
 
-Navigation shows source context without fragmenting the media model or playback.
-
 ## M4 — Visual System 2.0
 
-Future. A higher-end visual system around M3's structure: adaptive, functional glass; richer large-screen layouts; spatial motion; capability tiers; large-screen presentation; restrained artwork and environment treatment; Media Atmosphere where appropriate. Its work is not pulled into M3.
+**Next.** A higher-end visual system around M3's structure: adaptive, functional glass; richer large-screen layouts; spatial motion; capability tiers; large-screen presentation; restrained artwork and environment treatment; Media Atmosphere where appropriate. Its work is not pulled into M3.
 
 ## M5 — Library Depth & Reflux Magic
 
@@ -372,10 +367,10 @@ What V1 contains, as built from 2026-10-17 to 2026-11-01. Each row is required f
 | Best Version | Done | Desktop capabilities are observed since 2026-10-19 (DECISIONS.md, "How the desktop observes what it can show and decode"); playback since M2P. HDR output on the desktop is not claimed: the engine does not output HDR yet (M7) |
 | Visible version selection | Done | Films and episodes list every version and play any of them; an episode's are on its own page, offered from its row where it has more than one (DECISIONS.md, 2026-10-18) |
 | Version pinning | Done | Films (2026-10-17) and episodes (2026-10-18): "Always play this" and "Let Reflux choose"; a pin set aside is said and kept; an episode's pin follows it through Identify |
-| Smart Offline, user-facing | Done | Films, single episodes, whole seasons, and a show's next episodes; a show or season counted per episode; a Downloads page; Windows and Linux wired like Android (DECISIONS.md, 2026-10-18). Downloads navigation is M3 |
+| Smart Offline, user-facing | Done | Films, single episodes, whole seasons, and a show's next episodes; a show or season counted per episode; a Downloads page; Windows and Linux wired like Android (DECISIONS.md, 2026-10-18). Downloads navigation: done in M3 |
 | Serious playback parity | Partial | Moved to M5 |
 | Jellyfin correctness and security | Partial | Removing a server signs its session out since 2026-10-19 (DECISIONS.md, "How a Jellyfin server is signed out of"; verified live). The plain-HTTP policy on Android moved to M6 |
-| Source onboarding and management | Done | WebDAV can be added on Android since 2026-10-19 (DECISIONS.md, 2026-10-18, "Web shares on Android"). Source navigation and inclusion are M3 |
+| Source onboarding and management | Done | WebDAV can be added on Android since 2026-10-19 (DECISIONS.md, 2026-10-18, "Web shares on Android"). Source navigation and inclusion: done in M3 |
 | Android phone and tablet | Done (emulator); playback physical (M2P) | Physical validation across the product: M7 |
 | Android TV / Google TV | Done (emulator) | Physical validation: M7 |
 | Fire TV / Fire OS | Partial (one physical device) | Smoke-tested on a Fire TV Stick 4K Plus (`AFTMA08C15`, Fire OS 8.1.8.5, API 30, 32-bit userland) on 2026-10-18 with a debug build; five Fire OS defects found and fixed (DECISIONS.md, 2026-10-18); playback validated in M2P. The rest moved to M7 (hardware) and M6 (a release build, Amazon's criteria). Fire OS has the TV provider, and Reflux writes no Watch Next programs to it; with Reflux in the background a remote's Play key is not obeyed (both DECISIONS.md, 2026-10-18). Fire OS 6 devices (`AFTMM`, API 25) are below `minSdk`; Vega OS devices (`AFTCR001`) do not run Android applications |
@@ -415,7 +410,7 @@ Candidates after 1.0, each needing its own decision to be promoted:
 - Background audio playback on Android.
 - Sidecar artwork and subtitles on Android 13+ televisions without broad storage access (embedded cover art, video frames).
 - Multi-part files (CD1/CD2) as one version; disc structures (BDMV/VIDEO_TS) playable.
-- Emby and DLNA sources. (Plex is in M3.)
+- Emby and DLNA sources. (Plex is done, in M3.)
 - Linux credential storage without a Secret Service.
 
 ## Future

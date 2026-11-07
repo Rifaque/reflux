@@ -4,6 +4,15 @@ What changes for people using Reflux, version by version. The rules for versions
 
 ## Unreleased
 
+- Reflux has one navigation everywhere: Home, Movies, Shows, Search, Downloads, and Sources. On a phone held upright, Home, Movies, Shows, and Search are icons along the bottom, with Downloads and Sources at the top; on its side, and on tablets, they are in a rail on the left; on Windows and Linux, in a sidebar; on a TV, in a rail you reach with Left on the remote, which shows their names while you are in it.
+- On a TV, Back on Home, Movies, Shows, Search, Downloads, or Sources first goes to the navigation, so it never leaves Reflux from the middle of a row.
+- On Windows and Linux, Ctrl+1 to Ctrl+6 go straight to each place. With a controller, the bumpers step through them.
+- Plex servers can be added, by your Plex account, a Plex token, or nothing at all where the server lets your network in. Their films and shows join your library like any other source's, play directly, can be downloaded, and keep what you watched in step with Plex.
+- Every source has its own page under Sources: everything on it, or on one of its libraries, whether or not it is in your library, with what you watched and the same Play, versions, and downloads.
+- A source, and each of a server's libraries, can be switched out of your library without disconnecting it. It stays under Sources, where you can still open and play it; what you watched is kept; switching it back on brings it all back at once, with nothing to scan.
+- Libraries you left out of a server before are kept out of your library, and can now be opened from its page.
+- A server that no longer accepts Reflux's sign-in says so, and asks you to sign in again, instead of only saying it can't be reached.
+
 - The player's new Info list says how something is playing and why: the original file or what a server converts, the decoder, the sound, the subtitles, and whether that is what was planned.
 - On Android, choosing image subtitles (PGS) on a film whose sound a server converts no longer re-encodes the picture: the subtitles arrive beside the stream, and the original video plays.
 - On Android, a few video files that can't be skipped through no longer go back to the beginning when you try, and no longer lose your place. With a Jellyfin server, Reflux carries on from where you asked. Otherwise it tells you.

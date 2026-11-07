@@ -1,0 +1,142 @@
+# Navigation and Source Libraries
+
+The specification of M3 (ROADMAP.md): how the viewer moves through Reflux, and how the sources and libraries the unified library is made of are controlled. What was run to verify it is in VERIFICATION.md; the decisions behind it are in DECISIONS.md, 2026-11-02, "Navigation and source libraries".
+
+## 1. Global destinations
+
+Six places, the same on every platform:
+
+| Destination | What it is |
+| --- | --- |
+| Home | The unified library's feed: Continue Watching, Next Up, rows |
+| Movies | Every film in the unified library |
+| Shows | Every show in the unified library |
+| Search | Smart Search over the unified library |
+| Downloads | Every copy kept on this device (only where the platform keeps copies) |
+| Sources | Every source, its state, its libraries, inclusion, and the way into each source's own library |
+
+Each is a **section** of the navigator: choosing one replaces whatever was stacked above the previous section. Home is the root. Everything else (a work's page, a listing, a source's library, forms) stacks above the section it was opened from.
+
+## 2. The back stack
+
+`Navigator` keeps one stack: `Home`, then at most one other section, then pages opened from there.
+
+- Back pops one page. From a section other than Home it returns to Home. At Home it returns false and the platform leaves the application (Android) or does nothing (desktop).
+- Choosing a section clears the pages above the previous one. Choosing the section already shown returns to its top (its stacked pages are dropped).
+- Panels (the offline sheet, the folder picker) and the player are not pages: Back closes them first, in that order: text field (desktop), folder picker, offline sheet, player (the player owns its own Back), then the stack.
+- On a television, Back on a section's own page while focus is in the page moves focus to the navigation's current destination first; Back from the navigation then pops. This is the platform convention, and it means Back never leaves the application from the middle of a row.
+- Each page keeps its scroll position, season choice, and the item it was left from (`rememberSaveableStateHolder` keyed by the page, and `rememberFocusReturn`), so returning to it finds it as it was.
+
+## 3. Navigation by platform
+
+The information architecture never changes; where the navigation sits follows the window (`AdaptiveLayout.navigation`):
+
+| Window | Navigation | Downloads and Sources |
+| --- | --- | --- |
+| Phone, portrait | A floating bar along the bottom: Home, Movies, Shows, Search as icons with no permanent words | Two buttons at the top of each section's page |
+| Phone, landscape | A compact rail on the left: all six as icons | In the rail |
+| Tablet | A rail on the left: icons with their names beneath | In the rail |
+| Desktop | A sidebar on the left: the wordmark, then icons with their names beside | In the sidebar |
+| Television | A rail on the left, icons only, which widens to show names while it has focus | In the rail |
+
+- Icons without words always say their names to assistive technology, with the role of a tab and whether they are selected; a pointer resting on one shows its name.
+- Pages stacked above a section show a Back button at their top-left on touch and pointer layouts (a remote has its own Back).
+- The library-activity sign and, with a controller in hand, the button prompts sit at the top-right of the page on rail and sidebar layouts.
+- Directional input, wherever the navigation runs down the side (television, and a keyboard or controller on the others): Left from the page's first column enters the rail, on the current destination. A Left that the toolkit would send only partly left (to a button above, in a centred column) goes to the rail instead. Right from the rail returns to the control focus left from, whether it got there by Left or, on a television, by Back. Up and Down move one destination at a time; there are no other stops in the rail.
+- Television: the rail widens over the page while it has focus, to show the names; its items stay the same focusable controls, so focus never drops as it widens. A page that arrives, or gains its main action, takes focus unless the viewer is already in the page.
+- Desktop: Ctrl+1 to Ctrl+6 go to the six destinations, also from a text field; Escape is Back; the mouse's back button is Back on Windows. Tab walks the page in the order it is built, then the sidebar drawn beside it.
+
+## 4. The unified library and source libraries
+
+- **The unified library** ("show me my media") is Home, Movies, Shows, Search, Continue Watching, Next Up, Watch Next, collections, and every work's page reached from them. It is made of the versions that are **included** (section 5).
+- **A source library** ("show me what is on this source") is a page under Sources: one source, or one library of a source, its films and shows, whatever its inclusion. It reads the same index; nothing is copied into another store.
+
+A work's page and playback know the scope they were opened in (`LibraryScope`):
+
+| Scope | Versions considered | Seasons and episodes listed |
+| --- | --- | --- |
+| Unified | Included versions | Those with an included version |
+| A source (or one of its libraries) | That source's versions (in that library), and copies kept on this device of them | Those with such a version |
+
+Both scopes use the same Media Core identity, Best Version, planner, and engines. The same film on two included sources is one work in the unified library with two versions; on each source's page it is the same work with only that source's version. Watch state belongs to the work in every scope.
+
+## 5. The source model
+
+Four independent questions about every source:
+
+| Concept | Stored as | Changed by |
+| --- | --- | --- |
+| **Connection**: can Reflux sign in? | `source.sign_in_required` | A scan the server refuses (its credentials no longer work); signing in again clears it |
+| **Availability**: is it reachable now? | `source.availability` | Every check and scan |
+| **Inclusion**: does it take part in the unified library? | `source.included`, `excluded_section` | Only the viewer |
+| **Browsing**: can it be opened on its own? | — | Always, for every source; its library page says when it is away |
+
+None of them changes another. A source that is away stays included; a source excluded stays connected and browsable; a source that needs signing in keeps its inclusion and its library.
+
+### Inclusion rules
+
+A version takes part in the unified library when:
+
+```text
+its source is included
+and its library is not excluded (a source without libraries has one, implicitly)
+```
+
+A copy kept on this device follows the version it was copied from: it is included when that version's source and library are. A copy whose origin source has been removed is included.
+
+- **Source switch (master).** Off excludes all of the source's libraries. Each library's own switch is kept as it was and shown dimmed, with "Off because the source is off", so turning the source on again restores exactly what was chosen.
+- **Library switch.** Off excludes only that library. Every library may be off while the source is on: the source then contributes nothing, and its row says "No libraries included" rather than leaving it to be wondered about.
+- **A newly found library** is included (automatic by default). A library that disappears from the server leaves the list and its works leave the library at the next scan, as any removed file does; its switch is remembered, so a library that comes back with the same identity keeps the viewer's choice.
+- **A source with no libraries** (a folder, an SMB or WebDAV share) has only the source switch. A source with one library shows that library, with its switch, under the source switch.
+- **Removing and adding again.** Removal forgets the source's inclusion with the source. Adding it again is an explicit act of wanting it, so it starts included, with every library on. Watch history is kept either way.
+- **Changing inclusion** is not a rescan and touches nothing: no credential, cached metadata, artwork, watch state, file, or download changes. The index already holds every version; inclusion is recomputed in the same transaction and every screen reloads.
+- Libraries left out before M3 (the earlier "Libraries" choice, which stopped reading them) become excluded libraries at start, and are read again so that they can be browsed (DECISIONS.md).
+
+### Edge cases
+
+| Case | Behavior |
+| --- | --- |
+| Connected but unavailable | Listed with "Can't be reached"; its works stay in the unified library if included (dimmed where unplayable); its library page lists its works with the same note |
+| Excluded, opened from Sources | Its library page lists and plays its works; the unified library does not show them |
+| Included, temporarily unreachable | Stays included; nothing about inclusion changes |
+| No libraries (server with none of films or shows) | "No libraries with movies or shows" on its page; source switch still shown |
+| One library / many libraries | Library rows under the source switch, each with its own switch and a way into its library |
+| Source off with libraries on | Libraries shown dimmed and kept; restored by the source switch |
+| Source on, every library off | "No libraries included" on its row; nothing in the unified library from it |
+| Newly found library | Included |
+| Removed library | Leaves the list and the library; its choice is remembered |
+| Same work on several included sources | One work, several versions (unchanged Best Version) |
+| Removed and added again | Starts included; watch history intact |
+| Offline local folder | As unavailable above; "Its drive or folder isn't there right now" |
+| Empty source | Its page says it has no movies or shows yet |
+| Credentials no longer accepted | "Sign in again" on its row and its page; availability is unavailable; inclusion kept |
+
+## 6. Sources
+
+| Source | Kind | Libraries | Watch state | Plays through |
+| --- | --- | --- | --- | --- |
+| Local folder | Folder | None | Reflux's | Its files |
+| Jellyfin | Server | The account's film and series libraries | Two-way | `PlaybackInfo` negotiation |
+| Plex | Server | The server's film and show libraries | Two-way | Its files, direct (no server conversion in M3) |
+| SMB | Share | None | Reflux's | The loopback stream server |
+| WebDAV | Share | None | Reflux's | Its files |
+
+**Extension point.** A new adapter implements `MediaSource` and one of `FileEnumeratingSource` or `CatalogSource`; if it has libraries, `SectionedSource` and `CatalogEntry.section`; if it is reached by address, a `SourceConnector`; and it is registered in each platform's factories and connectors. Inclusion, source pages, navigation, Best Version, and playback need nothing from it.
+
+### Plex
+
+- Connecting: the server's address, and either a plex.tv account (name and password: Reflux signs in once at plex.tv and keeps only the token), a Plex token in the password field with the name left empty, or nothing, for a server that lets the local network in without signing in.
+- Identity: the server's machine identifier and the account, so adding it again is the same source.
+- Libraries: the server's `movie` and `show` sections. Catalog: films and episodes per library, with their media, parts, and streams; shows for their names, years, and external identifiers.
+- Playback: the part's file, direct, with the token in a header. Downloads: the same file.
+- Watch state: viewed and position read on every scan and reconciled; progress, stop, played, and unplayed reported back (`/:/progress`, `/:/scrobble`, `/:/unscrobble`). Plex marks an item played past 90%, and keeps no position in an item about a minute long (seen on a real server).
+- Titles: an item a server has no metadata agent for is titled after its folder ("Heat (1995)"); a trailing year is read as the year, as for Jellyfin, so the work unifies with other copies. A server in a container that calls itself by its container id is named "Plex".
+- Not in M3: server-side conversion (the planner states what this device cannot play), plex.tv server discovery, PIN sign-in, and ending the device's plex.tv token on removal (the token is forgotten on the device). Recorded in ROADMAP.md.
+
+## 7. Show, season, episode
+
+A show's page lists its seasons as tabs and the chosen season's episodes. An episode plays from its row; one with several versions also opens its own page, with its versions, from the row. The page opens on the season of the episode to watch next. The season shown is the page's state: it survives the player, an episode's page, and Back. Play on a show plays its Next Up episode (or the first). Continue Watching and Next Up on Home open the show's page on that episode's season, and Play there continues it; Watch Next, from outside Reflux, opens the episode's own page and plays it. Next-episode autoplay and the player's episode list follow the scope the show was opened in.
+
+## 8. The player
+
+The player is a takeover above the current page, never a page itself. While it is open everything behind it is inert to touch, pointer, focus, and assistive technology. Closing it returns to the page it was opened from, which was never left: its scroll position and the focused item are where they were. Playback opened from a source library plays within that source's scope.

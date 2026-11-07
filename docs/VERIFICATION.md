@@ -899,3 +899,43 @@ Side-by-side `dev.reflux.m2p` builds on the devices, signed in only as `reflux-t
 | Android unit tests | 50 of 50 (in `check`) |
 | On-device: fixtures, PGS attachment, seekability | Fire TV, Pad 7, Google TV emulator: 5 of 5 each |
 | Linux container | Not rerun at closure: the Linux path is the desktop JVM's, which `check` covers; physical Linux is waived |
+
+## M3: navigation and source libraries
+
+Verified from 2026-11-02 to 2026-11-07, on the tree that closes M3 (`feature/engine-foundation`, unpushed). Specification: NAVIGATION.md. Devices ran a side-by-side debug build (`dev.reflux.m3`, built and reverted, never committed), so the library on each device's own Reflux was not touched; the side-by-side apps were removed afterwards, their server session signed out first.
+
+**Phone-specific M3 navigation validation was performed on the physical Nothing Phone 2a** (the user made it available again; an Android phone emulator was booted for it first and set aside, unused for results). This is M3 navigation and source validation only: it says nothing new about the Phone 2a's decoders, audio, or performance, which M2P covered. Its Wi-Fi was off and was turned on for the walk and off again afterwards, as was its screen timeout.
+
+**Physical and emulated devices, with the live Jellyfin server as `reflux-test` (three libraries: Marvel 38 films, Movies 150 films, Shows 38 series).**
+
+| Device | What was walked | Result |
+| --- | --- | --- |
+| Nothing Phone 2a (A142, Android 16), touch | Upright: four icons along the bottom (Home, Movies, Shows, Search; names in the accessibility tree, no words drawn), Downloads and Sources at the top. On its side: a compact rail of six icons. Sources: library switches; the Movies library off left unified Movies at 38, the server off left it empty, on again 38 (the library's own switch kept), the library on 187. The Shows library off: its own page "Not in your library · 38 titles"; Dexter from it, Season 3, S3 E1 played; Back from the player on Season 3; Back to the Shows library page, then Sources. Search "casino" → Casino Royale → Back to Search with the query. Downloads and Back to Home | Passed |
+| Xiaomi Pad 7 (HyperOS, Android 16), touch | A rail with names. The card's three libraries with switches; from a state with the server off and Marvel and Shows off: unified Movies and Shows empty; server on: Movies 150, Shows empty; Marvel on: 187 (150 + 38, one film in both libraries is one work); Shows on: 38. Marvel off and its page opened: tabs for every library, the out-of-library note, real artwork; Ant-Man played from it; Back to its details, then the Marvel page. The Boys and Dexter from Shows; Dexter Season 3, S3 E2 played; Back from the player on Season 3, scroll kept, "Continue S3 · E2". Search → result → Back with the query. Downloads, Back to Home | Passed |
+| Fire TV Stick 4K Plus (Fire OS 8.1, by remote over Wi-Fi adb), local folder `RefluxSmoke` | First run with Reflux's own folder picker by remote. The rail: Left enters on the current destination, Up and Down one stop at a time, OK goes there with focus in the page. Shows → Test Show → S1 E2 played → Back to the same row → Back to the grid on Test Show → Back to the rail on Shows → Back to Home on Play. Sources: the folder's switch off; Down goes to Open; its page "Not in your library · 6 titles"; Big Buck Test played from it; Back to Play, to the page, to Sources on Open; unified Movies empty; switched back: 2 titles. Left from the switch to the rail on Sources, Right back to the switch | Passed after two fixes (below) |
+| Google TV emulator (API 36), by D-pad | The same rail checks; the server's card walked switch → Marvel → Movies → Shows → Open and back; the Shows library off and its page; Dexter from it played; Back from the player to the row, to the page, to Sources on "Open Shows"; Left to the Shows switch, on again, unified Shows 38; Back on a destination to the rail, then Home. A Plex server added through the app's own form ("Connect to Plex", no account): "Plex · 3 movies · 1 show"; unified Movies 187 → 190; its card lists its three libraries | Passed |
+| Google TV emulator | The instrumented suite (`am instrument`, side-by-side build) | 41 tests, 0 failed |
+
+**Found on devices and fixed (each with a regression test):**
+
+- Fire TV: on first run, after the folder was added, focus stayed on the rail's top item, which the toolkit had picked, instead of the new Home's Play. A page that arrives or gains its main action takes focus again unless the viewer is already in the page (`TelevisionTest.aFolderIsChosenWithTheRemoteAlone`, re-walked on the stick).
+- Fire TV: Left from a source's switch on the centred Sources page went up to Add media, not to the rail; Right from the rail went to the page's main action, not back to the switch. Left that does not land strictly left goes to the rail, and Right returns to the control focus left from (`NavigationTest.leftFromAnywhereInACentredPageIsTheRailNotTheButtonAboveIt`, re-walked on the stick).
+- Google TV emulator: a source's page ordered works by plain title ("The Boys" under T), unlike the unified grids; it uses the library's sort key now.
+- In the test-only UI pass, before devices: the tablet rail's items were wider than the rail; a television's rail item changed from one control to another as the rail widened, which would have dropped focus.
+
+**Plex, against a real Plex Media Server 1.43.5 in Docker** (`plexinc/pms-docker`, unclaimed, letting the local network in without a token; media generated with ffmpeg: a one-minute film with an English `.srt`, a six-minute film, a second film library, a two-episode series; libraries made through its API with no metadata agent). `REFLUX_PLEX_TEST=http://127.0.0.1:32400 ./gradlew :desktop:engine:test --tests '*PlexLiveTest*'`: connected without signing in; libraries Films, TV, Kids with their kinds; the films and the series' two episodes; MKV, H.264 640x360, AAC English, the `.srt` as an English SRT; the file served (206) and its subtitle read; planned Direct Play; the played mark adopted by a scan and cleared; a 3-minute stop told to the server and read back as 180,000 ms; a library out, the source out, still browsable, the library's switch kept. Passed, after two fixes it found: a title "Plex Kids Film (2019)" with the year in it (from a server without an agent) is now read as title and year, and a container's generated host name is not taken for the server's name. Plex keeps no position in a one-minute item; the live test uses the six-minute film for positions. The container and its image were removed afterwards.
+
+Not verified for Plex: a plex.tv account sign-in or a shared server's token against the real service (fake-server tests only; no account was used), a claimed server, other Plex versions, and Plex from a physical device.
+
+**Suites at closure.**
+
+| Suite | Result |
+| --- | --- |
+| Windows `check` (with the live Jellyfin server; Android module included) | 1,127 tests, 17 skipped, 0 failed (the 11 window tests in `desktop:app` run on request, below; the gated Plex live test without a server named; physical controllers) |
+| Windows real-window tests (`-Preflux.windowTests=true`) | 41, 3 skipped, 0 failed |
+| Linux real-window tests, `tools/ci` container (`window 1`; virtual, as accepted for M2P) | 41, 5 skipped, 0 failed |
+| UI tests (`:ui:jvmTest`, inside `check`) | 288 tests, 0 failed (`NavigationTest` 14, `SourcesUiTest`, `HandheldLayoutTest`, `AccessibilityTest`, `TelevisionTest`, and the rest updated to the six destinations) |
+| Plex live test against the Docker server | Passed (above) |
+| Google TV emulator instrumented suite | 41, 0 failed |
+
+**Not verified in M3:** a screen reader walk (TalkBack on the Pad, or a desktop reader) over the new navigation, whose names, roles, and selected states are covered by the automated tests and were read from the devices' accessibility trees; physical Linux (waived as for M2P); a physical Google TV device; physical controllers (the bumper mapping is tested, none connected).
