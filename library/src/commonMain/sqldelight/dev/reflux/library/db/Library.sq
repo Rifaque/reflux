@@ -12,7 +12,29 @@ CREATE TABLE source (
     availability TEXT NOT NULL,
     added_at INTEGER NOT NULL,
     last_scan_at INTEGER,
-    last_available_at INTEGER
+    last_available_at INTEGER,
+    -- Whether the source takes part in the unified library (docs/NAVIGATION.md). Never changed by availability.
+    included INTEGER NOT NULL DEFAULT 1,
+    -- The source answered but no longer accepts Reflux's sign-in: signing in again is the way back.
+    sign_in_required INTEGER NOT NULL DEFAULT 0
+);
+
+-- The libraries a source is made of (a server's), as last read, so they can be shown while it is away.
+CREATE TABLE source_section (
+    source_id TEXT NOT NULL,
+    section_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    kind TEXT NOT NULL,
+    position INTEGER NOT NULL,
+    PRIMARY KEY (source_id, section_id)
+);
+
+-- Libraries the viewer left out of the unified library. Kept while the source is, so a library that comes
+-- back, or a source switched on again, has the choice that was made.
+CREATE TABLE excluded_section (
+    source_id TEXT NOT NULL,
+    section_id TEXT NOT NULL,
+    PRIMARY KEY (source_id, section_id)
 );
 
 CREATE TABLE item (
@@ -71,10 +93,20 @@ CREATE TABLE version (
     -- Added by a migration: last, so that a migrated table and a new one have the same column order.
     video_profile TEXT,
     video_level INTEGER,
+    -- The library of its source the version is in, for sources made of libraries.
+    section TEXT,
+    -- The source and library the version belongs to for browsing and inclusion: its own, or for a copy kept on
+    -- the device, those of the version it was copied from. Recomputed by recomputeVersionLibraries.
+    library_source_id TEXT NOT NULL DEFAULT '',
+    library_section TEXT,
+    -- Whether it takes part in the unified library, from its library's source and section (recomputeInclusion).
+    included INTEGER NOT NULL DEFAULT 1,
     UNIQUE (source_id, path)
 );
 
 CREATE INDEX version_item ON version(item_id);
+
+CREATE INDEX version_library ON version(library_source_id, library_section);
 
 -- Audio and embedded subtitle tracks of a version.
 CREATE TABLE track (
@@ -269,7 +301,70 @@ allSources:
 SELECT * FROM source ORDER BY added_at, id;
 
 markSourceScanned:
-UPDATE source SET availability = 'AVAILABLE', last_scan_at = :now, last_available_at = :now WHERE id = :id;
+UPDATE source SET availability = 'AVAILABLE', sign_in_required = 0, last_scan_at = :now, last_available_at = :now WHERE id = :id;
+
+setSourceSignInRequired:
+UPDATE source SET availability = 'UNAVAILABLE', sign_in_required = 1 WHERE id = :id;
+
+setSourceIncluded:
+UPDATE source SET included = :included WHERE id = :id;
+
+-- Libraries ---------------------------------------------------------------------------------------
+
+sourceSectionsOf:
+SELECT * FROM source_section WHERE source_id = ? ORDER BY position, section_id;
+
+deleteSourceSectionsOf:
+DELETE FROM source_section WHERE source_id = ?;
+
+insertSourceSection:
+INSERT OR REPLACE INTO source_section(source_id, section_id, name, kind, position) VALUES (?, ?, ?, ?, ?);
+
+excludedSectionsOf:
+SELECT section_id FROM excluded_section WHERE source_id = ?;
+
+excludeSection:
+INSERT OR IGNORE INTO excluded_section(source_id, section_id) VALUES (?, ?);
+
+includeSection:
+DELETE FROM excluded_section WHERE source_id = ? AND section_id = ?;
+
+deleteExcludedSectionsOf:
+DELETE FROM excluded_section WHERE source_id = ?;
+
+-- How many movies and shows one library of a source holds.
+sectionContents:
+SELECT
+  (SELECT COUNT(DISTINCT version.item_id) FROM version JOIN item ON item.id = version.item_id
+     WHERE version.library_source_id = :id AND version.library_section = :section AND item.kind = 'MOVIE') AS movies,
+  (SELECT COUNT(DISTINCT item.show_id) FROM version JOIN item ON item.id = version.item_id
+     WHERE version.library_source_id = :id AND version.library_section = :section AND item.kind = 'EPISODE') AS shows;
+
+-- Which source and library each version belongs to: a copy kept on the device belongs where the version it was
+-- copied from does (or did, once that version is gone).
+recomputeVersionLibraries:
+UPDATE version SET
+  library_source_id = COALESCE(
+    (SELECT download.origin_source_id FROM download JOIN source ON source.id = version.source_id
+     WHERE source.type = 'downloads' AND download.path = version.path),
+    version.source_id),
+  library_section = CASE
+    WHEN EXISTS (SELECT 1 FROM download JOIN source ON source.id = version.source_id
+                 WHERE source.type = 'downloads' AND download.path = version.path)
+    THEN COALESCE(
+      (SELECT origin.section FROM download JOIN version origin ON origin.id = download.origin_version_id
+       WHERE download.path = version.path),
+      version.library_section)
+    ELSE version.section END;
+
+-- Whether each version takes part in the unified library: its library's source is included, and its library
+-- is not excluded. A copy whose origin source is gone stays included.
+recomputeInclusion:
+UPDATE version SET included = CASE
+  WHEN EXISTS (SELECT 1 FROM source WHERE source.id = version.library_source_id AND source.included = 0) THEN 0
+  WHEN EXISTS (SELECT 1 FROM excluded_section
+               WHERE excluded_section.source_id = version.library_source_id AND excluded_section.section_id = version.library_section) THEN 0
+  ELSE 1 END;
 
 setSourceAvailability:
 UPDATE source SET availability = :availability,
@@ -310,22 +405,24 @@ WHERE year IS NOT NULL AND kind = 'SHOW' AND EXISTS (
     WHERE episode.show_id = item.id AND version.source_id != :sourceId
 );
 
+-- The queries below take a scope: with :source null, the unified library (included versions); otherwise one
+-- source, or one :section of it (docs/NAVIGATION.md, section 4).
 presentMovies:
 SELECT item.* FROM item LEFT JOIN metadata ON metadata.item_id = item.id
-WHERE item.kind = 'MOVIE' AND EXISTS (SELECT 1 FROM version WHERE version.item_id = item.id)
+WHERE item.kind = 'MOVIE' AND EXISTS (SELECT 1 FROM version WHERE version.item_id = item.id AND ((:source IS NULL AND version.included = 1) OR (version.library_source_id = :source AND (:section IS NULL OR version.library_section = :section))))
 ORDER BY COALESCE(metadata.sort_key, item.sort_key), item.year;
 
 presentShows:
 SELECT item.* FROM item LEFT JOIN metadata ON metadata.item_id = item.id
 WHERE item.kind = 'SHOW' AND EXISTS (
-    SELECT 1 FROM item episode JOIN version ON version.item_id = episode.id WHERE episode.show_id = item.id
+    SELECT 1 FROM item episode JOIN version ON version.item_id = episode.id WHERE episode.show_id = item.id AND ((:source IS NULL AND version.included = 1) OR (version.library_source_id = :source AND (:section IS NULL OR version.library_section = :section)))
 )
 ORDER BY COALESCE(metadata.sort_key, item.sort_key), item.year;
 
 presentSeasonsOfShow:
 SELECT * FROM item
-WHERE kind = 'SEASON' AND show_id = ? AND EXISTS (
-    SELECT 1 FROM item episode JOIN version ON version.item_id = episode.id WHERE episode.season_id = item.id
+WHERE kind = 'SEASON' AND show_id = :showId AND EXISTS (
+    SELECT 1 FROM item episode JOIN version ON version.item_id = episode.id WHERE episode.season_id = item.id AND ((:source IS NULL AND version.included = 1) OR (version.library_source_id = :source AND (:section IS NULL OR version.library_section = :section)))
 )
 ORDER BY season_number;
 
@@ -334,11 +431,16 @@ SELECT * FROM item WHERE kind = 'EPISODE' AND show_id = ?;
 
 presentEpisodesOfSeason:
 SELECT * FROM item
-WHERE kind = 'EPISODE' AND season_id = ? AND EXISTS (SELECT 1 FROM version WHERE version.item_id = item.id)
+WHERE kind = 'EPISODE' AND season_id = :seasonId AND EXISTS (SELECT 1 FROM version WHERE version.item_id = item.id AND ((:source IS NULL AND version.included = 1) OR (version.library_source_id = :source AND (:section IS NULL OR version.library_section = :section))))
 ORDER BY episode_number, absolute_number, air_date;
 
 presentPlayables:
 SELECT * FROM item
+WHERE kind IN ('MOVIE', 'EPISODE') AND EXISTS (SELECT 1 FROM version WHERE version.item_id = item.id AND ((:source IS NULL AND version.included = 1) OR (version.library_source_id = :source AND (:section IS NULL OR version.library_section = :section))));
+
+-- Whatever there is to play, in any scope: what library changes are watched by.
+anyPlayables:
+SELECT item.id FROM item
 WHERE kind IN ('MOVIE', 'EPISODE') AND EXISTS (SELECT 1 FROM version WHERE version.item_id = item.id);
 
 deleteOrphanPlayables:
@@ -366,8 +468,8 @@ insertVersionIfAbsent:
 INSERT OR IGNORE INTO version(
     id, item_id, source_id, path, size_bytes, modified_at, stream_origin, container, video_codec, width, height,
     bit_depth, dynamic_range, dolby_vision_profile, frame_rate, duration_ms, bitrate_bps, edition, part,
-    confidence, signals, source_identity, first_seen_at, last_seen_at, video_profile, video_level
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+    confidence, signals, source_identity, first_seen_at, last_seen_at, video_profile, video_level, section, library_source_id, library_section
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 updateVersion:
 UPDATE version SET item_id = :itemId, size_bytes = :sizeBytes, modified_at = :modifiedAt,
@@ -376,7 +478,7 @@ UPDATE version SET item_id = :itemId, size_bytes = :sizeBytes, modified_at = :mo
     dolby_vision_profile = :dolbyVisionProfile, frame_rate = :frameRate, duration_ms = :durationMs,
     bitrate_bps = :bitrateBps, edition = :edition, part = :part, confidence = :confidence, signals = :signals,
     probe_attempted_at = NULL, source_identity = :sourceIdentity, last_seen_at = :lastSeenAt,
-    video_profile = :videoProfile, video_level = :videoLevel
+    video_profile = :videoProfile, video_level = :videoLevel, section = :section
 WHERE id = :id;
 
 updateVersionStream:
@@ -401,7 +503,7 @@ SELECT id, item_id, path, size_bytes, modified_at, stream_origin, source_identit
 
 updateVersionIdentity:
 UPDATE version SET item_id = :itemId, edition = :edition, part = :part, confidence = :confidence,
-    signals = :signals, last_seen_at = :lastSeenAt
+    signals = :signals, last_seen_at = :lastSeenAt, section = :section
 WHERE id = :id;
 
 externalSubtitlePathsOfSource:
@@ -413,7 +515,7 @@ SELECT locator FROM artwork WHERE source_id = ?;
 versionsOfItem:
 SELECT version.*, source.availability, source.locality
 FROM version JOIN source ON source.id = version.source_id
-WHERE version.item_id = ?
+WHERE version.item_id = :itemId AND ((:source IS NULL AND version.included = 1) OR (version.library_source_id = :source AND (:section IS NULL OR version.library_section = :section)))
 ORDER BY version.id;
 
 -- Every version of every episode of a show, by episode: how many there are to choose between.
@@ -434,7 +536,8 @@ WHERE version.id = ?;
 
 itemAvailability:
 SELECT version.item_id, source.availability
-FROM version JOIN source ON source.id = version.source_id;
+FROM version JOIN source ON source.id = version.source_id
+WHERE ((:source IS NULL AND version.included = 1) OR (version.library_source_id = :source AND (:section IS NULL OR version.library_section = :section)));
 
 lowConfidenceVersions:
 SELECT * FROM version WHERE confidence < ? ORDER BY source_id, path;
@@ -443,7 +546,7 @@ deleteVersion:
 DELETE FROM version WHERE id = ?;
 
 itemHasVersions:
-SELECT EXISTS (SELECT 1 FROM version WHERE item_id = ?);
+SELECT EXISTS (SELECT 1 FROM version WHERE item_id = ? AND included = 1);
 
 -- Tracks and subtitles --------------------------------------------------------------------------
 
@@ -623,12 +726,12 @@ SELECT * FROM watch_state WHERE last_played_at IS NOT NULL ORDER BY last_played_
 recentlyAdded:
 SELECT item.*, CASE WHEN item.kind = 'SHOW' THEN (
     SELECT MAX(episode.added_at) FROM item episode JOIN version ON version.item_id = episode.id
-    WHERE episode.show_id = item.id
+    WHERE episode.show_id = item.id AND version.included = 1
 ) ELSE item.added_at END AS latest_added_at
 FROM item
-WHERE (item.kind = 'MOVIE' AND EXISTS (SELECT 1 FROM version WHERE version.item_id = item.id))
+WHERE (item.kind = 'MOVIE' AND EXISTS (SELECT 1 FROM version WHERE version.item_id = item.id AND version.included = 1))
    OR (item.kind = 'SHOW' AND EXISTS (
-        SELECT 1 FROM item episode JOIN version ON version.item_id = episode.id WHERE episode.show_id = item.id))
+        SELECT 1 FROM item episode JOIN version ON version.item_id = episode.id WHERE episode.show_id = item.id AND version.included = 1))
 ORDER BY latest_added_at DESC, item.sort_key
 LIMIT ?;
 
@@ -687,7 +790,7 @@ SELECT provider_collection.*, COUNT(*) AS present
 FROM provider_collection
 JOIN metadata ON metadata.collection_id = provider_collection.id
 JOIN item ON item.id = metadata.item_id
-WHERE item.kind = 'MOVIE' AND EXISTS (SELECT 1 FROM version WHERE version.item_id = item.id)
+WHERE item.kind = 'MOVIE' AND EXISTS (SELECT 1 FROM version WHERE version.item_id = item.id AND version.included = 1)
 GROUP BY provider_collection.id
 HAVING COUNT(*) >= 2
 ORDER BY provider_collection.name;
@@ -695,7 +798,7 @@ ORDER BY provider_collection.name;
 franchiseMovies:
 SELECT item.* FROM item JOIN metadata ON metadata.item_id = item.id
 WHERE metadata.collection_id = ? AND item.kind = 'MOVIE'
-  AND EXISTS (SELECT 1 FROM version WHERE version.item_id = item.id)
+  AND EXISTS (SELECT 1 FROM version WHERE version.item_id = item.id AND version.included = 1)
 ORDER BY metadata.release_date, item.year;
 
 franchiseOf:

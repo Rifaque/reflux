@@ -77,9 +77,10 @@ suspend fun Library.planPlayback(
     audio: AudioChoice = AudioChoice.Automatic,
     subtitle: SubtitleChoice = SubtitleChoice.Automatic,
     originalFailed: Set<PlanPart> = emptySet(),
+    scope: LibraryScope = LibraryScope.Unified,
 ): PlaybackPlan? {
     val capabilities = { id: SourceId -> sources(id)?.descriptor?.capabilities.orEmpty() }
-    val selection = selectVersion(itemId, device, resuming = resume, continuing = continuing, preferences = preferences, sourceCapabilities = capabilities)
+    val selection = selectVersion(itemId, device, resuming = resume, continuing = continuing, preferences = preferences, sourceCapabilities = capabilities, scope = scope)
     val chosen = if (versionId != null) {
         selection.ranked.firstOrNull { it.version.id == versionId && it.playable }
     } else {

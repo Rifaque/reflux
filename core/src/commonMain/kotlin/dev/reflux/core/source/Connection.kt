@@ -80,8 +80,14 @@ interface SourceConnector {
     /** What a stored [config] connects to, for showing it and for changing it. Never the password or a token. */
     fun describe(config: String): ConnectionRequest?
 
-    /** [config] with [excluded] parts left out, for sources made of parts ([SectionedSource]); null for the rest. */
-    fun withExcludedSections(config: String, excluded: Set<String>): String? = null
+    /**
+     * Libraries a connection stored before M3 left out of reading altogether. Inclusion now belongs to the library
+     * (docs/NAVIGATION.md), so these are moved there once and cleared with [withoutExcludedSections].
+     */
+    fun excludedSections(config: String): Set<String> = emptySet()
+
+    /** [config] without the libraries it used to leave out (see [excludedSections]); null when nothing changes. */
+    fun withoutExcludedSections(config: String): String? = null
 
     /**
      * Ends what [config] signed in to on the other side, so that what it holds stops working there: this
@@ -101,13 +107,11 @@ enum class SectionKind { MOVIES, SHOWS, MIXED }
 data class SourceSection(val id: String, val name: String, val kind: SectionKind)
 
 /**
- * A source made of parts the user can choose between. What is left out is not read at all; leaving
- * everything out is not a choice (removing the source is), so a source always includes at least one part.
+ * A source made of libraries (a media server's). Every library is read, so each can be browsed on its own;
+ * which of them take part in the unified library is the library's to decide, never the adapter's
+ * (docs/NAVIGATION.md). A catalog source says which library each entry is in ([CatalogEntry.section]).
  */
 interface SectionedSource : MediaSource {
-    /** The parts there are now. Throws [SourceUnavailableException] when the source cannot be reached. */
+    /** The libraries there are now. Throws [SourceUnavailableException] when the source cannot be reached. */
     suspend fun sections(): List<SourceSection>
-
-    /** The parts left out, by id. A part that appears later is included until the user says otherwise. */
-    val excludedSections: Set<String>
 }

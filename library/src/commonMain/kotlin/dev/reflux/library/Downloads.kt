@@ -225,8 +225,13 @@ fun Library.syncDownloads() {
  * What the planner needs to know about [itemId] (a movie or an episode) to decide on a download for it.
  * A version is downloadable when its source says it hands out files and is there to be asked.
  */
-fun Library.offlineRequest(itemId: MediaId, reason: OfflineReason, sources: (SourceId) -> MediaSource?): OfflineRequest {
-    val versions = versions(itemId)
+fun Library.offlineRequest(
+    itemId: MediaId,
+    reason: OfflineReason,
+    sources: (SourceId) -> MediaSource?,
+    scope: LibraryScope = LibraryScope.Unified,
+): OfflineRequest {
+    val versions = versions(itemId, scope)
     val pinned = queries.preferredVersion(itemId.value).executeAsOneOrNull()?.let(::VersionId)
     return OfflineRequest(
         itemId = itemId,
@@ -266,22 +271,22 @@ fun Library.offlineSuggestions(limit: Int = 8): List<Pair<MediaId, OfflineReason
  * of it, which is what choosing a season means; a show is the episode to watch next and the ones after it,
  * [episodes] in all, never the whole run by default.
  */
-fun Library.offlineSelection(itemId: MediaId, episodes: Int = 3): List<MediaId> = when (val item = item(itemId)) {
+fun Library.offlineSelection(itemId: MediaId, episodes: Int = 3, scope: LibraryScope = LibraryScope.Unified): List<MediaId> = when (val item = item(itemId)) {
     is Movie, is Episode -> listOf(item.id)
-    is Show -> showDetail(item.id)?.let { detail ->
+    is Show -> showDetail(item.id, scope)?.let { detail ->
         val all = detail.seasons.flatMap { season -> season.episodes.map { it.item as Episode } }.sortedWith(NextUp.episodeOrder)
         val start = detail.nextUp ?: all.firstOrNull { watchState(it.id)?.completed != true } ?: all.firstOrNull()
-        start?.let { first -> listOf(first.id) + following(first, episodes - 1) }
+        start?.let { first -> listOf(first.id) + following(first, episodes - 1, scope) }
     }.orEmpty()
-    is Season -> worksOf(item.id)
+    is Season -> worksOf(item.id, scope)
     null -> emptyList()
 }
 
 /** The movies and episodes [itemId] is made of, as the library has them now: itself, or every episode of a show or a season, in order. */
-fun Library.worksOf(itemId: MediaId): List<MediaId> = when (val item = item(itemId)) {
+fun Library.worksOf(itemId: MediaId, scope: LibraryScope = LibraryScope.Unified): List<MediaId> = when (val item = item(itemId)) {
     is Movie, is Episode -> listOf(item.id)
-    is Show -> showDetail(item.id)?.seasons.orEmpty().flatMap { season -> season.episodes.map { it.item.id } }
-    is Season -> showDetail(item.showId)?.seasons?.firstOrNull { it.season.id == item.id }?.episodes?.map { it.item.id }.orEmpty()
+    is Show -> showDetail(item.id, scope)?.seasons.orEmpty().flatMap { season -> season.episodes.map { it.item.id } }
+    is Season -> showDetail(item.showId, scope)?.seasons?.firstOrNull { it.season.id == item.id }?.episodes?.map { it.item.id }.orEmpty()
     null -> emptyList()
 }
 
@@ -306,8 +311,8 @@ data class OfflineCoverage(
 /** The episodes of [showId] with a version off the device: what there is to keep of a show. */
 fun Library.episodesOffDevice(showId: MediaId): Set<MediaId> = queries.episodesOffDeviceOfShow(showId.value).executeAsList().map(::MediaId).toSet()
 
-fun Library.offlineCoverage(itemId: MediaId): OfflineCoverage {
-    val works = worksOf(itemId)
+fun Library.offlineCoverage(itemId: MediaId, scope: LibraryScope = LibraryScope.Unified): OfflineCoverage {
+    val works = worksOf(itemId, scope)
     val wanted = works.toSet()
     val byWork = downloads().filter { it.itemId in wanted }.groupBy { it.itemId }
     var kept = 0
@@ -325,9 +330,9 @@ fun Library.offlineCoverage(itemId: MediaId): OfflineCoverage {
 }
 
 /** The [count] episodes after [episode], in watching order. */
-private fun Library.following(episode: Episode, count: Int): List<MediaId> {
+private fun Library.following(episode: Episode, count: Int, scope: LibraryScope = LibraryScope.Unified): List<MediaId> {
     if (count <= 0) return emptyList()
-    val all = showDetail(episode.showId)?.seasons.orEmpty().flatMap { season -> season.episodes.map { it.item as Episode } }.sortedWith(NextUp.episodeOrder)
+    val all = showDetail(episode.showId, scope)?.seasons.orEmpty().flatMap { season -> season.episodes.map { it.item as Episode } }.sortedWith(NextUp.episodeOrder)
     val index = all.indexOfFirst { it.id == episode.id }
     return if (index < 0) emptyList() else all.drop(index + 1).take(count).map { it.id }
 }

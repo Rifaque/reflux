@@ -7,7 +7,7 @@ import dev.reflux.core.source.ConnectionProblem
 import dev.reflux.core.source.ConnectionRequest
 import dev.reflux.core.source.SectionedSource
 import dev.reflux.core.source.SourceConnector
-import dev.reflux.core.source.SourceSection
+
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -75,12 +75,6 @@ interface ConfigSeal {
     }
 }
 
-/** The parts of a source made of parts, and which of them are left out. */
-data class SectionChoice(val sections: List<SourceSection>, val excluded: Set<String>) {
-    /** What is left out and still exists; a part that went away no longer counts. */
-    val excludedPresent: Set<String> get() = excluded.intersect(sections.map { it.id }.toSet())
-}
-
 /** How many movies and shows a source holds. */
 data class SourceContents(val movies: Int, val shows: Int)
 
@@ -116,6 +110,9 @@ class SourceConnections(
     /** The connector of [kind] that handles [address], or null when none does. */
     fun route(kind: ConnectionKind, address: String): SourceConnector? = connectors.firstOrNull { it.kind == kind && it.accepts(address) }
 
+    /** The products of [kind] that can be connected here, each its own choice ("Jellyfin", "Plex"), in order. */
+    fun products(kind: ConnectionKind): List<SourceConnector> = connectors.filter { it.kind == kind && it.product != null }
+
     /** Addresses that show what can be typed for [kind]. */
     fun examples(kind: ConnectionKind): List<String> = connectors.filter { it.kind == kind }.map { it.addressExample }
 
@@ -142,6 +139,30 @@ class SourceConnections(
 
     /** What [record] connects with, opened. For the platform's source factories. */
     fun open(record: SourceRecord): String = seal.open(record.id, record.config)
+
+    /**
+     * Moves libraries a connection used to leave unread into the library's inclusion (docs/NAVIGATION.md): they
+     * become excluded libraries, so the viewer's choice holds, and the connection reads every library again, so
+     * each can be browsed. Run once at start, after [sealStored]; a connection that cannot be rewritten is left
+     * working as it was and the problem reported.
+     */
+    fun migrateExcludedSections() {
+        for (record in library.sources()) {
+            val connector = connector(record.type) ?: continue
+            val config = runCatching { seal.open(record.id, record.config) }.getOrNull() ?: continue
+            val excluded = connector.excludedSections(config).takeIf { it.isNotEmpty() } ?: continue
+            val rewritten = connector.withoutExcludedSections(config) ?: continue
+            val stored = try {
+                seal.seal(record.id, rewritten)
+            } catch (e: Exception) {
+                report("A ${record.type} source's left-out libraries could not be moved to the library's choices", e)
+                continue
+            }
+            library.excludeLibraries(record.id, excluded)
+            library.queries.updateSourceConnection(record.displayName, record.locality.name, stored, record.id.value)
+            registry.reload(record.copy(config = stored))
+        }
+    }
 
     /** Lets go of what was kept for a source that is being removed. */
     private fun forget(id: SourceId) {
@@ -195,55 +216,36 @@ class SourceConnections(
         }
     }
 
-    /** Whether [id] is made of parts the user can choose between (a server's libraries). */
+    /** Whether [id] is made of libraries (a server's). */
     fun sectioned(id: SourceId): Boolean = registry.resolve(id) is SectionedSource
-
-    /** How many parts of [id] are left out, as last chosen; read without asking the source. */
-    fun excludedCount(id: SourceId): Int = (registry.resolve(id) as? SectionedSource)?.excludedSections?.size ?: 0
-
-    /**
-     * What [id] is made of, asked of the source now, and what is left out. Null when it is not made of parts.
-     * Throws [dev.reflux.core.source.SourceUnavailableException] when it cannot be reached.
-     */
-    suspend fun sections(id: SourceId): SectionChoice? {
-        val source = registry.resolve(id) as? SectionedSource ?: return null
-        return SectionChoice(source.sections(), source.excludedSections)
-    }
-
-    /**
-     * Leaves [excluded] out of [id] from now on. The connection stays; the next scan makes the library match,
-     * so what was left out leaves it (its watch history stays with its works, as when any file goes away).
-     * Leaving everything out is refused: removing the source is how that is said.
-     */
-    fun setExcludedSections(id: SourceId, excluded: Set<String>, all: List<SourceSection>): Boolean {
-        require(all.any { it.id !in excluded }) { "at least one part of a source is included" }
-        val record = library.source(id) ?: return false
-        val connector = connector(record.type) ?: return false
-        val config = connector.withExcludedSections(seal.open(id, record.config), excluded) ?: return false
-        val stored = seal.seal(id, config)
-        library.queries.updateSourceConnection(record.displayName, record.locality.name, stored, id.value)
-        registry.reload(record.copy(config = stored))
-        return true
-    }
 
     /**
      * Connects to what [request] names and makes it a source. With [replacing], the connection replaces
      * that source's: signing in again, or a changed address. Watch history belongs to works and survives
      * either way. Scanning is the caller's to start.
      */
-    suspend fun connect(kind: ConnectionKind, request: ConnectionRequest, replacing: SourceId? = null): ConnectResult =
-        connecting(kind, request, replacing).first
+    suspend fun connect(kind: ConnectionKind, request: ConnectionRequest, replacing: SourceId? = null, type: String? = null): ConnectResult =
+        connecting(kind, request, replacing, type).first
 
     /**
      * [connect], and the sign-out of the connection it replaced: signing in again ends the session it
      * replaces, as removing does (best-effort, never holding the new connection up). [SignOut.NONE] when
      * nothing was replaced or it failed.
      */
-    suspend fun connecting(kind: ConnectionKind, request: ConnectionRequest, replacing: SourceId? = null): Pair<ConnectResult, Deferred<SignOut>> {
+    suspend fun connecting(
+        kind: ConnectionKind,
+        request: ConnectionRequest,
+        replacing: SourceId? = null,
+        /** The product the viewer chose ([products]); otherwise the first connector of [kind] that takes the address. */
+        type: String? = null,
+    ): Pair<ConnectResult, Deferred<SignOut>> {
         val previous = replacing?.let(library::source)
         val none: Deferred<SignOut> = CompletableDeferred(SignOut.NONE)
-        val connector = previous?.let { connector(it.type) }?.takeIf { it.accepts(request.address) } ?: route(kind, request.address)
-            ?: return ConnectResult.Failed(ConnectionProblem.INVALID_ADDRESS) to none
+        val connector = if (type != null) {
+            connector(type)?.takeIf { it.accepts(request.address) }
+        } else {
+            previous?.let { connector(it.type) }?.takeIf { it.accepts(request.address) } ?: route(kind, request.address)
+        } ?: return ConnectResult.Failed(ConnectionProblem.INVALID_ADDRESS) to none
         val connection = try {
             connector.connect(request)
         } catch (e: CancellationException) {
@@ -266,9 +268,8 @@ class SourceConnections(
         val replaced = (previous ?: existing)?.let { departing(it.id) }
         // A source the user already knows keeps the name it has; only how to reach it changes.
         val name = existing?.displayName ?: previous?.takeIf { it.type == source.descriptor.type }?.displayName ?: source.descriptor.displayName
-        // Signing in again keeps what the user chose to leave out.
-        val kept = (registry.resolve(id) as? SectionedSource)?.excludedSections.orEmpty()
-        val config = kept.takeIf { it.isNotEmpty() }?.let { connector.withExcludedSections(established.config, it) } ?: established.config
+        // Signing in again keeps the source's identity, and with it what the viewer included (the library's own state).
+        val config = established.config
         // Kept securely or not at all: a connection is never written down in the open because the seal failed.
         val stored = try {
             seal.seal(id, config)
@@ -279,11 +280,7 @@ class SourceConnections(
             signOut(Departing(connector, established.config), keeping = null)
             return ConnectResult.Failed(ConnectionProblem.UNKNOWN) to none
         }
-        if (kept.isNotEmpty() && config != established.config) {
-            registry.reload(SourceRecord(id, connector.type, name, source.descriptor.locality, stored, dev.reflux.core.model.Availability.UNKNOWN, null, null))
-        } else {
-            registry.register(source)
-        }
+        registry.register(source)
         if (existing != null) {
             library.queries.updateSourceConnection(name, source.descriptor.locality.name, stored, id.value)
         } else {

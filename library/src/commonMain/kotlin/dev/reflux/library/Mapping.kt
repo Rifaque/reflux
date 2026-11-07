@@ -71,6 +71,8 @@ internal fun Source.toModel() = SourceRecord(
     availability = enumOrNull<Availability>(availability) ?: Availability.UNKNOWN,
     lastScanAtEpochMs = last_scan_at,
     lastAvailableAtEpochMs = last_available_at,
+    included = included != 0L,
+    signInRequired = sign_in_required != 0L,
 )
 
 internal fun Watch_state.toModel() = WatchState(
@@ -111,7 +113,10 @@ internal fun versionRow(
     dvProfile: Long?, frameRate: Double?, duration: Long?, bitrate: Long?, edition: String?, part: Long?,
     confidence: Double, @Suppress("UNUSED_PARAMETER") signals: String, @Suppress("UNUSED_PARAMETER") probeAttemptedAt: Long?,
     @Suppress("UNUSED_PARAMETER") sourceIdentity: String?, @Suppress("UNUSED_PARAMETER") firstSeen: Long,
-    @Suppress("UNUSED_PARAMETER") lastSeen: Long, videoProfile: String?, videoLevel: Long?, availability: String, locality: String,
+    @Suppress("UNUSED_PARAMETER") lastSeen: Long, videoProfile: String?, videoLevel: Long?,
+    @Suppress("UNUSED_PARAMETER") section: String?, @Suppress("UNUSED_PARAMETER") librarySourceId: String,
+    @Suppress("UNUSED_PARAMETER") librarySection: String?, @Suppress("UNUSED_PARAMETER") included: Long,
+    availability: String, locality: String,
 ): VersionInfo {
     val video = if (videoCodec == null && height == null && dynamicRange == null) {
         null

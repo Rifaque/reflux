@@ -58,6 +58,7 @@ class JellyfinSourceTest {
         val body = when (path) {
             "System/Info/Public" -> """{"ServerName":"Home","Version":"10.10.3","Id":"srv1"}"""
             "Users/AuthenticateByName" -> """{"AccessToken":"tok","ServerId":"srv1","User":{"Id":"u1","Name":"alex"}}"""
+            "UserViews" -> """{"Items":[{"Id":"lib1","Name":"Everything","CollectionType":"mixed"}]}"""
             "Items" -> when {
                 "IncludeItemTypes=Series" in query ->
                     """{"Items":[{"Id":"show1","Name":"Breaking Bad","ProductionYear":2008,"ProviderIds":{"Tvdb":"81189","Tmdb":"1396"},"ImageTags":{"Primary":"sp"},"BackdropImageTags":["sb"]}],"TotalRecordCount":1}"""

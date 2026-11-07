@@ -12,7 +12,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
-/** Choosing which of a server's libraries Reflux reads. */
+/** A server's libraries: every one is read, and each entry says which it is in. */
 class JellyfinLibrariesTest {
     private var oldServer = false
     private var online = true
@@ -71,25 +71,29 @@ class JellyfinLibrariesTest {
     }
 
     @Test
-    fun aLibraryLeftOutIsNotReadAndEverythingElseIsReadOnce() = runTest {
-        assertEquals(listOf("Alien", "Heat", "Paddington"), titles(source()))
-        assertTrue(asked.none { "ParentId" in it }, "with nothing left out, the whole catalog is asked for at once")
+    fun everyLibraryIsReadAndEachEntrySaysWhichLibraryItIsIn() = runTest {
+        val entries = source().catalog().toList()
+        assertEquals(listOf("Alien", "Heat", "Paddington"), entries.map { it.identity.title }.sorted())
+        assertEquals("lib-m", entries.single { it.identity.title == "Heat" }.section, "a film in two libraries is in the first")
+        assertEquals("lib-k", entries.single { it.identity.title == "Paddington" }.section)
+        assertEquals("lib-x", entries.single { it.identity.title == "Alien" }.section)
+        assertTrue(asked.any { "ParentId=lib-k" in it }, "every library is read, whatever takes part in the unified library")
         asked.clear()
-        assertEquals(listOf("Alien", "Heat"), titles(source(setOf("lib-k"))))
-        assertTrue(asked.none { "ParentId=lib-k" in it }, "a library left out is never read")
-        // A library the server no longer has is simply not there; one it gained is included.
-        assertEquals(listOf("Alien", "Heat", "Paddington"), titles(source(setOf("lib-gone"))))
+        // What a connection left out before M3 is not the adapter's to apply any more: the library decides.
+        assertEquals(listOf("Alien", "Heat", "Paddington"), titles(source(setOf("lib-k"))))
     }
 
     @Test
-    fun theChoiceIsKeptWithTheConnectionAndNothingElseChanges() {
-        val config = JellyfinCredentials("http://jf.local", "srv1", "u1", "tok", "dev1", "alex").encode()
-        val changed = JellyfinConnector(http, "dev1").withExcludedSections(config, setOf("lib-k", "lib-s"))!!
-        val decoded = JellyfinCredentials.decode(changed)!!
-        assertEquals(setOf("lib-k", "lib-s"), decoded.excludedLibraries)
-        assertEquals("tok", decoded.accessToken)
-        assertEquals(source(setOf("lib-k", "lib-s")).descriptor.id, source().descriptor.id, "the same source, whatever it includes")
-        assertEquals(config, JellyfinConnector(http, "dev1").withExcludedSections(changed, emptySet()))
+    fun librariesLeftOutBeforeAreHandedToTheLibraryOnceAndClearedFromTheConnection() {
+        val config = JellyfinCredentials("http://jf.local", "srv1", "u1", "tok", "dev1", "alex", setOf("lib-k", "lib-s")).encode()
+        val connector = JellyfinConnector(http, "dev1")
+        assertEquals(setOf("lib-k", "lib-s"), connector.excludedSections(config))
+        val cleared = connector.withoutExcludedSections(config)!!
+        val decoded = JellyfinCredentials.decode(cleared)!!
+        assertEquals(emptySet(), decoded.excludedLibraries)
+        assertEquals("tok", decoded.accessToken, "nothing else about the connection changes")
+        assertEquals(null, connector.withoutExcludedSections(cleared), "a connection with nothing left out is not rewritten")
+        assertEquals(source(setOf("lib-k", "lib-s")).descriptor.id, source().descriptor.id, "the same source, whatever it included")
     }
 
     @Test
@@ -97,5 +101,15 @@ class JellyfinLibrariesTest {
         online = false
         assertFailsWith<SourceUnavailableException> { source().sections() }
         assertFailsWith<SourceUnavailableException> { source(setOf("lib-k")).catalog().toList() }
+    }
+
+    @Test
+    fun aServerThatNoLongerAcceptsTheTokenNeedsSigningInAgain() = runTest {
+        val refusing = JellyfinSource(
+            JellyfinCredentials("http://jf.local", "srv1", "u1", "tok", "dev1", "alex"),
+            HttpFetcher { HttpResult(401, ByteArray(0)) },
+        )
+        assertFailsWith<dev.reflux.core.source.SourceSignInRequiredException> { refusing.sections() }
+        assertFailsWith<dev.reflux.core.source.SourceSignInRequiredException> { refusing.catalog().toList() }
     }
 }
