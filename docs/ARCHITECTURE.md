@@ -141,7 +141,7 @@ Kotlin Multiplatform (see the decision log). Modules:
 | Module | Contents | Depends on |
 | --- | --- | --- |
 | `core` | Media Core contracts and pure logic. No platform APIs. | kotlinx-coroutines |
-| `library` | The local-first library engine: SQLite schema (SQLDelight) and its migrations, scan planning and reconciliation, read models (movies, shows, Continue Watching, search), the canonical watch state and its synchronization with sources, favorites, identity corrections, version preferences, metadata storage and refresh, Identify flow, smart search, collections, the default Home feed, diagnostics, the background pipeline, Smart Offline (`Offline`: download records, the queue, copying, and registering copies as versions), and adding sources by address (`SourceConnections`). JVM: database driver, `JdkHttpFetcher`, `ArtworkCache`, `FileDownloadStore`, `HttpDownloadTransport`. | `core`, SQLDelight |
+| `library` | The local-first library engine: SQLite schema (SQLDelight) and its migrations, scan planning and reconciliation, read models (movies, shows, Continue Watching, search), the canonical watch state and its synchronization with sources, favorites, identity corrections, version preferences, metadata storage, resolution, and refresh (`ProviderGate` in front of the provider), Identify flow, smart search, collections, the default Home feed, diagnostics, the background pipeline, Smart Offline (`Offline`: download records, the queue, copying, and registering copies as versions), and adding sources by address (`SourceConnections`). JVM: database driver, `JdkHttpFetcher`, `ArtworkCache`, `FileDownloadStore`, `HttpDownloadTransport`. | `core`, SQLDelight |
 | `design` | Platform-free design system: color tokens with enforced contrast, glass material roles, motion specs, adaptive layout profiles (including the controller morph), artwork atmosphere extraction. Consumed by the Compose shells. | `core` |
 | `sources:local` | Read-only local folder adapter for desktop JVMs. | `core` |
 | `sources:webdav` | Read-only WebDAV share source (PROPFIND listing, streamed playback with share credentials) and its connector. | `core` |
@@ -166,7 +166,7 @@ Packages in `core` (`dev.reflux.core`):
 - `watch` — the rules around the canonical watch state: completion and resume thresholds (`WatchRules`), timelines and cuts (`Timeline`, `Cuts`), carrying a position to another version (`Handoff`), reconciliation with a source's own records (`WatchReconciler`), and Next Up.
 - `offline` — what a download is and can be (`Download`, its states and failures), how much of the device may be used (`StoragePolicy`), and `OfflinePlanner`: which version to keep for this device in the room there is.
 - `search` — deterministic title search (`SearchMatcher`) and smart query understanding (`SmartQueryParser`).
-- `metadata` — provider contract (`MetadataProvider`), work/season/episode metadata, deterministic `MetadataMatcher`.
+- `metadata` — provider contract (`MetadataProvider`), work/season/episode metadata, deterministic `MetadataMatcher`, and provenance: `Description` (what one witness says), `MetadataResolver` (field-level precedence), `ArtworkPrecedence`, `MatchEvidence` (METADATA.md, "Library depth").
 - `net` — `HttpFetcher`, the only network abstraction core-level code sees.
 - `input` — semantic actions, default mappings, glyphs, and input-modality tracking.
 

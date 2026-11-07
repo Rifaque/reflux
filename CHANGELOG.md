@@ -4,6 +4,17 @@ What changes for people using Reflux, version by version. The rules for versions
 
 ## Unreleased
 
+- Titles from a Jellyfin or Plex server now come with what the server knows about them: what a film, show, season, or episode is about, its genres, rating, runtime, air dates, and network or studio. Plex's cast and directors too. No internet lookup is needed for any of it.
+- A show's page says the years it aired and on what network. A season with a name or a story of its own says so beside its poster, and each episode shows its date beside its length.
+- Episodes are pictured by their own stills wherever your server or the online catalog has them, including on an episode's own page; an episode without one shows its show's picture instead of a blank.
+- An episode's page shows its air date, rating, and guest cast.
+- When two servers describe the same title differently, Reflux shows one consistent description: the server you added first, filled in by the other and by the online catalog. It no longer depends on which was scanned last.
+- A title you identified yourself keeps your choice through rescans and refreshes, even when a server has it matched to something else.
+- Identify has "Refresh details", to fetch a title's details and artwork again. If the catalog can't be reached, nothing changes.
+- "Online metadata & artwork", under Sources: turn it off and Reflux looks nothing up online, using what your servers provide and what it already has.
+- Pictures from a Jellyfin server are fetched at the size Reflux shows them, so they take a fraction of the space on your device.
+- Show pages open faster.
+
 - A refreshed look across Reflux. The navigation on every device is a calm frosted layer that floats over your media, with where you are shown by a lit pill and a small bar, not by color. On tablets, desktops, and Google TV, Home's featured title and a title's page now run their artwork under the navigation.
 - On a TV, the navigation rail stays out of the way until you go to it, then widens into a frosted panel with the names.
 - On Android phones and tablets, artwork now reaches the top of the screen, under the status bar, and the navigation sits clear of the gesture area.
