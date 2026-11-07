@@ -8,7 +8,7 @@ The one source of truth for what Reflux is building, in what order, and what is 
 - The website is a release workstream across M6, M7, and M8 (below, "The Reflux website"); its visual direction, the demo video, and the beta program are in [LAUNCH.md](LAUNCH.md).
 - Decisions behind the plan are in [DECISIONS.md](DECISIONS.md): the first rebaseline (2026-10-17) and the milestone rebaseline (2026-11-02).
 
-**Current state: M3 complete → M4 next.**
+**Current state: M4 complete → M5 next.**
 
 This milestone list replaces the one of 2026-10-17 (M0 to M7, with M2 as release engineering and M3 as real-world validation), which replaced the earlier Phase 0–18 plan. Documents and verification sections written before 2026-11-02 use the older numbering; how each old milestone maps to this one is under "Earlier numbering", and DECISIONS.md, 2026-11-02, "The milestone rebaseline", says why.
 
@@ -47,8 +47,8 @@ Status words used below:
 | M1 — Accessibility & Interaction Baseline | Accessibility foundation, TalkBack and television accessibility, keyboard and focus behavior, interaction semantics, reduced motion and text size, screen-reader isolation, touch and focus targets | **Complete** (2026-11-01) |
 | M2P — Playback Compatibility & Direct Play | Reflux knows what the client can actually play, preserves the original whenever possible, degrades the smallest necessary part when it cannot, and can explain why | **Complete** (2026-11-02), with explicit waivers and unknowns (PLAYBACK.md, section 17) |
 | M3 — Navigation & Source Libraries | How the viewer moves through Reflux and controls the media universe playback works on: global and platform navigation, the unified library and each source's own, source inclusion | **Complete** (2026-11-07), with the limits in its section |
-| M4 — Visual System 2.0 | A higher-end visual system around that structure | **Next** |
-| M5 — Library Depth & Reflux Magic | A richer library and the features that set Reflux apart | Future |
+| M4 — Visual System 2.0 | A higher-end visual system around that structure | **Complete** (2026-11-07), with the limits in its section |
+| M5 — Library Depth & Reflux Magic | A richer library and the features that set Reflux apart | **Next** |
 | M6 — Release Engineering / Security / Legal | Production builds, packaging, signing, security hardening, legal and licensing, store preparation; the website's foundation and its legal and privacy pages | Future |
 | M7 — Compatibility / Performance / Release Proof | The final platform matrix proven: compatibility, performance, stability, production readiness; the website ready for the public and for testers | Future |
 | M8 — Beta | `0.9.0-beta.N` in testers' hands until the beta exit criteria hold, with the website operating as their entry point | Future |
@@ -79,6 +79,7 @@ What the product already does, everywhere it runs unless a platform is named. De
 - **Smart Offline (Android, Windows, Linux)**: films, single episodes, whole seasons, and a show's next episodes; the review sheet; status counted per episode; a Downloads page with every copy and its actions; copies as versions; playback and resume with the source away.
 - **Input**: pointer, keyboard, touch, controllers (desktop readers, Android key events), television remotes; the controller morph.
 - **Form factors**: desktop, phone, tablet, television layouts of one experience layer, with the neutral-first visual system.
+- **Visual System 2.0 (M4)**: semantic tokens, material tiers chosen per device, functional glass, one navigation family, hero artwork under the navigation where the material carries it, Media Atmosphere (off by default), edge to edge on Android, the system's high contrast and reduced transparency followed. One visual identity; themes are V2.
 - **Developer CLI**, **Linux CI workflow** (written and run in its container; never run on GitHub), regression tests for everything the 2026-10-17 stress cycle found.
 
 ## M0 — Governance & Rebaseline
@@ -168,11 +169,34 @@ Source adapter → source and library contents → unified Reflux media model �
 
 ## M4 — Visual System 2.0
 
-**Next.** A higher-end visual system around M3's structure: adaptive, functional glass; richer large-screen layouts; spatial motion; capability tiers; large-screen presentation; restrained artwork and environment treatment; Media Atmosphere where appropriate. Its work is not pulled into M3.
+**Complete** (2026-11-07), with the limits below. A calmer, deeper visual system around M3's structure, with one visual identity. Specification: DESIGN.md, "Visual System 2.0 (M4)". Decisions: DECISIONS.md, 2026-11-07, "Visual System 2.0" and "One visual identity; themes are V2". Evidence: VERIFICATION.md, "M4: Visual System 2.0".
+
+| Item | State |
+| --- | --- |
+| Semantic tokens: color roles (with selected, focused, pressed, disabled, error, success, warning), type roles, spacing, a radius family, elevation, state layers; components draw with roles, not values | Done |
+| Material tiers BASIC, ENHANCED, PREMIUM, chosen internally from the device and the viewer's system settings; never a setting | Done |
+| Functional glass only (navigation, panels, sheets, the player's chrome), legible over any artwork on every tier; PREMIUM measures what is behind it | Done |
+| Navigation surfaces as one family: phone bar, compact rail, tablet rail, desktop sidebar, television rail (quiet closed, material open); where the viewer is shown by shape and light | Done; verified on the Phone 2a, the Pad 7, the Fire TV, the Google TV emulator, and real windows on Windows and Linux |
+| Home's hero and a work's header under the rail or sidebar on ENHANCED and PREMIUM; beside it on BASIC | Done |
+| Media Atmosphere: optional, off by default, one switch under Sources, kept in the library | Done |
+| Motion vocabulary with a restrained television profile; reduced motion makes it immediate | Done |
+| Edge to edge on Android, the status bar protected, controls clear of the system bars | Done |
+| High contrast and reduced transparency followed from the system on Android, Windows, and Linux | Done |
+| Representative visual tests over offscreen renderings (`VisualSystemTest`) | Done; the broader strategy stays in M7 |
+| Performance measured on devices against M3 | Done (VERIFICATION.md) |
+| User-selectable themes | Deferred until after 1.0, a potential V2 feature (DECISIONS.md) |
+
+**Limits recorded, not blocking:**
+
+- Performance on the Fire TV Stick was measured with debug builds, which are slow there in M3 and M4 alike (M4 no worse); release-build performance belongs to M6 and M7.
+- The Google TV emulator renders in software, so its frame times say nothing about a real device; a physical Google TV device is still M7's.
+- Linux: virtual (the `tools/ci` container), as accepted for M2P; not physical hardware.
+- No screen reader walk was repeated; the semantics are covered by the automated tests and read from device accessibility trees.
+- The visual tests are pixel probes of representative layouts, not image baselines; a visual regression strategy is still M7's.
 
 ## M5 — Library Depth & Reflux Magic
 
-Future. A richer media and library experience: deeper metadata and artwork, episode artwork, more of Reflux's own intelligence above the deterministic engine, further library features, and what sets Reflux apart. Its features are not pulled forward because they are attractive.
+**Next.** A richer media and library experience: deeper metadata and artwork, episode artwork, more of Reflux's own intelligence above the deterministic engine, further library features, and what sets Reflux apart. Its features are not pulled forward because they are attractive.
 
 Carried here at the rebaseline: **serious playback parity**, Partial: on television an explanation where sidecar subtitles cannot be read (decided); held seek acceleration; chapters on Android where Media3 can supply them; media keys on desktop.
 
@@ -241,7 +265,7 @@ Future. The final production matrix proven: broad compatibility, performance, st
 | Network failure and recovery on real networks (Wi-Fi drop, server sleep, VPN) | Open |
 | A large-library performance baseline (scan, browse, search, start-up) recorded for regression | Open |
 | A reproducible stress harness: the 2026-10-17 fuzzing and race runs were not committed (only the regression tests for what they found are in the suite); decide whether to keep a seeded harness in the tree | Open |
-| A visual regression strategy for the offscreen renderings | Open |
+| A visual regression strategy for the offscreen renderings | Partial: M4's representative pixel tests (`VisualSystemTest`); no image baselines |
 | Broader compatibility: other Jellyfin versions, NAS SMB servers, HDR/DV and passthrough on real hardware and receivers, physical Linux | Open |
 
 ### Reflux Website — Public Release & Tester Readiness
