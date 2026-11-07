@@ -139,10 +139,11 @@ class AboutUiTest {
         awaitText("MIT")
         await("its text") { shows("Copyright (c) 2000-2026 The Legion of the Bouncy Castle Inc.", substring = true) }
         save("notice-bouncy-castle")
-        // What Reflux does not include is said, not dressed up with a text it did not ship.
+        // libmpv is in the Windows build (with its LGPL text and source offer) and the distribution's on Linux: both said.
         runOnIdle { app.navigator.open(Destination.Notice("mpv (libmpv) and FFmpeg")) }
-        awaitText("Reflux does not include it, so its license comes with the copy on this device.")
-        assertTrue(shows("Playback uses the libmpv on this computer", substring = true))
+        await("the LGPL text") { shows("GNU LESSER GENERAL PUBLIC LICENSE", substring = true) }
+        assertTrue(shows("On Windows, Reflux includes libmpv-2.dll", substring = true))
+        assertTrue(shows("On Linux, Reflux uses the libmpv your distribution installs.", substring = true))
     }
 
     @Test
