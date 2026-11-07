@@ -15,6 +15,7 @@ application {
 dependencies {
     implementation(project(":desktop:engine"))
     implementation(project(":sources:jellyfin"))
+    implementation(project(":sources:plex"))
     implementation(project(":sources:webdav"))
     implementation(project(":sources:smb"))
     implementation(libs.kotlinx.coroutines.core)

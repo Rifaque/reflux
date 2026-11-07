@@ -37,6 +37,9 @@ import dev.reflux.sources.local.LocalFolderSource
 import dev.reflux.sources.jellyfin.JellyfinConnector
 import dev.reflux.sources.jellyfin.JellyfinCredentials
 import dev.reflux.sources.jellyfin.JellyfinSource
+import dev.reflux.sources.plex.PlexConnector
+import dev.reflux.sources.plex.PlexCredentials
+import dev.reflux.sources.plex.PlexSource
 import dev.reflux.sources.smb.LocalStreamServer
 import dev.reflux.sources.smb.SmbConnector
 import dev.reflux.sources.smb.SmbShareConfig
@@ -133,6 +136,10 @@ class AndroidEnvironment(context: Context, dataDirectory: File = context.filesDi
     }
     private val log = dataDirectory.resolve("reflux.log")
 
+    /** How this device names itself to servers: their lists of signed-in devices show it. */
+    private val deviceName: String = "Reflux on " +
+        listOfNotNull(android.os.Build.MANUFACTURER?.replaceFirstChar { it.uppercase() }, android.os.Build.MODEL).joinToString(" ").ifBlank { "Android" }
+
     /**
      * Where copies for offline are kept: the application's own storage, which no other application can
      * read, needs no permission, and goes when Reflux is uninstalled.
@@ -152,18 +159,18 @@ class AndroidEnvironment(context: Context, dataDirectory: File = context.filesDi
             // A folder chosen by its path, on devices where Reflux browses storage itself (televisions).
             LocalFolderSource.TYPE to { record -> LocalFolderSource(File(record.config).toPath(), record.displayName) },
             JellyfinSource.TYPE to { record -> JellyfinCredentials.decode(seal.open(record.id, record.config))?.let { JellyfinSource(it, http, record.displayName) } },
+            PlexSource.TYPE to { record -> PlexCredentials.decode(seal.open(record.id, record.config))?.let { PlexSource(it, http, record.displayName, deviceName) } },
             WebDavSource.TYPE to { record -> WebDavConfig.decode(seal.open(record.id, record.config))?.let { WebDavSource(it, webDav, record.displayName) } },
             SmbSource.TYPE to { record -> SmbShareConfig.decode(seal.open(record.id, record.config))?.let { SmbSource(it, streams, record.displayName) } },
         ),
     ).apply { load(library.sources()) }
 
-    /** Servers and shares, added by their address: Jellyfin, Windows and NAS shares, and web shares. */
+    /** Servers and shares, added by their address: Jellyfin, Plex, Windows and NAS shares, and web shares. */
     val connections: SourceConnections by lazy {
-        val device = listOfNotNull(android.os.Build.MANUFACTURER?.replaceFirstChar { it.uppercase() }, android.os.Build.MODEL).joinToString(" ").ifBlank { "Android" }
         SourceConnections(
             library,
             registry,
-            listOf(JellyfinConnector(http, deviceId, deviceName = "Reflux on $device"), SmbConnector(streams), WebDavConnector(webDav)),
+            listOf(JellyfinConnector(http, deviceId, deviceName = deviceName), PlexConnector(http, deviceId, deviceName = deviceName), SmbConnector(streams), WebDavConnector(webDav)),
             report = ::report,
             seal = seal,
         )
@@ -174,6 +181,7 @@ class AndroidEnvironment(context: Context, dataDirectory: File = context.filesDi
         report("Reflux ${build.label} started")
         // Whatever an earlier version stored in the open is sealed before anything else reads it.
         connections.sealStored()
+        connections.migrateExcludedSections()
     }
 
     /** TMDB is enabled when the build provides an application credential; without one, names come from files. */
