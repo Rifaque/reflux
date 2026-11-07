@@ -36,6 +36,8 @@ results() {
 
 if [ "${1:-}" = "package" ]; then
     git config --global --add safe.directory /work
+    # A checkout made on Windows has CRLF working files; only a real change, not a line ending, is "modified".
+    git config --global core.autocrlf true
     ./gradlew --no-configuration-cache releaseInfo :desktop:app:packageDesktopArchive --stacktrace
     for archive in desktop/app/build/release/*.tar.gz; do
         cp "$archive" /out/
