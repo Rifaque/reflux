@@ -115,4 +115,22 @@ class FormattingTest {
         assertEquals("2×", Formatting.speed(2.0))
         assertEquals("0.5×", Formatting.speed(0.5))
     }
+
+    @Test
+    fun datesYearsSeasonNamesAndOriginalTitles() {
+        assertEquals("Jan 20, 2008", Formatting.date(dev.reflux.core.model.CalendarDate(2008, 1, 20)))
+        assertEquals("2008–2013", Formatting.airedYears(2008, 2013))
+        assertEquals("2022", Formatting.airedYears(2022, 2022))
+        assertEquals("2022", Formatting.airedYears(2022, null))
+        assertNull(Formatting.airedYears(null, 2013))
+        assertEquals(true, Formatting.genericSeasonName("Season 2", 2))
+        assertEquals(true, Formatting.genericSeasonName("Season 02", 2))
+        assertEquals(true, Formatting.genericSeasonName("Specials", 0))
+        assertEquals(false, Formatting.genericSeasonName("Book One: Water", 1))
+        assertEquals(false, Formatting.genericSeasonName("Season 3", 2))
+        assertEquals("Le Fabuleux Destin d'Amélie Poulain", Formatting.originalTitle("Le Fabuleux Destin d'Amélie Poulain", "Amélie"))
+        assertNull(Formatting.originalTitle("Heat", "Heat"))
+        assertNull(Formatting.originalTitle("Mad Max - Fury Road", "Mad Max: Fury Road"), "punctuation is not another name")
+        assertNull(Formatting.originalTitle(" ", "Heat"))
+    }
 }

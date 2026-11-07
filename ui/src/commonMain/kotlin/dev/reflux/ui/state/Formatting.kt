@@ -1,5 +1,7 @@
 package dev.reflux.ui.state
 
+import dev.reflux.core.identify.TitleText
+import dev.reflux.core.model.CalendarDate
 import dev.reflux.core.model.Episode
 import dev.reflux.core.model.MediaItem
 import dev.reflux.core.model.MediaVersion
@@ -49,6 +51,29 @@ object Formatting {
         val tenths = (value * 10).roundToInt()
         return if (tenths % 10 == 0) "${tenths / 10}" else "${tenths / 10}.${tenths % 10}"
     }
+
+    private val MONTHS = listOf("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+
+    /** A day: `Jan 20, 2008`. */
+    fun date(date: CalendarDate): String = "${MONTHS[date.month - 1]} ${date.day}, ${date.year}"
+
+    /** The years a show aired: `2008–2013`, or its first year alone when that is all there is to say. */
+    fun airedYears(first: Int?, last: Int?): String? = when {
+        first == null -> null
+        last == null || last <= first -> first.toString()
+        else -> "$first–$last"
+    }
+
+    /** Whether a season's name says no more than its number ("Season 2", "Specials"), so it is not said twice. */
+    fun genericSeasonName(name: String, number: Int): Boolean {
+        val plain = name.trim().lowercase()
+        return plain == "season $number" || plain == "series $number" || plain == "specials" || plain == "season ${number.toString().padStart(2, '0')}" ||
+            (number == 0 && plain == "season 0")
+    }
+
+    /** A work's original title where it says something the shown title does not (a different language or name). */
+    fun originalTitle(original: String?, shown: String): String? =
+        original?.trim()?.takeIf { it.isNotEmpty() && TitleText.key(it) != TitleText.key(shown) }
 
     fun year(item: MediaItem): Int? = when (item) {
         is Movie -> item.year

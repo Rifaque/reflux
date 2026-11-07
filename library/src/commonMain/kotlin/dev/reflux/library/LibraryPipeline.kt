@@ -178,6 +178,7 @@ class LibraryPipeline(
      */
     suspend fun identifyCandidates(itemId: MediaId, title: String, year: Int?): List<ScoredCandidate> {
         val provider = metadata ?: return emptyList()
+        this.provider?.wake()
         return library.searchMetadata(itemId, provider, language, title, year)
     }
 
@@ -187,6 +188,7 @@ class LibraryPipeline(
      */
     suspend fun identify(itemId: MediaId, candidate: MetadataCandidate): MediaId {
         val provider = metadata ?: return itemId
+        this.provider?.wake()
         val identified = mutex.withLock { library.identifyAs(itemId, candidate, provider, language) }
         prefetchArtwork?.let { prefetch -> library.entry(identified)?.let { entry -> prefetch(entry.artwork.values.toList()) } }
         return identified

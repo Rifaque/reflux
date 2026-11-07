@@ -32,7 +32,7 @@ import kotlin.time.TimeSource
  */
 class ProviderGate(
     private val provider: MetadataProvider,
-    private val spacingMs: Long = 120,
+    private val spacingMs: Long = 50,
     private val memoryMs: Long = 10 * 60_000L,
     private val memorySize: Int = 256,
     private val initialBackoffMs: Long = 60_000L,
@@ -65,6 +65,11 @@ class ProviderGate(
 
     override suspend fun season(ref: ProviderRef, seasonNumber: Int, language: String): SeasonMetadata? =
         ask("season|$ref|$seasonNumber|$language") { provider.season(ref, seasonNumber, language) }
+
+    /** Lets the provider be asked at once, keeping what is remembered: the viewer asked, so it is worth a try. */
+    suspend fun wake() = lock.withLock {
+        closedUntil = Long.MIN_VALUE
+    }
 
     /** Forgets what was remembered and lets the provider be asked at once, e.g. when the viewer asks for a refresh. */
     suspend fun reset() = lock.withLock {
