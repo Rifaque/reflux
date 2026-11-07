@@ -31,4 +31,10 @@ class RedactionTest {
         assertFalse("0f1e2d3c4b5a69788796a5b4c3d2e1f0" in line)
         assertEquals(true, "Night_Drive.mkv" in line)
     }
+
+    @Test
+    fun aPlexTokenHeaderIsRedacted() {
+        val line = clean("GET http://192.168.1.20:32400/library/sections X-Plex-Token: abcdef123456")
+        assertFalse("abcdef123456" in line)
+    }
 }
