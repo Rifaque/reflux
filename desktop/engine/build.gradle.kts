@@ -12,6 +12,7 @@ dependencies {
     api(project(":playback:mpv"))
     implementation(project(":sources:local"))
     implementation(project(":sources:jellyfin"))
+    implementation(project(":sources:plex"))
     implementation(project(":sources:webdav"))
     implementation(project(":sources:smb"))
     implementation(project(":metadata:tmdb"))

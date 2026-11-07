@@ -27,6 +27,9 @@ import dev.reflux.playback.mpv.MpvProbe
 import dev.reflux.sources.jellyfin.JellyfinConnector
 import dev.reflux.sources.jellyfin.JellyfinCredentials
 import dev.reflux.sources.jellyfin.JellyfinSource
+import dev.reflux.sources.plex.PlexConnector
+import dev.reflux.sources.plex.PlexCredentials
+import dev.reflux.sources.plex.PlexSource
 import dev.reflux.sources.local.LocalFolderSource
 import dev.reflux.sources.smb.LocalStreamServer
 import dev.reflux.sources.smb.SmbConnector
@@ -112,17 +115,23 @@ class DesktopEnvironment(
             JellyfinSource.TYPE to { record ->
                 JellyfinCredentials.decode(seal.open(record.id, record.config))?.let { JellyfinSource(it, http, record.displayName) }
             },
+            PlexSource.TYPE to { record -> PlexCredentials.decode(seal.open(record.id, record.config))?.let { PlexSource(it, http, record.displayName, "Reflux on ${hostName()}") } },
             WebDavSource.TYPE to { record -> WebDavConfig.decode(seal.open(record.id, record.config))?.let { WebDavSource(it, http, record.displayName) } },
             SmbSource.TYPE to { record -> SmbShareConfig.decode(seal.open(record.id, record.config))?.let { SmbSource(it, streams, record.displayName) } },
         ),
     ).apply { load(library.sources()) }
 
-    /** Servers and shares, added by their address: a Jellyfin server, a web share, a Windows or NAS share. */
+    /** Servers and shares, added by their address: a Jellyfin or Plex server, a web share, a Windows or NAS share. */
     val connections: SourceConnections by lazy {
         SourceConnections(
             library,
             registry,
-            listOf(JellyfinConnector(http, deviceId, deviceName = "Reflux on ${hostName()}"), SmbConnector(streams), WebDavConnector(http)),
+            listOf(
+                JellyfinConnector(http, deviceId, deviceName = "Reflux on ${hostName()}"),
+                PlexConnector(http, deviceId, deviceName = "Reflux on ${hostName()}"),
+                SmbConnector(streams),
+                WebDavConnector(http),
+            ),
             report = diagnostics::record,
             seal = seal,
         )
@@ -131,6 +140,7 @@ class DesktopEnvironment(
     init {
         // A connection an earlier version wrote into the database is moved into the credential store first.
         connections.sealStored()
+        connections.migrateExcludedSections()
     }
 
     /** TMDB is enabled when the build or environment provides an application credential. */
