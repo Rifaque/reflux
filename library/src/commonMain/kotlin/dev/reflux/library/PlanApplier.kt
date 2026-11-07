@@ -93,6 +93,11 @@ internal class PlanApplier(private val queries: LibraryQueries, private val now:
             }
         }
 
+        for (planned in plan.versions) {
+            val id = planned.version.id.value
+            planned.sourceDescription?.let { queries.upsertCatalogDescription(id, it) } ?: queries.deleteCatalogDescription(id)
+        }
+
         // What lies below a folder that could not be listed was not seen, which says nothing about it: it stays,
         // with its subtitles and artwork, until a scan can look.
         fun unseen(path: String) = unread.any { it.isEmpty() || path == it || path.startsWith("$it/") }
@@ -155,6 +160,7 @@ internal class PlanApplier(private val queries: LibraryQueries, private val now:
         queries.deleteOrphanCredits()
         queries.deleteOrphanAttempts()
         queries.deleteOrphanSourceMetadata()
+        queries.deleteOrphanCatalogDescriptions()
         recomputeLibraries()
 
         return ScanReport(

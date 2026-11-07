@@ -48,6 +48,8 @@ internal data class PlannedVersion(
     val sourceIdentity: String? = null,
     /** The library of its source the version is in, for sources made of libraries. */
     val section: String? = null,
+    /** For catalog sources: the encoded description of its work (and, once per scan, its show and season). */
+    val sourceDescription: String? = null,
 )
 
 /** Everything one scan of one source contributes to the library. Pure data; applying it is separate. */
@@ -77,6 +79,7 @@ private data class Candidate(
     val subtitles: List<ExternalSubtitle>,
     val sourceIdentity: String? = null,
     val section: String? = null,
+    val sourceDescription: String? = null,
 )
 
 /**
@@ -148,6 +151,8 @@ internal class ScanPlanner(
         externalYearHints: Map<Pair<ParsedKind, String>, Set<Int>>,
     ): ScanPlan {
         val sourceConfidence = Confidence(0.95, setOf(IdentificationSignal.SOURCE_IDENTIFIED))
+        // A show's and a season's description go with the first of its episodes listed, not with every one.
+        val describedShows = HashSet<String>()
         val candidates = entries.flatMap { entry ->
             entry.versions.map { version ->
                 val described = entry.identity.copy(
@@ -164,6 +169,7 @@ internal class ScanPlanner(
                     },
                     sourceIdentity = encodeCatalogEntry(entry, version),
                     section = entry.section,
+                    sourceDescription = encodeCatalogDescription(entry, describedShows),
                 )
             }
         }
@@ -228,6 +234,7 @@ internal class ScanPlanner(
                 parsed = parsed,
                 sourceIdentity = candidate.sourceIdentity,
                 section = candidate.section,
+                sourceDescription = candidate.sourceDescription,
             )
         }
         val externalHints = identified.groupBy({ (_, identification) ->
@@ -403,14 +410,8 @@ internal class ScanPlanner(
                 identity.externalIds.forEach { (key, value) -> put("id.$key", value) }
                 entry.artwork.forEach { (kind, path) -> put("art.${kind.name}", path) }
                 entry.showArtwork.forEach { (kind, path) -> put("showArt.${kind.name}", path) }
-                entry.description?.let { encodeDescription("desc.", it, this) }
-                entry.showDescription?.let { encodeDescription("showDesc.", it, this) }
-                entry.season?.let { season ->
-                    season.title?.let { put("season.title", it) }
-                    season.overview?.let { put("season.overview", it) }
-                    season.airDate?.let { put("season.airDate", it.toString()) }
-                    season.artwork.forEach { (kind, path) -> put("seasonArt.${kind.name}", path) }
-                }
+                // A season's poster is artwork, light, and goes with every episode; its words go with the description.
+                entry.season?.artwork?.forEach { (kind, path) -> put("seasonArt.${kind.name}", path) }
                 version.subtitles.forEachIndexed { index, sub ->
                     put("sub.$index", listOf(sub.path, sub.format.name, sub.language.orEmpty(), sub.forced, sub.hearingImpaired).joinToString("\t"))
                 }
@@ -418,9 +419,30 @@ internal class ScanPlanner(
             return encodePairs(pairs.mapValues { it.value.replace('\n', ' ') })
         }
 
-        /** Rebuilds a single-version catalog entry from [encoded] (see [encodeCatalogEntry]). */
-        fun decodeCatalogEntry(encoded: String, path: String, size: Long, modified: Long, version: MediaVersion): CatalogEntry? {
-            val pairs = decodePairs(encoded)
+        /**
+         * Encodes what a catalog source says a version's work is about: its description and, the first time [shows]
+         * meets its show (or season) in a scan, the show's and season's. Null when it says nothing.
+         */
+        fun encodeCatalogDescription(entry: CatalogEntry, shows: MutableSet<String>): String? {
+            val identity = entry.identity
+            val pairs = buildMap {
+                entry.description?.let { encodeDescription("desc.", it, this) }
+                if (identity.kind == ParsedKind.EPISODE) {
+                    val show = "${identity.title}|${identity.year}"
+                    if (shows.add(show)) entry.showDescription?.let { encodeDescription("showDesc.", it, this) }
+                    if (shows.add("$show|${identity.season}")) entry.season?.let { season ->
+                        season.title?.let { put("season.title", it) }
+                        season.overview?.let { put("season.overview", it) }
+                        season.airDate?.let { put("season.airDate", it.toString()) }
+                    }
+                }
+            }
+            return encodePairs(pairs.mapValues { it.value.replace('\n', ' ') }).takeIf { pairs.isNotEmpty() }
+        }
+
+        /** Rebuilds a single-version catalog entry from [encoded] and its [description] (see [encodeCatalogEntry]). */
+        fun decodeCatalogEntry(encoded: String, path: String, size: Long, modified: Long, version: MediaVersion, description: String? = null): CatalogEntry? {
+            val pairs = decodePairs(encoded) + description?.let(::decodePairs).orEmpty()
             val kind = pairs["kind"]?.let { enumOrNull<ParsedKind>(it) } ?: return null
             fun artwork(prefix: String) = pairs.filterKeys { it.startsWith(prefix) }.mapNotNull { (key, value) ->
                 enumOrNull<ArtworkKind>(key.removePrefix(prefix))?.let { it to value }

@@ -3,8 +3,6 @@ package dev.reflux.sources.jellyfin
 import dev.reflux.core.identify.ParsedKind
 import dev.reflux.core.identify.ParsedMedia
 import dev.reflux.core.model.ArtworkKind
-import dev.reflux.core.metadata.Credit
-import dev.reflux.core.metadata.CreditRole
 import dev.reflux.core.metadata.Description
 import dev.reflux.core.source.CatalogSeason
 import dev.reflux.core.model.Availability
@@ -451,23 +449,11 @@ class JellyfinSource(
     private enum class DescribedKind { MOVIE, SHOW, EPISODE }
 
     /**
-     * What the server says an item is about, in Reflux's terms. People's pictures are the server's own images
-     * (`items/{person}/images/Primary`), read through this source like any of its artwork. An episode's credits
-     * are its guest cast and directors, a few names, not the show's cast again.
+     * What the server says an item is about, in Reflux's terms. Not its people: a server takes about twenty
+     * milliseconds an item to list them (measured on a real library: a whole scan went from 3 to 25 seconds), and a
+     * scan runs at every start. Cast comes from the metadata provider (docs/METADATA.md).
      */
     private fun description(item: JsonObject, title: String?, kind: DescribedKind): Description? {
-        val people = item.array("People").mapNotNull { person ->
-            val name = person.string("Name")?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
-            val role = when (person.string("Type")) {
-                "Actor", "GuestStar" -> CreditRole.ACTOR
-                "Director" -> CreditRole.DIRECTOR
-                "Creator" -> CreditRole.CREATOR
-                else -> return@mapNotNull null
-            }
-            val picture = person.string("Id")?.takeIf { person.string("PrimaryImageTag") != null }?.let { "items/$it/images/Primary" }
-            Credit(name, role, person.string("Role")?.takeIf { role == CreditRole.ACTOR && it.isNotBlank() }, picture)
-        }
-        val actors = people.filter { it.role == CreditRole.ACTOR }.take(if (kind == DescribedKind.EPISODE) MAX_GUESTS else MAX_ACTORS)
         return Description(
             title = title,
             originalTitle = item.string("OriginalTitle")?.takeIf { it.isNotBlank() && it != title },
@@ -480,7 +466,6 @@ class JellyfinSource(
             rating = item.double("CommunityRating")?.takeIf { it > 0 },
             contentRating = item.string("OfficialRating")?.takeIf { it.isNotBlank() },
             studios = item.array("Studios").mapNotNull { it.string("Name")?.takeIf(String::isNotBlank) }.take(2),
-            credits = people.filter { it.role != CreditRole.ACTOR }.distinctBy { it.name } + actors,
         ).takeUnless { it.empty }
     }
 
@@ -681,10 +666,8 @@ class JellyfinSource(
         /** The widest each kind of picture is asked for: a backdrop fills a large screen; the rest are smaller. */
         private val IMAGE_WIDTHS = mapOf("Backdrop" to 1920, "Logo" to 800, "Primary" to 780)
 
-        /** What a description is made of, asked for with the catalog (and the series). */
-        private const val DESCRIPTION_FIELDS = "Overview,Genres,Taglines,People,Studios,OriginalTitle"
-        private const val MAX_ACTORS = 20
-        private const val MAX_GUESTS = 6
+        /** What a description is made of, asked for with the catalog (and the series): fields that cost a server nothing measurable. */
+        private const val DESCRIPTION_FIELDS = "Overview,Genres,Taglines,Studios,OriginalTitle"
         private const val TICKS_PER_MS = 10_000L
         private const val ASK_WITHIN_MS = 3_000L
 

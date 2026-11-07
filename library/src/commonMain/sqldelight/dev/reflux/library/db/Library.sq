@@ -245,6 +245,15 @@ CREATE TABLE source_metadata (
 
 CREATE INDEX source_metadata_source ON source_metadata(source_id);
 
+-- What a catalog source said a version's work is about (its description, its show's and season's), encoded as in
+-- ScanPlanner, so a correction re-plans the source offline without losing it. Apart from `version`, whose rows
+-- every library read scans: descriptions there made each row several times larger. A show's or season's
+-- description is written with one of its episodes per scan, not with every one.
+CREATE TABLE catalog_description (
+    version_id TEXT NOT NULL PRIMARY KEY,
+    encoded TEXT NOT NULL
+);
+
 CREATE TABLE provider_collection (
     id TEXT NOT NULL PRIMARY KEY,
     name TEXT NOT NULL,
@@ -650,6 +659,19 @@ SELECT * FROM source_metadata WHERE source_id = ?;
 
 deleteSourceMetadataOfSource:
 DELETE FROM source_metadata WHERE source_id = ?;
+
+upsertCatalogDescription:
+INSERT OR REPLACE INTO catalog_description(version_id, encoded) VALUES (?, ?);
+
+deleteCatalogDescription:
+DELETE FROM catalog_description WHERE version_id = ?;
+
+catalogDescriptionsOfSource:
+SELECT catalog_description.version_id, catalog_description.encoded FROM catalog_description
+JOIN version ON version.id = catalog_description.version_id WHERE version.source_id = ?;
+
+deleteOrphanCatalogDescriptions:
+DELETE FROM catalog_description WHERE version_id NOT IN (SELECT id FROM version);
 
 deleteOrphanSourceMetadata:
 DELETE FROM source_metadata WHERE item_id NOT IN (SELECT id FROM item);

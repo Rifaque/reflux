@@ -25,6 +25,7 @@ class MetadataMigrationTest {
         DriverManager.getConnection("jdbc:sqlite:$file").use { connection ->
             connection.createStatement().use { sql ->
                 sql.execute("DROP TABLE source_metadata")
+                sql.execute("DROP TABLE catalog_description")
                 sql.execute("ALTER TABLE metadata DROP COLUMN match_evidence")
                 sql.execute("ALTER TABLE metadata DROP COLUMN end_date")
                 sql.execute("ALTER TABLE metadata DROP COLUMN studios")

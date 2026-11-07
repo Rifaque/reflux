@@ -1,7 +1,6 @@
 package dev.reflux.desktop.engine
 
 import dev.reflux.core.metadata.Authority
-import dev.reflux.core.metadata.CreditRole
 import dev.reflux.core.metadata.MetadataField
 import dev.reflux.core.model.ArtworkKind
 import dev.reflux.core.model.ArtworkLocator
@@ -11,7 +10,6 @@ import dev.reflux.library.ArtworkCache
 import dev.reflux.library.Library
 import dev.reflux.library.LibraryDatabase
 import dev.reflux.library.ScanReport
-import dev.reflux.library.cast
 import dev.reflux.library.net.JdkHttpFetcher
 import dev.reflux.sources.jellyfin.JellyfinConnector
 import dev.reflux.sources.jellyfin.JellyfinSource
@@ -50,6 +48,8 @@ class LibraryDepthLiveTest {
             library.addSource(server, "live")
             val (report, scanTime) = measureTimedValue { library.scan(server) }
             assertEquals(ScanReport.Status.COMPLETED, report.status)
+            // M4 scanned this server in about 3 s; describing it must not make that much slower (docs/VERIFICATION.md).
+            assertTrue(scanTime.inWholeSeconds < 15, "scan took $scanTime")
             assertEquals(setOf("GET"), methods, "reading a library changes nothing on the server")
 
             val movies = library.movies()
@@ -60,14 +60,13 @@ class LibraryDepthLiveTest {
             fun percent(part: Int, whole: Int) = if (whole == 0) "-" else "${part * 100 / whole}%"
             val described = movies.count { it.metadata?.overview != null }
             val sourceSaid = movies.count { it.metadata?.provenance?.get(MetadataField.OVERVIEW)?.authority == Authority.SOURCE }
-            val withCast = movies.take(25).count { movie -> library.cast(movie.item.id).any { it.role == CreditRole.ACTOR } }
             val seasonPosters = seasons.count { it.entry.artwork[ArtworkKind.POSTER] != null }
             val seasonStories = seasons.count { it.entry.metadata?.overview != null }
             val stills = episodes.count { it.artwork[ArtworkKind.THUMBNAIL] != null }
             val episodeStories = episodes.count { it.metadata?.overview != null }
             println(
                 "LIVE depth: scan ${scanTime.inWholeMilliseconds} ms; movies ${movies.size} (overview ${percent(described, movies.size)}, " +
-                    "from the server ${percent(sourceSaid, movies.size)}, cast in ${withCast}/${minOf(25, movies.size)} sampled); " +
+                    "from the server ${percent(sourceSaid, movies.size)}); " +
                     "shows ${shows.size} (overview ${percent(shows.count { it.metadata?.overview != null }, shows.size)}); " +
                     "seasons ${seasons.size} (poster ${percent(seasonPosters, seasons.size)}, overview ${percent(seasonStories, seasons.size)}); " +
                     "episodes ${episodes.size} (still ${percent(stills, episodes.size)}, overview ${percent(episodeStories, episodes.size)})",
@@ -78,7 +77,7 @@ class LibraryDepthLiveTest {
             // The pictures a page needs, fetched once each, and shown again with the server away.
             val wanted = (episodes.take(6).mapNotNull { it.artwork[ArtworkKind.THUMBNAIL] } +
                 seasons.take(4).mapNotNull { it.entry.artwork[ArtworkKind.POSTER] } +
-                movies.take(3).flatMap { movie -> library.cast(movie.item.id).mapNotNull { it.picture }.take(2) }).distinct()
+                movies.take(3).mapNotNull { it.artwork[ArtworkKind.BACKDROP] }).distinct()
             val requests = AtomicInteger()
             val cache = ArtworkCache(directory.resolve("artwork"), HttpFetcher { requests.incrementAndGet(); jdk.send(it) })
             val sources: (dev.reflux.core.model.SourceId) -> MediaSource? = { server }

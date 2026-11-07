@@ -1,6 +1,5 @@
 package dev.reflux.sources.jellyfin
 
-import dev.reflux.core.metadata.CreditRole
 import dev.reflux.core.model.ArtworkKind
 import dev.reflux.core.model.CalendarDate
 import dev.reflux.core.net.HttpFetcher
@@ -73,13 +72,11 @@ class JellyfinDescriptionTest {
         assertEquals(7.9, heat.rating)
         assertEquals("R", heat.contentRating)
         assertEquals(listOf("Warner Bros."), heat.studios)
-        // Directors first, then the cast; producers are not credits Reflux shows.
-        assertEquals(listOf("Michael Mann", "Al Pacino", "Robert De Niro"), heat.credits.map { it.name })
-        assertEquals(CreditRole.DIRECTOR, heat.credits.first().role)
-        assertEquals("Vincent Hanna", heat.credits[1].character)
-        assertEquals("items/p1/images/Primary", heat.credits[1].profileUrl, "a picture the server has, as a path in it")
-        assertNull(heat.credits[2].profileUrl)
-        assertTrue(urls.first { "StartIndex=0" in it }.contains("People"), "asked for with the catalog, not item by item")
+        // Asked for with the catalog, not item by item; never its people, which a server is slow to list.
+        val catalog = urls.first { "StartIndex=0" in it }
+        assertTrue("Overview" in catalog && "Genres" in catalog)
+        assertTrue("People" !in catalog && urls.none { "People" in it })
+        assertTrue(heat.credits.isEmpty())
     }
 
     @Test
@@ -88,7 +85,6 @@ class JellyfinDescriptionTest {
         assertEquals("A teacher turns.", entry.description!!.overview)
         assertEquals(58, entry.description!!.runtimeMinutes)
         assertEquals(8.2, entry.description!!.rating)
-        assertEquals(listOf("Raymond Cruz"), entry.description!!.credits.map { it.name }, "its guest cast")
         val show = entry.showDescription!!
         assertEquals("A chemistry teacher.", show.overview)
         assertEquals(CalendarDate(2013, 9, 29), show.endDate)

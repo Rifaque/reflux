@@ -25,8 +25,8 @@ import dev.reflux.library.db.Source_metadata
 data class CastMember(val name: String, val role: CreditRole, val character: String?, val picture: ArtworkLocator?, val provenance: Provenance)
 
 /** Where each source stands when sources disagree: the oldest first (core MetadataResolver). */
-internal fun Library.sourceRanks(): Map<String, Int> =
-    queries.sourceOrder().executeAsList().withIndex().associate { (index, id) -> id to index }
+internal fun Library.sourceRanks(): Map<String, Int> = sourceOrderCache
+    ?: queries.sourceOrder().executeAsList().withIndex().associate { (index, id) -> id to index }.also { sourceOrderCache = it }
 
 /**
  * The descriptions of [ids] as shown: each work's provider entry and its sources' own descriptions, resolved
