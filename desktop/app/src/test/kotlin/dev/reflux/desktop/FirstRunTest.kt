@@ -74,7 +74,7 @@ class FirstRunTest {
             shell.capture("first-run-library")
 
             // Choosing the same folder again says so instead of adding it twice.
-            shell.click("Media sources")
+            shell.click("Sources")
             shell.click("Add media")
             shell.click("A folder on this device")
             NativeDialogs.answer(FolderPicker.TITLE, media)
@@ -99,7 +99,7 @@ class FirstRunTest {
         val environment = DesktopEnvironment(data)
         Shell(environment).use { shell ->
             shell.awaitShown("Recently Added")
-            shell.click("Media sources")
+            shell.click("Sources")
             shell.awaitShown("Not connected", exact = false)
             assertEquals(3, environment.library.movies().size + environment.library.shows().size, "the library is still there")
             shell.capture("first-run-source-missing")
