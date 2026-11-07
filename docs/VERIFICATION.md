@@ -939,3 +939,45 @@ Not verified for Plex: a plex.tv account sign-in or a shared server's token agai
 | Google TV emulator instrumented suite | 41, 0 failed |
 
 **Not verified in M3:** a screen reader walk (TalkBack on the Pad, or a desktop reader) over the new navigation, whose names, roles, and selected states are covered by the automated tests and were read from the devices' accessibility trees; physical Linux (waived as for M2P); a physical Google TV device; physical controllers (the bumper mapping is tested, none connected).
+
+## M4: Visual System 2.0
+
+Verified on 2026-11-07, on the tree that closes M4 (`feature/engine-foundation`, unpushed). Specification: DESIGN.md, "Visual System 2.0 (M4)". Devices ran a side-by-side debug build (`dev.reflux.m4`, built and reverted, never committed), so the library on each device's own Reflux was not touched; the side-by-side apps were removed afterwards, their server session signed out first (by removing the server in the app), and every temporary file on the devices deleted, the credentials file the live runner writes among them. Neither the Phone 2a nor the Pad had Reflux's own build installed during M4; the Fire TV's was not touched.
+
+**Automated.**
+
+| Suite | What it covers | Result |
+| --- | --- | --- |
+| `design` (`VisualSystemTest.kt`: `ColorRolesTest`, `MaterialTierTest`, `ScaleTest`, `MotionTest`) | Roles derived from the palette and the high-contrast roles brighter; the tier chosen from blur, reduced transparency, high contrast, low memory, and television; every material's scrim holds 4.5:1 for secondary text over white, grey, black, and saturated backdrops on every tier; the backdrop measured from pixels; type hierarchy, radius family, elevation order; the television motion profile does not travel and reduced motion is immediate | 36, 0 failed |
+| `library` | Migration 5 (`setting`): a library from before it keeps everything and starts with the defaults | 190, 0 failed |
+| `ui` (`VisualSystemTest`, 10 new) | The hero runs under the sidebar and rail on PREMIUM and stays beside an opaque one on BASIC; the hero's text clear of the rail; Media Atmosphere off by default and a wash when on, an ordinary switch, remembered; edge to edge (content under the bars, controls clear of them); the selected destination shown by a pill and a bar, not color; a television's rail quiet closed and material open; high contrast strengthening text, edges, and the focus ring; artwork read for its color once, not on every visit; reduced motion making every new transition take no time. Every earlier UI test unchanged | 298, 0 failed |
+
+**Devices.**
+
+| Device | Tier | What was looked at | Result |
+| --- | --- | --- | --- |
+| Xiaomi Pad 7 (HyperOS, Android 16, 144 Hz), live Jellyfin as `reflux-test` | PREMIUM | Edge to edge: the hero under the status bar, its icons over the protecting shade; the frosted rail over Casino Royale's hero with the title and actions clear of it; Movies grid scrolling under the protected status bar; a work's page. Accessibility tree: one node `selected=true` (the current destination), every destination named | Passed |
+| Xiaomi Pad 7, performance (`dumpsys gfxinfo`) | PREMIUM | Home scrolled: 822 frames, 2.68% janky, p50 14 ms, p90 28, p95 46, p99 97. Movies grid: 1,676 frames, 0.36% janky, p95 40, p99 73. Memory (PSS) 364 MB | Within budget |
+| Nothing Phone 2a (A142, Android 16, gesture navigation), by wireless adb, live Jellyfin as `reflux-test` | PREMIUM | Upright: Casino Royale's hero running under the status bar, its icons legible over the protecting shade; Downloads and Sources below the status bar; the floating bar of four icons clear of the gesture handle, Home a lit pill; Movies tapped: the pill moved, the grid scrolling under the bar. On its side: the compact rail of six, clear of the camera cutout, Movies selected; Home's hero running under the frosted rail with title and actions clear of it. Shows, then Back: Home selected again, still in Reflux. Accessibility tree, both orientations: exactly one `selected=true` node, the current destination's tab, every destination named | Passed |
+| Nothing Phone 2a, performance (`dumpsys gfxinfo`) | PREMIUM | Movies grid (187 titles) scrolled twelve times: first pass, artwork loading, 1,154 frames, 7.28% janky, p50 15 ms, p95 73, p99 129; again, warm, 2,026 frames, 0.44% janky, p50 14, p90 36, p95 44, p99 69. Memory (PSS) 371 MB | Within budget |
+| Fire TV Stick 4K Plus (Fire OS 8.1, by remote over Wi-Fi adb), a local folder chosen with Reflux's picker by remote | BASIC | Opaque picker and panels; Home's hero beside the rail with focus on Play; the rail opening as an opaque panel with the names, the current destination as pill, bar, and ring | Passed |
+| Fire TV Stick, performance, the same D-pad journey on the M3 and M4 builds | BASIC | M4: 201 frames, 85% janky, p50 44 ms, p95 133, p99 200, 169 MB. M3: 167 frames, 97.6% janky, p50 36, p95 250, p99 500, 152 MB. Debug builds are slow on the stick in both; M4 is not worse | No regression |
+| Google TV emulator (API 36, SwiftShader), a local folder chosen by D-pad | ENHANCED | Frosted folder picker; Home's hero running under the closed rail; the rail opening by Left into a frosted panel with rounded trailing corners and the names; pill, bar, and ring on Home. D-pad journey: 197 frames, 26% janky, p95 65 ms, 108 MB (software rendering: functional evidence, not performance) | Passed |
+| Google TV emulator | ENHANCED | The instrumented suite (`am instrument`, side-by-side build) | 41 tests, 0 failed |
+
+**Found and fixed during M4:**
+
+- A pressed control shrank (a press scale), which changed the focused bounds mid-gesture, so the list that keeps focus in view scrolled out from under the finger and the tap was lost (`EpisodeVersionsUiTest.theVersionsAreBeneathTheEpisodeOnAPhone`). Pressed is now a dim that never changes size.
+- The hero's scrim was darkest under the rail, which hid the artwork the rail was meant to sit over; it is lighter under the navigation, with the text's own scrim unchanged.
+- Each image was sampled twice (once for its hue, once for its brightness); it is read once for both.
+
+**Suites at closure.**
+
+| Suite | Result |
+| --- | --- |
+| Windows `check` (with the live Jellyfin server; Android unit tests included) | 1,157 tests, 17 skipped, 0 failed (`design` 36, `library` 190, `ui` 298, `core` 324, `android:app` 50, and the rest; the skips as at M3: the 11 window tests in `desktop:app`, run below, the gated Plex live test, physical controllers) |
+| Windows real-window tests (`-Preflux.windowTests=true`) | 41, 3 skipped, 0 failed |
+| Linux real-window tests, `tools/ci` container (`window 1`; virtual, as accepted for M2P) | 41, 5 skipped, 0 failed |
+| Google TV emulator instrumented suite (side-by-side build) | 41, 0 failed |
+
+**Not verified in M4:** a screen reader walk over the new surfaces, whose names, roles, and selected states are covered by the automated tests and the devices' accessibility trees; physical Linux (waived as for M2P); a physical Google TV device; release-build performance (M6, M7).
