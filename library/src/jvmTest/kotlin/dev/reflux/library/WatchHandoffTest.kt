@@ -724,6 +724,7 @@ class WatchHandoffTest {
     /** Takes a current schema back to before migration 6 (library depth), for the migrations before it to run. */
     private fun withoutLibraryDepth(driver: JdbcSqliteDriver) {
         driver.execute(null, "DROP TABLE source_metadata", 0)
+        driver.execute(null, "DROP TABLE catalog_description", 0)
         for (column in listOf("match_evidence", "end_date", "studios")) driver.execute(null, "ALTER TABLE metadata DROP COLUMN $column", 0)
     }
 

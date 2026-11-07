@@ -78,6 +78,13 @@ class Library(
     @Volatile
     internal var downloadStore: DownloadStore? = null
     internal val metadataSync = MetadataSync(database, now)
+
+    /**
+     * Where each source stands when sources disagree (the oldest first), kept in memory: every page reads it,
+     * and only adding or removing a source changes it. Null until first asked for, and after either.
+     */
+    @Volatile
+    internal var sourceOrderCache: Map<String, Int>? = null
     private val smartSearch = SmartSearch(database)
     private val parser get() = MediaPathParser(maxYear = latestReleaseYear())
 
@@ -90,6 +97,7 @@ class Library(
     fun addSource(source: MediaSource, config: String) {
         val d = source.descriptor
         queries.insertSource(d.id.value, d.type, d.displayName, d.locality.name, config, Availability.UNKNOWN.name, now())
+        sourceOrderCache = null
     }
 
     fun sources(): List<SourceRecord> = queries.allSources().executeAsList().map { it.toModel() }
@@ -104,6 +112,7 @@ class Library(
         queries.deleteSourceSectionsOf(id.value)
         queries.deleteExcludedSectionsOf(id.value)
         queries.deleteSource(id.value)
+        sourceOrderCache = null
         writer.recomputeLibraries()
     }
 
@@ -223,9 +232,10 @@ class Library(
     private fun reidentifyFromListing(sourceId: SourceId): ScanReport {
         val versions = queries.versionsOfSource(sourceId.value).executeAsList()
         if (versions.any { it.source_identity != null }) {
+            val descriptions = queries.catalogDescriptionsOfSource(sourceId.value).executeAsList().associate { it.version_id to it.encoded }
             val entries = versions.mapNotNull { row ->
                 val stream = version(VersionId(row.id))?.version ?: return@mapNotNull null
-                ScanPlanner.decodeCatalogEntry(row.source_identity ?: return@mapNotNull null, row.path, row.size_bytes, row.modified_at, stream)
+                ScanPlanner.decodeCatalogEntry(row.source_identity ?: return@mapNotNull null, row.path, row.size_bytes, row.modified_at, stream, descriptions[row.id])
             }
             return database.transactionWithResult {
                 writer.apply(planner().planCatalog(sourceId, entries, overrides(sourceId), yearHints(sourceId)))
@@ -330,13 +340,15 @@ class Library(
     fun showDetail(showId: MediaId, scope: LibraryScope = LibraryScope.Unified): ShowDetail? {
         val show = item(showId) as? Show ?: return null
         val seasons = queries.presentSeasonsOfShow(showId.value, scope.sourceValue, scope.sectionValue).executeAsList().map { it.toModel() as Season }
-        val seasonDetails = seasons.sortedBy { if (it.number == 0) Int.MAX_VALUE else it.number }.map { season ->
-            val episodes = queries.presentEpisodesOfSeason(season.id.value, scope.sourceValue, scope.sectionValue).executeAsList()
+        val ordered = seasons.sortedBy { if (it.number == 0) Int.MAX_VALUE else it.number }.map { season ->
+            season to queries.presentEpisodesOfSeason(season.id.value, scope.sourceValue, scope.sectionValue).executeAsList()
                 .map { it.toModel() as Episode }.sortedWith(NextUp.episodeOrder)
-            SeasonDetail(season, entries(listOf(season), scope).single(), entries(episodes, scope))
         }
+        // The show, its seasons, and their episodes in one read: each read of entries costs its queries once.
+        val all = entries(listOf(show) + ordered.flatMap { (season, episodes) -> listOf(season) + episodes }, scope).associateBy { it.item.id }
+        val seasonDetails = ordered.map { (season, episodes) -> SeasonDetail(season, all.getValue(season.id), episodes.map { all.getValue(it.id) }) }
         val allEpisodes = seasonDetails.flatMap { detail -> detail.episodes.map { it.item as Episode } }
-        return ShowDetail(entries(listOf(show), scope).single(), seasonDetails, NextUp.of(allEpisodes, watchStates()))
+        return ShowDetail(all.getValue(show.id), seasonDetails, NextUp.of(allEpisodes, watchStates()))
     }
 
     /** The versions of a playable work in [scope], with source state, in stable order. */

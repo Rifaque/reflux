@@ -25,6 +25,15 @@ CREATE TABLE IF NOT EXISTS source_metadata (
 
 CREATE INDEX IF NOT EXISTS source_metadata_source ON source_metadata(source_id);
 
+-- What a catalog source said a version's work is about (its description, its show's and season's), encoded as in
+-- ScanPlanner, so a correction re-plans the source offline without losing it. Apart from `version`, whose rows
+-- every library read scans: descriptions there made each row several times larger. A show's or season's
+-- description is written with one of its episodes per scan, not with every one.
+CREATE TABLE IF NOT EXISTS catalog_description (
+    version_id TEXT NOT NULL PRIMARY KEY,
+    encoded TEXT NOT NULL
+);
+
 -- Provider entries already found carry no record of how; they were accepted by the matcher's rules, so the
 -- weakest accepted kind is assumed, except where the user chose the entry.
 UPDATE metadata SET match_evidence = CASE
