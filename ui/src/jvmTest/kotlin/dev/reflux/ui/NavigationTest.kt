@@ -344,4 +344,22 @@ class NavigationTest {
             assertEquals("Heat", app.searchQuery, "what was searched for is still there")
         }
     }
+
+    @Test
+    fun leftFromAnywhereInACentredPageIsTheRailNotTheButtonAboveIt() = television { app ->
+        awaitText("Recently Added")
+        runOnIdle { app.go(Destination.Sources) }
+        await("Add media") { has(isFocused() and hasText("Add media")) }
+        remote(app, Key.ARROW_DOWN)
+        await("the folder's card") { has(isFocused() and hasText("Media", substring = true)) }
+        remote(app, Key.DPAD_CENTER)
+        remote(app, Key.ARROW_DOWN)
+        val switch = hasText("In your library", substring = true) and SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Switch)
+        await("its switch") { has(isFocused() and switch) }
+        // Add media is above and to the left: it is not where Left goes.
+        remote(app, Key.ARROW_LEFT)
+        await("the rail, on Sources", { runCatching { onNode(isFocused()).fetchSemanticsNode().config.toString() }.getOrNull() }) { has(isFocused() and destination("Sources")) }
+        remote(app, Key.ARROW_RIGHT)
+        await("back on the switch", { runCatching { onNode(isFocused()).fetchSemanticsNode().let { n -> n.config.getOrNull(SemanticsProperties.Text).toString() + n.config.getOrNull(SemanticsProperties.ContentDescription) + n.boundsInRoot } }.getOrNull() }) { has(isFocused() and switch) }
+    }
 }

@@ -39,6 +39,8 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
@@ -92,6 +94,9 @@ import dev.reflux.ui.theme.tween
 class FocusedControl {
     internal var activate: (() -> Unit)? = null
 
+    /** The focused control itself, so focus can be put back on it (after a visit to the navigation rail). */
+    internal var requester: FocusRequester? = null
+
     /** Activates the focused control. Returns false when nothing activatable has focus. */
     fun activate(): Boolean = activate?.let { it(); true } ?: false
 }
@@ -131,11 +136,16 @@ fun Pressable(
     val active = enabled && (hovered || ring)
     val focusedControl = LocalFocusedControl.current
     val click by rememberUpdatedState(onClick)
+    val self = remember { FocusRequester() }
     if (focusedControl != null && focused && enabled) {
         DisposableEffect(focusedControl) {
             val action = { click() }
             focusedControl.activate = action
-            onDispose { if (focusedControl.activate === action) focusedControl.activate = null }
+            focusedControl.requester = self
+            onDispose {
+                if (focusedControl.activate === action) focusedControl.activate = null
+                if (focusedControl.requester === self) focusedControl.requester = null
+            }
         }
     }
     val scale by animateFloatAsState(if (active) 1f + (layout.focusScale - 1f) * lift else 1f, Motion.focusChange.tween())
@@ -150,6 +160,7 @@ fun Pressable(
             .focusGlow(shape, glow)
             .then(if (ring) Modifier.focusRing(shape) else Modifier)
             .clip(shape)
+            .focusRequester(self)
             .clickable(interactionSource = interaction, indication = null, enabled = enabled, onClickLabel = actionLabel, role = role, onClick = onClick),
         content = { content(active) },
     )
