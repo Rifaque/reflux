@@ -1,5 +1,7 @@
 package dev.reflux.ui.screens
 
+import dev.reflux.ui.theme.States
+import dev.reflux.ui.theme.Shapes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -106,23 +108,23 @@ internal fun IdentifyScreen(app: AppState, itemId: MediaId) {
 
 @Composable
 private fun Note(text: String) {
-    Text(text, Modifier.padding(vertical = 6.dp), color = RefluxColors.textSecondary)
+    Text(text, Modifier.padding(vertical = 6.dp), color = RefluxColors.contentSecondary)
 }
 
 /** One result: a small poster, its name and year, and enough of what it is about to tell it from the others. */
 @Composable
 private fun CandidateRow(candidate: IdentifyCandidate, enabled: Boolean, onChoose: () -> Unit) {
-    val shape = RoundedCornerShape(14.dp)
+    val shape = Shapes.medium
     Pressable(onChoose, Modifier.fillMaxWidth(), shape, enabled = enabled, lift = 0.15f) { active ->
         Row(
             Modifier.fillMaxWidth()
-                .background(Color.White.copy(alpha = if (active) 0.07f else 0f))
-                .border(1.dp, Color.White.copy(alpha = if (candidate.current) 0.14f else 0.06f), shape)
+                .background(States.layer(if (active) 0.07f else 0f))
+                .border(1.dp, States.layer(if (candidate.current) 0.14f else 0.06f), shape)
                 .padding(10.dp),
             horizontalArrangement = Arrangement.spacedBy(14.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            val poster = RoundedCornerShape(8.dp)
+            val poster = Shapes.small
             Box(Modifier.width(POSTER_WIDTH).aspectRatio(2f / 3f).clip(poster).clearAndSetSemantics { }) {
                 // Decoded at the size it is shown: a result never costs a full-size poster.
                 ArtworkImage(candidate.poster, POSTER_WIDTH, Modifier.fillMaxSize()) { TitlePlaceholder(candidate.title, null) }
@@ -133,8 +135,8 @@ private fun CandidateRow(candidate: IdentifyCandidate, enabled: Boolean, onChoos
                     if (candidate.current) Chip("Current match", emphasized = true)
                 }
                 val facts = listOfNotNull(candidate.year?.toString(), candidate.originalTitle)
-                if (facts.isNotEmpty()) Text(facts.joinToString("  ·  "), style = LocalTypography.current.metadata, color = RefluxColors.textSecondary, maxLines = 1)
-                candidate.overview?.let { Text(it, style = LocalTypography.current.caption, color = RefluxColors.textTertiary, maxLines = 2) }
+                if (facts.isNotEmpty()) Text(facts.joinToString("  ·  "), style = LocalTypography.current.metadata, color = RefluxColors.contentSecondary, maxLines = 1)
+                candidate.overview?.let { Text(it, style = LocalTypography.current.caption, color = RefluxColors.contentTertiary, maxLines = 2) }
             }
         }
     }

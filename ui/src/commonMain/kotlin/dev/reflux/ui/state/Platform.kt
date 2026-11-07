@@ -30,6 +30,10 @@ data class AccessibilityPreferences(
     val reduceMotion: Boolean = false,
     /** Text size on top of what the toolkit already applies (Android applies the system's own; a desktop does not). */
     val textScale: Float = 1f,
+    /** The user asked for less transparency (Windows' "Transparency effects" off): material is drawn opaque. */
+    val reduceTransparency: Boolean = false,
+    /** The user asked for more contrast (high contrast, high-contrast text): opaque material, stronger content and edges. */
+    val highContrast: Boolean = false,
 )
 
 /** What came of asking the user for a media folder. */
@@ -127,6 +131,12 @@ interface Platform {
 
     /** What the system's accessibility settings are now, as observable state. */
     val accessibility: AccessibilityPreferences get() = AccessibilityPreferences()
+
+    /**
+     * Whether this device should be spared costly visual effects (one the system calls low on memory). Its material
+     * is then at most ENHANCED (`design`'s MaterialTiers); nothing else changes.
+     */
+    val constrainedGraphics: Boolean get() = false
 
     /** Whether a playback engine is installed. Browsing never depends on it. */
     val canPlay: Boolean

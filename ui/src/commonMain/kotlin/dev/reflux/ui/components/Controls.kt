@@ -1,5 +1,7 @@
 package dev.reflux.ui.components
 
+import dev.reflux.ui.theme.States
+import dev.reflux.ui.theme.Shapes
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Canvas
@@ -15,6 +17,9 @@ import androidx.compose.foundation.focusable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.layout.width
+import dev.reflux.design.StateLayers
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -43,6 +48,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
@@ -80,6 +86,7 @@ import dev.reflux.core.input.InputModality
 import dev.reflux.design.FormFactor
 import dev.reflux.design.MaterialRole
 import dev.reflux.design.Motion
+import dev.reflux.ui.theme.AppearancePolicy
 import dev.reflux.ui.theme.LocalLayout
 import dev.reflux.ui.theme.LocalTypography
 import dev.reflux.ui.theme.RefluxColors
@@ -120,7 +127,7 @@ fun Modifier.absorbsPointer(): Modifier = pointerInput(Unit) { detectTapGestures
 fun Pressable(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    shape: Shape = RoundedCornerShape(12.dp),
+    shape: Shape = Shapes.medium,
     enabled: Boolean = true,
     lift: Float = 1f,
     role: Role = Role.Button,
@@ -132,6 +139,7 @@ fun Pressable(
     val interaction = remember { MutableInteractionSource() }
     val hovered by interaction.collectIsHoveredAsState()
     val focused by interaction.collectIsFocusedAsState()
+    val pressed by interaction.collectIsPressedAsState()
     val ring = focused && layout.showsFocus
     val active = enabled && (hovered || ring)
     val focusedControl = LocalFocusedControl.current
@@ -149,6 +157,9 @@ fun Pressable(
         }
     }
     val scale by animateFloatAsState(if (active) 1f + (layout.focusScale - 1f) * lift else 1f, Motion.focusChange.tween())
+    // Held down, a control dims a little under the finger or the click, whatever it is drawn as. It never changes
+    // size: a control that moved while pressed would scroll the page that keeps it in view, out from under the press.
+    val press by animateFloatAsState(if (enabled && pressed) 1f else 0f, Motion.focusChange.tween())
     // From a sofa a hairline is not enough: what a controller or a remote has focus on is also lit from behind.
     val glow by animateFloatAsState(if (ring && layout.modality == InputModality.DIRECTIONAL) 1f else 0f, Motion.focusChange.tween())
     Box(
@@ -160,18 +171,25 @@ fun Pressable(
             .focusGlow(shape, glow)
             .then(if (ring) Modifier.focusRing(shape) else Modifier)
             .clip(shape)
+            .drawWithContent {
+                drawContent()
+                if (press > 0f) drawRect(RefluxColors.scrim.copy(alpha = PRESSED_DIM * press))
+            }
             .focusRequester(self)
             .clickable(interactionSource = interaction, indication = null, enabled = enabled, onClickLabel = actionLabel, role = role, onClick = onClick),
         content = { content(active) },
     )
 }
 
+/** How much a control dims while it is held down. */
+private const val PRESSED_DIM = 0.16f
+
 /**
  * A block of text a keyboard or a remote can rest on, so that text longer than the screen is read by moving
  * through it: focus brings each block into view, with the same ring and glow as a control. It is never an action.
  */
 @Composable
-fun Modifier.readable(shape: Shape = RoundedCornerShape(14.dp)): Modifier {
+fun Modifier.readable(shape: Shape = Shapes.medium): Modifier {
     val layout = LocalLayout.current
     val interaction = remember { MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
@@ -186,14 +204,16 @@ fun Modifier.readable(shape: Shape = RoundedCornerShape(14.dp)): Modifier {
  */
 private fun Modifier.focusRing(shape: Shape): Modifier = drawBehind {
     val gap = RING_GAP.toPx()
-    val stroke = RING_WIDTH.toPx()
+    // At high contrast the ring is heavier as well as the edges around it.
+    val stroke = (if (AppearancePolicy.roles.stateStrength > 1f) RING_WIDTH_STRONG else RING_WIDTH).toPx()
     val spread = gap + stroke / 2
     val outline = shape.createOutline(Size(size.width + spread * 2, size.height + spread * 2), layoutDirection, this)
-    translate(-spread, -spread) { drawOutline(outline, RefluxColors.focusRing, style = Stroke(stroke)) }
+    translate(-spread, -spread) { drawOutline(outline, RefluxColors.focused, style = Stroke(stroke)) }
 }
 
 private val RING_GAP = 3.dp
 private val RING_WIDTH = 2.dp
+private val RING_WIDTH_STRONG = 3.dp
 
 /** How far a focus ring reaches outside its control. A list that clips leaves this much room at its ends. */
 val FocusRingReach = RING_GAP + RING_WIDTH + 1.dp
@@ -206,7 +226,7 @@ private fun Modifier.focusGlow(shape: Shape, strength: Float): Modifier = if (st
         val spread = start + ring * step
         val outline = shape.createOutline(Size(size.width + spread * 2, size.height + spread * 2), layoutDirection, this)
         translate(-spread, -spread) {
-            drawOutline(outline, Color.White.copy(alpha = 0.16f * strength * (1f - ring / (GLOW_RINGS + 1f))), style = Stroke(step))
+            drawOutline(outline, States.layer(0.16f * strength * (1f - ring / (GLOW_RINGS + 1f))), style = Stroke(step))
         }
     }
 }
@@ -239,15 +259,15 @@ fun Button(
         val surface = when (style) {
             // Active is the same surface lit fully; what cannot be done right now is not lit at all.
             ButtonStyle.PRIMARY -> Modifier.background(
-                if (!enabled) Color.White.copy(alpha = 0.08f) else if (active) RefluxColors.primaryAction else RefluxColors.primaryAction.copy(alpha = 0.9f),
+                if (!enabled) States.disabled else if (active) RefluxColors.primaryAction else RefluxColors.primaryAction.copy(alpha = 0.9f),
             )
-            ButtonStyle.GLASS -> Modifier.glass(MaterialRole.INTERACTIVE, shape).background(Color.White.copy(alpha = if (active) 0.14f else 0f))
-            ButtonStyle.QUIET -> Modifier.background(Color.White.copy(alpha = if (active) 0.10f else 0f))
+            ButtonStyle.GLASS -> Modifier.glass(MaterialRole.INTERACTIVE, shape).background(States.layer(if (active) StateLayers.ACTIVE_ON_GLASS else 0f))
+            ButtonStyle.QUIET -> Modifier.background(States.layer(if (active) StateLayers.PRESSED else 0f))
         }
         val color = when {
-            !enabled -> RefluxColors.textTertiary
+            !enabled -> RefluxColors.contentDisabled
             style == ButtonStyle.PRIMARY -> RefluxColors.onPrimaryAction
-            else -> RefluxColors.textPrimary
+            else -> RefluxColors.contentPrimary
         }
         Row(
             // At least this tall, so a large text size grows the button rather than cutting its words.
@@ -270,7 +290,7 @@ fun IconButton(
     modifier: Modifier = Modifier,
     size: Dp = 40.dp,
     glass: Boolean = false,
-    tint: Color = RefluxColors.textPrimary,
+    tint: Color = RefluxColors.contentPrimary,
     enabled: Boolean = true,
     /** Switched on (a favorite, a watched mark): shown by a lit surface rather than by a color. */
     selected: Boolean = false,
@@ -280,6 +300,8 @@ fun IconButton(
     role: Role = Role.Button,
     /** Whether what it opens is open, where it opens something in place (a list in the player); null otherwise. */
     expanded: Boolean? = null,
+    /** Wider than tall, as a pill (a destination in the phone's bar); round when null. */
+    width: Dp? = null,
 ) {
     val layout = LocalLayout.current
     val target = maxOf(size.value, minOf(layout.minTargetDp, 56f)).dp
@@ -301,12 +323,12 @@ fun IconButton(
     ) { active ->
         if (layout.modality == InputModality.POINTER) HoverLabel(pointer, if (shortcut != null) "$description  ·  $shortcut" else description)
         Box(
-            Modifier.size(target)
+            Modifier.size(width?.coerceAtLeast(target) ?: target, target)
                 .then(if (glass) Modifier.glass(MaterialRole.INTERACTIVE, CircleShape) else Modifier)
-                .background(Color.White.copy(alpha = (if (selected) 0.18f else 0f) + (if (active) 0.14f else 0f))),
+                .background(States.layer((if (selected) StateLayers.ON else 0f) + (if (active) StateLayers.ACTIVE_ON_GLASS else 0f))),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(icon, size = (target.value * 0.5f).dp, tint = if (enabled) tint else RefluxColors.textTertiary)
+            Icon(icon, size = (target.value * 0.5f).dp, tint = if (enabled) tint else RefluxColors.contentTertiary)
         }
     }
 }
@@ -326,7 +348,7 @@ private fun HoverLabel(pointer: HoverState, text: String) {
     if (!shown) return
     Popup(popupPositionProvider = AboveOrBelow) {
         // Nothing for a screen reader to read twice; tagged so tests can see it is there.
-        Box(Modifier.clearAndSetSemantics { testTag = "hover:$text" }.glass(MaterialRole.MODAL, RoundedCornerShape(8.dp)).padding(horizontal = 10.dp, vertical = 5.dp)) {
+        Box(Modifier.clearAndSetSemantics { testTag = "hover:$text" }.glass(MaterialRole.MODAL, Shapes.small).padding(horizontal = 10.dp, vertical = 5.dp)) {
             Text(text, style = LocalTypography.current.caption, maxLines = 1)
         }
     }
@@ -369,12 +391,12 @@ private object AboveOrBelow : PopupPositionProvider {
  */
 @Composable
 fun Chip(text: String, modifier: Modifier = Modifier, emphasized: Boolean = false, icon: Icon? = null) {
-    val shape = RoundedCornerShape(7.dp)
-    val color = if (emphasized) RefluxColors.textPrimary else RefluxColors.textSecondary
+    val shape = Shapes.small
+    val color = if (emphasized) RefluxColors.contentPrimary else RefluxColors.contentSecondary
     Row(
         modifier.clip(shape)
-            .background(Color.White.copy(alpha = if (emphasized) 0.14f else 0.04f))
-            .border(1.dp, if (emphasized) Color.Transparent else RefluxColors.hairline, shape)
+            .background(States.layer(if (emphasized) StateLayers.ACTIVE_ON_GLASS else StateLayers.REST))
+            .border(1.dp, if (emphasized) Color.Transparent else RefluxColors.divider, shape)
             .padding(horizontal = 8.dp, vertical = 3.dp),
         horizontalArrangement = Arrangement.spacedBy(5.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -387,7 +409,7 @@ fun Chip(text: String, modifier: Modifier = Modifier, emphasized: Boolean = fals
 /** Progress through a work: a hairline that reads at a glance without competing with artwork. */
 @Composable
 fun ProgressBar(fraction: Float, modifier: Modifier = Modifier, height: Dp = 3.dp, color: Color = RefluxColors.progress) {
-    Box(modifier.fillMaxWidth().height(height).clip(CircleShape).background(Color.White.copy(alpha = 0.22f))) {
+    Box(modifier.fillMaxWidth().height(height).clip(CircleShape).background(States.layer(0.22f))) {
         Box(Modifier.fillMaxHeight().fillMaxWidth(fraction.coerceIn(0f, 1f)).clip(CircleShape).background(color))
     }
 }
@@ -397,12 +419,12 @@ fun ProgressBar(fraction: Float, modifier: Modifier = Modifier, height: Dp = 3.d
  * changes; it never spins on its own.
  */
 @Composable
-fun ProgressRing(fraction: Float, modifier: Modifier = Modifier, stroke: Dp = 2.dp, color: Color = RefluxColors.textPrimary) {
+fun ProgressRing(fraction: Float, modifier: Modifier = Modifier, stroke: Dp = 2.dp, color: Color = RefluxColors.contentPrimary) {
     Canvas(modifier) {
         val width = stroke.toPx()
         val inset = width / 2
         val arc = Size(size.width - width, size.height - width)
-        drawArc(Color.White.copy(alpha = 0.18f), 0f, 360f, false, Offset(inset, inset), arc, style = Stroke(width))
+        drawArc(States.layer(0.18f), 0f, 360f, false, Offset(inset, inset), arc, style = Stroke(width))
         drawArc(color, -90f, 360f * fraction.coerceIn(0f, 1f), false, Offset(inset, inset), arc, style = Stroke(width, cap = StrokeCap.Round))
     }
 }
@@ -418,14 +440,14 @@ fun Tab(label: String, selected: Boolean, modifier: Modifier = Modifier, compact
     val target = if (layout.modality == InputModality.TOUCH) layout.minTargetDp.dp else if (compact) 0.dp else 36.dp
     Pressable(onClick, modifier.semantics { this.selected = selected }, CircleShape, lift = 0f, role = Role.Tab) { active ->
         Box(
-            Modifier.background(Color.White.copy(alpha = if (selected) 0.12f else if (active) 0.06f else 0f)).heightIn(min = target)
+            Modifier.background(States.layer(if (selected) StateLayers.SELECTED else if (active) StateLayers.HOVER else 0f)).heightIn(min = target)
                 .then(if (compact) Modifier.padding(horizontal = 11.dp, vertical = 7.dp) else Modifier.padding(horizontal = if (layout.formFactor == FormFactor.PHONE) 10.dp else 16.dp)),
             contentAlignment = Alignment.Center,
         ) {
             Text(
                 label,
                 style = if (compact) LocalTypography.current.captionStrong else LocalTypography.current.bodyStrong,
-                color = if (selected || active) RefluxColors.textPrimary else RefluxColors.textSecondary,
+                color = if (selected || active) RefluxColors.contentPrimary else RefluxColors.contentSecondary,
                 maxLines = 1,
             )
         }
@@ -506,7 +528,7 @@ fun Slider(
         val y = size.height / 2
         val stroke = thickness.toPx()
         val x = size.width * fraction.coerceIn(0f, 1f)
-        drawLine(Color.White.copy(alpha = 0.26f), Offset(0f, y), Offset(size.width, y), stroke, StrokeCap.Round)
+        drawLine(States.layer(0.26f), Offset(0f, y), Offset(size.width, y), stroke, StrokeCap.Round)
         if (x > 0f) drawLine(color, Offset(0f, y), Offset(x, y), stroke, StrokeCap.Round)
         marks.forEach { mark ->
             drawRect(Color.Black.copy(alpha = 0.6f), Offset(size.width * mark - 1.dp.toPx(), y - stroke / 2), Size(2.dp.toPx(), stroke))

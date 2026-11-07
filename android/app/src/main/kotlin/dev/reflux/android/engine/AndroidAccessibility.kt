@@ -1,6 +1,7 @@
 package dev.reflux.android.engine
 
 import android.accessibilityservice.AccessibilityServiceInfo
+import android.app.UiModeManager
 import android.content.Context
 import android.database.ContentObserver
 import android.os.Build
@@ -31,13 +32,14 @@ class AndroidAccessibility(context: Context) {
         // when another service was already running.
         manager.addTouchExplorationStateChangeListener { refresh() }
         if (Build.VERSION.SDK_INT >= 33) manager.addAccessibilityServicesStateChangeListener { refresh() }
-        application.contentResolver.registerContentObserver(
-            Settings.Global.getUriFor(Settings.Global.ANIMATOR_DURATION_SCALE),
-            false,
-            object : ContentObserver(Handler(Looper.getMainLooper())) {
-                override fun onChange(selfChange: Boolean) = refresh()
-            },
-        )
+        val observer = object : ContentObserver(Handler(Looper.getMainLooper())) {
+            override fun onChange(selfChange: Boolean) = refresh()
+        }
+        application.contentResolver.registerContentObserver(Settings.Global.getUriFor(Settings.Global.ANIMATOR_DURATION_SCALE), false, observer)
+        application.contentResolver.registerContentObserver(Settings.Secure.getUriFor(HIGH_TEXT_CONTRAST), false, observer)
+        if (Build.VERSION.SDK_INT >= 34) {
+            application.getSystemService(UiModeManager::class.java)?.addContrastChangeListener(application.mainExecutor) { refresh() }
+        }
     }
 
     private fun read() = AccessibilityPreferences(
@@ -45,5 +47,14 @@ class AndroidAccessibility(context: Context) {
         screenReader = manager.isEnabled && (manager.isTouchExplorationEnabled || manager.getEnabledAccessibilityServiceList(AccessibilityServiceInfo.FEEDBACK_SPOKEN).isNotEmpty()),
         // "Remove animations" sets this to 0. Android has no other reduce-motion setting.
         reduceMotion = Settings.Global.getFloat(application.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f,
+        // "High contrast text", and from Android 14 the system's contrast level (medium or high). Android has no
+        // reduce-transparency setting of its own; high contrast asks for the same opaque material.
+        highContrast = Settings.Secure.getInt(application.contentResolver, HIGH_TEXT_CONTRAST, 0) == 1 ||
+            (Build.VERSION.SDK_INT >= 34 && (application.getSystemService(UiModeManager::class.java)?.contrast ?: 0f) > 0f),
     )
+
+    private companion object {
+        /** The secure setting behind "High contrast text" (not in the public API, but readable). */
+        const val HIGH_TEXT_CONTRAST = "high_text_contrast_enabled"
+    }
 }

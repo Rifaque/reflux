@@ -206,7 +206,7 @@ private object AppIcon : Painter() {
                 lineTo(unit * 0.38f, unit * 0.72f)
                 close()
             },
-            RefluxColors.textPrimary,
+            RefluxColors.contentPrimary,
         )
     }
 }

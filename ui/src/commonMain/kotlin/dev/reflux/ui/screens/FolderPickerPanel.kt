@@ -1,5 +1,7 @@
 package dev.reflux.ui.screens
 
+import dev.reflux.ui.theme.States
+import dev.reflux.ui.theme.Shapes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Arrangement
@@ -69,7 +71,7 @@ internal fun FolderPickerPanel(picker: FolderPicker) {
                 if (current == null) "Choose where it is stored, then the folder it is in. Reflux only reads it."
                 else (picker.path.dropLast(1).map { it.name } + contents(current.listing)).joinToString("  ›  "),
                 style = LocalTypography.current.caption,
-                color = RefluxColors.textSecondary,
+                color = RefluxColors.contentSecondary,
                 maxLines = 2,
             )
         }
@@ -99,15 +101,15 @@ private fun contents(listing: FolderListing): String {
 
 @Composable
 private fun FolderRow(folder: BrowsedFolder, modifier: Modifier, enabled: Boolean, onOpen: () -> Unit) {
-    Pressable(onOpen, modifier.fillMaxWidth(), RoundedCornerShape(12.dp), enabled = enabled, lift = 0f) { active ->
+    Pressable(onOpen, modifier.fillMaxWidth(), Shapes.medium, enabled = enabled, lift = 0f) { active ->
         Row(
-            Modifier.fillMaxWidth().background(Color.White.copy(alpha = if (active) 0.10f else 0f)).padding(horizontal = 14.dp, vertical = 11.dp),
+            Modifier.fillMaxWidth().background(States.layer(if (active) 0.10f else 0f)).padding(horizontal = 14.dp, vertical = 11.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(Icon.FOLDER, size = 18.dp, tint = RefluxColors.textSecondary)
+            Icon(Icon.FOLDER, size = 18.dp, tint = RefluxColors.contentSecondary)
             Text(folder.name, Modifier.weight(1f), style = LocalTypography.current.bodyStrong, maxLines = 1)
-            Icon(Icon.CHEVRON_RIGHT, size = 14.dp, tint = RefluxColors.textTertiary)
+            Icon(Icon.CHEVRON_RIGHT, size = 14.dp, tint = RefluxColors.contentTertiary)
         }
     }
 }

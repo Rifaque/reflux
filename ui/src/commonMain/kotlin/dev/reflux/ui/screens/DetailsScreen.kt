@@ -1,5 +1,7 @@
 package dev.reflux.ui.screens
 
+import dev.reflux.ui.theme.States
+import dev.reflux.ui.theme.Shapes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -70,6 +72,7 @@ import dev.reflux.ui.components.Tab
 import androidx.compose.ui.graphics.lerp
 import dev.reflux.ui.components.rememberArtwork
 import dev.reflux.ui.components.rememberPageTone
+import dev.reflux.ui.components.ReportMaterialBackdrop
 import dev.reflux.ui.components.Button
 import dev.reflux.ui.components.ButtonStyle
 import dev.reflux.ui.components.Chip
@@ -142,26 +145,29 @@ private fun DetailsPage(app: AppState, itemId: MediaId, scope: LibraryScope) {
     ReportPageScroll(remember { derivedStateOf { list.firstVisibleItemIndex > 0 || list.firstVisibleItemScrollOffset > 0 } }.value)
     BoxWithConstraints(Modifier.fillMaxSize().pane(details.card.title)) {
         val television = layout.formFactor == FormFactor.TV
+        // Where the artwork runs under the navigation, the page's own content starts after it.
+        val contentStart = LocalChromeInsets.current.contentStart
         // The title and Play are in the first view however short the window (a phone on its side): the header
         // never asks for more than the screen leaves above the bottom chrome.
         val headerMin = minOf(if (television) 424.dp else 560.dp, maxHeight - LocalChromeInsets.current.bottom - 16.dp)
-        // The poster beside the title needs height as well as width.
-        val room = maxWidth >= 760.dp && (television || maxHeight >= 600.dp)
+        // The poster beside the title needs height as well as width, beside the navigation.
+        val room = maxWidth - contentStart >= 760.dp && (television || maxHeight >= 600.dp)
         val art = ArtworkChoice.header(details.card.poster, details.backdrop, maxWidth / headerMin.coerceAtLeast(1.dp), room)
         // The page takes the atmosphere of the artwork across the header down to its end, then fades to the plain
         // base. With a generated header the page takes the poster's, so it agrees with the artwork shown on it.
         val fill = rememberArtwork(art.fill, maxWidth)
         val poster = rememberArtwork(details.card.poster, 220.dp)
-        val atmosphere = rememberPageTone(fill ?: poster, details.card.title)
+        val atmosphere = rememberPageTone(fill ?: poster, details.card.title, app.mediaAtmosphere)
         var headerHeight by remember { mutableStateOf(520.dp) }
         val density = LocalDensity.current
         // The atmosphere recedes as the header scrolls away; versions, episodes, and cast below sit on the plain base.
         val tone = { lerp(RefluxColors.background, atmosphere, list.artworkPresence(with(density) { headerHeight.toPx() })) }
         PageAtmosphere(tone, headerHeight)
+        ReportMaterialBackdrop(fill ?: poster) { list.artworkPresence(with(density) { headerHeight.toPx() }) }
         val section = if (layout.formFactor == FormFactor.PHONE) 28.dp else 40.dp
-        LazyColumn(Modifier.fillMaxSize(), state = list, contentPadding = PaddingValues(bottom = LocalChromeInsets.current.bottom)) {
+        LazyColumn(Modifier.fillMaxSize(), state = list, contentPadding = PaddingValues(start = contentStart, bottom = LocalChromeInsets.current.bottom)) {
             item(key = "header") {
-                Header(app, details, offline, art.posterBeside, fill, poster, tone, headerMin, maxHeight, Modifier.onSizeChanged { headerHeight = with(density) { it.height.toDp() } })
+                Header(app, details, offline, art.posterBeside, fill, poster, tone, headerMin, maxHeight, Modifier.bleedStart(contentStart).onSizeChanged { headerHeight = with(density) { it.height.toDp() } })
             }
             if (details.versions.isNotEmpty()) {
                 item(key = "versions") { Versions(app, details, Modifier.padding(horizontal = layout.safeMarginDp.dp).padding(top = section)) }
@@ -218,12 +224,12 @@ private class Loaded(val details: DetailsModel?)
 @Composable
 private fun Gone(app: AppState) {
     AmbientBackdrop()
-    Box(Modifier.fillMaxSize().padding(top = LocalChromeInsets.current.top), contentAlignment = Alignment.Center) {
+    Box(Modifier.fillMaxSize().padding(start = LocalChromeInsets.current.contentStart, top = LocalChromeInsets.current.top), contentAlignment = Alignment.Center) {
         Column(Modifier.widthIn(max = 460.dp).padding(24.dp), verticalArrangement = Arrangement.spacedBy(14.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Text("This is no longer in your library", style = LocalTypography.current.headline, align = TextAlign.Center)
             Text(
                 "Its files were moved or deleted, or its source was removed. If they come back, so does everything you watched.",
-                color = RefluxColors.textSecondary,
+                color = RefluxColors.contentSecondary,
                 align = TextAlign.Center,
             )
             Button("Back", { if (!app.navigator.back()) app.navigator.show(Destination.Home) }, Modifier.initialFocus(), icon = Icon.BACK, style = ButtonStyle.PRIMARY)
@@ -253,19 +259,20 @@ private fun Header(
         Box(Modifier.fillMaxWidth().heightIn(min = minHeight)) {
             ArtworkImage(fill, Modifier.matchParentSize(), alignment = Alignment.TopCenter) { TitleBackdrop(card.title, poster = poster) }
             // Scrims keep the text readable and dissolve the backdrop into the page's own tone.
-            Box(Modifier.matchParentSize().artworkScrims(tone, left = 0.92f, right = 0.08f))
+            Box(Modifier.matchParentSize().artworkScrims(tone, left = 0.92f, right = 0.08f, start = LocalChromeInsets.current.contentStart))
             Row(
-                Modifier.align(Alignment.BottomStart).padding(horizontal = layout.safeMarginDp.dp).padding(top = LocalChromeInsets.current.top + 24.dp),
+                Modifier.align(Alignment.BottomStart).padding(start = LocalChromeInsets.current.contentStart).padding(horizontal = layout.safeMarginDp.dp)
+                    .padding(top = LocalChromeInsets.current.top + 24.dp),
                 horizontalArrangement = Arrangement.spacedBy(36.dp),
                 verticalAlignment = Alignment.Bottom,
             ) {
                 if (posterBeside) {
-                    val shape = RoundedCornerShape(14.dp)
+                    val shape = Shapes.medium
                     val posterWidth = if (television) 164.dp else 220.dp
                     // The title is beside it, and is said there.
                     Box(Modifier.width(posterWidth).aspectRatio(2f / 3f).shadow(32.dp, shape).clip(shape).clearAndSetSemantics { }) {
                         ArtworkImage(card.poster, posterWidth, Modifier.fillMaxSize()) { TitlePlaceholder(card.title, card.caption) }
-                        Box(Modifier.matchParentSize().border(1.dp, Color.White.copy(alpha = 0.08f), shape))
+                        Box(Modifier.matchParentSize().border(1.dp, States.layer(0.08f), shape))
                     }
                 }
                 Column(Modifier.weight(1f, fill = false).widthIn(max = 760.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -280,30 +287,30 @@ private fun Header(
                         maxLines = listOf(2, 5, 8)[titleStep],
                         onTextLayout = { if (it.hasVisualOverflow && titleStep < 2) titleStep++ },
                     )
-                    details.tagline?.takeIf { it.isNotBlank() }?.let { Text(it, style = LocalTypography.current.title.copy(fontWeight = FontWeight.Normal), color = RefluxColors.textSecondary, maxLines = 1) }
+                    details.tagline?.takeIf { it.isNotBlank() }?.let { Text(it, style = LocalTypography.current.title.copy(fontWeight = FontWeight.Normal), color = RefluxColors.contentSecondary, maxLines = 1) }
                     Row(
                         Modifier.horizontalScroll(rememberScrollState()),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         if (details.facts.isNotEmpty()) {
-                            Text(details.facts.joinToString("  ·  "), Modifier.padding(end = 4.dp), style = LocalTypography.current.metadata, color = RefluxColors.textSecondary, maxLines = 1)
+                            Text(details.facts.joinToString("  ·  "), Modifier.padding(end = 4.dp), style = LocalTypography.current.metadata, color = RefluxColors.contentSecondary, maxLines = 1)
                         }
                         details.badges.forEach { Chip(it) }
                         if (card.offline) Chip("Not connected")
                     }
                     // A short screen keeps what it takes to choose and play; the quietest lines wait for a taller one.
                     val short = viewport < 600.dp
-                    if (details.genres.isNotEmpty() && !short) Text(details.genres.joinToString("  ·  "), style = LocalTypography.current.caption, color = RefluxColors.textTertiary, maxLines = 1)
-                    details.overview?.takeIf { it.isNotBlank() }?.let { Text(it, Modifier.widthIn(max = 680.dp).padding(top = 2.dp), color = RefluxColors.textSecondary, maxLines = if (short) 2 else 5) }
-                    credit(details.credits)?.takeUnless { short }?.let { Text(it, style = LocalTypography.current.caption, color = RefluxColors.textTertiary, maxLines = 1) }
+                    if (details.genres.isNotEmpty() && !short) Text(details.genres.joinToString("  ·  "), style = LocalTypography.current.caption, color = RefluxColors.contentTertiary, maxLines = 1)
+                    details.overview?.takeIf { it.isNotBlank() }?.let { Text(it, Modifier.widthIn(max = 680.dp).padding(top = 2.dp), color = RefluxColors.contentSecondary, maxLines = if (short) 2 else 5) }
+                    credit(details.credits)?.takeUnless { short }?.let { Text(it, style = LocalTypography.current.caption, color = RefluxColors.contentTertiary, maxLines = 1) }
                     // Whether it has been started, and how much is left, said once and quietly.
                     val progress = Formatting.progress(card.entry.watchState)
                     val remaining = Formatting.remaining(card.entry.watchState)
                     if (progress != null && remaining != null) {
                         Row(Modifier.padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
                             ProgressBar(progress, Modifier.width(200.dp))
-                            Text(remaining, style = LocalTypography.current.caption, color = RefluxColors.textSecondary, maxLines = 1)
+                            Text(remaining, style = LocalTypography.current.caption, color = RefluxColors.contentSecondary, maxLines = 1)
                         }
                     }
                     // On a narrow screen the lesser actions go to a second line rather than off the edge. On a
@@ -360,7 +367,7 @@ private fun Header(
                     }
                     if (app.canIdentify && details.weak) {
                         Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Text("Reflux isn't sure what this is.", style = LocalTypography.current.caption, color = RefluxColors.textSecondary, maxLines = 1)
+                            Text("Reflux isn't sure what this is.", style = LocalTypography.current.caption, color = RefluxColors.contentSecondary, maxLines = 1)
                             Button("Identify", { app.navigator.open(Destination.Identify(card.id)) }, icon = Icon.SEARCH)
                         }
                     }
@@ -368,7 +375,7 @@ private fun Header(
                     offline?.label?.let { label ->
                         Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
                             offline.progress?.let { ProgressBar(it, Modifier.width(120.dp)) }
-                            Text(label, style = LocalTypography.current.caption, color = if (offline.failed) RefluxColors.unavailable else RefluxColors.textSecondary, maxLines = 1)
+                            Text(label, style = LocalTypography.current.caption, color = if (offline.failed) RefluxColors.unavailable else RefluxColors.contentSecondary, maxLines = 1)
                         }
                     }
                 }
@@ -399,7 +406,7 @@ private fun Versions(app: AppState, details: DetailsModel, modifier: Modifier = 
             SectionHeader(if (several) "Versions" else "Version")
             // Where the user's choice is set aside this time, that is what needs saying, in place of the general rule.
             val note = details.pinNote ?: "Play picks the best copy for this device. Choose another to play it instead.".takeIf { several }
-            note?.let { Text(it, style = LocalTypography.current.caption, color = if (details.pinNote != null) RefluxColors.textSecondary else RefluxColors.textTertiary) }
+            note?.let { Text(it, style = LocalTypography.current.caption, color = if (details.pinNote != null) RefluxColors.contentSecondary else RefluxColors.contentTertiary) }
         }
         // Keyed by version: choosing one reorders the list, and focus goes with the version it is on rather than
         // staying in its place, where a second press would choose another.
@@ -441,7 +448,7 @@ private fun VersionItem(row: VersionRow, bestReason: SelectionCriterion?, onPlay
 
 @Composable
 private fun VersionCard(row: VersionRow, bestReason: SelectionCriterion?, onPlay: () -> Unit, narrow: Boolean) {
-    val shape = RoundedCornerShape(16.dp)
+    val shape = Shapes.large
     val playable = row.ranked.playable
     // The one Play uses is lifted out of the list; the rest are outlines of the same shape.
     val chosen = row.best && bestReason != null
@@ -449,23 +456,23 @@ private fun VersionCard(row: VersionRow, bestReason: SelectionCriterion?, onPlay
     Pressable(onPlay, Modifier.fillMaxWidth(), shape, enabled = playable, lift = 0.15f, actionLabel = "Play") { active ->
         Row(
             Modifier.fillMaxWidth()
-                .background(Color.White.copy(alpha = (if (chosen) 0.06f else 0f) + (if (active) 0.06f else 0f)))
-                .border(1.dp, Color.White.copy(alpha = if (chosen) 0.14f else 0.07f), shape)
+                .background(States.layer((if (chosen) 0.06f else 0f) + (if (active) 0.06f else 0f)))
+                .border(1.dp, States.layer(if (chosen) 0.14f else 0.07f), shape)
                 .padding(horizontal = 18.dp, vertical = 15.dp),
             horizontalArrangement = Arrangement.spacedBy(16.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Box(
-                Modifier.size(34.dp).background(if (chosen && playable) RefluxColors.primaryAction else Color.White.copy(alpha = 0.08f), CircleShape),
+                Modifier.size(34.dp).background(if (chosen && playable) RefluxColors.primaryAction else States.layer(0.08f), CircleShape),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
                     Icon.PLAY,
                     size = 14.dp,
                     tint = when {
-                        !playable -> RefluxColors.textTertiary
+                        !playable -> RefluxColors.contentTertiary
                         chosen -> RefluxColors.onPrimaryAction
-                        else -> RefluxColors.textPrimary
+                        else -> RefluxColors.contentPrimary
                     },
                 )
             }
@@ -473,25 +480,25 @@ private fun VersionCard(row: VersionRow, bestReason: SelectionCriterion?, onPlay
             val mark: @Composable () -> Unit = { Chip(if (pinned) "Your choice" else "Recommended", emphasized = true, icon = if (pinned) null else Icon.CHECK) }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 if (chosen && narrow) Box(Modifier.padding(bottom = 4.dp)) { mark() }
-                Text(row.quality.joinToString("  ·  "), style = LocalTypography.current.title, color = if (playable) RefluxColors.textPrimary else RefluxColors.textTertiary, maxLines = 1)
+                Text(row.quality.joinToString("  ·  "), style = LocalTypography.current.title, color = if (playable) RefluxColors.contentPrimary else RefluxColors.contentTertiary, maxLines = 1)
                 // Why this is the one: a user's own choice says so in their terms, Best Version gives its reason.
                 if (chosen) {
                     Text(
                         if (pinned) "Play always uses this one" else Formatting.criterion(bestReason!!),
                         style = LocalTypography.current.metadata,
-                        color = RefluxColors.textSecondary,
+                        color = RefluxColors.contentSecondary,
                         maxLines = 1,
                     )
                 } else if (row.pinned) {
                     // The user's choice, set aside this time by something that outranks it (the cut being resumed,
                     // a source that is away): said, so the choice is not mistaken for forgotten.
-                    Text("Your choice", style = LocalTypography.current.metadata, color = RefluxColors.textSecondary, maxLines = 1)
+                    Text("Your choice", style = LocalTypography.current.metadata, color = RefluxColors.contentSecondary, maxLines = 1)
                 }
                 // Where it comes from matters more than how it is encoded.
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(row.sourceName, style = LocalTypography.current.captionStrong, color = RefluxColors.textSecondary, maxLines = 1)
+                    Text(row.sourceName, style = LocalTypography.current.captionStrong, color = RefluxColors.contentSecondary, maxLines = 1)
                     val rest = row.technical + row.notes
-                    if (rest.isNotEmpty()) Text("·  " + rest.joinToString("  ·  "), style = LocalTypography.current.caption, color = RefluxColors.textTertiary, maxLines = 1)
+                    if (rest.isNotEmpty()) Text("·  " + rest.joinToString("  ·  "), style = LocalTypography.current.caption, color = RefluxColors.contentTertiary, maxLines = 1)
                 }
             }
             if (chosen && !narrow) mark()
@@ -577,17 +584,17 @@ private fun EpisodeDownload(app: AppState, episode: MediaCard, mark: EpisodeOffl
         lift = 0.8f,
     ) { active ->
         Box(
-            Modifier.size(target).background(Color.White.copy(alpha = (if (state == DownloadState.COMPLETED) 0.18f else 0f) + (if (active) 0.14f else 0f))),
+            Modifier.size(target).background(States.layer((if (state == DownloadState.COMPLETED) 0.18f else 0f) + (if (active) 0.14f else 0f))),
             contentAlignment = Alignment.Center,
         ) {
-            if (busy) ProgressRing(mark.progress ?: 0f, Modifier.size(target * 0.74f), color = if (state == DownloadState.PAUSED) RefluxColors.textTertiary else RefluxColors.textPrimary)
+            if (busy) ProgressRing(mark.progress ?: 0f, Modifier.size(target * 0.74f), color = if (state == DownloadState.PAUSED) RefluxColors.contentTertiary else RefluxColors.contentPrimary)
             Icon(
                 if (state == DownloadState.COMPLETED) Icon.DOWNLOADED else Icon.DOWNLOAD,
                 size = target * if (busy) 0.36f else 0.46f,
                 tint = when {
                     stopped -> RefluxColors.unavailable
-                    state == null -> RefluxColors.textSecondary
-                    else -> RefluxColors.textPrimary
+                    state == null -> RefluxColors.contentSecondary
+                    else -> RefluxColors.contentPrimary
                 },
             )
         }
@@ -605,7 +612,7 @@ private fun SeasonDownload(app: AppState, seasonId: MediaId, status: OfflineStat
     val entry = LocalFocusEntry.current
     Row(modifier, horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
         status.label?.takeUnless { status.downloaded }?.let {
-            Text(it, style = LocalTypography.current.caption, color = if (status.failed) RefluxColors.unavailable else RefluxColors.textSecondary, maxLines = 1)
+            Text(it, style = LocalTypography.current.caption, color = if (status.failed) RefluxColors.unavailable else RefluxColors.contentSecondary, maxLines = 1)
         }
         status.progress?.let { ProgressBar(it, Modifier.width(72.dp)) }
         Button(
@@ -624,7 +631,7 @@ private fun SeasonDownload(app: AppState, seasonId: MediaId, status: OfflineStat
 @Composable
 private fun EpisodeRow(app: AppState, episode: MediaCard, modifier: Modifier = Modifier) {
     val libraryScope = LocalLibraryScope.current
-    val shape = RoundedCornerShape(14.dp)
+    val shape = Shapes.medium
     Pressable(
         { app.play(episode.id, scope = libraryScope) },
         modifier.fillMaxWidth().semantics { if (episode.watched) stateDescription = "Watched" },
@@ -634,31 +641,31 @@ private fun EpisodeRow(app: AppState, episode: MediaCard, modifier: Modifier = M
         actionLabel = "Play",
     ) { active ->
         Row(
-            Modifier.fillMaxWidth().background(Color.White.copy(alpha = if (active) 0.07f else 0f)).padding(8.dp),
+            Modifier.fillMaxWidth().background(States.layer(if (active) 0.07f else 0f)).padding(8.dp),
             horizontalArrangement = Arrangement.spacedBy(16.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            val thumbnail = RoundedCornerShape(10.dp)
+            val thumbnail = Shapes.small
             Box(Modifier.width(176.dp).aspectRatio(16f / 9f).clip(thumbnail)) {
                 ArtworkImage(episode.wide, 176.dp, Modifier.fillMaxSize()) { EpisodePlaceholder(episode) }
                 episode.progress?.let {
                     Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.6f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.55f))))
                     ProgressBar(it, Modifier.align(Alignment.BottomCenter).padding(6.dp))
                 }
-                Box(Modifier.matchParentSize().border(1.dp, Color.White.copy(alpha = 0.07f), thumbnail))
+                Box(Modifier.matchParentSize().border(1.dp, States.layer(0.07f), thumbnail))
             }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 // Up to three lines: beside its picture on a phone, one line keeps only the number, and episodes are
                 // told apart by name.
-                Text(episode.caption ?: episode.title, style = LocalTypography.current.bodyStrong, color = if (episode.offline) RefluxColors.textTertiary else RefluxColors.textPrimary, maxLines = 3)
+                Text(episode.caption ?: episode.title, style = LocalTypography.current.bodyStrong, color = if (episode.offline) RefluxColors.contentTertiary else RefluxColors.contentPrimary, maxLines = 3)
                 val facts = listOfNotNull(
                     "Not connected".takeIf { episode.offline },
                     Formatting.remaining(episode.entry.watchState) ?: episode.entry.metadata?.runtimeMinutes?.takeIf { it > 0 }?.let(Formatting::runtime),
                 )
-                if (facts.isNotEmpty()) Text(facts.joinToString("  ·  "), style = LocalTypography.current.caption, color = RefluxColors.textTertiary, maxLines = 1)
-                episode.entry.metadata?.overview?.takeIf { it.isNotBlank() }?.let { Text(it, style = LocalTypography.current.caption, color = RefluxColors.textSecondary, maxLines = 2) }
+                if (facts.isNotEmpty()) Text(facts.joinToString("  ·  "), style = LocalTypography.current.caption, color = RefluxColors.contentTertiary, maxLines = 1)
+                episode.entry.metadata?.overview?.takeIf { it.isNotBlank() }?.let { Text(it, style = LocalTypography.current.caption, color = RefluxColors.contentSecondary, maxLines = 2) }
             }
-            if (episode.watched) Icon(Icon.CHECK, Modifier.padding(end = 10.dp), size = 18.dp, tint = RefluxColors.textSecondary)
+            if (episode.watched) Icon(Icon.CHECK, Modifier.padding(end = 10.dp), size = 18.dp, tint = RefluxColors.contentSecondary)
         }
     }
 }
@@ -667,7 +674,7 @@ private fun EpisodeRow(app: AppState, episode: MediaCard, modifier: Modifier = M
 private fun EpisodePlaceholder(episode: MediaCard) {
     val (light, dark) = titleTones(episode.title)
     Box(Modifier.fillMaxSize().background(Brush.linearGradient(listOf(light, dark))), contentAlignment = Alignment.Center) {
-        Icon(Icon.PLAY, size = 22.dp, tint = Color.White.copy(alpha = 0.7f))
+        Icon(Icon.PLAY, size = 22.dp, tint = States.layer(0.7f))
     }
 }
 
@@ -680,15 +687,15 @@ private fun Cast(cast: List<Credit>, modifier: Modifier = Modifier) {
             items(cast) { person ->
                 // One stop: who, and whom they play. The picture, or the initials standing in for it, says nothing more.
                 Column(Modifier.width(104.dp).semantics(mergeDescendants = true) { }, verticalArrangement = Arrangement.spacedBy(6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Box(Modifier.size(84.dp).clip(CircleShape).background(RefluxColors.surfaceRaised).clearAndSetSemantics { }, contentAlignment = Alignment.Center) {
+                    Box(Modifier.size(84.dp).clip(CircleShape).background(RefluxColors.surfaceElevated).clearAndSetSemantics { }, contentAlignment = Alignment.Center) {
                         ArtworkImage(person.profileUrl?.let { ArtworkLocator.Remote(it) }, 84.dp, Modifier.fillMaxSize(), alignment = Alignment.TopCenter) {
                             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                Text(initials(person.name), style = LocalTypography.current.title, color = RefluxColors.textSecondary)
+                                Text(initials(person.name), style = LocalTypography.current.title, color = RefluxColors.contentSecondary)
                             }
                         }
                     }
                     Text(person.name, style = LocalTypography.current.captionStrong, maxLines = 1)
-                    person.character?.takeIf { it.isNotBlank() }?.let { Text(it, style = LocalTypography.current.caption, color = RefluxColors.textTertiary, maxLines = 1) }
+                    person.character?.takeIf { it.isNotBlank() }?.let { Text(it, style = LocalTypography.current.caption, color = RefluxColors.contentTertiary, maxLines = 1) }
                 }
             }
         }

@@ -1,5 +1,7 @@
 package dev.reflux.ui.screens
 
+import dev.reflux.ui.theme.States
+import dev.reflux.ui.theme.Shapes
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -113,7 +115,7 @@ internal fun Page(content: androidx.compose.foundation.lazy.LazyListScope.() -> 
 internal fun Heading(title: String, body: String?) {
     Column(Modifier.padding(bottom = 10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text(title, Modifier.heading(), style = LocalTypography.current.headline)
-        body?.let { Text(it, color = RefluxColors.textSecondary) }
+        body?.let { Text(it, color = RefluxColors.contentSecondary) }
     }
 }
 
@@ -138,7 +140,7 @@ internal fun SourcesScreen(app: AppState) {
             }
         }
         if (model.rows.isEmpty()) {
-            item(key = "empty") { Text("Nothing has been added yet. Add a folder, a server, or a network share, and your library builds itself.", color = RefluxColors.textTertiary) }
+            item(key = "empty") { Text("Nothing has been added yet. Add a folder, a server, or a network share, and your library builds itself.", color = RefluxColors.contentTertiary) }
         }
         items(model.rows, key = { it.id.value }) { row ->
             SourceItem(
@@ -155,9 +157,19 @@ internal fun SourcesScreen(app: AppState) {
                     "Titles and artwork couldn't be fetched just now. Your library works without them, and Reflux will try again.",
                     Modifier.padding(top = 6.dp),
                     style = LocalTypography.current.caption,
-                    color = RefluxColors.textTertiary,
+                    color = RefluxColors.contentTertiary,
                 )
             }
+        }
+        // The one appearance choice Reflux has: whether artwork may color the space around it. Off by default; it is
+        // not a theme, and nothing else about the interface changes with it (DECISIONS.md, 2026-11-07).
+        item(key = "atmosphere") {
+            SwitchRow(
+                "Media Atmosphere",
+                "Let artwork tint the space around it, on Home and on a title's page.",
+                app.mediaAtmosphere,
+                Modifier.padding(top = 12.dp),
+            ) { app.setMediaAtmosphere(!app.mediaAtmosphere) }
         }
         // Reflux itself, after everything about the library: a quiet way to its version, privacy, and credits.
         item(key = "about") {
@@ -183,7 +195,7 @@ private fun iconOf(kind: ConnectionKind?): Icon = when (kind) {
  */
 @Composable
 private fun SourceItem(app: AppState, row: SourceRow, expanded: Boolean, scanning: Boolean, onToggle: () -> Unit) {
-    val shape = RoundedCornerShape(18.dp)
+    val shape = Shapes.large
     var removing by remember(row.id) { mutableStateOf(false) }
     // Down from an open card goes to its first control, never straight to Remove because it happens to be nearer.
     val firstAction = remember { FocusRequester() }
@@ -210,13 +222,13 @@ private fun SourceItem(app: AppState, row: SourceRow, expanded: Boolean, scannin
             lift = 0f,
         ) { active ->
             Row(
-                Modifier.fillMaxWidth().background(Color.White.copy(alpha = if (active) 0.06f else 0f)).padding(horizontal = 16.dp, vertical = 14.dp),
+                Modifier.fillMaxWidth().background(States.layer(if (active) 0.06f else 0f)).padding(horizontal = 16.dp, vertical = 14.dp),
                 horizontalArrangement = Arrangement.spacedBy(14.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 val away = !row.connected || row.signInRequired
-                Box(Modifier.size(40.dp).background(Color.White.copy(alpha = 0.07f), CircleShape), contentAlignment = Alignment.Center) {
-                    Icon(iconOf(row.kind), size = 20.dp, tint = if (away) RefluxColors.unavailable else RefluxColors.textPrimary)
+                Box(Modifier.size(40.dp).background(States.layer(0.07f), CircleShape), contentAlignment = Alignment.Center) {
+                    Icon(iconOf(row.kind), size = 20.dp, tint = if (away) RefluxColors.unavailable else RefluxColors.contentPrimary)
                 }
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(row.name, style = LocalTypography.current.bodyStrong, maxLines = 1)
@@ -226,12 +238,12 @@ private fun SourceItem(app: AppState, row: SourceRow, expanded: Boolean, scannin
                         Text(
                             listOfNotNull(row.kindLabel, status, row.inclusionLabel).joinToString("  ·  "),
                             style = LocalTypography.current.caption,
-                            color = if (away && !scanning) RefluxColors.textSecondary else RefluxColors.textTertiary,
+                            color = if (away && !scanning) RefluxColors.contentSecondary else RefluxColors.contentTertiary,
                             maxLines = 1,
                         )
                     }
                 }
-                Icon(if (expanded) Icon.CHEVRON_UP else Icon.CHEVRON_DOWN, size = 16.dp, tint = RefluxColors.textTertiary)
+                Icon(if (expanded) Icon.CHEVRON_UP else Icon.CHEVRON_DOWN, size = 16.dp, tint = RefluxColors.contentTertiary)
             }
         }
         AnimatedVisibility(expanded, enter = fadeIn(Motion.controlsShow.tween()) + expandVertically(Motion.controlsShow.tween()), exit = fadeOut(Motion.controlsHide.tween()) + shrinkVertically(Motion.controlsHide.tween())) {
@@ -239,7 +251,7 @@ private fun SourceItem(app: AppState, row: SourceRow, expanded: Boolean, scannin
                 val facts = listOfNotNull(row.address, row.account?.let { "Signed in as $it" }, row.updated)
                 if (facts.isNotEmpty()) {
                     Column(Modifier.padding(start = 54.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        facts.forEach { Text(it, style = LocalTypography.current.caption, color = RefluxColors.textTertiary, maxLines = 1) }
+                        facts.forEach { Text(it, style = LocalTypography.current.caption, color = RefluxColors.contentTertiary, maxLines = 1) }
                     }
                 }
                 val note = when {
@@ -248,7 +260,7 @@ private fun SourceItem(app: AppState, row: SourceRow, expanded: Boolean, scannin
                     !row.connected -> "Reflux can't reach it right now. Everything from it stays in your library, and Reflux reconnects by itself when it's back."
                     else -> null
                 }
-                note?.let { Text(it, Modifier.padding(start = 54.dp), style = LocalTypography.current.caption, color = RefluxColors.textSecondary) }
+                note?.let { Text(it, Modifier.padding(start = 54.dp), style = LocalTypography.current.caption, color = RefluxColors.contentSecondary) }
                 if (!removing) {
                     // In the library or not: the source stays connected and can always be opened here.
                     SwitchRow(
@@ -262,13 +274,13 @@ private fun SourceItem(app: AppState, row: SourceRow, expanded: Boolean, scannin
                             if (row.included) "Libraries" else "Libraries · they count again when ${row.name} is in your library",
                             Modifier.padding(start = 4.dp, top = 4.dp).heading(),
                             style = LocalTypography.current.captionStrong,
-                            color = RefluxColors.textSecondary,
+                            color = RefluxColors.contentSecondary,
                         )
                         row.libraries.forEach { library ->
                             LibraryRow(app, row, library, if (library == row.libraries.last()) open else null)
                         }
                     } else if (row.sectioned && row.connected) {
-                        Text("No libraries with movies or shows yet.", Modifier.padding(start = 4.dp), style = LocalTypography.current.caption, color = RefluxColors.textTertiary)
+                        Text("No libraries with movies or shows yet.", Modifier.padding(start = 4.dp), style = LocalTypography.current.caption, color = RefluxColors.contentTertiary)
                     }
                 }
                 if (removing) {
@@ -281,7 +293,7 @@ private fun SourceItem(app: AppState, row: SourceRow, expanded: Boolean, scannin
                                 "Its movies and shows leave your library. What you have watched is remembered, and nothing on it is touched. To keep it but out of your library, switch off In your library instead."
                             },
                             style = LocalTypography.current.caption,
-                            color = RefluxColors.textSecondary,
+                            color = RefluxColors.contentSecondary,
                         )
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Button("Remove", {
@@ -327,7 +339,7 @@ private fun LibraryRow(app: AppState, row: SourceRow, library: SourceLibrary, do
             dimmed = !row.included,
         ) { app.setLibraryIncluded(row.id, library.id, !library.included, library.name) }
         val back = rememberFocusReturn("sources/library/${row.id.value}/${library.id}")
-        IconButton(Icon.CHEVRON_RIGHT, "Open ${library.name}", { back.leaving(); app.navigator.open(Destination.SourceLibrary(row.id, library.id)) }, back.modifier, tint = RefluxColors.textSecondary)
+        IconButton(Icon.CHEVRON_RIGHT, "Open ${library.name}", { back.leaving(); app.navigator.open(Destination.SourceLibrary(row.id, library.id)) }, back.modifier, tint = RefluxColors.contentSecondary)
     }
 }
 
@@ -337,24 +349,24 @@ private fun LibraryRow(app: AppState, row: SourceRow, library: SourceLibrary, do
  */
 @Composable
 private fun SwitchRow(title: String, body: String?, on: Boolean, modifier: Modifier = Modifier, dimmed: Boolean = false, onToggle: () -> Unit) {
-    val shape = RoundedCornerShape(14.dp)
+    val shape = Shapes.medium
     Pressable(onToggle, modifier.fillMaxWidth().semantics { toggleableState = ToggleableState(on) }, shape, lift = 0f, role = Role.Switch) { active ->
         Row(
-            Modifier.fillMaxWidth().background(Color.White.copy(alpha = if (active) 0.07f else 0.03f)).padding(horizontal = 14.dp, vertical = 11.dp),
+            Modifier.fillMaxWidth().background(States.layer(if (active) 0.07f else 0.03f)).padding(horizontal = 14.dp, vertical = 11.dp),
             horizontalArrangement = Arrangement.spacedBy(14.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(title, style = LocalTypography.current.bodyStrong, color = if (on && !dimmed) RefluxColors.textPrimary else RefluxColors.textSecondary, maxLines = 1)
-                body?.let { Text(it, style = LocalTypography.current.caption, color = RefluxColors.textTertiary, maxLines = 2) }
+                Text(title, style = LocalTypography.current.bodyStrong, color = if (on && !dimmed) RefluxColors.contentPrimary else RefluxColors.contentSecondary, maxLines = 1)
+                body?.let { Text(it, style = LocalTypography.current.caption, color = RefluxColors.contentTertiary, maxLines = 2) }
             }
             val mark = if (dimmed) 0.45f else 1f
             Box(
-                Modifier.size(44.dp, 26.dp).background(Color.White.copy(alpha = if (on) 0.9f * mark else 0f), CircleShape)
-                    .border(1.5.dp, Color.White.copy(alpha = if (on) 0f else 0.35f * mark), CircleShape).padding(3.dp),
+                Modifier.size(44.dp, 26.dp).background(States.layer(if (on) 0.9f * mark else 0f), CircleShape)
+                    .border(1.5.dp, States.layer(if (on) 0f else 0.35f * mark), CircleShape).padding(3.dp),
                 contentAlignment = if (on) Alignment.CenterEnd else Alignment.CenterStart,
             ) {
-                Box(Modifier.size(20.dp).background(if (on) RefluxColors.background else Color.White.copy(alpha = 0.55f * mark), CircleShape))
+                Box(Modifier.size(20.dp).background(if (on) RefluxColors.background else States.layer(0.55f * mark), CircleShape))
             }
         }
     }
@@ -402,22 +414,22 @@ internal fun AddSourceScreen(app: AppState) {
 
 @Composable
 private fun Option(icon: Icon, title: String, body: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    val shape = RoundedCornerShape(18.dp)
+    val shape = Shapes.large
     Pressable(onClick, modifier.fillMaxWidth(), shape, lift = 0.15f) { active ->
         Row(
-            Modifier.fillMaxWidth().glass(MaterialRole.ELEVATED, shape).background(Color.White.copy(alpha = if (active) 0.07f else 0f))
+            Modifier.fillMaxWidth().glass(MaterialRole.ELEVATED, shape).background(States.layer(if (active) 0.07f else 0f))
                 .padding(horizontal = 18.dp, vertical = 18.dp),
             horizontalArrangement = Arrangement.spacedBy(16.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Box(Modifier.size(44.dp).background(Color.White.copy(alpha = 0.07f), CircleShape), contentAlignment = Alignment.Center) {
+            Box(Modifier.size(44.dp).background(States.layer(0.07f), CircleShape), contentAlignment = Alignment.Center) {
                 Icon(icon, size = 22.dp)
             }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 Text(title, style = LocalTypography.current.bodyStrong, maxLines = 1)
-                Text(body, style = LocalTypography.current.caption, color = RefluxColors.textSecondary, maxLines = 2)
+                Text(body, style = LocalTypography.current.caption, color = RefluxColors.contentSecondary, maxLines = 2)
             }
-            Icon(Icon.CHEVRON_RIGHT, size = 16.dp, tint = RefluxColors.textTertiary)
+            Icon(Icon.CHEVRON_RIGHT, size = 16.dp, tint = RefluxColors.contentTertiary)
         }
     }
 }
@@ -472,7 +484,7 @@ internal fun ConnectScreen(app: AppState, destination: Destination.Connect) {
                     onFocus = typing, onDone = { focus.moveFocus(FocusDirection.Down) },
                 )
                 if (!server && setup.examples.size > 1) {
-                    Text("For example ${setup.examples.joinToString(" or ")}", style = LocalTypography.current.caption, color = RefluxColors.textTertiary)
+                    Text("For example ${setup.examples.joinToString(" or ")}", style = LocalTypography.current.caption, color = RefluxColors.contentTertiary)
                 }
                 TextInput(
                     setup.username, { setup.username = it }, if (plex) "Plex account email or user name" else if (setup.anonymous) "User name (if it asks)" else "User name",
@@ -495,7 +507,7 @@ internal fun ConnectScreen(app: AppState, destination: Destination.Connect) {
                 AnimatedVisibility(setup.problem != null, enter = fadeIn(Motion.controlsShow.tween()), exit = fadeOut(Motion.controlsHide.tween())) {
                     Row(Modifier.padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Top) {
                         Box(Modifier.padding(top = 6.dp).size(6.dp).background(RefluxColors.error, CircleShape))
-                        Text(setup.problem.orEmpty(), color = RefluxColors.textPrimary)
+                        Text(setup.problem.orEmpty(), color = RefluxColors.contentPrimary)
                     }
                 }
             }

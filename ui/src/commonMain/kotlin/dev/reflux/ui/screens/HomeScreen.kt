@@ -1,5 +1,6 @@
 package dev.reflux.ui.screens
 
+import dev.reflux.ui.theme.States
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -59,6 +60,8 @@ import dev.reflux.ui.activityLabel
 import dev.reflux.ui.components.ArtworkImage
 import dev.reflux.ui.components.rememberArtwork
 import dev.reflux.ui.components.rememberPageTone
+import dev.reflux.ui.components.ReportMaterialBackdrop
+import androidx.compose.ui.layout.layout
 import dev.reflux.ui.components.Button
 import dev.reflux.ui.components.ButtonStyle
 import dev.reflux.ui.components.FocusScrollInsets
@@ -102,9 +105,12 @@ internal fun HomeScreen(app: AppState) {
         // upright); otherwise the hero is generated, in the color of the poster where there is one.
         val heroImage = rememberArtwork(featured?.let { ArtworkChoice.landscape(it.wide, it.poster, width / heroHeight) }.orEmpty(), width)
         val heroPoster = rememberArtwork(featured?.poster, 220.dp)
-        val atmosphere = if (featured != null) rememberPageTone(heroImage ?: heroPoster, featured.title) else RefluxColors.background
+        val atmosphere = if (featured != null) rememberPageTone(heroImage ?: heroPoster, featured.title, app.mediaAtmosphere) else RefluxColors.background
         val list = rememberLazyListState()
         val heroPx = with(LocalDensity.current) { heroHeight.toPx() }
+        ReportMaterialBackdrop(heroImage ?: heroPoster) { list.artworkPresence(heroPx) }
+        // Where the artwork runs under the navigation, the page's own content starts after it.
+        val contentStart = LocalChromeInsets.current.contentStart
         // The atmosphere belongs to the hero: it recedes as the hero scrolls away, and the library beneath is plain.
         val tone = { lerp(RefluxColors.background, atmosphere, list.artworkPresence(heroPx)) }
         PageAtmosphere(tone, heroHeight)
@@ -113,10 +119,10 @@ internal fun HomeScreen(app: AppState) {
             LazyColumn(
                 Modifier.fillMaxSize(),
                 state = list,
-                contentPadding = PaddingValues(bottom = LocalChromeInsets.current.bottom),
+                contentPadding = PaddingValues(start = contentStart, bottom = LocalChromeInsets.current.bottom),
                 verticalArrangement = Arrangement.spacedBy(if (LocalLayout.current.formFactor == FormFactor.PHONE) 26.dp else 36.dp),
             ) {
-                featured?.let { featured -> item(key = "featured") { Box(place(0)) { Hero(app, featured, heroImage, heroPoster, tone, home.featuredOverview, heroHeight) } } }
+                featured?.let { featured -> item(key = "featured") { Box(place(0).bleedStart(contentStart)) { Hero(app, featured, heroImage, heroPoster, tone, home.featuredOverview, heroHeight) } } }
                 val first = if (home.featured == null) 0 else 1
                 itemsIndexed(home.rows, key = { _, row -> row.id }) { index, row -> Box(place(first + index)) { RowSection(app, row) } }
             }
@@ -137,6 +143,20 @@ internal fun HomeScreen(app: AppState) {
             rows { Modifier }
         }
     }
+}
+
+/**
+ * Lets artwork run [bleed] further toward the start than its place in the page, under the navigation, while
+ * taking only its place in the layout. Nothing else moves; zero is no change.
+ */
+internal fun Modifier.bleedStart(bleed: Dp): Modifier = if (bleed <= 0.dp) this else layout { measurable, constraints ->
+    val extra = bleed.roundToPx()
+    val wider = constraints.copy(
+        minWidth = constraints.minWidth + extra,
+        maxWidth = if (constraints.hasBoundedWidth) constraints.maxWidth + extra else constraints.maxWidth,
+    )
+    val placeable = measurable.measure(wider)
+    layout((placeable.width - extra).coerceAtLeast(0), placeable.height) { placeable.place(-extra, 0) }
 }
 
 /** Brings an item to [offset] the way the page moves, or at once with motion reduced. */
@@ -168,9 +188,19 @@ internal fun PageAtmosphere(tone: () -> Color, heroHeight: Dp) {
 }
 
 /** Scrims that keep text readable over artwork and dissolve it into the page's [tone]. */
-internal fun Modifier.artworkScrims(tone: () -> Color, left: Float, right: Float): Modifier = drawBehind {
+internal fun Modifier.artworkScrims(tone: () -> Color, left: Float, right: Float, start: Dp = 0.dp): Modifier = drawBehind {
     val color = tone()
-    drawRect(Brush.horizontalGradient(0f to color.copy(alpha = left), 0.58f to color.copy(alpha = left * 0.4f), 1f to color.copy(alpha = right)))
+    // Darkest where the text starts. Where the artwork runs on under the navigation ([start]), it is shaded only
+    // lightly: the navigation's own material keeps its labels readable, and the artwork stays visible beneath it.
+    val from = (start.toPx() / size.width).coerceIn(0f, 0.5f)
+    drawRect(
+        Brush.horizontalGradient(
+            0f to color.copy(alpha = if (from > 0f) left * UNDER_NAVIGATION else left),
+            from to color.copy(alpha = left),
+            from + 0.58f * (1f - from) to color.copy(alpha = left * 0.4f),
+            1f to color.copy(alpha = right),
+        ),
+    )
     drawRect(Brush.verticalGradient(0f to color.copy(alpha = 0.55f), 0.23f to Color.Transparent, 0.55f to color.copy(alpha = 0.2f), 1f to color))
     // Where the navigation sits over the artwork, before the page scrolls and it turns to glass: a band of
     // fixed height, whatever the artwork's, so its labels and icons hold 3:1 over a bright sky.
@@ -180,6 +210,9 @@ internal fun Modifier.artworkScrims(tone: () -> Color, left: Float, right: Float
     // 2.625x) from leaving a sliver of the artwork showing through the antialiased bottom row.
     drawRect(color, Offset(0f, size.height - 1f), Size(size.width, 2f))
 }
+
+/** How much of the text's shade the artwork under the navigation keeps. */
+private const val UNDER_NAVIGATION = 0.35f
 
 /** The band at the top of artwork that keeps the navigation over it legible. */
 private val NAVIGATION_SCRIM = 160.dp
@@ -195,19 +228,20 @@ private fun Hero(app: AppState, card: MediaCard, image: ImageBitmap?, poster: Im
     // At least this tall: a large text size makes it taller rather than running its words up under the navigation.
     Box(Modifier.fillMaxWidth().heightIn(min = height)) {
         ArtworkImage(image, Modifier.matchParentSize(), alignment = Alignment.TopCenter) { TitleBackdrop(card.title, poster = poster) }
-        Box(Modifier.matchParentSize().artworkScrims(tone, left = 0.9f, right = 0f))
+        Box(Modifier.matchParentSize().artworkScrims(tone, left = 0.9f, right = 0f, start = LocalChromeInsets.current.contentStart))
         Column(
-            Modifier.align(Alignment.BottomStart).padding(horizontal = layout.safeMarginDp.dp).padding(top = LocalChromeInsets.current.top, bottom = 4.dp).widthIn(max = 600.dp),
+            Modifier.align(Alignment.BottomStart).padding(start = LocalChromeInsets.current.contentStart).padding(horizontal = layout.safeMarginDp.dp)
+                .padding(top = LocalChromeInsets.current.top, bottom = 4.dp).widthIn(max = 600.dp),
             verticalArrangement = Arrangement.spacedBy(if (compact) 10.dp else 14.dp),
         ) {
             val inProgress = card.entry.watchState?.inProgress == true
             // The title speaks for itself; only something worth knowing is said above it, quietly.
-            if (inProgress) Text("Continue watching", style = LocalTypography.current.metadata, color = RefluxColors.textSecondary)
+            if (inProgress) Text("Continue watching", style = LocalTypography.current.metadata, color = RefluxColors.contentSecondary)
             Text(card.title, Modifier.heading(), style = LocalTypography.current.display, maxLines = 2)
             val facts = (listOfNotNull("Not connected".takeIf { card.offline }, card.caption.takeIf { card.detailsId != card.id }) + Formatting.facts(card.entry) +
                 listOfNotNull(Formatting.remaining(card.entry.watchState))).distinct()
-            if (facts.isNotEmpty()) Text(facts.joinToString("  ·  "), style = LocalTypography.current.metadata, color = RefluxColors.textSecondary, maxLines = 1)
-            if (!overview.isNullOrBlank()) Text(overview, Modifier.widthIn(max = 540.dp), color = RefluxColors.textSecondary, maxLines = if (compact) 2 else 3)
+            if (facts.isNotEmpty()) Text(facts.joinToString("  ·  "), style = LocalTypography.current.metadata, color = RefluxColors.contentSecondary, maxLines = 1)
+            if (!overview.isNullOrBlank()) Text(overview, Modifier.widthIn(max = 540.dp), color = RefluxColors.contentSecondary, maxLines = if (compact) 2 else 3)
             Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Button(if (inProgress) "Resume" else "Play", { app.play(card.id) }, Modifier.initialFocus(), icon = Icon.PLAY, style = ButtonStyle.PRIMARY, enabled = !card.offline)
                 Button("Details", { app.navigator.open(Destination.Details(card.detailsId)) })
@@ -276,8 +310,8 @@ private fun RowPager(visible: Boolean, icon: Icon, description: String, modifier
 internal fun AmbientBackdrop() {
     Box(
         Modifier.fillMaxSize().drawBehind {
-            drawRect(Brush.radialGradient(listOf(Color.White.copy(alpha = 0.075f), Color.Transparent), Offset(size.width * 0.5f, 0f), size.maxDimension * 0.6f))
-            drawRect(Brush.radialGradient(listOf(Color.White.copy(alpha = 0.025f), Color.Transparent), Offset(size.width * 0.5f, size.height), size.maxDimension * 0.45f))
+            drawRect(Brush.radialGradient(listOf(States.layer(0.075f), Color.Transparent), Offset(size.width * 0.5f, 0f), size.maxDimension * 0.6f))
+            drawRect(Brush.radialGradient(listOf(States.layer(0.025f), Color.Transparent), Offset(size.width * 0.5f, size.height), size.maxDimension * 0.45f))
         },
     )
 }
@@ -290,7 +324,8 @@ internal fun AmbientBackdrop() {
 internal fun EmptyLibrary(app: AppState, sources: List<SourceRecord>) {
     val activity by app.activity.collectAsState()
     AmbientBackdrop()
-    Box(Modifier.fillMaxSize().padding(top = LocalChromeInsets.current.top, bottom = LocalChromeInsets.current.bottom), contentAlignment = Alignment.Center) {
+    val insets = LocalChromeInsets.current
+    Box(Modifier.fillMaxSize().padding(start = insets.contentStart, top = insets.top, bottom = insets.bottom), contentAlignment = Alignment.Center) {
         Column(
             Modifier.widthIn(max = 520.dp).padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
@@ -309,7 +344,7 @@ internal fun EmptyLibrary(app: AppState, sources: List<SourceRecord>) {
                     "No movies or shows were found in ${sources.joinToString { it.displayName }}. Add another folder, or add media to this one and it shows up by itself."
             }
             Text(headline, Modifier.heading(), style = LocalTypography.current.headline, align = TextAlign.Center)
-            Text(body, color = RefluxColors.textSecondary, align = TextAlign.Center)
+            Text(body, color = RefluxColors.contentSecondary, align = TextAlign.Center)
             Spacer(Modifier.height(6.dp))
             Button(
                 if (sources.isEmpty()) "Choose a folder" else "Add another folder",

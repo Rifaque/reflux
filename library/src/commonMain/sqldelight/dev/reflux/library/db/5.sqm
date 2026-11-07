@@ -1,0 +1,6 @@
+-- Reflux's own preferences (docs/DESIGN.md, "Media Atmosphere"): small values the viewer chose, kept on the device
+-- with the library. None of them is about media; none of them changes what a source holds.
+CREATE TABLE IF NOT EXISTS setting (
+    key TEXT NOT NULL PRIMARY KEY,
+    value TEXT NOT NULL
+);

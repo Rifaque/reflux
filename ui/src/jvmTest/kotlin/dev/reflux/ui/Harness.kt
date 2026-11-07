@@ -48,6 +48,8 @@ internal fun screen(
     fontScale: Float = 1f,
     /** Around the whole application, for what a shell would provide: the system keyboard, for one. */
     around: @Composable (@Composable () -> Unit) -> Unit = { it() },
+    /** The system's bars around the window, as an edge-to-edge shell passes them. */
+    bars: SystemBars = SystemBars.None,
     block: DesktopComposeUiTest.(AppState) -> Unit,
 ) = runDesktopComposeUiTest((width * density).toInt(), (height * density).toInt()) {
     var app: AppState? = null
@@ -58,7 +60,7 @@ internal fun screen(
         CompositionLocalProvider(LocalDensity provides Density(density, fontScale)) {
             around {
                 Box(Modifier.fillMaxSize()) {
-                    RefluxApp(state)
+                    RefluxApp(state, bars = bars)
                     state.playback?.let { session ->
                         Box(Modifier.fillMaxSize().background(Brush.linearGradient(listOf(Color(0xFF5A3E2B), Color(0xFF0E1A2B)))))
                         PlayerOverlay(state, session)

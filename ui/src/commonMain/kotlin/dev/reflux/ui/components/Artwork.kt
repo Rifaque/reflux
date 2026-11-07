@@ -1,5 +1,7 @@
 package dev.reflux.ui.components
 
+import dev.reflux.ui.theme.States
+import dev.reflux.ui.theme.Shapes
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Image
@@ -42,7 +44,13 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.reflux.core.model.ArtworkLocator
+import androidx.compose.runtime.DisposableEffect
+import dev.reflux.design.Argb
 import dev.reflux.design.ArtworkAtmosphere
+import dev.reflux.design.Materials
+import dev.reflux.design.Palette
+import dev.reflux.ui.theme.LocalMaterialBackdrop
+import dev.reflux.ui.theme.LocalMaterialTier
 import dev.reflux.design.Motion
 import dev.reflux.ui.state.ArtworkChoice
 import dev.reflux.ui.state.ArtworkLoader
@@ -100,7 +108,7 @@ fun ArtworkImage(
     alignment: Alignment = Alignment.Center,
     fallback: @Composable () -> Unit = {},
 ) {
-    val alpha by animateFloatAsState(if (image != null) 1f else 0f, Motion.controlsShow.tween())
+    val alpha by animateFloatAsState(if (image != null) 1f else 0f, Motion.artworkReveal.tween())
     Box(modifier) {
         if (alpha < 1f) fallback()
         if (image != null) {
@@ -148,21 +156,67 @@ private fun sample(image: ImageBitmap): LongArray {
 private const val ATMOSPHERE_ROWS = 24
 
 /**
- * The tone of the page around a work: the background, washed with the atmosphere of its [image] or, while
- * there is none, of the backdrop generated for [title]. Grey artwork leaves the page neutral. Only ever a
- * background: controls, navigation, and focus stay neutral whatever the artwork (docs/DESIGN.md).
+ * What has been learnt from a piece of artwork, kept so a page visited again does not read its pixels again: its
+ * dominant hue (for its atmosphere and a generated backdrop) and how bright it is (for the material over it).
+ * Keyed by the decoded image's identity and size, never holding the image itself; a few dozen small entries.
+ */
+internal object ArtworkSamples {
+    private const val CAPACITY = 96
+
+    /** What one read of an image's pixels gives: its dominant hue, and the grey its bright parts come to. */
+    private class Facts(val hue: Double?, val backdrop: Argb?)
+
+    private val facts = object : LinkedHashMap<Long, Facts>(CAPACITY, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<Long, Facts>?) = size > CAPACITY
+    }
+
+    /** How many times pixels were read, for the test that holds this to once per image. */
+    internal var reads = 0
+        private set
+
+    private fun key(image: ImageBitmap): Long = (image.hashCode().toLong() shl 32) xor (image.width.toLong() shl 16) xor image.height.toLong()
+
+    private fun of(image: ImageBitmap): Facts = facts.getOrPut(key(image)) {
+        reads++
+        val pixels = runCatching { sample(image) }.getOrDefault(LongArray(0))
+        Facts(ArtworkAtmosphere.dominantHue(pixels), Materials.backdropOf(pixels))
+    }
+
+    fun hue(image: ImageBitmap): Double? = of(image).hue
+
+    fun backdrop(image: ImageBitmap): Argb? = of(image).backdrop
+}
+
+/**
+ * The tone of the page around a work. With Media Atmosphere off (the default) it is the plain page: artwork is
+ * the color on screen and the interface around it stays neutral. With it on, the page is washed with the
+ * atmosphere of its [image] or, while there is none, of the backdrop generated for [title]; grey artwork leaves it
+ * neutral. Only ever a background: controls, navigation, and focus stay neutral whatever the artwork (docs/DESIGN.md).
  */
 @Composable
-fun rememberPageTone(image: ImageBitmap?, title: String): Color {
-    val tone = remember(image, title) {
-        val atmosphere = if (image == null) {
-            ArtworkAtmosphere.ofHue(titleHue(title).toDouble())
-        } else {
-            runCatching { ArtworkAtmosphere.from(sample(image)) }.getOrNull()
-        }
-        atmosphere?.toColor()?.copy(alpha = ATMOSPHERE_STRENGTH)?.compositeOver(RefluxColors.background) ?: RefluxColors.background
+fun rememberPageTone(image: ImageBitmap?, title: String, atmosphere: Boolean): Color {
+    val tone = remember(image, title, atmosphere) {
+        if (!atmosphere) return@remember RefluxColors.background
+        val hue = if (image == null) titleHue(title).toDouble() else ArtworkSamples.hue(image)
+        hue?.let(ArtworkAtmosphere::ofHue)?.toColor()?.copy(alpha = ATMOSPHERE_STRENGTH)?.compositeOver(RefluxColors.background) ?: RefluxColors.background
     }
     return animateColorAsState(tone, Motion.navigation.tween()).value
+}
+
+/**
+ * Tells the material over a page what artwork it floats over while [image] is on screen ([presence] above half),
+ * and the plain page once it has scrolled away. Only PREMIUM material listens (MaterialTier.adaptsToBackdrop).
+ */
+@Composable
+fun ReportMaterialBackdrop(image: ImageBitmap?, presence: () -> Float) {
+    val backdrop = LocalMaterialBackdrop.current ?: return
+    if (!LocalMaterialTier.current.adaptsToBackdrop) return
+    val measured = remember(image) { image?.let(ArtworkSamples::backdrop) }
+    val over by remember { androidx.compose.runtime.derivedStateOf { presence() > 0.5f } }
+    DisposableEffect(measured, over) {
+        backdrop.color = if (over) measured else Palette.background
+        onDispose { backdrop.color = null }
+    }
 }
 
 /**
@@ -177,7 +231,7 @@ fun rememberPageTone(image: ImageBitmap?, title: String): Color {
 @Composable
 fun TitleBackdrop(title: String, modifier: Modifier = Modifier, poster: ImageBitmap? = null) {
     val hue = remember(title, poster) {
-        if (poster == null) titleHue(title) else runCatching { ArtworkAtmosphere.dominantHue(sample(poster))?.toFloat() }.getOrNull()
+        if (poster == null) titleHue(title) else ArtworkSamples.hue(poster)?.toFloat()
     }
     val (light, dark) = backdropTones(hue)
     Box(
@@ -203,14 +257,14 @@ fun TitlePlaceholder(title: String, caption: String?, modifier: Modifier = Modif
             .background(Brush.linearGradient(listOf(light, dark), start = Offset.Zero, end = Offset.Infinite))
             .drawBehind {
                 // A soft top-left sheen, the same light that edges the glass materials.
-                drawRect(Brush.radialGradient(listOf(Color.White.copy(alpha = 0.14f), Color.Transparent), center = Offset.Zero, radius = size.maxDimension * 0.9f))
+                drawRect(Brush.radialGradient(listOf(States.layer(0.14f), Color.Transparent), center = Offset.Zero, radius = size.maxDimension * 0.9f))
             }
             .padding(12.dp),
         contentAlignment = Alignment.BottomStart,
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(title, style = LocalTypography.current.bodyStrong, maxLines = 4)
-            if (caption != null) Text(caption, style = LocalTypography.current.caption, color = RefluxColors.textSecondary, maxLines = 1)
+            if (caption != null) Text(caption, style = LocalTypography.current.caption, color = RefluxColors.contentSecondary, maxLines = 1)
         }
     }
 }
@@ -253,7 +307,7 @@ fun PosterCard(card: MediaCard, onClick: () -> Unit, modifier: Modifier = Modifi
     val focusReturn = rememberFocusReturn(focusKey)
     val layout = LocalLayout.current
     val width = layout.posterWidthDp.dp
-    val shape = RoundedCornerShape(12.dp)
+    val shape = Shapes.medium
     // A work with only a backdrop shows its backdrop, cropped to its middle, rather than a generated card.
     val image = rememberArtwork(ArtworkChoice.portrait(card.poster, card.wide), width)
     Column(if (fill) modifier.fillMaxWidth() else modifier.width(width), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -268,14 +322,14 @@ fun PosterCard(card: MediaCard, onClick: () -> Unit, modifier: Modifier = Modifi
             // The card says all of it; words on the artwork would be said a second time.
             Box(Modifier.fillMaxWidth().aspectRatio(2f / 3f).clearAndSetSemantics { }) {
                 ArtworkImage(image, Modifier.fillMaxSize()) { TitlePlaceholder(card.title, null) }
-                if (active) Box(Modifier.fillMaxSize().background(Color.White.copy(alpha = 0.06f)))
+                if (active) Box(Modifier.fillMaxSize().background(States.layer(0.06f)))
                 // Progress sits on a short shadow, so it reads on the brightest poster.
                 if (card.progress != null) {
                     Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.78f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.55f))))
                 }
                 StateBadges(card)
                 // A hairline edge defines the poster against the black without framing it.
-                Box(Modifier.fillMaxSize().border(1.dp, Color.White.copy(alpha = 0.07f), shape))
+                Box(Modifier.fillMaxSize().border(1.dp, States.layer(0.07f), shape))
             }
         }
         // Two lines are always reserved so rows line up; a placeholder already says the title, so only the caption follows it.
@@ -295,9 +349,9 @@ fun PosterCard(card: MediaCard, onClick: () -> Unit, modifier: Modifier = Modifi
 @Composable
 private fun Caption(text: String?, downloaded: Boolean, partly: Boolean) {
     Row(horizontalArrangement = Arrangement.spacedBy(5.dp), verticalAlignment = Alignment.CenterVertically) {
-        if (downloaded) Icon(Icon.DOWNLOADED, size = 12.dp, tint = RefluxColors.textSecondary)
-        else if (partly) Icon(Icon.DOWNLOAD, size = 12.dp, tint = RefluxColors.textTertiary)
-        Text(text ?: " ", style = LocalTypography.current.caption, color = RefluxColors.textTertiary, maxLines = 1)
+        if (downloaded) Icon(Icon.DOWNLOADED, size = 12.dp, tint = RefluxColors.contentSecondary)
+        else if (partly) Icon(Icon.DOWNLOAD, size = 12.dp, tint = RefluxColors.contentTertiary)
+        Text(text ?: " ", style = LocalTypography.current.caption, color = RefluxColors.contentTertiary, maxLines = 1)
     }
 }
 
@@ -306,7 +360,7 @@ private fun Caption(text: String?, downloaded: Boolean, partly: Boolean) {
 fun WideCard(card: MediaCard, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val layout = LocalLayout.current
     val width = (layout.posterWidthDp * 1.9f).dp
-    val shape = RoundedCornerShape(14.dp)
+    val shape = Shapes.medium
     val image = rememberArtwork(ArtworkChoice.landscape(card.wide, card.poster, 16f / 9f), width)
     Column(modifier.width(width), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Pressable(onClick, Modifier.semantics { contentDescription = describe(card) }, shape, lift = 0.6f) { active ->
@@ -320,8 +374,8 @@ fun WideCard(card: MediaCard, onClick: () -> Unit, modifier: Modifier = Modifier
                         Brush.verticalGradient(0.45f to Color.Transparent, 1f to RefluxColors.background.copy(alpha = 0.88f)),
                     ),
                 )
-                if (active) Box(Modifier.fillMaxSize().background(Color.White.copy(alpha = 0.06f)))
-                Box(Modifier.fillMaxSize().border(1.dp, Color.White.copy(alpha = 0.07f), shape))
+                if (active) Box(Modifier.fillMaxSize().background(States.layer(0.06f)))
+                Box(Modifier.fillMaxSize().border(1.dp, States.layer(0.07f), shape))
                 // A placeholder already says the title; real artwork has it said on it.
                 if (image != null) {
                     Text(
@@ -339,7 +393,7 @@ fun WideCard(card: MediaCard, onClick: () -> Unit, modifier: Modifier = Modifier
             Text(
                 Formatting.remaining(card.entry.watchState) ?: " ",
                 style = LocalTypography.current.caption,
-                color = RefluxColors.textTertiary,
+                color = RefluxColors.contentTertiary,
                 maxLines = 1,
             )
         }

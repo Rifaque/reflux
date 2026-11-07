@@ -1,5 +1,7 @@
 package dev.reflux.ui.components
 
+import dev.reflux.ui.theme.States
+import dev.reflux.ui.theme.Shapes
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -251,15 +253,15 @@ fun ButtonPrompts(prompts: List<Pair<GamepadButton, String>>, family: Controller
     ) {
         prompts.forEach { (button, action) ->
             Row(horizontalArrangement = Arrangement.spacedBy(7.dp), verticalAlignment = Alignment.CenterVertically) {
-                val shape = RoundedCornerShape(7.dp)
+                val shape = Shapes.small
                 Box(
-                    Modifier.defaultMinSize(minWidth = 26.dp).background(Color.White.copy(alpha = 0.12f), shape)
-                        .border(1.dp, Color.White.copy(alpha = 0.22f), shape).padding(horizontal = 7.dp, vertical = 3.dp),
+                    Modifier.defaultMinSize(minWidth = 26.dp).background(States.layer(0.12f), shape)
+                        .border(1.dp, States.layer(0.22f), shape).padding(horizontal = 7.dp, vertical = 3.dp),
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(InputMapping.glyph(button, family), style = LocalTypography.current.label, maxLines = 1)
                 }
-                Text(action, style = LocalTypography.current.captionStrong, color = RefluxColors.textSecondary, maxLines = 1)
+                Text(action, style = LocalTypography.current.captionStrong, color = RefluxColors.contentSecondary, maxLines = 1)
             }
         }
     }

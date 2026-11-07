@@ -1,5 +1,7 @@
 package dev.reflux.ui.screens
 
+import dev.reflux.ui.theme.States
+import dev.reflux.ui.theme.Shapes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -93,7 +95,7 @@ internal fun DownloadsScreen(app: AppState) {
             item(key = "empty") {
                 Text(
                     "Nothing is downloaded. Use Download on a movie, an episode, or a season to keep it on this device and watch it without its source.",
-                    color = RefluxColors.textTertiary,
+                    color = RefluxColors.contentTertiary,
                 )
             }
         }
@@ -137,7 +139,7 @@ private fun DownloadRow(app: AppState, item: DownloadItem, focus: LineFocus, onR
     val layout = LocalLayout.current
     val television = layout.formFactor == FormFactor.TV
     val phone = layout.formFactor == FormFactor.PHONE
-    val shape = RoundedCornerShape(14.dp)
+    val shape = Shapes.medium
     // Back from the work's page comes back to this line.
     val back = rememberFocusReturn("download/${item.id}")
     val requester = remember { FocusRequester() }
@@ -159,11 +161,11 @@ private fun DownloadRow(app: AppState, item: DownloadItem, focus: LineFocus, onR
             lift = 0.15f,
         ) { active ->
             Row(
-                Modifier.fillMaxWidth().background(Color.White.copy(alpha = if (active) 0.07f else 0f)).padding(8.dp),
+                Modifier.fillMaxWidth().background(States.layer(if (active) 0.07f else 0f)).padding(8.dp),
                 horizontalArrangement = Arrangement.spacedBy(14.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                val poster = RoundedCornerShape(8.dp)
+                val poster = Shapes.small
                 val width = if (phone) 44.dp else 52.dp
                 Box(Modifier.width(width).aspectRatio(2f / 3f).clip(poster)) {
                     // Too small for a title of its own, and the title is beside it: the work's colors stand in.
@@ -171,18 +173,18 @@ private fun DownloadRow(app: AppState, item: DownloadItem, focus: LineFocus, onR
                         val (light, dark) = titleTones(item.title)
                         Box(Modifier.fillMaxSize().background(Brush.linearGradient(listOf(light, dark))))
                     }
-                    Box(Modifier.fillMaxSize().border(1.dp, Color.White.copy(alpha = 0.07f), poster))
+                    Box(Modifier.fillMaxSize().border(1.dp, States.layer(0.07f), poster))
                 }
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                     Text(item.title, style = LocalTypography.current.bodyStrong, maxLines = 1)
-                    item.caption?.let { Text(it, style = LocalTypography.current.caption, color = RefluxColors.textSecondary, maxLines = 1) }
-                    if (item.version.isNotEmpty()) Text(item.version, style = LocalTypography.current.caption, color = RefluxColors.textTertiary, maxLines = 1)
+                    item.caption?.let { Text(it, style = LocalTypography.current.caption, color = RefluxColors.contentSecondary, maxLines = 1) }
+                    if (item.version.isNotEmpty()) Text(item.version, style = LocalTypography.current.caption, color = RefluxColors.contentTertiary, maxLines = 1)
                     // Under "On this device" a kept copy needs no line saying so.
                     if (item.state != DownloadState.COMPLETED) {
                         Text(
                             item.status,
                             style = LocalTypography.current.caption,
-                            color = if (item.state == DownloadState.FAILED || item.state == DownloadState.UNAVAILABLE) RefluxColors.unavailable else RefluxColors.textSecondary,
+                            color = if (item.state == DownloadState.FAILED || item.state == DownloadState.UNAVAILABLE) RefluxColors.unavailable else RefluxColors.contentSecondary,
                             maxLines = 1,
                         )
                     }
@@ -194,20 +196,20 @@ private fun DownloadRow(app: AppState, item: DownloadItem, focus: LineFocus, onR
             val name = listOfNotNull(item.title, item.caption).joinToString(", ")
             when (item.state) {
                 DownloadState.QUEUED, DownloadState.PREPARING, DownloadState.DOWNLOADING -> {
-                    IconButton(Icon.PAUSE, "Pause the download of $name", { app.pauseDownload(item.id) }, tint = RefluxColors.textSecondary)
-                    IconButton(Icon.CLOSE, "Cancel the download of $name", gone, tint = RefluxColors.textSecondary)
+                    IconButton(Icon.PAUSE, "Pause the download of $name", { app.pauseDownload(item.id) }, tint = RefluxColors.contentSecondary)
+                    IconButton(Icon.CLOSE, "Cancel the download of $name", gone, tint = RefluxColors.contentSecondary)
                 }
                 DownloadState.PAUSED -> {
-                    IconButton(Icon.DOWNLOAD, "Continue the download of $name", { app.resumeDownload(item.id) }, tint = RefluxColors.textSecondary)
-                    IconButton(Icon.CLOSE, "Cancel the download of $name", gone, tint = RefluxColors.textSecondary)
+                    IconButton(Icon.DOWNLOAD, "Continue the download of $name", { app.resumeDownload(item.id) }, tint = RefluxColors.contentSecondary)
+                    IconButton(Icon.CLOSE, "Cancel the download of $name", gone, tint = RefluxColors.contentSecondary)
                 }
                 DownloadState.FAILED, DownloadState.UNAVAILABLE -> {
-                    IconButton(Icon.REFRESH, "Try the download of $name again", { app.resumeDownload(item.id) }, tint = RefluxColors.textSecondary)
+                    IconButton(Icon.REFRESH, "Try the download of $name again", { app.resumeDownload(item.id) }, tint = RefluxColors.contentSecondary)
                     // What a stopped download has is kept for trying again; giving it up is removing it.
-                    IconButton(Icon.CLOSE, "Remove the download of $name", gone, tint = RefluxColors.textSecondary)
+                    IconButton(Icon.CLOSE, "Remove the download of $name", gone, tint = RefluxColors.contentSecondary)
                 }
                 // A finished copy is only removed when the user says so twice.
-                DownloadState.COMPLETED -> IconButton(Icon.CLOSE, "Remove $name from this device", onRemove, tint = RefluxColors.textSecondary)
+                DownloadState.COMPLETED -> IconButton(Icon.CLOSE, "Remove $name from this device", onRemove, tint = RefluxColors.contentSecondary)
                 DownloadState.CANCELLED -> Unit
             }
         }
@@ -226,7 +228,7 @@ private fun RemoveQuestion(item: DownloadItem, onRemove: () -> Unit, onKeep: () 
     val question = "Remove ${listOfNotNull(item.title, item.caption).joinToString(", ")} from this device?"
     Column(Modifier.fillMaxWidth().pane(question).padding(8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text(question, style = LocalTypography.current.bodyStrong)
-        Text("Only the copy goes. It stays in your library, with what you have watched.", style = LocalTypography.current.caption, color = RefluxColors.textSecondary)
+        Text("Only the copy goes. It stays in your library, with what you have watched.", style = LocalTypography.current.caption, color = RefluxColors.contentSecondary)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Button("Remove", onRemove)
             Button("Keep", onKeep, Modifier.focusRequester(answer), style = ButtonStyle.QUIET)

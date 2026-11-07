@@ -2,6 +2,25 @@
 
 package dev.reflux.ui
 
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import dev.reflux.design.ColorRoles
+import dev.reflux.design.MaterialEnvironment
+import dev.reflux.design.MaterialTiers
+import dev.reflux.design.Radius
+import dev.reflux.design.StateLayers
+import dev.reflux.ui.theme.AppearancePolicy
+import dev.reflux.ui.theme.LocalBackdropBlur
+import dev.reflux.ui.theme.LocalMaterialBackdrop
+import dev.reflux.ui.theme.LocalMaterialTier
+import dev.reflux.ui.theme.LocalMotion
+import dev.reflux.ui.theme.MaterialBackdrop
+import dev.reflux.ui.theme.Shapes
+import dev.reflux.ui.theme.States
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.animation.EnterExitState
@@ -151,7 +170,29 @@ internal val NavigationBarHeight = 56.dp
  * On a phone held upright the navigation is at the bottom, within reach of a thumb, and the top only carries what a
  * page needs there; everywhere else it runs down the left side, and the top of the page carries the way back.
  */
-internal data class ChromeInsets(val top: Dp, val bottom: Dp, val start: Dp = 0.dp)
+internal data class ChromeInsets(
+    val top: Dp,
+    val bottom: Dp,
+    val start: Dp = 0.dp,
+    /**
+     * How far a page that opens on artwork indents its own content: where its artwork runs under the navigation
+     * (MaterialTier.artworkUnderNavigation), the page is the whole window and its content starts after [start].
+     * Zero on every other page, which is placed beside the navigation instead.
+     */
+    val contentStart: Dp = 0.dp,
+)
+
+/**
+ * The system's bars and cutouts around the window, which Reflux draws beneath (edge to edge) and keeps its
+ * controls clear of. A shell without such bars (a desktop window, a television) passes [None].
+ */
+data class SystemBars(val top: Dp = 0.dp, val bottom: Dp = 0.dp, val start: Dp = 0.dp, val end: Dp = 0.dp) {
+    companion object {
+        val None = SystemBars()
+    }
+}
+
+internal val LocalSystemBars = staticCompositionLocalOf { SystemBars.None }
 
 /**
  * Whether the page on screen has moved from its top, as its main list reports it. Where pages move a row
@@ -183,13 +224,18 @@ internal val LocalChromeInsets = staticCompositionLocalOf { ChromeInsets(top = P
 /** The row across the top of a page beside a rail: the way back, and a sign of the library being updated. */
 internal val PageBarHeight = 64.dp
 
-private fun chromeInsets(navigation: NavigationStyle, onSection: Boolean, prompts: Boolean): ChromeInsets = when (navigation) {
-    // A page reached from somewhere has a way back in its top corner; with a controller in hand, its
-    // button prompts sit above the sections, and the page ends clear of them too.
-    NavigationStyle.BOTTOM_BAR -> ChromeInsets(top = if (onSection) 20.dp else 72.dp, bottom = 10.dp + NavigationBarHeight + 28.dp + if (prompts) 52.dp else 0.dp)
-    // A remote has its own Back: a television's pages start close to the top of its safe area.
-    NavigationStyle.TV_RAIL -> ChromeInsets(top = 36.dp, bottom = 32.dp, start = navigation.widthDp.dp)
-    else -> ChromeInsets(top = PageBarHeight, bottom = 32.dp, start = navigation.widthDp.dp)
+private fun chromeInsets(navigation: NavigationStyle, onSection: Boolean, prompts: Boolean, bars: SystemBars, artworkPage: Boolean): ChromeInsets {
+    val insets = when (navigation) {
+        // A page reached from somewhere has a way back in its top corner; with a controller in hand, its
+        // button prompts sit above the sections, and the page ends clear of them too.
+        NavigationStyle.BOTTOM_BAR -> ChromeInsets(top = if (onSection) 20.dp else 72.dp, bottom = 10.dp + NavigationBarHeight + 28.dp + if (prompts) 52.dp else 0.dp)
+        // A remote has its own Back: a television's pages start close to the top of its safe area.
+        NavigationStyle.TV_RAIL -> ChromeInsets(top = 36.dp, bottom = 32.dp, start = navigation.widthDp.dp)
+        else -> ChromeInsets(top = PageBarHeight, bottom = 32.dp, start = navigation.widthDp.dp)
+    }
+    // Edge to edge: the page is drawn under the system's bars, and its content starts clear of them.
+    val withBars = insets.copy(top = insets.top + bars.top, bottom = insets.bottom + bars.bottom, start = insets.start + bars.start)
+    return if (artworkPage && navigation.vertical) withBars.copy(contentStart = withBars.start) else withBars
 }
 
 /**
@@ -202,7 +248,21 @@ fun RefluxTheme(app: AppState, modifier: Modifier = Modifier, content: @Composab
     BoxWithConstraints(modifier.fillMaxSize()) {
         val target = AdaptiveLayout.profile(maxWidth.value, maxHeight.value, app.platform.television, app.input.modality)
         val accessibility = app.platform.accessibility
-        SideEffect { MotionPolicy.reduced = accessibility.reduceMotion }
+        val roles = if (accessibility.highContrast) ColorRoles.RefluxHighContrast else ColorRoles.Reflux
+        // Internal, never a setting: what this device can draw, and what the viewer's system asks for.
+        val tier = MaterialTiers.select(
+            MaterialEnvironment(
+                formFactor = target.formFactor,
+                blursBackdrop = LocalBackdropBlur.current,
+                reduceTransparency = accessibility.reduceTransparency,
+                highContrast = accessibility.highContrast,
+                constrained = app.platform.constrainedGraphics,
+            ),
+        )
+        SideEffect {
+            MotionPolicy.reduced = accessibility.reduceMotion
+            AppearancePolicy.roles = roles
+        }
         val density = LocalDensity.current
         val posterWidth by animateFloatAsState(target.posterWidthDp, Motion.inputMorph.tween())
         val focusScale by animateFloatAsState(target.focusScale, Motion.inputMorph.tween())
@@ -212,18 +272,13 @@ fun RefluxTheme(app: AppState, modifier: Modifier = Modifier, content: @Composab
             LocalLayout provides layout,
             LocalAccessibility provides accessibility,
             LocalDensity provides remember(density, accessibility.textScale) { Density(density.density, density.fontScale * accessibility.textScale) },
-            LocalTypography provides remember(target.textScale, target.formFactor) { Typography(target.textScale, displaySize(target.formFactor)) },
+            LocalTypography provides remember(target.textScale, target.formFactor) { Typography(target.textScale, target.formFactor) },
             LocalArtworkLoader provides app.platform.artwork,
+            LocalMaterialTier provides tier,
+            LocalMotion provides Motion.profile(target.formFactor),
             content = content,
         )
     }
-}
-
-/** A featured title fills a wide window; on a phone it stays large without breaking every word. */
-private fun displaySize(formFactor: FormFactor): Float = when (formFactor) {
-    FormFactor.PHONE -> 40f
-    FormFactor.TV -> 48f
-    else -> 54f
 }
 
 /** Reports pointer activity to the modality tracker without consuming it. */
@@ -244,9 +299,14 @@ internal fun Modifier.trackPointer(app: AppState): Modifier = pointerInput(app) 
     }
 }
 
-/** The browsing experience: library screens beside, or above, the global navigation (docs/NAVIGATION.md). */
+/**
+ * The browsing experience: library screens beside, or above, the global navigation (docs/NAVIGATION.md).
+ *
+ * @param bars the system's bars around the window. Reflux draws under them (edge to edge) and keeps every control
+ * clear of them; the shell does not pad the application for them.
+ */
 @Composable
-fun RefluxApp(app: AppState, modifier: Modifier = Modifier) {
+fun RefluxApp(app: AppState, modifier: Modifier = Modifier, bars: SystemBars = SystemBars.None) {
     RefluxTheme(app, modifier) {
         val focus = LocalFocusManager.current
         val entry = remember { FocusEntry() }
@@ -291,7 +351,12 @@ fun RefluxApp(app: AppState, modifier: Modifier = Modifier) {
         val screens = rememberSaveableStateHolder()
         entry.screen = app.navigator.current
         val layout = LocalLayout.current
-        val insets = chromeInsets(layout.navigation, app.navigator.current is Destination.Section, app.namesButtons)
+        val tier = LocalMaterialTier.current
+        val motion = LocalMotion.current
+        // A page that opens on artwork lets it run under the navigation where the material can carry it (M4); on
+        // BASIC the page stays beside the navigation, which is the cleaner layout there.
+        val artworkPage = tier.artworkUnderNavigation && opensOnArtwork(app.navigator.current)
+        val insets = chromeInsets(layout.navigation, app.navigator.current is Destination.Section, app.namesButtons, bars, artworkPage)
         // A television is only ever operated through focus, so something always has it: when a screen
         // appears, or what had focus goes away, it lands where the user left off or on the main action.
         if (layout.formFactor == FormFactor.TV) {
@@ -337,34 +402,45 @@ fun RefluxApp(app: AppState, modifier: Modifier = Modifier) {
         val panelOpen = app.offlineOpen || app.folderPicker != null
         val behind = app.playback != null || panelOpen
         val page = remember { PageScroll() }
-        CompositionLocalProvider(LocalFocusEntry provides entry, LocalFocusedControl provides focused, LocalChromeInsets provides insets, LocalPageScroll provides page) {
+        val materialBackdrop = remember { MaterialBackdrop() }
+        CompositionLocalProvider(
+            LocalFocusEntry provides entry, LocalFocusedControl provides focused, LocalChromeInsets provides insets, LocalPageScroll provides page,
+            LocalSystemBars provides bars, LocalMaterialBackdrop provides materialBackdrop,
+        ) {
             GlassScene(
                 Modifier.fillMaxSize().background(RefluxColors.background).trackPointer(app).onFocusChanged { entry.hasFocus = it.hasFocus }
                     .onFocusedBoundsChanged { rail.focusedBounds = it?.takeIf { coordinates -> coordinates.isAttached }?.boundsInRoot() },
                 overlay = { Chrome(app, page, rail, navigationInert = behind, noticeInert = app.playback != null) },
             ) {
-                // Pages start beside a navigation that runs down the side; focus that scrolls a page stops short of the chrome.
-                Box(Modifier.fillMaxSize().padding(start = insets.start)) {
+                // Pages start beside a navigation that runs down the side, except a page that opens on artwork where
+                // the material lets it run beneath; focus that scrolls a page stops short of the chrome.
+                Box(Modifier.fillMaxSize().padding(end = bars.end)) {
                     FocusScrollInsets(start = insets.top, end = insets.bottom + 8.dp) {
                         AnimatedContent(
                             targetState = app.navigator.current,
                             transitionSpec = {
-                                (fadeIn(Motion.navigation.tween()) + slideInVertically(Motion.navigation.tween()) { it / 40 }) togetherWith
-                                    fadeOut(Motion.focusChange.tween())
+                                // A page arrives (travelling a little, except at ten feet) and the one it replaces fades.
+                                val travel = motion.pageTravel
+                                val enter = fadeIn(motion.pageEnter.tween()) + if (travel > 0f) slideInVertically(motion.pageEnter.tween()) { (it * travel).toInt() } else EnterTransition.None
+                                // The page that leaves is not clipped: one that opens on artwork reaches under the navigation.
+                                (enter togetherWith fadeOut(Motion.focusChange.tween())) using SizeTransform(clip = false)
                             },
                         ) { destination ->
                             // A page on its way out stays on screen while it fades, but it is no longer there for
                             // assistive technology, which would otherwise find two pages at once.
                             val leaving = transition.targetState == EnterExitState.PostExit
                             val named = accessibleTitle(destination)
+                            // Each page keeps its own place while it leaves: one that opens on artwork reaches under the
+                            // navigation, the others start beside it.
+                            val own = chromeInsets(layout.navigation, destination is Destination.Section, app.namesButtons, bars, tier.artworkUnderNavigation && opensOnArtwork(destination))
                             Box(
-                                Modifier.fillMaxSize().traversal(Traversal.PAGE).inert(leaving || behind)
+                                Modifier.fillMaxSize().padding(start = own.start - own.contentStart).traversal(Traversal.PAGE).inert(leaving || behind)
                                     .then(if (named != null) Modifier.pane(named) else Modifier)
                                     // Coming back into the page from the navigation lands where focus was in it (RailFocus).
                                     .focusGroup(),
                             ) {
                                 screens.SaveableStateProvider(destination.toString()) {
-                                    CompositionLocalProvider(LocalFocusScreen provides destination) {
+                                    CompositionLocalProvider(LocalFocusScreen provides destination, LocalChromeInsets provides own) {
                                         Screen(app, destination)
                                     }
                                 }
@@ -379,11 +455,19 @@ fun RefluxApp(app: AppState, modifier: Modifier = Modifier) {
                                 .background(Brush.verticalGradient(0f to background, 0.72f to background.copy(alpha = 0.94f), 1f to Color.Transparent)),
                         )
                     }
+                    // Edge to edge, the system's status bar sits over the page: a soft protection keeps its icons
+                    // readable over bright artwork and posters scrolling beneath it, without a band of its own.
+                    if (bars.top > 0.dp) {
+                        Box(Modifier.fillMaxWidth().height(bars.top + 12.dp).background(Brush.verticalGradient(0f to RefluxColors.scrim.copy(alpha = 0.55f), 1f to Color.Transparent)))
+                    }
                 }
             }
         }
     }
 }
+
+/** Whether a destination opens on its artwork (a hero or a header), and so may let it run under the navigation. */
+internal fun opensOnArtwork(destination: Destination): Boolean = destination == Destination.Home || destination is Destination.Details
 
 @Composable
 private fun Screen(app: AppState, destination: Destination) {
@@ -410,17 +494,19 @@ private fun Screen(app: AppState, destination: Destination) {
 @Composable
 private fun Chrome(app: AppState, page: PageScroll, rail: RailFocus, navigationInert: Boolean, noticeInert: Boolean) {
     val layout = LocalLayout.current
+    val bars = LocalSystemBars.current
     val bottomBar = layout.navigation == NavigationStyle.BOTTOM_BAR
-    val margin = Modifier.fillMaxSize().padding(horizontal = layout.safeMarginDp.dp)
+    // Controls stay clear of the system's bars; what floats is placed inside them.
+    val margin = Modifier.fillMaxSize().padding(start = bars.start, end = bars.end, top = bars.top, bottom = bars.bottom).padding(horizontal = layout.safeMarginDp.dp)
     Box(Modifier.fillMaxSize()) {
         // The navigation's words stop growing before they stop fitting; the destinations always say all of them to a screen reader.
         LimitedTextSize(NAVIGATION_TEXT_LIMIT) {
             if (bottomBar) {
                 Box(margin.inert(navigationInert)) { CompactNavigation(app) }
             } else {
-                Box(Modifier.fillMaxSize().inert(navigationInert)) {
-                    NavigationRail(app, layout.navigation, rail, Modifier.align(Alignment.TopStart).traversal(Traversal.BEFORE_PAGE))
-                    PageBar(app, Modifier.align(Alignment.TopStart).padding(start = layout.navigation.widthDp.dp).traversal(Traversal.BEFORE_PAGE))
+                Box(Modifier.fillMaxSize().padding(start = bars.start, end = bars.end).inert(navigationInert)) {
+                    NavigationRail(app, layout.navigation, rail, Modifier.align(Alignment.TopStart).padding(top = bars.top, bottom = bars.bottom).traversal(Traversal.BEFORE_PAGE))
+                    PageBar(app, Modifier.align(Alignment.TopStart).padding(start = layout.navigation.widthDp.dp, top = bars.top).traversal(Traversal.BEFORE_PAGE))
                 }
             }
         }
@@ -443,6 +529,7 @@ private fun Chrome(app: AppState, page: PageScroll, rail: RailFocus, navigationI
         }
         Box(margin) {
             // On a phone the sheet rises from the bottom, under the thumb; elsewhere it hangs from the top of the page.
+            val sheetTravel = LocalMotion.current.sheetTravel
             AnimatedVisibility(
                 visible = app.offlineOpen,
                 modifier = if (bottomBar) {
@@ -450,8 +537,8 @@ private fun Chrome(app: AppState, page: PageScroll, rail: RailFocus, navigationI
                 } else {
                     Modifier.align(Alignment.TopEnd).padding(top = PageBarHeight + 4.dp)
                 },
-                enter = fadeIn(Motion.controlsShow.tween()) + slideInVertically(Motion.controlsShow.tween()) { if (bottomBar) it / 8 else -it / 12 },
-                exit = fadeOut(Motion.controlsHide.tween()),
+                enter = fadeIn(Motion.sheetEnter.tween()) + slideInVertically(Motion.sheetEnter.tween()) { (it * sheetTravel).toInt() * (if (bottomBar) 1 else -1) },
+                exit = fadeOut(Motion.sheetExit.tween()),
             ) {
                 OfflinePanel(app)
             }
@@ -474,7 +561,7 @@ private fun Chrome(app: AppState, page: PageScroll, rail: RailFocus, navigationI
             ) { message ->
                 if (message != null) {
                     Box(
-                        Modifier.widthIn(max = 640.dp).glass(MaterialRole.MODAL, RoundedCornerShape(22.dp)).absorbsPointer()
+                        Modifier.widthIn(max = 640.dp).glass(MaterialRole.MODAL, Shapes.xlarge).absorbsPointer()
                             .padding(horizontal = 22.dp, vertical = 13.dp),
                     ) {
                         Text(message, style = LocalTypography.current.bodyStrong, align = TextAlign.Center)
@@ -542,14 +629,15 @@ private fun BoxScope.CompactNavigation(app: AppState) {
             }
             Row(
                 Modifier.align(Alignment.CenterHorizontally).widthIn(max = 360.dp).fillMaxWidth().height(NavigationBarHeight).glass(MaterialRole.FLOATING, CircleShape).absorbsPointer()
-                    .onFocusChanged { entry?.chrome = SemanticAction.NAVIGATE_UP.takeIf { _ -> it.hasFocus } }.selectableGroup().padding(horizontal = 12.dp),
+                    .onFocusChanged { entry?.chrome = SemanticAction.NAVIGATE_UP.takeIf { _ -> it.hasFocus } }.selectableGroup().padding(horizontal = 6.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 // Icons, with no words beneath them: each still says its name and whether it is where the viewer is.
                 listOf(Destination.Home, Destination.Movies, Destination.Shows, Destination.Search).forEach { destination ->
                     val here = navigator.highlighted == destination
-                    IconButton(icon(destination), label(destination), { app.go(destination) }, size = 44.dp, tint = tabColor(here), selected = here, role = Role.Tab)
+                    // Where the viewer is: a lit pill around a white icon. Shape and light, not color alone.
+                    IconButton(icon(destination), label(destination), { app.go(destination) }, size = 44.dp, width = 64.dp, tint = tabColor(here), selected = here, role = Role.Tab)
                 }
             }
         }
@@ -592,57 +680,81 @@ private fun NavigationRail(app: AppState, style: NavigationStyle, focus: RailFoc
     var focused by remember { mutableStateOf(false) }
     // A television's rail widens over the page while it has focus, to say what each icon is.
     val open = television && focused
-    val width by animateDpAsState(if (open) 208.dp else style.widthDp.dp, Motion.navigation.tween())
-    val shape = RoundedCornerShape(if (television) 0.dp else 24.dp)
-    Column(
+    val motion = LocalMotion.current
+    val width by animateDpAsState(if (open) TV_RAIL_OPEN else style.widthDp.dp, motion.railExpand.tween())
+    val openness by animateFloatAsState(if (open) 1f else 0f, motion.railExpand.tween())
+    Box(
         modifier.fillMaxHeight().width(width)
-            .then(
-                when {
-                    open -> Modifier.background(Brush.horizontalGradient(0f to RefluxColors.background, 0.7f to RefluxColors.background.copy(alpha = 0.96f), 1f to RefluxColors.background.copy(alpha = 0.82f)))
-                    television -> Modifier
-                    else -> Modifier.padding(start = 8.dp, top = 10.dp, bottom = 10.dp, end = 4.dp).glass(MaterialRole.FLOATING, shape)
-                },
-            )
             .absorbsPointer()
             .onFocusChanged {
                 focused = it.hasFocus
                 entry?.chrome = SemanticAction.NAVIGATE_RIGHT.takeIf { _ -> it.hasFocus }
-            }
-            .focusProperties { onEnter = { focus.focusCurrent() } }
-            .focusGroup()
-            .selectableGroup()
-            .padding(vertical = if (television) 28.dp else 12.dp, horizontal = if (television) 12.dp else 4.dp),
-        verticalArrangement = Arrangement.spacedBy(if (style == NavigationStyle.SIDEBAR) 4.dp else 6.dp),
-        horizontalAlignment = if (style == NavigationStyle.SIDEBAR || open) Alignment.Start else Alignment.CenterHorizontally,
+            },
     ) {
-        if (style == NavigationStyle.SIDEBAR) {
-            Text("Reflux", Modifier.padding(start = 14.dp, top = 6.dp, bottom = 18.dp), style = LocalTypography.current.title.copy(letterSpacing = (-0.02).em))
-        }
-        for (destination in app.destinations) {
-            val here = navigator.highlighted == destination
-            val busy = destination == Destination.Downloads && downloading(app)
-            NavigationItem(
-                icon(destination),
-                label(destination),
-                here,
-                when {
-                    style == NavigationStyle.SIDEBAR -> NavigationLabel.BESIDE
-                    style == NavigationStyle.RAIL -> NavigationLabel.BENEATH
-                    // A television's item stays one focusable thing whether its name shows or not, so focus never
-                    // drops when the rail widens around it.
-                    television -> if (open) NavigationLabel.BESIDE else NavigationLabel.HIDDEN
-                    else -> NavigationLabel.NONE
+        if (television) {
+            // Content first: closed, the rail is its icons over a soft shade that keeps them readable over artwork;
+            // open, it is functional material over the page, as far as its names reach.
+            Box(
+                Modifier.matchParentSize().drawBehind {
+                    val shade = RefluxColors.background
+                    val reach = size.width + TV_RAIL_SHADE.toPx()
+                    drawRect(Brush.horizontalGradient(0f to shade.copy(alpha = 0.82f * (1f - openness)), 1f to Color.Transparent, endX = reach), size = Size(reach, size.height))
                 },
-                busy,
-                if (here) Modifier.focusRequester(focus.current) else Modifier,
-            ) { app.go(destination) }
+            )
+            if (openness > 0f) {
+                Box(Modifier.matchParentSize().graphicsLayer { alpha = openness }.glass(MaterialRole.FLOATING, RoundedCornerShape(topEnd = Radius.XLARGE.dp, bottomEnd = Radius.XLARGE.dp)))
+            }
+        }
+        Column(
+            Modifier.fillMaxHeight().fillMaxWidth()
+                .then(if (television) Modifier else Modifier.padding(start = 8.dp, top = 10.dp, bottom = 10.dp, end = 4.dp).glass(MaterialRole.FLOATING, Shapes.xlarge))
+                .focusProperties { onEnter = { focus.focusCurrent() } }
+                .focusGroup()
+                .selectableGroup()
+                .padding(vertical = if (television) 28.dp else 12.dp, horizontal = if (television) 10.dp else 6.dp),
+            verticalArrangement = Arrangement.spacedBy(if (style == NavigationStyle.SIDEBAR) 4.dp else 6.dp),
+            horizontalAlignment = if (style == NavigationStyle.SIDEBAR || open) Alignment.Start else Alignment.CenterHorizontally,
+        ) {
+            if (style == NavigationStyle.SIDEBAR) {
+                Text("Reflux", Modifier.padding(start = 14.dp, top = 6.dp, bottom = 18.dp), style = LocalTypography.current.title.copy(letterSpacing = (-0.02).em))
+            }
+            for (destination in app.destinations) {
+                val here = navigator.highlighted == destination
+                val busy = destination == Destination.Downloads && downloading(app)
+                NavigationItem(
+                    icon(destination),
+                    label(destination),
+                    here,
+                    when {
+                        style == NavigationStyle.SIDEBAR -> NavigationLabel.BESIDE
+                        style == NavigationStyle.RAIL -> NavigationLabel.BENEATH
+                        // A television's item stays one focusable thing whether its name shows or not, so focus never
+                        // drops when the rail widens around it.
+                        television -> if (open) NavigationLabel.BESIDE else NavigationLabel.HIDDEN
+                        else -> NavigationLabel.NONE
+                    },
+                    busy,
+                    if (here) Modifier.focusRequester(focus.current) else Modifier,
+                ) { app.go(destination) }
+            }
         }
     }
 }
 
+/** How wide a television's rail is while it has focus and shows its names. */
+private val TV_RAIL_OPEN = 208.dp
+
+/** How far past a television's closed rail its shade fades out over the page. */
+private val TV_RAIL_SHADE = 56.dp
+
 /** How much of a destination's name the navigation shows: none (an icon button), beneath, beside, or kept hidden in a row that can show it. */
 private enum class NavigationLabel { NONE, HIDDEN, BENEATH, BESIDE }
 
+/**
+ * One destination in a rail or a sidebar. Where the viewer is, is a lit pill and, beside it, a short bar at the
+ * leading edge: shape and light together, so it never rests on a color or a brightness alone. Hover and focus are
+ * the active state (a quieter light); focus adds the ring for input that needs one.
+ */
 @Composable
 private fun NavigationItem(icon: Icon, label: String, selected: Boolean, shown: NavigationLabel, busy: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
     val name = if (busy) "$label, downloading" else label
@@ -656,6 +768,7 @@ private fun NavigationItem(icon: Icon, label: String, selected: Boolean, shown: 
         return
     }
     val layout = LocalLayout.current
+    val television = layout.formFactor == FormFactor.TV
     Pressable(
         onClick,
         modifier.fillMaxWidth()
@@ -664,20 +777,26 @@ private fun NavigationItem(icon: Icon, label: String, selected: Boolean, shown: 
                 if (busy) stateDescription = "Downloading"
                 if (shown == NavigationLabel.HIDDEN) contentDescription = label
             },
-        RoundedCornerShape(14.dp),
+        Shapes.medium,
         lift = 0f,
         role = Role.Tab,
     ) { active ->
         val tint = tabColor(selected || active)
-        val background = Modifier.background(Color.White.copy(alpha = (if (selected) 0.12f else 0f) + (if (active) 0.06f else 0f)))
+        val fill by animateColorAsState(
+            States.layer((if (selected) StateLayers.SELECTED else 0f) + (if (active) StateLayers.HOVER else 0f)),
+            Motion.focusChange.tween(),
+        )
+        val background = Modifier.background(fill)
         if (shown == NavigationLabel.BESIDE || shown == NavigationLabel.HIDDEN) {
             Row(
-                background.fillMaxWidth().heightIn(min = maxOf(layout.minTargetDp.dp, 44.dp)).padding(horizontal = 10.dp),
+                background.fillMaxWidth().heightIn(min = maxOf(layout.minTargetDp.dp, 44.dp)).drawBehind { if (selected) selectionBar() }.padding(horizontal = 10.dp),
                 horizontalArrangement = Arrangement.spacedBy(14.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Box { Icon(icon, size = 20.dp, tint = tint); if (busy) BusyDot(Modifier.align(Alignment.TopEnd)) }
-                if (shown == NavigationLabel.BESIDE) Text(label, style = LocalTypography.current.bodyStrong, color = tint, maxLines = 1)
+                if (shown == NavigationLabel.BESIDE) {
+                    Text(label, style = if (television) LocalTypography.current.tvLabel else LocalTypography.current.navigation, color = tint, maxLines = 1)
+                }
             }
         } else {
             Column(
@@ -686,15 +805,27 @@ private fun NavigationItem(icon: Icon, label: String, selected: Boolean, shown: 
                 verticalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterVertically),
             ) {
                 Box { Icon(icon, size = 22.dp, tint = tint); if (busy) BusyDot(Modifier.align(Alignment.TopEnd)) }
-                Text(label, style = LocalTypography.current.captionStrong, color = tint, maxLines = 1)
+                Text(label, style = LocalTypography.current.navigationCompact, color = tint, maxLines = 1)
             }
         }
     }
 }
 
+/** The short bar at the leading edge of the destination the viewer is in. */
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.selectionBar() {
+    val height = minOf(size.height * 0.45f, 20.dp.toPx())
+    val width = 3.dp.toPx()
+    drawRoundRect(
+        RefluxColors.contentPrimary,
+        topLeft = Offset(0f, (size.height - height) / 2),
+        size = Size(width, height),
+        cornerRadius = androidx.compose.ui.geometry.CornerRadius(width / 2),
+    )
+}
+
 @Composable
 private fun BusyDot(modifier: Modifier = Modifier) {
-    Box(modifier.padding(top = 2.dp, end = 2.dp).size(7.dp).background(RefluxColors.textPrimary, CircleShape))
+    Box(modifier.padding(top = 2.dp, end = 2.dp).size(7.dp).background(RefluxColors.contentPrimary, CircleShape))
 }
 
 /** Whether something is being downloaded, for a small dot on the way to Downloads; it does not move. */
@@ -745,12 +876,12 @@ private fun DownloadsButton(app: AppState, size: Dp = 40.dp, glass: Boolean = fa
     val here = app.navigator.section == Destination.Downloads
     Box {
         IconButton(Icon.DOWNLOAD, if (busy) "Downloads, downloading" else "Downloads", { app.go(Destination.Downloads) }, size = size, glass = glass, tint = tabColor(here), selected = here, role = Role.Tab)
-        if (busy) Box(Modifier.align(Alignment.TopEnd).padding(top = 7.dp, end = 7.dp).size(7.dp).background(RefluxColors.textPrimary, CircleShape))
+        if (busy) Box(Modifier.align(Alignment.TopEnd).padding(top = 7.dp, end = 7.dp).size(7.dp).background(RefluxColors.contentPrimary, CircleShape))
     }
 }
 
 /** Where the user is shows as white against grey: the navigation never takes a color. */
-private fun tabColor(selected: Boolean): Color = if (selected) RefluxColors.textPrimary else RefluxColors.textSecondary
+private fun tabColor(selected: Boolean): Color = if (selected) RefluxColors.contentPrimary else RefluxColors.contentSecondary
 
 /** A quiet sign that the library is being updated; it never blocks anything. */
 @Composable
@@ -761,8 +892,8 @@ private fun ActivityIndicator(activity: PipelineActivity) {
     ) { label ->
         if (label != null) {
             Row(Modifier.padding(end = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.size(6.dp).background(RefluxColors.textSecondary, CircleShape))
-                Text(label, style = LocalTypography.current.caption, color = RefluxColors.textSecondary, maxLines = 1)
+                Box(Modifier.size(6.dp).background(RefluxColors.contentSecondary, CircleShape))
+                Text(label, style = LocalTypography.current.caption, color = RefluxColors.contentSecondary, maxLines = 1)
             }
         }
     }

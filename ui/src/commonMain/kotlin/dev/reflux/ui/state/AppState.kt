@@ -133,6 +133,22 @@ class AppState(
     /** How the metadata provider in use asks to be credited, for the About page; null without one. */
     val metadataAttribution: ProviderAttribution? get() = pipeline.metadataAttribution
 
+    /**
+     * Media Atmosphere (docs/DESIGN.md): whether artwork may color the space around it. Off by default, so the
+     * canonical page is neutral; the viewer's choice is kept with the library.
+     */
+    var mediaAtmosphere by mutableStateOf(false)
+        private set
+
+    init {
+        scope.launch { runCatching { read { setting(MEDIA_ATMOSPHERE) } }.getOrNull()?.let { mediaAtmosphere = it == "on" } }
+    }
+
+    fun setMediaAtmosphere(on: Boolean): Job {
+        mediaAtmosphere = on
+        return attempt("That couldn't be saved. Try again.") { read { setSetting(MEDIA_ATMOSPHERE, if (on) "on" else null) } }
+    }
+
     /** Volume and mute carry over from one playback session to the next. */
     internal var volume = 100
     internal var muted = false
@@ -694,3 +710,6 @@ fun <T> AppState.offlineState(vararg keys: Any?, block: Library.() -> T): State<
     LaunchedEffect(revision, downloadRevision, *keys) { state.value = read { block() } }
     return state
 }
+
+/** Where the Media Atmosphere choice is kept ([Library.setting]). */
+internal const val MEDIA_ATMOSPHERE = "appearance.mediaAtmosphere"

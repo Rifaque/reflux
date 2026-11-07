@@ -1,5 +1,7 @@
 package dev.reflux.ui.screens
 
+import dev.reflux.ui.theme.States
+import dev.reflux.ui.theme.Shapes
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -65,9 +67,9 @@ internal fun AboutScreen(app: AppState) {
             // One stop for a remote or a screen reader: the name, what it is, and which build.
             Column(Modifier.fillMaxWidth().initialFocus().readable().semantics(mergeDescendants = true) {}.padding(vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text("Reflux", Modifier.semantics { heading() }, style = LocalTypography.current.headline)
-                Text("A media player built around your media, not your media server.", color = RefluxColors.textSecondary)
-                Text("Version ${build.label}", Modifier.padding(top = 4.dp), style = LocalTypography.current.caption, color = RefluxColors.textTertiary)
-                Notices.refluxCopyright?.let { Text(it, style = LocalTypography.current.caption, color = RefluxColors.textTertiary) }
+                Text("A media player built around your media, not your media server.", color = RefluxColors.contentSecondary)
+                Text("Version ${build.label}", Modifier.padding(top = 4.dp), style = LocalTypography.current.caption, color = RefluxColors.contentTertiary)
+                Notices.refluxCopyright?.let { Text(it, style = LocalTypography.current.caption, color = RefluxColors.contentTertiary) }
             }
         }
         attribution?.let { credit -> item(key = "credits") { Credit(credit) } }
@@ -76,14 +78,14 @@ internal fun AboutScreen(app: AppState) {
                 Text("Privacy", Modifier.semantics { heading() }, style = LocalTypography.current.bodyStrong)
                 Text(
                     "Reflux has no account and sends nothing to the people who make it. Your library, your progress, and your downloads are kept on this device.",
-                    color = RefluxColors.textSecondary,
+                    color = RefluxColors.contentSecondary,
                 )
                 Text(
                     listOfNotNull(
                         attribution?.let { "To recognize your movies and shows and fetch their artwork, Reflux looks up their titles on ${it.name}." },
                         "A server or share you add sees what you browse and play from it, and a server keeps your progress on what you play from it.",
                     ).joinToString(" "),
-                    color = RefluxColors.textSecondary,
+                    color = RefluxColors.contentSecondary,
                 )
             }
         }
@@ -116,14 +118,14 @@ internal fun AboutScreen(app: AppState) {
  */
 @Composable
 private fun Credit(attribution: ProviderAttribution) {
-    val shape = RoundedCornerShape(18.dp)
+    val shape = Shapes.large
     Column(
         Modifier.fillMaxWidth().readable(shape).glass(MaterialRole.ELEVATED, shape).semantics(mergeDescendants = true) {}.padding(horizontal = 18.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         attribution.logo?.let { ProviderMark(it, attribution.name, height = 14.dp) }
-        Text("Titles, artwork, and details come from ${attribution.name} (${attribution.site}).", color = RefluxColors.textPrimary)
-        Text(attribution.notice, style = LocalTypography.current.caption, color = RefluxColors.textSecondary)
+        Text("Titles, artwork, and details come from ${attribution.name} (${attribution.site}).", color = RefluxColors.contentPrimary)
+        Text(attribution.notice, style = LocalTypography.current.caption, color = RefluxColors.contentSecondary)
     }
 }
 
@@ -142,19 +144,19 @@ internal fun ProviderMark(logo: ProviderLogo, name: String, height: Dp) {
 /** A row that leads one step further in: what is there, a line about it, and the way in. */
 @Composable
 private fun Link(title: String, body: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    val shape = RoundedCornerShape(18.dp)
+    val shape = Shapes.large
     Pressable(onClick, modifier.fillMaxWidth(), shape, lift = 0f) { active ->
         Row(
-            Modifier.fillMaxWidth().glass(MaterialRole.ELEVATED, shape).background(Color.White.copy(alpha = if (active) 0.07f else 0f))
+            Modifier.fillMaxWidth().glass(MaterialRole.ELEVATED, shape).background(States.layer(if (active) 0.07f else 0f))
                 .padding(horizontal = 18.dp, vertical = 15.dp),
             horizontalArrangement = Arrangement.spacedBy(14.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(title, style = LocalTypography.current.bodyStrong, maxLines = 1)
-                Text(body, style = LocalTypography.current.caption, color = RefluxColors.textSecondary, maxLines = 2)
+                Text(body, style = LocalTypography.current.caption, color = RefluxColors.contentSecondary, maxLines = 2)
             }
-            Icon(Icon.CHEVRON_RIGHT, size = 16.dp, tint = RefluxColors.textTertiary)
+            Icon(Icon.CHEVRON_RIGHT, size = 16.dp, tint = RefluxColors.contentTertiary)
         }
     }
 }
@@ -180,19 +182,19 @@ internal fun NoticesScreen(app: AppState) {
 
 @Composable
 private fun NoticeRow(component: ThirdPartyComponent, modifier: Modifier, onClick: () -> Unit) {
-    val shape = RoundedCornerShape(16.dp)
+    val shape = Shapes.large
     Pressable(onClick, modifier.fillMaxWidth(), shape, lift = 0f) { active ->
         Row(
-            Modifier.fillMaxWidth().glass(MaterialRole.ELEVATED, shape).background(Color.White.copy(alpha = if (active) 0.07f else 0f))
+            Modifier.fillMaxWidth().glass(MaterialRole.ELEVATED, shape).background(States.layer(if (active) 0.07f else 0f))
                 .padding(horizontal = 18.dp, vertical = 13.dp),
             horizontalArrangement = Arrangement.spacedBy(14.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(component.name, style = LocalTypography.current.bodyStrong, maxLines = 1)
-                Text(component.license, style = LocalTypography.current.caption, color = RefluxColors.textTertiary, maxLines = 1)
+                Text(component.license, style = LocalTypography.current.caption, color = RefluxColors.contentTertiary, maxLines = 1)
             }
-            Icon(Icon.CHEVRON_RIGHT, size = 16.dp, tint = RefluxColors.textTertiary)
+            Icon(Icon.CHEVRON_RIGHT, size = 16.dp, tint = RefluxColors.contentTertiary)
         }
     }
 }
@@ -217,20 +219,20 @@ internal fun NoticeScreen(app: AppState, name: String) {
         item(key = "heading") {
             Column(Modifier.padding(bottom = 10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(component?.name ?: "Reflux", Modifier.semantics { heading() }, style = LocalTypography.current.headline)
-                component?.let { Text(it.license, color = RefluxColors.textSecondary) }
-                component?.note?.let { Text(it, style = LocalTypography.current.caption, color = RefluxColors.textTertiary) }
+                component?.let { Text(it.license, color = RefluxColors.contentSecondary) }
+                component?.note?.let { Text(it, style = LocalTypography.current.caption, color = RefluxColors.contentTertiary) }
             }
         }
         val loaded = paragraphs ?: return@Page
         if (loaded.isEmpty()) {
             item(key = "none") {
-                Text("Reflux does not include it, so its license comes with the copy on this device.", Modifier.initialFocus().readable().padding(4.dp), color = RefluxColors.textSecondary)
+                Text("Reflux does not include it, so its license comes with the copy on this device.", Modifier.initialFocus().readable().padding(4.dp), color = RefluxColors.contentSecondary)
             }
         }
         itemsIndexed(loaded) { index, paragraph ->
             // Each paragraph is a stop for a remote, so a license longer than the screen is read by moving through it.
             Box(Modifier.fillMaxWidth().then(if (index == 0) Modifier.initialFocus() else Modifier).readable().semantics(mergeDescendants = true) {}.padding(vertical = 4.dp)) {
-                Text(paragraph, style = LocalTypography.current.caption, color = RefluxColors.textSecondary)
+                Text(paragraph, style = LocalTypography.current.caption, color = RefluxColors.contentSecondary)
             }
         }
     }
