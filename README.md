@@ -8,7 +8,7 @@ Reflux is a media player on steroids: a cross-platform media experience that aut
 
 - **Player first.** Playback quality is the center of the product.
 - **Local first.** A user's files, library state, metadata cache, and core experience should remain useful without an account or a live server.
-- **Source agnostic.** Local files, Jellyfin, and future sources are adapters into one universal media model.
+- **Source agnostic.** Local files, Jellyfin, Plex, network shares, and future sources are adapters into one universal media model.
 - **Automatic by default.** Reflux should identify media, fetch artwork and metadata, and build a useful library with minimal setup.
 - **Excellent out of the box.** Defaults must be genuinely good. Customization deepens the product; it must not be required to make the default experience good.
 - **Virtual organization.** Reflux organizes media without renaming, moving, or modifying the user's files.
@@ -43,7 +43,7 @@ The product is organized around a **Media Core** rather than any single server.
                        |
         +--------------+--------------+
         |              |              |
-      Local         Jellyfin      Network Sources
+      Local     Jellyfin / Plex   Network Sources
         |                              |
       Files                    SMB / WebDAV / ...
 ```
@@ -52,7 +52,7 @@ UI and playback features should consume normalized media entities and source cap
 
 ## Project status
 
-Pre-release; nothing has been published. The engine (Media Core, sources, identification, metadata, watch state, Best Version, playback, Smart Offline) is implemented and heavily tested, and one experience layer runs on desktop (Windows, Linux), Android phones and tablets, and Android TV / Google TV: point it at a folder or connect a Jellyfin server or a network share, browse, search, play, and resume on any copy. Android and television have been verified on emulators only. V1 targets Android phones and tablets, Android TV / Google TV, Fire TV (Fire OS), Windows, and Linux, through a public beta first. The plan and what is left are in [docs/ROADMAP.md](docs/ROADMAP.md); the current version and how versions work are in [docs/VERSIONING.md](docs/VERSIONING.md).
+Pre-release; nothing has been published. The engine (Media Core, sources, identification, metadata, watch state, Best Version, playback, Smart Offline) is implemented and heavily tested, and one experience layer runs on desktop (Windows, Linux), Android phones and tablets, and Android TV / Google TV: point it at a folder or connect a Jellyfin or Plex server or a network share, browse, search, play, and resume on any copy. Android and television have been verified on emulators only. V1 targets Android phones and tablets, Android TV / Google TV, Fire TV (Fire OS), Windows, and Linux, through a public beta first. The plan and what is left are in [docs/ROADMAP.md](docs/ROADMAP.md); the current version and how versions work are in [docs/VERSIONING.md](docs/VERSIONING.md).
 
 ## Documentation
 
@@ -88,7 +88,7 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#implementation) for the module l
 ./gradlew :desktop:app:run
 ```
 
-Choose a media folder on first run, or connect a Jellyfin server or a network share from the same screen; everything else is automatic. Mouse, keyboard, and game controllers (Xbox, PlayStation, Switch Pro, and generic pads) all work without setup; picking up a controller reshapes the interface for it. Playback needs libmpv (below); without it the library is still fully browsable. Titles, artwork, and details come from TMDB when `REFLUX_TMDB_TOKEN` is set; without it Reflux shows what it identified from file names. Library state lives in the platform data directory (override with `REFLUX_HOME`), never in your media folders; problems are written to `reflux.log` there.
+Choose a media folder on first run, or connect a Jellyfin or Plex server or a network share from the same screen; everything else is automatic. Mouse, keyboard, and game controllers (Xbox, PlayStation, Switch Pro, and generic pads) all work without setup; picking up a controller reshapes the interface for it. Playback needs libmpv (below); without it the library is still fully browsable. Titles, artwork, and details come from TMDB when `REFLUX_TMDB_TOKEN` is set; without it Reflux shows what it identified from file names. Library state lives in the platform data directory (override with `REFLUX_HOME`), never in your media folders; problems are written to `reflux.log` there.
 
 ### Developer CLI
 

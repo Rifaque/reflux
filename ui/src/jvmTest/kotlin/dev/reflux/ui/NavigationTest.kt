@@ -22,6 +22,7 @@ import dev.reflux.core.input.SemanticAction
 import dev.reflux.core.model.Episode
 import dev.reflux.library.LibraryScope
 import dev.reflux.library.setSourceIncluded
+import dev.reflux.ui.screens.sourceLibraryModel
 import dev.reflux.ui.state.AppState
 import dev.reflux.ui.state.Destination
 import kotlinx.coroutines.runBlocking
@@ -228,7 +229,7 @@ class NavigationTest {
             awaitText("Heat")
             assertTrue(has(hasText("not in Home, Movies, Shows, or Search", substring = true)), "the page says it is out of the library")
             // In the order the library's grids use, leading articles aside: The Matrix is under M.
-            val order = runBlocking { app.read { dev.reflux.ui.screens.sourceLibraryModel(id, null) } }!!.cards.map { it.title }
+            val order = runBlocking { app.read { sourceLibraryModel(id, null) } }!!.cards.map { it.title }
             assertTrue(order.indexOf("The Matrix") in 0 until order.indexOf("Parasite"), "$order")
             save("source-library-excluded")
             onNode(hasContentDescription("Heat", substring = true)).performClick()

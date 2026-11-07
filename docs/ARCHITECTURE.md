@@ -49,9 +49,9 @@ Media Core
 Playback Core            Source Adapters
 - decoding               - Local filesystem
 - tracks                 - Jellyfin
-- subtitles              - SMB
-- chapters               - WebDAV
-- HDR                    - Plex / Emby later
+- subtitles              - Plex
+- chapters               - SMB, WebDAV
+- HDR                    - Emby later
 - audio                   - DLNA / other sources later
 - platform capabilities
 ```
@@ -131,7 +131,8 @@ Kinds of sources:
 - **File-enumerating sources** (`FileEnumeratingSource`: local folders, WebDAV and SMB shares) list files that Reflux parses and identifies itself.
 - **Downloadable sources** (`DownloadableSource`, capability `DOWNLOAD`) hand out their files whole, so a copy can be kept. Jellyfin, WebDAV, and SMB are; a source that could only show a file would not be, and nothing assumes it is.
 - **Sources reached by an address** (Jellyfin, WebDAV, SMB) come with a `SourceConnector`: what kind of thing it is to the user (a server or a share), whether an address is of its form, and how to connect, with every failure a user can cause as a `ConnectionProblem` rather than an exception. `SourceConnections` in `library` routes an address to the connector for it and makes the connection a source; the experience layer never names an adapter (decision log, 2026-10-14).
-- **Catalog sources** (`CatalogSource`: media servers such as Jellyfin) list works they already identified. Their descriptions use the same shape as a file-name parse, so they pass through the same identity rules and merge with local copies of the same work; the same work on two sources is one item with two versions, and Best Version chooses between them. Server-reported stream data is trusted and not probed. A server's watch records are translated by its adapter into `SourceUserState` and reconciled with Reflux's canonical state (`WatchReconciler`): what is news from the server is adopted, what the server has not heard of is sent to it through `WatchStateSyncSource`, and a record that was already weighed never overwrites anything.
+- **Sources made of libraries** (`SectionedSource`: Jellyfin, Plex) list their libraries; a catalog entry says which library it is in (`CatalogEntry.section`). Every library is read: whether it takes part in the unified library is the library's own state, never the adapter's (NAVIGATION.md, section 5).
+- **Catalog sources** (`CatalogSource`: media servers such as Jellyfin and Plex) list works they already identified. Their descriptions use the same shape as a file-name parse, so they pass through the same identity rules and merge with local copies of the same work; the same work on two sources is one item with two versions, and Best Version chooses between them. Server-reported stream data is trusted and not probed. A server's watch records are translated by its adapter into `SourceUserState` and reconciled with Reflux's canonical state (`WatchReconciler`): what is news from the server is adopted, what the server has not heard of is sent to it through `WatchStateSyncSource`, and a record that was already weighed never overwrites anything.
 
 ## Implementation
 
@@ -146,6 +147,7 @@ Kotlin Multiplatform (see the decision log). Modules:
 | `sources:webdav` | Read-only WebDAV share source (PROPFIND listing, streamed playback with share credentials) and its connector. | `core` |
 | `sources:smb` | Read-only SMB share source (smbj), its connector, and a loopback range-capable stream server that lets any player open share files. | `core`, smbj |
 | `sources:jellyfin` | Jellyfin catalog source (platform-free): sign-in, catalog paging, direct-stream playback targets, watch-state reporting, and its connector. | `core`, kotlinx-serialization-json |
+| `sources:plex` | Plex Media Server catalog source (platform-free): plex.tv or token sign-in, libraries, catalog per library with parts and streams, direct file playback and downloads, watch-state reporting, and its connector. | `core`, kotlinx-serialization-json |
 | `metadata:tmdb` | TMDB v3 metadata provider over the core `HttpFetcher` (platform-free). | `core`, kotlinx-serialization-json |
 | `playback:mpv` | Desktop playback engine and media probe on libmpv (JNA binding), desktop capability profile. | `core`, JNA, kotlinx-serialization-json |
 | `ui` | The experience layer, shared by every shell: navigation and playback state, screens, player controls, phone, tablet, desktop, and television layouts, and the design system rendered with Compose. No platform APIs; shells implement its `Platform` interface. Built for the desktop JVM and for Android. | `core`, `library`, `design`, Compose runtime/foundation/ui |
@@ -209,7 +211,7 @@ There are two shells, `desktop:app` and `android:app`. Each supplies what only i
 | Choosing a folder | The system's folder dialog | The system's folder picker; on a television, Reflux's own picker over `StorageFolders` (the mounted volumes and their folders), after the system's permission question |
 | Being a television | Never | What the system reports (`UiModeManager`, the leanback feature): listed in the TV launcher with its own banner, no touchscreen required |
 | The launcher's "continue" row | None | Where the system has the TV provider: Watch Next programs derived from Continue Watching by `WatchNext` (`library`), written by `WatchNextPublisher`, opening `MainActivity` on the work (DECISIONS.md, 2026-10-18) |
-| Servers and shares (`Platform.connections`) | Jellyfin, Windows and NAS shares (SMB), web shares (WebDAV) | The same three; SMB through the same adapter and loopback stream server as the desktop |
+| Servers and shares (`Platform.connections`) | Jellyfin, Plex, Windows and NAS shares (SMB), web shares (WebDAV) | The same four; SMB through the same adapter and loopback stream server as the desktop |
 | What a connection stores (`ConfigSeal`) | The system's credential store (`KeychainSeal` over Windows Credential Manager or the Secret Service); the database keeps a reference. Where Linux has no Secret Service, stored as it is (see RELEASE.md) | Sealed with an AES key held in the Android keystore (`KeystoreSeal`); what an earlier version stored in the open is sealed at start |
 | Smart Offline (`Platform.offline`) | `Offline` over Reflux's data directory (`FileDownloadStore` in `downloads`) and `HttpDownloadTransport`, wired in `DesktopEnvironment` and running in the application's scope | `Offline` over the application's internal storage (`FileDownloadStore`) and `HttpURLConnection` (`HttpDownloadTransport`), running in a scope that lives as long as the process |
 | Sound output | What libmpv opens | Stereo unless an HDMI output reports more channels or formats it decodes itself, which become `maxOutputChannels` and `audioPassthrough` |
@@ -229,11 +231,11 @@ The About page's third-party notices are generated into `ui` from `legal/` at bu
 
 The experience and its information architecture are the same everywhere; where things sit follows the form factor and the input in use (`AdaptiveLayout`).
 
-- **Every form factor.** The media sources, adding media, and connecting a server or a share are pages of one centered column, reached from the folder button in the navigation (or a controller's Menu button) and left with Back. Downloads is such a page too, reached from the download button beside it where the platform keeps copies.
-- **Phone.** The sections (Home, Movies, Shows, Search) are along the bottom, in reach of a thumb. The top carries only what a page needs there: the way back, the downloads and the media sources, a sign of the library being updated. The offline sheet rises from the bottom. The player puts play, back, and ahead in the middle of the picture and keeps the timeline, track menus, speed, and fullscreen in a bar beneath; volume is the device's own buttons. A tap shows or hides the controls, and two taps on a side of the picture skip that way.
-- **Tablet and desktop.** One floating bar along the top, more titles in a row, and details pages with the poster beside the description. A tablet is the same experience as a desktop window of its size, not a larger phone.
+- **Every form factor.** Six global destinations (Home, Movies, Shows, Search, Downloads where the platform keeps copies, and Sources), one back stack, and the unified library told apart from each source's own (NAVIGATION.md). Sources, adding media, and connecting a server or a share are pages of one centered column; a source's own library is a grid like Movies.
+- **Phone held upright.** Home, Movies, Shows, and Search are icons along the bottom, in reach of a thumb. The top carries only what a page needs there: the way back, Downloads and Sources, a sign of the library being updated. The offline sheet rises from the bottom. The player puts play, back, and ahead in the middle of the picture and keeps the timeline, track menus, speed, and fullscreen in a bar beneath; volume is the device's own buttons. A tap shows or hides the controls, and two taps on a side of the picture skip that way.
+- **Phone on its side, tablet, and desktop.** The navigation runs down the left side, and pages start beside it: a compact rail of icons on a phone on its side, a rail with names on a tablet, a sidebar with the wordmark and names on a desktop. The top of a page carries the way back. More titles in a row, and details pages with the poster beside the description. A tablet is the same experience as a desktop window of its size, not a larger phone.
 - **Controller in hand**, on any of them: larger targets, visible focus, and button prompts, without a separate mode.
-- **Television.** The same bar along the top and the same pages, laid out for a canvas of 960 by 540 inside a 5% safe margin and operated through focus alone. Something always has focus: a page starts on its main action and comes back to the item it was left from. Home moves a row at a time, the row with focus under the navigation with its title showing. The player shows where playback is and nothing to point at: OK plays and pauses, left and right seek, down opens the lists (episodes, chapters, audio, subtitles, speed), up takes an offer on screen such as skipping an intro, and Back closes a list and then the player. Choosing a media folder is a walk through storage with the remote.
+- **Television.** A rail of icons on the left, which shows their names while it has focus, and the same pages, laid out for a canvas of 960 by 540 inside a 5% safe margin and operated through focus alone. Something always has focus: a page starts on its main action and comes back to the item it was left from; Back on a destination goes to the rail first. Home moves a row at a time, the row with focus at the top with its title showing. The player shows where playback is and nothing to point at: OK plays and pauses, left and right seek, down opens the lists (episodes, chapters, audio, subtitles, speed), up takes an offer on screen such as skipping an intro, and Back closes a list and then the player. Choosing a media folder is a walk through storage with the remote.
 
 ## File safety
 

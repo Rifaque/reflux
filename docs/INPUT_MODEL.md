@@ -76,32 +76,32 @@ Touch/pointer/keyboard interaction should still remain possible.
 
 - Gamepad buttons are modeled by **position** (`FACE_SOUTH`, `FACE_EAST`, ...). Confirm is south on PlayStation/Xbox and east on Nintendo; cancel is the other one.
 - Mappings depend on context: in `PLAYBACK`, confirm is Play/Pause and left/right seek; in `BROWSE` they select and navigate. An open player menu is a browsing context.
-- The view/create button (`SELECT`) toggles fullscreen in every context; start/options (or north) is Menu: the sources panel while browsing, the player's menus while playing.
-- Keyboard: arrows, Enter, Space, Escape/Backspace, `F` fullscreen, `M` mute, `J`/`K`/`L` seek and pause, `,`/`.` speed, `O` the player's lists (a keyboard need not have a Menu key; outside the player it is only a letter). Media and remote keys map directly.
+- The view/create button (`SELECT`) toggles fullscreen in every context; start/options (or north) is Menu: Sources while browsing, the player's menus while playing. While browsing, the bumpers step through the global destinations (`PREVIOUS_SECTION`, `NEXT_SECTION`; docs/NAVIGATION.md).
+- Keyboard: arrows, Enter, Space, Escape/Backspace, `F` fullscreen, `M` mute, `J`/`K`/`L` seek and pause, `,`/`.` speed, `O` the player's lists (a keyboard need not have a Menu key; outside the player it is only a letter). Media and remote keys map directly. Ctrl with `1` to `6` goes to Home, Movies, Shows, Search, Downloads, and Sources (`Key.SHORTCUT_n` → `GO_*`), also from a text field; never from inside the player.
 - Modality tracking: a controller button or a stick deflection of at least 50% switches to `DIRECTIONAL`; pointer input must travel 24 dp continuously to leave it; media keys never switch modality. The last controller family is remembered for glyphs.
 - A television starts out `DIRECTIONAL` with the `TV_REMOTE` family, and its arrow keys are its remote's (they never make it a keyboard). A controller used on a television is still told apart from the remote, in both directions.
 - A remote's keys are named for what they do (OK, Back, Menu), so prompts are only shown for controllers.
 - Where loudness is the device's own (`Platform.systemVolume`: Android's volume keys, a television's remote), up and down in the player are not the volume: down opens the player's lists, and up takes what is offered on screen (skip intro, recap, credits).
-- A television shows no Back arrow in its navigation: the remote's Back is the way back, and an arrow for it would only be one more stop on the way up.
+- A television shows no Back arrow: the remote's Back is the way back, and an arrow for it would only be one more stop.
 
 ## Television remote
 
 A remote has a D-pad, OK, Back, and sometimes play/pause, rewind, and fast-forward. Everything is reachable with the first three.
 
-- Browsing: the D-pad moves focus, OK activates, Back goes back one step and leaves the app from Home. Down from the navigation returns to where focus was in the page.
+- Browsing: the D-pad moves focus, OK activates, Back goes back one step. The navigation is a rail on the left: Left from the page's first column enters it on the current destination, Up and Down move one destination at a time with no other stops, OK goes there, and Right returns to where focus was in the page. Back on a destination's own page goes to the rail first, then to Home, and from Home leaves the app.
 - Player: OK plays and pauses (or accepts the next episode, or answers "still watching?"); left and right seek; down opens the lists, where left and right change list, up and down move, OK chooses, and Back closes; up skips an offered intro; Back leaves. The episode before and after are in the first list, since a remote has no key for them. Media keys do what they say.
 - Search: the field has focus on arrival and opens the system's television keyboard; Back puts the keyboard away, down reaches the results, and Back from the field goes back.
 - Choosing a folder: OK goes into a folder or uses the open one, Back goes up one folder and out from the top.
 - Connecting a server or a share: a page arrives on its first field. Up and down move between the fields and down from the last one goes to Connect; a field's keyboard opens only when OK is pressed on it (on release, so the keyboard never receives the press), and Back puts it away. The keyboard's own action key goes on to the next field, or connects from the last.
-- The media sources: Menu opens them from anywhere while browsing. Down from an open source goes to its first action, never straight to Remove.
+- Sources: Menu opens them from anywhere while browsing. Down from an open source goes to its first control (its switch), never straight to Remove.
 
 ## Desktop shell
 
 - Keys are taken once, at the application level, normalized to `Key`, and handed to the experience layer. This works whichever native window has focus, including the video surface.
 - While browsing, navigation actions move toolkit focus and Back unwinds navigation; while playing, the same keys are playback actions. While a text field has focus, only Escape and Down are taken, so typing is never read as shortcuts.
 - The player is operated by its keys: on a desktop its controls are in a window that never takes keyboard focus (that is what keeps keys working over the video surface), so its buttons are not Tab stops, and every one of them has a key. Tab does nothing while playing, or it would walk the page behind the video. An open list takes the arrows, Enter, and Escape.
-- Tab walks a page in the order it is built, the page before the navigation drawn over it; an open panel holds Tab until it closes, and hands focus back to what opened it at once.
-- Keys with Ctrl, Alt, or Meta held are left to the system. `F11` is fullscreen alongside `F`.
+- Tab walks a page in the order it is built, the page before the sidebar drawn beside it; an open panel holds Tab until it closes, and hands focus back to what opened it at once.
+- Keys with Ctrl, Alt, or Meta held are left to the system, but for Reflux's destination shortcuts (Ctrl or Command with `1` to `6`). `F11` is fullscreen alongside `F`.
 - The pointer: hover and focus are one "active" state; rows page with arrows that appear under the pointer; the wheel scrolls pages and is the volume in the player; a click on the video pauses and a double click toggles fullscreen; on Windows the mouse's back button is Back. An icon the pointer rests on says what it is, and in the player which key does the same ("Pause · Space"); the label goes once the icon is pressed, and is never shown for touch, a remote, or a controller.
 - Controllers are read by the shell and enter the same semantic path as keys (decision log, "Desktop controllers through platform APIs"):
   - Windows: XInput (Xbox family) and the joystick API (PlayStation, Switch Pro, generic HID pads).
