@@ -57,7 +57,7 @@ internal fun OfflinePanel(app: AppState) {
     var shown by remember { mutableStateOf(app.offlineReview) }
     if (app.offlineOpen) shown = app.offlineReview
     val reviewing = shown
-    val loaded by app.offlineState(reviewing) { offlineModel(offline, reviewing) }
+    val loaded by app.offlineState(reviewing, app.offlineScope) { offlineModel(offline, reviewing, app.offlineScope) }
     val model = loaded
     var removing by remember { mutableStateOf<String?>(null) }
     var removingAll by remember(reviewing) { mutableStateOf(false) }
@@ -173,7 +173,7 @@ internal fun OfflinePanel(app: AppState) {
                     if (model.proposed.size == 1) "Download" else "Download ${model.proposed.size}",
                     // Confirmed, the sheet goes: progress is beside what was chosen, and on the Downloads page.
                     {
-                        if (reviewing != null) app.download(reviewing) else app.prepareOffline()
+                        if (reviewing != null) app.download(reviewing, app.offlineScope) else app.prepareOffline()
                         app.offlineOpen = false
                     },
                     Modifier.focusRequester(first),

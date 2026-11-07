@@ -33,7 +33,9 @@ class HandheldLayoutTest {
     private fun DesktopComposeUiTest.centre(description: String) = onNodeWithContentDescription(description).fetchSemanticsNode().boundsInRoot.center
     private fun DesktopComposeUiTest.shows(text: String) = onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty()
     private fun DesktopComposeUiTest.has(description: String) = onAllNodesWithContentDescription(description).fetchSemanticsNodes().isNotEmpty()
-    private fun DesktopComposeUiTest.tap(text: String) = onNodeWithText(text).performTouchInput { click() }
+    /** Taps a destination of the navigation by its name, or else what says [text]. */
+    private fun DesktopComposeUiTest.tap(text: String) =
+        (if (onAllNodes(destination(text)).fetchSemanticsNodes().isNotEmpty()) onNode(destination(text)) else onNodeWithText(text)).performTouchInput { click() }
 
     @Test
     fun aPhoneOnItsSideStillOpensDetailsOnTheTitleAndPlay() = screen(populated(), width = phoneHeight, height = phoneWidth) { app ->
@@ -44,12 +46,12 @@ class HandheldLayoutTest {
         // A header taller than the screen would open on artwork alone, with the title and Play below the fold.
         val title = onAllNodesWithText("Heat").fetchSemanticsNodes().maxBy { it.boundsInRoot.height }.boundsInRoot
         val play = onNodeWithText("Play").fetchSemanticsNode().boundsInRoot
-        assertTrue(title.top >= 0f && play.bottom < phoneWidth - 60f, "title $title and Play $play are in the first view")
-        // The sections stay one pill in the middle, not spread to the screen's two ends.
-        val home = onNodeWithText("Home").fetchSemanticsNode().boundsInRoot
-        val search = onNodeWithContentDescription("Search").fetchSemanticsNode().boundsInRoot
-        assertTrue(search.right - home.left <= 420f, "the sections span ${search.right - home.left}")
-        assertTrue(abs((home.left + search.right) / 2 - phoneHeight / 2f) < 24f, "and are centred: $home $search")
+        assertTrue(title.top >= 0f && play.bottom < phoneWidth - 16f, "title $title and Play $play are in the first view")
+        // On its side the navigation is a narrow rail on the left, not the bottom bar stretched across.
+        val home = onNode(destination("Home")).fetchSemanticsNode().boundsInRoot
+        val sources = onNode(destination("Sources")).fetchSemanticsNode().boundsInRoot
+        assertTrue(home.right < 80f && sources.right < 80f && sources.top > home.top, "a rail down the left: $home $sources")
+        assertTrue(play.left > home.right, "the page starts beside it: $play")
     }
 
     @Test
@@ -74,10 +76,10 @@ class HandheldLayoutTest {
     fun aPhoneNavigatesFromTheBottomOfTheScreen() = screen(populated(), width = phoneWidth, height = phoneHeight) { app ->
         awaitText("Recently Added")
         // The sections are within reach of a thumb, and there is no bar along the top.
-        val tabs = listOf("Home", "Movies", "Shows").map { onNodeWithText(it).fetchSemanticsNode().boundsInRoot }
+        val tabs = listOf("Home", "Movies", "Shows").map { onNode(destination(it)).fetchSemanticsNode().boundsInRoot }
         assertTrue(tabs.all { it.top > phoneHeight * 0.85f && it.right <= phoneWidth }, "the sections are along the bottom: $tabs")
         assertTrue(top("Search") > phoneHeight * 0.85f)
-        assertTrue(top("Media sources") < 80f, "what is needed less often is in the top corner")
+        assertTrue(onNode(destination("Sources")).fetchSemanticsNode().boundsInRoot.top < 80f, "what is needed less often is in the top corner")
         assertTrue(!shows("Reflux"), "no wordmark competing with the artwork")
         save("phone-home")
 
@@ -91,9 +93,9 @@ class HandheldLayoutTest {
         onNodeWithContentDescription("Heat, 1995").performTouchInput { click() }
         awaitText("Versions")
         assertTrue(top("Back") < 80f)
-        assertTrue(!has("Media sources"))
+        assertTrue(onAllNodes(destination("Sources")).fetchSemanticsNodes().isEmpty(), "Sources is a destination, not a page's button")
         onNodeWithText("Play").assertIsDisplayed()
-        onNodeWithText("Movies").assertIsDisplayed()
+        onNode(destination("Movies")).assertIsDisplayed()
         save("phone-details")
         onNodeWithContentDescription("Back").performTouchInput { click() }
         await("the way back") { app.navigator.current == Destination.Movies }
@@ -236,9 +238,9 @@ class HandheldLayoutTest {
         }
         screen(populated(), width = 800, height = 1280) { app ->
             awaitText("Recently Added")
-            // Room for the bar along the top, as on a desktop: the same experience, not a bigger phone.
-            onNodeWithText("Reflux").assertIsDisplayed()
-            assertTrue(onNodeWithText("Movies").fetchSemanticsNode().boundsInRoot.top < 100f)
+            // A rail with names down the left: the same experience as a desktop window, not a bigger phone.
+            val movies = onNode(destination("Movies")).fetchSemanticsNode()
+            assertTrue(movies.boundsInRoot.right < 100f, "in the rail: ${movies.boundsInRoot}")
             save("tablet-home")
             tap("Movies")
             awaitText("Heat")

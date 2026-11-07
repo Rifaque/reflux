@@ -1,5 +1,8 @@
 package dev.reflux.ui
 
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isFocused
@@ -84,19 +87,19 @@ class IdentifyUiTest {
         val asked = FakeCatalog.searches.size
 
         // Asking again for what is already shown does not ask the catalog again.
-        onNodeWithText("Search").performClick()
-        onNodeWithText("Search").performClick()
+        onNode(hasText("Search") and SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button)).performClick()
+        onNode(hasText("Search") and SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button)).performClick()
         waitForIdle()
         assertEquals(asked, FakeCatalog.searches.size)
 
         onNodeWithContentDescription("Title").performTextReplacement("Nothing Like It At All")
-        onNodeWithText("Search").performClick()
+        onNode(hasText("Search") and SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button)).performClick()
         await("nothing found to be said") { has("Nothing was found for “Nothing Like It At All”.") }
 
         // Offline: said, with a way to try again, and the library left as it was.
         FakeCatalog.unreachable = true
         onNodeWithContentDescription("Title").performTextReplacement("Dune 1984")
-        onNodeWithText("Search").performClick()
+        onNode(hasText("Search") and SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button)).performClick()
         await("the catalog being out of reach to be said") { has("The catalog couldn't be reached") }
         save("identify-unreachable")
         FakeCatalog.unreachable = false
@@ -145,7 +148,7 @@ class IdentifyUiTest {
             onNodeWithText("Identify").performClick()
             awaitText("Identify this show")
             onNodeWithContentDescription("Title").performTextReplacement("Breaking Bad")
-            onNodeWithText("Search").performClick()
+            onNode(hasText("Search") and SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button)).performClick()
             await("the show") { has("2008") }
             onNodeWithText("2008", substring = true).performScrollTo().performClick()
             await("the identified show") { world.library.shows().singleOrNull()?.item?.title == "Breaking Bad" }

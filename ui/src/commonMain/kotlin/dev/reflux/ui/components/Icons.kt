@@ -27,6 +27,7 @@ enum class Icon {
     BACK, CHEVRON_RIGHT, CHEVRON_UP, CHEVRON_DOWN, CLOSE, CHECK, PLUS, SEARCH,
     HEART, HEART_FILLED, FOLDER, REFRESH, INFO, OFFLINE, DOWNLOAD, DOWNLOADED, SERVER, NETWORK,
     VOLUME, VOLUME_MUTED, SUBTITLES, AUDIO, CHAPTERS, FULLSCREEN, FULLSCREEN_EXIT, MORE,
+    HOME, MOVIES, SHOWS, SOURCES,
 }
 
 @Composable
@@ -171,6 +172,30 @@ private fun DrawScope.draw(icon: Icon, color: Color) {
         Icon.FULLSCREEN -> stroke(color) {
             moveTo(4.5f, 9f); lineTo(4.5f, 4.5f); lineTo(9f, 4.5f); moveTo(15f, 4.5f); lineTo(19.5f, 4.5f); lineTo(19.5f, 9f)
             moveTo(19.5f, 15f); lineTo(19.5f, 19.5f); lineTo(15f, 19.5f); moveTo(9f, 19.5f); lineTo(4.5f, 19.5f); lineTo(4.5f, 15f)
+        }
+        Icon.HOME -> stroke(color) {
+            moveTo(4f, 11f); lineTo(12f, 4.5f); lineTo(20f, 11f)
+            moveTo(6.2f, 9.4f); lineTo(6.2f, 19.5f); lineTo(17.8f, 19.5f); lineTo(17.8f, 9.4f)
+            moveTo(10.2f, 19.5f); lineTo(10.2f, 14.5f); lineTo(13.8f, 14.5f); lineTo(13.8f, 19.5f)
+        }
+        // A strip of film: a frame with its sprocket holes down both edges.
+        Icon.MOVIES -> {
+            drawRoundRect(color, Offset(4.5f, 3.5f), Size(15f, 17f), CornerRadius(2f), style = line)
+            stroke(color) { moveTo(8.5f, 3.5f); lineTo(8.5f, 20.5f); moveTo(15.5f, 3.5f); lineTo(15.5f, 20.5f) }
+            listOf(7.2f, 12f, 16.8f).forEach { y ->
+                stroke(color) { moveTo(5.9f, y); lineTo(7.1f, y); moveTo(16.9f, y); lineTo(18.1f, y) }
+            }
+        }
+        // A television on its stand.
+        Icon.SHOWS -> {
+            drawRoundRect(color, Offset(3f, 5f), Size(18f, 12f), CornerRadius(2.2f), style = line)
+            stroke(color) { moveTo(8.5f, 20f); lineTo(15.5f, 20f) }
+        }
+        // Stacked layers: everything the library is made of.
+        Icon.SOURCES -> stroke(color) {
+            moveTo(12f, 4f); lineTo(20f, 8.2f); lineTo(12f, 12.4f); lineTo(4f, 8.2f); close()
+            moveTo(4f, 12.2f); lineTo(12f, 16.4f); lineTo(20f, 12.2f)
+            moveTo(4f, 16f); lineTo(12f, 20.2f); lineTo(20f, 16f)
         }
         Icon.FULLSCREEN_EXIT -> stroke(color) {
             moveTo(9f, 4.5f); lineTo(9f, 9f); lineTo(4.5f, 9f); moveTo(19.5f, 9f); lineTo(15f, 9f); lineTo(15f, 4.5f)

@@ -196,7 +196,7 @@ class OfflineUiTest {
             }
 
             // Reached from the Downloads page, which the media sources lead to as well.
-            onNodeWithContentDescription("Media sources").performClick()
+            onNode(destination("Sources")).performClick()
             awaitText("Add media")
             onNodeWithText("Downloads").performClick()
             awaitText("Keep what you're watching")
@@ -232,7 +232,7 @@ class OfflineUiTest {
         runOnIdle { app.navigator.open(Destination.Details(app.library.movies().first { it.item.title == "Heat" }.item.id)) }
         awaitText("Versions")
         assertFalse(has("Download"))
-        onNodeWithContentDescription("Media sources").performClick()
+        onNode(destination("Sources")).performClick()
         awaitText("Add media")
         assertFalse(shows("Downloads"))
         assertFalse(has("Downloads"))

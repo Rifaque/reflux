@@ -15,6 +15,8 @@ import dev.reflux.library.Library
 import dev.reflux.library.SourceConnections
 import dev.reflux.library.SourceRecord
 import dev.reflux.library.currentTime
+import dev.reflux.library.SourceLibrary
+import dev.reflux.library.inclusion
 import dev.reflux.library.sourceContents
 import dev.reflux.library.userSources
 import kotlinx.coroutines.Job
@@ -37,11 +39,33 @@ data class SourceRow(
     /** Where it is, as it would be typed, without any password. */
     val address: String?,
     val account: String?,
-    /** Made of parts the user chooses between (a server's libraries). */
+    /** Made of libraries (a server's), whether or not they have been read yet. */
     val sectioned: Boolean = false,
-    /** How many of those parts are left out. */
-    val excluded: Int = 0,
-)
+    /** It answered, and no longer accepts Reflux's sign-in. */
+    val signInRequired: Boolean = false,
+    /** Its own switch: whether it takes part in the unified library. */
+    val included: Boolean = true,
+    /** Its libraries as last read, each with its own switch. */
+    val libraries: List<SourceLibrary> = emptyList(),
+    /** On, with every library off: it contributes nothing, which is said. */
+    val noLibraryIncluded: Boolean = false,
+) {
+    /** What it is to the unified library, in words, when that is anything but "in it". */
+    val inclusionLabel: String?
+        get() = when {
+            !included -> "Not in your library"
+            noLibraryIncluded -> "No libraries in your library"
+            else -> null
+        }
+
+    /** Whether it is there, in words. */
+    val statusLabel: String
+        get() = when {
+            signInRequired -> "Sign in again"
+            !connected -> if (kind == null) "Not connected" else "Can't be reached"
+            else -> contents ?: if (kind == null) "On this device" else "Connected"
+        }
+}
 
 /** Every source, in the order they were added, and whether anything can be connected by address here. */
 @Immutable
@@ -53,6 +77,7 @@ internal fun Library.sourcesModel(connections: SourceConnections?): SourcesModel
         rows = userSources().map { record ->
             val info = connections?.describe(record)
             val contents = sourceContents(record.id)
+            val inclusion = inclusion(record.id)
             SourceRow(
                 id = record.id,
                 name = record.displayName,
@@ -71,8 +96,11 @@ internal fun Library.sourcesModel(connections: SourceConnections?): SourcesModel
                 },
                 address = info?.request?.address,
                 account = info?.request?.username,
-                sectioned = connections?.sectioned(record.id) == true,
-                excluded = connections?.excludedCount(record.id) ?: 0,
+                sectioned = connections?.sectioned(record.id) == true || inclusion?.libraries?.isNotEmpty() == true,
+                signInRequired = record.signInRequired,
+                included = record.included,
+                libraries = inclusion?.libraries.orEmpty(),
+                noLibraryIncluded = inclusion?.noLibraryIncluded == true,
             )
         },
         canConnect = connections?.kinds?.isNotEmpty() == true,
@@ -106,6 +134,8 @@ class SourceSetup internal constructor(
     val kind: ConnectionKind,
     /** The source being signed in to again or changed, if this is not a new one. */
     val editing: SourceRecord?,
+    /** The product chosen, where there is more than one of [kind] (Jellyfin, Plex); a source signed in to again keeps its own. */
+    val type: String? = editing?.type,
 ) {
     private val known = editing?.let { connections.describe(it)?.request }
 
@@ -113,14 +143,17 @@ class SourceSetup internal constructor(
     var username by mutableStateOf(known?.username.orEmpty())
     var password by mutableStateOf("")
 
-    /** The product being connected to, when there is one of this kind ("Jellyfin"). */
-    val product: String? = connections.connectors.filter { it.kind == kind }.let { of -> of.singleOrNull()?.product ?: of.firstNotNullOfOrNull { it.product }.takeIf { kind == ConnectionKind.SERVER } }
+    private val chosen = type?.let(connections::connector)
+
+    /** The product being connected to, when there is one ("Jellyfin", "Plex"). */
+    val product: String? = chosen?.product
+        ?: connections.connectors.filter { it.kind == kind }.let { of -> of.singleOrNull()?.product ?: of.firstNotNullOfOrNull { it.product }.takeIf { kind == ConnectionKind.SERVER } }
 
     /** Addresses that show what is expected. */
-    val examples: List<String> = connections.examples(kind)
+    val examples: List<String> = chosen?.let { listOf(it.addressExample) } ?: connections.examples(kind)
 
     /** Whether a name and password may be left out. */
-    val anonymous: Boolean = connections.connectors.any { it.kind == kind && it.anonymous }
+    val anonymous: Boolean = chosen?.anonymous ?: connections.connectors.any { it.kind == kind && it.anonymous }
 
     var connecting by mutableStateOf(false)
         private set
@@ -152,7 +185,7 @@ class SourceSetup internal constructor(
         problemField = null
         val result = try {
             val request = ConnectionRequest(address.trim(), username.trim().ifEmpty { null }, password.ifEmpty { null })
-            withContext(app.background) { connections.connect(kind, request, replacing = editing?.id) }
+            withContext(app.background) { connections.connect(kind, request, replacing = editing?.id, type = type?.takeIf { editing == null }) }
         } finally {
             connecting = false
         }
@@ -186,8 +219,12 @@ internal fun Problems.connection(problem: ConnectionProblem, kind: ConnectionKin
         ConnectionProblem.NOT_FOUND ->
             if (server) "Something answered at that address, but it isn't ${product?.let { "a $it server" } ?: "a media server"}. Check the address and its port."
             else "Reflux reached it, but couldn't find that shared folder. Check the folder's name."
-        ConnectionProblem.SIGN_IN_REQUIRED -> if (server) "Enter the user name and password you use for this server." else "This share needs a user name and password."
-        ConnectionProblem.AUTHENTICATION -> "That user name or password wasn't accepted."
+        ConnectionProblem.SIGN_IN_REQUIRED -> when {
+            product == "Plex" -> "This Plex server asks you to sign in. Enter your Plex account and password, or a Plex token as the password."
+            server -> "Enter the user name and password you use for this server."
+            else -> "This share needs a user name and password."
+        }
+        ConnectionProblem.AUTHENTICATION -> if (product == "Plex") "Plex didn't accept that account, password, or token." else "That user name or password wasn't accepted."
         ConnectionProblem.PERMISSION_DENIED -> "This account isn't allowed to read that. Check its permissions on $thing."
         ConnectionProblem.SERVER_ERROR -> "The server answered but couldn't sign you in right now. It may still be starting up; try again in a moment."
         ConnectionProblem.UNKNOWN -> "That couldn't be connected. Try again, and if it keeps happening, the details are in Reflux's log."

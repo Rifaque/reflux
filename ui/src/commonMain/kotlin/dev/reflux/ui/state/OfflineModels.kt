@@ -82,14 +82,14 @@ private fun Library.lineTitle(itemId: MediaId): Pair<String, String?> = item(ite
 
 private fun episodes(count: Int) = if (count == 1) "1 episode" else "$count episodes"
 
-internal fun Library.offlineStatus(itemId: MediaId, offline: Offline): OfflineStatus {
+internal fun Library.offlineStatus(itemId: MediaId, offline: Offline, scope: dev.reflux.library.LibraryScope = dev.reflux.library.LibraryScope.Unified): OfflineStatus {
     val item = item(itemId)
     val downloads = downloadsOf(itemId)
     val waiting = downloads.firstOrNull { it.state == DownloadState.DOWNLOADING } ?: downloads.firstOrNull { it.active } ?: downloads.firstOrNull { it.state == DownloadState.PAUSED }
     val stopped = downloads.firstOrNull { it.state == DownloadState.FAILED || it.state == DownloadState.UNAVAILABLE }
     if (item is Show || item is Season) {
         // A show or a season is the episodes it is made of, counted one by one.
-        val coverage = offlineCoverage(itemId)
+        val coverage = offlineCoverage(itemId, scope)
         val all = coverage.works
         return OfflineStatus(
             // A show whose every episode is a file on this device has nothing to gain from copies.
@@ -156,8 +156,8 @@ private fun Library.line(download: Download): OfflineLine {
     return OfflineLine(download.id, title, caption, Formatting.downloadDetail(download), download.state, download.progress.takeIf { download.state != DownloadState.COMPLETED })
 }
 
-internal fun Library.offlineModel(offline: Offline, reviewing: MediaId? = null): OfflineModel {
-    val plan = if (reviewing != null) offline.planFor(listOf(reviewing)) else offline.suggest()
+internal fun Library.offlineModel(offline: Offline, reviewing: MediaId? = null, scope: dev.reflux.library.LibraryScope = dev.reflux.library.LibraryScope.Unified): OfflineModel {
+    val plan = if (reviewing != null) offline.planFor(listOf(reviewing), scope) else offline.suggest()
     val reviewed = reviewing?.let(::item)
     // A show or a season is reviewed episode by episode: what is left out is said of each.
     val collection = reviewed is Show || reviewed is Season
@@ -216,6 +216,11 @@ data class DownloadItem(
     val id: String,
     /** The work it is a copy of; selecting the line opens its page (an episode's own page for an episode). */
     val itemId: MediaId,
+    /**
+     * Where the work's page opens: the unified library, or, for a copy of something the viewer left out of it, the
+     * library of the source it was copied from, where the copy belongs (docs/NAVIGATION.md, section 5).
+     */
+    val scope: dev.reflux.library.LibraryScope = dev.reflux.library.LibraryScope.Unified,
     val title: String,
     val caption: String?,
     /** The version kept, in a viewer's words: "1080p · HDR10 · 4.3 GB · from Living Room". */
@@ -252,9 +257,11 @@ internal fun Library.downloadsModel(offline: Offline): DownloadsModel {
         val version: MediaVersion? = copyOf(download)?.version ?: version(download.originVersionId)?.version
         val from = names.getOrPut(download.origin.sourceId) { source(download.origin.sourceId)?.displayName }
         val size = (download.totalBytes ?: version?.sizeBytes?.takeIf { it > 0 })?.let { Formatting.size(it) }
+        val inUnified = versions(download.itemId).isNotEmpty()
         return DownloadItem(
             id = download.id,
             itemId = download.itemId,
+            scope = if (inUnified) dev.reflux.library.LibraryScope.Unified else dev.reflux.library.LibraryScope.OfSource(download.origin.sourceId),
             title = title,
             caption = caption,
             version = (version?.let { Formatting.offlineVersion(it) }.orEmpty() + listOfNotNull(size, from?.let { "from $it" })).joinToString("  ·  "),

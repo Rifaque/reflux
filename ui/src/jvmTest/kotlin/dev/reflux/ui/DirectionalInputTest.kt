@@ -1,5 +1,7 @@
 package dev.reflux.ui
 
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.test.DesktopComposeUiTest
@@ -107,7 +109,8 @@ class DirectionalInputTest {
     fun focusNeverEndsUpUnderTheNavigationBarOrAgainstAnEdge() = screen(populated()) { app ->
         awaitText("Recently Added")
         val viewport = Rect(0f, 0f, 1440f, 900f)
-        val barBottom = 14f + 56f
+        // The top of a page beside the sidebar: its row for the way back.
+        val barBottom = PageBarHeight.value
         repeat(9) { step ->
             press(app, GamepadButton.DPAD_DOWN)
             val bounds = focusedBounds()
@@ -117,7 +120,8 @@ class DirectionalInputTest {
         repeat(5) { step ->
             press(app, GamepadButton.DPAD_UP)
             val bounds = focusedBounds()
-            assertTrue(bounds.top >= barBottom, "step $step up: clear of the bar ($bounds)")
+            // Within a rounded pixel of it.
+            assertTrue(bounds.top >= barBottom - 1f, "step $step up: clear of the bar ($bounds)")
         }
         repeat(9) { step ->
             press(app, GamepadButton.DPAD_RIGHT)
@@ -140,7 +144,8 @@ class DirectionalInputTest {
         press(app, GamepadButton.FACE_SOUTH)
         awaitText("Refresh")
         press(app, GamepadButton.DPAD_DOWN)
-        onNodeWithText("Refresh").assertIsFocused()
+        // Its first control is its switch, never Remove.
+        onNode(hasText("In your library", substring = true) and SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Switch)).assertIsFocused()
         assertTrue(press(app, GamepadButton.FACE_EAST))
         assertEquals(Destination.Home, app.navigator.current)
     }

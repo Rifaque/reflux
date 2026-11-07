@@ -158,9 +158,12 @@ class AccessibilityTest {
         remote(app, Key.ARROW_DOWN)
         remote(app, Key.DPAD_CENTER)
         awaitText("Refresh")
+        // An open source's first stop is its switch, then its actions.
         remote(app, Key.ARROW_DOWN)
-        on("Refresh")
-        remote(app, Key.ARROW_RIGHT)
+        on("In your library")
+        remote(app, Key.ARROW_DOWN)
+        on("Open")
+        remote(app, Key.ARROW_RIGHT, times = 2)
         on("Remove")
         remote(app, Key.DPAD_CENTER)
         on("Keep")
@@ -328,18 +331,18 @@ class AccessibilityTest {
     @Test
     fun aPhonesIconTabSaysWhatItIsAndWhetherItIsSelected() = screen(populated(), width = 412, height = 915) { app ->
         awaitText("Recently Added")
-        val search = { node("Search").config }
+        val search = { onNode(destination("Search")).fetchSemanticsNode().config }
         assertEquals(Role.Tab, search().getOrNull(SemanticsProperties.Role))
         assertEquals(false, search().getOrNull(SemanticsProperties.Selected))
-        assertEquals(true, onNodeWithText("Home").fetchSemanticsNode().config.getOrNull(SemanticsProperties.Selected))
+        assertEquals(true, onNode(destination("Home")).fetchSemanticsNode().config.getOrNull(SemanticsProperties.Selected))
     }
 
     @Test
     fun searchSaysWhenItIsTheSection() = screen(populated()) { app ->
         awaitText("Recently Added")
         runOnIdle { app.navigator.show(Destination.Search) }
-        await("search to be the section") { node("Search").config.getOrNull(SemanticsProperties.Selected) == true }
-        assertEquals(false, onNodeWithText("Home").fetchSemanticsNode().config.getOrNull(SemanticsProperties.Selected))
+        await("search to be the section") { onNode(destination("Search")).fetchSemanticsNode().config.getOrNull(SemanticsProperties.Selected) == true }
+        assertEquals(false, onNode(destination("Home")).fetchSemanticsNode().config.getOrNull(SemanticsProperties.Selected))
     }
 
     @Test
@@ -536,10 +539,11 @@ class AccessibilityTest {
     fun aPhoneSectionsSurviveTheLargestTextSize() = screen(populated(), width = 360, height = 780, fontScale = 2f) { _ ->
         awaitText("Recently Added")
         assertNothingCutOff(360)
-        val search = node("Search").boundsInRoot
+        val search = onNode(destination("Search")).fetchSemanticsNode().boundsInRoot
         assertTrue(search.right <= 360f && search.width >= 40f, "Search stays in the bar: $search")
-        val height = onNodeWithText("Home").fetchSemanticsNode().boundsInRoot.height
-        assertTrue(height >= 30f, "the tab holds its words: $height")
+        // The bar's destinations are icons: the largest text cannot push them off the screen or squeeze them.
+        val home = onNode(destination("Home")).fetchSemanticsNode().boundsInRoot
+        assertTrue(home.height >= 40f && home.left >= 0f, "Home keeps its size: $home")
     }
 
     @Test
@@ -569,12 +573,12 @@ class AccessibilityTest {
     fun theSystemsTextSizeIsAppliedWhereTheToolkitDoesNot() {
         val platform = FakePlatform().apply { accessibility = AccessibilityPreferences(textScale = 1.5f) }
         var plain = 0f
-        screen(populated(), FakePlatform()) { plain = onNodeWithText("Home").fetchSemanticsNode().boundsInRoot.height }
+        screen(populated(), FakePlatform()) { plain = onNode(destination("Home")).fetchSemanticsNode().boundsInRoot.height }
         // The navigation stops at its limit; a page goes on: both are larger than at the plain size or equal to it.
         screen(populated(), platform) { app ->
             runOnIdle { app.navigator.show(Destination.Movies) }
             awaitText("Movies")
-            assertTrue(onNodeWithText("Home").fetchSemanticsNode().boundsInRoot.height >= plain)
+            assertTrue(onNode(destination("Home")).fetchSemanticsNode().boundsInRoot.height >= plain)
             val heading = onAllNodes(hasText("Movies") and SemanticsMatcher("a heading") { SemanticsProperties.Heading in it.config }).fetchSemanticsNodes().single()
             assertTrue(heading.boundsInRoot.height >= 30f * 1.12f * 1.4f, "a page's heading grows: ${heading.boundsInRoot}")
         }
@@ -590,8 +594,10 @@ class AccessibilityTest {
             awaitText("Recently Added")
             await("touch") { app.input.modality == InputModality.TOUCH }
             waitForIdle()
-            for (tab in listOf("Home", "Movies", "Shows")) assertTrue(onNodeWithText(tab).fetchSemanticsNode().boundsInRoot.height >= 48f, "$tab is $tab")
-            assertTrue(node("Search").boundsInRoot.height >= 48f)
+            for (tab in listOf("Home", "Movies", "Shows", "Search", "Downloads", "Sources").filter { onAllNodes(destination(it)).fetchSemanticsNodes().isNotEmpty() }) {
+                val bounds = onNode(destination(tab)).fetchSemanticsNode().boundsInRoot
+                assertTrue(bounds.height >= 48f && bounds.width >= 48f, "$tab is a finger's size: $bounds")
+            }
             playing(app, platform)
             assertTrue(node("Timeline").boundsInRoot.height >= 48f)
             runOnIdle { app.playback!!.toggleMenu(PlayerMenu.AUDIO) }

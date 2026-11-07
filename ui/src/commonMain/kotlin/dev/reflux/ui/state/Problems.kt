@@ -78,8 +78,14 @@ internal object Problems {
 data class PlaybackError(val message: String, val detail: String?, val canRetry: Boolean = false)
 
 /** Why nothing of [itemId] can be played right now: no file, sources that are away, or formats this device lacks. */
-internal fun Library.unplayableReason(itemId: MediaId, device: DeviceCapabilities, sources: (SourceId) -> MediaSource?, preferences: TrackPreferences? = null): String {
-    val ranked = selectVersion(itemId, device, preferences = preferences, sourceCapabilities = { sources(it)?.descriptor?.capabilities.orEmpty() }).ranked
+internal fun Library.unplayableReason(
+    itemId: MediaId,
+    device: DeviceCapabilities,
+    sources: (SourceId) -> MediaSource?,
+    preferences: TrackPreferences? = null,
+    scope: dev.reflux.library.LibraryScope = dev.reflux.library.LibraryScope.Unified,
+): String {
+    val ranked = selectVersion(itemId, device, preferences = preferences, sourceCapabilities = { sources(it)?.descriptor?.capabilities.orEmpty() }, scope = scope).ranked
     if (ranked.isEmpty()) return Problems.NOTHING_TO_PLAY
     val reachable = ranked.filter { it.candidate.availability != Availability.UNAVAILABLE && sources(it.version.location.sourceId) != null }
     if (reachable.isEmpty()) {

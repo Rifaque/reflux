@@ -171,7 +171,7 @@ class ScreensTest {
     @Test
     fun sourcesPanelListsSourcesAndOffersToAddOne() = screen(populated()) { app ->
         awaitText("Recently Added")
-        onNodeWithContentDescription("Media sources").performClick()
+        onNode(destination("Sources")).performClick()
         awaitText("Add media")
         onNodeWithText("Media").assertExists()
         save("sources")

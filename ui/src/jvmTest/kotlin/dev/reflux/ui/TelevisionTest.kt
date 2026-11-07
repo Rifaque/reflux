@@ -102,7 +102,11 @@ class TelevisionTest {
     private fun DesktopComposeUiTest.awaitFocusOn(what: String, matcher: SemanticsMatcher = hasText(what, substring = true)) =
         await("focus on $what", { runCatching { onNode(isFocused()).fetchSemanticsNode().config.toString() }.getOrNull() }) { focusIsOn(matcher) }
 
-    private val barBottom = 14f + 56f
+    /** Where a page's content starts: there is no bar above it, the navigation is a rail on the left. */
+    private val pageTop = 36f
+    private val railRight = 90f
+    // The rail widens while it has focus, so it is told by what has focus: a destination.
+    private fun DesktopComposeUiTest.inRail() = runCatching { focused().left < railRight && onAllNodes(isFocused() and SemanticsMatcher.expectValue(androidx.compose.ui.semantics.SemanticsProperties.Role, androidx.compose.ui.semantics.Role.Tab)).fetchSemanticsNodes().isNotEmpty() }.getOrDefault(false)
 
     @Test
     fun aTelevisionStartsWithFocusAndSaysNothingAboutItsRemote() = television { app ->
@@ -113,12 +117,13 @@ class TelevisionTest {
         awaitFocusOn("Play")
         // A remote's keys say what they do, so the screen does not.
         assertFalse(prompted("Select") || prompted("OK") || prompted("Sources"))
-        // Everything is inside the overscan-safe area, and the navigation is along the top.
+        // Everything is inside the overscan-safe area, and the navigation is a rail on the left of the page.
         val safe = AdaptiveLayout.profile(TV_WIDTH.toFloat(), TV_HEIGHT.toFloat(), true, InputModality.DIRECTIONAL).safeMarginDp
         val play = focused()
         // What has focus is lifted a little towards the viewer; that much it may lean over the margin.
         assertTrue(play.left >= safe - 4f, "inside the safe area: $play")
-        assertTrue(boundsOf("Movies").top < barBottom && boundsOf("Movies").left > safe)
+        val movies = onNode(destination("Movies")).fetchSemanticsNode().boundsInRoot.onCanvas()
+        assertTrue(movies.right < railRight && movies.left > 8f && play.left > movies.right, "the rail is beside the page: $movies, $play")
         save("tv-home")
 
         // The arrows are the remote's: they never turn the television into a keyboard.
@@ -138,20 +143,20 @@ class TelevisionTest {
         awaitText("Recently Added")
         awaitFocusOn("Play")
         remote(app, Key.ARROW_DOWN)
-        // The row with focus sits right under the navigation, its title showing, with the next one in view.
-        await("the first row to settle") { abs(boundsOf("Recently Added").top - (barBottom + 22f)) < 14f }
+        // The row with focus sits at the top of the page, its title showing, with the next one in view.
+        await("the first row to settle", { boundsOf("Recently Added") }) { abs(boundsOf("Recently Added").top - pageTop) < 14f }
         val first = focused()
         assertTrue(first.top > boundsOf("Recently Added").bottom - 4f && first.bottom < TV_HEIGHT, "the whole card is on screen: $first")
         assertTrue(boundsOf("Ready to Watch").top < TV_HEIGHT - 60f, "the next row is in view")
         save("tv-home-row")
 
         remote(app, Key.ARROW_DOWN)
-        await("the second row to settle") { abs(boundsOf("Ready to Watch").top - (barBottom + 22f)) < 14f }
+        await("the second row to settle") { abs(boundsOf("Ready to Watch").top - pageTop) < 14f }
         assertTrue(focused().top > boundsOf("Ready to Watch").bottom - 4f)
-        assertFalse(shows("Recently Added") && boundsOf("Recently Added").bottom > barBottom, "what went up is not left half showing")
+        assertFalse(shows("Recently Added") && boundsOf("Recently Added").bottom > pageTop, "what went up is not left half showing")
 
         remote(app, Key.ARROW_UP)
-        await("the first row to return") { abs(boundsOf("Recently Added").top - (barBottom + 22f)) < 14f }
+        await("the first row to return") { abs(boundsOf("Recently Added").top - pageTop) < 14f }
         remote(app, Key.ARROW_RIGHT, 3)
         val fourth = focused()
         assertTrue(fourth.left > first.left + 300f && abs(fourth.top - first.top) < 6f, "right moves along the row: $first then $fourth")
@@ -173,29 +178,30 @@ class TelevisionTest {
         await("focus to return", { runCatching { focused() }.getOrNull() }) { runCatching { abs(focused().left - fourth.left) < 6f && abs(focused().top - fourth.top) < 14f }.getOrDefault(false) }
         save("tv-home-returned")
 
-        // Up from the first row is the featured title, and up again the navigation.
+        // Up from the first row is the featured title, and left from there the navigation, on Home.
         remote(app, Key.ARROW_UP)
         await("the hero") { focusIsOn(hasText("Play", substring = true)) || focusIsOn(hasText("Details")) }
-        remote(app, Key.ARROW_UP)
-        await("the navigation") { runCatching { focused().bottom <= barBottom + 2f }.getOrDefault(false) }
+        // Left along the hero's buttons, then into the rail, which lands on Home.
+        repeat(3) { if (!inRail()) remote(app, Key.ARROW_LEFT) }
+        await("the navigation", { runCatching { onNode(isFocused()).fetchSemanticsNode().let { it.config.toString() + " " + it.boundsInRoot } }.getOrNull() }) { inRail() && focusIsOn(destination("Home")) }
         save("tv-navigation")
-        // And down from the navigation is the page again.
-        remote(app, Key.ARROW_DOWN)
-        await("the page", { runCatching { focused() }.getOrNull() }) { runCatching { focused().top > barBottom }.getOrDefault(false) }
+        // And right from the navigation is the page again.
+        remote(app, Key.ARROW_RIGHT)
+        await("the page", { runCatching { focused() }.getOrNull() }) { runCatching { focused().left > railRight }.getOrDefault(false) }
     }
 
     @Test
     fun theSectionsAndSearchWorkFromTheRemote() = television { app ->
         awaitText("Recently Added")
         awaitFocusOn("Play")
-        remote(app, Key.ARROW_UP)
-        await("the navigation") { runCatching { focused().bottom <= barBottom + 2f }.getOrDefault(false) }
+        remote(app, Key.ARROW_LEFT)
+        await("the navigation") { inRail() }
         runOnIdle { app.navigator.show(Destination.Movies) }
         awaitText("10 titles")
-        // Six titles across, and the grid starts on its first.
+        // Five titles across beside the rail, and the grid starts on its first.
         awaitFocusOn("Alien", hasContentDescription("Alien", substring = true))
         val posters = onAllNodesWithContentDescription("", substring = true).fetchSemanticsNodes().map { it.boundsInRoot.onCanvas() }.filter { it.height > it.width * 1.2f }
-        assertEquals(6, posters.count { it.top < posters.minOf { poster -> poster.top } + 12f })
+        assertEquals(5, posters.count { it.top < posters.minOf { poster -> poster.top } + 12f })
         save("tv-movies")
 
         // Search starts in its field; what was typed is understood and shown, and down reaches the results.
@@ -210,6 +216,9 @@ class TelevisionTest {
         // Up is the field again, and Back from it goes back: a remote has no key just for letting go of a field.
         remote(app, Key.ARROW_UP)
         await("the field") { app.textInputActive }
+        // Back from it goes to the navigation, as from any destination's page, and then Home.
+        remote(app, Key.BACK)
+        await("the navigation, on Search") { focusIsOn(destination("Search")) }
         remote(app, Key.BACK)
         await("home") { app.navigator.current == Destination.Home }
     }

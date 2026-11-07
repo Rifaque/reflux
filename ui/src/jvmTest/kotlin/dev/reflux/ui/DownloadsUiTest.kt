@@ -154,6 +154,12 @@ private class DownloadsWorld {
  */
 @OptIn(ExperimentalTestApi::class)
 class DownloadsUiTest {
+    /** The navigation's way to Downloads says that something is downloading, as its name or as its state. */
+    private fun DesktopComposeUiTest.downloadingSaid() = onAllNodes(destination("Downloads")).fetchSemanticsNodes().any { node ->
+        node.config.getOrNull(androidx.compose.ui.semantics.SemanticsProperties.StateDescription) == "Downloading" ||
+            node.config.getOrNull(androidx.compose.ui.semantics.SemanticsProperties.ContentDescription).orEmpty().any { "downloading" in it }
+    }
+
     private fun DesktopComposeUiTest.shows(text: String) = onAllNodesWithText(text, substring = true).fetchSemanticsNodes().isNotEmpty()
     private fun DesktopComposeUiTest.has(description: String) = onAllNodesWithContentDescription(description, substring = true).fetchSemanticsNodes().isNotEmpty()
     private fun DesktopComposeUiTest.focused() = onAllNodes(isFocused()).fetchSemanticsNodes().map { node ->
@@ -271,7 +277,7 @@ class DownloadsUiTest {
             with(downloads) { begin(app) }
 
             // Reached from the navigation, as a page of its own; empty, it says how to fill it.
-            onNodeWithContentDescription("Downloads").performClick()
+            onNode(destination("Downloads")).performClick()
             awaitText("Nothing is downloaded. Use Download on a movie, an episode, or a season to keep it on this device and watch it without its source.")
             assertEquals(Destination.Downloads, app.navigator.current)
             save("downloads-page-empty")
@@ -286,7 +292,7 @@ class DownloadsUiTest {
                     enqueue(planFor(listOf(downloads.episode(1, 1))))
                 }
             }
-            await("the film under way") { shows("Downloading") && has("Downloads, downloading") && onAllNodesWithContentDescription("Pause the download of Ronin, 1998").fetchSemanticsNodes().isNotEmpty() }
+            await("the film under way") { shows("Downloading") && downloadingSaid() && onAllNodesWithContentDescription("Pause the download of Ronin, 1998").fetchSemanticsNodes().isNotEmpty() }
             assertTrue(shows("1080p  ·  64 KB  ·  from Living Room"), "which version, how large, and from where")
             save("downloads-page-active")
 
@@ -327,9 +333,11 @@ class DownloadsUiTest {
             assertEquals(Destination.Details(downloads.episode(1, 1)), app.navigator.current)
             app.navigator.back()
             awaitText("Downloads")
-            // Selecting Downloads again from there leaves it.
-            onNodeWithContentDescription("Downloads").performClick()
-            await("the page to be left") { app.navigator.current != Destination.Downloads }
+            // Selecting Downloads again from a work's page goes back to the top of Downloads.
+            onNode(hasText("Good News About Hell", substring = true) and hasClickAction()).performClick()
+            awaitText("All episodes")
+            onNode(destination("Downloads")).performClick()
+            await("the top of Downloads") { app.navigator.current == Destination.Downloads && app.navigator.path == listOf(Destination.Home, Destination.Downloads) }
         }
     }
 
@@ -442,9 +450,11 @@ class DownloadsUiTest {
             await("the copy to be gone") { app.library.downloads().size == 1 }
             // Focus goes to the copy after it, not off the page.
             await("focus on the next copy", { focused() }) { onAllNodes(isFocused() and hasText("Half Loop", substring = true)).fetchSemanticsNodes().isNotEmpty() }
-            // Back is the show's page.
+            // Downloads is a destination: Back goes to the navigation first, then Home.
             remote(app, Key.BACK)
-            await("the show again") { app.navigator.current == Destination.Details(downloads.show) }
+            await("the navigation, on Downloads") { onAllNodes(isFocused() and destination("Downloads")).fetchSemanticsNodes().isNotEmpty() }
+            remote(app, Key.BACK)
+            await("home") { app.navigator.current == Destination.Home }
         }
     }
 

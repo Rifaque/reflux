@@ -48,6 +48,12 @@ import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.flow
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.state.ToggleableState
+import androidx.compose.ui.test.SemanticsMatcher
+import dev.reflux.core.input.SemanticAction
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -60,7 +66,7 @@ private const val MINUTE = 60_000L
  * A media server on the home network that lets in alex with "secret": a Movies library with two films of
  * its own and a copy of one the local folder has too, and a Kids library.
  */
-internal class HomeServer(val address: String, override val excludedSections: Set<String> = emptySet()) : CatalogSource, SectionedSource {
+internal class HomeServer(val address: String) : CatalogSource, SectionedSource {
     override suspend fun sections(): List<SourceSection> {
         if (!HomeNetwork.serverUp) throw SourceUnavailableException(descriptor.id)
         return listOf(SourceSection("lib-m", "Films", SectionKind.MOVIES), SourceSection("lib-k", "Kids", SectionKind.MOVIES))
@@ -70,16 +76,16 @@ internal class HomeServer(val address: String, override val excludedSections: Se
     override suspend fun availability() = if (HomeNetwork.serverUp) Availability.AVAILABLE else Availability.UNAVAILABLE
     override suspend fun playbackTarget(path: String) = PlaybackTarget("http://home.local/$path")
 
-    private fun film(title: String, year: Int) = CatalogEntry(
+    private fun film(title: String, year: Int, library: String) = CatalogEntry(
         ParsedMedia(ParsedKind.MOVIE, title, year),
         listOf(CatalogVersion("items/${title.lowercase()}", 3_000_000_000, 1, StreamInfo(Container.MATROSKA, VideoStream(VideoCodec.H264, 1920, 1080, 8), listOf(AudioStream(AudioCodec.AAC, 2, "eng")), durationMs = 120 * MINUTE))),
+        section = library,
     )
 
     override fun catalog(): Flow<CatalogEntry> = if (!HomeNetwork.serverUp) {
         flow { throw SourceUnavailableException(descriptor.id) }
     } else {
-        (listOf(film("Ronin", 1998), film("Sicario", 2015), film("Heat", 1995)).takeIf { "lib-m" !in excludedSections }.orEmpty() +
-            listOf(film("Paddington", 2014)).takeIf { "lib-k" !in excludedSections }.orEmpty()).asFlow()
+        listOf(film("Ronin", 1998, "lib-m"), film("Sicario", 2015, "lib-m"), film("Heat", 1995, "lib-m"), film("Paddington", 2014, "lib-k")).asFlow()
     }
 }
 
@@ -117,14 +123,12 @@ internal object HomeNetwork {
             return true
         }
         override fun describe(config: String) = config.lines().associate { it.substringBefore('=') to it.substringAfter('=') }.let { ConnectionRequest(it.getValue("address"), it["user"]) }
-        override fun withExcludedSections(config: String, excluded: Set<String>) =
-            (config.lines().filterNot { it.startsWith("exclude=") } + listOfNotNull(excluded.takeIf { it.isNotEmpty() }?.sorted()?.joinToString(",")?.let { "exclude=$it" })).joinToString("\n")
     }
 
     /** How a restart recreates the server from what was stored. */
     fun recreate(config: String): HomeServer {
         val pairs = config.lines().associate { it.substringBefore('=') to it.substringAfter('=') }
-        return HomeServer(pairs.getValue("address"), pairs["exclude"]?.split(',')?.toSet().orEmpty())
+        return HomeServer(pairs.getValue("address"))
     }
 
     val share = object : SourceConnector {
@@ -232,7 +236,7 @@ class SourcesUiTest {
             signIn("secret")
             await("the server's films") { world.library.movies().any { it.item.title == "Ronin" } }
 
-            onNodeWithContentDescription("Media sources").performClick()
+            onNode(destination("Sources")).performClick()
             awaitText("Living Room")
             await("what is on it") { shows("4 movies") }
             save("sources")
@@ -240,7 +244,7 @@ class SourcesUiTest {
             // The server goes away: nothing is removed, and the page says so plainly.
             HomeNetwork.serverUp = false
             runOnIdle { app.refresh() }
-            await("the server to be seen as away") { shows("Not connected") }
+            await("the server to be seen as away") { shows("Can't be reached") }
             assertTrue(world.library.movies().any { it.item.title == "Ronin" }, "its films stay in the library")
             onNodeWithText("Living Room").performClick()
             awaitText("Try again")
@@ -251,10 +255,10 @@ class SourcesUiTest {
             // Trying again while it is still away changes nothing; once it is back, it is connected again.
             onNodeWithText("Try again").performClick()
             await("the check to finish") { app.checking.isEmpty() }
-            assertTrue(shows("Not connected"))
+            assertTrue(shows("Can't be reached"))
             HomeNetwork.serverUp = true
             onNodeWithText("Try again").performClick()
-            await("the server to be back") { !shows("Not connected") }
+            await("the server to be back") { !shows("Can't be reached") }
 
             // Signing in again keeps the source, its name, and its library.
             val id = world.library.sources().single { it.type == "home" }.id
@@ -274,7 +278,7 @@ class SourcesUiTest {
         val (world, platform) = world()
         screen(world, platform, width = 412, height = 915) { app ->
             awaitText("Recently Added")
-            onNodeWithContentDescription("Media sources").performTouchInput { click() }
+            onNode(destination("Sources")).performTouchInput { click() }
             awaitText("Add media")
             save("phone-sources")
             onNodeWithText("Add media").performTouchInput { click() }
@@ -340,14 +344,23 @@ class SourcesUiTest {
             await("the server listed") { shows("Living Room") }
             await("focus somewhere on the page") { onAllNodes(isFocused()).fetchSemanticsNodes().isNotEmpty() }
             assertNotNull(world.library.sources().singleOrNull { it.type == "home" })
-            // Back, step by step, all the way out.
+            // Back, step by step, all the way out: on a destination, first to the navigation, then Home.
+            remote(app, Key.BACK)
+            await("the navigation, on Sources") { onAllNodes(isFocused() and destination("Sources")).fetchSemanticsNodes().isNotEmpty() }
+            assertEquals(Destination.Sources, app.navigator.current)
             remote(app, Key.BACK)
             await("home") { app.navigator.current == Destination.Home }
         }
     }
 
+    private fun switchOf(name: String) =
+        hasText(name, substring = true) and SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Switch)
+
+    private fun DesktopComposeUiTest.isOn(name: String) =
+        onNode(switchOf(name)).fetchSemanticsNode().config.getOrNull(SemanticsProperties.ToggleableState) == ToggleableState.On
+
     @Test
-    fun aServersLibrariesAreChosenAndTheConnectionStays() {
+    fun aServersLibrariesAreSwitchedOutOfTheLibraryAndStayOnItsPage() {
         val (world, platform) = world()
         screen(world, platform) { app ->
             awaitText("Recently Added")
@@ -360,60 +373,69 @@ class SourcesUiTest {
             assertEquals(1, world.library.movies().count { it.item.title == "Heat" })
             assertEquals(3, world.library.versions(world.movie("Heat").item.id).size)
 
-            runOnIdle { app.navigator.open(Destination.Sources) }
+            runOnIdle { app.go(Destination.Sources) }
             awaitText("Living Room")
-            // Looking after sources is not a section of the library: no tab claims it.
-            assertEquals(null, app.navigator.highlighted)
+            assertEquals(Destination.Sources, app.navigator.highlighted, "Sources is a destination, and says so")
             onNodeWithText("Living Room").performClick()
-            awaitText("All libraries")
-            onNodeWithText("Libraries").performClick()
-            awaitText("Libraries on Living Room")
-            await("the libraries") { shows("Kids") }
-            save("library-selection")
-            onNodeWithText("Kids").performClick()
-            await("Kids left out") { shows("Left out") }
-            // The last one cannot be left out too.
-            onNodeWithText("Films").performClick()
-            await("the explanation") { shows("One library always stays included") }
-            assertEquals(1, onAllNodesWithText("Left out", substring = true).fetchSemanticsNodes().size, "Films is still included")
-            save("library-selection-changed")
-            onNodeWithText("Save").performClick()
-
-            await("back on the sources") { app.navigator.current == Destination.Sources }
-            await("Paddington to leave the library") { world.library.movies().none { it.item.title == "Paddington" } }
+            awaitText("In your library")
+            await("its libraries") { onAllNodes(switchOf("Kids")).fetchSemanticsNodes().isNotEmpty() }
+            assertTrue(isOn("In your library") && isOn("Films") && isOn("Kids"))
+            save("library-switches")
+            onNode(switchOf("Kids")).performClick()
+            await("Paddington to leave the unified library") { world.library.movies().none { it.item.title == "Paddington" } }
+            await("Kids off") { !isOn("Kids") }
             assertTrue(world.library.movies().any { it.item.title == "Ronin" }, "the rest of the server stays")
             assertEquals(2, world.library.sources().size, "the connection stays")
-            await("the choice on the card") { shows("1 library left out") }
-            assertFalse("Kids" in world.library.sources().single { it.type == "home" }.config.substringAfter("exclude=", ""), "kept by id")
-            assertTrue("lib-k" in world.library.sources().single { it.type == "home" }.config)
+            assertFalse("lib-k" in world.library.sources().single { it.type == "home" }.config, "inclusion is not the connection's")
 
-            // And back again.
-            onNodeWithText("Libraries").performClick()
-            await("the libraries") { shows("Kids") }
-            onNodeWithText("Kids").performClick()
-            onNodeWithText("Save").performClick()
+            // The server off keeps the Kids switch as it was, and on again restores it.
+            onNode(switchOf("In your library")).performClick()
+            await("Ronin to leave") { world.library.movies().none { it.item.title == "Ronin" } }
+            await("said on the card") { shows("Not in your library") }
+            assertFalse(isOn("Kids"), "Kids keeps its own switch")
+            assertTrue(isOn("Films"), "and so does Films")
+            save("library-switches-source-off")
+            onNode(switchOf("In your library")).performClick()
+            await("Ronin again") { world.library.movies().any { it.item.title == "Ronin" } }
+            assertTrue(world.library.movies().none { it.item.title == "Paddington" }, "Kids is still out")
+
+            // Kids is still there to open, played from the server's copy.
+            onNode(hasContentDescription("Open Kids")).performClick()
+            await("the Kids page") { app.navigator.current is Destination.SourceLibrary }
+            awaitText("Paddington")
+            assertTrue(shows("Not in your library"))
+            runOnIdle { app.dispatch(SemanticAction.BACK) }
+            assertEquals(Destination.Sources, app.navigator.current)
+            onNode(switchOf("Kids")).performClick()
             await("Paddington again") { world.library.movies().any { it.item.title == "Paddington" } }
         }
     }
 
     @Test
-    fun aServerThatIsAwayCannotBeAskedForItsLibraries() {
+    fun aServerThatIsAwayKeepsItsLibrariesAndItsSwitches() {
         val (world, platform) = world()
         screen(world, platform) { app ->
             awaitText("Recently Added")
             runOnIdle { app.navigator.open(Destination.Connect(ConnectionKind.SERVER)) }
             awaitText("Connect to Jellyfin")
             signIn("secret")
-            await("connected") { world.library.sources().any { it.type == "home" } }
+            await("connected") { world.library.movies().any { it.item.title == "Paddington" } }
             HomeNetwork.serverUp = false
-            val id = world.library.sources().single { it.type == "home" }.id
-            runOnIdle { app.navigator.open(Destination.SourceSections(id)) }
-            await("the explanation") { shows("isn't connected, so its libraries can't be listed") }
+            runOnIdle { app.checkSource(world.library.sources().single { it.type == "home" }.id) }
+            await("away") { world.library.sources().single { it.type == "home" }.availability == Availability.UNAVAILABLE }
+            runOnIdle { app.go(Destination.Sources) }
+            awaitText("Living Room")
+            onNodeWithText("Living Room").performClick()
+            await("said") { shows("Can't be reached") }
+            await("its libraries, as last read") { onAllNodes(switchOf("Kids")).fetchSemanticsNodes().isNotEmpty() }
+            onNode(switchOf("Kids")).performClick()
+            await("Paddington to leave, with the server away") { world.library.movies().none { it.item.title == "Paddington" } }
+            assertTrue(world.library.sources().single { it.type == "home" }.included, "a server that is away stays in the library")
         }
     }
 
     @Test
-    fun theRemoteChoosesLibrariesToo() {
+    fun theRemoteSwitchesLibrariesToo() {
         val (world, _) = world()
         val tv = FakePlatform(television = true, connections = SourceConnections(world.library, world.registry, listOf(HomeNetwork.server, HomeNetwork.share)))
         television(world, tv) { app ->
@@ -422,22 +444,20 @@ class SourcesUiTest {
             awaitText("Connect to Jellyfin")
             signIn("secret", byPointer = false)
             await("connected") { world.library.movies().any { it.item.title == "Paddington" } }
-            val id = world.library.sources().single { it.type == "home" }.id
-            runOnIdle { app.navigator.open(Destination.SourceSections(id)) }
-            await("focus on the first library") { focusedIs("Films") }
-            save("tv-library-selection")
+            runOnIdle { app.go(Destination.Sources) }
+            await("focus on Add media") { focusedIs("Add media") }
+            repeat(4) { if (!focusedIs("Living Room")) remote(app, Key.ARROW_DOWN) }
+            await("focus on the server") { focusedIs("Living Room") }
+            remote(app, Key.DPAD_CENTER)
             remote(app, Key.ARROW_DOWN)
+            await("focus on its switch") { focusedIs("In your library") }
+            remote(app, Key.ARROW_DOWN, times = 2)
             await("focus on Kids") { focusedIs("Kids") }
+            save("tv-library-switches")
             remote(app, Key.DPAD_CENTER)
-            await("Kids left out") { shows("Left out") }
-            remote(app, Key.ARROW_DOWN)
-            await("focus on Save") { focusedIs("Save") }
-            remote(app, Key.DPAD_CENTER)
-            // Saved, and back where the page was opened from (here, Home), with a tab that says so again.
-            await("back where it was opened from") { app.navigator.current == Destination.Home }
             await("Paddington to leave") { world.library.movies().none { it.item.title == "Paddington" } }
-            assertEquals(Destination.Home, app.navigator.highlighted)
-            await("focus somewhere on the page") { onAllNodes(isFocused()).fetchSemanticsNodes().isNotEmpty() }
+            assertEquals(Destination.Sources, app.navigator.current, "a switch is not a page: the viewer stays where they are")
+            assertTrue(focusedIs("Kids"))
         }
     }
 
@@ -469,7 +489,7 @@ class SourcesUiTest {
             await("Heat to be watched") { world.library.watchState(heat)?.completed == true }
             val token = world.library.sources().single { it.type == "home" }.config.lines().last().substringAfter('=')
 
-            onNodeWithContentDescription("Media sources").performClick()
+            onNode(destination("Sources")).performClick()
             awaitText("Living Room")
             removeTheServer()
             await("the server to leave the list") { !shows("Living Room") }
@@ -504,8 +524,8 @@ class SourcesUiTest {
             // Away: the removal does not depend on it.
             HomeNetwork.serverUp = false
             val refreshing = runOnIdle { app.refresh() }
-            onNodeWithContentDescription("Media sources").performClick()
-            await("the server to be seen as away") { shows("Not connected") && refreshing.isCompleted }
+            onNode(destination("Sources")).performClick()
+            await("the server to be seen as away") { shows("Can't be reached") && refreshing.isCompleted }
             removeTheServer()
             await("the server to leave the list") { !shows("Living Room") }
             assertTrue(world.library.sources().none { it.type == "home" })
