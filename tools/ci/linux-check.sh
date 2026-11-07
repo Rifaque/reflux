@@ -8,11 +8,15 @@
 # output from another operating system is never reused. Mount a directory at /out to receive the test
 # result files. Append `window` to run only the window tests, and a number to repeat them that often:
 # they involve a window manager, a compositor, and a native engine, and repetition is how to trust them.
+# `package` builds the Linux release archive instead (docs/RELEASE.md, "Desktop artifacts"), from a copy that keeps
+# .git so the archive knows its commit, and writes it with its release-info.json to /out.
 set -euo pipefail
 
 if [ "$(id -u)" = "0" ]; then
     mkdir -p /work /home/ubuntu/.gradle
-    tar -C /src --exclude=build --exclude=.gradle --exclude=.kotlin --exclude=.reflux --exclude=.git -cf - . | tar -C /work -xf -
+    git_excluded=--exclude=.git
+    if [ "${1:-}" = "package" ]; then git_excluded=; fi
+    tar -C /src --exclude=build --exclude=.gradle --exclude=.kotlin --exclude=.reflux $git_excluded -cf - . | tar -C /work -xf -
     chown -R ubuntu:ubuntu /work /home/ubuntu/.gradle
     if [ -d /out ]; then chown ubuntu:ubuntu /out; fi
     exec runuser -u ubuntu -- /work/tools/ci/linux-check.sh "$@"
@@ -29,6 +33,16 @@ results() {
         find . -path '*/build/test-results/*' -name '*.xml' -exec cp {} "/out/$1/" \;
     fi
 }
+
+if [ "${1:-}" = "package" ]; then
+    git config --global --add safe.directory /work
+    ./gradlew --no-configuration-cache releaseInfo :desktop:app:packageDesktopArchive --stacktrace
+    for archive in desktop/app/build/release/*.tar.gz; do
+        cp "$archive" /out/
+        cp build/release/release-info.json "/out/$(basename "$archive").release-info.json"
+    done
+    exit 0
+fi
 
 status=0
 # As in CI: everything without a display first, then the window tests on a virtual one.

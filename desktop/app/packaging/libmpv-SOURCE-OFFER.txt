@@ -1,0 +1,26 @@
+libmpv in this Reflux package
+=============================
+
+Reflux for Windows includes libmpv-2.dll, an unmodified build of libmpv (mpv's client library) with FFmpeg and its
+other libraries linked into it. It is licensed under the GNU Lesser General Public License, version 2.1 or later,
+as built: mpv was configured with -Dgpl=false and FFmpeg without --enable-gpl or --enable-nonfree. The LGPL text is
+third-party/licenses/lgpl-2.1.txt; the licenses of the libraries inside it are listed in
+third-party/components.txt under "libmpv (Windows build)".
+
+Reflux is a separate program. It loads libmpv-2.dll at run time by name from this folder and is not linked against
+it: you may replace libmpv-2.dll with another build of libmpv 2.x (one you built or modified yourself), and Reflux
+will use it.
+
+The build is: https://github.com/zhongfly/mpv-winbuild, release 2026-11-07-55d3feb45c, asset
+mpv-dev-lgpl-x86_64-20261107-git-55d3feb45c.7z (SHA-256 17bff1d2e90ad06a9d98ce0fae738feb64feaf10ddd804870e0144111a9715df),
+made from mpv commit 55d3feb45c by the build scripts at https://github.com/shinchiro/mpv-winbuild-cmake with
+zhongfly's compile-lgpl-libmpv.patch.
+
+Source code
+-----------
+
+The complete corresponding source code of this libmpv build (mpv, FFmpeg, every library linked into it, and the
+scripts that built it) is available from RSX Develops for at least three years from the date this package was
+distributed, at no charge beyond the cost of providing it, from every GitHub release of Reflux that includes this
+file (the asset named reflux-<version>-libmpv-source.tar.zst), or on request to the address on the Reflux website's
+support page.
