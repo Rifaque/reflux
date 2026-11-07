@@ -19,9 +19,37 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         // -Preflux.jellyfin=<url> points the on-device continuity test at a real server (see JellyfinContinuityTest).
         providers.gradleProperty("reflux.jellyfin").orNull?.takeIf { it.isNotBlank() }?.let { testInstrumentationRunnerArguments["refluxJellyfin"] = it }
-        // The provider credential is an application credential supplied at build time; without one, names come from files.
-        (providers.gradleProperty("reflux.tmdb.token").orNull ?: providers.environmentVariable("REFLUX_TMDB_TOKEN").orNull)
-            ?.takeIf { it.isNotBlank() }?.let { resValue("string", "reflux_tmdb_token", it) }
+    }
+
+    // A release is signed only with a key that lives outside the repository (docs/RELEASE.md, "Signing"): a
+    // keystore named by REFLUX_SIGNING_STORE_FILE, or `reflux.signing.*` properties in the user's own
+    // ~/.gradle/gradle.properties. Without one, a release builds unsigned, and the release tooling refuses it.
+    val signing = listOf("STORE_FILE", "STORE_PASSWORD", "KEY_ALIAS", "KEY_PASSWORD").associateWith { key ->
+        providers.environmentVariable("REFLUX_SIGNING_$key").orNull
+            ?: providers.gradleProperty("reflux.signing." + key.lowercase().replace('_', '.')).orNull
+    }
+    if (signing.values.all { !it.isNullOrBlank() }) {
+        signingConfigs.create("release") {
+            storeFile = file(signing.getValue("STORE_FILE")!!)
+            storePassword = signing.getValue("STORE_PASSWORD")
+            keyAlias = signing.getValue("KEY_ALIAS")
+            keyPassword = signing.getValue("KEY_PASSWORD")
+        }
+    }
+
+    buildTypes {
+        debug {
+            // The metadata provider's credential reaches development builds only: public builds carry no TMDB
+            // credential until its terms are settled (DECISIONS.md, 2026-11-08, "TMDB in public releases").
+            (providers.gradleProperty("reflux.tmdb.token").orNull ?: providers.environmentVariable("REFLUX_TMDB_TOKEN").orNull)
+                ?.takeIf { it.isNotBlank() }?.let { resValue("string", "reflux_tmdb_token", it) }
+        }
+        release {
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            signingConfigs.findByName("release")?.let { signingConfig = it }
+        }
     }
 
     buildFeatures {

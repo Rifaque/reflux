@@ -27,8 +27,16 @@ val refluxVersionCode: Int = run {
     val s = when (stage) { "alpha" -> n!!; "beta" -> 30 + n!!; "rc" -> 60 + n!!; else -> 99 }
     major * 1_000_000 + minor * 10_000 + patch * 100 + s
 }
+// Windows needs MAJOR.MINOR.(PATCH * 100 + S); Linux packages sort a stage with `~` (docs/VERSIONING.md,
+// "Desktop package versions"). The channel names who a build is for, from its stage.
+val refluxStage: String = Regex("""-(alpha|beta|rc)\.""").find(refluxVersion)?.groupValues?.get(1) ?: "stable"
+val refluxWindowsVersion: String = refluxVersionCode.let { "${it / 1_000_000}.${it / 10_000 % 100}.${it % 10_000}" }
+val refluxLinuxVersion: String = refluxVersion.replaceFirst("-", "~")
 extra["reflux.version"] = refluxVersion
 extra["reflux.versionCode"] = refluxVersionCode
+extra["reflux.windowsVersion"] = refluxWindowsVersion
+extra["reflux.linuxVersion"] = refluxLinuxVersion
+extra["reflux.channel"] = refluxStage
 
 /**
  * The commit a build is made from and whether the tree had changes (docs/VERSIONING.md, "Build metadata"), as
@@ -126,6 +134,35 @@ subprojects {
         report.set(layout.buildDirectory.file("reports/thirdPartyNotices.txt"))
     }
     tasks.matching { it.name == "check" }.configureEach { dependsOn(checkNotices) }
+}
+
+/**
+ * The release identity of this tree as JSON (docs/RELEASE.md, "Release system"): the product version and every
+ * number derived from it, the channel, and the commit. The release tooling and the website read this; neither
+ * computes a version of its own.
+ */
+val releaseInfo by tasks.registering {
+    group = "release"
+    description = "Writes the release identity (version, derived numbers, channel, commit) to build/release/release-info.json."
+    @Suppress("UNCHECKED_CAST")
+    val identity = project.extra["reflux.gitIdentity"] as Provider<String>
+    val output = layout.buildDirectory.file("release/release-info.json")
+    val fields = mapOf(
+        "product" to "Reflux", "version" to refluxVersion, "versionCode" to refluxVersionCode.toString(),
+        "windowsVersion" to refluxWindowsVersion, "linuxVersion" to refluxLinuxVersion, "channel" to refluxStage,
+    )
+    inputs.property("identity", identity)
+    inputs.property("fields", fields)
+    outputs.file(output)
+    doLast {
+        val git = identity.get().lines().filter { '=' in it }.associate { it.substringBefore('=') to it.substringAfter('=') }
+        fun quote(value: String) = "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
+        val json = (fields.map { (key, value) -> if (key == "versionCode") "  \"$key\": $value" else "  \"$key\": ${quote(value)}" } +
+            "  \"commit\": ${git["commit"]?.let(::quote) ?: "null"}" + "  \"modified\": ${git["modified"] ?: "true"}")
+            .joinToString(",\n", "{\n", "\n}\n")
+        output.get().asFile.apply { parentFile.mkdirs() }.writeText(json)
+        println(json)
+    }
 }
 
 val printVersion by tasks.registering {
