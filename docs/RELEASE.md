@@ -101,26 +101,34 @@ To build locally: `docker build -t reflux-libmpv tools/libmpv`, then `docker run
 
 Reflux for Windows is **unsigned by decision** (DECISIONS.md, 2026-11-08). What stands in for a publisher signature: a stable artifact name, the exact commit, SHA-256 in `SHA256SUMS` and on the download page, GitHub's signed provenance, HTTPS delivery from GitHub releases only, and a download page that says plainly what Windows will show. Observed (VERIFICATION.md, M6): `Get-AuthenticodeSignature` reports NotSigned; Microsoft Defender finds nothing; launched with the download mark, SmartScreen intercepts it ("Windows protected your PC") and it does not start until the user chooses to run it; where Smart App Control is on, Windows blocks unsigned unknown apps outright, with no per-app exception, so this build cannot run there. Users are never told to switch either off. Signing is revisited before or around 1.0, when distribution scale justifies a certificate.
 
-## Store readiness (M6)
+## Store readiness (M7)
 
-Read 2026-11-07/08; recheck when each track is set up.
+Read 2026-11-08 from the stores' current documentation (sources below); recheck when each track is set up. Supersedes the M6 table. Nothing is submitted; no listing exists.
 
 | | Google Play | Amazon Appstore (Fire TV) |
 | --- | --- | --- |
-| Package | `dev.rsxdevelops.reflux` (M7; DECISIONS.md, "The permanent Android identity"), one bundle for phones, tablets, Android TV, Google TV | `dev.rsxdevelops.reflux`, the APK from the same build and `versionCode` |
-| Target API | 36 required for new apps and updates since 2026-08-31 (Android TV 34); Reflux targets 36 | Amazon enforces a minimum `targetSdkVersion` (release notes, July 2026); 36 is above it |
-| Signing | Play App Signing with the upload key | Amazon re-signs with the account's key |
-| Privacy policy | Required, at a public URL: `https://reflux.rsxdevelops.dev/privacy` once the domain is live | Required, same URL |
-| Data safety / data disclosure | Answers prepared in PRIVACY.md: no data collected or shared; data stays on the device | Same facts |
-| Content | No user-generated content, no ads, no purchases, no account; content rating questionnaire to be answered (a media player of the user's own media) | Same; Amazon's age-verification (`GetUserAgeData`) requirement to be read for whether it applies to an app without accounts or age-gated content |
-| TV | TV quality checklist (D-pad, banner, no touch required: in place), TV review, Watch Next certification for Google TV | Fire TV device targeting in the manifest; test on a physical device before submission (done on a Fire TV Stick 4K Plus) |
-| Testing track | Closed testing. A **personal** developer account created after 2023-11-13 must run a closed test with at least 12 testers opted in for the last 14 days before production access; an organization account is exempt. Which kind the RSX Develops account is, and when it was made, is read from the Play Console by the owner (not yet known here); if it applies, M8 plans ≥12 testers for ≥14 days before any production release | Live App Testing |
-| Store assets | Screenshots (phone, tablet, TV), feature graphic, icon 512 px (`desktop/app/packaging/reflux.png` is the mark at 512 px), descriptions | Screenshots at Amazon's sizes, icons, banner |
-| Submission | **None in M6.** No listing exists | **None in M6** |
+| Package | `dev.rsxdevelops.reflux`, one bundle for phones, tablets, Android TV, Google TV | `dev.rsxdevelops.reflux`, the APK from the same build and `versionCode` |
+| Target API | 36 required for new apps and updates since 2026-08-31; Reflux targets 36, `minSdk` 26, `compileSdk` 37 | Amazon recommends 36 for Fire OS 16 and requires each Fire OS's floor (34 on Fire OS 14); 36 meets both |
+| Native code | One library (`libandroidx.graphics.path.so`, from Compose), 16 KB-aligned on every ABI and stored uncompressed: meets Play's 16 KB page-size rule | — |
+| Bundle and signing | AAB, Play App Signing; uploads signed with the owner's upload key (made at M8's start) | The APK, signed with the same upload key; Amazon re-signs |
+| Manifest | Launcher and leanback launcher, banner, touchscreen and leanback not required, `READ_MEDIA_VIDEO` (TVs only, explained in the listing), `WRITE_EPG_DATA` (Watch Next), cleartext allowed for home servers, no backup | `android.hardware.touchscreen` not required, which Amazon needs to list an app for Fire TV |
+| Exported components | The launcher activity and the read-only artwork provider (`${applicationId}.artwork`) | Same |
+| Release build | R8 and resource shrinking, not debuggable, release logging redacted, no TMDB credential, no endpoint of Reflux's own (it calls only the user's servers and plex.tv) | Same |
+| Privacy policy | `https://reflux.rsxdevelops.dev/privacy` (live once the site is deployed) | Same |
+| Data safety / privacy questions | PRIVACY.md, "Store disclosures": nothing collected or shared | Same |
+| Listing | `release/store-listing.md`: text, category, content-rating answers; artwork in `design/brand/store` (icon, feature graphic, TV banner, screenshots) | The same text; 114 and 512 px icons, the 1280 × 720 Fire TV icon, 1920 × 1080 screenshots (3 to 10) |
+| Testing track | Closed testing. A **personal** account created after 2023-11-13 must have ≥12 testers opted in for the last 14 days before production access; an **organization** account is exempt. Which the RSX Develops account is: **not readable from this environment** (owner action, M8 entry checklist) | Live App Testing: testers are invited by e-mail and install from the Appstore on their device; they must allow the Appstore's promotional e-mails |
+| Owner actions | Create the app as `dev.rsxdevelops.reflux` in Play Console; read the account type; make the upload key; set the support e-mail | Create the app in the Amazon developer console; set the support e-mail |
 
-### Android developer verification
+### Android developer verification (M7)
 
-Google's developer verification: from 2026-09-30, apps installed on certified Android devices in Brazil, Indonesia, Singapore, and Thailand must come from a verified developer, globally from 2027; ADB installs stay allowed. Apps distributed through Google Play are covered by the Play Console's own developer verification; distribution outside Play needs the developer registered (Android Developer Console) and the package name registered to them. For Reflux: the Play path needs the Play Console account verified (the owner checks its status); the final package, `dev.rsxdevelops.reflux`, is the one to register (M7, "Android developer verification" below is superseded by RELEASE.md's M7 section); `dev.reflux` was a development identity only and is never registered. Fire TV (Fire OS) is not Google-certified Android and is outside this scheme; Amazon's own account verification applies. Developer-mode sideloading during testing is not production distribution. No account change was made in M6.
+- Verification is per package name, tied to a developer account and to the signing keys of that package. Enforcement began 2026-09-30 in Brazil, Indonesia, Singapore, and Thailand; global in 2027.
+- **Google Play distribution (Reflux's path):** Play registers Play packages; apps created in Play Console since 2026-03-30 are registered to the account when they are created, and every Play package must be registered. So creating `dev.rsxdevelops.reflux` in Play Console registers it; the Play Console's own identity verification of the account must be complete (the owner checks its status on the Android developer verification page).
+- **Outside Play:** Reflux offers no Android file outside the stores (the website never links one), so no Android Developer Console registration is needed now. If that changes, `dev.rsxdevelops.reflux` is registered there with the upload-key certificate before any APK is offered.
+- **Fire TV** runs Fire OS, which is not Google-certified Android and is outside the scheme; Amazon verifies its own developer accounts.
+- `dev.reflux`, the development identity, is never registered.
+
+Sources (read 2026-11-08): Google Play Console Help, "Registering Play package names" and "Registering Android package names"; Android Developers, "Register on Android Developer Console"; Play Console Help on testing requirements for new personal accounts; Amazon developer docs, "Developing for Fire TV devices running Fire OS 16", "Device filtering and compatibility", "Step 3: Add Appstore details", and Live App Testing's "Prepare app testers".
 
 ## Store requirements
 
