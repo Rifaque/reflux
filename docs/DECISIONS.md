@@ -1107,3 +1107,18 @@ Home media servers are usually `http://` on a local network, and which servers t
 ## 2026-11-08 — Terms: the ownership notice until the legal review
 
 Reflux's terms for M6 and the beta are its ownership notice (`LICENSE`) and the stores' own terms; no EULA is drafted without legal review, which decides whether one is needed before 1.0 (RELEASE.md, "Legal review"). The website's Terms page shows the notice as it is, and says the question is open.
+
+## 2026-11-08 — M7's scope
+
+M7 is "Compatibility, Release Proof, Brand + Website, and Beta/Test Readiness": the work that makes the beta possible, in the order ROADMAP.md, M7, gives it. It adds no feature beyond the diagnostics export M6 deferred, and does not start M8 or any public test. The items the roadmap of 2026-11-02 had placed in M7 but that are features (the playback-parity items) or need hardware and testers the project does not hold (a physical Google TV, the Fire TV television, physical controllers, clean-machine installs, real-network failure, broader compatibility) move to M8 and M9, where the V1 acceptance criteria still require them before 1.0 (ROADMAP.md, M7, "Moved out of M7"). Nothing was dropped.
+
+## 2026-11-08 — The permanent Android identity
+
+Reflux's Android application ID is **`dev.rsxdevelops.reflux`**, for Google Play, the Amazon Appstore, and developer verification; `dev.reflux` was the development identity and is never registered or listed. The ID is declared once (`reflux.android.applicationId` in `gradle.properties`), read by the Android build and written into the release identity (`androidPackage` in `release-info.json` and the manifest), which the release tool checks the APK against.
+
+- **Application identity is not source namespace.** The Kotlin packages (`dev.reflux.*`) and the Android `namespace` (`dev.reflux.android`, which names the generated `R` class) are unchanged: they are not visible to stores or devices, and renaming them would churn every file for nothing.
+- **Not product branding or the domain.** The product is "Reflux"; the site is reflux.rsxdevelops.dev; Windows' Credential Manager entries (`Reflux/...`) and the data folders (`%LOCALAPPDATA%\Reflux`, `~/.local/share/reflux`) are named after the product and do not change.
+- **What follows from the ID:** the artwork provider's authority (`${applicationId}.artwork`), the instrumentation package (`dev.rsxdevelops.reflux.test`), the app's private storage and Android keystore entries, and which installed app an update replaces.
+- **No migration.** No build was ever given to anyone outside the project, so nobody has data under `dev.reflux` to carry over. On the developer's devices the new identity installs beside the old one as a separate app; the old one is removed by hand when no longer wanted.
+- Decided now, before any store listing or developer-verification registration exists, because a published application ID can never change.
+

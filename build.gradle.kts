@@ -37,6 +37,9 @@ extra["reflux.versionCode"] = refluxVersionCode
 extra["reflux.windowsVersion"] = refluxWindowsVersion
 extra["reflux.linuxVersion"] = refluxLinuxVersion
 extra["reflux.channel"] = refluxStage
+// The Android application ID, declared once beside the version (DECISIONS.md, "The permanent Android identity").
+val refluxApplicationId: String = providers.gradleProperty("reflux.android.applicationId").get()
+extra["reflux.applicationId"] = refluxApplicationId
 
 /**
  * The commit a build is made from and whether the tree had changes (docs/VERSIONING.md, "Build metadata"), as
@@ -150,6 +153,7 @@ val releaseInfo by tasks.registering {
     val fields = mapOf(
         "product" to "Reflux", "version" to refluxVersion, "versionCode" to refluxVersionCode.toString(),
         "windowsVersion" to refluxWindowsVersion, "linuxVersion" to refluxLinuxVersion, "channel" to refluxStage,
+        "androidPackage" to refluxApplicationId,
     )
     inputs.property("identity", identity)
     inputs.property("fields", fields)

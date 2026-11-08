@@ -10,7 +10,8 @@ android {
     compileSdk = 37
 
     defaultConfig {
-        applicationId = "dev.reflux"
+        // Declared once, in gradle.properties; the Kotlin namespace stays dev.reflux.android (DECISIONS.md).
+        applicationId = rootProject.extra["reflux.applicationId"] as String
         minSdk = 26
         targetSdk = 36
         // Both derive from reflux.version (docs/VERSIONING.md); never set them here.

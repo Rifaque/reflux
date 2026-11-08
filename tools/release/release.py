@@ -38,7 +38,6 @@ import sys
 import zipfile
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
-PACKAGE = "dev.reflux"
 WINDOWS = platform.system() == "Windows"
 
 
@@ -137,13 +136,13 @@ def build(args) -> int:
     if not apk.exists():
         sys.exit("no signed APK: the signing env did not reach the build")
     identity = apk_identity(apk)
-    expected = {"package": PACKAGE, "versionCode": info["versionCode"], "versionName": version, "debuggable": False}
+    expected = {"package": info["androidPackage"], "versionCode": info["versionCode"], "versionName": version, "debuggable": False}
     for key, value in expected.items():
         if identity[key] != value:
             sys.exit("APK %s is %r, expected %r" % (key, identity[key], value))
     add(apk, "reflux-%s-android.apk" % version, "android", "universal", "apk", {"android": identity})
     add(ROOT / "android/app/build/outputs/bundle/release/app-release.aab", "reflux-%s-android.aab" % version, "android", "universal", "aab",
-        {"android": {"package": PACKAGE, "versionCode": info["versionCode"], "versionName": version}})
+        {"android": {"package": info["androidPackage"], "versionCode": info["versionCode"], "versionName": version}})
     desktop = "windows" if WINDOWS else "linux"
     archive = ROOT / "desktop/app/build/release" / ("reflux-%s-%s-x64.%s" % (version, desktop, "zip" if WINDOWS else "tar.gz"))
     add(archive, archive.name, desktop, "x64", archive.suffix.lstrip("."), {"signed": False} if WINDOWS else {})
@@ -165,7 +164,7 @@ def build(args) -> int:
     manifest = {
         "schema": 1, "product": "Reflux", "publisher": "RSX Develops", "version": version, "versionCode": info["versionCode"],
         "windowsVersion": info["windowsVersion"], "linuxVersion": info["linuxVersion"], "channel": info["channel"],
-        "commit": commit, "repository": "https://github.com/Rifaque/reflux", "tag": "v" + version,
+        "androidPackage": info["androidPackage"], "commit": commit, "repository": "https://github.com/Rifaque/reflux", "tag": "v" + version,
         "builtAt": finished.strftime("%Y-%m-%dT%H:%M:%SZ"), "builder": "local" if not os.environ.get("GITHUB_ACTIONS") else "github-actions",
         "tmdb": "disabled", "artifacts": artifacts,
     }
@@ -222,6 +221,10 @@ def verify(args) -> int:
             for key in ("package", "versionCode", "versionName"):
                 if identity[key] != artifact["android"][key]:
                     problems.append("%s: %s %r, manifest %r" % (artifact["name"], key, identity[key], artifact["android"][key]))
+            if identity["package"] != manifest.get("androidPackage"):
+                problems.append("%s: package %s is not the release's %s" % (artifact["name"], identity["package"], manifest.get("androidPackage")))
+            if identity["debuggable"]:
+                problems.append(artifact["name"] + ": debuggable")
         if artifact["kind"] == "zip":
             with zipfile.ZipFile(path) as z:
                 if z.testzip() is not None:
@@ -229,6 +232,18 @@ def verify(args) -> int:
     for name in sums:
         if name not in {a["name"] for a in manifest["artifacts"]}:
             problems.append(name + ": in SHA256SUMS, not in the manifest")
+    # The provenance statement names exactly these artifacts, by these digests, from this commit.
+    statement = folder / "provenance.intoto.json"
+    if not statement.exists():
+        problems.append("provenance.intoto.json: missing")
+    else:
+        provenance = json.loads(statement.read_text(encoding="utf-8"))
+        subjects = {s["name"]: s["digest"]["sha256"] for s in provenance.get("subject", [])}
+        if subjects != {a["name"]: a["sha256"] for a in manifest["artifacts"]}:
+            problems.append("provenance.intoto.json: its subjects are not the manifest's artifacts")
+        commits = [d.get("digest", {}).get("gitCommit") for d in provenance["predicate"]["buildDefinition"]["resolvedDependencies"]]
+        if manifest.get("commit") not in commits:
+            problems.append("provenance.intoto.json: does not name the manifest's commit")
     if problems:
         print("FAILED")
         for p in problems:
