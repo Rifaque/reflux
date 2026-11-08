@@ -10,10 +10,10 @@ The website is release infrastructure, not a task for after 1.0 and not optional
 
 | Stage | What it is | Done when (milestone) |
 | --- | --- | --- |
-| **W0 — Foundation** | Type, color, spacing, and motion rules for the site; the page skeleton; hosting and the domain; an analytics decision, none by default (ROADMAP.md, "The Reflux website", Privacy) | The empty skeleton is deployed at the domain, over HTTPS, and every later page is built from its rules (M6). Built 2026-11-08 (React + Vite, Vercel; WEBSITE.md); not yet deployed |
+| **W0 — Foundation** | Type, color, spacing, and motion rules for the site; the page skeleton; hosting and the domain; an analytics decision, none by default (ROADMAP.md, "The Reflux website", Privacy) | The empty skeleton is deployed at the domain, over HTTPS, and every later page is built from its rules (M6). Built 2026-11-08 (React + Vite, Vercel; WEBSITE.md); redesigned as Website 2.0 in M7; not yet deployed (owner actions, WEBSITE.md) |
 | **W1 — Early landing page** | One page: what Reflux is in a sentence, a few real screenshots, supported platforms ("coming"), and a quiet way to hear about the beta | Live on the M6 foundation |
-| **W2 — Demo video** | The product demo (below) | Approved by the product owner; embedded on the site before the beta (M7) |
-| **W3 — Beta launch** | Beta signup (platform, device, sources, so testers can be chosen for coverage), what the beta is and is not, how to install on each platform, how to report problems, the changelog, privacy policy, support contact | Live before `0.9.0-beta.1` (built in M7, required for M8 entry, operated through M8) |
+| **W2 — Demo video** | The product demo (below) | Approved by the product owner; embedded on the site before the beta (moved to M8 at M7's closure: not produced; the site uses real product renders until then) |
+| **W3 — Beta launch** | Beta signup (platform, device, sources, so testers can be chosen for coverage), what the beta is and is not, how to install on each platform, how to report problems, the changelog, privacy policy, support contact | Live before `0.9.0-beta.1` (built in M7: the tester hub, install, feedback, changelog, privacy, support pages; the signup is the store test channels; required for M8 entry, operated through M8) |
 | **W4 — 1.0 site** | The product site: the demo, the core ideas (your media wherever it lives, understood automatically, played well), platforms with store badges and desktop downloads, changelog, privacy, support, legal and attribution | Live with `1.0.0` (M10; presented from the release candidate, M9) |
 
 ### Visual direction
