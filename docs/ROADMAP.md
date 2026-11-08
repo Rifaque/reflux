@@ -8,7 +8,7 @@ The one source of truth for what Reflux is building, in what order, and what is 
 - The website is a release workstream across M6, M7, and M8 (below, "The Reflux website"); its visual direction, the demo video, and the beta program are in [LAUNCH.md](LAUNCH.md).
 - Decisions behind the plan are in [DECISIONS.md](DECISIONS.md): the first rebaseline (2026-10-17) and the milestone rebaseline (2026-11-02).
 
-**Current state: M6 complete → M7 next.**
+**Current state: M6 complete; M7 in progress.**
 
 This milestone list replaces the one of 2026-10-17 (M0 to M7, with M2 as release engineering and M3 as real-world validation), which replaced the earlier Phase 0–18 plan. Documents and verification sections written before 2026-11-02 use the older numbering; how each old milestone maps to this one is under "Earlier numbering", and DECISIONS.md, 2026-11-02, "The milestone rebaseline", says why.
 
@@ -50,7 +50,7 @@ Status words used below:
 | M4 — Visual System 2.0 | A higher-end visual system around that structure | **Complete** (2026-11-07), with the limits in its section |
 | M5 — Library Depth & Reflux Magic | A richer library and the features that set Reflux apart | **Complete** (2026-11-07), with the limits in its section |
 | M6 — Release Engineering / Security / Legal | Production builds, packaging, signing, security hardening, legal and licensing, store preparation; the website's foundation and its legal and privacy pages | **Complete** (2026-11-08), with the limits in its section |
-| M7 — Compatibility / Performance / Release Proof | The final platform matrix proven: compatibility, performance, stability, production readiness; the website ready for the public and for testers | **Next** |
+| M7 — Compatibility, Release Proof, Brand + Website, and Beta/Test Readiness | The permanent Android identity, the brand, the redesigned website, CI and release proof, the source-built Windows libmpv, the diagnostics export, the M6 stability leftovers, store readiness, and the M8 entry checklist | **In progress** |
 | M8 — Beta | `0.9.0-beta.N` in testers' hands until the beta exit criteria hold, with the website operating as their entry point | Future |
 | M9 — Release Candidate | `0.9.0-rc.N`, feature freeze, final validation, submissions prepared | Future |
 | M10 — 1.0 | `1.0.0` on every V1 target | Future |
@@ -290,27 +290,102 @@ Planned here, worded in the legal work of M6 and M7 (RELEASE.md, "Legal review")
 - Third-party and open-source notices, as the About page already lists them.
 - Data handling disclosures consistent with the app: what it stores, what it sends and to whom (TMDB, the user's own servers), and that it has no account and sends nothing to RSX Develops.
 
-## M7 — Compatibility / Performance / Release Proof
+## M7 — Compatibility, Release Proof, Brand + Website, and Beta/Test Readiness
 
-**Next.** The final production matrix proven: broad compatibility, performance, stability, and production readiness. It is broader than M2P, which proved playback; M7 proves the whole product on what it ships to. This holds the 2026-10-17 roadmap's M3, "Real-world validation".
+**In progress** (started 2026-11-08 from the M6 closure, `2c92c31`). M7 takes Reflux from a working alpha with a proven, manual release process to a product that is ready to begin the beta. It is not a feature milestone: it adds no feature beyond the diagnostics export M6 deferred, does not redesign playback, adds no account, telemetry, or cloud service, and does not start M8 or any public test. Decisions: DECISIONS.md, 2026-11-08, "M7's scope". Evidence: VERIFICATION.md, "M7".
+
+### Workstreams, in order
+
+The order is by dependency: the final package identity comes before anything is registered or listed around it; the brand comes before the website and the store assets that carry it; the source-built libmpv comes before the Windows artifact is called public.
+
+| # | Workstream | Depends on | What done means |
+| --- | --- | --- | --- |
+| A | **Permanent Android identity**: `dev.reflux` → `dev.rsxdevelops.reflux` | — | The application ID, the release tool's check, the store records, the scripts, and the documents name `dev.rsxdevelops.reflux`; the Kotlin source namespace (`dev.reflux.*`) is unchanged (DECISIONS.md, "The permanent Android identity") |
+| B | **Brand identity and app icon** | — | Several genuinely different concepts explored and compared; a mark chosen with its reasons; master artwork, wordmark, lockup, monochrome, and every platform's icon produced from one source; usage rules (`design/brand/`) |
+| K | **Diagnostics export** (deferred from M6) | — | A support report generated on request, never sent by itself, with the redaction tested |
+| J | **Deferred playback and stability** | — | The Phone 2a subtitle-after-seek and Fire TV subtitle-on-replay observations, and the intermittent `LibraryDepthUiTest` and `SourcesUiTest` tests, each fixed or classified with evidence |
+| C | **Website 2.0** | B | The site rebuilt as a product site in the brand, not the M6 scaffold restyled |
+| D | **Website deployment** | C | Production configuration ready for reflux.rsxdevelops.dev on Vercel, with the real DNS requirement read from Vercel; any owner action written down exactly |
+| F | **Windows libmpv from source** | — | mpv, FFmpeg, and every library in the DLL built by Reflux from pinned, checksummed sources, LGPL, with the source bundle and notices; validated on Windows |
+| E | **CI and release automation** | A, F | The first real CI pipeline and a release rehearsal from a clean clone: tests → build → artifacts → checksums → provenance → independent verification |
+| G | **Google Play readiness** | A | Final package, target SDK, AAB, signing and upload-key plan, permissions, exported components, network, backup, logging, R8, endpoints, listing material; current requirements read |
+| H | **Android developer verification** | A, G | What `dev.rsxdevelops.reflux` needs registered, and by whom |
+| I | **Amazon / Fire TV readiness** | A, B | Package, signing, compatibility, listing material, and the physical stick re-run for M7's changes |
+| L | **TMDB decision gate** | external | Recorded as it stands; never inferred |
+| M | **Third-party, legal, and security review** | B, C, F | Inventories cover the new components; the website and app re-checked against M6's guarantees |
+| N | **Documentation and the M8 entry checklist** | all | This section, RELEASE.md, VERIFICATION.md, DECISIONS.md, the changelog, and the other documents agree with what was done |
+
+### Hard acceptance gates
+
+M7 is complete only when every gate holds, with its evidence in VERIFICATION.md:
+
+1. The canonical Android identity is `dev.rsxdevelops.reflux`.
+2. The brand mark was explored, chosen (or recommended, awaiting the owner where a visual decision is genuinely theirs), documented, and its production assets prepared.
+3. The website is a redesigned product site.
+4. The site is production-ready, with any deployment blocker written down as an exact owner action.
+5. CI can run the intended checks from a clean checkout.
+6. Release artifacts have verifiable checksums and provenance (signed attestation where the platform allows).
+7. The Windows libmpv build and its source and license distribution are ready for public Windows distribution.
+8. The deferred subtitle observations and intermittent tests are fixed or classified with evidence.
+9. The diagnostics export is implemented and its redaction tested.
+10. Play, Amazon, and developer-verification readiness are established for the final package.
+11. TMDB is recorded as approved, licensed, disabled pending resolution, or still externally pending; never approved by inference.
+12. The M8 entry checklist (below) exists, and each item is PASS or a named owner/external action.
+
+### Known external dependencies
+
+Nothing here blocks the rest of M7; each is prepared up to the action itself.
+
+| Dependency | Whose | Blocks |
+| --- | --- | --- |
+| Pushing the branch to GitHub (CI's first hosted run, the release workflow's signed attestations, the Vercel Git integration) | The owner | Gate 5's hosted run, gate 6's GitHub attestations, gate 4's deployment |
+| The DNS record at Cloudflare for reflux.rsxdevelops.dev | The owner | The live domain |
+| Play Console: account type (personal or organization), developer verification status, the app created as `dev.rsxdevelops.reflux` | The owner | The closed-testing plan; the listing |
+| Amazon developer console: the app created | The owner | The Fire TV listing |
+| The upload key (made by the owner, kept offline and in GitHub's secrets) | The owner | Any build given to a store |
+| TMDB's answer on commercial or non-commercial use | TMDB | Re-enabling TMDB in public builds |
+| A support email address and a donation destination | The owner | The support page's contact line; "Support Reflux" stays unpublished until then |
+
+### Moved out of M7
+
+The roadmap of 2026-11-02 placed these in M7. M7's scope (above) is release readiness, not features or broad hardware campaigns, so they move; none is dropped:
+
+| Item | Now | Why |
+| --- | --- | --- |
+| Playback parity: held seek acceleration, chapters on Android where Media3 supplies them, media keys on desktop, an explanation on television where sidecar subtitles cannot be read | M8, each by an explicit decision before M9's feature freeze, or V1.x | Features; M7 adds none |
+| A physical Google TV / Android TV device; the Fire TV television; physical Xbox and PlayStation controllers | M8 (the beta's device matrix: LAUNCH.md asks for ≥3 Google TV and ≥3 Fire TV testers and ≥2 with controllers), required by the V1 acceptance criteria before M10 | Hardware the project does not hold; the testers bring it |
+| Clean-machine desktop installs; network failure and recovery on real networks; broader compatibility (other Jellyfin versions, NAS SMB servers, HDR/DV and passthrough on real receivers, physical Linux) | M8 to M9, recorded in VERIFICATION.md as testers' setups allow; V1 acceptance criterion 12 | As above |
+| A large-library performance baseline; a seeded stress harness; image-baseline visual regression | M8 | Engineering hardening that does not gate the beta's entry |
+| TMDB against the live service, with attribution | After TMDB's answer (gate L) | External |
+| Replacing the deprecated `Modifier.onFocusedBoundsChanged` | M8 | Its regression test still guards it |
+
+### M8 entry checklist
+
+Each item is PASS (with its evidence) or an owner/external action that must happen before M8 begins. Kept current to M7's closure; the state column is the closure's.
 
 | Item | State |
 | --- | --- |
-| Serious playback parity, moved from M5: held seek acceleration; chapters on Android where Media3 supplies them; media keys on desktop; on television, an explanation where sidecar subtitles cannot be read (decided) | Open (before M9) |
-| TMDB against the live service, with attribution in place | Open |
-| A real Android phone and tablet across the product (playback on the Phone 2a and Pad 7: M2P) | Partial |
-| A real Google TV / Android TV device | Open |
-| Real Fire TV hardware (the developer's Fire TV Stick 4K Plus and Fire TV television): the television, Jellyfin from the device, a USB drive, HDR output, sleep and wake, Amazon's own test criteria | Partial: the stick smoke-tested (2026-10-18) and its playback validated (M2P); the television not yet reachable |
-| Windows and Linux: media keys, scrollbars, HDR output | Partial |
-| Physical Xbox and PlayStation controllers on desktop, Android, and television | Open |
-| Desktop installation from the package on a clean Windows and a clean Linux machine | Open |
-| Network failure and recovery on real networks (Wi-Fi drop, server sleep, VPN) | Open |
-| A large-library performance baseline (scan, browse, search, start-up) recorded for regression | Open |
-| A reproducible stress harness: the 2026-10-17 fuzzing and race runs were not committed (only the regression tests for what they found are in the suite); decide whether to keep a seeded harness in the tree | Open |
-| A visual regression strategy for the offscreen renderings | Partial: M4's representative pixel tests (`VisualSystemTest`); no image baselines |
-| Broader compatibility: other Jellyfin versions, NAS SMB servers, HDR/DV and passthrough on real hardware and receivers, physical Linux | Open |
+| Package identity `dev.rsxdevelops.reflux` | Pending (A) |
+| Signing: upload key made, in GitHub secrets and an offline backup | Owner action, at M8's start (RELEASE.md, "Signing") |
+| Developer verification for the final package | Pending (H) |
+| Play account type known (closed-testing rule) | Owner action |
+| Play listing material ready | Pending (G) |
+| Tester requirement (≥12 testers for 14 days, if the account is personal) planned | Pending (G) |
+| Amazon readiness | Pending (I) |
+| TMDB decision | External: pending TMDB's answer; public builds keep it disabled |
+| Windows libmpv source build and source distribution | Pending (F) |
+| Website deployed at reflux.rsxdevelops.dev over HTTPS | Pending (C, D) |
+| CI green on GitHub | Owner action (push), after the local clean-checkout proof (E) |
+| Provenance and attestation | Pending (E) |
+| Diagnostics export | Pending (K) |
+| Stability: the M6 intermittents classified | Pending (J) |
+| Branding in the apps, the site, and the store material | Pending (B) |
+| Release artifacts from a clean clone, verified | Pending (E) |
+| Support, legal, and privacy pages | Pending (C, M) |
+| Final physical-device evidence (Phone 2a, Pad 7, Fire TV) for M7's build | Pending |
+| Casting feasibility gate decided (DECISIONS.md, 2026-10-17) | Open, for M8's start |
 
-### Reflux Website — Public Release & Tester Readiness
+### Reflux Website — Public Release & Tester Readiness (workstreams C and D)
 
 M7 turns the M6 foundation into the production website used for the beta and for 1.0.
 
