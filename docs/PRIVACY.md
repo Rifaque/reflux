@@ -37,4 +37,4 @@ What Reflux stores, sends, and to whom, as the code does it (checked 2026-11-08 
 
 ## The website
 
-Hosted by Vercel, which processes requests (IP addresses) to serve the pages. No cookies, no analytics, no third-party scripts or fonts (a `default-src 'self'` content security policy), no forms.
+Hosted by Vercel, which processes requests (IP addresses) to serve the pages. No cookies, no analytics, no third-party scripts, fonts, or images (the Manrope font and every image are served by the site itself; a `default-src 'self'` content security policy), no forms.
