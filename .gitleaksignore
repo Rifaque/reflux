@@ -4,3 +4,4 @@
 a9a46928ee24a92f19d676bd475f0b716c1b366c:playback/mpv/src/test/kotlin/dev/reflux/playback/mpv/MpvEngineTest.kt:generic-api-key:131
 4bb920ed1f0ac1f21a4b03c249e851f1e104bd96:tools/ci/share-test-servers.sh:curl-auth-user:35
 8121c8b2a021aa48f32bf1878a82d5df8b6984d7:desktop/engine/src/test/kotlin/dev/reflux/desktop/engine/DesktopEnvironmentTest.kt:generic-api-key:121
+5542d88404645810a2e357608f7230ee3c4fc70f:ui/src/jvmTest/kotlin/dev/reflux/ui/SupportReportUiTest.kt:generic-api-key:28
