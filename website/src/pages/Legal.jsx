@@ -32,7 +32,7 @@ export function Privacy() {
       <ul>
         <li><strong>Your own servers and shares</strong> (Jellyfin, Plex, SMB, WebDAV): the requests needed to list and play your media and to keep what you watched in step with them. They see what you play from them, as with any client.</li>
         <li><strong>Plex</strong>: when you sign in with a Plex account, your sign-in goes to plex.tv, Plex's service, to find your servers.</li>
-        <li><strong>Metadata lookups</strong>: public builds of Reflux do not look anything up online. They use what your servers provide and what is in your files' names. If online lookups are offered in a later release, this page will say what is sent and to whom before they are.</li>
+        <li><strong>TMDB</strong> (themoviedb.org): to recognise a film or show and fetch its description and artwork, Reflux sends TMDB the title and year it read from the file's name (or an ID it already has) and your language, with Reflux's own application key; TMDB sees your IP address, as any website does. Never the file's location, your servers, or anything about you. Turn it off under Sources, "Online metadata & artwork", and Reflux uses only your servers and files.</li>
         <li>Nothing else. Reflux contains no analytics, crash reporting, or advertising service.</li>
       </ul>
 
@@ -81,6 +81,9 @@ export function Notices() {
         <thead><tr><th scope="col">Library</th><th scope="col">Version</th><th scope="col">License</th></tr></thead>
         <tbody>{release.site.map((p) => <tr key={p.name}><td>{p.name}</td><td>{p.version}</td><td>{p.license}</td></tr>)}</tbody>
       </table>
+      <h2 id="tmdb">TMDB</h2>
+      <img className="tmdb-logo" src="/tmdb-logo.svg" width="137" height="18" alt="TMDB" />
+      <p>Reflux identifies films and shows and fetches their descriptions and artwork with TMDB, The Movie Database (<Out href="https://www.themoviedb.org">themoviedb.org</Out>). This product uses the TMDB API but is not endorsed or certified by TMDB.</p>
       <h2 id="artwork">Artwork on this site</h2>
       <p>The films in the pictures of Reflux on this site are the Blender Foundation's open films; their posters and stills are used under their Creative Commons licenses, unchanged apart from being shown inside Reflux. The titles' descriptions are Reflux's own words.</p>
       <table>

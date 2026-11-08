@@ -25,7 +25,7 @@ The text and artwork for Reflux's Google Play and Amazon Appstore listings, prep
 
 > Reflux is a media player for the films and shows you already have, wherever they live: in a folder on your device or a drive plugged into it, on a Jellyfin or Plex server, or on a Windows, NAS, or WebDAV share.
 >
-> Point Reflux at a folder and it builds your library by itself: films, shows, seasons, and episodes recognised from ordinary file names, with descriptions and artwork from your servers. No renaming, no setup files, no account.
+> Point Reflux at a folder and it builds your library by itself: films, shows, seasons, and episodes recognised from ordinary file names, with descriptions and artwork from your servers and from TMDB. No renaming, no setup files, no account.
 >
 > • One library across every source. The same film on your server and on your tablet is one film, with every copy listed as a version.
 > • Play picks the copy this device plays best, and starts where you left off, on any copy.

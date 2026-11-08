@@ -1073,7 +1073,7 @@ M5's metadata architecture (METADATA.md, "Library depth (M5)").
 
 ## 2026-11-08 — TMDB in public releases: disabled
 
-M6's gate on TMDB (M5 left it open). Outcome: **DISABLED**. The integration stays in the codebase and in development builds; public release builds carry no TMDB credential, make no lookups, and show no TMDB attribution or "Online metadata & artwork" switch.
+**Superseded the same day by "TMDB: working non-commercial classification", below.** M6's gate on TMDB (M5 left it open). Outcome: **DISABLED**. The integration stays in the codebase and in development builds; public release builds carry no TMDB credential, make no lookups, and show no TMDB attribution or "Online metadata & artwork" switch.
 
 - TMDB's API terms (last updated 2023-10-20, read 2026-11-07) license non-commercial use only; commercial use needs a separate written agreement, and TMDB alone decides what is commercial. Reflux is free and supported by voluntary donations; the terms do not mention donations, and "Reflux is free" does not settle it.
 - The terms also limit keeping TMDB data to six months, and their attribution wording differs from the FAQ's.
@@ -1163,4 +1163,13 @@ Reflux had no identity of its own: its icon was a play triangle on a graphite ti
 | **The Loop** (chosen) | One line that flows in, turns back over itself, and flows on, higher | Says the name (*re-flux*: a flow that returns and continues), keeps its silhouette at 16 px, has no media symbol in it, and has depth from one layer passing over another, which is how Reflux's interface makes depth |
 
 Chosen in its mono form (a two-tone version weakened the small sizes), with the wordmark "reflux" in Manrope (OFL-1.1), lowercase, beside it in the lockup. Everything is generated from one geometry (`tools/brand/`), and the guidelines are design/brand/README.md. It replaces the play-triangle icon on Android, Android TV, Fire TV, Windows, Linux, the desktop window, and the website. It is a visual identity, so the owner may still replace it; a replacement is a change to the geometry script, after which every asset is regenerated.
+
+## 2026-11-08 — TMDB: working non-commercial classification
+
+The owner's decision for M7, superseding "TMDB in public releases: disabled" (above): **Working classification: non-commercial under TMDB's published definition; formal clarification request pending.** This is Reflux's own reading of TMDB's terms, not TMDB's approval, and it is not described as one anywhere.
+
+- **Why non-commercial is the working reading:** Reflux is free, with no subscription, Pro tier, paid feature, advertising, or feature gating; its purpose is the media player itself; optional voluntary support links for RSX Develops sit on the website, and nothing in the app is held back from anyone. Donations are not taken to make Reflux commercial, nor to make it non-commercial: TMDB alone decides that, and its answer to the clarification request (sent by the owner) governs.
+- **What changes:** release builds carry the TMDB application credential when the build environment supplies it (`REFLUX_TMDB_TOKEN`, a GitHub secret the owner adds; RELEASE.md), so public builds identify titles online and fetch artwork, with the "Online metadata & artwork" switch under Sources to turn it off. Without the secret a build behaves as before. Nothing else is inferred from the terms: attribution, the six-month limit on kept data (metadata older than that is read again, `refreshStaleMetadata`), and no use beyond identifying and describing the user's own media.
+- **Attribution, as TMDB's terms and FAQ ask:** in the app, About Reflux shows TMDB's approved logo, smaller than Reflux's own name, and the notice "This product uses the TMDB API but is not endorsed or certified by TMDB." whenever the provider is in the build; on the website, the same logo and notice on the third-party and credits page, and the privacy page says what TMDB receives.
+- **When TMDB answers:** if it confirms non-commercial use, this entry records the confirmation and nothing else changes. If it says a commercial licence is needed, this entry says so at once, the credential is withdrawn from release builds until a licence exists, and the privacy page, the changelog, and the store disclosures are corrected. Silence is not an answer; M8 carries the gate as open (ROADMAP.md, M8 entry checklist).
 

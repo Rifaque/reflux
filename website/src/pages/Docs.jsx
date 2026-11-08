@@ -61,7 +61,7 @@ const articles = [
         <h2>How Reflux recognises titles</h2>
         <p>From ordinary file and folder names: title, year, season and episode numbers, and the edition or quality where the name says. Episodes in a folder with no show name become a show named after the folder. Disc folders (BDMV, VIDEO_TS) are not played yet.</p>
         <h2>Where details and artwork come from</h2>
-        <p>Your servers describe their titles: summaries, genres, ratings, runtimes, dates, cast, posters, and episode stills. Files bring their own artwork where it sits beside them. A title with no artwork gets a designed look of its own rather than a blank. Public builds do not look titles up online.</p>
+        <p>Your servers describe their titles: summaries, genres, ratings, runtimes, dates, cast, posters, and episode stills. Files bring their own artwork where it sits beside them, and TMDB fills in what neither has: Reflux sends it a title and year, nothing about you. A title with no artwork gets a designed look of its own rather than a blank. "Online metadata & artwork" under Sources turns the lookups off.</p>
         <h2>Identify</h2>
         <p>When Reflux has a title wrong, open its page and choose <strong>Identify</strong>: search, pick the right one, and Reflux remembers it through rescans, keeping your progress, favourites, and chosen version. <strong>Let Reflux identify it</strong> undoes it.</p>
         <h2>Nothing changes on your disk</h2>

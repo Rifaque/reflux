@@ -20,13 +20,13 @@ What Reflux stores, sends, and to whom, as the code does it (checked 2026-11-08 
 | --- | --- | --- |
 | The user's Jellyfin, Plex, SMB, WebDAV servers | Sign-in, listing, artwork, streams, playback progress, played state | As the user uses them |
 | plex.tv | Plex account sign-in and the list of the account's servers | Only when signing in with a Plex account |
-| TMDB (themoviedb.org) | Title and year or an ID, the language, the app's credential | **Development builds only.** Public builds carry no TMDB credential and make no lookups (DECISIONS.md, 2026-11-08) |
+| TMDB (themoviedb.org) | A title and its year, or an ID; the language; the app's credential; the device's IP address, as with any request | Public builds whose build supplied the credential (DECISIONS.md, 2026-11-08, "TMDB: working non-commercial classification"), unless the user turns off "Online metadata & artwork" under Sources. Never the file's path, the user's servers, or anything about the user |
 | RSX Develops | Nothing | Never: no account, analytics, crash reporting, advertising, or telemetry |
 | The Android TV provider (on the device) | Titles and pictures of works in progress, for the launcher's Watch Next row | Android TV and Google TV only; not on Fire OS |
 
 ## Store disclosures (prepared, not submitted)
 
-**Google Play, Data safety:**
+**Google Play, Data safety:** (with TMDB on, the titles of the user's media are sent to TMDB to identify them; the legal review decides whether Play counts that as "shared" data, and the conservative answer is App activity → Other user-generated content: shared with a third party for app functionality, not collected by the developer, optional because it can be turned off)
 
 - Does the app collect or share any of the required user data types? **No.** Data that never leaves the device is not "collected" in Play's definition; data sent to a server the user chose and operates (their own media server) for the app's function is processed at the user's direction. Reviewed again with the final wording in the legal review.
 - Is all of the user data collected by your app encrypted in transit? Not applicable (nothing collected). Note for the review: connections to users' own servers may be plain HTTP by the user's choice.
