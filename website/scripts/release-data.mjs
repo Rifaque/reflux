@@ -50,6 +50,18 @@ for (const m of published) {
 published.sort((a, b) => (b.builtAt ?? '').localeCompare(a.builtAt ?? ''))
 
 const stores = JSON.parse(read('release/stores.json'))
+// The store listings are for the one Android identity the build declares (DECISIONS.md, "The permanent Android identity").
+const androidPackage = /^reflux\.android\.applicationId=(.+)$/m.exec(read('gradle.properties'))?.[1]?.trim()
+for (const [store, listing] of Object.entries(stores)) {
+  if (listing.package !== androidPackage) throw new Error(`release/stores.json: ${store} is for ${listing.package}, the app is ${androidPackage}`)
+}
+
+// The brand's mark and lockup (design/brand), drawn inline so they take the page's colour.
+const brandPath = (file) => {
+  const svg = read(`design/brand/${file}`)
+  return { viewBox: /viewBox="([^"]+)"/.exec(svg)[1], d: / d="([^"]+)"/.exec(svg)[1] }
+}
+const brand = { mark: brandPath('reflux-mark.svg'), lockup: brandPath('reflux-lockup.svg') }
 
 // Third-party components: name, license, and the platforms they ship on.
 const components = read('legal/components.txt').split(/\r?\n/)
@@ -78,7 +90,7 @@ ${readFileSync(join(dir, file), 'utf8').trim()}
 })
 mkdirSync(join(here, '..', 'public'), { recursive: true })
 writeFileSync(join(here, '..', 'public', 'third-party-licenses.txt'), texts.join('\n'))
-const data = { version, changelog, published, latest: published[0] ?? null, stores, components, license, site }
+const data = { version, androidPackage, changelog, published, latest: published[0] ?? null, stores, components, license, site, brand }
 mkdirSync(join(here, '..', 'src', 'generated'), { recursive: true })
 writeFileSync(join(here, '..', 'src', 'generated', 'release.json'), JSON.stringify(data, null, 2) + '\n')
 console.log(`release data: Reflux ${version}, ${published.length} published, ${changelog.length} changelog sections, ${components.length} components`)

@@ -10,6 +10,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.LinearGradientShader
 import androidx.compose.ui.graphics.Paint
+import androidx.compose.ui.graphics.toComposeImageBitmap
 import dev.reflux.core.BuildIdentity
 import dev.reflux.core.metadata.Credit
 import dev.reflux.core.metadata.CreditRole
@@ -73,7 +74,7 @@ import kotlin.io.path.writeBytes
 import kotlin.math.absoluteValue
 
 /** A real library over a temporary media folder: real scanning and identification, a fake metadata provider. */
-class TestWorld(metadata: Boolean = true) {
+class TestWorld(metadata: Boolean = true, catalog: MetadataProvider = FakeCatalog) {
     private val root: Path = Files.createTempDirectory("reflux-ui").also { it.toFile().deleteOnExit() }
     private val media: Path = root.resolve("Media").createDirectories()
     var clock = 1_790_000_000_000L
@@ -82,15 +83,20 @@ class TestWorld(metadata: Boolean = true) {
     /** How sources are recreated from what the library stored; tests add the kinds they connect. */
     val factories = mutableMapOf<String, (dev.reflux.library.SourceRecord) -> dev.reflux.core.source.MediaSource?>()
     val registry = SourceRegistry(factories).apply { register(source) }
-    val pipeline = LibraryPipeline(library, registry, metadata = FakeCatalog.takeIf { metadata }?.let { dev.reflux.library.ProviderGate(it, spacingMs = 0) })
+    val pipeline = LibraryPipeline(library, registry, metadata = catalog.takeIf { metadata }?.let { dev.reflux.library.ProviderGate(it, spacingMs = 0) })
 
     init {
         library.addSource(source, media.toString())
     }
 
-    fun file(relative: String) {
+    fun file(relative: String, bytes: Long = 8) {
         media.resolve(relative).also { it.parent.createDirectories() }.writeBytes(ByteArray(8))
+        // A larger file is only its length (the showcase's versions say their sizes); nothing reads its contents.
+        if (bytes > 8) java.io.RandomAccessFile(media.resolve(relative).toFile(), "rw").use { it.setLength(bytes) }
     }
+
+    /** Removes the world's files, for a world that made large ones. */
+    fun delete() = root.toFile().deleteRecursively()
 
     /** A small but varied library: movies with several versions and qualities, and two shows. */
     suspend fun populate() {
@@ -233,7 +239,13 @@ object FakeCatalog : MetadataProvider {
  * backdrops. [backdrops] false leaves works with posters only, [posters] false with backdrops only: the other
  * image is there but cannot be read.
  */
-class FakeArtwork(private val enabled: Boolean = true, private val backdrops: Boolean = true, private val posters: Boolean = true) : ArtworkLoader {
+class FakeArtwork(
+    private val enabled: Boolean = true,
+    private val backdrops: Boolean = true,
+    private val posters: Boolean = true,
+    /** Real image files for some URLs (the website showcase); everything else is painted. */
+    private val files: Map<String, java.io.File> = emptyMap(),
+) : ArtworkLoader {
     private val images = mutableMapOf<Pair<ArtworkLocator, Int>, ImageBitmap>()
 
     /** Every image handed out, as its URL and the width in pixels it was asked for. */
@@ -249,7 +261,11 @@ class FakeArtwork(private val enabled: Boolean = true, private val backdrops: Bo
     override suspend fun load(locator: ArtworkLocator, widthPx: Int): ImageBitmap? {
         val name = name(locator)
         if (!enabled || (!backdrops && "backdrop" in name) || (!posters && "poster" in name)) return null
-        return synchronized(images) { images.getOrPut(locator to widthPx) { paint(name, widthPx) } }
+        return synchronized(images) {
+            images.getOrPut(locator to widthPx) {
+                files[name]?.let { org.jetbrains.skia.Image.makeFromEncoded(it.readBytes()).toComposeImageBitmap() } ?: paint(name, widthPx)
+            }
+        }
     }
 
     /** An image already painted for a URL containing [part]. */
@@ -296,8 +312,9 @@ class FakePlatform(
     override val connections: SourceConnections? = null,
     override val build: BuildIdentity = BuildIdentity(commit = "8bd4bba"),
     override val notices: NoticeTarget? = NoticeTarget.DESKTOP,
+    artworkFiles: Map<String, java.io.File> = emptyMap(),
 ) : Platform {
-    override val artwork: FakeArtwork = FakeArtwork(artwork, backdrops, posters)
+    override val artwork: FakeArtwork = FakeArtwork(artwork, backdrops, posters, artworkFiles)
     override var device: DeviceCapabilities = testDevice
     override val preferredLanguages: List<String> = listOf("en")
     override var canPlay: Boolean = true

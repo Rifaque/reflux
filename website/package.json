@@ -7,11 +7,13 @@
   "scripts": {
     "data": "node scripts/release-data.mjs",
     "dev": "node scripts/release-data.mjs && vite",
-    "build": "node scripts/release-data.mjs && vite build",
+    "build": "node scripts/release-data.mjs && vite build && vite build --ssr src/entry-server.jsx --outDir dist-server && node scripts/prerender.mjs",
     "preview": "vite preview",
+    "check-dist": "node scripts/check-dist.mjs",
     "check-links": "node scripts/check-links.mjs"
   },
   "dependencies": {
+    "@fontsource-variable/manrope": "5.3.0",
     "react": "19.3.1",
     "react-dom": "19.3.1",
     "react-router-dom": "7.18.5"

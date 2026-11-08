@@ -33,7 +33,7 @@ As Windows, without libmpv: Reflux uses the distribution's libmpv (`libmpv2`, `m
 
 ## Website
 
-React 19.3.1, React DOM 19.3.1, React Router 7.18.5 (with `cookie` 1.1.1 and `set-cookie-parser` 2.7.3), scheduler 0.28.0: all MIT, bundled into the site's script. Listed on `/legal/third-party` from the lockfile at build time, with their license texts served verbatim at `/third-party-licenses.txt`. Fonts: the visitor's system fonts, none shipped. Icon: Reflux's own mark.
+React 19.3.1, React DOM 19.3.1, React Router 7.18.5 (with `cookie` 1.1.1 and `set-cookie-parser` 2.7.3), scheduler 0.28.0: all MIT, bundled into the site's script. Plus `@fontsource-variable/manrope` 5.3.0 (the Manrope font files, OFL-1.1), served from the site. Listed on `/legal/third-party` from the lockfile at build time, with their license texts served verbatim at `/third-party-licenses.txt`. Icons: Reflux's own mark. Product images: Reflux's own renders, showing the Blender Foundation's open films' posters and stills under CC BY 2.5/3.0/4.0 and CC0, credited on `/legal/third-party#artwork` (from `website/src/showcase.json`); no CC BY-SA or non-commercial image is used.
 
 ## Fonts, icons, assets in the apps
 

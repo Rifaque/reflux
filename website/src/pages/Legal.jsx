@@ -1,12 +1,14 @@
 import { Link } from 'react-router-dom'
 import release from '../generated/release.json'
+import showcase from '../showcase.json'
+import { Out } from '../components.jsx'
 
 const Review = () => (
   <p className="quiet review">This page describes Reflux as it is built today. Its wording has not yet had legal review, which is due before Reflux is released (it is pre-release software, not yet distributed).</p>
 )
 
 /**
- * What Reflux does with data, as its code does it (docs/PRIVACY-INVENTORY.md is the inventory this is written from).
+ * What Reflux does with data, as its code does it (docs/PRIVACY.md is the inventory this is written from).
  * Nothing here is a promise the code does not keep.
  */
 export function Privacy() {
@@ -38,7 +40,7 @@ export function Privacy() {
       <p>To show "continue watching" on the home screen, Reflux writes the titles you are watching, with their pictures, into the system's TV provider, which the launcher reads. On Fire TV it does not.</p>
 
       <h2>This website</h2>
-      <p>This website sets no cookies and runs no analytics. It is hosted by Vercel, which handles the requests your browser makes to it (including your IP address) to serve its pages.</p>
+      <p>This website sets no cookies, runs no analytics, and loads nothing from anyone else: its fonts and images are its own. It is hosted by Vercel, which handles the requests your browser makes to it (including your IP address) to serve its pages.</p>
 
       <h2>Children</h2>
       <p>Reflux plays media you already have; it does not collect information from anyone, children included.</p>
@@ -74,10 +76,16 @@ export function Notices() {
         </tbody>
       </table>
       <h2>This website</h2>
-      <p>The website is built with the open-source libraries below, which your browser receives as part of its pages. Their license texts: <a href="/third-party-licenses.txt">third-party-licenses.txt</a>.</p>
+      <p>Its type is Manrope, by The Manrope Project Authors, under the SIL Open Font License 1.1, served from this site; Reflux’s wordmark is drawn from it. The website is built with the open-source libraries below, which your browser receives as part of its pages. Their license texts: <a href="/third-party-licenses.txt">third-party-licenses.txt</a>.</p>
       <table>
         <thead><tr><th scope="col">Library</th><th scope="col">Version</th><th scope="col">License</th></tr></thead>
         <tbody>{release.site.map((p) => <tr key={p.name}><td>{p.name}</td><td>{p.version}</td><td>{p.license}</td></tr>)}</tbody>
+      </table>
+      <h2 id="artwork">Artwork on this site</h2>
+      <p>The films in the pictures of Reflux on this site are the Blender Foundation's open films; their posters and stills are used under their Creative Commons licenses, unchanged apart from being shown inside Reflux. The titles' descriptions are Reflux's own words.</p>
+      <table>
+        <thead><tr><th scope="col">Artwork</th><th scope="col">By</th><th scope="col">License</th></tr></thead>
+        <tbody>{showcase.artwork.map((a) => <tr key={a.file}><td><Out href={a.source}>{a.file}</Out></td><td>{a.author}</td><td>{a.license}</td></tr>)}</tbody>
       </table>
     </article>
   )

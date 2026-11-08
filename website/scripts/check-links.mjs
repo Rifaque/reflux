@@ -1,28 +1,36 @@
-// Checks every link on the built site (docs/WEBSITE.md, "Checks"): internal routes must be routes the app defines,
-// external links must answer. Run after `npm run build`: node scripts/check-links.mjs [--offline]
-import { readFileSync, readdirSync } from 'node:fs'
+// Checks every link on the built pages (docs/WEBSITE.md, "Checks"): internal links must reach a page or a file of
+// the site (and an #anchor an element on it), external links must be HTTPS and answer. Run after npm run build:
+// node scripts/check-links.mjs [--offline]
+import { readFileSync, existsSync, readdirSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-const src = join(dirname(fileURLToPath(import.meta.url)), '..', 'src')
-const files = []
-const walk = (d) => readdirSync(d, { withFileTypes: true }).forEach((e) => e.isDirectory() ? walk(join(d, e.name)) : /\.jsx?$/.test(e.name) && files.push(join(d, e.name)))
-walk(src)
-const code = files.map((f) => readFileSync(f, 'utf8')).join('\n')
-const routes = new Set([...code.matchAll(/<Route path="([^"*]+)"/g)].map((m) => m[1]))
-const internal = new Set([...code.matchAll(/(?:to|href)="(\/[^"#]*)/g)].map((m) => m[1]))
-const external = new Set([...code.matchAll(/href="(https:\/\/[^"]+)"/g)].map((m) => m[1]))
+const dist = join(dirname(fileURLToPath(import.meta.url)), '..', 'dist')
+const pages = []
+const walk = (d, base = '') => readdirSync(d, { withFileTypes: true }).forEach((e) => e.isDirectory() ? walk(join(d, e.name), base + '/' + e.name) : e.name.endsWith('.html') && pages.push([base + '/' + e.name, join(d, e.name)]))
+walk(dist)
+const route = (file) => file === '/index.html' ? '/' : file.replace(/\.html$/, '')
+const html = Object.fromEntries(pages.map(([f, p]) => [route(f), readFileSync(p, 'utf8')]))
+const exists = (path) => path in html || (existsSync(join(dist, path)) && !path.endsWith('/'))
 let failed = 0
-const statics = new Set(readdirSync(join(src, '..', 'public')).map((f) => '/' + f))
-for (const link of internal) if (!routes.has(link) && !statics.has(link)) { console.log('broken internal link', link); failed++ }
+const external = new Set()
+for (const [page, s] of Object.entries(html)) {
+  for (const [, href] of s.matchAll(/(?:href|src)="([^"]+)"/g)) {
+    if (/^https?:/.test(href)) { if (!href.startsWith('https://')) { console.log(page, 'not https', href); failed++ } else if (!href.startsWith('https://reflux.rsxdevelops.dev')) external.add(href); continue }
+    if (!href.startsWith('/') && !href.startsWith('#')) continue
+    const [path, anchor] = href.split('#')
+    const target = path || page
+    if (!exists(target)) { console.log(page, 'broken', href); failed++; continue }
+    if (anchor && html[target] && !html[target].includes(`id="${anchor}"`)) { console.log(page, 'no anchor', href); failed++ }
+  }
+}
 if (!process.argv.includes('--offline')) {
   for (const link of external) {
     try {
-      const r = await fetch(link, { method: 'GET', redirect: 'follow' })
-      if (r.status >= 400) { console.log(r.status, link); failed++ }
-    } catch (e) { console.log('unreachable', link); failed++ }
+      const r = await fetch(link, { redirect: 'follow', headers: { 'User-Agent': 'reflux-website-link-check' } })
+      if (r.status >= 400 && r.status !== 429) { console.log(r.status, link); failed++ }
+    } catch { console.log('unreachable', link); failed++ }
   }
 }
-for (const link of external) if (!link.startsWith('https://')) { console.log('not https', link); failed++ }
-console.log(`${internal.size} internal and ${external.size} external links checked, ${failed} broken`)
+console.log(`${Object.keys(html).length} pages, ${external.size} external links checked, ${failed} broken`)
 process.exit(failed ? 1 : 0)
