@@ -4,6 +4,7 @@ What changes for people using Reflux, version by version. The rules for versions
 
 ## Unreleased
 
+- On Android, a subtitle line that is already showing where you skip to now appears straight away, instead of only from the next line.
 - About Reflux now has "Help and feedback", which opens Reflux's support page (on a TV it shows the address), and "Save a support report": a short text file with your Reflux version, your device, what it can play, your sources' kinds and states, how the last playback went, and recent problems, to attach to a bug report. Passwords, tokens, server addresses, file paths, and titles are taken out of it, and Reflux never sends it anywhere: on a computer it is saved in your Downloads folder, on a phone or tablet you choose where to share it, and on a TV it is saved in Reflux's folder on the device.
 - Reflux for Android has its permanent identity for Google Play and the Amazon Appstore. Development builds installed before this one are a separate app and can be uninstalled.
 
