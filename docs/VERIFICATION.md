@@ -1028,3 +1028,40 @@ During the Fire TV walk, a remote press meant for the navigation reached Resume 
 | Windows `check` (with the live Jellyfin server; Android unit tests included) | 1,202 tests, 17 skipped, 1 failed: `SourcesUiTest.aServerThatIsAwayOrStopsAnsweringIsRemovedAtOnce` timed out waiting for a fake server's films under the loaded run; it passed alone three times and with its class, and takes 31 s on M4 against 26 s on M5, so it is the load-sensitive class already in M6's intermittent item, not a regression. `core` 332, `library` 213, `ui` 306, `sources:jellyfin` 62, `sources:plex` 20 |
 | Linux, `tools/ci` container (`all 1`) | Not completed: started after the Windows run with 7.4 GB free and capped at 6 GB, it was stopped by Claude Code's low-memory reaper during the headless check. The partial log showed UI timeouts under that pressure (`AboutUiTest`, which passed on Windows). Not rerun. M5 adds no Linux-specific code; the same JVM suites passed on Windows. The Linux window round of M4 is the latest |
 | On devices, `LibraryDepthOnDeviceTest` | Phone 2a and Fire TV, passed (above) |
+
+## M6: Release engineering, security, legal (2026-11-08)
+
+All on the developer's Windows 11 machine and the `tools/ci` Linux container unless named. Nothing was pushed, tagged, published, or submitted to a store.
+
+**Release dry run** (RELEASE.md, "Release system"): a fresh clone of `9a95fe8`, `tools/release/release.py build` with the throwaway dry-run key, the Linux archive built in the container from the same commit and `--add`ed.
+
+| Artifact | Bytes | SHA-256 |
+| --- | --- | --- |
+| `reflux-0.9.0-alpha.2-android.apk` | 6,429,289 | `93acfaedbc1128caddbfe5c81cc551b958db7b052d08e0e01ff16637754cd4f3` |
+| `reflux-0.9.0-alpha.2-android.aab` | 11,141,390 | `11a068bf9e00efa7abd942e9f5a229b254f888a7f5060f66494dd7eed4ab4c96` |
+| `reflux-0.9.0-alpha.2-windows-x64.zip` | 127,683,779 | `97cc763b765e316da3309c6ec65309e0f0f1c0216d825d15f56e71c2501de3ba` |
+| `reflux-0.9.0-alpha.2-linux-x64.tar.gz` | 91,103,684 | `9bb209b68b7251f7a56389b4de9387fd86e3170fd31e16aa5e888dfe6e87aba4` |
+
+- `release.py verify` passes on Windows; `sha256sum -c SHA256SUMS` passes on Linux; the manifest and provenance name `9a95fe8` and an unmodified tree. One flipped byte in the APK makes `verify` fail.
+- The APK: `dev.reflux`, `versionCode` 90002, `versionName` 0.9.0-alpha.2, `targetSdk` 36, not debuggable, signed by the dry-run certificate only.
+- The dry runs found and fixed: `SHA256SUMS` written with CRLF (`sha256sum -c` failed on Linux; `dfb7056`), a Windows checkout's line endings marking the Linux build "modified" (`4da58cc`, `07cfa2f`), jlink needing `objcopy` in the container (`23cdd1e`), and the tar.gz losing the launcher's executable bit (`9a95fe8`).
+- Website release routing with the dry run's manifest staged in `release/published/` (then removed): Windows and Linux buttons point at the release asset URLs with size, SHA-256, and commit; Android, Google TV, and Fire TV point at the stores; with nothing staged, each section says nothing is published.
+
+**Android release build on a fresh Google TV emulator** (new AVD `Reflux_TV_Release`, API 36, nothing installed before): installed the exact dry-run APK; launch, a local folder, Jellyfin (the live test server), SMB and WebDAV shares, playback from local, server, and SMB, subtitles, a download and playing it offline, search, server metadata and artwork, watch state kept across a restart. The minified paths that depend on keep rules (smbj, MBassador, Bouncy Castle) were exercised by the SMB share. The session's full `logcat` contains no credential. The release has no TMDB credential built in (`aapt2 dump resources` of the APK has no `reflux_tmdb_token`, nor anything named TMDB), so it makes no lookups.
+- Lint on `release`: 0 errors, 16 warnings, each reviewed: 7 `UseKtx`, and one each of `OldTargetApi` (37 exists; Play requires 36), `ObsoleteSdkInt`, `InlinedApi`, `DiscouragedApi`, `IconMissingDensityFolder`, `PictureInPictureIssue`, `SelectedPhotoAccess`, `ExportedContentProvider` (the read-only artwork provider, intended), and `DataExtractionRules`.
+- **Not done:** the Fire TV Stick 4K Plus (installing the release needs the debug `dev.reflux` uninstalled, which waits for the owner's approval); the Nothing Phone 2a and Xiaomi Pad 7 (available 2026-11-09). The emulator does not stand in for either.
+
+**Windows zip:** extracted to a new folder and launched; first run created `%LOCALAPPDATA%\Reflux`; a clip played to the end through the bundled `libmpv-2.dll` (H.264, hardware decoding) and was marked watched; extracting again over the folder kept the library. `Get-AuthenticodeSignature`: NotSigned. Microsoft Defender scan of the extracted folder: no threats. With the download mark (`Zone.Identifier`, zone 3) on `Reflux.exe`, SmartScreen showed "Windows protected your PC" and the app did not start until chosen; the prompt was closed, nothing was changed in Windows' settings. Smart App Control is off on this machine; its behavior for unsigned unknown apps is from Microsoft's documentation.
+
+**Linux tar.gz** (the container, Xvfb and openbox): `bin/Reflux` starts and is running after 30 s; its log reports the version and commit, the display, and libmpv's decoders; a clip played to the end through the archive's own jars and the distribution's libmpv and was marked watched; removing the app folder and the data folder leaves nothing.
+
+**Security:**
+- Secrets: gitleaks over all 169 commits and the tree finds only fake values in tests (listed in `.gitleaksignore` with reasons). The live test account's address, user, and password (from `~/.reflux-live/`, compared without printing) occur in no commit, no file in the tree, and none of the four artifacts. No keystore, certificate, or `.env` is tracked.
+- Redaction: Plex's `X-Plex-Token` header was not covered; added with a test (`RedactionTest.aPlexTokenHeaderIsRedacted`).
+- Android manifest reviewed (RELEASE.md, "Android release build"); the desktop app opens no listening port except the loopback SMB stream server with per-file tokens.
+- Website: `npm audit` 0 vulnerabilities; headers as WEBSITE.md lists, checked on the local production build; no source maps; the CSP allows no third-party origin.
+- GitHub private vulnerability reporting turned on.
+
+**Licensing:** `checkThirdPartyNotices` passes for the Android release and desktop runtime classpaths; the libmpv DLL reviewed for the LGPL (THIRD-PARTY.md); About page tests updated for the new texts.
+
+**Tests:** the full Windows `./gradlew check` on the M6 tree (`9a95fe8` plus the documentation): 1,203 tests, 17 skipped, 1 failed. Both `SourcesUiTest` tests that timed out under load before M6 passed. The failure is new: `LibraryDepthUiTest.identifyRefreshesWhatAWorkIsMatchedTo` timed out (30 s) waiting for "Details and artwork refreshed"; rerun alone three times it passes (1.2 s). Carried to M7 as an intermittent test (ROADMAP.md, M6). Android unit tests (50) and lint passed in the same run.
