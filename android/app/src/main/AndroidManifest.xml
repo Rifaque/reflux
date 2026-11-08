@@ -42,6 +42,7 @@
 
         <activity
             android:name=".MainActivity"
+            android:theme="@style/Theme.Reflux.Starting"
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|navigation|uiMode|density"
             android:exported="true"
             android:launchMode="singleTask"

@@ -47,7 +47,25 @@ mark = unary_union([first_area.difference(gap), second_area])
 # Centre the mark's bounds in the 100-unit box.
 minx, miny, maxx, maxy = mark.bounds
 from shapely import affinity
-mark = affinity.translate(mark, 50 - (minx + maxx) / 2, 50 - (miny + maxy) / 2)
+TX, TY = 50 - (minx + maxx) / 2, 50 - (miny + maxy) / 2
+mark = affinity.translate(mark, TX, TY)
+
+# The centreline the mark is drawn from, in the same frame: what every animation of the mark traces (the website's
+# draw-in, the app's loader, the Android splash). Cubic Béziers, so each platform draws the same curve.
+def cubic(segments):
+    out = "M%.2f %.2f" % (segments[0][0][0] + TX, segments[0][0][1] + TY)
+    for seg in segments:
+        out += " C" + " ".join("%.2f %.2f" % (x + TX, y + TY) for x, y in seg[1:])
+    return out
+STROKE_SVG = "\n".join([
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">',
+    '  <!-- The centreline of the mark: the first pass, then the return over it. Round ends. -->',
+    '  <path id="first" fill="none" stroke="currentColor" stroke-width="%.2f" stroke-linecap="round" d="%s"/>',
+    '  <path id="return" fill="none" stroke="currentColor" stroke-width="%.2f" stroke-linecap="round" d="%s"/>',
+    '</svg>',
+    '',
+])
+(OUT / "reflux-mark-stroke.svg").write_text(STROKE_SVG % (STROKE, cubic(FIRST), STROKE, cubic(SECOND)), encoding="utf-8", newline="\n")
 
 
 def rings(geom):

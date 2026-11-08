@@ -6,6 +6,7 @@ import android.Manifest
 import android.app.PictureInPictureParams
 import android.app.UiModeManager
 import android.content.Intent
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import android.content.pm.ActivityInfo
 import android.content.pm.PackageManager
 import android.content.res.Configuration
@@ -129,6 +130,8 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        // The platform's launch screen hands over to the first frame as soon as the app is ready: nothing holds it.
+        installSplashScreen()
         enableEdgeToEdge(SystemBarStyle.dark(TRANSPARENT), SystemBarStyle.dark(TRANSPARENT))
         super.onCreate(savedInstanceState)
         val environment = (application as RefluxApplication).environment

@@ -331,6 +331,8 @@ dependencies {
     implementation(libs.media3.session)
     // The launcher's Watch Next row on Android TV and Google TV (DECISIONS.md, 2026-10-18).
     implementation(libs.androidx.tvprovider)
+    // The platform's launch screen on every supported Android, with the brand mark (DESIGN.md, "Motion language").
+    implementation(libs.androidx.core.splashscreen)
     // WebDAV's PROPFIND, which HttpURLConnection refuses; used by the WebDAV transport only (DECISIONS.md, 2026-10-18).
     implementation(libs.okhttp)
 

@@ -343,6 +343,12 @@ internal fun EmptyLibrary(app: AppState, sources: List<SourceRecord>) {
                 else -> "Nothing to watch here yet" to
                     "No movies or shows were found in ${sources.joinToString { it.displayName }}. Add another folder, or add media to this one and it shows up by itself."
             }
+            // The brand's motion where it means something: the mark drawing itself to welcome a first run, and flowing
+            // while a library is genuinely being built.
+            when {
+                sources.isEmpty() -> dev.reflux.ui.components.RefluxMarkDrawIn(Modifier.padding(bottom = 6.dp), size = 64.dp)
+                working != null -> dev.reflux.ui.components.RefluxLoader(Modifier.padding(bottom = 6.dp), size = 64.dp, label = "Building your library", delayMs = 0)
+            }
             Text(headline, Modifier.heading(), style = LocalTypography.current.headline, align = TextAlign.Center)
             Text(body, color = RefluxColors.contentSecondary, align = TextAlign.Center)
             Spacer(Modifier.height(6.dp))
