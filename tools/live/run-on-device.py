@@ -16,7 +16,7 @@ import subprocess
 import sys
 
 ON_DEVICE = "/data/local/tmp/reflux-live.env"
-RUNNER = "dev.reflux.test/androidx.test.runner.AndroidJUnitRunner"
+RUNNER = "dev.rsxdevelops.reflux.test/androidx.test.runner.AndroidJUnitRunner"
 DEFAULT_CLASSES = "dev.reflux.android.JellyfinExecutionOnDeviceTest,dev.reflux.android.CapabilityReportOnDeviceTest"
 
 
