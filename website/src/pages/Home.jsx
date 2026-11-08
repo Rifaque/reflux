@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
-import { Mark, Shot, Status } from '../components.jsx'
+import { Shot, Status } from '../components.jsx'
+import { MarkMotion, useDepth } from '../motion.jsx'
 
 const loop = [
   ['Point it at a folder', 'A normal folder of films and shows is enough. No renaming, no .nfo files, no account.'],
@@ -24,12 +25,39 @@ const platforms = [
   ['Linux', 'Download'],
 ]
 
+/** Three copies of one film, from three places, becoming one film in Reflux: the library's idea, in motion. */
+const copies = [
+  ['On this laptop', '1080p'],
+  ['On your Jellyfin server', '4K · HDR10'],
+  ['Kept for offline', '720p'],
+]
+
+function Convergence() {
+  return (
+    <figure className="converge" data-reveal>
+      <div className="converge-stage">
+        {copies.map(([where, what], i) => (
+          <div key={where} className={`copy copy-${i}`} aria-hidden="true">
+            <img src="/showcase/poster-sintel.webp" width="360" height="509" alt="" loading="lazy" decoding="async" />
+            <span className="copy-label"><span>{where}</span><b>{what}</b></span>
+          </div>
+        ))}
+        <div className="converge-result">
+          <Shot name="details-desktop" alt="Sintel's page in Reflux: one film with both of its copies, the 4K HDR10 one recommended." />
+        </div>
+      </div>
+      <figcaption className="converge-caption"><span className="converge-chip">Three copies · one film · Play picks 4K HDR10</span></figcaption>
+    </figure>
+  )
+}
+
 export default function Home() {
+  const depth = useDepth()
   return (
     <>
       <section className="hero">
         <div className="hero-copy">
-          <Status />
+          <div className="hero-brand"><MarkMotion className="mark-motion hero-mark" /><Status /></div>
           <h1>Your media,<br />played well.</h1>
           <p className="lead">
             Reflux is a media player for the films and shows you already have, wherever they live: on your device, on a
@@ -41,17 +69,17 @@ export default function Home() {
             <Link to="/testing" className="button ghost">Join the beta</Link>
           </div>
         </div>
-        <figure className="hero-shot">
+        <figure className="hero-shot" ref={depth}>
           <Shot name="home-desktop" eager alt="Reflux on a desktop: Home, with Coffee Run to continue and a Continue Watching row." />
         </figure>
       </section>
 
       <section className="band">
-        <div className="section-head">
+        <div className="section-head" data-reveal>
           <p className="eyebrow">How it works</p>
           <h2>From a folder to Play, with nothing to set up.</h2>
         </div>
-        <ol className="loop">
+        <ol className="loop" data-reveal data-stagger>
           {loop.map(([title, text], i) => (
             <li key={title}>
               <span className="loop-step" aria-hidden="true">{String(i + 1).padStart(2, '0')}</span>
@@ -63,7 +91,7 @@ export default function Home() {
       </section>
 
       <section className="split">
-        <div className="split-copy">
+        <div className="split-copy" data-reveal>
           <p className="eyebrow">One library</p>
           <h2>Every copy of a film is one film.</h2>
           <p>
@@ -77,13 +105,11 @@ export default function Home() {
             <li>Different cuts are never mixed up</li>
           </ul>
         </div>
-        <figure className="split-shot">
-          <Shot name="details-desktop" alt="A film's page in Reflux: Sintel, with its 4K HDR10 copy recommended over its 1080p copy." />
-        </figure>
+        <Convergence />
       </section>
 
       <section className="band screens">
-        <div className="section-head">
+        <div className="section-head" data-reveal>
           <p className="eyebrow">Every screen</p>
           <h2>Built for the remote, the touchscreen, and the keyboard alike.</h2>
           <p className="lead">
@@ -91,15 +117,15 @@ export default function Home() {
             thumb on a phone, a sidebar on a desktop. Remotes, game controllers, keyboards, and screen readers are all part of the design.
           </p>
         </div>
-        <figure className="screen-tv"><Shot name="movies-tv" alt="Reflux on a television: the Movies grid, with focus on Big Buck Bunny." /></figure>
-        <div className="screen-pair">
+        <figure className="screen-tv" data-reveal><Shot name="movies-tv" alt="Reflux on a television: the Movies grid, with focus on Big Buck Bunny." /></figure>
+        <div className="screen-pair" data-reveal data-stagger>
           <figure className="screen-tablet"><Shot name="details-tablet" alt="Reflux on a tablet held sideways: Sprite Fright's page." /></figure>
           <figure className="screen-phone"><Shot name="home-phone" alt="Reflux on a phone held upright: Home." /></figure>
         </div>
       </section>
 
       <section className="split reverse">
-        <div className="split-copy">
+        <div className="split-copy" data-reveal>
           <p className="eyebrow">Playback</p>
           <h2>The original, whenever it can be.</h2>
           <p>
@@ -109,7 +135,7 @@ export default function Home() {
           </p>
           <p><Link to="/docs/playback" className="more">How playback works</Link></p>
         </div>
-        <div className="split-copy facts">
+        <div className="split-copy facts" data-reveal>
           <dl>
             <div><dt>Video</dt><dd>H.264, HEVC, AV1, VP9, in hardware where the device has it</dd></div>
             <div><dt>Sound</dt><dd>AAC, AC-3, E-AC-3, DTS, TrueHD, Opus, decoded where the device can</dd></div>
@@ -121,11 +147,11 @@ export default function Home() {
       </section>
 
       <section className="band">
-        <div className="section-head">
+        <div className="section-head" data-reveal>
           <p className="eyebrow">Sources</p>
           <h2>Wherever your media lives.</h2>
         </div>
-        <ul className="cards">
+        <ul className="cards" data-reveal data-stagger>
           {sources.map(([name, text]) => <li key={name}><h3>{name}</h3><p>{text}</p></li>)}
         </ul>
         <p className="center"><Link to="/sources" className="more">About each source</Link></p>
@@ -150,8 +176,8 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="closing">
-        <Mark className="mark closing-mark" />
+      <section className="closing" data-reveal>
+        <MarkMotion className="mark-motion closing-mark" />
         <h2>Reflux is free.</h2>
         <p className="lead">No subscription, no paid tier, no ads. The beta opens soon on every platform above.</p>
         <div className="actions center">

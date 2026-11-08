@@ -2,6 +2,7 @@ import { Route, Routes, useLocation } from 'react-router-dom'
 import { useEffect } from 'react'
 import { routeFor } from './routes.js'
 import { Footer, Header } from './components.jsx'
+import { useReveal } from './motion.jsx'
 import Home from './pages/Home.jsx'
 import Platforms from './pages/Platforms.jsx'
 import Sources from './pages/Sources.jsx'
@@ -15,6 +16,7 @@ import NotFound from './pages/NotFound.jsx'
 
 export default function App() {
   const { pathname, hash } = useLocation()
+  useReveal()
   // Prerendered pages carry their own titles; moving between them in the browser keeps them right.
   useEffect(() => {
     const route = routeFor(pathname)

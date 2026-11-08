@@ -219,3 +219,25 @@ Not from forcing identical layouts onto every screen.
 - **Phone:** navigation along the bottom; the player's play, back, and ahead in the middle of the picture, and one bar beneath with the timeline and the less used controls. With the controls away the picture is left alone, except for what has to be said at that moment (a skip offer, the next episode, a notice). Text follows the system's text size. A details page opens on its title and Play however short the screen (a phone on its side): there the header leaves out the poster, the genres, and the credit, and keeps the overview to two lines.
 - **Accessibility:** one set of rules in the shared components rather than descriptions scattered over screens (`components/Accessibility.kt`; DECISIONS.md, 2026-10-31). What is covered is out of the accessibility tree (`inert`); what opens says its name (`pane`); what happens by itself is said from a node that was already there (`announces`); a control says what it is, and only what is on says it is on. A card, a person in the cast, what is playing, and a field with its label are one stop each. What is for the eye alone (controller prompts, a pointer's label, the initials standing in for a face, the clocks beside a timeline that says the same) is not in the tree. With a screen reader on, the player's controls stay. With motion reduced, every state change takes no time and loading is a word rather than a spinner. Fixed heights are minimums, so large text grows a control instead of cutting it; only the navigation stops growing, at 1.5×, because its width is what has to fit. A finger gets 48 dp, a pointer the smaller targets it can hit.
 - **Type:** the platform's system sans-serif. A bundled typeface is a later decision with licensing attached.
+
+## Motion language (M7)
+
+The Reflux mark is abstract on purpose: its meaning comes from motion. One small vocabulary is shared by the app, the Android launch screen, and the website, each built with its platform's own tools (Compose's animation APIs, Android's SplashScreen and animated vectors, CSS and the browser's View Transition API). A calm base, moments of movement, and the strongest movement around the product itself. Decision: DECISIONS.md, 2026-11-09, "The Reflux motion language".
+
+| Kind | What it is | Where | Timing |
+| --- | --- | --- | --- |
+| **Brand** | The mark drawing itself along its centreline: the first pass flows in and turns (*flow, gather*), the return passes over it (*transform*), and the line settles into the solid mark with its over-under cut (*settle*) | Android 12+ launch screen (`drawable-v31/splash_mark`), the app's first run (`RefluxMarkDrawIn`), the website's hero and closing | About 1 s; ease-out `(0.2, 0.7, 0.2, 1)` for the line, a linear 220-260 ms settle |
+| **Loading** | A length of the line flowing along the faint mark, again and again: media passing through | Genuine waits only: the player loading or buffering, a library being built (`RefluxLoader`). Shown only after 400 ms, so a quick operation shows nothing; never a generic spinner | 1.5 s per pass |
+| **Reveal** | Content rises 16-18 px and fades in, once, as it comes into view; groups stagger their children by 70 ms | Website sections | 720 ms, ease-out |
+| **Depth** | A product surface comes into focus from a slight tilt, scale, and blur, then answers a fine pointer with at most 3 degrees | The website's hero render only | 1.1 s, then a 700 ms follow |
+| **Media** | Several things becoming one, continuously: three copies of a film converge into one, which becomes Reflux's page for it | The website's "Every copy of a film is one film" | 1.5 s gather, 0.8 s settle |
+| **Feedback** | Press scales to 0.98; hover lifts 2 px and brightens the edge | Buttons and cards | 100-160 ms |
+| **Navigation** | Pages cross over quickly; the header holds still | Website (View Transitions; browsers without them navigate at once). The app keeps its existing page motion (`Motion.navigation`, the television's restrained profile) | 140 ms out, 260 ms in |
+
+Rules:
+
+- The product moves most; typography stays nearly still; body text is never animated while it is being read.
+- Repeated items do not each perform; a group staggers once.
+- Nothing waits for an animation: the launch screen is the platform's and leaves when the app is ready; the loader appears only for a real wait; every interaction answers immediately.
+- **Reduced motion** (the system's setting on every platform, `prefers-reduced-motion` on the web): the finished state at once. The loader becomes the still mark and words; the draw-in shows the solid mark; the website shows every element in place and the convergence as its result.
+- Performance: Compose animations run in the draw phase (no recomposition per frame); the website animates only transform, opacity, the hero's filter, and stroke-dashoffset, and loads no animation library.
