@@ -84,7 +84,7 @@ const articles = [
         <h2>On a TV, a folder's posters do not show</h2>
         <p>On Android 13 and later TVs, Reflux is allowed to read your videos but not the images beside them. Titles from a server show the server's artwork; others get Reflux's designed look.</p>
         <h2>Sending a support report</h2>
-        <p>In Reflux, open <strong>Sources → About Reflux → Save a support report</strong>. It lists your version, device, what it plays, your sources' kinds, how the last playback went, and recent problems, with passwords, addresses, file paths, and titles removed. On a computer it lands in Downloads; on a phone or tablet you choose where to share it; on a TV it is saved in Reflux's folder on the device. Reflux never sends it itself. Attach it when you contact <Link to="/support">Support</Link>.</p>
+        <p>In Reflux, open <strong>Sources → About Reflux → Save a support report</strong>. It lists your version, device, what it plays, your sources' kinds, how the last playback went, and recent problems, with passwords, addresses, file paths, and titles removed. On a computer it lands in Downloads; on a phone or tablet you choose where to share it; on a TV it is saved in the TV's Download folder, under Reflux. Reflux never sends it itself. Attach it when you contact <Link to="/support">Support</Link>.</p>
       </>
     ),
   },
