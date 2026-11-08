@@ -218,6 +218,8 @@ rm -rf "$bundle" && mkdir -p "$bundle/archives" "$bundle/tools/libmpv"
 for name in "${!ARCHIVE[@]}"; do cp "${ARCHIVE[$name]}" "$bundle/archives/"; done
 cp "$SRC/tools/libmpv/"{Dockerfile,build.sh,sources.txt,README.md} "$bundle/tools/libmpv/"
 cp "$OUT/build-info.json" "$bundle/"
+# Modes, times, and owners fixed, so the bundle is the same bytes however the cache was mounted.
+find "$bundle" -type d -exec chmod 0755 {} + && find "$bundle" -type f -exec chmod 0644 {} +
 tar --sort=name --mtime=@315532800 --owner=0 --group=0 --numeric-owner -C "$WORK" -cJf "$OUT/libmpv-source.tar.xz" libmpv-source
 sha256sum "$OUT/libmpv-2.dll" "$OUT/libmpv-source.tar.xz" | sed "s#$OUT/##" > "$OUT/SHA256SUMS"
 cat "$OUT/SHA256SUMS"
