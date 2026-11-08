@@ -300,6 +300,9 @@ class AndroidEnvironment(context: Context, dataDirectory: File = context.filesDi
         }
     }
 
+    /** The last [lines] of the problem log, oldest first (already redacted when written). */
+    fun recentProblems(lines: Int = 200): List<String> = runCatching { log.readLines().takeLast(lines) }.getOrDefault(emptyList())
+
     private fun folderSource(treeUri: Uri, displayName: String) =
         DocumentTreeSource(ContentDocumentTree(application.contentResolver, treeUri), treeUri.toString(), displayName)
 

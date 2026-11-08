@@ -60,6 +60,7 @@ import dev.reflux.ui.state.FolderBrowser
 import dev.reflux.ui.state.FolderChoice
 import dev.reflux.ui.state.FullscreenMode
 import dev.reflux.ui.state.Platform
+import dev.reflux.ui.state.SupportReportOutlet
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -345,6 +346,20 @@ class FakePlatform(
     override fun report(problem: String, cause: Throwable?) {
         reports += problem
     }
+
+    /** Support reports the person was handed, by file name. */
+    val supportReportsDelivered = mutableMapOf<String, String>()
+    val linksOpened = mutableListOf<String>()
+    var canOpenLinks = true
+
+    override suspend fun recentProblems(): List<String> = reports.map { "2026-11-08T12:00:00Z  $it" }
+
+    override val supportReports = SupportReportOutlet { name, text ->
+        supportReportsDelivered[name] = text
+        "Saved in your Downloads folder as $name."
+    }
+
+    override fun openLink(url: String): Boolean = canOpenLinks.also { if (it) linksOpened += url }
 }
 
 /** Downloads on a disk with plenty of room, whatever the disk of the machine running the tests has left. */

@@ -136,6 +136,8 @@ class MainActivity : ComponentActivity() {
         platform = AndroidPlatform(environment, television()).also {
             it.pickFolder = ::pickFolder
             it.allowStorage = ::allowStorage
+            it.share = ::share
+            it.browse = ::browse
         }
         // The last line of defence: a failure nobody handled is written down instead of ending the app.
         val scope = lifecycleScope + CoroutineExceptionHandler { _, error -> platform.report("An unexpected error was not handled", error) }
@@ -187,6 +189,19 @@ class MainActivity : ComponentActivity() {
     }
 
     /** The system's own question, asked when the user first goes to choose a folder on a television. */
+    /** The system's share sheet with [text]: the person chooses where it goes. */
+    private fun share(subject: String, text: String): Boolean = runCatching {
+        val send = Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_SUBJECT, subject).putExtra(Intent.EXTRA_TEXT, text)
+        startActivity(Intent.createChooser(send, "Send the support report"))
+        true
+    }.getOrDefault(false)
+
+    /** A browser on [url], where the device has one. */
+    private fun browse(url: String): Boolean = runCatching {
+        startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)).addCategory(Intent.CATEGORY_BROWSABLE))
+        true
+    }.getOrDefault(false)
+
     private suspend fun allowStorage(): Boolean {
         val permission = if (Build.VERSION.SDK_INT >= 33) Manifest.permission.READ_MEDIA_VIDEO else Manifest.permission.READ_EXTERNAL_STORAGE
         if (checkSelfPermission(permission) == PackageManager.PERMISSION_GRANTED) return true

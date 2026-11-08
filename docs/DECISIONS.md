@@ -1122,3 +1122,12 @@ Reflux's Android application ID is **`dev.rsxdevelops.reflux`**, for Google Play
 - **No migration.** No build was ever given to anyone outside the project, so nobody has data under `dev.reflux` to carry over. On the developer's devices the new identity installs beside the old one as a separate app; the old one is removed by hand when no longer wanted.
 - Decided now, before any store listing or developer-verification registration exists, because a published application ID can never change.
 
+## 2026-11-08 — The support report (diagnostics export)
+
+The beta's feedback path needs something a tester can attach (M6 deferred it). It is a **support report**: plain text, made only when the person asks (About → "Save a support report"), never sent by Reflux, with no telemetry or upload of any kind.
+
+- **What it says:** the build (`version (commit)`), platform facts (OS and version, device model, form factor, architecture, engine), what the device was found able to play, each source's kind, state, inclusion, and number of works, how the most recent playback went (`PlaybackReport`'s lines, kept in memory only), and the end of the diagnostics log.
+- **What it never says:** credentials, tokens, cookies, server addresses (URLs, host names with ports, IPv4 and IPv6), file paths (Windows, UNC, Unix, Android storage, `content://`), e-mail addresses, long token-like strings, and the library's own titles, source names, and source configuration, which the caller passes as words to remove. `SupportRedaction` removes them by shape and by name on every line, including lines the caller already believes clean; `SupportReportTest` and `SupportReportUiTest` check it with each kind of secret.
+- **Where it goes, per platform:** desktop, the Downloads folder (or the home folder); phones and tablets, the system share sheet as text, so the person chooses where; televisions, which have nowhere to share to, Reflux's app folder on the device's storage (`Android/data/<package>/files`). "Help and feedback" opens the website's support page, or shows its address where there is no browser.
+- Pure and in the Media Core (`dev.reflux.core.diagnostics`); the shells only supply facts, the log, and the outlet (`Platform.platformFacts`, `recentProblems`, `supportReports`, `openLink`).
+

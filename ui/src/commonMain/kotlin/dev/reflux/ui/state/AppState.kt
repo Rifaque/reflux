@@ -33,6 +33,8 @@ import dev.reflux.core.model.SourceId
 import dev.reflux.core.model.VersionId
 import dev.reflux.core.source.MediaSource
 import dev.reflux.library.Library
+import dev.reflux.core.diagnostics.SupportReport
+import dev.reflux.core.playback.PlaybackReport
 import dev.reflux.library.LibraryEntry
 import dev.reflux.library.LibraryPipeline
 import dev.reflux.library.LibraryScope
@@ -579,8 +581,69 @@ class AppState(
     }
 
     internal fun playbackClosed(session: PlaybackSession, release: Job) {
+        // What the support report says about the last playback (docs/RELEASE.md, "Diagnostics export").
+        runCatching { session.report() }.getOrNull()?.takeIf { it.isNotEmpty() }?.let { lastPlayback = it }
         if (playback === session) playback = null
         releasing = release
+    }
+
+    // Support ------------------------------------------------------------------------------------
+
+    /** How the most recent playback went, kept until the next one ends; never stored. */
+    private var lastPlayback: List<PlaybackReport.Line> = emptyList()
+
+    /** Whether a support report can be handed to the person on this platform. */
+    val canSaveSupportReport: Boolean get() = platform.supportReports != null
+
+    /**
+     * A support report of this moment, for a bug report (docs/RELEASE.md, "Diagnostics export"): the build, the
+     * platform, what the device plays, each source's kind and state, the last playback, and the recent problems.
+     * Titles, source names, addresses, and user names are given to it as words to remove; it removes the rest by shape.
+     */
+    suspend fun supportReport(now: String): SupportReport {
+        val (sources, titles) = read {
+            val records = sources()
+            records.map { record ->
+                val scope = LibraryScope.OfSource(record.id)
+                SupportReport.SourceSummary(
+                    kind = sourceKind(record.type), availability = record.availability.name, included = record.included,
+                    signInRequired = record.signInRequired, works = movies(scope).size + shows(scope).size,
+                )
+            } to (movies().map { it.item.title } + shows().map { it.item.title } + records.flatMap { listOf(it.displayName, it.config) })
+        }
+        val playing = playback?.report().orEmpty().ifEmpty { lastPlayback }
+        return SupportReport(
+            build = platform.build, generatedAt = now, environment = platform.platformFacts,
+            capabilities = SupportReport.capabilities(platform.device), sources = sources,
+            playback = playing.map { SupportReport.Fact(it.heading, it.text) },
+            log = runCatching { platform.recentProblems() }.getOrDefault(emptyList()).takeLast(SUPPORT_LOG_LINES),
+            privateValues = titles,
+        )
+    }
+
+    /** A source's kind in a report: what it is, never what it is called. */
+    private fun sourceKind(type: String): String = when (type) {
+        "local", "android-folder" -> "Folder"
+        "downloads" -> "Downloads"
+        "jellyfin" -> "Jellyfin"
+        "plex" -> "Plex"
+        "smb" -> "SMB share"
+        "webdav" -> "WebDAV share"
+        else -> "Other"
+    }
+
+    /** Makes a support report and hands it to the person; says where it went, or that it could not be made. */
+    @OptIn(kotlin.time.ExperimentalTime::class)
+    fun saveSupportReport(): Job = attempt("The support report couldn't be saved. Try again.") {
+        val outlet = platform.supportReports ?: return@attempt
+        val now = kotlin.time.Clock.System.now().toString().take(19) + "Z"
+        val text = supportReport(now).render()
+        notify(outlet.deliver("reflux-support-${now.filter(Char::isDigit).take(8)}-${now.filter(Char::isDigit).drop(8).take(6)}.txt", text))
+    }
+
+    /** Opens the support page, or says its address where nothing can open it. */
+    fun openSupport() {
+        if (!platform.openLink(SUPPORT_URL)) notify("Support and feedback: ${SUPPORT_URL.removePrefix("https://")}")
     }
 
     private fun Library.playableFor(itemId: MediaId, scope: LibraryScope): MediaId? = when (val item = item(itemId)) {
@@ -725,6 +788,7 @@ class AppState(
 
     private companion object {
         val SHORTCUTS = setOf(Key.SHORTCUT_1, Key.SHORTCUT_2, Key.SHORTCUT_3, Key.SHORTCUT_4, Key.SHORTCUT_5, Key.SHORTCUT_6)
+        private const val SUPPORT_LOG_LINES = 200
         const val NOTICE_MS = 4_500L
         const val DOWNLOAD_PROGRESS_MS = 500L
         const val RELEASE_PATIENCE_MS = 5_000L
@@ -754,3 +818,6 @@ fun <T> AppState.offlineState(vararg keys: Any?, block: Library.() -> T): State<
 
 /** Where the Media Atmosphere choice is kept ([Library.setting]). */
 internal const val MEDIA_ATMOSPHERE = "appearance.mediaAtmosphere"
+
+/** Where people get help and send feedback: the website's support page. */
+const val SUPPORT_URL = "https://reflux.rsxdevelops.dev/support"
