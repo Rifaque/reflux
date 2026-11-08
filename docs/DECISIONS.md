@@ -1148,3 +1148,19 @@ Carries out "Reflux builds its own Windows libmpv before public distribution" (a
 - **Release** (`release.yml`, by hand on a tag): libmpv from source (and compared with the pin), Linux, then Android and Windows signed and checksummed with GitHub's signed provenance for every artifact, a **draft** release, and a separate job on another OS that downloads the draft and checks every checksum, every attestation (`gh attestation verify --signer-workflow`), and the manifest, as a person downloading it would.
 - No Android emulator runs in CI: instrumented tests run on the project's physical devices and are recorded in VERIFICATION.md. No cloud service beyond GitHub is added.
 
+## 2026-11-08 — The Reflux mark
+
+Reflux had no identity of its own: its icon was a play triangle on a graphite tile, which says "a video app" and nothing about Reflux. M7 explored the mark deliberately, rendering every concept at 192, 96, 48, 32, and 16 px on the app tile, on white, and alone (design/brand/exploration):
+
+| Concept | Idea | Verdict |
+| --- | --- | --- |
+| Return | A ribbon that flows out and comes back inside itself | Strong silhouette, but reads as a mirrored "G" or a script letter |
+| Confluence | Three sources merging into one stream | Reads as fast-forward or a fork: a media symbol after all |
+| Eddy | Two counter-rotating arcs | Reads as "@" or a person avatar at small sizes |
+| Counterflow | Two layers flowing past each other | Reads as an eye |
+| Interlock | Two hooks joined | Strong, but too close to an existing well-known mark |
+| Loop R | An R whose leg flows back into its bowl | Only a letter |
+| **The Loop** (chosen) | One line that flows in, turns back over itself, and flows on, higher | Says the name (*re-flux*: a flow that returns and continues), keeps its silhouette at 16 px, has no media symbol in it, and has depth from one layer passing over another, which is how Reflux's interface makes depth |
+
+Chosen in its mono form (a two-tone version weakened the small sizes), with the wordmark "reflux" in Manrope (OFL-1.1), lowercase, beside it in the lockup. Everything is generated from one geometry (`tools/brand/`), and the guidelines are design/brand/README.md. It replaces the play-triangle icon on Android, Android TV, Fire TV, Windows, Linux, the desktop window, and the website. It is a visual identity, so the owner may still replace it; a replacement is a change to the geometry script, after which every asset is regenerated.
+

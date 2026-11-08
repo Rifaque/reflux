@@ -18,6 +18,10 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.scale
+import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.graphics.vector.PathParser
+import androidx.compose.ui.graphics.PathFillType
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.input.pointer.PointerIcon
@@ -187,27 +191,26 @@ private val HiddenCursor = PointerIcon(
 )
 
 /**
- * The window and taskbar icon: a white play mark on a graphite tile, lit from the top-left like the glass
- * materials. Neutral, like the interface; the same mark as the Android launcher icon and TV banner.
+ * The window and taskbar icon: the Reflux mark (design/brand) on a graphite tile lit from the top left, like the glass
+ * materials. Neutral, like the interface; the same as the packaged icons and the Android launcher icon.
  */
 private object AppIcon : Painter() {
     override val intrinsicSize = Size(256f, 256f)
 
+    /** The mark's outline in a 100-unit box, as tools/brand/make-brand-assets.py writes it. */
+    private val mark: Path = PathParser().parsePathString(
+        AppIcon::class.java.getResourceAsStream("/reflux-mark.path")!!.bufferedReader().use { it.readText() }.trim(),
+    ).toPath().apply { fillType = PathFillType.EvenOdd }
+
     override fun DrawScope.onDraw() {
         val unit = size.minDimension
         drawRoundRect(
-            Brush.linearGradient(listOf(Color(0xFF34343A), Color(0xFF0E0E10)), Offset.Zero, Offset(unit, unit)),
-            cornerRadius = CornerRadius(unit * 0.24f),
+            Brush.linearGradient(listOf(Color(0xFF2C2C33), Color(0xFF0D0D10)), Offset.Zero, Offset(unit * 0.35f, unit)),
+            cornerRadius = CornerRadius(unit * 0.22f),
         )
-        drawPath(
-            Path().apply {
-                moveTo(unit * 0.38f, unit * 0.28f)
-                lineTo(unit * 0.74f, unit * 0.5f)
-                lineTo(unit * 0.38f, unit * 0.72f)
-                close()
-            },
-            RefluxColors.contentPrimary,
-        )
+        translate(unit * 0.17f, unit * 0.17f) {
+            scale(unit * 0.66f / 100f, pivot = Offset.Zero) { drawPath(mark, RefluxColors.contentPrimary) }
+        }
     }
 }
 
