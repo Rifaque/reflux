@@ -158,6 +158,11 @@ class AboutUiTest {
         openAbout(app)
         // The copyright with the build, and Reflux's own terms a row of their own, before the software it is built with.
         assertTrue(shows("Copyright © 2026 RSX Develops. All rights reserved."))
+        // The maker is read in its place within the one identity stop, after the product: as text, not as an image
+        // description that a merged stop would announce before "Reflux".
+        val identity = onNode(hasText("Made by RSX Develops"), useUnmergedTree = false).fetchSemanticsNode()
+        assertEquals("Reflux", identity.config.getOrNull(SemanticsProperties.Text)?.firstOrNull()?.text)
+        assertTrue(identity.config.getOrNull(SemanticsProperties.ContentDescription).isNullOrEmpty(), "no image description leads the stop")
         val own = onNode(hasText("Copyright and ownership") and SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button)).fetchSemanticsNode()
         val others = onNode(hasText("Third-party software") and SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button)).fetchSemanticsNode()
         assertTrue(own.boundsInRoot.bottom <= others.boundsInRoot.top, "Reflux's own row comes first")
