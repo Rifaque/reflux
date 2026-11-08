@@ -11,7 +11,7 @@ What stands between the source tree and builds that can be handed to testers and
 - [ ] Android: signed release build from CI; R8 on, keep rules validated by a release build on a device; upgrade from the last alpha keeps library, watch state, sources, and downloads.
 - [ ] Fire TV: the developer's devices inspected (model, Fire OS, API level) and the release build run on them.
 - [ ] Desktop: Windows installer and Linux package installing libmpv with provenance; a clean-machine install on each.
-- [ ] TMDB credential injected into release builds; live TMDB run recorded in VERIFICATION.md.
+- [x] TMDB decided for public builds: disabled until its terms are settled (DECISIONS.md, 2026-11-08); release builds carry no credential.
 - [ ] At least one physical phone, one physical Google TV / Android TV device, one Fire TV device, and one physical controller verified (VERIFICATION.md).
 - [ ] CI green on GitHub, including Android.
 - [ ] Google Play closed testing track and Amazon Appstore testing set up with the current store requirements read and recorded here.
@@ -27,7 +27,7 @@ What stands between the source tree and builds that can be handed to testers and
 - [ ] Upgrade from the previous build tested (data kept, migrations applied).
 - [ ] No credential, token, or test account in the build, its resources, or its logs; the TMDB credential comes from the build environment.
 - [ ] Changelog entry written in user terms; known issues listed.
-- [ ] Store or download artifacts checksummed; desktop installer signed.
+- [ ] Store or download artifacts checksummed and with provenance (`tools/release/release.py`); Windows unsigned by decision, with the download page's notice.
 - [ ] VERIFICATION.md has a dated section for the build.
 
 ## 1.0 checklist (in addition)
@@ -36,6 +36,89 @@ What stands between the source tree and builds that can be handed to testers and
 - [ ] `1.0.0` is the final release candidate's commit with only the version changed.
 - [ ] Store listings final on Google Play and the Amazon Appstore; desktop downloads on the website.
 - [ ] Website in its 1.0 state (W4, M10): stable store and download links, final documentation, release notes, support and legal pages current.
+
+## Release system (M6)
+
+One release identity, one tool, and no version typed anywhere but `reflux.version` (VERSIONING.md).
+
+| Piece | What it owns |
+| --- | --- |
+| `reflux.version` in `gradle.properties` | The product version, the only declared one |
+| `./gradlew releaseInfo` (root build) | `build/release/release-info.json`: version, Android `versionCode`, Windows (`0.9.2`) and Linux (`0.9.0~alpha.2`) package versions, channel (alpha, beta, rc, stable, from the stage), commit, and whether the tree was modified. Everything else reads this |
+| `tools/release/release.py build` | From a **clean** commit: the Android APK and AAB (release variant, signed), this machine's desktop archive, any `--add`ed archive built elsewhere (refused unless its `release-info.json` names the same commit and an unmodified tree); checks the APK's package (`dev.reflux`), `versionCode`, `versionName`, that it is not debuggable, and its signer; names every artifact `reflux-<version>-<platform>-<arch>.<ext>`; writes `SHA256SUMS`, `manifest.json`, and `provenance.intoto.json` |
+| `tools/release/release.py verify <dir>` | Re-hashes every artifact against `SHA256SUMS` and the manifest, re-checks the APK's identity and signature, the zip's integrity, and the manifest's commit; non-zero on any difference |
+| `tools/ci/linux-check.sh package` | The Linux archive from the `tools/ci` container, with its `release-info.json` |
+| `.github/workflows/release.yml` | The same on GitHub, run by hand on a tag: Linux on Ubuntu, Android and Windows on Windows, the upload key from GitHub's encrypted secrets, `actions/attest-build-provenance` for signed provenance of every artifact, and a **draft** GitHub release. Publishing the draft is a person's decision after the release checklist |
+| `release/published/<version>.json`, `release/stores.json` | What has been published (a copy of the manifest) and where each store listing stands; the website builds its download and release pages from these (WEBSITE.md) |
+
+Artifacts per release:
+
+| Artifact | Built on | Goes to |
+| --- | --- | --- |
+| `reflux-<version>-android.aab` | Windows (any machine with the Android SDK) | Google Play (phones, tablets, Android TV, Google TV) |
+| `reflux-<version>-android.apk` | the same build | Amazon Appstore (Fire TV), internal device installs |
+| `reflux-<version>-windows-x64.zip` | Windows | GitHub release, linked from the website |
+| `reflux-<version>-linux-x64.tar.gz` | Linux (the CI container) | GitHub release, linked from the website |
+| `SHA256SUMS`, `manifest.json`, `provenance.intoto.json` | the release tool | every GitHub release, beside the artifacts |
+
+The manifest names the full commit, the version and every derived number, the channel, when and by what it was built (`local` or `github-actions`), and per artifact its platform, architecture, size, SHA-256, and for the APK its package identity, target SDK, and signer's certificate digest. Locally the provenance statement (in-toto v1, SLSA provenance v1) is unsigned; on GitHub, `attest-build-provenance` signs and stores one per artifact, verifiable with `gh attestation verify <file> -R Rifaque/reflux`. Nothing is published whose origin is not a commit: the tool refuses a modified tree.
+
+## Signing
+
+| Target | Key | Who holds it | Notes |
+| --- | --- | --- | --- |
+| Google Play | **Upload key** (`reflux-upload`), made by the owner | The owner: one copy offline (an encrypted backup outside the machine), one in GitHub's encrypted secrets for the release workflow (`REFLUX_UPLOAD_KEYSTORE_BASE64`, `REFLUX_UPLOAD_STORE_PASSWORD`, `REFLUX_UPLOAD_KEY_ALIAS`, `REFLUX_UPLOAD_KEY_PASSWORD`) | **Play App Signing**: Google generates and keeps the app-signing key; Reflux only ever holds the upload key. A lost or leaked upload key is reset through Play Console support (a new upload key is registered; the app-signing key, and so every installed copy's updates, are unaffected) |
+| Amazon Appstore | The same upload key | As above | Amazon removes the upload signature and signs with a key Amazon generates for the developer account (the same for every app of the account). Fire TV installs from the Appstore update from the Appstore only; no other channel delivers `dev.reflux` to those devices, so the stores' different final signatures never meet on one device |
+| Internal dry runs | `reflux-dry-run`, made by `tools/release/make-dry-run-key.py` in `~/.reflux-release/` | The developer machine | Never signs anything given to a store or a person. Its certificate says so |
+| Windows | **None: unsigned, by decision** (DECISIONS.md, 2026-11-08) | — | SHA-256 and provenance instead; see "Windows: unsigned distribution" |
+| Linux | None (no publisher-signing model to match Windows') | — | SHA-256, provenance, and GitHub's release attestation |
+
+Never committed: keystores, passwords, certificates with private keys, signing tokens. The Android build reads signing values only from `REFLUX_SIGNING_*` environment variables or `reflux.signing.*` properties in the user's own `~/.gradle/gradle.properties`; without them a release builds unsigned and the release tool refuses it. Rotating the upload key: generate a new one, register it with Play (Play Console → App integrity → request upload key reset) and with Amazon (contact the Appstore team), replace the four GitHub secrets, and record the date here. The upload key is made at the start of M8 (the first build given to testers), by the owner.
+
+## Android release build
+
+- `release`: R8 (`minifyEnabled`, `proguard-android-optimize.txt` + `android/app/proguard-rules.pro`) and resource shrinking. Reflux's own code uses no reflection or annotation-driven serialization; the keep rules are for smbj and its MBassador event bus (handlers found by annotation) and Bouncy Castle (algorithms found by name), each commented, plus `-dontwarn` for JDK classes the shared desktop code names and Android lacks. No global `-dontobfuscate` or `-dontshrink`.
+- Not debuggable (checked by the release tool from the APK itself), `targetSdk` 36 (Google Play's requirement for new apps and updates since 2026-08-31; Android TV's own floor is 34), `minSdk` 26, `compileSdk` 37.
+- The TMDB credential reaches debug builds only (DECISIONS.md, 2026-11-08, "TMDB in public releases"): release builds carry none, so they make no metadata lookups and offer no "Online metadata & artwork" switch.
+- No cloud backup and no device-to-device transfer of app data (`allowBackup="false"`, `dataExtractionRules` excluding everything).
+- Cleartext HTTP stays permitted (DECISIONS.md, 2026-11-08): home media servers are plain HTTP. User-added certificate authorities are not trusted (the platform default for `targetSdk` 24+).
+- Exported: the launcher activity and `ArtworkProvider` (read-only artwork by digest name), both reviewed. No WebView, no debug-only code in the production path, release logging redacted.
+- Lint on `release`: 0 errors, 16 warnings, reviewed (VERIFICATION.md, M6).
+
+## Desktop artifacts
+
+- `./gradlew :desktop:app:packageDesktopArchive` on the target OS: Compose's distributable (jpackage app image, not minified) with a **pinned Java runtime**, Eclipse Temurin 21 from the Gradle toolchain (never whichever JDK is installed; the first build picked up an end-of-life JDK 22), the JDK modules the app reaches, `LICENSE.txt`, the license texts (`third-party/`), and on Windows libmpv and its source offer. The zip is written with fixed timestamps and sorted entries; the tar.gz with `--sort=name --mtime=1980-01-01`, root ownership, and the executable bits of the launcher and the runtime's tools.
+- **Windows**: `reflux-<version>-windows-x64.zip`. Extract anywhere, run `Reflux.exe`. The library lives in `%LOCALAPPDATA%\Reflux`, connections in Credential Manager; removing the folder removes Reflux, and replacing it with a newer zip is an update. No installer yet: a zip needs no elevation and installs nothing the user cannot see.
+- **Linux**: `reflux-<version>-linux-x64.tar.gz`, run `bin/Reflux`. Needs the distribution's libmpv (`libmpv2` on Debian and Ubuntu, `mpv-libs` on Fedora). The library lives in `~/.local/share/reflux`. A deb/rpm or Flatpak is later work.
+
+### libmpv on Windows
+
+Pinned in `desktop/app/packaging/libmpv-windows.properties`: zhongfly/mpv-winbuild release `2026-11-07-55d3feb45c`, asset `mpv-dev-lgpl-x86_64-20261107-git-55d3feb45c.7z`, SHA-256 `17bff1d2…15df`, mpv commit `55d3feb45c`. `fetchLibmpv` downloads it into `.reflux/cache`, refuses any other digest, and puts only `libmpv-2.dll` in the app's resources, from which Reflux loads it by name (`LibMpv`). Reviewed for the LGPL (THIRD-PARTY.md): mpv built `-Dgpl=false`, FFmpeg without `--enable-gpl` or `--enable-nonfree`, no x264, x265, Rubber Band, libdvdnav, or libdvdread (the upstream LGPL patch and the DLL's own strings agree); Reflux loads it at run time and a user can replace it. **Gate before any public Windows download (M7):** the complete corresponding source must be published beside each release. The pinned build's dependencies are nightly checkouts whose exact commits live only in that build's logs, so Reflux will build libmpv itself (mpv-winbuild-cmake with the LGPL patch, in its release workflow) and archive the sources it built from.
+
+### Windows: unsigned distribution
+
+Reflux for Windows is **unsigned by decision** (DECISIONS.md, 2026-11-08). What stands in for a publisher signature: a stable artifact name, the exact commit, SHA-256 in `SHA256SUMS` and on the download page, GitHub's signed provenance, HTTPS delivery from GitHub releases only, and a download page that says plainly what Windows will show. Observed (VERIFICATION.md, M6): `Get-AuthenticodeSignature` reports NotSigned; Microsoft Defender finds nothing; launched with the download mark, SmartScreen intercepts it ("Windows protected your PC") and it does not start until the user chooses to run it; where Smart App Control is on, Windows blocks unsigned unknown apps outright, with no per-app exception, so this build cannot run there. Users are never told to switch either off. Signing is revisited before or around 1.0, when distribution scale justifies a certificate.
+
+## Store readiness (M6)
+
+Read 2026-11-07/08; recheck when each track is set up.
+
+| | Google Play | Amazon Appstore (Fire TV) |
+| --- | --- | --- |
+| Package | `dev.reflux`, one bundle for phones, tablets, Android TV, Google TV | `dev.reflux`, the APK from the same build and `versionCode` |
+| Target API | 36 required for new apps and updates since 2026-08-31 (Android TV 34); Reflux targets 36 | Amazon enforces a minimum `targetSdkVersion` (release notes, July 2026); 36 is above it |
+| Signing | Play App Signing with the upload key | Amazon re-signs with the account's key |
+| Privacy policy | Required, at a public URL: `https://reflux.rsxdevelops.dev/privacy` once the domain is live | Required, same URL |
+| Data safety / data disclosure | Answers prepared in PRIVACY.md: no data collected or shared; data stays on the device | Same facts |
+| Content | No user-generated content, no ads, no purchases, no account; content rating questionnaire to be answered (a media player of the user's own media) | Same; Amazon's age-verification (`GetUserAgeData`) requirement to be read for whether it applies to an app without accounts or age-gated content |
+| TV | TV quality checklist (D-pad, banner, no touch required: in place), TV review, Watch Next certification for Google TV | Fire TV device targeting in the manifest; test on a physical device before submission (done on a Fire TV Stick 4K Plus) |
+| Testing track | Closed testing. A **personal** developer account created after 2023-11-13 must run a closed test with at least 12 testers opted in for the last 14 days before production access; an organization account is exempt. Which kind the RSX Develops account is, and when it was made, is read from the Play Console by the owner (not yet known here); if it applies, M8 plans ≥12 testers for ≥14 days before any production release | Live App Testing |
+| Store assets | Screenshots (phone, tablet, TV), feature graphic, icon 512 px (`desktop/app/packaging/reflux.png` is the mark at 512 px), descriptions | Screenshots at Amazon's sizes, icons, banner |
+| Submission | **None in M6.** No listing exists | **None in M6** |
+
+### Android developer verification
+
+Google's developer verification: from 2026-09-30, apps installed on certified Android devices in Brazil, Indonesia, Singapore, and Thailand must come from a verified developer, globally from 2027; ADB installs stay allowed. Apps distributed through Google Play are covered by the Play Console's own developer verification; distribution outside Play needs the developer registered (Android Developer Console) and the package name registered to them. For Reflux: the Play path needs the Play Console account verified (the owner checks its status); `dev.reflux` should be registered to RSX Develops before any APK is offered outside the stores. Fire TV (Fire OS) is not Google-certified Android and is outside this scheme; Amazon's own account verification applies. Developer-mode sideloading during testing is not production distribution. No account change was made in M6.
 
 ## Store requirements
 
@@ -59,16 +142,16 @@ Desktop playback and probing use libmpv through its stable client API (decision 
 
 **What a release needs**
 
-- A libmpv build to ship on Windows, with a known provenance and configuration: built LGPL (no GPL-only components), with the decoders and hardware paths Reflux relies on. The development DLL is a third-party build and is not that.
+- A libmpv build to ship on Windows, with a known provenance and configuration: built LGPL (no GPL-only components), with the decoders and hardware paths Reflux relies on. The development DLL is a third-party build and is not that. Done for internal builds (M6): "libmpv on Windows" above; the source archive is M7's gate.
 - On Linux, either a dependency on the distribution's libmpv (deb/rpm) or a bundled copy (Flatpak/AppImage). The versions differ between distributions; the binding only uses API that every libmpv 2.x has.
 - LGPL obligations for the bundled library and its dependencies (FFmpeg, libass, libplacebo): license texts, source offer, and dynamic linking, which is already how it is loaded. Reflux is proprietary, so the bundled build must be an LGPL one, with no GPL parts in mpv or FFmpeg (DECISIONS.md, 2026-10-19). The About page lists libmpv today as the copy on the user's computer, not included; a bundled build changes its line in `legal/components.txt` (its license as built, the LGPL text, where its source is offered).
 - A packaged desktop build that carries its own Java runtime adds that runtime to the notices (OpenJDK is GPL-2.0 with the Classpath Exception); the notice check only sees Maven modules.
-- An installer or package per platform, and code signing on Windows. `desktop:app` has no packaging configuration yet.
+- An installer or package per platform, and code signing on Windows. Done as archives in M6 ("Desktop artifacts"); Windows is unsigned by decision.
 - On X11 the engine changes process-wide state (decision log, 2026-10-12); a bundled build is a chance to patch that at the source.
 
 ## Credentials
 
-On Android the app currently allows plain-HTTP connections to any host, because home media servers are usually `http://`. Before release that should be narrowed where it can be (a network security configuration, or asking when a server is added). Reviewed for the Android client so far: no storage permission is requested (folders are granted one at a time through the system picker, read-only, and the grant is given back when a source is removed); backups of app data are switched off, so the library database with its source credentials does not leave the device that way; problem reports are redacted before they reach the system log or the log file; the exported components are the launcher activity (which Watch Next programs also open, by an explicit intent naming a work) and `ArtworkProvider`, which lends the launcher read-only artwork from the cache by digest names and nothing else (checked on the television emulator: a cache file is served to another application; `..` paths and other files are not found); nothing in the production path is debug-only. Still open: the plain-HTTP policy above, credentials in the database (below), and the media session being available to any media controller on the device, which is the platform's default.
+On Android the app allows plain-HTTP connections, because home media servers are usually `http://`: decided to stay (DECISIONS.md, 2026-11-08), with user-added certificate authorities not trusted. Reviewed for the Android client so far: no storage permission is requested (folders are granted one at a time through the system picker, read-only, and the grant is given back when a source is removed); backups of app data are switched off, and since M6 device-to-device transfer too (`dataExtractionRules`), so the library database with its source credentials does not leave the device that way; problem reports are redacted before they reach the system log or the log file; the exported components are the launcher activity (which Watch Next programs also open, by an explicit intent naming a work) and `ArtworkProvider`, which lends the launcher read-only artwork from the cache by digest names and nothing else (checked on the television emulator: a cache file is served to another application; `..` paths and other files are not found); nothing in the production path is debug-only. Still open: the plain-HTTP policy above, credentials in the database (below), and the media session being available to any media controller on the device, which is the platform's default.
 
 Downloads for offline are files in the application's internal storage: not readable by other applications, not in any shared or public location, not backed up (backups are off), and removed with the application. No permission was added for them. They are fetched with the same credentials the source plays with, which is one more reason for the credential work below. Not yet done: continuing a download with the application closed (a foreground service and notification, undecided), and anything that limits downloads to unmetered networks.
 
@@ -97,7 +180,7 @@ The diagnostics log, the Android system log, and Reflux's own log file pass ever
 
 ## Metadata provider
 
-- The TMDB credential is an application credential supplied by the build (decision log, "Metadata providers"). Today it is read from the environment; release builds need it injected and not checked in.
+- The TMDB credential is an application credential supplied by the build (decision log, "Metadata providers"), to **debug builds only**: public release builds carry none until TMDB's terms are settled (DECISIONS.md, 2026-11-08, "TMDB in public releases").
 - TMDB's terms require attribution in the product: its approved logo and "This product uses the TMDB API but is not endorsed or certified by TMDB.", in an About or Credits section (developer.themoviedb.org FAQ, read 2026-10-19). The About page carries both whenever the provider is in use (DECISIONS.md, 2026-10-19).
 - The live service has not been exercised from this repository's tests; the provider is tested against recorded responses.
 

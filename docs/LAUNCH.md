@@ -10,7 +10,7 @@ The website is release infrastructure, not a task for after 1.0 and not optional
 
 | Stage | What it is | Done when (milestone) |
 | --- | --- | --- |
-| **W0 — Foundation** | Type, color, spacing, and motion rules for the site; the page skeleton; hosting and the domain; an analytics decision, none by default (ROADMAP.md, "The Reflux website", Privacy) | The empty skeleton is deployed at the domain, over HTTPS, and every later page is built from its rules (M6) |
+| **W0 — Foundation** | Type, color, spacing, and motion rules for the site; the page skeleton; hosting and the domain; an analytics decision, none by default (ROADMAP.md, "The Reflux website", Privacy) | The empty skeleton is deployed at the domain, over HTTPS, and every later page is built from its rules (M6). Built 2026-11-08 (React + Vite, Vercel; WEBSITE.md); not yet deployed |
 | **W1 — Early landing page** | One page: what Reflux is in a sentence, a few real screenshots, supported platforms ("coming"), and a quiet way to hear about the beta | Live on the M6 foundation |
 | **W2 — Demo video** | The product demo (below) | Approved by the product owner; embedded on the site before the beta (M7) |
 | **W3 — Beta launch** | Beta signup (platform, device, sources, so testers can be chosen for coverage), what the beta is and is not, how to install on each platform, how to report problems, the changelog, privacy policy, support contact | Live before `0.9.0-beta.1` (built in M7, required for M8 entry, operated through M8) |
@@ -61,8 +61,8 @@ Store testing requirements change; check the current Google Play Console and Ama
 | --- | --- | --- | --- |
 | Android phone, tablet, Android TV / Google TV | Google Play | One app bundle | TV quality review applies to the television listing |
 | Fire TV (Fire OS) | Amazon Appstore | APK built from the same source and `versionCode` | Separate listing, review, and device targeting. Devices on Vega OS cannot run it and must not be targeted |
-| Windows | Website download (signed installer); a store later if decided | Installer with libmpv | Code signing |
-| Linux | Website download; distribution or Flatpak later if decided | Package with libmpv | Provenance and LGPL obligations (RELEASE.md) |
+| Windows | GitHub release, linked from the website; a store later if decided | Zip with the Java runtime and libmpv | **Unsigned by decision** (DECISIONS.md, 2026-11-08): SHA-256 and provenance; the download page says what Windows will show. libmpv's source published beside each release before the first public download (M7) |
+| Linux | GitHub release, linked from the website; a distribution package or Flatpak later if decided | tar.gz with the Java runtime; the distribution's libmpv | SHA-256 and provenance (RELEASE.md) |
 
 ### Fire TV / Amazon Appstore plan
 

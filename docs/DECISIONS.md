@@ -1070,3 +1070,40 @@ M5's metadata architecture (METADATA.md, "Library depth (M5)").
 - **Pictures are asked for at the size Reflux shows them** where the source can scale (Jellyfin: 780 px wide, a backdrop 1,920). Plex's images are fetched as the server keeps them; its transcoder could scale them, unverified against a real server and so not used.
 - **Collections stay where strong identity supports them:** Home's provider franchises (two or more films sharing a provider collection), as before. No new smart collections, recommendations, or person pages.
 - **TMDB stays the one provider, isolated behind `MetadataProvider`, and is not approved for production by this decision:** its licence is non-commercial, whether a donation-supported free application counts is unresolved, its six-month cache limit and attribution wording need the legal review (RELEASE.md).
+
+## 2026-11-08 — TMDB in public releases: disabled
+
+M6's gate on TMDB (M5 left it open). Outcome: **DISABLED**. The integration stays in the codebase and in development builds; public release builds carry no TMDB credential, make no lookups, and show no TMDB attribution or "Online metadata & artwork" switch.
+
+- TMDB's API terms (last updated 2023-10-20, read 2026-11-07) license non-commercial use only; commercial use needs a separate written agreement, and TMDB alone decides what is commercial. Reflux is free and supported by voluntary donations; the terms do not mention donations, and "Reflux is free" does not settle it.
+- The terms also limit keeping TMDB data to six months, and their attribution wording differs from the FAQ's.
+- Reflux's library works fully without a provider: servers describe their own works (M5), file names identify local media, and every M5 surface degrades to that. So release does not wait on TMDB.
+- Re-enabling it is a decision recorded here, after TMDB confirms in writing that Reflux's use is permitted (or a commercial agreement is made) and the legal review accepts the caching and attribution terms. It is then one build input (the credential in release builds) and a privacy-policy change.
+
+## 2026-11-08 — Windows builds are unsigned for now
+
+Reflux for Windows is distributed **unsigned**; obtaining a commercial code-signing certificate does not block a release. In its place: a stable artifact name, the source commit, SHA-256 on the release and the download page, GitHub's signed build provenance, HTTPS delivery from GitHub releases only, and a factual notice that Windows may warn and how to check the checksum. Users are never told to turn off SmartScreen or Smart App Control; where Smart App Control is on, the build will not run, and the page says so. Signing is revisited before or around 1.0, when distribution scale justifies it. Linux, which has no comparable publisher-signing model, gets the same checksums and provenance.
+
+## 2026-11-08 — Android signing: one upload key, store-held signing keys
+
+Google Play uses Play App Signing (Google holds the app-signing key; Reflux holds an upload key). The Amazon Appstore re-signs every upload with a key Amazon generates for the developer account. Both stores receive uploads signed with the **same upload key**, made and kept by the owner (offline backup plus GitHub encrypted secrets for the release workflow), so there is one identity to guard. The final signatures differ by store, which is harmless: a device updates from the store that installed the app. Internal dry runs use a separate throwaway key that never signs anything distributed. Details and the rotation procedure: RELEASE.md, "Signing".
+
+## 2026-11-08 — Desktop: archives with a pinned runtime, not installers yet
+
+Windows ships as a zip and Linux as a tar.gz, each with Eclipse Temurin 21 from the Gradle toolchain and, on Windows, a pinned LGPL libmpv. Archives need no elevation, leave nothing behind but the data folder, and make an unsigned build no worse than it is. The desktop app is not minified (JNA binds interfaces by reflection). Installers (MSI, deb/rpm, Flatpak) are later work, decided when there is a reason for them.
+
+## 2026-11-08 — Reflux builds its own Windows libmpv before public distribution
+
+The pinned third-party LGPL build is verified LGPL and fine for internal builds, but its complete corresponding source cannot be reconstructed after the fact (its dependencies are nightly checkouts). Before any public Windows download (M7), Reflux's release workflow builds libmpv from mpv-winbuild-cmake with the LGPL patch and publishes the sources it built from beside each release. The architecture (libmpv loaded at run time, replaceable) does not change.
+
+## 2026-11-08 — The website: React and Vite, static, on Vercel
+
+Decides what ROADMAP.md left to M6. The site is React 19 built by Vite to static files, hosted on Vercel, where RSX Develops already runs its sites, at reflux.rsxdevelops.dev (DNS at Cloudflare: a CNAME to Vercel). Previews per branch behind Vercel authentication; production from `main`. GitHub Pages was viable but would split RSX Develops' hosting across two providers for no gain. All release and version data comes from the repository at build time (WEBSITE.md); binaries live in GitHub releases and the stores, never on the site.
+
+## 2026-11-08 — Plain HTTP stays allowed on Android
+
+Home media servers are usually `http://` on a local network, and which servers to use is the user's choice; refusing cleartext would break the main use. User-added certificate authorities stay untrusted (the platform default), so a self-signed home server over HTTPS must be trusted by the system, not by Reflux. Revisited if a server type gains a reliable HTTPS default.
+
+## 2026-11-08 — Terms: the ownership notice until the legal review
+
+Reflux's terms for M6 and the beta are its ownership notice (`LICENSE`) and the stores' own terms; no EULA is drafted without legal review, which decides whether one is needed before 1.0 (RELEASE.md, "Legal review"). The website's Terms page shows the notice as it is, and says the question is open.

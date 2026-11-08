@@ -4,6 +4,11 @@ What changes for people using Reflux, version by version. The rules for versions
 
 ## Unreleased
 
+- Reflux for Windows comes as a zip and Reflux for Linux as a tar.gz, each with everything it needs to run (on Linux, apart from your distribution's libmpv). Extract it and run Reflux; nothing is installed. The Windows build is not yet signed by a publisher, so Windows may warn before it first opens; each download has a SHA-256 checksum to check it against.
+- Public builds look nothing up online: what Reflux shows about a title comes from your servers and your files. The online catalog and the "Online metadata & artwork" switch described below are in development builds only, until its terms allow more.
+- Reflux keeps its library out of Android's cloud backup and device-to-device transfer, since it holds your servers' sign-ins.
+- Reflux's website, reflux.rsxdevelops.dev, with downloads, the changelog, privacy, terms, and third-party notices.
+
 - Titles from a Jellyfin or Plex server now come with what the server knows about them: what a film, show, season, or episode is about, its genres, rating, runtime, air dates, and network or studio. Plex's cast and directors too. No internet lookup is needed for any of it.
 - A show's page says the years it aired and on what network. A season with a name or a story of its own says so beside its poster, and each episode shows its date beside its length.
 - Episodes are pictured by their own stills wherever your server or the online catalog has them, including on an episode's own page; an episode without one shows its show's picture instead of a blank.
