@@ -8,13 +8,13 @@ The one source of truth for what Reflux is building, in what order, and what is 
 - The website is a release workstream across M6, M7, and M8 (below, "The Reflux website"); its visual direction, the demo video, and the beta program are in [LAUNCH.md](LAUNCH.md).
 - Decisions behind the plan are in [DECISIONS.md](DECISIONS.md): the first rebaseline (2026-10-17) and the milestone rebaseline (2026-11-02).
 
-**Current state: M5 complete → M6 next.**
+**Current state: M6 complete → M7 next.**
 
 This milestone list replaces the one of 2026-10-17 (M0 to M7, with M2 as release engineering and M3 as real-world validation), which replaced the earlier Phase 0–18 plan. Documents and verification sections written before 2026-11-02 use the older numbering; how each old milestone maps to this one is under "Earlier numbering", and DECISIONS.md, 2026-11-02, "The milestone rebaseline", says why.
 
 ## Where Reflux is
 
-Reflux is a **pre-release**. The engine (Media Core, sources, identification, metadata, watch state, Best Version, playback, Smart Offline) is mature and heavily tested; the experience layer runs on desktop, Android phones and tablets, and Android TV. Nothing has been released: there is no signed Android build, no desktop installer, no store listing, no public website, and no tester outside the project. Playback has been verified on a physical Nothing Phone 2a, Xiaomi Pad 7, and Fire TV Stick 4K Plus, and on the Google TV emulator (VERIFICATION.md); a physical Google TV device has not been used. The current version is `0.9.0-alpha.2` ([VERSIONING.md](VERSIONING.md)).
+Reflux is a **pre-release**. The engine (Media Core, sources, identification, metadata, watch state, Best Version, playback, Smart Offline) is mature and heavily tested; the experience layer runs on desktop, Android phones and tablets, and Android TV. Nothing has been released: the release system, signed Android release builds, and desktop archives exist and have been dry-run (M6), but there is no store listing, no public download, no live website, and no tester outside the project. Playback has been verified on a physical Nothing Phone 2a, Xiaomi Pad 7, and Fire TV Stick 4K Plus, and on the Google TV emulator (VERIFICATION.md); a physical Google TV device has not been used. The current version is `0.9.0-alpha.2` ([VERSIONING.md](VERSIONING.md)).
 
 Status words used below:
 
@@ -49,8 +49,8 @@ Status words used below:
 | M3 — Navigation & Source Libraries | How the viewer moves through Reflux and controls the media universe playback works on: global and platform navigation, the unified library and each source's own, source inclusion | **Complete** (2026-11-07), with the limits in its section |
 | M4 — Visual System 2.0 | A higher-end visual system around that structure | **Complete** (2026-11-07), with the limits in its section |
 | M5 — Library Depth & Reflux Magic | A richer library and the features that set Reflux apart | **Complete** (2026-11-07), with the limits in its section |
-| M6 — Release Engineering / Security / Legal | Production builds, packaging, signing, security hardening, legal and licensing, store preparation; the website's foundation and its legal and privacy pages | **Next** |
-| M7 — Compatibility / Performance / Release Proof | The final platform matrix proven: compatibility, performance, stability, production readiness; the website ready for the public and for testers | Future |
+| M6 — Release Engineering / Security / Legal | Production builds, packaging, signing, security hardening, legal and licensing, store preparation; the website's foundation and its legal and privacy pages | **Complete** (2026-11-08), with the limits in its section |
+| M7 — Compatibility / Performance / Release Proof | The final platform matrix proven: compatibility, performance, stability, production readiness; the website ready for the public and for testers | **Next** |
 | M8 — Beta | `0.9.0-beta.N` in testers' hands until the beta exit criteria hold, with the website operating as their entry point | Future |
 | M9 — Release Candidate | `0.9.0-rc.N`, feature freeze, final validation, submissions prepared | Future |
 | M10 — 1.0 | `1.0.0` on every V1 target | Future |
@@ -227,20 +227,20 @@ Source adapter → source and library contents → unified Reflux media model �
 
 ## M6 — Release Engineering / Security / Legal
 
-In progress (started 2026-11-07). This is the work the 2026-10-17 roadmap called M2. Production release engineering, packaging and distribution, signing, security hardening, legal and EULA, licensing review, privacy and security review, store preparation, and production release infrastructure. How each part works: RELEASE.md; the evidence: VERIFICATION.md, "M6: Release engineering, security, legal".
+**Complete** (2026-11-08), with the limits below. This is the work the 2026-10-17 roadmap called M2. Production release engineering, packaging and distribution, signing, security hardening, legal and EULA, licensing review, privacy and security review, store preparation, and production release infrastructure. How each part works: RELEASE.md; the evidence: VERIFICATION.md, "M6: Release engineering, security, legal".
 
 | Item | State |
 | --- | --- |
 | Reflux's own terms (blocks every distribution) | Decided 2026-10-19: proprietary, all rights reserved (`LICENSE`, shown on the About page). No EULA before the legal review (DECISIONS.md, 2026-11-08). Left: the legal review in RELEASE.md |
 | One release identity: version, `versionCode`, package versions, channel, commit from `reflux.version`; artifact names, `SHA256SUMS`, manifest, provenance; `release.py build`/`verify`; release workflow | Done 2026-11-08 (dry run from a clean clone of `9a95fe8`) |
-| Android signed release build, R8 shrinking with keep rules validated on device | Built, signed with the dry-run key, and validated on a fresh Google TV emulator (2026-11-08); signing strategy decided (DECISIONS.md, 2026-11-08). The owner's upload key is made at M8's start |
-| Android release on a physical phone (Nothing Phone 2a) and tablet (Xiaomi Pad 7): install, the product's main paths, minified-build behavior | **Waiting: devices available 2026-11-09** |
-| Android release on Fire TV (Fire TV Stick 4K Plus) | **Waiting: needs the owner's approval to uninstall the debug `dev.reflux` on the stick (test data only)** |
-| Android install, upgrade, and data migration tests (debug → release, release → release) | Open, with the physical devices: release → release; debug → release cannot upgrade (different signers) and is a reinstall |
+| Android signed release build, R8 shrinking with keep rules validated on device | Done 2026-11-08: the dry run's APK, signed with the dry-run key, validated on the Nothing Phone 2a, the Xiaomi Pad 7, the Fire TV Stick 4K Plus, and a fresh Google TV emulator; no crash and no R8 symptom on any. Signing strategy decided (DECISIONS.md, 2026-11-08). The owner's upload key is made at M8's start |
+| Android release on a physical phone (Nothing Phone 2a) and tablet (Xiaomi Pad 7): install, the product's main paths, minified-build behavior | Done 2026-11-08 (VERIFICATION.md, "M6: the release on physical devices") |
+| Android release on Fire TV (Fire TV Stick 4K Plus) | Done 2026-11-08: the debug build removed (with the owner's approval), the release installed and validated |
+| Android install, upgrade, and data migration tests (debug → release, release → release) | Done 2026-11-08: release → release (the `9a95fe8` release updated in place by the `3ac4fba` release, same version, same key) on all three devices kept every source, download, favorite, resume point, and Continue Watching, and plays afterwards. Debug → release cannot upgrade (different signers): a reinstall, as the stores' first install will be. A `versionCode` increase is first exercised with the first beta (M8), since the version is not changed for a dry run |
 | Android in CI (unit tests, lint, a release build; instrumented tests where a runner allows) | Done in the workflow (`android` job); not yet run on GitHub |
-| The CI workflow run on GitHub at least once, green | Open: needs a push (the owner's) |
-| Intermittent tests: `SourcesUiTest.theRemoteChoosesLibrariesToo` and `SourcesUiTest.aServerThatIsAwayOrStopsAnsweringIsRemovedAtOnce` time out under a loaded full `check` | Cause found and fixed 2026-11-08: connecting a server queued two full refreshes behind the pipeline's lock; a waiting refresh is now joined (`LibraryPipelineTest`). Both passed in the loaded full `check` of 2026-11-08 (VERIFICATION.md) |
-| Intermittent test: `LibraryDepthUiTest.identifyRefreshesWhatAWorkIsMatchedTo` timed out (30 s) waiting for "Details and artwork refreshed" in the loaded full `check` of 2026-11-08; alone it passes (3 of 3, 1.2 s). Suspects: the refresh waiting on the pipeline's lock behind another, or the notice's few seconds on screen being missed | Open, carried to M7 |
+| The CI workflow run on GitHub at least once, green | Moved to M7: needs the branch pushed, the owner's action |
+| Intermittent tests: `SourcesUiTest.theRemoteChoosesLibrariesToo` and `SourcesUiTest.aServerThatIsAwayOrStopsAnsweringIsRemovedAtOnce` time out under a loaded full `check` | Cause found and fixed 2026-11-08: connecting a server queued two full refreshes behind the pipeline's lock; a waiting refresh is now joined (`LibraryPipelineTest`). Both passed in the two loaded full `check` runs since (VERIFICATION.md). Two passing runs do not prove an intermittent gone; watched in M7's runs |
+| Intermittent test: `LibraryDepthUiTest.identifyRefreshesWhatAWorkIsMatchedTo` timed out (30 s) waiting for "Details and artwork refreshed" in a loaded full `check` of 2026-11-08; alone it passes (3 of 3, 1.2 s). Suspects: the refresh waiting on the pipeline's lock behind another, or the notice's few seconds on screen being missed. Not fixed | Open, carried to M7: it passed in the final loaded full `check` (1 failure in 2 loaded runs), which does not make it fixed |
 | Linux window tests: in the `tools/ci` container a show's card on screen is never located for a click, failing `EmbeddedPlaybackTest` and `OfflineWindowTest` (already failing on `a48cd67`; VERIFICATION.md, Smart Offline) | Done 2026-10-19: harness causes, fixed (VERIFICATION.md, "Real-window browsing") |
 | Intermittent window test: `EmbeddedPlaybackTest`'s missing-file step on Linux, where the engine reported nothing within 20 s for a file deleted just before Resume (1 of 9 container rounds; VERIFICATION.md, "Real-window browsing") | Open, carried to M7 |
 | Google Play readiness: listing, data safety form, content rating, target API, TV quality checklist, Watch Next certification for Google TV, closed-testing track | Prepared (RELEASE.md, "Store readiness"; PRIVACY.md): target API 36, data safety answers, the closed-testing rule. Nothing submitted; the account type is read by the owner |
@@ -253,8 +253,15 @@ In progress (started 2026-11-07). This is the work the 2026-10-17 roadmap called
 | The plain-HTTP policy on Android (RELEASE.md) | Decided 2026-11-08: cleartext allowed, user CAs untrusted (DECISIONS.md) |
 | Security audit: secrets in history and artifacts, Android, desktop, website, `SECURITY.md` | Done 2026-11-08 (VERIFICATION.md): gitleaks over all history, the live account in no commit or artifact, a Plex-token redaction added, private vulnerability reporting on |
 | Third-party inventory and privacy inventory | Done: THIRD-PARTY.md, PRIVACY.md |
-| A diagnostics export for bug reports, with file paths and titles redacted, and the in-app feedback link (beta entry, RELEASE.md) | Open, carried to M7 (needed for the beta, M8) |
+| A diagnostics export for bug reports, with file paths and titles redacted, and the in-app feedback link (beta entry, RELEASE.md) | Moved to M7 (needed for the beta, M8) |
 | Release checklist (RELEASE.md) exercised end to end once before beta | Done as a dry run 2026-11-08 (local, throwaway key, nothing published) |
+
+Limits of M6, and what moved:
+
+- To M7: the website's redesign (the owner's review found its presentation below the bar; M7, "Reflux Website", Redesign); the CI workflow's first run on GitHub (needs a push); the website deployed at reflux.rsxdevelops.dev (needs the push or a Vercel login, and the Cloudflare record: WEBSITE.md); Reflux's own libmpv build with its published source, before any public Windows download; the diagnostics export and feedback link; the intermittent `LibraryDepthUiTest` and `EmbeddedPlaybackTest` steps.
+- Owner actions before M8: the upload key; the Play Console account type (closed-testing rule); `dev.reflux` registered for developer verification before any APK is offered outside the stores.
+- Not verified in M6: a `versionCode` increase on a device (first with the beta); a physical Google TV (M7); the Fire TV television (M7); the legal review (M7/M9).
+- Seen on the devices, not release regressions, for M7: on the Phone 2a, a subtitle cue already running at the point a seek lands was not drawn until playback crossed a cue start (seen once, with a single 29-second cue; a debug build not compared); on the Fire TV, a subtitle chosen in one play was Off when the same film was played again.
 
 ### Reflux Website Foundation
 
@@ -270,7 +277,7 @@ M6 establishes the production foundation of the website, so that it can become t
 - A security review of the site and its pipeline.
 - Ownership of the website's infrastructure: who holds the domain, the hosting account, and the deploy keys.
 
-State 2026-11-08 (WEBSITE.md): built, hosting decided (Vercel, DECISIONS.md), every item above in the tree and checked locally. **Not yet live:** deploying needs the repository pushed and connected (or a Vercel login on this machine), and the domain one CNAME at Cloudflare, both the owner's.
+State 2026-11-08 (WEBSITE.md): built, hosting decided (Vercel, DECISIONS.md), every item above in the tree and checked locally; served locally for the owner's review. **Not yet live (moved to M7):** deploying needs the repository pushed and connected (or a Vercel login on this machine), and the domain one CNAME at Cloudflare, both the owner's.
 
 ### Public legal information
 
@@ -285,7 +292,7 @@ Planned here, worded in the legal work of M6 and M7 (RELEASE.md, "Legal review")
 
 ## M7 — Compatibility / Performance / Release Proof
 
-Future. The final production matrix proven: broad compatibility, performance, stability, and production readiness. It is broader than M2P, which proved playback; M7 proves the whole product on what it ships to. This holds the 2026-10-17 roadmap's M3, "Real-world validation".
+**Next.** The final production matrix proven: broad compatibility, performance, stability, and production readiness. It is broader than M2P, which proved playback; M7 proves the whole product on what it ships to. This holds the 2026-10-17 roadmap's M3, "Real-world validation".
 
 | Item | State |
 | --- | --- |
@@ -306,6 +313,8 @@ Future. The final production matrix proven: broad compatibility, performance, st
 ### Reflux Website — Public Release & Tester Readiness
 
 M7 turns the M6 foundation into the production website used for the beta and for 1.0.
+
+**Redesign (deferred from M6, 2026-11-08):** the owner reviewed the M6 foundation: its structure and function (routes, release data, download routing, legal pages, security headers) are useful, but its visual and product presentation is below Reflux's quality bar. M7 redesigns and polishes the site's visual system and presentation to the direction in LAUNCH.md ("Visual direction"), on top of the M6 foundation; M6 made no visual changes after the review.
 
 **Public product surface:** what Reflux is; its key features; supported platforms; supported media and source types; compatibility information (from PLAYBACK.md's established boundaries, never claiming more); screenshots and the demo video where they help; Reflux's local-first, source-aware model, explained plainly.
 
@@ -432,7 +441,7 @@ What V1 contains, as built from 2026-10-17 to 2026-11-01. Each row is required f
 | Source onboarding and management | Done | WebDAV can be added on Android since 2026-10-19 (DECISIONS.md, 2026-10-18, "Web shares on Android"). Source navigation and inclusion: done in M3 |
 | Android phone and tablet | Done (emulator); playback physical (M2P) | Physical validation across the product: M7 |
 | Android TV / Google TV | Done (emulator) | Physical validation: M7 |
-| Fire TV / Fire OS | Partial (one physical device) | Smoke-tested on a Fire TV Stick 4K Plus (`AFTMA08C15`, Fire OS 8.1.8.5, API 30, 32-bit userland) on 2026-10-18 with a debug build; five Fire OS defects found and fixed (DECISIONS.md, 2026-10-18); playback validated in M2P. The rest moved to M7 (hardware) and M6 (a release build, Amazon's criteria). Fire OS has the TV provider, and Reflux writes no Watch Next programs to it; with Reflux in the background a remote's Play key is not obeyed (both DECISIONS.md, 2026-10-18). Fire OS 6 devices (`AFTMM`, API 25) are below `minSdk`; Vega OS devices (`AFTCR001`) do not run Android applications |
+| Fire TV / Fire OS | Partial (one physical device) | Smoke-tested on a Fire TV Stick 4K Plus (`AFTMA08C15`, Fire OS 8.1.8.5, API 30, 32-bit userland) on 2026-10-18 with a debug build; five Fire OS defects found and fixed (DECISIONS.md, 2026-10-18); playback validated in M2P. A release build validated on it 2026-11-08 (M6); Amazon's criteria prepared, not yet submitted (RELEASE.md). The rest is M7 (hardware). Fire OS has the TV provider, and Reflux writes no Watch Next programs to it; with Reflux in the background a remote's Play key is not obeyed (both DECISIONS.md, 2026-10-18). Fire OS 6 devices (`AFTMM`, API 25) are below `minSdk`; Vega OS devices (`AFTCR001`) do not run Android applications |
 | Windows and Linux | Partial | Capabilities observed since 2026-10-19. Media keys, scrollbars, and HDR output moved to M7 |
 | Accessibility baseline | Done | Now M1 |
 | About, legal, and attribution | Done 2026-10-19; two parts wait elsewhere | About Reflux: version and build, Reflux's copyright (proprietary, all rights reserved; DECISIONS.md, "Reflux is proprietary"), the metadata provider's credit, what Reflux keeps and sends, and every third-party license text, checked against each build by `check` (DECISIONS.md, 2026-10-19). Waiting: the privacy policy and support links (the website: M6 foundation, live by M8) and libmpv's notice for a bundled build (M6) |
