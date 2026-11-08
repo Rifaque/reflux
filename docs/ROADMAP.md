@@ -227,27 +227,34 @@ Source adapter → source and library contents → unified Reflux media model �
 
 ## M6 — Release Engineering / Security / Legal
 
-Future. This is the work the 2026-10-17 roadmap called M2. Production release engineering, packaging and distribution, signing, security hardening, legal and EULA, licensing review, privacy and security review, store preparation, and production release infrastructure.
+In progress (started 2026-11-07). This is the work the 2026-10-17 roadmap called M2. Production release engineering, packaging and distribution, signing, security hardening, legal and EULA, licensing review, privacy and security review, store preparation, and production release infrastructure. How each part works: RELEASE.md; the evidence: VERIFICATION.md, "M6: Release engineering, security, legal".
 
 | Item | State |
 | --- | --- |
-| Reflux's own terms (blocks every distribution) | Decided 2026-10-19: proprietary, all rights reserved (`LICENSE`, shown on the About page; DECISIONS.md). Left: the legal review in RELEASE.md |
-| Android signed release build, R8 shrinking with keep rules validated on device | Open |
-| Android install, upgrade, and data migration tests (debug → release, release → release) | Open |
-| Android in CI (unit tests, lint, a release build; instrumented tests where a runner allows) | Open |
-| The CI workflow run on GitHub at least once, green | Open |
-| Intermittent tests fixed: `SourcesUiTest.theRemoteChoosesLibrariesToo` times out under a loaded full `check` (VERIFICATION.md, first M1 slice); so did `SourcesUiTest.aServerThatIsAwayOrStopsAnsweringIsRemovedAtOnce` at M5's closure (26 to 31 s alone, on M4 as on M5) | Open |
+| Reflux's own terms (blocks every distribution) | Decided 2026-10-19: proprietary, all rights reserved (`LICENSE`, shown on the About page). No EULA before the legal review (DECISIONS.md, 2026-11-08). Left: the legal review in RELEASE.md |
+| One release identity: version, `versionCode`, package versions, channel, commit from `reflux.version`; artifact names, `SHA256SUMS`, manifest, provenance; `release.py build`/`verify`; release workflow | Done 2026-11-08 (dry run from a clean clone of `9a95fe8`) |
+| Android signed release build, R8 shrinking with keep rules validated on device | Built, signed with the dry-run key, and validated on a fresh Google TV emulator (2026-11-08); signing strategy decided (DECISIONS.md, 2026-11-08). The owner's upload key is made at M8's start |
+| Android release on a physical phone (Nothing Phone 2a) and tablet (Xiaomi Pad 7): install, the product's main paths, minified-build behavior | **Waiting: devices available 2026-11-09** |
+| Android release on Fire TV (Fire TV Stick 4K Plus) | **Waiting: needs the owner's approval to uninstall the debug `dev.reflux` on the stick (test data only)** |
+| Android install, upgrade, and data migration tests (debug → release, release → release) | Open, with the physical devices: release → release; debug → release cannot upgrade (different signers) and is a reinstall |
+| Android in CI (unit tests, lint, a release build; instrumented tests where a runner allows) | Done in the workflow (`android` job); not yet run on GitHub |
+| The CI workflow run on GitHub at least once, green | Open: needs a push (the owner's) |
+| Intermittent tests: `SourcesUiTest.theRemoteChoosesLibrariesToo` and `SourcesUiTest.aServerThatIsAwayOrStopsAnsweringIsRemovedAtOnce` time out under a loaded full `check` | Cause found and fixed 2026-11-08: connecting a server queued two full refreshes behind the pipeline's lock; a waiting refresh is now joined (`LibraryPipelineTest`). Both passed in the loaded full `check` of 2026-11-08 (VERIFICATION.md) |
+| Intermittent test: `LibraryDepthUiTest.identifyRefreshesWhatAWorkIsMatchedTo` timed out (30 s) waiting for "Details and artwork refreshed" in the loaded full `check` of 2026-11-08; alone it passes (3 of 3, 1.2 s). Suspects: the refresh waiting on the pipeline's lock behind another, or the notice's few seconds on screen being missed | Open, carried to M7 |
 | Linux window tests: in the `tools/ci` container a show's card on screen is never located for a click, failing `EmbeddedPlaybackTest` and `OfflineWindowTest` (already failing on `a48cd67`; VERIFICATION.md, Smart Offline) | Done 2026-10-19: harness causes, fixed (VERIFICATION.md, "Real-window browsing") |
-| Intermittent window test: `EmbeddedPlaybackTest`'s missing-file step on Linux, where the engine reported nothing within 20 s for a file deleted just before Resume (1 of 9 container rounds; VERIFICATION.md, "Real-window browsing") | Open |
-| Google Play readiness: listing, data safety form, content rating, target API, TV quality checklist, Watch Next certification for Google TV, closed-testing track | Open |
-| Fire OS / Amazon Appstore readiness: listing, Fire TV device targeting, Amazon's app review requirements, test on the declared devices | Open |
-| Desktop packaging: Windows installer (signed), Linux package(s) | Open |
-| libmpv distribution with provenance (LGPL build, license texts, source offer), and its line in `legal/components.txt` and the About page | Open |
-| Desktop metadata: version, icon, file associations if any, data directory | Open |
-| TMDB credential injected into release builds, never committed | Open |
-| The plain-HTTP policy on Android (RELEASE.md); carried from Jellyfin correctness and security | Open |
-| A diagnostics export for bug reports, with file paths and titles redacted, and the in-app feedback link (beta entry, RELEASE.md) | Open |
-| Release checklist (RELEASE.md) exercised end to end once before beta | Open |
+| Intermittent window test: `EmbeddedPlaybackTest`'s missing-file step on Linux, where the engine reported nothing within 20 s for a file deleted just before Resume (1 of 9 container rounds; VERIFICATION.md, "Real-window browsing") | Open, carried to M7 |
+| Google Play readiness: listing, data safety form, content rating, target API, TV quality checklist, Watch Next certification for Google TV, closed-testing track | Prepared (RELEASE.md, "Store readiness"; PRIVACY.md): target API 36, data safety answers, the closed-testing rule. Nothing submitted; the account type is read by the owner |
+| Fire OS / Amazon Appstore readiness: listing, Fire TV device targeting, Amazon's app review requirements, test on the declared devices | Prepared (RELEASE.md); nothing submitted |
+| Android developer verification | Read and recorded (RELEASE.md); no account change |
+| Desktop packaging: Windows, Linux | Done 2026-11-08: a Windows zip and a Linux tar.gz with a pinned Temurin 21 runtime (DECISIONS.md, 2026-11-08). Windows is **unsigned by decision**. Installers: later |
+| libmpv distribution with provenance (LGPL build, license texts, source offer), and its line in `legal/components.txt` and the About page | Done for internal builds (THIRD-PARTY.md). **Gate before any public Windows download (M7):** Reflux builds libmpv itself and publishes its source |
+| Desktop metadata: version, icon, file associations if any, data directory | Done: package versions from the release identity, Reflux's icon, no file associations, data directories as before |
+| TMDB in release builds | Decided 2026-11-08: **disabled** in public builds (DECISIONS.md); development builds keep it |
+| The plain-HTTP policy on Android (RELEASE.md) | Decided 2026-11-08: cleartext allowed, user CAs untrusted (DECISIONS.md) |
+| Security audit: secrets in history and artifacts, Android, desktop, website, `SECURITY.md` | Done 2026-11-08 (VERIFICATION.md): gitleaks over all history, the live account in no commit or artifact, a Plex-token redaction added, private vulnerability reporting on |
+| Third-party inventory and privacy inventory | Done: THIRD-PARTY.md, PRIVACY.md |
+| A diagnostics export for bug reports, with file paths and titles redacted, and the in-app feedback link (beta entry, RELEASE.md) | Open, carried to M7 (needed for the beta, M8) |
+| Release checklist (RELEASE.md) exercised end to end once before beta | Done as a dry run 2026-11-08 (local, throwaway key, nothing published) |
 
 ### Reflux Website Foundation
 
@@ -262,6 +269,8 @@ M6 establishes the production foundation of the website, so that it can become t
 - Basic routing to downloads and tester channels.
 - A security review of the site and its pipeline.
 - Ownership of the website's infrastructure: who holds the domain, the hosting account, and the deploy keys.
+
+State 2026-11-08 (WEBSITE.md): built, hosting decided (Vercel, DECISIONS.md), every item above in the tree and checked locally. **Not yet live:** deploying needs the repository pushed and connected (or a Vercel login on this machine), and the domain one CNAME at Cloudflare, both the owner's.
 
 ### Public legal information
 
