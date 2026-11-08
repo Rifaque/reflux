@@ -121,7 +121,7 @@ class AboutUiTest {
         screen(populated(), FakePlatform(notices = NoticeTarget.DESKTOP), height = 2400) { app ->
             runOnIdle { app.navigator.open(Destination.Notices) }
             awaitText("Skia")
-            assertTrue(shows("mpv (libmpv) and FFmpeg") && shows("Java Native Access (JNA)"))
+            assertTrue(shows("mpv (libmpv)") && shows("FFmpeg") && shows("Java Native Access (JNA)"))
             assertFalse(shows("AndroidX Media3") || shows("OkHttp and Okio"))
             save("notices-desktop")
         }
@@ -129,7 +129,7 @@ class AboutUiTest {
             runOnIdle { app.navigator.open(Destination.Notices) }
             awaitText("AndroidX Media3")
             assertTrue(shows("OkHttp and Okio") && shows("Bouncy Castle"))
-            assertFalse(shows("Skia") || shows("mpv (libmpv) and FFmpeg"))
+            assertFalse(shows("Skia") || shows("mpv (libmpv)") || shows("FFmpeg"))
         }
     }
 
@@ -140,7 +140,7 @@ class AboutUiTest {
         await("its text") { shows("Copyright (c) 2000-2026 The Legion of the Bouncy Castle Inc.", substring = true) }
         save("notice-bouncy-castle")
         // libmpv is in the Windows build (with its LGPL text and source offer) and the distribution's on Linux: both said.
-        runOnIdle { app.navigator.open(Destination.Notice("mpv (libmpv) and FFmpeg")) }
+        runOnIdle { app.navigator.open(Destination.Notice("mpv (libmpv)")) }
         await("the LGPL text") { shows("GNU LESSER GENERAL PUBLIC LICENSE", substring = true) }
         assertTrue(shows("On Windows, Reflux includes libmpv-2.dll", substring = true))
         assertTrue(shows("On Linux, Reflux uses the libmpv your distribution installs.", substring = true))

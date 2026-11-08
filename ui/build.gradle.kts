@@ -49,8 +49,15 @@ abstract class GenerateNotices : DefaultTask() {
                 texts.forEach { append("        ${literal(it.name)} -> Texts.").append(it.nameWithoutExtension.replace(Regex("[^A-Za-z0-9]"), "_").uppercase()).append('\n') }
                 append("        else -> null\n    }\n\n")
                 // Constants of their own object: loaded when a notice is opened, not with the About page.
+                // A class file holds a constant of at most 64 KB, and some license texts are longer (the GCC runtime's),
+                // so each text is kept in pieces and joined when it is read.
                 append("    private object Texts {\n")
-                texts.forEach { append("        const val ").append(it.nameWithoutExtension.replace(Regex("[^A-Za-z0-9]"), "_").uppercase()).append(" = ").append(literal(it.readText())).append('\n') }
+                texts.forEach { text ->
+                    val name = text.nameWithoutExtension.replace(Regex("[^A-Za-z0-9]"), "_").uppercase()
+                    val pieces = text.readText().chunked(12_000)
+                    pieces.forEachIndexed { i, piece -> append("        private const val ${name}_$i = ").append(literal(piece)).append('\n') }
+                    append("        val $name: String get() = arrayOf(${pieces.indices.joinToString(", ") { "${name}_$it" }}).joinToString(\"\")\n")
+                }
                 append("    }\n}\n")
             },
         )

@@ -38,7 +38,7 @@ class AboutOnDeviceTest {
         val components = Notices.components(NoticeTarget.ANDROID)
         val names = components.map { it.name }
         assertTrue("AndroidX Media3" in names && "OkHttp and Okio" in names, "$names")
-        assertFalse("Skia" in names || "mpv (libmpv) and FFmpeg" in names, "desktop-only software is not listed: $names")
+        assertFalse("Skia" in names || "mpv (libmpv)" in names || "FFmpeg" in names, "desktop-only software is not listed: $names")
         for (component in components) for (file in component.texts) {
             val text = assertNotNull(Notices.text(file), "${component.name}: $file")
             assertTrue(Notices.paragraphs(text).isNotEmpty())
