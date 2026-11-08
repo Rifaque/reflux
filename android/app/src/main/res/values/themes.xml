@@ -7,4 +7,16 @@
         <item name="android:navigationBarColor">@android:color/transparent</item>
         <item name="android:windowLightStatusBar">false</item>
     </style>
+
+    <!--
+        The launch screen, through the platform's SplashScreen (androidx core-splashscreen): the system decides how
+        long it shows, and nothing waits for the animation. On Android 12 and later the mark draws itself
+        (drawable-v31/splash_mark); before that it is the still mark.
+    -->
+    <style name="Theme.Reflux.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/background</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/splash_mark</item>
+        <item name="windowSplashScreenAnimationDuration">1000</item>
+        <item name="postSplashScreenTheme">@style/Theme.Reflux</item>
+    </style>
 </resources>

@@ -6,7 +6,6 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -634,24 +633,9 @@ private fun Notice(modifier: Modifier, title: String, body: String, said: String
     }
 }
 
+/** A genuine wait for the picture: the Reflux loader (the brand's flow), after a moment, so a quick start shows nothing. */
 @Composable
-private fun Spinner(modifier: Modifier = Modifier) {
-    val busy = Modifier.semantics {
-        contentDescription = "Loading"
-        progressBarRangeInfo = ProgressBarRangeInfo.Indeterminate
-    }
-    // That something is happening is not left to a movement some people have asked not to see.
-    if (LocalAccessibility.current.reduceMotion) {
-        Text("Loading…", modifier.then(busy), style = LocalTypography.current.bodyStrong)
-        return
-    }
-    val angle by rememberInfiniteTransition().animateFloat(0f, 360f, infiniteRepeatable(tween(900, easing = LinearEasing)))
-    Canvas(modifier.size(44.dp).then(busy)) {
-        rotate(angle) {
-            drawArc(States.layer(0.9f), startAngle = 0f, sweepAngle = 270f, useCenter = false, style = Stroke(3.dp.toPx(), cap = StrokeCap.Round))
-        }
-    }
-}
+private fun Spinner(modifier: Modifier = Modifier) = dev.reflux.ui.components.RefluxLoader(modifier, size = 52.dp)
 
 private const val POINTER_REPORT_MS = 300L
 

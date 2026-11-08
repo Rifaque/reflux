@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- The centreline of the mark: the first pass, then the return over it. Round ends. -->
+  <path id="first" fill="none" stroke="currentColor" stroke-width="11.00" stroke-linecap="round" d="M11.00 79.13 C39.00 79.13 69.00 69.13 71.00 45.13 C73.00 23.13 53.00 15.13 42.00 25.13"/>
+  <path id="return" fill="none" stroke="currentColor" stroke-width="11.00" stroke-linecap="round" d="M42.00 25.13 C31.00 36.13 37.00 57.13 57.00 63.13 C69.00 67.13 79.00 63.13 89.00 55.13"/>
+</svg>
