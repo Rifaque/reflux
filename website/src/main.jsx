@@ -5,6 +5,9 @@ import '@fontsource-variable/manrope/wght.css'
 import App from './App.jsx'
 import './styles.css'
 
+// Motion is the script's to start (src/motion.jsx): without it, every page is shown as it is.
+document.documentElement.classList.add('motion')
+
 // Every page is prerendered (scripts/prerender.mjs); the script takes over the page that is already there.
 hydrateRoot(
   document.getElementById('root'),

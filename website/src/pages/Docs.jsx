@@ -100,7 +100,7 @@ export function DocsIndex() {
       </PageHead>
       <ul className="doc-index">
         {articles.map((a) => (
-          <li key={a.slug}><Link to={`/docs/${a.slug}`}><h2>{a.title}</h2><p>{a.summary}</p></Link></li>
+          <li key={a.slug} data-reveal><Link to={`/docs/${a.slug}`} viewTransition><h2>{a.title}</h2><p>{a.summary}</p></Link></li>
         ))}
       </ul>
     </article>
@@ -112,8 +112,8 @@ export function DocArticle({ slug }) {
   return (
     <div className="doc-layout">
       <nav className="doc-nav" aria-label="Documentation">
-        <Link to="/docs" className="quiet small">Documentation</Link>
-        {articles.map((a) => <NavLink key={a.slug} to={`/docs/${a.slug}`}>{a.title}</NavLink>)}
+        <Link to="/docs" className="quiet small" viewTransition>Documentation</Link>
+        {articles.map((a) => <NavLink key={a.slug} to={`/docs/${a.slug}`} viewTransition>{a.title}</NavLink>)}
       </nav>
       <article className="page prose">
         <PageHead eyebrow="Documentation" title={article.title}><p>{article.summary}</p></PageHead>

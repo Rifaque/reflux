@@ -61,7 +61,13 @@ const brandPath = (file) => {
   const svg = read(`design/brand/${file}`)
   return { viewBox: /viewBox="([^"]+)"/.exec(svg)[1], d: / d="([^"]+)"/.exec(svg)[1] }
 }
-const brand = { mark: brandPath('reflux-mark.svg'), lockup: brandPath('reflux-lockup.svg') }
+const stroke = read('design/brand/reflux-mark-stroke.svg')
+const pass = (id) => new RegExp(`id="${id}"[^>]* d="([^"]+)"`).exec(stroke)[1]
+// The centreline the mark is drawn from, for its motion (DESIGN.md, "Motion language").
+const brand = {
+  mark: brandPath('reflux-mark.svg'), lockup: brandPath('reflux-lockup.svg'),
+  stroke: { first: pass('first'), return: pass('return'), width: Number(/stroke-width="([\d.]+)"/.exec(stroke)[1]) },
+}
 
 // Third-party components: name, license, and the platforms they ship on.
 const components = read('legal/components.txt').split(/\r?\n/)

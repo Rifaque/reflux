@@ -68,19 +68,19 @@ export function Header() {
   const { pathname } = useLocation()
   // A page chosen from the menu closes it.
   useEffect(() => { if (menu.current) menu.current.open = false }, [pathname])
-  const links = primary.map(([to, label]) => <NavLink key={to} to={to}>{label}</NavLink>)
+  const links = primary.map(([to, label]) => <NavLink key={to} to={to} viewTransition>{label}</NavLink>)
   return (
     <header className="site-header">
       <div className="bar">
-        <Link to="/" className="home-link" aria-label="Reflux home"><Lockup /></Link>
+        <Link to="/" className="home-link" aria-label="Reflux home" viewTransition><Lockup /></Link>
         <nav className="nav-wide" aria-label="Main">{links}</nav>
-        <Link to="/download" className="button small nav-cta">Get Reflux</Link>
+        <Link to="/download" className="button small nav-cta" viewTransition>Get Reflux</Link>
         <details className="nav-menu" ref={menu}>
           <summary aria-label="Menu"><span aria-hidden="true" className="burger" /></summary>
           <nav aria-label="Main">
             {links}
-            <NavLink to="/download">Download</NavLink>
-            <NavLink to="/testing">Testing</NavLink>
+            <NavLink to="/download" viewTransition>Download</NavLink>
+            <NavLink to="/testing" viewTransition>Testing</NavLink>
           </nav>
         </details>
       </div>
@@ -101,24 +101,24 @@ export function Footer() {
         </div>
         <nav aria-label="Product">
           <h2>Product</h2>
-          <Link to="/platforms">Platforms</Link>
-          <Link to="/sources">Sources</Link>
-          <Link to="/download">Download</Link>
-          <Link to="/releases">Releases</Link>
-          <Link to="/testing">Testing</Link>
+          <Link to="/platforms" viewTransition>Platforms</Link>
+          <Link to="/sources" viewTransition>Sources</Link>
+          <Link to="/download" viewTransition>Download</Link>
+          <Link to="/releases" viewTransition>Releases</Link>
+          <Link to="/testing" viewTransition>Testing</Link>
         </nav>
         <nav aria-label="Help">
           <h2>Help</h2>
-          <Link to="/docs">Documentation</Link>
-          <Link to="/docs/troubleshooting">FAQ</Link>
-          <Link to="/support">Support</Link>
-          <Link to="/security">Security</Link>
+          <Link to="/docs" viewTransition>Documentation</Link>
+          <Link to="/docs/troubleshooting" viewTransition>FAQ</Link>
+          <Link to="/support" viewTransition>Support</Link>
+          <Link to="/security" viewTransition>Security</Link>
         </nav>
         <nav aria-label="Legal">
           <h2>Legal</h2>
-          <Link to="/privacy">Privacy</Link>
-          <Link to="/terms">Terms</Link>
-          <Link to="/legal/third-party">Third-party notices</Link>
+          <Link to="/privacy" viewTransition>Privacy</Link>
+          <Link to="/terms" viewTransition>Terms</Link>
+          <Link to="/legal/third-party" viewTransition>Third-party notices</Link>
         </nav>
       </div>
       <p className="footer-fine quiet small">

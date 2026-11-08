@@ -273,3 +273,115 @@ td { color: var(--text-2); min-width: 9rem; }
 .publisher img { width: 7.75rem; height: auto; object-fit: contain; }
 .publisher-label { font-size: 0.78rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-3); font-weight: 650; }
 .publisher-terms { margin: 0 0 1.5rem; }
+
+/* ---------------------------------------------------------------------------------------------------------------
+   Motion language (docs/DESIGN.md, "Motion language"). A calm base, the product moving most, one shared vocabulary:
+   brand (the mark drawing itself), reveal, depth, media, feedback, navigation. html.motion is set by the script, so a
+   page without it, and anyone asking for reduced motion, sees every element in its finished state at once.
+   --------------------------------------------------------------------------------------------------------------- */
+:root {
+  --t-feedback: 160ms;
+  --t-reveal: 720ms;
+  --t-brand: 1100ms;
+  --ease-flow: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --ease-settle: cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+/* Brand: flow → gather → transform → settle. The strokes are hidden and the solid mark shown unless motion runs. */
+.mark-motion { display: block; color: var(--text); }
+.mark-motion .mm-first, .mark-motion .mm-return { opacity: 0; }
+.hero-brand { display: flex; align-items: center; gap: 0.9rem; }
+.hero-mark { width: 2.6rem; height: 2.6rem; }
+
+/* Interaction feedback: quick, small, never theatrical. */
+.cards li, .source, .download, .doc-index a { transition: transform var(--t-feedback) var(--ease-flow), border-color var(--t-feedback), background var(--t-feedback); }
+@media (hover: hover) and (pointer: fine) {
+  .cards li:hover, .source:hover, .download:hover { transform: translateY(-2px); border-color: var(--line-strong); }
+  .doc-index a:hover { transform: translateY(-2px); }
+  tbody tr { transition: background var(--t-feedback); }
+  tbody tr:hover { background: rgba(255, 255, 255, 0.025); }
+}
+
+/* The one-library moment: three copies of a film converge into one, which becomes Reflux's page for it. */
+.converge { margin: 0; }
+.converge-stage { position: relative; aspect-ratio: 1440 / 879; }
+.converge-result { position: absolute; inset: 0; }
+.copy { position: absolute; left: 50%; top: 50%; width: 23%; transform: translate(-50%, -50%); display: none; }
+.copy img { width: 100%; border-radius: 12px; border: 1px solid var(--line-strong); box-shadow: 0 30px 60px -20px rgba(0, 0, 0, 0.8); }
+.copy-label { position: absolute; left: 50%; bottom: -2.6rem; transform: translateX(-50%); display: grid; text-align: center; white-space: nowrap; font-size: 0.78rem; color: var(--text-2); line-height: 1.35; }
+.copy-label b { color: var(--text); font-weight: 650; }
+.converge-caption { margin-top: 1rem; }
+.converge-chip { display: inline-flex; padding: 0.35rem 0.85rem; border: 1px solid var(--line-strong); border-radius: 999px; font-size: 0.85rem; font-weight: 600; color: var(--text-2); }
+
+@media (prefers-reduced-motion: no-preference) {
+  /* Brand */
+  html.motion .mark-motion .mm-fill { opacity: 0; animation: mm-settle 260ms 860ms linear forwards; }
+  html.motion .mark-motion .mm-first, html.motion .mark-motion .mm-return { opacity: 1; stroke-dasharray: 1; stroke-dashoffset: 1; }
+  html.motion .mark-motion .mm-first { animation: mm-draw 520ms var(--ease-flow) forwards, mm-out 260ms 860ms linear forwards; }
+  html.motion .mark-motion .mm-return { animation: mm-draw 480ms 400ms var(--ease-flow) forwards, mm-out 260ms 860ms linear forwards; }
+  html.motion [data-reveal]:not(.in) .mark-motion * { animation-play-state: paused; }
+
+  /* Depth: the hero's product surface comes into focus, then answers a fine pointer a little. */
+  .hero-shot { perspective: 1800px; animation: focus-in 1100ms 180ms var(--ease-flow) both; }
+  .hero-shot .shot { transform: rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)); transition: transform 700ms var(--ease-flow); will-change: transform; }
+
+  /* Reveal: once, as it comes into view; groups stagger their children instead of moving whole. */
+  html.motion [data-reveal]:not([data-stagger]):not(.converge):not(.closing) { opacity: 0; transform: translateY(18px); }
+  html.motion [data-reveal].in:not([data-stagger]):not(.converge):not(.closing) { animation: reveal var(--t-reveal) var(--ease-flow) forwards; }
+  html.motion [data-stagger] > * { opacity: 0; transform: translateY(16px); }
+  html.motion [data-stagger].in > * { animation: reveal var(--t-reveal) var(--ease-flow) forwards; }
+  html.motion [data-stagger].in > :nth-child(2) { animation-delay: 70ms; }
+  html.motion [data-stagger].in > :nth-child(3) { animation-delay: 140ms; }
+  html.motion [data-stagger].in > :nth-child(4) { animation-delay: 210ms; }
+  html.motion [data-stagger].in > :nth-child(5) { animation-delay: 280ms; }
+  html.motion [data-stagger].in > :nth-child(n+6) { animation-delay: 340ms; }
+
+  /* Media: the convergence. Hidden until in view; then the copies gather, and Reflux's page settles over them. */
+  html.motion .converge .copy { display: block; opacity: 0; }
+  html.motion .converge .converge-result { opacity: 0; transform: scale(0.94); }
+  html.motion .converge .converge-chip { opacity: 0; }
+  html.motion .converge.in .copy-0 { animation: copy-0 1500ms var(--ease-settle) forwards; }
+  html.motion .converge.in .copy-1 { animation: copy-1 1500ms 60ms var(--ease-settle) forwards; }
+  html.motion .converge.in .copy-2 { animation: copy-2 1500ms 120ms var(--ease-settle) forwards; }
+  html.motion .converge.in .converge-result { animation: result-in 800ms 1350ms var(--ease-flow) forwards; }
+  /* Each copy says where it is while they are apart, and lets go of it as they become one. */
+  html.motion .converge.in .copy-label { animation: label-out 1500ms var(--ease-settle) forwards; }
+  html.motion .converge.in .converge-chip { animation: reveal 600ms 1000ms var(--ease-flow) forwards; }
+
+  /* Closing: the mark draws itself as the page ends. */
+  html.motion .closing:not(.in) .closing-mark { opacity: 0; }
+
+  /* Navigation: pages cross over quickly; the header stays where it is. */
+  .site-header { view-transition-name: site-header; }
+  ::view-transition-old(root) { animation: vt-out 140ms linear both; }
+  ::view-transition-new(root) { animation: vt-in 260ms var(--ease-flow) both; }
+}
+
+@keyframes mm-draw { to { stroke-dashoffset: 0; } }
+@keyframes mm-out { to { opacity: 0; } }
+@keyframes mm-settle { to { opacity: 1; } }
+@keyframes focus-in { from { opacity: 0; transform: translateY(32px) rotateX(9deg) scale(0.965); filter: blur(10px); } to { opacity: 1; transform: none; filter: none; } }
+@keyframes reveal { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
+@keyframes copy-0 {
+  0% { opacity: 0; transform: translate(-215%, -46%) rotate(-5deg); }
+  18% { opacity: 1; }
+  62% { opacity: 1; transform: translate(-58%, -52%) rotate(-3deg); }
+  100% { opacity: 0; transform: translate(-56%, -51%) rotate(-3deg) scale(0.96); }
+}
+@keyframes copy-1 {
+  0% { opacity: 0; transform: translate(-50%, -70%); }
+  18% { opacity: 1; }
+  62% { opacity: 1; transform: translate(-50%, -50%); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(0.96); }
+}
+@keyframes copy-2 {
+  0% { opacity: 0; transform: translate(115%, -46%) rotate(5deg); }
+  18% { opacity: 1; }
+  62% { opacity: 1; transform: translate(-42%, -48%) rotate(3deg); }
+  100% { opacity: 0; transform: translate(-44%, -49%) rotate(3deg) scale(0.96); }
+}
+@keyframes result-in { to { opacity: 1; transform: none; } }
+@keyframes label-out { 0%, 30% { opacity: 1; } 48%, 100% { opacity: 0; } }
+@keyframes vt-out { to { opacity: 0; } }
+@keyframes vt-in { from { opacity: 0; transform: translateY(8px); } }
+@media (max-width: 40rem) { .copy-label { display: none; } .copy { width: 27%; } }

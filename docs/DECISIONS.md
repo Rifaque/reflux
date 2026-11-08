@@ -1173,3 +1173,14 @@ The owner's decision for M7, superseding "TMDB in public releases: disabled" (ab
 - **Attribution, as TMDB's terms and FAQ ask:** in the app, About Reflux shows TMDB's approved logo, smaller than Reflux's own name, and the notice "This product uses the TMDB API but is not endorsed or certified by TMDB." whenever the provider is in the build; on the website, the same logo and notice on the third-party and credits page, and the privacy page says what TMDB receives.
 - **When TMDB answers:** if it confirms non-commercial use, this entry records the confirmation and nothing else changes. If it says a commercial licence is needed, this entry says so at once, the credential is withdrawn from release builds until a licence exists, and the privacy page, the changelog, and the store disclosures are corrected. Silence is not an answer; M8 carries the gate as open (ROADMAP.md, M8 entry checklist).
 
+## 2026-11-09 — The Reflux motion language
+
+The owner kept the Reflux Loop and asked for motion to give it its meaning, for the website to feel alive without becoming loud, for the mark to be the signature of launch and loading, and for RSX Develops to be credited as the maker. Decided (the vocabulary itself is DESIGN.md, "Motion language"):
+
+- **One vocabulary, platform-native implementations.** Brand, loading, reveal, depth, media, feedback, navigation, with shared timings. No animation framework is added on the web (CSS, IntersectionObserver, and React Router's `viewTransition`, which uses the browser's View Transition API where it exists) or in the app (Compose's own animation APIs; drawing reads animated values in the draw phase).
+- **The mark's centreline is part of the brand geometry** (`design/brand/reflux-mark-stroke.svg`, generated with the outline), so every surface traces the same line: the `design` module's `BrandMark` for Compose, the splash's animated vector, the website's SVG.
+- **Android launch:** the platform SplashScreen (`androidx.core:core-splashscreen` 1.2.0, Apache-2.0, covered by the AndroidX line of the notices): on Android 12 and later the mark draws itself within the system's own launch screen; before 12 (every Fire OS device) it is the still mark. The system decides how long it shows; nothing holds startup for the animation.
+- **Loading:** the loader is for genuine waits only (the player loading or buffering, a library being built), after 400 ms; it replaces the player's spinner and is not used for short operations.
+- **Website signature moments:** the hero's product render coming into focus, and three copies of a film converging into one Reflux page. Everything else is a small reveal or feedback.
+- **Reduced motion everywhere:** the finished state at once; nothing is hidden waiting for an animation, and pages without script show everything.
+- **RSX Develops** appears as the maker beneath Reflux, with its own existing wordmark (design/brand/README.md, "RSX Develops, the publisher").
