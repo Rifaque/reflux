@@ -174,7 +174,7 @@ def build(args) -> int:
         "windowsVersion": info["windowsVersion"], "linuxVersion": info["linuxVersion"], "channel": info["channel"],
         "androidPackage": info["androidPackage"], "commit": commit, "repository": "https://github.com/Rifaque/reflux", "tag": "v" + version,
         "builtAt": finished.strftime("%Y-%m-%dT%H:%M:%SZ"), "builder": "local" if not os.environ.get("GITHUB_ACTIONS") else "github-actions",
-        "tmdb": "disabled", "artifacts": artifacts,
+        "tmdb": "credential supplied" if os.environ.get("REFLUX_TMDB_TOKEN") else "no credential", "artifacts": artifacts,
     }
     # LF everywhere: `sha256sum -c` on Linux and macOS reads a CRLF SHA256SUMS as names ending in \r.
     (out / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8", newline="\n")

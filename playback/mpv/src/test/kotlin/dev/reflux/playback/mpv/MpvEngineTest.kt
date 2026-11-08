@@ -86,7 +86,10 @@ class MpvEngineTest {
     @Test
     fun probeReadsWhatCapabilityQuestionsNeed() {
         val info = MpvProbe.createOrNull()!!.probe(PlaybackTarget(TestMedia.multiTrackMkv(directory).toUri().toString()))!!
-        assertEquals(VideoProfile.HIGH, info.video?.profile)
+        // A track's `codec-profile` arrived with client API 2.3 (mpv 0.38). Before it (Ubuntu 24.04's libmpv 0.37) the
+        // profile is unknown, which is the right degradation, not a wrong answer.
+        val api = LibMpv.loadOrNull()!!.mpv_client_api_version()
+        if (api >= (2L shl 16) + 3) assertEquals(VideoProfile.HIGH, info.video?.profile) else assertEquals(null, info.video?.profile)
         assertEquals(44_100, info.audio.first().sampleRate)
     }
 

@@ -9,3 +9,5 @@ legal/** text eol=lf
 
 # The Windows libmpv build runs in a Linux container.
 tools/libmpv/** text eol=lf
+# The ownership notice is shown in the app and on the website word for word: the same bytes on every checkout.
+LICENSE text eol=lf

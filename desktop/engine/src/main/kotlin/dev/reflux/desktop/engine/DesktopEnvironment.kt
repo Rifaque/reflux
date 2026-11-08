@@ -145,8 +145,11 @@ class DesktopEnvironment(
         connections.migrateExcludedSections()
     }
 
-    /** TMDB is enabled when the build or environment provides an application credential. */
-    val metadata: MetadataProvider? = (System.getenv("REFLUX_TMDB_TOKEN") ?: System.getProperty("reflux.tmdb.token"))
+    /**
+     * TMDB is enabled when the environment or the build provides an application credential: the environment first (a
+     * developer's), then what a release build packed in (`provider.properties`, from the build's REFLUX_TMDB_TOKEN).
+     */
+    val metadata: MetadataProvider? = (System.getenv("REFLUX_TMDB_TOKEN") ?: System.getProperty("reflux.tmdb.token") ?: packedCredential())
         ?.takeIf { it.isNotBlank() }
         ?.let { TmdbProvider(it, http) }
 
@@ -282,3 +285,10 @@ class DesktopEnvironment(
 
 /** How Reflux names itself to the servers it talks to, with the one product version (docs/VERSIONING.md). */
 private val USER_AGENT = "Reflux/${RefluxBuild.VERSION}"
+
+/** The metadata provider's credential a release build packed in, if it did. */
+private fun packedCredential(): String? = runCatching {
+    DesktopEnvironment::class.java.getResourceAsStream("/dev/reflux/desktop/provider.properties")?.use { stream ->
+        java.util.Properties().apply { load(stream) }.getProperty("tmdb")
+    }
+}.getOrNull()
