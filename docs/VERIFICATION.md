@@ -1090,3 +1090,50 @@ Mistake made and corrected: the phone's `svc wifi enable` after the offline step
 
 The release stays installed on the three devices with the walk's test data (the RefluxM6 folders on the phone and tablet, the test account's Jellyfin session, the SMB share entry).
 
+## M7: Compatibility, release proof, brand, website, beta readiness (2026-11-09)
+
+On the developer's Windows 11 machine, the `tools/ci` Linux container, the Google TV emulator, and the physical Fire TV Stick 4K Plus and Nothing Phone 2a. Nothing was pushed, tagged, published, deployed, or submitted to a store; the version stays `0.9.0-alpha.2`.
+
+**Release rehearsal from a clean clone** (gates 5 and 6): a fresh `git clone` of `4d6538e`, fresh libmpv source downloads, `tools/release/release.py build` with the throwaway dry-run key, the Linux archive built in the container from the same clone and `--add`ed.
+
+| Artifact | Bytes | SHA-256 |
+| --- | --- | --- |
+| `reflux-0.9.0-alpha.2-android.apk` | 6,569,275 | `23c189034d68f56e352422b12ba09f93efa40efa46ec9bb6cfcd5172a94592cd` |
+| `reflux-0.9.0-alpha.2-android.aab` | 11,298,803 | `ace1aeea437140cd81b51ab9203b0f8423307a912268c6b125fff034aba341cd` |
+| `reflux-0.9.0-alpha.2-windows-x64.zip` | 105,941,776 | `bd71bb2f19b2383dfc55c1d8691442361c153c0b8f461872e8bcb62e6f8fa037` |
+| `reflux-0.9.0-alpha.2-libmpv-source.tar.xz` | 62,568,712 | `53853ac9089204270fcd4db16ce6e3d5660af0f41dde765c3fb12a489d1c9bfa` |
+| `reflux-0.9.0-alpha.2-linux-x64.tar.gz` | 91,362,627 | `35f57393aab8f98c56ae82174689c96ee553e674bdd6985cf67baa4ad9aef5f0` |
+
+- `release.py verify` passes: every `SHA256SUMS` entry, the in-toto provenance's subjects and commit (`4d6538e`, unmodified tree), the APK's package (`dev.rsxdevelops.reflux`), `versionCode` 90002, not debuggable, 16 KB zip alignment, the libmpv DLL inside the zip equal to the provenance's digest and the pin, and the source bundle present. One flipped byte makes it fail. `sha256sum -c SHA256SUMS` passes on Linux. `tools/release/test_release.py`: 7 self-tests pass.
+- The manifest records `tmdb: "no credential"` (none was supplied locally). With a fake `REFLUX_TMDB_TOKEN` the release APK carries it and the desktop build packs `provider.properties`; without one neither has it (`aapt2 dump resources`, the jar listing).
+- An earlier rehearsal (`9a81c55`) produced the same libmpv DLL and source bundle bytes.
+- Not run: the hosted workflows. `ci.yml`, `libmpv.yml`, and `release.yml` pass `actionlint` (every action pinned by SHA); their first GitHub run and the signed attestations (`actions/attest-build-provenance`, checked by `gh attestation verify --signer-workflow` in the verify job) need the push.
+
+**Windows libmpv from source** (gate 7): `tools/libmpv` (Docker, Ubuntu by digest, MinGW-w64 posix GCC, every source pinned by SHA-256) builds mpv 0.42.0 with FFmpeg 9.0.2 and its libraries, LGPL only (the build fails on any GPL or nonfree option and on an import outside the allowlist). Four builds, one from a clean clone with fresh downloads, gave the same DLL (`e52f3f45…90a4`) and source bundle (`53853ac9…9bfa`). With it the 53 engine tests pass, the packaged app reports hardware decoding and played a clip to the end, and `EmbeddedPlaybackTest` (a real window) passes. Defender: no threats; `Get-AuthenticodeSignature`: NotSigned. The notices list every library in the DLL with its license text (`legal/components.txt`, `legal/licenses/`); `checkThirdPartyNotices` passes. SmartScreen was not re-run (unchanged from M6: the archive is unsigned, so its prompt is expected; Reflux does not tell anyone to turn it off).
+
+**Package identity** (gate 1): the release APK and AAB are `dev.rsxdevelops.reflux` (aapt2); the CI job checks it; `release/stores.json` and the website's store check use it; the on-device runner targets `dev.rsxdevelops.reflux.test`. The Kotlin namespace stays `dev.reflux.*`.
+
+**Deferred playback and stability** (gate 8):
+- Phone 2a subtitle after a seek: reproduced by two new on-device tests (`SubtitleSeekOnDeviceTest`), both failing before the fix; Media3's extraction-time subtitle parsing dropped a cue that had already begun where the seek landed. With legacy decoding (`experimentalParseSubtitlesDuringExtraction(false)` and the text renderer's legacy mode) both pass, 2 of 2. The whole on-device suite: 44 OK on the Phone 2a, 44 OK on the Fire TV Stick.
+- Fire TV subtitle Off on replay: classified, not a defect and not Fire TV's. Reflux keeps no per-work subtitle choice; in Auto mode with audio in the viewer's language the subtitle starts Off on every play. A product decision for M8 (remembering the choice per work).
+- `LibraryDepthUiTest.identifyRefreshesWhatAWorkIsMatchedTo`: a layout race (Identify's results arriving moved "Refresh details" under the click). Reproduced 1 in 25 under load before the fix, 0 in 25 after, and 8 further loaded rounds clean. `SourcesUiTest`: 8 of 8 alone and 8 of 8 loaded rounds pass; no failure reproduced, kept watched.
+
+**Support report** (gate 9): `SupportReportTest` (6) and `SupportReportUiTest` (2): addresses, server names, paths (Windows, UNC, Unix, with spaces), e-mail addresses, IPv4 and IPv6, host and port, cookies, long tokens, and the library's own titles and source names never appear; versions, capabilities, and stack frames do. On the Fire TV Stick at `4d6538e`: About → "Save a support report" wrote a file to `Download/Reflux` (Fire OS blocks `Android/data` even to adb), read back by adb: the last playback's facts and nothing private. Reflux sends nothing.
+
+**Brand** (gate 2): six exploration rounds (`design/brand/exploration/`), the Reflux Loop chosen (`design/brand/README.md`); every platform's icon, the TV banner, the store art, and the website's icons generated from the one geometry by `tools/brand/`; seen on the emulator's launcher and TV home row, the Fire TV launcher, the Windows taskbar and window.
+
+**Motion:** the first-run draw-in and the library loader seen on the Fire TV Stick and in the desktop app; with reduce motion, the still mark (desktop). The Android 12+ animated launch screen is built and lint-clean but was **not seen on a device**: the Google TV emulator showed its PIN setup in front and no starting window, the Fire TV (Android 11) shows the still mark by design, and the Phone 2a and Pad 7 were disconnected by then.
+
+**Fire TV Stick release walk** at `4d6538e` (the rehearsal's APK, after uninstalling the M6 `dev.reflux`, which a new package cannot update): cold start 1.25 s, the first-run mark, Reflux's folder picker by remote, the library built, a film played, About shows "Made by RSX Develops" and `(4d6538e)`, the support report as above.
+
+**Website** (gates 3 and 4): `npm audit` 0 vulnerabilities; `npm run build`, `check-dist`, and `check-links` pass. Served by `scripts/serve.mjs` with `vercel.json`'s headers and checked in Chromium (Playwright) at desktop and phone widths: every route renders with no console error and no CSP violation, unknown paths answer 404, nothing overflows at 375 px, navigation crosses over with View Transitions, and with `prefers-reduced-motion` nothing is hidden or moving. Not deployed: the Vercel project exists with no deployment and no domain (owner actions, WEBSITE.md, "Deployment").
+
+**Store and verification readiness** (gate 10): Google's and Amazon's current requirements, read 2026-11-08, are in RELEASE.md, "Store readiness (M7)" and "Android developer verification (M7)". The APK's manifest, permissions, exported components, backup rules, and network policy were re-checked for `dev.rsxdevelops.reflux`.
+
+**Security:** gitleaks over the whole history and tree: one new finding, the support report test's fake `api_key`, reviewed and recorded in `.gitleaksignore`. The live test account's values occur in no commit, no file, and none of the 738 entries of the rehearsal's artifacts. The website ships no source map, environment variable, secret, or third-party origin.
+
+**Tests:** the full Windows `./gradlew check` on `253f21f` (the last code change): 1,212 tests, 18 skipped, 0 failed; Android unit tests and lint pass. The Linux container (`tools/ci`, the CI job's steps) on a clean clone of `4d6538e`: `./gradlew check` 1,162 tests, 32 skipped, 0 failed; the real-window step 1 failed: `AboutWindowTest` found the About page's one identity stop announced "RSX Develops" before "Reflux" (the new wordmark's image description outranks the stop's texts in a merged node, for screen readers too). Fixed in `253f21f` (the maker row is the text "Made by RSX Develops" in its place; `AboutUiTest` asserts the stop leads with "Reflux"); `AboutWindowTest` and `AboutUiTest` pass on Windows. On a clean clone of `253f21f`: `check` 1,162 tests, 32 skipped, 0 failed, and the real-window step passes. The release rehearsal's artifacts are from `4d6538e`; `253f21f` changes only that row's semantics. Earlier Linux runs failed on three environment gaps present since M2P, fixed in M7: libmpv 0.37's missing `codec-profile` (the test is now version-aware), a headless focus wait in `AboutUiTest` (skipped on headless Linux CI, with the reason in the test), and `LICENSE` checked out with CRLF from a Windows clone (now pinned to LF).
+
+**Live server:** `JellyfinExecutionLiveTest`'s remux evidence came back UNKNOWN once (the server's session reported late) and passed on both reruns.
+
+**Not verified in M7**, carried to the M8 entry checklist: the hosted CI run and attestations (need the push); the live website and DNS; the animated launch screen on a device; the Pad 7 (disconnected) and a release walk on the Phone 2a (it ran the debug on-device suite only); TMDB against the live service (no credential here); a SmartScreen re-run; a physical Google TV, the Fire TV television, physical controllers.
