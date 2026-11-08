@@ -152,6 +152,11 @@ val packageDesktopArchive = tasks.register("packageDesktopArchive") {
     doLast {
         val staging = temporaryDir.resolve(name).apply { deleteRecursively(); mkdirs() }
         image.get().asFile.copyRecursively(staging)
+        // copyRecursively keeps no permissions: the launcher, the runtime's tools, and its helpers must stay executable.
+        image.get().asFile.walkTopDown().filter { it.isFile && it.canExecute() }.forEach { source ->
+            staging.resolve(source.relativeTo(image.get().asFile)).setExecutable(true, false)
+        }
+        if (!windows && !staging.resolve("bin/Reflux").canExecute()) throw GradleException("bin/Reflux is not executable in the archive")
         notice.asFile.copyTo(staging.resolve("LICENSE.txt"))
         legal.asFile.copyRecursively(staging.resolve("third-party"))
         if (windows) offer.asFile.copyTo(staging.resolve("third-party/libmpv-SOURCE-OFFER.txt"))
