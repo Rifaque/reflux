@@ -18,6 +18,10 @@ android {
         versionCode = rootProject.extra["reflux.versionCode"] as Int
         versionName = rootProject.extra["reflux.version"] as String
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        // The metadata provider's application credential, from the build environment (a CI secret, never the
+        // repository), in every build that is given one (DECISIONS.md, "TMDB: working non-commercial classification").
+        (providers.gradleProperty("reflux.tmdb.token").orNull ?: providers.environmentVariable("REFLUX_TMDB_TOKEN").orNull)
+            ?.takeIf { it.isNotBlank() }?.let { resValue("string", "reflux_tmdb_token", it) }
         // -Preflux.jellyfin=<url> points the on-device continuity test at a real server (see JellyfinContinuityTest).
         providers.gradleProperty("reflux.jellyfin").orNull?.takeIf { it.isNotBlank() }?.let { testInstrumentationRunnerArguments["refluxJellyfin"] = it }
     }
@@ -39,12 +43,6 @@ android {
     }
 
     buildTypes {
-        debug {
-            // The metadata provider's credential reaches development builds only: public builds carry no TMDB
-            // credential until its terms are settled (DECISIONS.md, 2026-11-08, "TMDB in public releases").
-            (providers.gradleProperty("reflux.tmdb.token").orNull ?: providers.environmentVariable("REFLUX_TMDB_TOKEN").orNull)
-                ?.takeIf { it.isNotBlank() }?.let { resValue("string", "reflux_tmdb_token", it) }
-        }
         release {
             isMinifyEnabled = true
             isShrinkResources = true
@@ -55,6 +53,8 @@ android {
 
     buildFeatures {
         compose = true
+        // The metadata provider's credential arrives as a generated string resource (defaultConfig, above).
+        resValues = true
     }
 }
 

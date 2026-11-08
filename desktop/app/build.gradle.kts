@@ -38,7 +38,21 @@ val generateBuildIdentity by tasks.registering {
         file.writeText(identity.get())
     }
 }
-sourceSets.main { resources.srcDir(generateBuildIdentity) }
+// The metadata provider's application credential, when the build environment gives one (REFLUX_TMDB_TOKEN, a CI
+// secret; DECISIONS.md, "TMDB: working non-commercial classification"). Never in the repository; absent, the packaged
+// app makes no lookups.
+val generateProviderCredential by tasks.registering {
+    val token = providers.environmentVariable("REFLUX_TMDB_TOKEN").orElse(providers.gradleProperty("reflux.tmdb.token")).orElse("")
+    val output = layout.buildDirectory.dir("generated/provider")
+    inputs.property("digest", token.map { value -> MessageDigest.getInstance("SHA-256").digest(value.toByteArray()).joinToString("") { b -> "%02x".format(b) } })
+    outputs.dir(output)
+    doLast {
+        val file = output.get().file("dev/reflux/desktop/provider.properties").asFile
+        file.parentFile.mkdirs()
+        if (token.get().isBlank()) file.delete() else file.writeText("tmdb=" + token.get().trim() + System.lineSeparator())
+    }
+}
+sourceSets.main { resources.srcDir(generateBuildIdentity); resources.srcDir(generateProviderCredential) }
 
 // Release packaging (docs/RELEASE.md, "Desktop artifacts"). The version and every number derived from it come
 // from the root build (docs/VERSIONING.md); nothing here declares one.
