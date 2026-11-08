@@ -1,0 +1,25 @@
+# Every source Reflux's Windows libmpv is built from (docs/RELEASE.md, "libmpv on Windows"). One line per archive:
+#   name  version  sha256  url
+# fetch.sh downloads each into the source cache and refuses one whose SHA-256 differs; the release's source bundle
+# (reflux-<version>-libmpv-source.tar.xz) holds these exact archives beside the scripts that built them.
+# Changing a line is a release decision: rebuild, re-check the LGPL configuration (build.sh), record it in
+# legal/components.txt, THIRD-PARTY.md, and VERIFICATION.md.
+mpv              0.42.0      bcfebbfa2b65a6d88dc97ea18117831072373e38b5785a2afb874ed4df5070dd  https://github.com/mpv-player/mpv/archive/refs/tags/v0.42.0.tar.gz
+ffmpeg           9.0.2       8c3850283eb25fa026482078a04051e0be17347b09ef81a0849bec15a96e002e  https://ffmpeg.org/releases/ffmpeg-9.0.2.tar.xz
+libplacebo       7.387.0     f9e62d3774a9c4cfd198ec3abaa88294aaade2e31c04d5ab02bcf4abc98b1df5  https://github.com/haasn/libplacebo/archive/refs/tags/v7.387.0.tar.gz
+glad             73db193     33dbeae44d8315ece57e14eba4b1b4a02ac5406d1c4f49cd20048c91522a6b9a  https://github.com/Dav1dde/glad/archive/73db193f853e2ee079bf3ca8a64aa2eaf6459043.tar.gz
+jinja            1520688     b88a20dcc2e34072fcf4159325bc6c34cd4b29a81a8b83d15d2f28ba561da296  https://github.com/pallets/jinja/archive/15206881c006c79667fe5154fe80c01c65410679.tar.gz
+markupsafe       297fc8e     da7c010c9c81a66ac73036558c1fcb6212b50482f43211cd1254035b94f82414  https://github.com/pallets/markupsafe/archive/297fc8e356e6836a62087949245d09a28e9f1b13.tar.gz
+fast_float       97b54ca     2b132274539286e41f37857cac22aa8441d21bd86d55de825a3342b149f66801  https://github.com/fastfloat/fast_float/archive/97b54ca9e75f5303507699d27c6b4f4efe4641a1.tar.gz
+vulkan-headers   74d8a6c     75967a8288ff16044a86d1af462b96d2e75c435937efb75f2bb4102ab0382f29  https://github.com/KhronosGroup/Vulkan-Headers/archive/74d8a6cb930c68ef617b202c3ff3c59d919e086b.tar.gz
+shaderc          2026.4      f06ce5bcca94e5df7f34e115743597d0ad2e13c5fe9213c67dc8c76031241947  https://github.com/google/shaderc/archive/refs/tags/v2026.4.tar.gz
+glslang          e1b562a     907174a24713c6202c146f164bf81783f1fbc79c8cb821a30f18f159eb980312  https://github.com/KhronosGroup/glslang/archive/e1b562a8bed273a02f30b59b66a5d499793cede5.tar.gz
+spirv-tools      ef96ed7     82c62146083fd558735a3171cf97cfc47903ca7d368482e87f94bd44883c0f00  https://github.com/KhronosGroup/SPIRV-Tools/archive/ef96ed763b43b59b33b31b362f09a02b729fa1c9.tar.gz
+spirv-headers    04fd3ca     392f4801409aad9c4f1b77745f179952fd6264e4c8bd0fc1bc45dfa6807bf6d0  https://github.com/KhronosGroup/SPIRV-Headers/archive/04fd3caa1e8267e4d95c806cad901181728e1006.tar.gz
+spirv-cross      1.4.357.0   97c910326afdd44d794ce8561326fa675fd1958b27142f03295403044d639639  https://github.com/KhronosGroup/SPIRV-Cross/archive/refs/tags/vulkan-sdk-1.4.357.0.tar.gz
+libass           0.17.5      2dca25c0e0c837ddf00b52011b3f82cac1e4ddd3ad018227806b0c2288864acc  https://github.com/libass/libass/releases/download/0.17.5/libass-0.17.5.tar.xz
+freetype         2.15.0      93cd47eb719c325107f2d3cf087d06299e944c3b48a40b55537302304dea1dd5  https://download.savannah.gnu.org/releases/freetype/freetype-2.15.0.tar.xz
+fribidi          1.0.17      6949dcde27d41cebad1fd741fcafc36d55a1020d2d872d4a6eb3914caabbada2  https://github.com/fribidi/fribidi/releases/download/v1.0.17/fribidi-1.0.17.tar.xz
+harfbuzz         14.6.0      d07a007327277708a2a73ae437887cdbaf282937f6d03ca5467723e9099af586  https://github.com/harfbuzz/harfbuzz/releases/download/14.6.0/harfbuzz-14.6.0.tar.xz
+dav1d            1.5.4       686616b7c69eb88d44459391ab25cac13b6647a3b288835c5784e71c1514a5c5  https://download.videolan.org/pub/videolan/dav1d/1.5.4/dav1d-1.5.4.tar.xz
+zlib             1.3.1       9a93b2b7dfdac77ceba5a558a580e74667dd6fede4585b91eefb60f03b72df23  https://zlib.net/fossils/zlib-1.3.1.tar.gz

@@ -1,8 +1,11 @@
 name: CI
 
+# Every push and pull request, from a clean checkout (docs/RELEASE.md, "CI"). Actions are pinned by commit, with the
+# release they are in beside each; nothing here holds a secret.
 on:
   push:
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -15,33 +18,32 @@ jobs:
   check:
     name: Check (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 45
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-24.04, windows-2022]
+        os: [ubuntu-24.04, windows-2025]
     env:
       # Linux installs the engine and a display below, so tests that need them must run there rather than
       # skip themselves. Windows runners have no libmpv; its engine tests are skipped and say so.
       REFLUX_REQUIRE_ENGINE_TESTS: ${{ startsWith(matrix.os, 'ubuntu') }}
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
         with:
           distribution: temurin
           java-version: 21
-
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
 
       # Real-engine tests (libmpv playback/probing against FFmpeg-generated media) run where libmpv is available
       # and are skipped elsewhere. The X server, window manager, and compositor are for the window tests below.
       - name: Install libmpv, FFmpeg, and a virtual desktop
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends $(cat tools/ci/linux-packages.txt)
+        run: sudo apt-get update && xargs -a tools/ci/linux-packages.txt sudo apt-get install -y --no-install-recommends
 
+      # -Preflux.android=false: the Android modules have a job of their own, with the SDK set up on purpose.
       - name: Build and test
-        run: ./gradlew check :tools:cli:installDist --stacktrace
+        run: ./gradlew check :tools:cli:installDist -Preflux.android=false --stacktrace
 
       # The real desktop shell in a real window, on a virtual display. tools/ci/linux-check.sh runs these same
       # two steps in a container, for reproducing this job locally.
@@ -51,54 +53,80 @@ jobs:
 
       - name: Upload test reports
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: test-reports-${{ matrix.os }}
           path: '**/build/reports/tests/'
 
   android:
-    name: Android (unit tests, lint, minified release)
+    name: Android (unit tests, lint, platform API, minified release)
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
         with:
           distribution: temurin
           java-version: 21
-      - uses: android-actions/setup-android@v3
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd # v4.0.4
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
       # The release variant is built minified and unsigned here: R8 and its keep rules are checked on every change;
-      # signing happens only in the release workflow.
-      - name: Unit tests, lint, and a release build
-        run: ./gradlew :android:app:testDebugUnitTest :android:app:lintRelease :android:app:assembleRelease --stacktrace
+      # signing happens only in the release workflow. checkDebugPlatformApi is the Java-on-old-Android check.
+      - name: Unit tests, lint, platform API, a release build, and the third-party notices
+        run: ./gradlew :android:app:testDebugUnitTest :android:app:lintRelease :android:app:checkDebugPlatformApi :android:app:assembleRelease :android:app:bundleRelease checkThirdPartyNotices --stacktrace
+      - name: The release build is the permanent identity, not debuggable
+        run: |
+          aapt=$(find "$ANDROID_HOME/build-tools" -name aapt2 -type f | sort -V | tail -1)
+          badging=$("$aapt" dump badging android/app/build/outputs/apk/release/app-release-unsigned.apk)
+          echo "$badging" | head -1
+          expected=$(sed -n 's/^reflux.android.applicationId=//p' gradle.properties)
+          echo "$badging" | grep -q "package: name='$expected'" || { echo "the package is not $expected"; exit 1; }
+          if echo "$badging" | grep -q "application-debuggable"; then echo "the release is debuggable"; exit 1; fi
 
   website:
-    name: Website (build, audit, links)
+    name: Website (audit, build, production checks, links)
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     defaults:
       run:
         working-directory: website
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
       - run: npm ci
       - run: npm audit --audit-level=moderate
       - run: npm run build
+      # No source maps, no development addresses, nothing that looks like a secret, every route rendered.
+      - run: node scripts/check-dist.mjs
       - run: node scripts/check-links.mjs
+
+  release-tools:
+    name: Release tools (verification self-test)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: python3 -I -m unittest discover -s tools/release -p 'test_*.py' -v
+
+  workflows:
+    name: Workflow lint
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: actionlint
+        run: docker run --rm -v "$PWD:/repo:ro" --workdir /repo rhysd/actionlint:1.7.7 -color
 
   secrets:
     name: Secret scan
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
       # Reviewed findings (fake values in tests) are listed in .gitleaksignore; anything else fails.
       - name: gitleaks over the whole history
         run: docker run --rm -v "$PWD:/repo:ro" zricethezav/gitleaks:v8.24.3 git /repo --redact --no-banner --gitleaks-ignore-path /repo/.gitleaksignore
-
