@@ -154,6 +154,7 @@ internal class AndroidPlatform(private val environment: AndroidEnvironment, over
     /** Opens an address in a browser; set by the activity. False where there is none. */
     var browse: ((url: String) -> Boolean)? = null
 
+    @get:androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
     override val platformFacts: List<SupportReport.Fact> get() {
         val context = environment.context
         val fireOs = context.packageManager.hasSystemFeature("amazon.hardware.fire_tv")
