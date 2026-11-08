@@ -196,7 +196,11 @@ class Media3Player(context: Context, override val capabilities: DeviceCapabiliti
             .build()
         // A source's own headers (a server's token) travel with every request for this item.
         val http = DefaultHttpDataSource.Factory().setAllowCrossProtocolRedirects(true).setDefaultRequestProperties(request.target.headers)
-        val media = DefaultMediaSourceFactory(DefaultDataSource.Factory(application, http)).createMediaSource(item)
+        // Side-loaded subtitle files are decoded whole by the text renderer ([SubtitleRenderers]), not cut into
+        // samples while extracting: cut up, a line already showing where a seek lands was never drawn (M7, Phone 2a).
+        val media = DefaultMediaSourceFactory(DefaultDataSource.Factory(application, http))
+            .experimentalParseSubtitlesDuringExtraction(false)
+            .createMediaSource(item)
         val pgs = sup.map { (index, subtitle) ->
             val files = DefaultDataSource.Factory(
                 application, DefaultHttpDataSource.Factory().setAllowCrossProtocolRedirects(true).setDefaultRequestProperties(subtitle.target.headers),
@@ -311,7 +315,7 @@ class Media3Player(context: Context, override val capabilities: DeviceCapabiliti
         mutableCues.value = emptyList()
     }
 
-    private fun create(): ExoPlayer = ExoPlayer.Builder(application)
+    private fun create(): ExoPlayer = ExoPlayer.Builder(application, SubtitleRenderers(application))
         .setAudioAttributes(AudioAttributes.Builder().setUsage(C.USAGE_MEDIA).setContentType(C.AUDIO_CONTENT_TYPE_MOVIE).build(), true)
         .setHandleAudioBecomingNoisy(true)
         .setSeekBackIncrementMs(10_000)
@@ -510,5 +514,22 @@ internal class SystemControls(
 
     private inline fun whenSeen(action: () -> Unit) {
         if (inSight()) action()
+    }
+}
+
+/**
+ * The default renderers, with the text renderer decoding subtitle files itself (Media3's established path, which
+ * asks the decoded file for the lines at any position, so a seek into a line shows it at once). Cues Reflux's own
+ * PGS extractor hands over ready-made are taken as they are in this mode too.
+ */
+private class SubtitleRenderers(context: Context) : androidx.media3.exoplayer.DefaultRenderersFactory(context) {
+    override fun buildTextRenderers(
+        context: Context,
+        output: androidx.media3.exoplayer.text.TextOutput,
+        outputLooper: android.os.Looper,
+        extensionRendererMode: Int,
+        out: ArrayList<androidx.media3.exoplayer.Renderer>,
+    ) {
+        out += androidx.media3.exoplayer.text.TextRenderer(output, outputLooper).apply { experimentalSetLegacyDecodingEnabled(true) }
     }
 }
