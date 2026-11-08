@@ -40,6 +40,16 @@ export function Shot({ name, alt, className = '', eager = false }) {
   )
 }
 
+/** RSX Develops, the maker and publisher of Reflux: its own wordmark, as its brand guidelines ask (design/brand/publisher). */
+export function Publisher({ className = 'publisher' }) {
+  return (
+    <a className={className} href="https://rsxdevelops.dev" rel="noopener noreferrer">
+      <span className="publisher-label">Made by</span>
+      <img src="/brand/rsx-develops-wordmark.png" srcSet="/brand/rsx-develops-wordmark.png 1x, /brand/rsx-develops-wordmark-2x.png 2x" width="124" height="17" alt="RSX Develops" loading="lazy" decoding="async" />
+    </a>
+  )
+}
+
 /** An outside link: always HTTPS, never told where it came from. */
 export function Out({ href, children, className }) {
   return <a className={className} href={href} rel="noopener noreferrer">{children}</a>
@@ -86,7 +96,8 @@ export function Footer() {
         <div className="footer-brand">
           <Mark className="mark footer-mark" />
           <p>Your media, played well.</p>
-          <p className="quiet small">{status}. Made by RSX Develops.</p>
+          <p className="quiet small">{status}.</p>
+          <Publisher />
         </div>
         <nav aria-label="Product">
           <h2>Product</h2>

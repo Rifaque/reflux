@@ -3,6 +3,7 @@ package dev.reflux.desktop
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.toComposeImageBitmap
 import dev.reflux.core.BuildIdentity
 import dev.reflux.core.model.SourceId
 import dev.reflux.core.playback.DeviceCapabilities
@@ -67,6 +68,13 @@ internal class DesktopPlatform(private val environment: DesktopEnvironment) : Pl
     override val build: BuildIdentity = readBuildIdentity()
 
     override val notices: NoticeTarget = NoticeTarget.DESKTOP
+
+    override val publisherMark: androidx.compose.ui.graphics.ImageBitmap? by lazy {
+        runCatching {
+            DesktopPlatform::class.java.getResourceAsStream("/rsx-develops-wordmark.png")!!.use { org.jetbrains.skia.Image.makeFromEncoded(it.readBytes()) }
+                .toComposeImageBitmap()
+        }.getOrNull()
+    }
 
     override val connections: SourceConnections get() = environment.connections
 

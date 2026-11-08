@@ -71,6 +71,17 @@ internal fun AboutScreen(app: AppState) {
                 Text("A media player built around your media, not your media server.", color = RefluxColors.contentSecondary)
                 Text("Version ${build.label}", Modifier.padding(top = 4.dp), style = LocalTypography.current.caption, color = RefluxColors.contentTertiary)
                 Notices.refluxCopyright?.let { Text(it, style = LocalTypography.current.caption, color = RefluxColors.contentTertiary) }
+                // The maker, beneath the product: RSX Develops' own wordmark where the shell has it.
+                app.platform.publisherMark?.let { mark ->
+                    Row(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text("Made by", style = LocalTypography.current.caption, color = RefluxColors.contentTertiary)
+                        androidx.compose.foundation.Image(
+                            mark, "RSX Develops",
+                            Modifier.height(14.dp).aspectRatio(mark.width.toFloat() / mark.height),
+                            contentScale = androidx.compose.ui.layout.ContentScale.Fit, alpha = 0.85f,
+                        )
+                    }
+                }
             }
         }
         attribution?.let { credit -> item(key = "credits") { Credit(credit) } }

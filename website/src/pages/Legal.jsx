@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import release from '../generated/release.json'
 import showcase from '../showcase.json'
-import { Out } from '../components.jsx'
+import { Out, Publisher } from '../components.jsx'
 
 const Review = () => (
   <p className="quiet review">This page describes Reflux as it is built today. Its wording has not yet had legal review, which is due before Reflux is released (it is pre-release software, not yet distributed).</p>
@@ -55,7 +55,8 @@ export function Terms() {
   return (
     <article className="page legal">
       <h1>Terms</h1>
-      <p className="lead">Reflux is free, made by RSX Develops, and proprietary. Its ownership notice:</p>
+      <p className="lead">Reflux is free, made and published by RSX Develops, and proprietary. Its ownership notice:</p>
+      <Publisher className="publisher publisher-terms" />
       <pre className="notice-text">{release.license}</pre>
       <p className="quiet review">Whether Reflux needs end-user terms beyond this notice and the stores' own terms is a question for its legal review, due before release. Until then, these are its terms.</p>
     </article>

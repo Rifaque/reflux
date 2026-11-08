@@ -51,3 +51,8 @@ Rotate, mirror, stretch, or redraw the mark; close the cut; set the wordmark in 
 | Website | `website/public/favicon.svg`, `favicon-32.png`, `apple-touch-icon.png`, `icon-192.png`, `icon-512.png`, `og-image.png`, `mark.svg`, `lockup.svg` |
 | Google Play | `store/play-icon-512.png`, `store/play-feature-graphic-1024x500.png`, `store/play-tv-banner-1280x720.png` |
 | Amazon Appstore (Fire TV) | `store/amazon-icon-512.png`, `store/amazon-icon-114.png`, `store/amazon-firetv-icon-1280x720.png`, `store/amazon-firetv-background-1920x1080.png` |
+
+## RSX Develops, the publisher
+
+Reflux is the product; RSX Develops makes and publishes it. RSX Develops' own wordmark (the owner's existing artwork, `publisher/`, copied unchanged from the RSX Develops brand assets with their README) appears only where the maker is named: the website's footer and Terms page ("Made by", linking to rsxdevelops.dev), and the app's About page beneath Reflux's own name. Its rules are its README's: the dark-ground wordmark (light lettering) on Reflux's dark surfaces, never stretched or filtered, never derived into icons. It is never placed beside the Reflux mark as a co-brand, in the app icon, or in store artwork.
+
