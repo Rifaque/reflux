@@ -26,7 +26,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.vector.PathParser
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.text
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
@@ -73,10 +76,12 @@ internal fun AboutScreen(app: AppState) {
                 Notices.refluxCopyright?.let { Text(it, style = LocalTypography.current.caption, color = RefluxColors.contentTertiary) }
                 // The maker, beneath the product: RSX Develops' own wordmark where the shell has it.
                 app.platform.publisherMark?.let { mark ->
-                    Row(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    // Read as text in its place ("Made by RSX Develops"), not as an image description, which a merged
+                    // stop would put before the product's own name.
+                    Row(Modifier.padding(top = 6.dp).clearAndSetSemantics { text = AnnotatedString("Made by RSX Develops") }, horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                         Text("Made by", style = LocalTypography.current.caption, color = RefluxColors.contentTertiary)
                         androidx.compose.foundation.Image(
-                            mark, "RSX Develops",
+                            mark, null,
                             Modifier.height(14.dp).aspectRatio(mark.width.toFloat() / mark.height),
                             contentScale = androidx.compose.ui.layout.ContentScale.Fit, alpha = 0.85f,
                         )
