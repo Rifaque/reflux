@@ -67,6 +67,10 @@ class LibraryDepthUiTest {
     fun identifyRefreshesWhatAWorkIsMatchedTo() = screen(populated()) { app ->
         app.navigator.open(Destination.Identify(app.library.movies().first { it.item.title == "Heat" }.item.id))
         awaitText("Refresh details")
+        // Identify searches as it opens, and its results arrive above the button: a click aimed before they land can
+        // land on a result instead, which identifies the work and leaves the page (1 in 25 under load, M7). The
+        // button is clicked once the page has stopped moving.
+        await("the search to settle") { onAllNodesWithText("Searching…").fetchSemanticsNodes().isEmpty() }
         onNodeWithText("Refresh details").performClick()
         awaitText("Details and artwork refreshed")
     }
