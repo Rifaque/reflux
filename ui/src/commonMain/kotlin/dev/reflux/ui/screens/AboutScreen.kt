@@ -43,6 +43,7 @@ import dev.reflux.ui.components.rememberFocusReturn
 import dev.reflux.ui.legal.Notices
 import dev.reflux.ui.legal.ThirdPartyComponent
 import dev.reflux.ui.state.AppState
+import dev.reflux.ui.state.SUPPORT_URL
 import dev.reflux.ui.state.Destination
 import dev.reflux.ui.theme.LocalTypography
 import dev.reflux.ui.theme.RefluxColors
@@ -107,6 +108,22 @@ internal fun AboutScreen(app: AppState) {
                     back.leaving()
                     app.navigator.open(Destination.Notices)
                 }
+            }
+        }
+        // Last, help: where to ask, and a report to attach that Reflux makes only when asked and never sends.
+        item(key = "help") {
+            val back = rememberFocusReturn("about/help")
+            Link("Help and feedback", "Questions, problems, and ideas: ${SUPPORT_URL.removePrefix("https://")}", back.modifier) {
+                back.leaving()
+                app.openSupport()
+            }
+        }
+        if (app.canSaveSupportReport) {
+            item(key = "support-report") {
+                Link(
+                    "Save a support report",
+                    "The version, this device, how the last playback went, and recent problems, to attach to a report. No passwords, addresses, file paths, or titles; Reflux sends nothing itself.",
+                ) { app.saveSupportReport() }
             }
         }
     }

@@ -2,6 +2,7 @@ package dev.reflux.ui.state
 
 import androidx.compose.ui.graphics.ImageBitmap
 import dev.reflux.core.BuildIdentity
+import dev.reflux.core.diagnostics.SupportReport
 import dev.reflux.core.model.ArtworkLocator
 import dev.reflux.core.model.SourceId
 import dev.reflux.core.playback.DeviceCapabilities
@@ -172,4 +173,29 @@ interface Platform {
      * layer; this keeps the technical detail that message leaves out.
      */
     fun report(problem: String, cause: Throwable? = null) {}
+
+    /**
+     * Facts for a support report about the platform itself: the operating system and its version, the kind of
+     * device, the playback engine. Never a device name, an account, or an identifier.
+     */
+    val platformFacts: List<SupportReport.Fact> get() = emptyList()
+
+    /** The last lines of what [report] recorded, oldest first, for a support report. */
+    suspend fun recentProblems(): List<String> = emptyList()
+
+    /**
+     * Hands a support report to the person, the way this platform can (a file they can find, the system's share
+     * sheet), and says in a sentence where it went; null where no way exists, and then none is offered. Nothing is
+     * ever sent anywhere by Reflux itself.
+     */
+    val supportReports: SupportReportOutlet? get() = null
+
+    /** Opens [url] in the system's browser; false where there is none (most televisions), and the address is shown instead. */
+    fun openLink(url: String): Boolean = false
+}
+
+/** Where a support report goes on a platform: saved where the person can reach it, or shared through the system. */
+fun interface SupportReportOutlet {
+    /** Delivers [text] as a file called [fileName]; returns what to tell the person, or throws when it could not. */
+    suspend fun deliver(fileName: String, text: String): String
 }

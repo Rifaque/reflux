@@ -5,6 +5,7 @@ import dev.reflux.ui.legal.NoticeTarget
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
+import android.os.Build
 import android.os.LocaleList
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -29,6 +30,8 @@ import dev.reflux.ui.state.FolderBrowser
 import dev.reflux.ui.state.FolderChoice
 import dev.reflux.ui.state.FullscreenMode
 import dev.reflux.ui.state.Platform
+import dev.reflux.ui.state.SupportReportOutlet
+import dev.reflux.core.diagnostics.SupportReport
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
@@ -144,6 +147,49 @@ internal class AndroidPlatform(private val environment: AndroidEnvironment, over
     override val canPlay: Boolean get() = true
 
     override fun report(problem: String, cause: Throwable?) = environment.report(problem, cause)
+
+    /** Hands text to the system's share sheet; set by the activity. False where nothing could take it. */
+    var share: ((subject: String, text: String) -> Boolean)? = null
+
+    /** Opens an address in a browser; set by the activity. False where there is none. */
+    var browse: ((url: String) -> Boolean)? = null
+
+    override val platformFacts: List<SupportReport.Fact> get() {
+        val context = environment.context
+        val fireOs = context.packageManager.hasSystemFeature("amazon.hardware.fire_tv")
+        val configuration = context.resources.configuration
+        return listOf(
+            SupportReport.Fact("Platform", (if (fireOs) "Fire OS" else "Android") + " ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})"),
+            SupportReport.Fact("Device", "${Build.MANUFACTURER} ${Build.MODEL}"),
+            SupportReport.Fact("Form factor", when {
+                television -> "television"
+                configuration.smallestScreenWidthDp >= 600 -> "tablet"
+                else -> "phone"
+            } + ", ${configuration.screenWidthDp}x${configuration.screenHeightDp} dp"),
+            SupportReport.Fact("Architecture", Build.SUPPORTED_ABIS.joinToString(", ")),
+            SupportReport.Fact("Playback engine", "Media3 ${androidx.media3.common.MediaLibraryInfo.VERSION}"),
+            SupportReport.Fact("Package", context.packageName),
+        )
+    }
+
+    override suspend fun recentProblems(): List<String> = withContext(Dispatchers.IO) { environment.recentProblems() }
+
+    /**
+     * Phones and tablets hand the report to the share sheet (mail, a chat, a file), where the person decides where
+     * it goes. A television has nowhere to share to, so the report is saved in Reflux's folder on the device's
+     * storage, where a computer connected to it can read it.
+     */
+    override val supportReports = SupportReportOutlet { fileName, text ->
+        if (!television && withContext(Dispatchers.Main) { share?.invoke(fileName, text) } == true) {
+            "Choose where to send the report."
+        } else withContext(Dispatchers.IO) {
+            val folder = environment.context.getExternalFilesDir(null) ?: throw java.io.IOException("no app storage")
+            java.io.File(folder, fileName).writeText(text)
+            "Saved on this device as Android/data/${environment.context.packageName}/files/$fileName."
+        }
+    }
+
+    override fun openLink(url: String): Boolean = !television && browse?.invoke(url) == true
 
     /** The app already fills the screen: on a handheld fullscreen turns the picture sideways, on a television there is none. */
     override val fullscreenMode: FullscreenMode get() = if (television) FullscreenMode.NONE else FullscreenMode.LANDSCAPE

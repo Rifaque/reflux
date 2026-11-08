@@ -16,6 +16,8 @@ import dev.reflux.ui.state.AccessibilityPreferences
 import dev.reflux.ui.state.ArtworkLoader
 import dev.reflux.ui.state.FolderChoice
 import dev.reflux.ui.state.Platform
+import dev.reflux.ui.state.SupportReportOutlet
+import dev.reflux.core.diagnostics.SupportReport
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.awt.Window
@@ -78,6 +80,36 @@ internal class DesktopPlatform(private val environment: DesktopEnvironment) : Pl
         }
 
     override fun report(problem: String, cause: Throwable?) = environment.diagnostics.record(problem, cause)
+
+    override val platformFacts: List<SupportReport.Fact> get() = listOf(
+        SupportReport.Fact("Platform", "${System.getProperty("os.name")} ${System.getProperty("os.version")}"),
+        SupportReport.Fact("Architecture", System.getProperty("os.arch")),
+        SupportReport.Fact("Form factor", "desktop"),
+        SupportReport.Fact("Java runtime", "${System.getProperty("java.vendor")} ${System.getProperty("java.runtime.version")}"),
+        SupportReport.Fact("Playback engine", if (environment.canPlay) "libmpv" else "none: libmpv was not found"),
+    )
+
+    /** The end of the diagnostics log (and of the one it rotated into, when the current one is short). */
+    override suspend fun recentProblems(): List<String> = withContext(Dispatchers.IO) {
+        val file = environment.diagnostics.file
+        listOf(file.resolveSibling("${file.fileName}.1"), file).flatMap { runCatching { java.nio.file.Files.readAllLines(it) }.getOrDefault(emptyList()) }
+    }
+
+    /** Saved where downloads go, which every desktop user knows how to find. */
+    override val supportReports = SupportReportOutlet { fileName, text ->
+        withContext(Dispatchers.IO) {
+            val home = java.nio.file.Path.of(System.getProperty("user.home"))
+            val folder = home.resolve("Downloads").takeIf { java.nio.file.Files.isDirectory(it) } ?: home
+            java.nio.file.Files.writeString(folder.resolve(fileName), text)
+            if (folder == home) "Saved in your home folder as $fileName." else "Saved in your Downloads folder as $fileName."
+        }
+    }
+
+    override fun openLink(url: String): Boolean = runCatching {
+        val desktop = java.awt.Desktop.getDesktop().takeIf { java.awt.Desktop.isDesktopSupported() && it.isSupported(java.awt.Desktop.Action.BROWSE) } ?: return false
+        desktop.browse(java.net.URI(url))
+        true
+    }.getOrDefault(false)
 
     override var fullscreen: Boolean by mutableStateOf(false)
         private set
