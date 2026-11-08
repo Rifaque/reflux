@@ -146,6 +146,14 @@ def build(args) -> int:
     desktop = "windows" if WINDOWS else "linux"
     archive = ROOT / "desktop/app/build/release" / ("reflux-%s-%s-x64.%s" % (version, desktop, "zip" if WINDOWS else "tar.gz"))
     add(archive, archive.name, desktop, "x64", archive.suffix.lstrip("."), {"signed": False} if WINDOWS else {})
+    pin = dict(line.split("=", 1) for line in (ROOT / "desktop/app/packaging/libmpv-windows.properties").read_text().splitlines() if "=" in line and not line.startswith("#"))
+    pin = {k.strip(): v.strip() for k, v in pin.items()}
+    if WINDOWS:
+        # The complete source of the libmpv inside the Windows archive (THIRD-PARTY.md), published beside it.
+        bundle = ROOT / "build/libmpv/libmpv-source.tar.xz"
+        if not bundle.exists() or sha256(bundle) != pin["sourceSha256"]:
+            sys.exit("build/libmpv/libmpv-source.tar.xz is missing or not the pinned source (tools/libmpv/README.md)")
+        add(bundle, "reflux-%s-libmpv-source.tar.xz" % version, "source", "any", "source", {"of": "libmpv-2.dll in the Windows archive"})
     for extra in args.add or []:
         path = pathlib.Path(extra)
         m = re.match(r"reflux-(.+)-(linux|windows)-x64\.(tar\.gz|zip)$", path.name)
@@ -171,7 +179,6 @@ def build(args) -> int:
     # LF everywhere: `sha256sum -c` on Linux and macOS reads a CRLF SHA256SUMS as names ending in \r.
     (out / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8", newline="\n")
     (out / "SHA256SUMS").write_text("".join("%s  %s\n" % (a["sha256"], a["name"]) for a in artifacts), encoding="utf-8", newline="\n")
-    pin = dict(line.split("=", 1) for line in (ROOT / "desktop/app/packaging/libmpv-windows.properties").read_text().splitlines() if "=" in line and not line.startswith("#"))
     provenance = {
         "_type": "https://in-toto.io/Statement/v1",
         "subject": [{"name": a["name"], "digest": {"sha256": a["sha256"]}} for a in artifacts],
@@ -182,7 +189,8 @@ def build(args) -> int:
                 "externalParameters": {"version": version, "channel": info["channel"]},
                 "resolvedDependencies": [
                     {"uri": "git+https://github.com/Rifaque/reflux@" + commit, "digest": {"gitCommit": commit}},
-                    {"uri": pin["url"].strip(), "digest": {"sha256": pin["sha256"].strip()}, "annotations": {"use": "windows libmpv"}},
+                    {"uri": "git+https://github.com/Rifaque/reflux@%s#tools/libmpv" % commit, "digest": {"sha256": pin["dllSha256"]},
+                     "annotations": {"use": "windows libmpv-2.dll, built by tools/libmpv", "mpv": pin["mpv"], "ffmpeg": pin["ffmpeg"], "sourceSha256": pin["sourceSha256"]}},
                 ],
             },
             "runDetails": {
@@ -206,6 +214,9 @@ def verify(args) -> int:
         digest, name = line.split(maxsplit=1)
         sums[name.lstrip("*")] = digest
     problems = []
+    statement = folder / "provenance.intoto.json"
+    dependencies = json.loads(statement.read_text(encoding="utf-8"))["predicate"]["buildDefinition"]["resolvedDependencies"] if statement.exists() else []
+    libmpv_digest = next((d["digest"].get("sha256") for d in dependencies if "libmpv" in d.get("annotations", {}).get("use", "")), None)
     if not re.fullmatch(r"[0-9a-f]{40}", manifest.get("commit", "")):
         problems.append("manifest names no full commit")
     for artifact in manifest["artifacts"]:
@@ -229,11 +240,19 @@ def verify(args) -> int:
             with zipfile.ZipFile(path) as z:
                 if z.testzip() is not None:
                     problems.append(artifact["name"] + ": corrupt entry")
+                # The libmpv inside is the source-built one the provenance names, and its source is published beside it.
+                dlls = [n for n in z.namelist() if n.endswith("/libmpv-2.dll")]
+                inside = hashlib.sha256(z.read(dlls[0])).hexdigest() if len(dlls) == 1 else None
+                if inside is None:
+                    problems.append(artifact["name"] + ": not exactly one libmpv-2.dll inside")
+                elif inside != libmpv_digest:
+                    problems.append("%s: its libmpv-2.dll is %s, not the source-built %s" % (artifact["name"], inside, libmpv_digest))
+                if not any(a["kind"] == "source" for a in manifest["artifacts"]):
+                    problems.append(artifact["name"] + ": libmpv's source bundle is not published beside it")
     for name in sums:
         if name not in {a["name"] for a in manifest["artifacts"]}:
             problems.append(name + ": in SHA256SUMS, not in the manifest")
     # The provenance statement names exactly these artifacts, by these digests, from this commit.
-    statement = folder / "provenance.intoto.json"
     if not statement.exists():
         problems.append("provenance.intoto.json: missing")
     else:

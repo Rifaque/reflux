@@ -1131,3 +1131,20 @@ The beta's feedback path needs something a tester can attach (M6 deferred it). I
 - **Where it goes, per platform:** desktop, the Downloads folder (or the home folder); phones and tablets, the system share sheet as text, so the person chooses where; televisions, which have nowhere to share to, Reflux's app folder on the device's storage (`Android/data/<package>/files`). "Help and feedback" opens the website's support page, or shows its address where there is no browser.
 - Pure and in the Media Core (`dev.reflux.core.diagnostics`); the shells only supply facts, the log, and the outlet (`Platform.platformFacts`, `recentProblems`, `supportReports`, `openLink`).
 
+## 2026-11-08 — How Reflux builds its Windows libmpv
+
+Carries out "Reflux builds its own Windows libmpv before public distribution" (above). Alternatives weighed: mpv-winbuild-cmake (what the M6 build used) builds its own GCC or LLVM toolchain and follows nightly heads of some forty packages, which is hours per build and needs every package re-pinned by hand to be reproducible; MSYS2's packages are built with GPL parts. Chosen: **a small build of Reflux's own** (`tools/libmpv`): the distribution's MinGW-w64 GCC in an Ubuntu image pinned by digest, the release archives of exactly the libraries mpv needs for what Reflux uses, each by SHA-256, and one script.
+
+- **What is in it:** mpv (libmpv only), FFmpeg (LGPL; dav1d and zlib as its only external libraries; Schannel for HTTPS, D3D11VA and DXVA2 for hardware decoding), libplacebo (OpenGL and Direct3D 11, shaders compiled by shaderc), libass with FreeType, FriBidi, and HarfBuzz (DirectWrite for system fonts), and shaderc and SPIRV-Cross for mpv's Direct3D 11 output. Left out, because Reflux does not use them: Lua and JavaScript scripting, libcurl (FFmpeg's own HTTP serves Jellyfin and WebDAV streams), Vulkan, discs (Blu-ray, DVD), uchardet, Little CMS, zimg, and mpv's Windows media-controls integration.
+- **Reproducible:** two independent builds gave identical bytes, so the DLL and source bundle are pinned by digest and anything else is refused (packaging, `release.py verify`, the `Windows libmpv` workflow).
+- **Source distribution:** the bundle of every archive and the scripts goes beside each Windows release, which is what the LGPL asks of an object-code distribution; a written three-year offer is in the package as well.
+- **Validated** with the real-engine tests (53, including the format fixtures and the hardware-decode probe) and the packaged app on Windows (VERIFICATION.md, M7).
+- Updating any part is a release decision (tools/libmpv/README.md).
+
+## 2026-11-08 — CI and release automation
+
+- **CI** (`.github/workflows/ci.yml`), on every push and pull request from a clean checkout: the full `check` on Linux (with libmpv, so engine tests must run) and Windows; the real-window tests on Linux; Android unit tests, lint, the platform-API check, a minified release APK and bundle, and a check that the release is the permanent package and not debuggable; the website's audit, build, production checks, and links; the release tool's verification self-test; actionlint; and gitleaks over all history. Each job is one concern, so a failure says what failed.
+- **Actions are pinned by commit SHA**, with the release beside each, so a moved tag cannot change what runs. Updating one is a deliberate change.
+- **Release** (`release.yml`, by hand on a tag): libmpv from source (and compared with the pin), Linux, then Android and Windows signed and checksummed with GitHub's signed provenance for every artifact, a **draft** release, and a separate job on another OS that downloads the draft and checks every checksum, every attestation (`gh attestation verify --signer-workflow`), and the manifest, as a person downloading it would.
+- No Android emulator runs in CI: instrumented tests run on the project's physical devices and are recorded in VERIFICATION.md. No cloud service beyond GitHub is added.
+

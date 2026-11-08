@@ -1,5 +1,3 @@
-import java.io.OutputStream
-import java.net.URI
 import java.security.MessageDigest
 import java.io.File
 import java.util.Properties
@@ -49,51 +47,38 @@ val windows = System.getProperty("os.name").startsWith("Windows")
 val libmpvPin = Properties().apply { file("packaging/libmpv-windows.properties").reader().use(::load) }
 
 /**
- * The Windows libmpv, fetched once from its pinned address and refused unless its SHA-256 is the pinned one. Only
- * `libmpv-2.dll` is kept, beside the LGPL text and the source offer, in the folder the packaged app reads its
- * resources from. Linux uses the distribution's libmpv.
+ * The Windows libmpv: Reflux's own build (tools/libmpv), taken from `build/libmpv` (or `-Preflux.libmpv=<dir>`) and
+ * refused unless its SHA-256 is the pinned one, beside its source bundle, refused likewise. Only `libmpv-2.dll` goes
+ * into the folder the packaged app reads its resources from. Linux uses the distribution's libmpv.
  */
-abstract class FetchLibmpv : DefaultTask() {
-    @get:Input abstract val url: Property<String>
-    @get:Input abstract val sha256: Property<String>
-    @get:Input abstract val asset: Property<String>
+abstract class PrepareLibmpv : DefaultTask() {
+    @get:InputFiles abstract val built: DirectoryProperty
+    @get:Input abstract val dllSha256: Property<String>
+    @get:Input abstract val sourceSha256: Property<String>
     @get:OutputDirectory abstract val output: DirectoryProperty
-    @get:Internal abstract val cache: DirectoryProperty
-    @get:Inject abstract val exec: ExecOperations
 
     @TaskAction
-    fun fetch() {
-        val archive = cache.get().file(asset.get()).asFile
+    fun prepare() {
         fun digest(file: File) = MessageDigest.getInstance("SHA-256").digest(file.readBytes()).joinToString("") { "%02x".format(it) }
-        if (!archive.exists() || digest(archive) != sha256.get()) {
-            archive.parentFile.mkdirs()
-            URI(url.get()).toURL().openStream().use { input -> archive.outputStream().use { input.copyTo(it) } }
-        }
-        val actual = digest(archive)
-        if (actual != sha256.get()) throw GradleException("libmpv archive ${asset.get()} has SHA-256 $actual, pinned ${sha256.get()}")
-        val unpacked = temporaryDir.resolve("unpacked").apply { deleteRecursively(); mkdirs() }
-        // 7-Zip where there is one (CI); otherwise Windows' own tar, which reads 7z through libarchive.
-        val sevenZip = listOf("7z", "7z.exe", "C:\\Program Files\\7-Zip\\7z.exe").firstOrNull { name ->
-            runCatching { exec.exec { commandLine(name, "i"); standardOutput = OutputStream.nullOutputStream(); isIgnoreExitValue = true } }.isSuccess
-        }
-        exec.exec {
-            if (sevenZip != null) commandLine(sevenZip, "x", "-y", "-o" + unpacked.path, archive.path)
-            else commandLine("tar", "-xf", archive.path, "-C", unpacked.path)
-            standardOutput = OutputStream.nullOutputStream()
-        }
+        val folder = built.get().asFile
+        val how = "build it with tools/libmpv (tools/libmpv/README.md) into ${folder.path}"
+        val dll = folder.resolve("libmpv-2.dll").takeIf { it.isFile } ?: throw GradleException("No libmpv-2.dll: $how")
+        val source = folder.resolve("libmpv-source.tar.xz").takeIf { it.isFile } ?: throw GradleException("No libmpv-source.tar.xz beside it: $how")
+        digest(dll).let { if (it != dllSha256.get()) throw GradleException("libmpv-2.dll has SHA-256 $it, pinned ${dllSha256.get()}: $how") }
+        digest(source).let { if (it != sourceSha256.get()) throw GradleException("libmpv-source.tar.xz has SHA-256 $it, pinned ${sourceSha256.get()}: $how") }
         val target = output.get().dir("windows-x64").asFile.apply { deleteRecursively(); mkdirs() }
-        unpacked.walk().first { it.name == "libmpv-2.dll" }.copyTo(target.resolve("libmpv-2.dll"))
+        dll.copyTo(target.resolve("libmpv-2.dll"))
     }
 }
 
-val fetchLibmpv = tasks.register<FetchLibmpv>("fetchLibmpv") {
+val prepareLibmpv = tasks.register<PrepareLibmpv>("prepareLibmpv") {
     group = "release"
-    description = "Fetches the pinned LGPL libmpv for Windows packages and verifies its SHA-256."
-    url.set(libmpvPin.getProperty("url"))
-    sha256.set(libmpvPin.getProperty("sha256"))
-    asset.set(libmpvPin.getProperty("asset"))
+    description = "Takes Reflux's own LGPL libmpv build for Windows packages and verifies it and its source against the pins."
+    built.set(providers.gradleProperty("reflux.libmpv").map { rootProject.layout.projectDirectory.dir(it) }
+        .orElse(rootProject.layout.buildDirectory.dir("libmpv")))
+    dllSha256.set(libmpvPin.getProperty("dllSha256"))
+    sourceSha256.set(libmpvPin.getProperty("sourceSha256"))
     output.set(layout.buildDirectory.dir("packaging/resources"))
-    cache.set(rootProject.layout.projectDirectory.dir(".reflux/cache"))
 }
 
 compose.desktop {
@@ -129,7 +114,7 @@ compose.desktop {
     }
 }
 
-if (windows) tasks.matching { it.name == "prepareAppResources" }.configureEach { dependsOn(fetchLibmpv) }
+if (windows) tasks.matching { it.name == "prepareAppResources" }.configureEach { dependsOn(prepareLibmpv) }
 
 /**
  * The desktop release archive for this machine's OS (docs/RELEASE.md, "Desktop artifacts"): the application with its
