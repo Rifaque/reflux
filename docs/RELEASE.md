@@ -11,7 +11,7 @@ What stands between the source tree and builds that can be handed to testers and
 - [ ] Android: signed release build from CI; R8 on, keep rules validated by a release build on a device; upgrade from the last alpha keeps library, watch state, sources, and downloads.
 - [ ] Fire TV: the developer's devices inspected (model, Fire OS, API level) and the release build run on them.
 - [ ] Desktop: Windows installer and Linux package installing libmpv with provenance; a clean-machine install on each.
-- [x] TMDB decided for public builds: disabled until its terms are settled (DECISIONS.md, 2026-11-08); release builds carry no credential.
+- [x] TMDB decided for public builds: on, under the working non-commercial classification, formal clarification pending (DECISIONS.md, 2026-11-08); the credential comes from the release workflow's secret. Reconciled with TMDB's answer when it arrives.
 - [ ] At least one physical phone, one physical Google TV / Android TV device, one Fire TV device, and one physical controller verified (VERIFICATION.md).
 - [ ] CI green on GitHub, including Android.
 - [ ] Google Play closed testing track and Amazon Appstore testing set up with the current store requirements read and recorded here.
@@ -79,7 +79,7 @@ Never committed: keystores, passwords, certificates with private keys, signing t
 
 - `release`: R8 (`minifyEnabled`, `proguard-android-optimize.txt` + `android/app/proguard-rules.pro`) and resource shrinking. Reflux's own code uses no reflection or annotation-driven serialization; the keep rules are for smbj and its MBassador event bus (handlers found by annotation) and Bouncy Castle (algorithms found by name), each commented, plus `-dontwarn` for JDK classes the shared desktop code names and Android lacks. No global `-dontobfuscate` or `-dontshrink`.
 - Not debuggable (checked by the release tool from the APK itself), `targetSdk` 36 (Google Play's requirement for new apps and updates since 2026-08-31; Android TV's own floor is 34), `minSdk` 26, `compileSdk` 37.
-- The TMDB credential reaches debug builds only (DECISIONS.md, 2026-11-08, "TMDB in public releases"): release builds carry none, so they make no metadata lookups and offer no "Online metadata & artwork" switch.
+- The TMDB credential reaches every build whose environment supplies `REFLUX_TMDB_TOKEN` (a GitHub secret in the release workflow; DECISIONS.md, 2026-11-08, "TMDB: working non-commercial classification"); it is kept through resource shrinking (`res/raw/keep.xml`). Without it a build makes no lookups and offers no "Online metadata & artwork" switch.
 - No cloud backup and no device-to-device transfer of app data (`allowBackup="false"`, `dataExtractionRules` excluding everything).
 - Cleartext HTTP stays permitted (DECISIONS.md, 2026-11-08): home media servers are plain HTTP. User-added certificate authorities are not trusted (the platform default for `targetSdk` 24+).
 - Exported: the launcher activity and `ArtworkProvider` (read-only artwork by digest name), both reviewed. No WebView, no debug-only code in the production path, release logging redacted.
@@ -190,7 +190,7 @@ The diagnostics log, the Android system log, and Reflux's own log file pass ever
 
 ## Metadata provider
 
-- The TMDB credential is an application credential supplied by the build (decision log, "Metadata providers"), to **debug builds only**: public release builds carry none until TMDB's terms are settled (DECISIONS.md, 2026-11-08, "TMDB in public releases").
+- The TMDB credential is an application credential supplied by the build (decision log, "Metadata providers"): `REFLUX_TMDB_TOKEN` in the build environment, the release workflow's secret of that name. Working classification: non-commercial under TMDB's published definition; formal clarification request pending (DECISIONS.md, 2026-11-08). Owner action: add the secret to the repository before the first beta build.
 - TMDB's terms require attribution in the product: its approved logo and "This product uses the TMDB API but is not endorsed or certified by TMDB.", in an About or Credits section (developer.themoviedb.org FAQ, read 2026-10-19). The About page carries both whenever the provider is in use (DECISIONS.md, 2026-10-19).
 - The live service has not been exercised from this repository's tests; the provider is tested against recorded responses.
 

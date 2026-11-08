@@ -9,7 +9,7 @@ What changes for people using Reflux, version by version. The rules for versions
 - Reflux for Android has its permanent identity for Google Play and the Amazon Appstore. Development builds installed before this one are a separate app and can be uninstalled.
 
 - Reflux for Windows comes as a zip and Reflux for Linux as a tar.gz, each with everything it needs to run (on Linux, apart from your distribution's libmpv). Extract it and run Reflux; nothing is installed. The Windows build is not yet signed by a publisher, so Windows may warn before it first opens; each download has a SHA-256 checksum to check it against.
-- Public builds look nothing up online: what Reflux shows about a title comes from your servers and your files. The online catalog and the "Online metadata & artwork" switch described below are in development builds only, until its terms allow more.
+- Reflux recognises your films and shows online with TMDB, and fetches their descriptions and artwork, alongside what your servers and files provide. Only a title and its year are sent to TMDB. Turn it off with "Online metadata & artwork" under Sources, and Reflux uses only your servers and files. About Reflux credits TMDB.
 - Reflux keeps its library out of Android's cloud backup and device-to-device transfer, since it holds your servers' sign-ins.
 - Reflux's website, reflux.rsxdevelops.dev: what Reflux is and how it looks on each device, where it runs and what it plays, its sources, downloads, how testing will work, documentation, the changelog, support, privacy, terms, and third-party notices.
 

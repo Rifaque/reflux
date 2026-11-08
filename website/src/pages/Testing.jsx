@@ -38,7 +38,6 @@ export default function Testing() {
         <h2 id="known">Known limits</h2>
         <ul className="plain">
           <li>Windows builds are not signed by a publisher yet (<Link to="/download">Download</Link> says what that means).</li>
-          <li>Public builds do not look titles up online: descriptions and artwork come from your servers and your files.</li>
           <li>Dolby Vision is not claimed on any device, and HDR on Windows is shown tone-mapped.</li>
           <li>Downloads for offline continue only while Reflux is open.</li>
         </ul>
