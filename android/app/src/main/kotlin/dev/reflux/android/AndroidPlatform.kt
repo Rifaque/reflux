@@ -159,7 +159,7 @@ internal class AndroidPlatform(private val environment: AndroidEnvironment, over
         val fireOs = context.packageManager.hasSystemFeature("amazon.hardware.fire_tv")
         val configuration = context.resources.configuration
         return listOf(
-            SupportReport.Fact("Platform", (if (fireOs) "Fire OS" else "Android") + " ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})"),
+            SupportReport.Fact("Platform", (if (fireOs) "Fire OS, Android " else "Android ") + "${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})"),
             SupportReport.Fact("Device", "${Build.MANUFACTURER} ${Build.MODEL}"),
             SupportReport.Fact("Form factor", when {
                 television -> "television"
@@ -176,16 +176,30 @@ internal class AndroidPlatform(private val environment: AndroidEnvironment, over
 
     /**
      * Phones and tablets hand the report to the share sheet (mail, a chat, a file), where the person decides where
-     * it goes. A television has nowhere to share to, so the report is saved in Reflux's folder on the device's
-     * storage, where a computer connected to it can read it.
+     * it goes. A television has nowhere to share to, so the report is saved in the device's Download folder (Android
+     * 10 and later), where a file manager or a connected computer can read it; on older systems in Reflux's own folder.
      */
     override val supportReports = SupportReportOutlet { fileName, text ->
         if (!television && withContext(Dispatchers.Main) { share?.invoke(fileName, text) } == true) {
             "Choose where to send the report."
         } else withContext(Dispatchers.IO) {
-            val folder = environment.context.getExternalFilesDir(null) ?: throw java.io.IOException("no app storage")
-            java.io.File(folder, fileName).writeText(text)
-            "Saved on this device as Android/data/${environment.context.packageName}/files/$fileName."
+            // Android 10 and later: the device's own Download folder, which file managers and a connected computer
+            // can read (an app's private folder is closed to them on Fire OS 8). No permission is needed for it.
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                val resolver = environment.context.contentResolver
+                val values = android.content.ContentValues().apply {
+                    put(android.provider.MediaStore.Downloads.DISPLAY_NAME, fileName)
+                    put(android.provider.MediaStore.Downloads.MIME_TYPE, "text/plain")
+                    put(android.provider.MediaStore.Downloads.RELATIVE_PATH, "Download/Reflux")
+                }
+                val uri = resolver.insert(android.provider.MediaStore.Downloads.EXTERNAL_CONTENT_URI, values) ?: throw java.io.IOException("Downloads refused the file")
+                resolver.openOutputStream(uri)?.use { it.write(text.toByteArray()) } ?: throw java.io.IOException("Downloads gave no stream")
+                "Saved on this device in Download/Reflux as $fileName."
+            } else {
+                val folder = environment.context.getExternalFilesDir(null) ?: throw java.io.IOException("no app storage")
+                java.io.File(folder, fileName).writeText(text)
+                "Saved on this device as Android/data/${environment.context.packageName}/files/$fileName."
+            }
         }
     }
 
