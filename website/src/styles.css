@@ -266,3 +266,10 @@ td { color: var(--text-2); min-width: 9rem; }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }
 @media (forced-colors: active) { .shot, .cards li, .source, .download { border: 1px solid CanvasText; } }
 .tmdb-logo { width: 8.5rem; height: auto; margin: 0.5rem 0 1rem; }
+
+/* RSX Develops, the publisher: its own wordmark, small and quiet, never competing with Reflux's. */
+.publisher { display: inline-flex; align-items: center; gap: 0.6rem; margin-top: 1.25rem; text-decoration: none; opacity: 0.78; transition: opacity 160ms var(--ease); }
+.publisher:hover, .publisher:focus-visible { opacity: 1; }
+.publisher img { width: 7.75rem; height: auto; object-fit: contain; }
+.publisher-label { font-size: 0.78rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-3); font-weight: 650; }
+.publisher-terms { margin: 0 0 1.5rem; }

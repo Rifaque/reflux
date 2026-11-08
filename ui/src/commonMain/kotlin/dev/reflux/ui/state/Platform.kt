@@ -127,6 +127,12 @@ interface Platform {
     /** Which build this is: the version, and the commit the shell's build recorded (About, diagnostics). */
     val build: BuildIdentity get() = BuildIdentity()
 
+    /**
+     * RSX Develops' wordmark (light lettering for a dark ground), for the About page's maker line; null where the
+     * shell has none, and then the line is words alone. Reflux's own identity stays first.
+     */
+    val publisherMark: ImageBitmap? get() = null
+
     /** Which build's third-party notices apply here; null where the shell lists none (a test's). */
     val notices: NoticeTarget? get() = null
 

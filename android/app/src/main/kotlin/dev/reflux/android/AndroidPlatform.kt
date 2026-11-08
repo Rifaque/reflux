@@ -113,6 +113,10 @@ internal class AndroidPlatform(private val environment: AndroidEnvironment, over
 
     override val notices: NoticeTarget get() = NoticeTarget.ANDROID
 
+    override val publisherMark: ImageBitmap? by lazy {
+        runCatching { BitmapFactory.decodeResource(environment.context.resources, R.drawable.rsx_develops_wordmark)?.asImageBitmap() }.getOrNull()
+    }
+
     override val connections: SourceConnections get() = environment.connections
 
     /** Loudness belongs to the device: a phone's keys, a television's remote. */

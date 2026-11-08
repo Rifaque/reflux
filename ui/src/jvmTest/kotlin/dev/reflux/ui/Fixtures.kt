@@ -364,6 +364,10 @@ class FakePlatform(
         reports += problem
     }
 
+    /** The desktop shell's own copy of RSX Develops' wordmark, as About shows it. */
+    override val publisherMark: ImageBitmap? = java.io.File("../desktop/app/src/main/resources/rsx-develops-wordmark.png").takeIf { it.isFile }
+        ?.let { org.jetbrains.skia.Image.makeFromEncoded(it.readBytes()).toComposeImageBitmap() }
+
     /** Support reports the person was handed, by file name. */
     val supportReportsDelivered = mutableMapOf<String, String>()
     val linksOpened = mutableListOf<String>()
