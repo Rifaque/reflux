@@ -607,9 +607,12 @@ private fun BoxScope.CompactNavigation(app: AppState) {
         ActivityIndicator(activity)
         // Search has its field across the top; Downloads and Sources are a tap away from every other destination.
         if (navigator.current is Destination.Section && navigator.current != Destination.Search) {
-            if (app.keepsCopies) DownloadsButton(app, size = 44.dp, glass = true)
-            val here = navigator.section == Destination.Sources
-            IconButton(Icon.SOURCES, "Sources", { app.go(Destination.Sources) }, size = 44.dp, glass = true, selected = here, role = Role.Tab)
+            // Two separate glass buttons, apart enough that their frosting never reads as one shape over artwork.
+            Row(horizontalArrangement = Arrangement.spacedBy(TopActionGap), verticalAlignment = Alignment.CenterVertically) {
+                if (app.keepsCopies) DownloadsButton(app, size = 44.dp, glass = true)
+                val here = navigator.section == Destination.Sources
+                IconButton(Icon.SOURCES, "Sources", { app.go(Destination.Sources) }, size = 44.dp, glass = true, selected = here, role = Role.Tab)
+            }
         }
     }
     // While typing, the keyboard owns the bottom of the screen: the destinations step aside rather than sit on
@@ -868,6 +871,9 @@ private fun PageBar(app: AppState, modifier: Modifier = Modifier) {
         ActivityIndicator(activity)
     }
 }
+
+/** The space between the phone's top-corner buttons (Downloads, Sources). */
+internal val TopActionGap = 14.dp
 
 /** The way to Downloads on a phone held upright. While something is being downloaded a small dot says so; it does not move. */
 @Composable
