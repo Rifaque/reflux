@@ -54,7 +54,8 @@ data class SupportReport(
             val display = device.display
             add(Fact("Display", listOfNotNull(
                 if (display.maxWidth != null && display.maxHeight != null) "${display.maxWidth}x${display.maxHeight}" else "size unknown",
-                display.dynamicRanges.sorted().joinToString("/") { it.name } + if (display.dynamicRangesKnown) "" else " (others unknown)",
+                // Spaced, so a long list (Dolby Vision and every HDR kind) never reads as one token to the redaction.
+                display.dynamicRanges.sorted().joinToString(" / ") { it.name } + if (display.dynamicRangesKnown) "" else " (others unknown)",
                 "tone-maps HDR".takeIf { display.canToneMap },
             ).joinToString(", ")))
             add(Fact("Audio decoders", device.audioDecoders.sorted().joinToString(", ") { it.name }.ifEmpty { "none known" }))
