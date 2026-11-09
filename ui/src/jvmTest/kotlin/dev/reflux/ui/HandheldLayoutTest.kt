@@ -73,6 +73,26 @@ class HandheldLayoutTest {
     }
 
     @Test
+    fun thePhonesTopCornerButtonsStandApart() {
+        // Downloads and Sources side by side over Home's artwork: two buttons with clear space between them, on a
+        // common phone and on a small one (M7: on the Phone 2a they touched and read as one shape).
+        for ((width, height) in listOf(phoneWidth to phoneHeight, 320 to 640)) {
+            val offline = OfflineWorld()
+            screen(offline.world, offline.platform, width = width, height = height) { app ->
+                with(offline) { begin(app) }
+                awaitText("Recently Added")
+                val downloads = onNode(destination("Downloads")).fetchSemanticsNode().boundsInRoot
+                val sources = onNode(destination("Sources")).fetchSemanticsNode().boundsInRoot
+                val gap = sources.left - downloads.right
+                assertTrue(gap >= 12f, "at ${width}dp: $gap dp between $downloads and $sources")
+                assertTrue(downloads.width >= 44f && sources.width >= 44f, "comfortable targets at ${width}dp")
+                assertTrue(sources.right <= width && downloads.top < 80f && sources.top == downloads.top, "both in the top corner at ${width}dp")
+                save("phone-top-corner-$width")
+            }
+        }
+    }
+
+    @Test
     fun aPhoneNavigatesFromTheBottomOfTheScreen() = screen(populated(), width = phoneWidth, height = phoneHeight) { app ->
         awaitText("Recently Added")
         // The sections are within reach of a thumb, and there is no bar along the top.
