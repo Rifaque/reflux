@@ -42,7 +42,9 @@ jobs:
         run: sudo apt-get update && xargs -a tools/ci/linux-packages.txt sudo apt-get install -y --no-install-recommends
 
       # -Preflux.android=false: the Android modules have a job of their own, with the SDK set up on purpose.
+      # bash on Windows too: PowerShell would split -Preflux.android=false into two arguments.
       - name: Build and test
+        shell: bash
         run: ./gradlew check :tools:cli:installDist -Preflux.android=false --stacktrace
 
       # The real desktop shell in a real window, on a virtual display. tools/ci/linux-check.sh runs these same
