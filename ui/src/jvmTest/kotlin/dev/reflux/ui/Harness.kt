@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.Density
 import dev.reflux.ui.player.PlayerOverlay
 import dev.reflux.ui.state.AppState
 import kotlinx.coroutines.runBlocking
+import kotlin.time.Duration.Companion.minutes
 import org.jetbrains.skia.EncodedImageFormat
 import org.jetbrains.skia.Image
 import java.io.File
@@ -53,7 +54,7 @@ internal fun screen(
     /** Where library reads run: a slow one shows what a large library looks like while it is read. */
     background: kotlinx.coroutines.CoroutineDispatcher = kotlinx.coroutines.Dispatchers.Default,
     block: DesktopComposeUiTest.(AppState) -> Unit,
-) = runDesktopComposeUiTest((width * density).toInt(), (height * density).toInt()) {
+) = runDesktopComposeUiTest((width * density).toInt(), (height * density).toInt(), testTimeout = TEST_BUDGET) {
     var app: AppState? = null
     setContent {
         val scope = rememberCoroutineScope()
@@ -82,6 +83,14 @@ internal fun populated(metadata: Boolean = true) = TestWorld(metadata).also { ru
  * software, and a loaded CI machine is many times slower than a desktop. Nothing waits this long when it works.
  */
 private const val PATIENCE_MS = 30_000L
+
+/**
+ * How long a whole test may take. The toolkit's default is a minute; a test that moves the clock past the player's
+ * controls hiding renders every frame of that time in software, about 12 s on a desktop, 45 s in a 4-CPU container, and
+ * more than a minute on GitHub's runner (M7's first hosted runs). As with [PATIENCE_MS], nothing takes this long when it
+ * works; a test that hangs still fails.
+ */
+private val TEST_BUDGET = 5.minutes
 
 @OptIn(ExperimentalTestApi::class)
 internal fun DesktopComposeUiTest.awaitText(text: String) =
