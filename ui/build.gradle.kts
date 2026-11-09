@@ -109,6 +109,11 @@ kotlin {
 }
 
 tasks.withType<Test>().configureEach {
+    // How long one test body may run (kotlinx-coroutines-test, which the Compose test harness runs on; its default is a
+    // minute). Tests that move the clock past the player's controls hiding render every frame of it in software: about
+    // 12 s on a desktop, 45 s in a 4-CPU container, more than a minute on GitHub's runner (M7's first hosted runs).
+    // Nothing takes this long when it works, and a test that hangs still fails.
+    systemProperty("kotlinx.coroutines.test.default_timeout", "5m")
     // -Preflux.screenshots=<dir> makes the screen tests save what they rendered, for visual review.
     providers.gradleProperty("reflux.screenshots").orNull?.let { systemProperty("reflux.screenshots", it) }
     // -Preflux.showcase=<dir> renders the website's product images (WebsiteShowcaseTest) from the artwork in <dir>/art.

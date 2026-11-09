@@ -362,7 +362,11 @@ class FakePlatform(
 
     override fun report(problem: String, cause: Throwable?) {
         reports += problem
+        causes += problem + (cause?.let { ": ${it::class.simpleName}: ${it.message}" } ?: "")
     }
+
+    /** Each report with its cause, for a failing test to say why. */
+    val causes = mutableListOf<String>()
 
     /** The desktop shell's own copy of RSX Develops' wordmark, as About shows it. */
     override val publisherMark: ImageBitmap? = java.io.File("../desktop/app/src/main/resources/rsx-develops-wordmark.png").takeIf { it.isFile }

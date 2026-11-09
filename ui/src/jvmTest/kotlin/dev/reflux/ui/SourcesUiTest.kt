@@ -194,9 +194,12 @@ class SourcesUiTest {
             assertTrue(world.library.sources().isEmpty(), "a failed sign-in adds nothing")
 
             signIn("secret")
-            // The flow is left, the server is a source, and its films arrive by themselves.
-            await("the flow to be left") { app.navigator.current == Destination.Home }
-            await("the notice") { shows("Living Room is connected") }
+            // The flow is left, the server is a source, and its films arrive by themselves. The notice lasts a few
+            // seconds of the test's clock, which a slow machine can spend waiting for the flow to be left: it is
+            // watched for from the start.
+            var noticed = false
+            await("the flow to be left") { noticed = noticed || shows("Living Room is connected"); app.navigator.current == Destination.Home }
+            await("the notice") { noticed || shows("Living Room is connected") }
             await("the server's films") { world.library.movies().any { it.item.title == "Ronin" } }
             awaitText("Ronin")
             val record = world.library.sources().single()
@@ -538,7 +541,7 @@ class SourcesUiTest {
             runOnIdle { app.navigator.open(Destination.Connect(ConnectionKind.SERVER)) }
             awaitText("Connect to Jellyfin")
             signIn("secret")
-            await("the server's films again", { "at ${app.navigator.current}, sources ${world.library.sources().map { it.displayName + "/" + it.availability }}, notice ${app.notice}, reports ${platform.reports}" }) { world.library.movies().any { it.item.title == "Ronin" } }
+            await("the server's films again", { "at ${app.navigator.current}, sources ${world.library.sources().map { it.displayName + "/" + it.availability }}, notice ${app.notice}, reports ${platform.causes}" }) { world.library.movies().any { it.item.title == "Ronin" } }
             await("the list", { "at ${app.navigator.current}, sources ${world.library.sources().map { it.displayName }}" }) { shows("Living Room") }
             removeTheServer()
             await("the server to leave the list") { !shows("Living Room") }
