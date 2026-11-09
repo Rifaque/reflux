@@ -1122,7 +1122,7 @@ On the developer's Windows 11 machine, the `tools/ci` Linux container, the Googl
 
 **Brand** (gate 2): six exploration rounds (`design/brand/exploration/`), the Reflux Loop chosen (`design/brand/README.md`); every platform's icon, the TV banner, the store art, and the website's icons generated from the one geometry by `tools/brand/`; seen on the emulator's launcher and TV home row, the Fire TV launcher, the Windows taskbar and window.
 
-**Motion:** the first-run draw-in and the library loader seen on the Fire TV Stick and in the desktop app; with reduce motion, the still mark (desktop). The Android 12+ animated launch screen is built and lint-clean but was **not seen on a device**: the Google TV emulator showed its PIN setup in front and no starting window, the Fire TV (Android 11) shows the still mark by design, and the Phone 2a and Pad 7 were disconnected by then.
+**Motion:** the first-run draw-in and the library loader seen on the Fire TV Stick and in the desktop app; with reduce motion, the still mark (desktop). The Android 12+ animated launch screen was not seen on the Google TV emulator (its PIN setup stood in front) and is the still mark on the Fire TV (Android 11) by design; it was seen on the Phone 2a and the Pad 7 in the final walk (below, "M7: the release on the Phone 2a and Pad 7").
 
 **Fire TV Stick release walk** at `4d6538e` (the rehearsal's APK, after uninstalling the M6 `dev.reflux`, which a new package cannot update): cold start 1.25 s, the first-run mark, Reflux's folder picker by remote, the library built, a film played, About shows "Made by RSX Develops" and `(4d6538e)`, the support report as above.
 
@@ -1136,4 +1136,47 @@ On the developer's Windows 11 machine, the `tools/ci` Linux container, the Googl
 
 **Live server:** `JellyfinExecutionLiveTest`'s remux evidence came back UNKNOWN once (the server's session reported late) and passed on both reruns.
 
-**Not verified in M7**, carried to the M8 entry checklist: the hosted CI run and attestations (need the push); the live website and DNS; the animated launch screen on a device; the Pad 7 (disconnected) and a release walk on the Phone 2a (it ran the debug on-device suite only); TMDB against the live service (no credential here); a SmartScreen re-run; a physical Google TV, the Fire TV television, physical controllers.
+**Not verified in M7**, carried to the M8 entry checklist: the hosted CI run and attestations (need the push); the live website and DNS; (the animated launch screen and the Phone 2a and Pad 7 release walk followed: below); TMDB against the live service (no credential here); a SmartScreen re-run; a physical Google TV, the Fire TV television, physical controllers.
+
+## M7: the release on the Phone 2a and Pad 7 (2026-11-09)
+
+The final M7 release walk on the two physical handhelds, with release APKs from clean clones signed by the dry-run key (`dev.rsxdevelops.reflux`, `versionCode` 90002, not debuggable). Identity read before installing: Nothing Phone 2a `0005534AN000190` (`A142`, Android 16, API 36) and Xiaomi Pad 7 `852ec620` (`2410CRP4CI`, HyperOS, Android 16, API 36). The M6 `dev.reflux` on each was left untouched beside it; the phone's debug `dev.rsxdevelops.reflux` and its test APK (from M7's on-device suite) were removed first, since a release signed by another key cannot update them. The walk found two defects, fixed and re-checked on the devices.
+
+**Nothing Phone 2a**, the APK from `557a54b` (`28b07078…1c06`), fresh data:
+- Launch: cold start 547 ms. The Android 12+ launch screen is visible: the mark's line draws itself and the system hands over to Reflux at about 0.55 s, before the line completes (the system decides; nothing waits for the animation). The first-run screen then draws the mark and settles into the solid mark.
+- Every control on the first-run screen, Home, the navigation, Sources, a film's page, and About carries an accessible label (`uiautomator`).
+- The system picker → `Movies/RefluxM6` → the "Building your library" loader → Home with both works.
+- Local playback (PLAYING). English chosen mid-film, then a seek from 1:21 back to 0:12, inside the file's single 0:01-0:30 cue: the cue is drawn at 0:16. This is the case that failed in M6.
+- Jellyfin (the test account, typed on the device from a file sent over adb's standard input, then deleted): 187 movies and 38 shows, server artwork and details. A server film played: this phone has no AC-3 decoder, so Reflux planned and got the server converting the sound and keeping the picture.
+- The `tools/ci` SMB share added (`//192.168.1.5:1445/Movies`, 1 movie); search finds it beside Jellyfin episodes (11 results); its film downloaded (SD, 16 MB) and played with the share's server stopped.
+- About shows `0.9.0-alpha.2 (557a54b)` and the RSX Develops wordmark, read as "Made by RSX Develops".
+- "Save a support report" opens the share sheet (not shared). It holds no server address, user, password, title, or path, and records the server playback as planned against actual.
+- With "Remove animations" on, the launch screen shows the complete still mark at once.
+- **Found and fixed:** a cold start with the 225-work library left Home blank for about 1.1 s. `5a55a0a`: Home shows the loader while it first reads the library, after 400 ms like every loader. `HomeLoadingUiTest` fails without the fix and passes with it.
+
+**Xiaomi Pad 7**, the APK from `5a55a0a` (`d27902c7…1758`), fresh data; HyperOS installed it without a prompt:
+- Launch: cold start 1,055 ms. The launch screen plays in full: the line draws, closes the loop, settles into the solid mark, and hands over; then the first-run draw-in.
+- The tablet rail and every label as on the phone. The system picker → `RefluxM6` → the library built.
+- Local playback; English chosen, then a seek from 1:00 back to 0:12: the cue is drawn at 0:14.
+- Jellyfin connected (the keyboard covered the password field; the keyboard's Next brought it into view). Movies with server artwork and the server's watched mark; a server film played (Direct Play, hardware decoding).
+- Search found Harbour Lights with its progress ("1 min left").
+- About shows `(5a55a0a)` and "Made by RSX Develops".
+- A cold start with a populated library now shows the loader, then Home.
+- **Found and fixed:** the support report said `Display: 3200x2136, <redacted>`. The Pad's list of HDR kinds (`SDR/HLG/HDR10/HDR10_PLUS/DOLBY_VISION`, 38 characters) was taken for a token. `11ec1af`: the ranges are spaced, and token redaction is unchanged. `SupportReportTest` renders a fully equipped device and finds nothing redacted.
+
+**The final code, `11ec1af`** (`79e12450…922d`), installed over both with `adb install -r` (same signer; each library, connection, and progress kept):
+- Pad: About shows `(11ec1af)`. The report reads `Display: 3200x2136, SDR / HLG / HDR10 / HDR10_PLUS / DOLBY_VISION` with nothing redacted.
+- Pad with "Remove animations" on: the still mark at launch, then the still mark with "Loading your library…", then Home.
+- The phone: installed. Its secure lock screen came on before the re-walk, so it was not walked on `11ec1af`. That build changes only Home's loading state and the report's display line, both seen on the Pad. The `557a54b` walk above stands for the rest.
+
+**Logs** (`logcat -b all` from installation, scanned without printing values):
+- Phone, 19,369 lines; Pad, 201,612 lines.
+- No crash, ANR, `ClassNotFoundException`, `NoClassDefFoundError`, `NoSuchMethodError`, or other R8 symptom from Reflux. The phone's three class-loading lines are Samsung's `oneconnect`.
+- The server's password, address, and host, the share's password, and anything token-shaped: 0 occurrences.
+
+**Left as found:** "Remove animations" and the animation scales restored to 1.0 on both. Reflux `dev.rsxdevelops.reflux` stays installed with the walk's test data: `RefluxM6`, the test account's Jellyfin session, and on the phone the share entry and its download.
+
+**Seen, not M7 regressions, for M8:**
+- On the phone's Movies page, the transient "Fetching artwork" status runs under the Downloads button.
+- A film's page moves its Play button down about two seconds after opening, as its versions resolve.
+- After the keyboard is dismissed, the search field keeps focus and the navigation bar stays hidden until a second Back.
