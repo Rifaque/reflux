@@ -47,6 +47,17 @@ class SupportReportTest {
     }
 
     @Test
+    fun everyCapabilityOfAFullyEquippedDeviceSurvivesRedaction() {
+        // Found on the Xiaomi Pad 7 (M7's release walk): "SDR/HLG/HDR10/HDR10_PLUS/DOLBY_VISION" read as a token.
+        val text = SupportReport(
+            BuildIdentity(version = "0.9.0-alpha.2"), "2026-11-09T09:40:44Z", emptyList(),
+            SupportReport.capabilities(dev.reflux.core.playback.Devices.tv4kHdr), emptyList(), emptyList(), emptyList(),
+        ).render()
+        assertTrue("Display: 3840x2160, SDR / HLG / HDR10 / HDR10_PLUS / DOLBY_VISION" in text, text)
+        assertFalse("<redacted>" in text, text)
+    }
+
+    @Test
     fun anEmptyReportStillReadsWell() {
         val text = SupportReport(BuildIdentity(version = "0.9.0-alpha.2"), "2026-11-08T12:30:00Z", emptyList(), emptyList(), emptyList(), emptyList(), emptyList()).render()
         assertTrue("Not known yet." in text)
