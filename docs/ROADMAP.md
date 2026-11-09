@@ -8,7 +8,7 @@ The one source of truth for what Reflux is building, in what order, and what is 
 - The website is a release workstream across M6, M7, and M8 (below, "The Reflux website"); its visual direction, the demo video, and the beta program are in [LAUNCH.md](LAUNCH.md).
 - Decisions behind the plan are in [DECISIONS.md](DECISIONS.md): the first rebaseline (2026-10-17) and the milestone rebaseline (2026-11-02).
 
-**Current state: M7 closing (2026-11-09): every local gate passes; its hosted CI run and GitHub attestation are being verified. M8 follows, once the owner actions in its entry checklist are done.**
+**Current state: M7 operationally complete (2026-11-09; final source `a905f27`). M8 is next, once the owner actions in its entry checklist are done.**
 
 This milestone list replaces the one of 2026-10-17 (M0 to M7, with M2 as release engineering and M3 as real-world validation), which replaced the earlier Phase 0–18 plan. Documents and verification sections written before 2026-11-02 use the older numbering; how each old milestone maps to this one is under "Earlier numbering", and DECISIONS.md, 2026-11-02, "The milestone rebaseline", says why.
 
@@ -50,7 +50,7 @@ Status words used below:
 | M4 — Visual System 2.0 | A higher-end visual system around that structure | **Complete** (2026-11-07), with the limits in its section |
 | M5 — Library Depth & Reflux Magic | A richer library and the features that set Reflux apart | **Complete** (2026-11-07), with the limits in its section |
 | M6 — Release Engineering / Security / Legal | Production builds, packaging, signing, security hardening, legal and licensing, store preparation; the website's foundation and its legal and privacy pages | **Complete** (2026-11-08), with the limits in its section |
-| M7 — Compatibility, Release Proof, Brand + Website, and Beta/Test Readiness | The permanent Android identity, the brand, the redesigned website, CI and release proof, the source-built Windows libmpv, the diagnostics export, the M6 stability leftovers, store readiness, and the M8 entry checklist | **Closing** (2026-11-09): local gates pass; hosted CI and attestation being verified |
+| M7 — Compatibility, Release Proof, Brand + Website, and Beta/Test Readiness | The permanent Android identity, the brand, the redesigned website, CI and release proof, the source-built Windows libmpv, the diagnostics export, the M6 stability leftovers, store readiness, and the M8 entry checklist | **Complete** (2026-11-09, operationally: every gate locally and on GitHub, attestations verified), with the owner actions in its M8 entry checklist |
 | M8 — Beta | `0.9.0-beta.N` in testers' hands until the beta exit criteria hold, with the website operating as their entry point | Future |
 | M9 — Release Candidate | `0.9.0-rc.N`, feature freeze, final validation, submissions prepared | Future |
 | M10 — 1.0 | `1.0.0` on every V1 target | Future |
@@ -292,7 +292,7 @@ Planned here, worded in the legal work of M6 and M7 (RELEASE.md, "Legal review")
 
 ## M7 — Compatibility, Release Proof, Brand + Website, and Beta/Test Readiness
 
-**Closing** (2026-11-09; started 2026-11-08 from the M6 closure, `2c92c31`): every local gate passes; the hosted CI run and GitHub attestation of the final commit are being verified. M7 takes Reflux from a working alpha with a proven, manual release process to a product that is ready to begin the beta. It is not a feature milestone: it adds no feature beyond the diagnostics export M6 deferred, does not redesign playback, adds no account, telemetry, or cloud service, and does not start M8 or any public test. Decisions: DECISIONS.md, 2026-11-08, "M7's scope". Evidence: VERIFICATION.md, "M7".
+**Complete, operationally** (2026-11-09; started 2026-11-08 from the M6 closure, `2c92c31`; final source `a905f27`): every gate passes, locally and on GitHub, and the artifacts' attestations are verified (VERIFICATION.md, "M7: operational closure"). M7 takes Reflux from a working alpha with a proven, manual release process to a product that is ready to begin the beta. It is not a feature milestone: it adds no feature beyond the diagnostics export M6 deferred, does not redesign playback, adds no account, telemetry, or cloud service, and does not start M8 or any public test. Decisions: DECISIONS.md, 2026-11-08, "M7's scope". Evidence: VERIFICATION.md, "M7".
 
 ### Workstreams, in order
 
@@ -342,8 +342,8 @@ Evidence: VERIFICATION.md, "M7".
 | 2. Brand | **Pass.** Six exploration rounds; the Reflux Loop chosen, kept by the owner, given its motion; every platform's assets from one geometry (`design/brand/`) |
 | 3. Website redesigned | **Pass.** Website 2.0, prerendered, in the brand, with real product renders |
 | 4. Website production-ready | **Pass, deployment is an owner action**: the Vercel connection, Node 22.x, the domain, and the Cloudflare CNAME (WEBSITE.md, "Deployment") |
-| 5. CI from a clean checkout | **Pass locally** (the Windows and Linux checks and the release rehearsal, from clean clones, final on `cfb4865`; the Linux real-window step caught a reading-order regression in About, fixed in `253f21f`); the first hosted run needs the push |
-| 6. Checksums and provenance | **Pass locally** (`SHA256SUMS`, in-toto provenance, `release.py verify`, tamper fails); GitHub's signed attestations come from `release.yml` on every push (changed at closure: no tag needed) |
+| 5. CI from a clean checkout | **Pass**: on GitHub, CI run 42622256663 on `a905f27`, all 7 jobs; locally, the Windows and Linux checks and the release rehearsal from clean clones. The first hosted runs found a Windows shell quoting fault and three test-timing faults, all fixed |
+| 6. Checksums and provenance | **Pass**: `SHA256SUMS`, in-toto provenance, `release.py verify`, tamper fails; GitHub's signed SLSA attestations for every artifact of `a905f27` (Release run 42622256798), verified in the job, read back from GitHub, and verified cryptographically here against a byte-identical artifact. No tag or release was made |
 | 7. Windows libmpv | **Pass.** Reflux's own reproducible LGPL build, its source bundle beside each Windows release, per-library notices |
 | 8. Subtitles and intermittents | **Pass.** Subtitle after seek fixed and tested on the phone; replay-Off classified (no per-work memory; an M8 decision); `LibraryDepthUiTest` fixed; `SourcesUiTest` not reproduced in 16 rounds |
 | 9. Diagnostics export | **Pass.** The support report, redaction tested, never sent by Reflux |
@@ -396,12 +396,12 @@ Each item is PASS (with its evidence) or an owner/external action that must happ
 | TMDB | **External**: working non-commercial classification, clarification pending; **owner action**: the `REFLUX_TMDB_TOKEN` secret |
 | Windows libmpv source build and source distribution | **PASS** |
 | Website deployed at reflux.rsxdevelops.dev over HTTPS | **Owner action**: the Vercel connection (Node 22.x), the domain, the Cloudflare CNAME (WEBSITE.md, "Deployment") |
-| CI green on GitHub | **Owner action**: push; the local clean-checkout proof is **PASS** |
-| Provenance and attestation | **PASS** locally; the GitHub attestations follow the push |
+| CI green on GitHub | **PASS** (`a905f27`, run 42622256663) |
+| Provenance and attestation | **PASS** (`a905f27`, run 42622256798; verified independently) |
 | Diagnostics export | **PASS** |
 | Stability: the M6 intermittents classified | **PASS** |
 | Branding in the apps, the site, and the store material | **PASS** |
-| Release artifacts from a clean clone, verified | **PASS** (`4d6538e`) |
+| Release artifacts from a clean clone, verified | **PASS** (`a905f27`) |
 | Support, legal, and privacy pages | **PASS**; **owner action**: a support e-mail address for the contact line |
 | Final physical-device evidence for M7's build | **PASS**: Fire TV Stick (`4d6538e`); Phone 2a (`557a54b`) and Pad 7 (`5a55a0a`, then `11ec1af`), with the animated launch screen; two defects found and fixed (VERIFICATION.md, "M7: the release on the Phone 2a and Pad 7") |
 | Casting feasibility gate decided (DECISIONS.md, 2026-10-17) | **Open**, decided at M8's start |
