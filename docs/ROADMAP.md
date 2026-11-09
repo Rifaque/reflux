@@ -403,7 +403,7 @@ Each item is PASS (with its evidence) or an owner/external action that must happ
 | Branding in the apps, the site, and the store material | **PASS** |
 | Release artifacts from a clean clone, verified | **PASS** (`4d6538e`) |
 | Support, legal, and privacy pages | **PASS**; **owner action**: a support e-mail address for the contact line |
-| Final physical-device evidence for M7's build | Fire TV Stick **PASS**; Phone 2a on-device suite **PASS**; **owner action**: reconnect the Phone 2a and Pad 7 for the release walk and the animated launch screen |
+| Final physical-device evidence for M7's build | **PASS**: Fire TV Stick (`4d6538e`); Phone 2a (`557a54b`) and Pad 7 (`5a55a0a`, then `11ec1af`), with the animated launch screen; two defects found and fixed (VERIFICATION.md, "M7: the release on the Phone 2a and Pad 7") |
 | Casting feasibility gate decided (DECISIONS.md, 2026-10-17) | **Open**, decided at M8's start |
 
 ### Reflux Website — Public Release & Tester Readiness (workstreams C and D)
