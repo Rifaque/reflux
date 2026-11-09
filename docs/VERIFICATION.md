@@ -1194,3 +1194,73 @@ The final M7 release walk on the two physical handhelds, with release APKs from 
 - **Linux:** the `tools/ci` container on a clean clone, with the Gradle build cache in its volume cleared first so that every test executed (none restored from cache). `./gradlew check`: 1,166 tests, 32 skipped, 0 failed (20 min 51 s). The real-window step passes: About, browsing, capabilities, the first run, offline, and embedded playback through libmpv in real windows; `PlannedPlaybackWindowTest`'s two tests are skipped as always without the live-server environment.
 - **Linux memory:** an earlier run on `11ec1af` was killed when the host ran out of memory, because the container saw all 20 CPUs and Gradle ran that many test JVMs. The final run was limited as GitHub's runner is: 4 CPUs (which the JVM honours) and 8 GB. The container peaked at 4.6 GB; the host never had less than 4.0 GB free. Nothing was asserted less.
 - **Release workflow:** `release.yml` changed at closure (`db968e6`, DECISIONS.md, "CI and release automation") so that every push is an attested release rehearsal; `actionlint` passes.
+
+## M7: operational closure (2026-11-09)
+
+The final source state is **`a905f27`**. The commit that records this section changes documentation only.
+
+**What the first hosted runs found, and fixed** (each fix pushed and re-run on GitHub):
+
+| Commit | CI | Found | Fix |
+| --- | --- | --- | --- |
+| `43b4725` | Failed: Check (windows-2025) | PowerShell, the Windows runner's default shell, split `-Preflux.android=false` into two arguments; this was the job's first hosted run | `a0ed9e5`: that step runs in bash |
+| `a0ed9e5` | Failed: Check (ubuntu-24.04) | Three tests that move the clock past the player's controls hiding render every frame in software: 12 s here, 45 s in the 4-CPU container, over a minute on GitHub's runner. They hit the test library's one-minute budget for a test body | `38b76e0` passed the Compose harness a longer `testTimeout`. It did not apply (still "after waiting for 1m") |
+| `38b76e0` | Failed: both Checks | The same three on Linux. `SourcesUiTest`, Windows: the "connected" notice lives 4.5 s of the test clock, which the runner spent in the preceding wait. `SourcesUiTest`, Linux: a re-added server's films did not arrive within 30 s; the only report was "Refreshing the library failed", its cause discarded | `a905f27`: `kotlinx.coroutines.test.default_timeout=5m` (proved to be the budget that applies: at 5 s a test stops at 5 s); the notice is watched from sign-in and must still be shown; the fake platform keeps each report's cause, and that wait prints them |
+| **`a905f27`** | **Passed: all 7 jobs** | — | — |
+
+Nothing was asserted less. The re-added-server case passed on `a905f27`, on GitHub and locally. It stays classified as the watched `SourcesUiTest` intermittent, now reproduced once on GitHub; a recurrence will say its cause. M8: "Stability: the M6 intermittents".
+
+**Hosted runs of `a905f27`** (Rifaque/reflux, branch `feature/engine-foundation`):
+
+- **CI 42622256663: success.** Check (ubuntu-24.04), with the real-window tests, 47 min; Check (windows-2025); Android (unit tests, lint, platform API, minified release, package identity); Website; Release tools; Workflow lint; Secret scan.
+- **Release 42622256798: success** (the rehearsal mode, on push):
+  - libmpv was restored from its cache in 12 s and checked against its pins.
+  - Linux archive; Android and Windows signed by a throwaway key made in the runner; `release.py verify`.
+  - GitHub build provenance for every artifact, each verified in the job with `gh attestation verify --signer-workflow .../release.yml --source-digest a905f27`.
+  - No tag, release, secret, or uploaded app binary. The draft and its verification correctly skipped.
+- **Windows libmpv:** passed on its first hosted run (`43b4725`): built from source and matched the pin. The hosted libmpv source bundle is byte-identical to the local builds (`53853ac9…9bfa`).
+
+**Attestations of `a905f27`**, read independently from GitHub's attestation store by digest:
+
+| Artifact | SHA-256 (hosted build) |
+| --- | --- |
+| `reflux-0.9.0-alpha.2-android.apk` | `0120be9e8c874d9aa7736055051068774c154aaf937fb00d349bd349e857107c` |
+| `reflux-0.9.0-alpha.2-android.aab` | `5f8d46000388af94a69c69ebe2b336eb62d2a9f12df0d8f3015908c9cb1c6abd` |
+| `reflux-0.9.0-alpha.2-windows-x64.zip` | `a99127df42cb6fbcad4b829557be34196432d7bebafd87de32b33f48c59e83d7` |
+| `reflux-0.9.0-alpha.2-libmpv-source.tar.xz` | `53853ac9089204270fcd4db16ce6e3d5660af0f41dde765c3fb12a489d1c9bfa` |
+| `reflux-0.9.0-alpha.2-linux-x64.tar.gz` | `33803e210ff831ba0b06d7d05846560aff729b14c58c86ddeb57ca1e12932312` |
+
+- Each has a signed attestation: SLSA provenance v1, workflow `Rifaque/reflux/.github/workflows/release.yml@refs/heads/feature/engine-foundation`, source commit `a905f27`, run 42622256798.
+- The libmpv source bundle also carries attestations from the earlier commits that built the same bytes.
+- **Cryptographic verification on this machine:** the locally rehearsed `libmpv-source.tar.xz`, byte-identical to the hosted one, passes `gh attestation verify --repo Rifaque/reflux --signer-workflow Rifaque/reflux/.github/workflows/release.yml --source-digest a905f27…`. A copy with one byte changed has no attestation and fails.
+
+**Final clean-clone release rehearsal of `a905f27`:** a fresh clone, unmodified; the Linux archive from the `tools/ci` container (4 CPUs, 8 GB); then `release.py build` with the dry-run key, adding the Linux archive.
+
+| Artifact | Bytes | SHA-256 |
+| --- | --- | --- |
+| `reflux-0.9.0-alpha.2-android.apk` | 6,569,275 | `c29f52d52f853cb3a329fd50bd213b5bda1f130827b3292f51cff7df1e1cb61f` |
+| `reflux-0.9.0-alpha.2-android.aab` | 11,298,590 | `b7c11e2d9afe657fb3bbb6094c2b2420f792de1a7121018beba4a22e1fd2ef57` |
+| `reflux-0.9.0-alpha.2-windows-x64.zip` | 105,943,340 | `e84aebcfffe49e8677c75e8c6aa170c9b49260cb1576418e3c8b02f52969bc12` |
+| `reflux-0.9.0-alpha.2-libmpv-source.tar.xz` | 62,568,712 | `53853ac9089204270fcd4db16ce6e3d5660af0f41dde765c3fb12a489d1c9bfa` |
+| `reflux-0.9.0-alpha.2-linux-x64.tar.gz` | 91,364,527 | `c1248f1b26c1cdc658d5b63ef445af8c2280875f2c59d13328ba4f4b6b1cefef` |
+
+- `release.py verify` passes, and `sha256sum -c SHA256SUMS` passes.
+- The manifest and the in-toto provenance (SLSA v1) name `a905f2777a00…`; the provenance subjects equal `SHA256SUMS`.
+- The APK is `dev.rsxdevelops.reflux`, `versionCode` 90002, `versionName` 0.9.0-alpha.2, not debuggable, with no TMDB credential (none supplied). It carries `a905f27` in `assets/build-identity.properties`, which About reads.
+- The desktop jar's build identity is `commit=a905f27 | modified=false`.
+- The `libmpv-2.dll` inside the Windows zip matches the pinned `dllSha256`, and the source bundle matches the pinned `sourceSha256`. The pinned build was reused, not rebuilt: it was reproduced four times, once from fresh downloads, and again on GitHub.
+- One byte changed in a copy of any of the five artifacts makes `release.py verify` fail.
+- The version stays `0.9.0-alpha.2`.
+
+**Final Linux validation of `a905f27`:**
+- The `tools/ci` container on a clean clone, with the Gradle build cache cleared, so nothing was restored from cache.
+- Resources: 4 CPUs, 8 GB, and a watchdog that would stop it if the host's free memory fell under 2 GB. It did not trigger: the container peaked at 5.1 GB, and the host's free memory reached 2.3 GB at its lowest, from the owner's other applications.
+- `./gradlew check`: 1,166 tests, 32 skipped, 0 failed (22 min 14 s).
+- The real-window step passes (About, browsing, capabilities, embedded playback, offline; `PlannedPlaybackWindowTest`'s two skipped, as always without the live server).
+- Two earlier runs were stopped for host memory: on `11ec1af`, a container that saw all 20 CPUs; on `a905f27`, beside other work. Neither was a test failure.
+
+**Windows:** the full `./gradlew check` on `a905f27`'s tree: 1,216 tests, 18 skipped, 0 failed.
+
+**Physical Android:** VERIFICATION.md, "M7: the release on the Phone 2a and Pad 7". The Phone 2a on `cfb4865` is the final code apart from the test-only commits after it. The Pad 7 and the Fire TV Stick were walked on `11ec1af` and `4d6538e`.
+
+**Website:** built, checked in CI (17 pages and the 404 prerendered, `check-dist` 0 problems, 18 external links), and not deployed (owner actions, WEBSITE.md, "Deployment").
