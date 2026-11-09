@@ -1180,3 +1180,17 @@ The final M7 release walk on the two physical handhelds, with release APKs from 
 - On the phone's Movies page, the transient "Fetching artwork" status runs under the Downloads button.
 - A film's page moves its Play button down about two seconds after opening, as its versions resolve.
 - After the keyboard is dismissed, the search field keeps focus and the navigation bar stays hidden until a second Back.
+
+**The Phone 2a on the final code** (the APK from a clean clone of `cfb4865`, `3b011d29…e346`, installed over its release with `adb install -r`; the phone unlocked again). A focused check of what changed after its `557a54b` walk, nothing more:
+- **Top corner (`cfb4865`).** The owner saw Home's Downloads and Sources buttons touching on the phone. They are now 14 dp apart in the same corner, at the same size and style. On the phone they measure 37 px apart (2.65 px per dp), and they read as two buttons over Casino Royale's hero art. `HandheldLayoutTest.thePhonesTopCornerButtonsStandApart` checks the gap, the 44 dp targets, and the corner on a 412 dp and a 320 dp phone (offscreen renders). A phone on its side uses the rail, which has no such pair.
+- **Home loader (`5a55a0a`).** Cold start 849 ms: the launch screen drew the whole mark, then Home showed the flowing loader for the about 2 s the library took to read, then the library. It is no longer blank.
+- **Support report (`11ec1af`).** The report reads `Display: 2412x1084, SDR / HLG / HDR10 / HDR10_PLUS`. It contains no server password, user, or host, no share address or password, no title, folder, or path, and nothing redacted that should not be.
+- **Reduced motion.** With "Remove animations" on: the still mark at launch, the still mark with "Loading your library…" on Home, then the library. The setting was restored to 1.0.
+- About shows `0.9.0-alpha.2 (cfb4865)` and "Made by RSX Develops". Every navigation control carries its label.
+- Log since installing: 13,119 lines; no crash, ANR, or R8 symptom; the private values and anything token-shaped: 0.
+
+**Final checks on `cfb4865`, the last code change:**
+- **Windows:** the full `./gradlew check`: 1,216 tests, 18 skipped, 0 failed (8 min 6 s).
+- **Linux:** the `tools/ci` container on a clean clone, with the Gradle build cache in its volume cleared first so that every test executed (none restored from cache). `./gradlew check`: 1,166 tests, 32 skipped, 0 failed (20 min 51 s). The real-window step passes: About, browsing, capabilities, the first run, offline, and embedded playback through libmpv in real windows; `PlannedPlaybackWindowTest`'s two tests are skipped as always without the live-server environment.
+- **Linux memory:** an earlier run on `11ec1af` was killed when the host ran out of memory, because the container saw all 20 CPUs and Gradle ran that many test JVMs. The final run was limited as GitHub's runner is: 4 CPUs (which the JVM honours) and 8 GB. The container peaked at 4.6 GB; the host never had less than 4.0 GB free. Nothing was asserted less.
+- **Release workflow:** `release.yml` changed at closure (`db968e6`, DECISIONS.md, "CI and release automation") so that every push is an attested release rehearsal; `actionlint` passes.
