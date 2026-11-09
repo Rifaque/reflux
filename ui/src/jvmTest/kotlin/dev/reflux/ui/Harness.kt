@@ -50,12 +50,14 @@ internal fun screen(
     around: @Composable (@Composable () -> Unit) -> Unit = { it() },
     /** The system's bars around the window, as an edge-to-edge shell passes them. */
     bars: SystemBars = SystemBars.None,
+    /** Where library reads run: a slow one shows what a large library looks like while it is read. */
+    background: kotlinx.coroutines.CoroutineDispatcher = kotlinx.coroutines.Dispatchers.Default,
     block: DesktopComposeUiTest.(AppState) -> Unit,
 ) = runDesktopComposeUiTest((width * density).toInt(), (height * density).toInt()) {
     var app: AppState? = null
     setContent {
         val scope = rememberCoroutineScope()
-        val state = remember { AppState(world.library, world.pipeline, world.registry::resolve, platform, scope).also { app = it } }
+        val state = remember { AppState(world.library, world.pipeline, world.registry::resolve, platform, scope, background).also { app = it } }
         // [width] and [height] are the canvas the layout sees; a denser screen only draws it with more pixels.
         CompositionLocalProvider(LocalDensity provides Density(density, fontScale)) {
             around {

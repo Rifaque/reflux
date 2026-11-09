@@ -94,7 +94,11 @@ import kotlinx.coroutines.launch
 @Composable
 internal fun HomeScreen(app: AppState) {
     val model by app.libraryState { homeModel() }
-    val home = model ?: return
+    // Reading a large library on a cold start is a genuine wait: the loader, which shows only if it lasts (DESIGN.md,
+    // "Motion language").
+    val home = model ?: return Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        dev.reflux.ui.components.RefluxLoader(size = 64.dp, label = "Loading your library")
+    }
     if (home.empty) return EmptyLibrary(app, home.sources)
     BoxWithConstraints(Modifier.fillMaxSize()) {
         // The hero leaves the first row in view, so Home never opens on artwork alone.
