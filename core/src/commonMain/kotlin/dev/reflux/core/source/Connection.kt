@@ -81,6 +81,14 @@ interface SourceConnector {
     fun describe(config: String): ConnectionRequest?
 
     /**
+     * Whose account [config] signs in as, when it is one person's account on a server (a Jellyfin user, a Plex
+     * account or token): such a connection belongs to the profile that made it and is never seen by another
+     * (docs/WATCH_STATE.md, "Profiles"). Null for a connection everyone on the device shares: a folder, a share,
+     * a server that lets the local network in without signing in. Never a password or a token.
+     */
+    fun account(config: String): String? = null
+
+    /**
      * Libraries a connection stored before M3 left out of reading altogether. Inclusion now belongs to the library
      * (docs/NAVIGATION.md), so these are moved there once and cleared with [withoutExcludedSections].
      */

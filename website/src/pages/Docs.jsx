@@ -61,7 +61,7 @@ const articles = [
         <h2>How Reflux recognises titles</h2>
         <p>From ordinary file and folder names: title, year, season and episode numbers, and the edition or quality where the name says. Episodes in a folder with no show name become a show named after the folder. Disc folders (BDMV, VIDEO_TS) are not played yet.</p>
         <h2>Where details and artwork come from</h2>
-        <p>Your servers describe their titles: summaries, genres, ratings, runtimes, dates, cast, posters, and episode stills. Files bring their own artwork where it sits beside them, and TMDB fills in what neither has: Reflux sends it a title and year, nothing about you. A title with no artwork gets a designed look of its own rather than a blank. "Online metadata & artwork" under Sources turns the lookups off.</p>
+        <p>Your servers describe their titles: summaries, genres, ratings, runtimes, dates, cast, posters, and episode stills. Files bring their own artwork where it sits beside them, and TMDB fills in what neither has: Reflux sends it a title and year, nothing about you. A title with no artwork gets a designed look of its own rather than a blank. "Online metadata & artwork" in Settings turns the lookups off.</p>
         <h2>Identify</h2>
         <p>When Reflux has a title wrong, open its page and choose <strong>Identify</strong>: search, pick the right one, and Reflux remembers it through rescans, keeping your progress, favourites, and chosen version. <strong>Let Reflux identify it</strong> undoes it.</p>
         <h2>Nothing changes on your disk</h2>
@@ -84,7 +84,7 @@ const articles = [
         <h2>On a TV, a folder's posters do not show</h2>
         <p>On Android 13 and later TVs, Reflux is allowed to read your videos but not the images beside them. Titles from a server show the server's artwork; others get Reflux's designed look.</p>
         <h2>Sending a support report</h2>
-        <p>In Reflux, open <strong>Sources → About Reflux → Save a support report</strong>. It lists your version, device, what it plays, your sources' kinds, how the last playback went, and recent problems, with passwords, addresses, file paths, and titles removed. On a computer it lands in Downloads; on a phone or tablet you choose where to share it; on a TV it is saved in the TV's Download folder, under Reflux. Reflux never sends it itself. Attach it when you contact <Link to="/support">Support</Link>.</p>
+        <p>In Reflux, open <strong>Settings → About Reflux → Save a support report</strong>. It lists your version, device, what it plays, your sources' kinds, how the last playback went, and recent problems, with passwords, addresses, file paths, and titles removed. On a computer it lands in Downloads; on a phone or tablet you choose where to share it; on a TV it is saved in the TV's Download folder, under Reflux. Reflux never sends it itself. Attach it when you contact <Link to="/support">Support</Link>.</p>
       </>
     ),
   },

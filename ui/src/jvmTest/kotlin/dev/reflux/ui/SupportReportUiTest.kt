@@ -9,6 +9,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import dev.reflux.ui.state.SUPPORT_URL
 import dev.reflux.ui.state.Destination
+import dev.reflux.library.createProfile
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -23,6 +24,8 @@ class SupportReportUiTest {
     @Test
     fun aboutSavesAReportThatSaysWhatHappenedAndNothingPrivate() {
         val world = populated()
+        // A second viewer: the report says how many profiles there are, never their names (M8).
+        world.library.createProfile("Priyanka")
         val platform = FakePlatform()
         // A problem recorded the way a careless caller might write one, with a title, a path, and an address in it.
         platform.report("Playback of \"Heat\" failed: C:\\Users\\someone\\Movies\\Heat (1995)\\Heat.1995.1080p.BluRay.x264.mkv via http://192.168.1.20:8096/Videos/1?api_key=0123456789abcdef0123456789abcdef")
@@ -38,7 +41,8 @@ class SupportReportUiTest {
             assertTrue("1. Folder: available; " in text, text)
             assertTrue("Video decoders: " in text, text)
             assertTrue("Playback of \"<private>\" failed: <path>.mkv via http://<server>/…" in text, text)
-            for (title in listOf("Heat", "Blade Runner", "Breaking Bad", "Severance", "someone", "192.168.1.20", "0123456789abcdef")) {
+            assertTrue("Profiles: 2" in text, text)
+            for (title in listOf("Heat", "Blade Runner", "Breaking Bad", "Severance", "someone", "192.168.1.20", "0123456789abcdef", "Priyanka")) {
                 assertFalse(text.contains(title, ignoreCase = true), "\"$title\" is in the report:\n$text")
             }
             assertEquals(0, platform.linksOpened.size, "nothing was opened or sent")

@@ -68,7 +68,7 @@ p { margin: 0 0 1rem; text-wrap: pretty; }
 @supports (backdrop-filter: blur(1px)) { .site-header { backdrop-filter: saturate(140%) blur(18px); -webkit-backdrop-filter: saturate(140%) blur(18px); } }
 @media (prefers-reduced-transparency: reduce) { .site-header { background: var(--bg); backdrop-filter: none; } }
 .bar { max-width: var(--page); margin: 0 auto; padding: 0 var(--gutter); height: 4rem; display: flex; align-items: center; gap: 2rem; }
-.home-link { display: flex; align-items: center; color: var(--text); }
+.home-link { display: flex; align-items: center; min-height: 44px; color: var(--text); }
 .lockup { height: 1.45rem; width: auto; }
 .nav-wide { display: none; gap: 1.75rem; margin-left: 0.5rem; }
 .nav-wide a, .nav-menu a { color: var(--text-2); text-decoration: none; font-weight: 550; font-size: 0.95rem; }
@@ -223,7 +223,7 @@ td { color: var(--text-2); min-width: 9rem; }
 .doc-layout { max-width: var(--page); margin: 0 auto; padding: 0 var(--gutter); display: grid; gap: 0 3rem; }
 .doc-layout .page { padding-left: 0; padding-right: 0; margin: 0; }
 .doc-nav { display: flex; flex-wrap: wrap; gap: 0.4rem 1.25rem; padding-top: 2rem; }
-.doc-nav a { color: var(--text-2); text-decoration: none; font-weight: 550; }
+.doc-nav a { display: inline-flex; align-items: center; min-height: 28px; color: var(--text-2); text-decoration: none; font-weight: 550; }
 .doc-nav a.active { color: var(--text); }
 @media (min-width: 60rem) {
   .doc-layout { grid-template-columns: 13rem minmax(0, 1fr); }
@@ -268,7 +268,7 @@ td { color: var(--text-2); min-width: 9rem; }
 .tmdb-logo { width: 8.5rem; height: auto; margin: 0.5rem 0 1rem; }
 
 /* RSX Develops, the publisher: its own wordmark, small and quiet, never competing with Reflux's. */
-.publisher { display: inline-flex; align-items: center; gap: 0.6rem; margin-top: 1.25rem; text-decoration: none; opacity: 0.78; transition: opacity 160ms var(--ease); }
+.publisher { display: inline-flex; align-items: center; gap: 0.6rem; min-height: 32px; margin-top: 1.25rem; text-decoration: none; opacity: 0.78; transition: opacity 160ms var(--ease); }
 .publisher:hover, .publisher:focus-visible { opacity: 1; }
 .publisher img { width: 7.75rem; height: auto; object-fit: contain; }
 .publisher-label { font-size: 0.78rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-3); font-weight: 650; }

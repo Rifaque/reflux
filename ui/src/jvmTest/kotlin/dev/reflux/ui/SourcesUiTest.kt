@@ -14,6 +14,7 @@ import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.click
 import dev.reflux.core.identify.ParsedKind
 import dev.reflux.core.identify.ParsedMedia
@@ -281,7 +282,10 @@ class SourcesUiTest {
         val (world, platform) = world()
         screen(world, platform, width = 412, height = 915) { app ->
             awaitText("Recently Added")
-            onNode(destination("Sources")).performTouchInput { click() }
+            // On a phone, Sources is reached through the utility area's one entry at the top right.
+            onNode(destination("Profile and settings")).performTouchInput { click() }
+            awaitText("More")
+            onNodeWithText("Sources").performScrollTo().performTouchInput { click() }
             awaitText("Add media")
             save("phone-sources")
             onNodeWithText("Add media").performTouchInput { click() }

@@ -1,5 +1,7 @@
 package dev.reflux.android.engine
 
+import dev.reflux.library.PinKey
+import dev.reflux.library.SealedPinKey
 import dev.reflux.core.BuildIdentity
 import dev.reflux.core.RefluxBuild
 import android.content.Context
@@ -184,7 +186,12 @@ class AndroidEnvironment(context: Context, dataDirectory: File = context.filesDi
         // Whatever an earlier version stored in the open is sealed before anything else reads it.
         connections.sealStored()
         connections.migrateExcludedSections()
+        // Sources from before profiles become the first profile's or shared (docs/WATCH_STATE.md, "Profiles").
+        connections.adoptProfiles()
     }
+
+    /** What profile PINs are checked with: a key sealed by the Android keystore, like the connections. */
+    val pinKey: PinKey by lazy { SealedPinKey(library, seal) }
 
     /** TMDB is enabled when the build provides an application credential; without one, names come from files. */
     val metadata: MetadataProvider? = tmdbToken(application)?.let { TmdbProvider(it, http) }

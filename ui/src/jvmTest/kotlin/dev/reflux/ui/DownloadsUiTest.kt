@@ -361,10 +361,12 @@ class DownloadsUiTest {
             onNodeWithText("Download 4").performTouchInput { click() }
             await("the season to be kept") { app.library.downloads().count { it.state == DownloadState.COMPLETED } == 4 }
 
-            // The page, from the top of a section.
+            // The page, from the top of a section: on a phone, through the utility area's one entry at the top right.
             runOnIdle { app.navigator.show(Destination.Home) }
-            await("the way to the downloads") { has("Downloads") }
-            onNodeWithContentDescription("Downloads").performTouchInput { click() }
+            await("the way to the downloads") { has("Profile and settings") }
+            onNodeWithContentDescription("Profile and settings", substring = true).performTouchInput { click() }
+            awaitText("Downloads")
+            onNodeWithText("Downloads").performScrollTo().performTouchInput { click() }
             awaitText("On this device")
             val remove = onNodeWithContentDescription("Remove Slow Horses, S1 · E1 · Good News About Hell from this device").fetchSemanticsNode().boundsInRoot
             assertTrue(remove.right <= 412f, "the action is on the screen: $remove")

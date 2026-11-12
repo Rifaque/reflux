@@ -4,3 +4,4 @@ src/generated/
 public/third-party-licenses.txt
 .vercel/
 dist-server/
+test-results/

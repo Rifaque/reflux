@@ -147,7 +147,7 @@ class Offline(
                 library.queries.insertDownload(
                     id, planned.itemId.value, version.id.value, version.location.sourceId.value, version.location.path,
                     "$id.${extensionOf(version.stream.container, version.location.fileName)}", DownloadState.QUEUED.name,
-                    planned.bytes.takeIf { planned.sizeKnown }, time, time,
+                    planned.bytes.takeIf { planned.sizeKnown }, time, time, version.location.sourceId.value,
                 )
                 // Only on a new download: one that exists keeps the subtitles it was given.
                 if (library.queries.subtitlesOfDownload(id).executeAsList().isEmpty()) {

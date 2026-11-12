@@ -215,12 +215,12 @@ private fun Library.carryUserState(from: MediaId, to: MediaId) {
     if (from == to) return
     database.transaction {
         queries.moveFavorite(to.value, from.value)
-        queries.deleteFavorite(from.value)
+        queries.deleteFavoriteEverywhere(from.value)
         queries.moveCollectionMembership(to.value, from.value)
         queries.deleteCollectionMembershipOf(from.value)
-        queries.preferredVersion(from.value).executeAsOneOrNull()?.let { version ->
-            queries.setPreferredVersion(to.value, version)
-            queries.clearPreferredVersion(from.value)
+        for (pin in queries.preferencesOfItemEverywhere(from.value).executeAsList()) {
+            queries.setPreferredVersion(pin.profile_id, to.value, pin.version_id)
+            queries.clearPreferredVersion(pin.profile_id, from.value)
         }
         queries.movePinsWithTheirVersions()
         // A favorite kept the old identity in the library with nothing in it; without one it goes.

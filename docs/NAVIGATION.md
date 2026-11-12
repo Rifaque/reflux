@@ -1,19 +1,21 @@
 # Navigation and Source Libraries
 
-The specification of M3 (ROADMAP.md): how the viewer moves through Reflux, and how the sources and libraries the unified library is made of are controlled. What was run to verify it is in VERIFICATION.md; the decisions behind it are in DECISIONS.md, 2026-11-02, "Navigation and source libraries".
+The specification of M3 (ROADMAP.md), with the final structure M8 gave it: how the viewer moves through Reflux, and how the sources and libraries the unified library is made of are controlled. What was run to verify it is in VERIFICATION.md; the decisions behind it are in DECISIONS.md, 2026-11-02, "Navigation and source libraries", and 2026-11-11, "The navigation's final structure".
 
 ## 1. Global destinations
 
-Six places, the same on every platform:
+Four primary destinations, the library itself, and a **utility area**, the same on every platform. M8 settled this structure; M9 changes how it looks, never where anything is.
 
-| Destination | What it is |
-| --- | --- |
-| Home | The unified library's feed: Continue Watching, Next Up, rows |
-| Movies | Every film in the unified library |
-| Shows | Every show in the unified library |
-| Search | Smart Search over the unified library |
-| Downloads | Every copy kept on this device (only where the platform keeps copies) |
-| Sources | Every source, its state, its libraries, inclusion, and the way into each source's own library |
+| Destination | Kind | What it is |
+| --- | --- | --- |
+| Home | Primary | The unified library's feed: Continue Watching, Next Up, rows |
+| Movies | Primary | Every film in the unified library |
+| Shows | Primary | Every show in the unified library |
+| Search | Primary | Smart Search over the unified library |
+| Downloads | Utility | Every copy kept on this device (only where the platform keeps copies) |
+| Sources | Utility | Every source, its state, its libraries, inclusion, and the way into each source's own library |
+| Settings | Utility | The open profile's own settings (its name, its PIN, clearing its watch history), the device's (online lookups, Media Atmosphere), and the way to About |
+| Profiles | Utility | Who is watching: the profiles, switching, adding one, deleting another (docs/WATCH_STATE.md, "Profiles"). On a phone, also the way to Downloads, Sources, and Settings |
 
 Each is a **section** of the navigator: choosing one replaces whatever was stacked above the previous section. Home is the root. Everything else (a work's page, a listing, a source's library, forms) stacks above the section it was opened from.
 
@@ -31,22 +33,24 @@ Each is a **section** of the navigator: choosing one replaces whatever was stack
 
 The information architecture never changes; where the navigation sits follows the window (`AdaptiveLayout.navigation`):
 
-| Window | Navigation | Downloads and Sources |
+| Window | Navigation | The utility area |
 | --- | --- | --- |
-| Phone, portrait | A floating bar along the bottom: Home, Movies, Shows, Search as icons with no permanent words | Two buttons at the top of each section's page |
-| Phone, landscape | A compact rail on the left: all six as icons | In the rail |
-| Tablet | A rail on the left: icons with their names beneath | In the rail |
-| Desktop | A sidebar on the left: the wordmark, then icons with their names beside | In the sidebar |
-| Television | A rail on the left, icons only, which widens to show names while it has focus | In the rail |
+| Phone, portrait | A floating bar along the bottom: Home, Movies, Shows, Search as icons with no permanent words | One entry at the top right of each section's page: the profile ("Profile and settings", or the viewer's initial once there are several), which opens Profiles, where Downloads, Sources, and Settings are |
+| Phone, landscape | A compact rail on the left: the primary four as icons | One entry at the rail's foot, the profile, as when the phone is upright: a phone's short side has the height for the library and one more, not for eight (found by the M8 architecture challenge) |
+| Tablet | A rail on the left: icons with their names beneath | At the rail's foot |
+| Desktop | A sidebar on the left: the wordmark, then icons with their names beside | At the sidebar's foot |
+| Television | A rail on the left, icons only, which widens to show names while it has focus | At the rail's foot |
+
+The profile entry is named after the viewer once there are several profiles, and "Profiles" (or "Profile and settings" on a phone) while there is one. Not in 1.0: a collapsible desktop sidebar; minimizing the phone's bar on scroll, unless M9's accessibility review supports it (DECISIONS.md, 2026-11-11).
 
 How each of these looks (M4): one family of functional material, a lit pill and a leading bar for where the viewer is, and, on capable devices, Home's hero and a work's header running under a rail or sidebar while every other page starts beside it. DESIGN.md, "Visual System 2.0 (M4)", "Navigation surfaces" and "Hero artwork and the navigation". None of it changes where the navigation is, what it holds, or how focus moves through it.
 
 - Icons without words always say their names to assistive technology, with the role of a tab and whether they are selected; a pointer resting on one shows its name.
 - Pages stacked above a section show a Back button at their top-left on touch and pointer layouts (a remote has its own Back).
 - The library-activity sign and, with a controller in hand, the button prompts sit at the top-right of the page on rail and sidebar layouts.
-- Directional input, wherever the navigation runs down the side (television, and a keyboard or controller on the others): Left from the page's first column enters the rail, on the current destination. A Left that the toolkit would send only partly left (to a button above, in a centred column) goes to the rail instead. Right from the rail returns to the control focus left from, whether it got there by Left or, on a television, by Back. Up and Down move one destination at a time; there are no other stops in the rail.
+- Directional input, wherever the navigation runs down the side (television, and a keyboard or controller on the others): Left from the page's first column enters the rail, on the current destination. A Left that the toolkit would send only partly left (to a button above, in a centred column) goes to the rail instead. Right from the rail returns to the control focus left from, whether it got there by Left or, on a television, by Back. Up and Down move one destination at a time, through the primary four and then the utility area, in that order; there are no other stops in the rail. A controller's bumpers step through the same list.
 - Television: the rail widens over the page while it has focus, to show the names; its items stay the same focusable controls, so focus never drops as it widens. A page that arrives, or gains its main action, takes focus unless the viewer is already in the page.
-- Desktop: Ctrl+1 to Ctrl+6 go to the six destinations, also from a text field; Escape is Back; the mouse's back button is Back on Windows. Tab walks the page in the order it is built, then the sidebar drawn beside it.
+- Desktop: Ctrl+1 to Ctrl+6 go to Home, Movies, Shows, Search, Downloads, and Sources, also from a text field; Escape is Back; the mouse's back button is Back on Windows. Tab walks the page in the order it is built, then the sidebar drawn beside it.
 
 ## 4. The unified library and source libraries
 

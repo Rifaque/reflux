@@ -16,6 +16,7 @@ import dev.reflux.core.model.MediaKind
 import dev.reflux.core.model.MediaLocation
 import dev.reflux.core.model.MediaVersion
 import dev.reflux.core.model.Movie
+import dev.reflux.core.model.ProfileId
 import dev.reflux.core.model.Season
 import dev.reflux.core.model.Show
 import dev.reflux.core.model.SourceId
@@ -85,18 +86,35 @@ class Library(
      */
     @Volatile
     internal var sourceOrderCache: Map<String, Int>? = null
-    private val smartSearch = SmartSearch(database)
+    private val smartSearch = SmartSearch(database) { activeProfile() }
     private val parser get() = MediaPathParser(maxYear = latestReleaseYear())
+
+    /** The active profile, kept in memory: every read of viewer state asks for it. Null until first asked for. */
+    @Volatile
+    internal var activeProfileCache: ProfileId? = null
+
+    init {
+        ensureProfiles()
+    }
 
     /** The latest year a release can name; a later number in a title is part of it (`Blade Runner 2049`). */
     fun latestReleaseYear(): Int = yearOf(now()) + 1
 
     // Sources ------------------------------------------------------------------------------------
 
-    /** Registers a source (idempotent). [config] is what the adapter needs to be recreated later. */
+    /**
+     * Registers a source (idempotent). [config] is what the adapter needs to be recreated later. It is shared by every
+     * profile; a source that keeps its own watch state (a catalog source) is compared with the profile that added it. Connecting an
+     * account (`SourceConnections`) then makes it that profile's own.
+     */
     fun addSource(source: MediaSource, config: String) {
         val d = source.descriptor
-        queries.insertSource(d.id.value, d.type, d.displayName, d.locality.name, config, Availability.UNKNOWN.name, now())
+        database.transaction {
+            queries.insertSource(d.id.value, d.type, d.displayName, d.locality.name, config, Availability.UNKNOWN.name, now())
+            if ((source is CatalogSource || source is WatchStateSyncSource) && queries.sourceById(d.id.value).executeAsOne().sync_profile_id == null) {
+                queries.setSourceOwnership(null, null, activeProfile().value, d.id.value)
+            }
+        }
         sourceOrderCache = null
     }
 
@@ -104,7 +122,7 @@ class Library(
 
     fun source(id: SourceId): SourceRecord? = queries.sourceById(id.value).executeAsOneOrNull()?.toModel()
 
-    /** Removes a source and everything Reflux derived from it. Watch history of its works is kept. */
+    /** Removes a source and everything Reflux derived from it. Watch history of its works is kept, in its profile. */
     fun removeSource(id: SourceId) = database.transaction {
         writer.apply(ScanPlan(id, emptyList(), emptyList(), emptyList(), emptyMap()))
         queries.deleteWatchSyncOfSource(id.value)
@@ -112,6 +130,7 @@ class Library(
         queries.deleteSourceSectionsOf(id.value)
         queries.deleteExcludedSectionsOf(id.value)
         queries.deleteSource(id.value)
+        queries.deleteUnusedEndpoints()
         sourceOrderCache = null
         writer.recomputeLibraries()
     }
@@ -139,7 +158,7 @@ class Library(
             when (source) {
                 is CatalogSource -> {
                     val (report, updates) = scanCatalog(id, source.catalog().toList(), (source as? WatchStateSyncSource)?.marksPlayedPast)
-                    deliver(source, updates)
+                    deliver(source, updates.second, updates.first)
                     report
                 }
                 is FileEnumeratingSource -> scanFiles(id, source.files().toList())
@@ -167,21 +186,28 @@ class Library(
         }
     }
 
-    /** The report, and what the source has to be told for its watch state to agree with Reflux's. */
-    private fun scanCatalog(id: SourceId, entries: List<CatalogEntry>, playedPast: Double?): Pair<ScanReport, List<PendingSourceUpdate>> {
-        if (entries.isEmpty() && hasKnownVersions(id)) return keepEmpty(id) to emptyList()
+    /**
+     * The report, and what the source has to be told for its watch state to agree with Reflux's: the source's
+     * records are compared with the watch state of the one profile it is reconciled with (its account's owner, or for
+     * a shared server the profile that added it), whichever profile is active now; with none, they are not read.
+     */
+    private fun scanCatalog(id: SourceId, entries: List<CatalogEntry>, playedPast: Double?): Pair<ScanReport, Pair<ProfileId?, List<PendingSourceUpdate>>> {
+        val none = null to emptyList<PendingSourceUpdate>()
+        if (entries.isEmpty() && hasKnownVersions(id)) return keepEmpty(id) to none
         return database.transactionWithResult {
-            if (!registered(id)) return@transactionWithResult ScanReport(id, ScanReport.Status.REMOVED) to emptyList()
+            val record = queries.sourceById(id.value).executeAsOneOrNull() ?: return@transactionWithResult ScanReport(id, ScanReport.Status.REMOVED) to none
             val plan = planner().planCatalog(id, entries, overrides(id), yearHints(id))
             val report = writer.apply(plan)
+            val profile = record.sync_profile_id?.let(::ProfileId)?.takeIf { queries.profileById(it.value).executeAsOneOrNull() != null }
+            val clearedAt = profile?.let { queries.profileById(it.value).executeAsOne().history_cleared_at }
             val versionByPath = plan.versions.associate { it.version.location.path to it.version }
-            val updates = entries.mapNotNull { entry ->
+            val updates = if (profile == null) emptyList() else entries.mapNotNull { entry ->
                 val state = entry.userState ?: return@mapNotNull null
                 val version = entry.versions.firstNotNullOfOrNull { versionByPath[it.path] } ?: return@mapNotNull null
-                reconcile(version, state, playedPast)?.let { PendingSourceUpdate(version.location.path, it) }
+                reconcile(profile, version, state, playedPast, clearedAt)?.let { PendingSourceUpdate(version.location.path, it) }
             }
             queries.markSourceScanned(now(), id.value)
-            report to updates
+            report to (profile to updates)
         }
     }
 
@@ -205,15 +231,15 @@ class Library(
      * clients is reflected here, and what the source has not heard of yet is returned for delivery.
      * Server favorites are added; local favorites are never removed by a server.
      */
-    private fun reconcile(version: MediaVersion, state: SourceUserState, playedPast: Double?): SourceUpdate? {
+    private fun reconcile(profile: ProfileId, version: MediaVersion, state: SourceUserState, playedPast: Double?, clearedAt: Long?): SourceUpdate? {
         val location = version.location
-        val baseline = queries.watchSyncOf(location.sourceId.value, location.path).executeAsOneOrNull()
+        val baseline = queries.watchSyncOf(profile.value, location.sourceId.value, location.path).executeAsOneOrNull()
             ?.let { SyncBaseline(it.played != 0L, it.position_ms, it.last_played_at, it.reconciled_at) }
-        val outcome = WatchReconciler.reconcile(version.itemId, watchState(version.itemId), state, baseline, version, now(), playedPast)
-        outcome.state?.let(::saveWatchState)
+        val outcome = WatchReconciler.reconcile(version.itemId, watchState(version.itemId, profile), state, baseline, version, now(), playedPast, clearedAt)
+        outcome.state?.let { saveWatchState(it, profile) }
         val seen = outcome.baseline
-        queries.upsertWatchSync(location.sourceId.value, location.path, seen.played.toLong(), seen.positionMs, seen.lastPlayedAtEpochMs, seen.reconciledAtEpochMs)
-        if (state.favorite) queries.insertFavorite(version.itemId.value, now())
+        queries.upsertWatchSync(profile.value, location.sourceId.value, location.path, seen.played.toLong(), seen.positionMs, seen.lastPlayedAtEpochMs, seen.reconciledAtEpochMs)
+        if (state.favorite) queries.insertFavorite(profile.value, version.itemId.value, now())
         return outcome.update
     }
 
@@ -379,7 +405,7 @@ class Library(
         scope: LibraryScope = LibraryScope.Unified,
     ): VersionSelection {
         val candidates = versions(itemId, scope).map { VersionCandidate(it.version, it.availability, it.locality, sourceCapabilities(it.version.location.sourceId)) }
-        val pinned = queries.preferredVersion(itemId.value).executeAsOneOrNull()?.let(::VersionId)
+        val pinned = queries.preferredVersion(activeProfile().value, itemId.value).executeAsOneOrNull()?.let(::VersionId)
         // A copy on the device is the version it was made from: pinning one is honored by the other, so
         // a pinned version that was downloaded plays from the device rather than being streamed again.
         val preferred = pinned?.let { pin ->
@@ -390,8 +416,9 @@ class Library(
     }
 
     fun setPreferredVersion(itemId: MediaId, versionId: VersionId?) {
-        if (versionId == null) queries.clearPreferredVersion(itemId.value)
-        else queries.setPreferredVersion(itemId.value, versionId.value)
+        val profile = activeProfile().value
+        if (versionId == null) queries.clearPreferredVersion(profile, itemId.value)
+        else queries.setPreferredVersion(profile, itemId.value, versionId.value)
     }
 
     /**
@@ -406,9 +433,10 @@ class Library(
      * this, so there is one rule for what can be continued.
      */
     fun continuations(limit: Int = 20): List<Continuation> {
-        val states = watchStates()
+        val profile = activeProfile()
+        val states = watchStates(profile)
         val result = linkedMapOf<MediaId, Pair<MediaItem, Long>>() // keyed by movie or show
-        val recent = queries.recentlyPlayed(500, ::Watch_state).executeAsList().map { it.toModel() }
+        val recent = queries.recentlyPlayed(profile.value, 500, ::Watch_state).executeAsList().map { it.toModel() }
         val items = itemsByIds(recent.map { it.itemId.value }).associateBy { it.id }
         for (state in recent) {
             // Most recent first, so the first state seen for a movie or show is when the user last engaged with it.
@@ -481,28 +509,32 @@ class Library(
 
     // Watch state and favorites --------------------------------------------------------------------
 
-    fun watchState(itemId: MediaId): WatchState? = queries.watchStateOf(itemId.value).executeAsOneOrNull()?.toModel()
+    /** A work's state for [profile], the active one unless another is named. */
+    fun watchState(itemId: MediaId, profile: ProfileId = activeProfile()): WatchState? =
+        queries.watchStateOf(profile.value, itemId.value).executeAsOneOrNull()?.toModel()
 
     override fun progress(itemId: MediaId, positionMs: Long, durationMs: Long?) = progress(itemId, positionMs, durationMs, null)
 
     override fun stopped(itemId: MediaId, positionMs: Long, durationMs: Long?) = stopped(itemId, positionMs, durationMs, null)
 
     /**
-     * Periodic playback progress (see [WatchRules.onProgress]). The state is the work's; [version] is the
-     * copy that is playing, whose timeline the position is on.
+     * Periodic playback progress (see [WatchRules.onProgress]). The state is the work's, in [profile]: the one a
+     * playback started in, which a profile switch while it plays does not change ([SyncingWatchReporter]); [version]
+     * is the copy that is playing, whose timeline the position is on.
      */
-    fun progress(itemId: MediaId, positionMs: Long, durationMs: Long?, version: MediaVersion?) =
-        saveWatchState(WatchRules.onProgress(watchState(itemId), itemId, positionMs, durationMs, now(), version))
+    fun progress(itemId: MediaId, positionMs: Long, durationMs: Long?, version: MediaVersion?, profile: ProfileId = activeProfile()) =
+        saveWatchState(WatchRules.onProgress(watchState(itemId, profile), itemId, positionMs, durationMs, now(), version), profile)
 
-    /** End of a playback session (see [WatchRules.onStop]). */
-    fun stopped(itemId: MediaId, positionMs: Long, durationMs: Long?, version: MediaVersion?) =
-        saveWatchState(WatchRules.onStop(watchState(itemId), itemId, positionMs, durationMs, now(), version))
+    /** End of a playback session (see [WatchRules.onStop]), in [profile] as for [progress]. */
+    fun stopped(itemId: MediaId, positionMs: Long, durationMs: Long?, version: MediaVersion?, profile: ProfileId = activeProfile()) =
+        saveWatchState(WatchRules.onStop(watchState(itemId, profile), itemId, positionMs, durationMs, now(), version), profile)
 
-    /** Marks a work as watched or unwatched. Shows and seasons apply to all their episodes. */
+    /** Marks a work as watched or unwatched for the active profile. Shows and seasons apply to all their episodes. */
     fun setWatched(itemId: MediaId, watched: Boolean) = database.transaction {
+        val profile = activeProfile()
         for (id in playableIdsOf(itemId)) {
-            val previous = watchState(id)
-            saveWatchState(if (watched) WatchRules.markWatched(previous, id, now()) else WatchRules.markUnwatched(previous, id, now()))
+            val previous = watchState(id, profile)
+            saveWatchState(if (watched) WatchRules.markWatched(previous, id, now()) else WatchRules.markUnwatched(previous, id, now()), profile)
         }
     }
 
@@ -515,17 +547,18 @@ class Library(
     }
 
     fun setFavorite(itemId: MediaId, favorite: Boolean) {
-        if (favorite) queries.insertFavorite(itemId.value, now()) else queries.deleteFavorite(itemId.value)
+        val profile = activeProfile().value
+        if (favorite) queries.insertFavorite(profile, itemId.value, now()) else queries.deleteFavorite(profile, itemId.value)
     }
 
-    /** Favorites, most recently added first. */
+    /** The active profile's favorites, most recently added first. */
     fun favorites(): List<LibraryEntry> {
-        val order = queries.allFavorites().executeAsList().map { it.item_id }
+        val order = queries.allFavorites(activeProfile().value).executeAsList().map { it.item_id }
         val items = itemsByIds(order).associateBy { it.id.value }
         return entries(order.mapNotNull { items[it] })
     }
 
-    internal fun saveWatchState(state: WatchState) = queries.save(state)
+    internal fun saveWatchState(state: WatchState, profile: ProfileId = activeProfile()) = queries.save(state, profile)
 
     internal fun playableIdsOf(itemId: MediaId): List<MediaId> = when (val item = item(itemId)) {
         is Show -> queries.episodesOfShow(item.id.value).executeAsList().map { MediaId(it.id) }
@@ -537,8 +570,8 @@ class Library(
 
     // Helpers ------------------------------------------------------------------------------------
 
-    private fun watchStates(): Map<MediaId, WatchState> =
-        queries.allWatchStates().executeAsList().associate { MediaId(it.item_id) to it.toModel() }
+    private fun watchStates(profile: ProfileId = activeProfile()): Map<MediaId, WatchState> =
+        queries.allWatchStates(profile.value).executeAsList().associate { MediaId(it.item_id) to it.toModel() }
 
     private fun tracks(versionId: String) = queries.tracksOfVersion(versionId).executeAsList()
 
@@ -555,8 +588,9 @@ class Library(
         if (items.isEmpty()) return emptyList()
         val ids = items.map { it.id.value }
         val availability = itemAvailability(scope)
-        val favorites = queries.allFavorites().executeAsList().map { it.item_id }.toSet()
-        val states = ids.chunked(QUERY_CHUNK).flatMap { queries.watchStatesOfItems(it).executeAsList() }
+        val profile = activeProfile().value
+        val favorites = queries.allFavorites(profile).executeAsList().map { it.item_id }.toSet()
+        val states = ids.chunked(QUERY_CHUNK).flatMap { queries.watchStatesOfItems(profile, it).executeAsList() }
             .associate { it.item_id to it.toModel() }
         val metadata = metadataOf(ids)
         // Each kind of picture by the artwork precedence (core ArtworkPrecedence): the sources' own, the oldest

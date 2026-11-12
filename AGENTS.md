@@ -253,7 +253,12 @@ V1 platform targets:
 
 Not V1: Vega OS (a future compatibility track) and iOS/iPadOS.
 
-The milestones are outcome-based and defined in `docs/ROADMAP.md`: M0 Governance & Rebaseline, M1 Accessibility & Interaction Baseline, M2P Playback Compatibility & Direct Play, M3 Navigation & Source Libraries, M4 Visual System 2.0, M5 Library Depth & Reflux Magic, M6 Release Engineering / Security / Legal, M7 Compatibility, Release Proof, Brand + Website, and Beta/Test Readiness (all complete), M8 Beta (next, once its entry checklist's owner actions are done), M9 Release Candidate, M10 1.0. The Reflux website is release infrastructure across them: its foundation is M6, its redesign and public and tester readiness M7, and M8 does not begin without it. Work on the next incomplete milestone there. There is no milestone called M2: release engineering is M6.
+The milestones are outcome-based and defined in `docs/ROADMAP.md`: M0 Governance & Rebaseline, M1 Accessibility & Interaction Baseline, M2P Playback Compatibility & Direct Play, M3 Navigation & Source Libraries, M4 Visual System 2.0, M5 Library Depth & Reflux Magic, M6 Release Engineering / Security / Legal, M7 Compatibility, Release Proof, Brand + Website, and Beta/Test Readiness (all complete), then, since the 2026-11-11 rebaseline, M8 Viewer Identity & Profiles, Navigation Structure, Website SEO/Responsive Work, and Release Preparation Foundations, M9 Navigation & Surface System 2.0 (visual refinement of M8's structure; it opens with the desktop mini-player feasibility trial), M10 Player & Playback Experience 2.0, M11 Distribution & Release Surfaces, M12 Qualification Campaign & Beta, M13 Release Candidate & 1.0. The Reflux website is release infrastructure across them; it is live. Work on the next incomplete milestone there. There is no milestone called M2: release engineering is M6. The pre-rebaseline names (M8 Beta, M9 Release Candidate, M10 1.0) appear in older documents; ROADMAP.md's "Earlier numbering" maps them.
+
+### Milestone execution rules (from the 2026-11-11 rebaseline)
+
+- One master prompt per milestone takes it from implementation through testing, fixes, documentation, verification, and closure; at most one follow-up, and only for a genuine blocker or an essential correction. The beta (M12) runs one prompt per beta build cycle.
+- Run the minimum validation the change needs: targeted tests locally, the full `check` on GitHub CI, device walks once per changed form factor at a milestone's end. The comprehensive cross-platform qualification is M12. Never weaken a test or an assertion to save effort; defer what is not required instead.
 
 Do not reorder foundational work merely to produce a flashy demo.
 

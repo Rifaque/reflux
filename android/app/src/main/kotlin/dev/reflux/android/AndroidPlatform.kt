@@ -118,6 +118,7 @@ internal class AndroidPlatform(private val environment: AndroidEnvironment, over
     }
 
     override val connections: SourceConnections get() = environment.connections
+    override val pinKey: dev.reflux.library.PinKey get() = environment.pinKey
 
     /** Loudness belongs to the device: a phone's keys, a television's remote. */
     override val systemVolume: Boolean get() = true

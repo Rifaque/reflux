@@ -1,6 +1,8 @@
 package dev.reflux.sources.plex
 
 import dev.reflux.core.net.HttpFetcher
+import dev.reflux.core.profile.AccountDevices
+import dev.reflux.core.profile.Sha256
 import dev.reflux.core.source.Connection
 import dev.reflux.core.source.ConnectionKind
 import dev.reflux.core.source.ConnectionProblem
@@ -20,7 +22,8 @@ import kotlinx.coroutines.CancellationException
  */
 class PlexConnector(
     private val http: HttpFetcher,
-    private val deviceId: String,
+    /** This installation's own identifier, from which each account's client identity is derived ([AccountDevices]). */
+    private val installation: String,
     private val deviceName: String = "Reflux",
     /** Where plex.tv is; replaced only by tests. */
     private val plexTv: String = PlexApi.PLEX_TV,
@@ -36,13 +39,17 @@ class PlexConnector(
     override suspend fun connect(request: ConnectionRequest): Connection {
         val url = PlexSource.normalizeUrl(request.address)
         if (!address.matches(url)) return Connection.Failed(ConnectionProblem.INVALID_ADDRESS)
+        val username = request.username?.takeIf { it.isNotBlank() }
+        val password = request.password?.takeIf { it.isNotEmpty() }
+        // One client identity per account (docs/WATCH_STATE.md, "Profiles"): a plex.tv account by its name, a token by
+        // a digest of it (the token itself never goes into an identity), and a server open without signing in as this
+        // installation's one shared connection.
+        val deviceId = AccountDevices.id(installation, type, url, username ?: password?.let { "$TOKEN_ACCOUNT:${Sha256.hex(it)}" })
         return try {
             val machine = PlexApi(url, http, deviceId, deviceName).get("identity").container()?.string("machineIdentifier")
                 ?: return Connection.Failed(ConnectionProblem.NOT_FOUND, "no machine identifier")
-            val username = request.username?.takeIf { it.isNotBlank() }
-            val password = request.password?.takeIf { it.isNotEmpty() }
             val (token, account) = when {
-                username != null -> signIn(username, password.orEmpty(), machine)
+                username != null -> signIn(username, password.orEmpty(), machine, deviceId)
                 password != null -> password to null
                 else -> null to null
             }
@@ -58,7 +65,7 @@ class PlexConnector(
                     e.message,
                 )
             }
-            val credentials = PlexCredentials(url, machine, token, deviceId, account)
+            val credentials = PlexCredentials(url, machine, token, deviceId, account, tokenIdentity = account == null && token != null)
             Connection.Established(PlexSource(credentials, http, nameOf(root?.string("friendlyName")), deviceName), credentials.encode())
         } catch (e: CancellationException) {
             throw e
@@ -73,7 +80,7 @@ class PlexConnector(
      * Signs in at plex.tv and returns the token for [machine] and who signed in. An owned server takes the account's
      * own token; a server shared with the account takes the one plex.tv lists for it.
      */
-    private suspend fun signIn(username: String, password: String, machine: String): Pair<String, String> {
+    private suspend fun signIn(username: String, password: String, machine: String, deviceId: String): Pair<String, String> {
         val tv = PlexApi(plexTv, http, deviceId, deviceName)
         val user = try {
             tv.postForm("api/v2/users/signin", mapOf("login" to username, "password" to password, "rememberMe" to "true"))
@@ -92,6 +99,12 @@ class PlexConnector(
     override fun describe(config: String): ConnectionRequest? =
         PlexCredentials.decode(config)?.let { ConnectionRequest(it.serverUrl, it.account) }
 
+    /**
+     * A connection that signed in, by a plex.tv account or by a token, is that person's. One that reached a server
+     * open to the local network without signing in belongs to nobody in particular: everyone on the device shares it.
+     */
+    override fun account(config: String): String? = PlexCredentials.decode(config)?.let { it.account ?: it.token?.let { TOKEN_ACCOUNT } }
+
     private fun problemOf(e: PlexException): ConnectionProblem = when {
         e is PlexSignInException -> if (e.status == 401 || e.status == 400 || e.status == 422) ConnectionProblem.AUTHENTICATION else ConnectionProblem.UNREACHABLE
         e.status == 401 -> ConnectionProblem.AUTHENTICATION
@@ -106,6 +119,9 @@ class PlexConnector(
     private class PlexSignInException(cause: PlexException) : PlexException("plex.tv sign-in: ${cause.message}", cause.status, cause)
 
     internal companion object {
+        /** What a connection made with a bare token is the account of: whoever the token is, never the token itself. */
+        const val TOKEN_ACCOUNT = "token"
+
         private val address = Regex("""^https?://[^\s/?#@]+(/[^\s?#]*)?$""", RegexOption.IGNORE_CASE)
 
         /**

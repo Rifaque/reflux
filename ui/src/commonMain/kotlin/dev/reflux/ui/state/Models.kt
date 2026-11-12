@@ -33,7 +33,7 @@ import dev.reflux.library.cast
 import dev.reflux.library.pinnedVersions
 import dev.reflux.library.episodeVersionChoices
 import dev.reflux.library.versionChoices
-import dev.reflux.library.downloads
+import dev.reflux.library.visibleDownloads
 import dev.reflux.library.worksOf
 import dev.reflux.core.offline.DownloadState
 import dev.reflux.library.home
@@ -65,7 +65,7 @@ data class MediaCard(
 
 internal fun Library.cards(entries: List<LibraryEntry>): List<MediaCard> {
     val shows = mutableMapOf<MediaId, LibraryEntry?>()
-    val kept = downloads().filter { it.state == DownloadState.COMPLETED }.map { it.itemId }.toSet()
+    val kept = visibleDownloads().filter { it.state == DownloadState.COMPLETED }.map { it.itemId }.toSet()
     // A show is kept when every episode of it is; one with some of them kept says so, differently.
     val keptOfShow = kept.mapNotNull { item(it) as? Episode }.groupBy { it.showId }
     val ofShow = mutableMapOf<MediaId, Pair<Boolean, Boolean>>()

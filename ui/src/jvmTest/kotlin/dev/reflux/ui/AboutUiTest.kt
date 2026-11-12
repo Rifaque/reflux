@@ -16,6 +16,7 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performKeyInput
 import androidx.compose.ui.test.pressKey
 import dev.reflux.core.BuildIdentity
@@ -60,21 +61,22 @@ class AboutUiTest {
     }
 
     @Test
-    fun aboutIsReachedFromTheMediaSourcesAndSaysWhichBuildThisIs() {
+    fun aboutIsReachedFromSettingsAndSaysWhichBuildThisIs() {
         for ((width, height) in listOf(1440 to 900, 412 to 915)) screen(populated(), width = width, height = height) { app ->
             awaitText("Recently Added")
-            runOnIdle { app.toggleSources() }
+            // About is in the utility area, under Settings (docs/NAVIGATION.md, section 1).
+            runOnIdle { app.go(Destination.Settings) }
             // The version alone on the way there; the build on the page.
-            awaitText("Version ${RefluxBuild.VERSION}, privacy, licenses, and credits")
-            onNodeWithText("About Reflux").performClick()
+            awaitText("Version ${RefluxBuild.VERSION}, privacy, help, licenses, and credits")
+            onNodeWithText("About Reflux").performScrollTo().performClick()
             awaitText("Version ${RefluxBuild.VERSION} (8bd4bba)")
             assertEquals(Destination.About, app.navigator.current)
-            // About is reached from Sources, which stays the destination the viewer is in.
-            assertEquals(Destination.Sources, app.navigator.highlighted)
+            // Settings stays the destination the viewer is in.
+            assertEquals(Destination.Settings, app.navigator.highlighted)
             save("about-${width}x$height")
             runOnIdle { app.navigator.back() }
             awaitText("About Reflux")
-            assertEquals(Destination.Sources, app.navigator.current)
+            assertEquals(Destination.Settings, app.navigator.current)
         }
     }
 
@@ -212,9 +214,9 @@ class AboutUiTest {
     @Test
     fun aRemoteReadsALicenseLongerThanTheScreenAndFindsItsWayBack() = television { app ->
         awaitText("Recently Added")
-        runOnIdle { app.toggleSources() }
-        awaitText("Add media")
-        // Down the sources page to Reflux itself.
+        runOnIdle { app.go(Destination.Settings) }
+        awaitText("Clear watch history")
+        // Down the settings page to Reflux itself.
         repeat(12) { if (focusedText()?.contains("About Reflux") != true) remote(app, Key.ARROW_DOWN) }
         awaitFocusOn("About Reflux")
         remote(app, Key.DPAD_CENTER)
@@ -245,7 +247,7 @@ class AboutUiTest {
         awaitFocusOn("Third-party software")
         remote(app, Key.BACK)
         awaitFocusOn("About Reflux")
-        assertEquals(Destination.Sources, app.navigator.current)
+        assertEquals(Destination.Settings, app.navigator.current)
     }
 
     @Test

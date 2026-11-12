@@ -5,6 +5,7 @@ import dev.reflux.core.model.CalendarDate
 import dev.reflux.core.model.Episode
 import dev.reflux.core.model.ExternalSubtitle
 import dev.reflux.core.model.MediaId
+import dev.reflux.core.model.ProfileId
 import dev.reflux.core.model.MediaItem
 import dev.reflux.core.model.MediaKind
 import dev.reflux.core.model.MediaLocation
@@ -73,6 +74,8 @@ internal fun Source.toModel() = SourceRecord(
     lastAvailableAtEpochMs = last_available_at,
     included = included != 0L,
     signInRequired = sign_in_required != 0L,
+    profileId = profile_id?.let(::ProfileId),
+    endpointId = endpoint_id,
 )
 
 internal fun Watch_state.toModel() = WatchState(
@@ -87,8 +90,9 @@ internal fun Watch_state.toModel() = WatchState(
     cut = cut,
 )
 
-internal fun LibraryQueries.save(state: WatchState) {
+internal fun LibraryQueries.save(state: WatchState, profile: dev.reflux.core.model.ProfileId) {
     upsertWatchState(
+        profile.value,
         state.itemId.value, state.positionMs, state.durationMs, state.completed.toLong(), state.playCount.toLong(),
         state.lastPlayedAtEpochMs, state.updatedAtEpochMs, state.versionId?.value, state.cut,
     )
@@ -115,7 +119,7 @@ internal fun versionRow(
     @Suppress("UNUSED_PARAMETER") sourceIdentity: String?, @Suppress("UNUSED_PARAMETER") firstSeen: Long,
     @Suppress("UNUSED_PARAMETER") lastSeen: Long, videoProfile: String?, videoLevel: Long?,
     @Suppress("UNUSED_PARAMETER") section: String?, @Suppress("UNUSED_PARAMETER") librarySourceId: String,
-    @Suppress("UNUSED_PARAMETER") librarySection: String?, @Suppress("UNUSED_PARAMETER") included: Long,
+    @Suppress("UNUSED_PARAMETER") librarySection: String?, @Suppress("UNUSED_PARAMETER") included: Long, @Suppress("UNUSED_PARAMETER") visible: Long,
     availability: String, locality: String,
 ): VersionInfo {
     val video = if (videoCodec == null && height == null && dynamicRange == null) {

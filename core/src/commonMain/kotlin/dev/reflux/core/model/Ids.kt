@@ -21,6 +21,20 @@ value class SourceId(val value: String) {
 }
 
 /**
+ * A local viewer of this installation (docs/WATCH_STATE.md, "Profiles"): whose watch history, favorites,
+ * collections, pinned versions, preferences, and server accounts something is. Never shared between devices.
+ */
+@JvmInline
+value class ProfileId(val value: String) {
+    override fun toString(): String = value
+
+    companion object {
+        /** The profile every installation starts with, and the one an earlier library's state became. */
+        val DEFAULT = ProfileId("default")
+    }
+}
+
+/**
  * Deterministic identifiers.
  *
  * IDs are derived from stable keys so that rebuilding the index from the same sources yields the same IDs.

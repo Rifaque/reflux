@@ -14,7 +14,7 @@ export default function Support() {
         </section>
         <section aria-labelledby="problem">
           <h2 id="problem">Report a problem or send feedback</h2>
-          <p>Open an issue on <Out href="https://github.com/Rifaque/reflux/issues">Reflux’s GitHub</Out>. Say what you were doing and on which device, and attach a support report: in Reflux, <strong>Sources → About Reflux → Save a support report</strong>. It has passwords, addresses, file paths, and titles taken out, and Reflux never sends it by itself.</p>
+          <p>Open an issue on <Out href="https://github.com/Rifaque/reflux/issues">Reflux’s GitHub</Out>. Say what you were doing and on which device, and attach a support report: in Reflux, <strong>Settings → About Reflux → Save a support report</strong>. It has passwords, addresses, file paths, and titles taken out, and Reflux never sends it by itself.</p>
         </section>
         <section aria-labelledby="security">
           <h2 id="security">Security problems</h2>

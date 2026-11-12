@@ -313,6 +313,7 @@ class FakePlatform(
     override val build: BuildIdentity = BuildIdentity(commit = "8bd4bba"),
     override val notices: NoticeTarget? = NoticeTarget.DESKTOP,
     artworkFiles: Map<String, java.io.File> = emptyMap(),
+    override val pinKey: dev.reflux.library.PinKey? = TestPinKey(),
 ) : Platform {
     override val artwork: FakeArtwork = FakeArtwork(artwork, backdrops, posters, artworkFiles)
     override var device: DeviceCapabilities = testDevice
@@ -467,3 +468,14 @@ class FakePlayer(override val capabilities: DeviceCapabilities) : Player {
     fun fail(message: String, failure: PlaybackFailure = PlaybackFailure.UNKNOWN) =
         mutable.update { it.copy(status = PlayerStatus.ERROR, failure = failure, error = message) }
 }
+
+/** A PIN key held in memory, as a shell's secure store would hold one (docs/WATCH_STATE.md, "Profiles"). */
+class TestPinKey : dev.reflux.library.PinKey {
+    private val key = ByteArray(32) { (it * 7).toByte() }
+    override fun mac(data: ByteArray): ByteArray = javax.crypto.Mac.getInstance("HmacSHA256").run {
+        init(javax.crypto.spec.SecretKeySpec(key, "HmacSHA256"))
+        doFinal(data)
+    }
+    override fun randomBytes(count: Int) = java.security.SecureRandom().let { random -> ByteArray(count).also(random::nextBytes) }
+}
+

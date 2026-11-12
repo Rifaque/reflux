@@ -5,6 +5,7 @@ import dev.reflux.core.identify.TitleText
 import dev.reflux.core.model.ArtworkLocator
 import dev.reflux.core.model.Episode
 import dev.reflux.core.model.MediaId
+import dev.reflux.core.model.ProfileId
 import dev.reflux.core.model.MediaItem
 import dev.reflux.core.model.MediaVersion
 import dev.reflux.core.model.Season
@@ -219,14 +220,19 @@ internal class PlanApplier(private val queries: LibraryQueries, private val now:
      */
     fun recomputeLibraries() {
         queries.recomputeVersionLibraries()
+        queries.recomputeVisibility()
         queries.recomputeInclusion()
     }
 
+    /** Carries a work's state to the work it became, in every profile that has one, each kept apart. */
     private fun moveWatchState(from: String, to: String) {
-        val moving = queries.watchStateOf(from).executeAsOneOrNull()?.toModel() ?: return
-        val existing = queries.watchStateOf(to).executeAsOneOrNull()?.toModel()
-        queries.save(if (existing == null) moving.copy(itemId = MediaId(to)) else WatchRules.merge(MediaId(to), existing, moving))
-        queries.deleteWatchState(from)
+        for (row in queries.watchStatesOfItemEverywhere(from).executeAsList()) {
+            val profile = ProfileId(row.profile_id)
+            val moving = row.toModel()
+            val existing = queries.watchStateOf(row.profile_id, to).executeAsOneOrNull()?.toModel()
+            queries.save(if (existing == null) moving.copy(itemId = MediaId(to)) else WatchRules.merge(MediaId(to), existing, moving), profile)
+            queries.deleteWatchState(row.profile_id, from)
+        }
     }
 
     private fun insertVersion(version: MediaVersion, confidence: Double, signals: String, sourceIdentity: String?, section: String?, time: Long) {

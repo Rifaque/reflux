@@ -1,6 +1,8 @@
 package dev.reflux.sources.jellyfin
 
 import dev.reflux.core.net.HttpFetcher
+import dev.reflux.core.profile.AccountDevices
+import kotlin.test.assertNotEquals
 import dev.reflux.core.net.HttpRequest
 import dev.reflux.core.net.HttpResult
 import dev.reflux.core.source.Connection
@@ -47,6 +49,19 @@ class JellyfinConnectorTest {
         val credentials = JellyfinCredentials.decode(connection.config)!!
         assertEquals("tok", credentials.accessToken)
         assertEquals(ConnectionRequest("http://jf.local:8096", "Alex"), JellyfinConnector(server(), "d").describe(connection.config))
+    }
+
+    @Test
+    fun eachAccountSignsInAsItsOwnDeviceNeverTheInstallations() = runTest {
+        val alex = JellyfinCredentials.decode(assertIs<Connection.Established>(connect("jf.local:8096")).config)!!
+        val again = JellyfinCredentials.decode(assertIs<Connection.Established>(connect("http://jf.local:8096/", user = "ALEX")).config)!!
+        val deviceIds = requests.map { Regex("DeviceId=\"([^\"]+)\"").find(it.headers["Authorization"].orEmpty())?.groupValues?.get(1) }
+        assertEquals(AccountDevices.id("device-1", "jellyfin", "http://jf.local:8096", "alex"), alex.deviceId)
+        assertEquals(alex.deviceId, again.deviceId, "the same account again is the same device, so the server's device list does not grow")
+        assertTrue(deviceIds.all { it == alex.deviceId }, "every request of the sign-in is that device: $deviceIds")
+        assertNotEquals("device-1", alex.deviceId, "never the installation's bare identity, which every account would share")
+        assertNotEquals(alex.deviceId, AccountDevices.id("device-1", "jellyfin", "http://jf.local:8096", "sam"))
+        assertEquals("u1", JellyfinConnector(server(), "device-1").account(alex.encode()), "a Jellyfin connection is one user's")
     }
 
     @Test

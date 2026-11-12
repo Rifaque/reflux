@@ -110,21 +110,31 @@ internal fun dev.reflux.library.db.Download.toModel() = Download(
     completedAtEpochMs = completed_at,
 )
 
-/** Every download there is, oldest first. */
+/** Every download there is, oldest first, whichever profile it is from: what the download queue works through. */
 fun Library.downloads(): List<Download> = queries.allDownloads().executeAsList().map { it.toModel() }
+
+/**
+ * The downloads the active profile sees, oldest first: copies from sources every profile shares, and from its own
+ * accounts. A copy of another profile's account is that profile's (docs/WATCH_STATE.md, "Profiles").
+ */
+fun Library.visibleDownloads(): List<Download> = queries.visibleDownloads().executeAsList().map { it.toModel() }
 
 fun Library.download(id: String): Download? = queries.downloadById(id).executeAsOneOrNull()?.toModel()
 
 /** The downloads of a movie or episode, or of every episode of a show or season. */
-fun Library.downloadsOf(itemId: MediaId): List<Download> =
-    playableIdsOf(itemId).flatMap { queries.downloadsOfItem(it.value).executeAsList() }.map { it.toModel() }
+fun Library.downloadsOf(itemId: MediaId): List<Download> {
+    val profile = activeProfile().value
+    return playableIdsOf(itemId).flatMap { queries.downloadsOfItem(it.value).executeAsList() }
+        .filter { it.profile_id == null || it.profile_id == profile }
+        .map { it.toModel() }
+}
 
 /** The version a completed download is in the library, when its copy is registered. */
 fun Library.copyOf(download: Download): VersionInfo? = version(StableIds.versionId(MediaLocation(DownloadsSource.ID, download.path)))
 
 /** The version pinned for [itemId] and, when it was kept on the device, its copy: either is the user's choice. */
 fun Library.pinnedVersions(itemId: MediaId): Set<VersionId> {
-    val pin = queries.preferredVersion(itemId.value).executeAsOneOrNull() ?: return emptySet()
+    val pin = queries.preferredVersion(activeProfile().value, itemId.value).executeAsOneOrNull() ?: return emptySet()
     val copy = queries.downloadOfOrigin(pin).executeAsOneOrNull()?.let { StableIds.versionId(MediaLocation(DownloadsSource.ID, it.path)) }
     return setOfNotNull(VersionId(pin), copy)
 }
@@ -158,7 +168,7 @@ fun Library.versionChoices(itemId: MediaId, versions: List<VersionId>): Int {
 
 /** For every episode of [showId] that has a version, how many there are to choose between, counted as [versionChoices] does. */
 fun Library.episodeVersionChoices(showId: MediaId): Map<MediaId, Int> {
-    val origins = copyOrigins(downloads())
+    val origins = copyOrigins(visibleDownloads())
     return queries.versionIdsOfShow(showId.value).executeAsList()
         .groupBy({ MediaId(it.item_id) }, { origins[VersionId(it.id)] ?: VersionId(it.id) })
         .mapValues { (_, choices) -> choices.distinct().size }
@@ -167,8 +177,11 @@ fun Library.episodeVersionChoices(showId: MediaId): Map<MediaId, Int> {
 /** Whether a work's sources are the user's own, as opposed to Reflux's copies. */
 fun SourceRecord.isDownloads(): Boolean = type == DownloadsSource.TYPE
 
-/** The sources the user added. Where downloads are kept is Reflux's own and is not one of them. */
-fun Library.userSources(): List<SourceRecord> = sources().filterNot { it.isDownloads() }
+/**
+ * The sources the active profile sees that the user added: those every profile shares, and its own accounts
+ * (docs/WATCH_STATE.md, "Profiles"). Where downloads are kept is Reflux's own and is not one of them.
+ */
+fun Library.userSources(): List<SourceRecord> = visibleSources().filterNot { it.isDownloads() }
 
 /**
  * Brings the versions in the downloads source in line with the downloads that are complete: each is a
@@ -232,7 +245,7 @@ fun Library.offlineRequest(
     scope: LibraryScope = LibraryScope.Unified,
 ): OfflineRequest {
     val versions = versions(itemId, scope)
-    val pinned = queries.preferredVersion(itemId.value).executeAsOneOrNull()?.let(::VersionId)
+    val pinned = queries.preferredVersion(activeProfile().value, itemId.value).executeAsOneOrNull()?.let(::VersionId)
     return OfflineRequest(
         itemId = itemId,
         reason = reason,
@@ -314,7 +327,7 @@ fun Library.episodesOffDevice(showId: MediaId): Set<MediaId> = queries.episodesO
 fun Library.offlineCoverage(itemId: MediaId, scope: LibraryScope = LibraryScope.Unified): OfflineCoverage {
     val works = worksOf(itemId, scope)
     val wanted = works.toSet()
-    val byWork = downloads().filter { it.itemId in wanted }.groupBy { it.itemId }
+    val byWork = visibleDownloads().filter { it.itemId in wanted }.groupBy { it.itemId }
     var kept = 0
     var pending = 0
     var failed = 0

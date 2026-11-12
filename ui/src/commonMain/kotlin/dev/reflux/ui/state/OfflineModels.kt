@@ -21,7 +21,7 @@ import dev.reflux.core.source.SourceLocality
 import dev.reflux.library.Library
 import dev.reflux.library.Offline
 import dev.reflux.library.copyOf
-import dev.reflux.library.downloads
+import dev.reflux.library.visibleDownloads
 import dev.reflux.library.downloadsOf
 import dev.reflux.library.offlineCoverage
 import dev.reflux.library.pinnedVersions
@@ -248,7 +248,7 @@ data class DownloadsModel(
 }
 
 internal fun Library.downloadsModel(offline: Offline): DownloadsModel {
-    val all = downloads()
+    val all = visibleDownloads()
     val cards = cards(all.map { it.itemId }.distinct().mapNotNull(::entry)).associateBy { it.id }
     val names = mutableMapOf<SourceId, String?>()
     fun item(download: Download): DownloadItem {

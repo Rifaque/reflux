@@ -28,6 +28,11 @@ data class PlexCredentials(
     val token: String?,
     val deviceId: String,
     val account: String? = null,
+    /**
+     * Whether a connection made with a token alone is told apart from every other by a digest of its token
+     * ([PlexSource.idOf]). True for connections made since M8; a connection stored before keeps the identity it has.
+     */
+    val tokenIdentity: Boolean = false,
 ) {
     /** Everything but the token, so that an exception or a log line cannot carry it. */
     override fun toString(): String = "PlexCredentials(machineId=$machineId, deviceId=$deviceId)"
@@ -35,6 +40,7 @@ data class PlexCredentials(
     /** Compact persisted form (`key=value` lines). The token is a secret; see SECURITY.md. */
     fun encode(): String = listOfNotNull(
         "server=$serverUrl", "machine=$machineId", token?.let { "token=$it" }, "device=$deviceId", account?.let { "account=$it" },
+        "identity=token".takeIf { tokenIdentity },
     ).joinToString("\n")
 
     companion object {
@@ -46,6 +52,7 @@ data class PlexCredentials(
                 token = pairs["token"],
                 deviceId = pairs["device"] ?: return null,
                 account = pairs["account"],
+                tokenIdentity = pairs["identity"] == "token",
             )
         }
     }

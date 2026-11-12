@@ -4,14 +4,26 @@ What changes for people using Reflux, version by version. The rules for versions
 
 ## Unreleased
 
+- Profiles: everyone who watches on one device can have their own. Each profile keeps its own watch history, Continue Watching, favorites, collections, chosen versions, and its own Jellyfin and Plex accounts, and never sees another's. One profile is never mentioned; add a second from the profile entry in the navigation. Your existing library becomes the first profile, "Main", with everything it had.
+- A server is entered once: another profile signs in to the same Jellyfin or Plex server by choosing it, with its own account. An account already signed in in one profile can't be signed in from another, and signing in to a server as someone new in your own profile tells you so first.
+- Each Jellyfin and Plex account now signs in as a device of its own, so two accounts on one server never get each other's sessions.
+- A profile can have a 4-digit PIN. It is asked for when the profile opens, wrong guesses slow down, and the PIN itself is never stored. A TV with several profiles asks who's watching each time it starts.
+- Forgot a profile's PIN? "Forgot PIN" resets that profile after asking: its PIN, watch history, favorites, collections, downloads, and server sign-ins on this device are removed, and nothing changes on your servers, in your media, or in other profiles.
+- Two people who each use a Plex token on the same server now each get their own source, in their own profile.
+- Reflux for Windows and Linux won't open a library made by a newer Reflux; it says so and leaves the library untouched.
+- Settings: clear a profile's watch history on this device. Continue Watching starts empty, and nothing changes on your servers, which keep their own history, or in your media and downloads; the cleared history doesn't come back from your servers either.
+- Something playing keeps counting for the profile that started it, even if someone switches profiles; switching stops it first.
+- On Android TV and Google TV, the launcher's continue row shows the profile you're in, and a card opens Reflux in that profile, straight to the title. A profile with a PIN keeps its viewing off the launcher.
+- The navigation has its final layout: Home, Movies, Shows, and Search, then Downloads, Sources, Settings, and your profile. On a phone, held upright or on its side, there is one button for your profile, which leads to Downloads, Sources, and Settings. Online metadata, Media Atmosphere, and About Reflux moved from Sources to the new Settings page.
+- The website's page titles read "Page | Reflux", and its pages tell search engines what Reflux is and when each page last changed. Small links (the logo, the RSX Develops credit, the documentation list) are easier to tap.
+
 - Reflux opens with its mark drawing itself on Android 12 and later, greets a first run with it, and shows it flowing while a library is being built or read, or a video is loading, instead of an empty page. With reduce motion on, it stays still.
-- On a phone, the Downloads and Sources buttons in the top corner have space between them, so they no longer run together over artwork.
 - On Android, a subtitle line that is already showing where you skip to now appears straight away, instead of only from the next line.
 - About Reflux now has "Help and feedback", which opens Reflux's support page (on a TV it shows the address), and "Save a support report": a short text file with your Reflux version, your device, what it can play, your sources' kinds and states, how the last playback went, and recent problems, to attach to a bug report. Passwords, tokens, server addresses, file paths, and titles are taken out of it, and Reflux never sends it anywhere: on a computer it is saved in your Downloads folder, on a phone or tablet you choose where to share it, and on a TV it is saved in the device's Download folder, under Reflux.
 - Reflux for Android has its permanent identity for Google Play and the Amazon Appstore. Development builds installed before this one are a separate app and can be uninstalled.
 
 - Reflux for Windows comes as a zip and Reflux for Linux as a tar.gz, each with everything it needs to run (on Linux, apart from your distribution's libmpv). Extract it and run Reflux; nothing is installed. The Windows build is not yet signed by a publisher, so Windows may warn before it first opens; each download has a SHA-256 checksum to check it against.
-- Reflux recognises your films and shows online with TMDB, and fetches their descriptions and artwork, alongside what your servers and files provide. Only a title and its year are sent to TMDB. Turn it off with "Online metadata & artwork" under Sources, and Reflux uses only your servers and files. About Reflux credits TMDB.
+- Reflux recognises your films and shows online with TMDB, and fetches their descriptions and artwork, alongside what your servers and files provide. Only a title and its year are sent to TMDB. Turn it off with "Online metadata & artwork" in Settings, and Reflux uses only your servers and files. About Reflux credits TMDB.
 - Reflux keeps its library out of Android's cloud backup and device-to-device transfer, since it holds your servers' sign-ins.
 - Reflux's website, reflux.rsxdevelops.dev: what Reflux is and how it looks on each device, where it runs and what it plays, its sources, downloads, how testing will work, documentation, the changelog, support, privacy, terms, and third-party notices.
 
@@ -22,18 +34,18 @@ What changes for people using Reflux, version by version. The rules for versions
 - When two servers describe the same title differently, Reflux shows one consistent description: the server you added first, filled in by the other and by the online catalog. It no longer depends on which was scanned last.
 - A title you identified yourself keeps your choice through rescans and refreshes, even when a server has it matched to something else.
 - Identify has "Refresh details", to fetch a title's details and artwork again. If the catalog can't be reached, nothing changes.
-- "Online metadata & artwork", under Sources: turn it off and Reflux looks nothing up online, using what your servers provide and what it already has.
+- "Online metadata & artwork", in Settings: turn it off and Reflux looks nothing up online, using what your servers provide and what it already has.
 - Pictures from a Jellyfin server are fetched at the size Reflux shows them, so they take a fraction of the space on your device.
 - Show pages open faster.
 
 - A refreshed look across Reflux. The navigation on every device is a calm frosted layer that floats over your media, with where you are shown by a lit pill and a small bar, not by color. On tablets, desktops, and Google TV, Home's featured title and a title's page now run their artwork under the navigation.
 - On a TV, the navigation rail stays out of the way until you go to it, then widens into a frosted panel with the names.
 - On Android phones and tablets, artwork now reaches the top of the screen, under the status bar, and the navigation sits clear of the gesture area.
-- Media Atmosphere, under Sources: let a title's artwork tint the space around it on Home and on its page. It is off unless you turn it on.
+- Media Atmosphere, in Settings: let a title's artwork tint the space around it on Home and on its page. It is off unless you turn it on.
 - If you've asked your system for high contrast (Android's high-contrast text or contrast setting, a Windows contrast theme, GNOME's high contrast), or turned off transparency effects on Windows, Reflux uses solid surfaces instead of frosted ones, and high contrast also brightens secondary text, edges, and the focus ring.
 - Buttons and cards now dim briefly while you press them.
 
-- Reflux has one navigation everywhere: Home, Movies, Shows, Search, Downloads, and Sources. On a phone held upright, Home, Movies, Shows, and Search are icons along the bottom, with Downloads and Sources at the top; on its side, and on tablets, they are in a rail on the left; on Windows and Linux, in a sidebar; on a TV, in a rail you reach with Left on the remote, which shows their names while you are in it.
+- Reflux has one navigation everywhere: Home, Movies, Shows, Search, Downloads, and Sources. On a phone held upright, Home, Movies, Shows, and Search are icons along the bottom; on its side, and on tablets, they are in a rail on the left; on Windows and Linux, in a sidebar; on a TV, in a rail you reach with Left on the remote, which shows their names while you are in it.
 - On a TV, Back on Home, Movies, Shows, Search, Downloads, or Sources first goes to the navigation, so it never leaves Reflux from the middle of a row.
 - On Windows and Linux, Ctrl+1 to Ctrl+6 go straight to each place. With a controller, the bumpers step through them.
 - Plex servers can be added, by your Plex account, a Plex token, or nothing at all where the server lets your network in. Their films and shows join your library like any other source's, play directly, can be downloaded, and keep what you watched in step with Plex.

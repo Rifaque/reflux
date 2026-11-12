@@ -168,7 +168,7 @@ Provider data older than 90 days is read again, ten works per pass, oldest first
 
 ### Online lookups
 
-"Online metadata & artwork", under Sources, where the build has a provider (`metadata.online`, on by default). Off, nothing is sent to a metadata provider and no new provider picture is fetched; what sources say, what was fetched before, and file-name identification are what the library shows, and nothing known is forgotten. Identify is not offered while it is off. Turned on again, what was waiting is looked up.
+"Online metadata & artwork", in Settings (under Sources before M8), where the build has a provider (`metadata.online`, on by default). Off, nothing is sent to a metadata provider and no new provider picture is fetched; what sources say, what was fetched before, and file-name identification are what the library shows, and nothing known is forgotten. Identify is not offered while it is off. Turned on again, what was waiting is looked up.
 
 ### Language
 

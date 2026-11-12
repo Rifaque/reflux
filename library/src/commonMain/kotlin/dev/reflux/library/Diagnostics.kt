@@ -31,7 +31,7 @@ fun Library.diagnostics(): LibraryDiagnostics {
         multipleVersions = entries(itemsByIds(multiple)),
         missingEpisodes = missingEpisodes(),
         missingArtwork = works.filter { ArtworkKind.POSTER !in it.artwork },
-        unavailableSources = sources().filter { it.availability == Availability.UNAVAILABLE },
+        unavailableSources = visibleSources().filter { it.availability == Availability.UNAVAILABLE },
     )
 }
 

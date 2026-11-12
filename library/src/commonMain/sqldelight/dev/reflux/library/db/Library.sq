@@ -16,7 +16,46 @@ CREATE TABLE source (
     -- Whether the source takes part in the unified library (docs/NAVIGATION.md). Never changed by availability.
     included INTEGER NOT NULL DEFAULT 1,
     -- The source answered but no longer accepts Reflux's sign-in: signing in again is the way back.
-    sign_in_required INTEGER NOT NULL DEFAULT 0
+    sign_in_required INTEGER NOT NULL DEFAULT 0,
+    -- The server address it was reached at, entered once and shared by every profile (server_endpoint).
+    endpoint_id TEXT,
+    -- The profile whose account this is (docs/WATCH_STATE.md, "Profiles"); null for a source every profile shares.
+    profile_id TEXT,
+    -- The profile whose watch state this source's own records are reconciled with; null when it keeps none.
+    sync_profile_id TEXT
+);
+
+-- Local viewers of this installation (docs/WATCH_STATE.md, "Profiles"). Exactly one is active.
+CREATE TABLE profile (
+    id TEXT NOT NULL PRIMARY KEY,
+    name TEXT NOT NULL,
+    position INTEGER NOT NULL,
+    created_at INTEGER NOT NULL,
+    active INTEGER NOT NULL DEFAULT 0,
+    -- The optional PIN: a random salt and a keyed verifier (never the PIN), and how many wrong entries in a row.
+    pin_salt TEXT,
+    pin_verifier TEXT,
+    pin_failures INTEGER NOT NULL DEFAULT 0,
+    pin_locked_until INTEGER,
+    -- When the viewer last cleared their local watch history: older source records are not news after it.
+    history_cleared_at INTEGER
+);
+
+-- A viewer's own preferences, by name. What is about the device stays in `setting`.
+CREATE TABLE profile_setting (
+    profile_id TEXT NOT NULL,
+    key TEXT NOT NULL,
+    value TEXT NOT NULL,
+    PRIMARY KEY (profile_id, key)
+);
+
+-- A server's address, entered once on this device; each profile signs in to it with its own account.
+CREATE TABLE server_endpoint (
+    id TEXT NOT NULL PRIMARY KEY,
+    type TEXT NOT NULL,
+    address TEXT NOT NULL,
+    display_name TEXT NOT NULL,
+    created_at INTEGER NOT NULL
 );
 
 -- The libraries a source is made of (a server's), as last read, so they can be shown while it is away.
@@ -101,6 +140,9 @@ CREATE TABLE version (
     library_section TEXT,
     -- Whether it takes part in the unified library, from its library's source and section (recomputeInclusion).
     included INTEGER NOT NULL DEFAULT 1,
+    -- Whether the active profile may see it at all: its library's source is shared or the profile's own account
+    -- (recomputeVisibility). Every read, scoped or not, requires it.
+    visible INTEGER NOT NULL DEFAULT 1,
     UNIQUE (source_id, path)
 );
 
@@ -148,9 +190,10 @@ CREATE TABLE artwork (
 
 CREATE INDEX artwork_source ON artwork(source_id);
 
--- The canonical watch state: one row per work, whichever copy played.
+-- The canonical watch state: one row per work and profile, whichever copy played.
 CREATE TABLE watch_state (
-    item_id TEXT NOT NULL PRIMARY KEY,
+    profile_id TEXT NOT NULL,
+    item_id TEXT NOT NULL,
     position_ms INTEGER NOT NULL,
     duration_ms INTEGER,
     completed INTEGER NOT NULL,
@@ -160,11 +203,13 @@ CREATE TABLE watch_state (
     updated_at INTEGER,
     -- The copy the position was measured on (it may be gone) and its cut: the position's timeline.
     version_id TEXT,
-    cut TEXT
+    cut TEXT,
+    PRIMARY KEY (profile_id, item_id)
 );
 
--- What a source said about one of its items when it was last compared with the canonical state.
+-- What a source said about one of its items when it was last compared with a profile's canonical state.
 CREATE TABLE watch_sync (
+    profile_id TEXT NOT NULL,
     source_id TEXT NOT NULL,
     path TEXT NOT NULL,
     played INTEGER NOT NULL,
@@ -172,12 +217,14 @@ CREATE TABLE watch_sync (
     last_played_at INTEGER,
     -- When the source and Reflux last had nothing left to settle for this item.
     reconciled_at INTEGER NOT NULL,
-    PRIMARY KEY (source_id, path)
+    PRIMARY KEY (profile_id, source_id, path)
 );
 
 CREATE TABLE favorite (
-    item_id TEXT NOT NULL PRIMARY KEY,
-    added_at INTEGER NOT NULL
+    profile_id TEXT NOT NULL,
+    item_id TEXT NOT NULL,
+    added_at INTEGER NOT NULL,
+    PRIMARY KEY (profile_id, item_id)
 );
 
 -- "Identify this movie/show": a correction keyed by file location.
@@ -266,13 +313,15 @@ CREATE TABLE user_collection (
     id TEXT NOT NULL PRIMARY KEY,
     name TEXT NOT NULL,
     smart_query TEXT,
-    created_at INTEGER NOT NULL
+    created_at INTEGER NOT NULL,
+    profile_id TEXT NOT NULL DEFAULT 'default'
 );
 
 CREATE TABLE user_collection_item (
     collection_id TEXT NOT NULL,
     item_id TEXT NOT NULL,
     added_at INTEGER NOT NULL,
+    profile_id TEXT NOT NULL DEFAULT 'default',
     PRIMARY KEY (collection_id, item_id)
 );
 
@@ -306,10 +355,12 @@ CREATE TABLE identity_alias (
     created_at INTEGER NOT NULL
 );
 
--- A user's pinned version for a work.
+-- A viewer's pinned version for a work.
 CREATE TABLE version_preference (
-    item_id TEXT NOT NULL PRIMARY KEY,
-    version_id TEXT NOT NULL
+    profile_id TEXT NOT NULL,
+    item_id TEXT NOT NULL,
+    version_id TEXT NOT NULL,
+    PRIMARY KEY (profile_id, item_id)
 );
 
 -- Sources ---------------------------------------------------------------------------------------
@@ -337,6 +388,16 @@ SELECT * FROM source WHERE id = ?;
 
 allSources:
 SELECT * FROM source ORDER BY added_at, id;
+
+-- The sources the active profile sees: those every profile shares, and its own accounts.
+visibleSources:
+SELECT * FROM source WHERE profile_id IS NULL OR profile_id = (SELECT id FROM profile WHERE active = 1) ORDER BY added_at, id;
+
+setSourceOwnership:
+UPDATE source SET endpoint_id = :endpointId, profile_id = :profileId, sync_profile_id = :syncProfileId WHERE id = :id;
+
+sourcesOfProfile:
+SELECT * FROM source WHERE profile_id = ? ORDER BY added_at, id;
 
 markSourceScanned:
 UPDATE source SET availability = 'AVAILABLE', sign_in_required = 0, last_scan_at = :now, last_available_at = :now WHERE id = :id;
@@ -395,10 +456,22 @@ UPDATE version SET
       version.library_section)
     ELSE version.section END;
 
--- Whether each version takes part in the unified library: its library's source is included, and its library
--- is not excluded. A copy whose origin source is gone stays included.
+-- Whether the active profile sees each version (docs/WATCH_STATE.md, "Profiles"): its library's source is shared
+-- or the profile's own account, and a copy kept on the device came from a shared source or from the profile's.
+recomputeVisibility:
+UPDATE version SET visible = CASE
+  WHEN EXISTS (SELECT 1 FROM source WHERE source.id = version.library_source_id AND source.profile_id IS NOT NULL
+               AND source.profile_id IS NOT (SELECT id FROM profile WHERE active = 1)) THEN 0
+  WHEN EXISTS (SELECT 1 FROM download JOIN source copies ON copies.id = version.source_id
+               WHERE copies.type = 'downloads' AND download.path = version.path AND download.profile_id IS NOT NULL
+               AND download.profile_id IS NOT (SELECT id FROM profile WHERE active = 1)) THEN 0
+  ELSE 1 END;
+
+-- Whether each version takes part in the unified library: the active profile sees it, its library's source is
+-- included, and its library is not excluded. A copy whose origin source is gone stays included.
 recomputeInclusion:
 UPDATE version SET included = CASE
+  WHEN version.visible = 0 THEN 0
   WHEN EXISTS (SELECT 1 FROM source WHERE source.id = version.library_source_id AND source.included = 0) THEN 0
   WHEN EXISTS (SELECT 1 FROM excluded_section
                WHERE excluded_section.source_id = version.library_source_id AND excluded_section.section_id = version.library_section) THEN 0
@@ -447,20 +520,20 @@ WHERE year IS NOT NULL AND kind = 'SHOW' AND EXISTS (
 -- source, or one :section of it (docs/NAVIGATION.md, section 4).
 presentMovies:
 SELECT item.* FROM item LEFT JOIN metadata ON metadata.item_id = item.id
-WHERE item.kind = 'MOVIE' AND EXISTS (SELECT 1 FROM version WHERE version.item_id = item.id AND ((:source IS NULL AND version.included = 1) OR (version.library_source_id = :source AND (:section IS NULL OR version.library_section = :section))))
+WHERE item.kind = 'MOVIE' AND EXISTS (SELECT 1 FROM version WHERE version.item_id = item.id AND ((:source IS NULL AND version.included = 1) OR (version.visible = 1 AND version.library_source_id = :source AND (:section IS NULL OR version.library_section = :section))))
 ORDER BY COALESCE(metadata.sort_key, item.sort_key), item.year;
 
 presentShows:
 SELECT item.* FROM item LEFT JOIN metadata ON metadata.item_id = item.id
 WHERE item.kind = 'SHOW' AND EXISTS (
-    SELECT 1 FROM item episode JOIN version ON version.item_id = episode.id WHERE episode.show_id = item.id AND ((:source IS NULL AND version.included = 1) OR (version.library_source_id = :source AND (:section IS NULL OR version.library_section = :section)))
+    SELECT 1 FROM item episode JOIN version ON version.item_id = episode.id WHERE episode.show_id = item.id AND ((:source IS NULL AND version.included = 1) OR (version.visible = 1 AND version.library_source_id = :source AND (:section IS NULL OR version.library_section = :section)))
 )
 ORDER BY COALESCE(metadata.sort_key, item.sort_key), item.year;
 
 presentSeasonsOfShow:
 SELECT * FROM item
 WHERE kind = 'SEASON' AND show_id = :showId AND EXISTS (
-    SELECT 1 FROM item episode JOIN version ON version.item_id = episode.id WHERE episode.season_id = item.id AND ((:source IS NULL AND version.included = 1) OR (version.library_source_id = :source AND (:section IS NULL OR version.library_section = :section)))
+    SELECT 1 FROM item episode JOIN version ON version.item_id = episode.id WHERE episode.season_id = item.id AND ((:source IS NULL AND version.included = 1) OR (version.visible = 1 AND version.library_source_id = :source AND (:section IS NULL OR version.library_section = :section)))
 )
 ORDER BY season_number;
 
@@ -469,12 +542,12 @@ SELECT * FROM item WHERE kind = 'EPISODE' AND show_id = ?;
 
 presentEpisodesOfSeason:
 SELECT * FROM item
-WHERE kind = 'EPISODE' AND season_id = :seasonId AND EXISTS (SELECT 1 FROM version WHERE version.item_id = item.id AND ((:source IS NULL AND version.included = 1) OR (version.library_source_id = :source AND (:section IS NULL OR version.library_section = :section))))
+WHERE kind = 'EPISODE' AND season_id = :seasonId AND EXISTS (SELECT 1 FROM version WHERE version.item_id = item.id AND ((:source IS NULL AND version.included = 1) OR (version.visible = 1 AND version.library_source_id = :source AND (:section IS NULL OR version.library_section = :section))))
 ORDER BY episode_number, absolute_number, air_date;
 
 presentPlayables:
 SELECT * FROM item
-WHERE kind IN ('MOVIE', 'EPISODE') AND EXISTS (SELECT 1 FROM version WHERE version.item_id = item.id AND ((:source IS NULL AND version.included = 1) OR (version.library_source_id = :source AND (:section IS NULL OR version.library_section = :section))));
+WHERE kind IN ('MOVIE', 'EPISODE') AND EXISTS (SELECT 1 FROM version WHERE version.item_id = item.id AND ((:source IS NULL AND version.included = 1) OR (version.visible = 1 AND version.library_source_id = :source AND (:section IS NULL OR version.library_section = :section))));
 
 -- Whatever there is to play, in any scope: what library changes are watched by.
 anyPlayables:
@@ -553,19 +626,19 @@ SELECT locator FROM artwork WHERE source_id = ?;
 versionsOfItem:
 SELECT version.*, source.availability, source.locality
 FROM version JOIN source ON source.id = version.source_id
-WHERE version.item_id = :itemId AND ((:source IS NULL AND version.included = 1) OR (version.library_source_id = :source AND (:section IS NULL OR version.library_section = :section)))
+WHERE version.item_id = :itemId AND ((:source IS NULL AND version.included = 1) OR (version.visible = 1 AND version.library_source_id = :source AND (:section IS NULL OR version.library_section = :section)))
 ORDER BY version.id;
 
 -- Every version of every episode of a show, by episode: how many there are to choose between.
 versionIdsOfShow:
 SELECT version.id, version.item_id
 FROM version JOIN item ON item.id = version.item_id
-WHERE item.show_id = ?;
+WHERE item.show_id = ? AND version.visible = 1;
 
 -- The episodes of a show with a version somewhere other than on the device: what there is to keep of it.
 episodesOffDeviceOfShow:
 SELECT DISTINCT item.id FROM version JOIN item ON item.id = version.item_id JOIN source ON source.id = version.source_id
-WHERE item.show_id = ? AND source.locality != 'DEVICE';
+WHERE item.show_id = ? AND source.locality != 'DEVICE' AND version.visible = 1;
 
 versionById:
 SELECT version.*, source.availability, source.locality
@@ -575,10 +648,10 @@ WHERE version.id = ?;
 itemAvailability:
 SELECT version.item_id, source.availability
 FROM version JOIN source ON source.id = version.source_id
-WHERE ((:source IS NULL AND version.included = 1) OR (version.library_source_id = :source AND (:section IS NULL OR version.library_section = :section)));
+WHERE ((:source IS NULL AND version.included = 1) OR (version.visible = 1 AND version.library_source_id = :source AND (:section IS NULL OR version.library_section = :section)));
 
 lowConfidenceVersions:
-SELECT * FROM version WHERE confidence < ? ORDER BY source_id, path;
+SELECT * FROM version WHERE confidence < ? AND visible = 1 ORDER BY source_id, path;
 
 deleteVersion:
 DELETE FROM version WHERE id = ?;
@@ -772,44 +845,54 @@ DELETE FROM metadata_attempt WHERE item_id NOT IN (SELECT id FROM item);
 presentSeasonsAndEpisodesOfShow:
 SELECT * FROM item
 WHERE show_id = ? AND (
-    (kind = 'EPISODE' AND EXISTS (SELECT 1 FROM version WHERE version.item_id = item.id))
+    (kind = 'EPISODE' AND EXISTS (SELECT 1 FROM version WHERE version.item_id = item.id AND version.visible = 1))
     OR (kind = 'SEASON' AND EXISTS (
-        SELECT 1 FROM item episode JOIN version ON version.item_id = episode.id WHERE episode.season_id = item.id))
+        SELECT 1 FROM item episode JOIN version ON version.item_id = episode.id WHERE episode.season_id = item.id AND version.visible = 1))
 );
 
 -- Watch state, favorites, overrides, preferences -------------------------------------------------
 
 upsertWatchState:
-INSERT OR REPLACE INTO watch_state(item_id, position_ms, duration_ms, completed, play_count, last_played_at, updated_at, version_id, cut)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+INSERT OR REPLACE INTO watch_state(profile_id, item_id, position_ms, duration_ms, completed, play_count, last_played_at, updated_at, version_id, cut)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 deleteWatchState:
-DELETE FROM watch_state WHERE item_id = ?;
+DELETE FROM watch_state WHERE profile_id = ? AND item_id = ?;
+
+deleteWatchStatesOfProfile:
+DELETE FROM watch_state WHERE profile_id = ?;
 
 watchSyncOf:
-SELECT * FROM watch_sync WHERE source_id = ? AND path = ?;
+SELECT * FROM watch_sync WHERE profile_id = ? AND source_id = ? AND path = ?;
 
 upsertWatchSync:
-INSERT OR REPLACE INTO watch_sync(source_id, path, played, position_ms, last_played_at, reconciled_at)
-VALUES (?, ?, ?, ?, ?, ?);
+INSERT OR REPLACE INTO watch_sync(profile_id, source_id, path, played, position_ms, last_played_at, reconciled_at)
+VALUES (?, ?, ?, ?, ?, ?, ?);
 
 markWatchSyncReconciled:
-UPDATE watch_sync SET reconciled_at = :now WHERE source_id = :sourceId AND path = :path;
+UPDATE watch_sync SET reconciled_at = :now WHERE profile_id = :profileId AND source_id = :sourceId AND path = :path;
 
 deleteWatchSyncOfSource:
 DELETE FROM watch_sync WHERE source_id = ?;
 
+deleteWatchSyncOfProfile:
+DELETE FROM watch_sync WHERE profile_id = ?;
+
 watchStateOf:
+SELECT * FROM watch_state WHERE profile_id = ? AND item_id = ?;
+
+-- A work's state in every profile, for moving it with the work when two works become one.
+watchStatesOfItemEverywhere:
 SELECT * FROM watch_state WHERE item_id = ?;
 
 allWatchStates:
-SELECT * FROM watch_state;
+SELECT * FROM watch_state WHERE profile_id = ?;
 
 watchStatesOfItems:
-SELECT * FROM watch_state WHERE item_id IN ?;
+SELECT * FROM watch_state WHERE profile_id = ? AND item_id IN ?;
 
 recentlyPlayed:
-SELECT * FROM watch_state WHERE last_played_at IS NOT NULL ORDER BY last_played_at DESC LIMIT ?;
+SELECT * FROM watch_state WHERE profile_id = ? AND last_played_at IS NOT NULL ORDER BY last_played_at DESC LIMIT ?;
 
 -- Movies and shows by when they (or a show's newest episode) appeared.
 recentlyAdded:
@@ -825,13 +908,19 @@ ORDER BY latest_added_at DESC, item.sort_key
 LIMIT ?;
 
 insertFavorite:
-INSERT OR IGNORE INTO favorite(item_id, added_at) VALUES (?, ?);
+INSERT OR IGNORE INTO favorite(profile_id, item_id, added_at) VALUES (?, ?, ?);
 
 deleteFavorite:
+DELETE FROM favorite WHERE profile_id = ? AND item_id = ?;
+
+deleteFavoriteEverywhere:
 DELETE FROM favorite WHERE item_id = ?;
 
 allFavorites:
-SELECT * FROM favorite ORDER BY added_at DESC;
+SELECT * FROM favorite WHERE profile_id = ? ORDER BY added_at DESC;
+
+deleteFavoritesOfProfile:
+DELETE FROM favorite WHERE profile_id = ?;
 
 upsertOverride:
 INSERT OR REPLACE INTO identity_override(source_id, path, kind, title, year, season, episode, created_at)
@@ -844,13 +933,20 @@ deleteOverride:
 DELETE FROM identity_override WHERE source_id = ? AND path = ?;
 
 setPreferredVersion:
-INSERT OR REPLACE INTO version_preference(item_id, version_id) VALUES (?, ?);
+INSERT OR REPLACE INTO version_preference(profile_id, item_id, version_id) VALUES (?, ?, ?);
 
 preferredVersion:
-SELECT version_id FROM version_preference WHERE item_id = ?;
+SELECT version_id FROM version_preference WHERE profile_id = ? AND item_id = ?;
 
 clearPreferredVersion:
-DELETE FROM version_preference WHERE item_id = ?;
+DELETE FROM version_preference WHERE profile_id = ? AND item_id = ?;
+
+-- A work's pins in every profile, for moving them with the work when two works become one.
+preferencesOfItemEverywhere:
+SELECT * FROM version_preference WHERE item_id = ?;
+
+deletePreferencesOfProfile:
+DELETE FROM version_preference WHERE profile_id = ?;
 
 -- A pin names a version; when re-identification gives that version to another work (a show's episodes, when
 -- the show is identified), the pin goes with it.
@@ -863,7 +959,7 @@ WHERE EXISTS (SELECT 1 FROM version WHERE version.id = version_preference.versio
 
 versionFacts:
 SELECT version.item_id, item.show_id, version.width, version.height, version.dynamic_range, version.duration_ms
-FROM version JOIN item ON item.id = version.item_id;
+FROM version JOIN item ON item.id = version.item_id WHERE version.visible = 1;
 
 metadataFacts:
 SELECT item_id, genres, runtime_minutes, release_date FROM metadata;
@@ -895,7 +991,7 @@ SELECT provider_collection.* FROM provider_collection JOIN metadata ON metadata.
 WHERE metadata.item_id = ?;
 
 insertUserCollection:
-INSERT INTO user_collection(id, name, smart_query, created_at) VALUES (?, ?, ?, ?);
+INSERT INTO user_collection(id, name, smart_query, created_at, profile_id) VALUES (?, ?, ?, ?, ?);
 
 renameUserCollection:
 UPDATE user_collection SET name = ? WHERE id = ?;
@@ -907,13 +1003,20 @@ deleteUserCollectionItems:
 DELETE FROM user_collection_item WHERE collection_id = ?;
 
 userCollections:
-SELECT * FROM user_collection ORDER BY created_at, id;
+SELECT * FROM user_collection WHERE profile_id = ? ORDER BY created_at, id;
+
+deleteCollectionItemsOfProfile:
+DELETE FROM user_collection_item WHERE profile_id = ?;
+
+deleteCollectionsOfProfile:
+DELETE FROM user_collection WHERE profile_id = ?;
 
 userCollectionById:
 SELECT * FROM user_collection WHERE id = ?;
 
 addToUserCollection:
-INSERT OR IGNORE INTO user_collection_item(collection_id, item_id, added_at) VALUES (?, ?, ?);
+INSERT OR IGNORE INTO user_collection_item(collection_id, item_id, added_at, profile_id)
+SELECT id, :itemId, :addedAt, profile_id FROM user_collection WHERE id = :collectionId;
 
 removeFromUserCollection:
 DELETE FROM user_collection_item WHERE collection_id = ? AND item_id = ?;
@@ -927,10 +1030,12 @@ worksWithoutMatch:
 SELECT item.*, metadata_attempt.outcome FROM item JOIN metadata_attempt ON metadata_attempt.item_id = item.id
 WHERE item.kind IN ('MOVIE', 'SHOW') AND metadata_attempt.outcome != 'MATCHED'
   AND NOT EXISTS (SELECT 1 FROM metadata WHERE metadata.item_id = item.id)
+  AND (EXISTS (SELECT 1 FROM version WHERE version.item_id = item.id AND version.visible = 1)
+    OR EXISTS (SELECT 1 FROM item episode JOIN version ON version.item_id = episode.id WHERE episode.show_id = item.id AND version.visible = 1))
 ORDER BY item.sort_key;
 
 worksWithSeveralVersions:
-SELECT item_id, COUNT(*) AS versions FROM version GROUP BY item_id HAVING COUNT(*) > 1;
+SELECT item_id, COUNT(*) AS versions FROM version WHERE visible = 1 GROUP BY item_id HAVING COUNT(*) > 1;
 
 seasonEpisodeCounts:
 SELECT item.id, item.show_id, item.season_number, metadata.episode_count
@@ -960,11 +1065,11 @@ SELECT DISTINCT version.source_id FROM version JOIN item ON item.id = version.it
 WHERE item.id = :id OR item.show_id = :id;
 
 moveFavorite:
-INSERT OR IGNORE INTO favorite(item_id, added_at) SELECT :toId, added_at FROM favorite WHERE item_id = :fromId;
+INSERT OR IGNORE INTO favorite(profile_id, item_id, added_at) SELECT profile_id, :toId, added_at FROM favorite WHERE item_id = :fromId;
 
 moveCollectionMembership:
-INSERT OR IGNORE INTO user_collection_item(collection_id, item_id, added_at)
-SELECT collection_id, :toId, added_at FROM user_collection_item WHERE item_id = :fromId;
+INSERT OR IGNORE INTO user_collection_item(collection_id, item_id, added_at, profile_id)
+SELECT collection_id, :toId, added_at, profile_id FROM user_collection_item WHERE item_id = :fromId;
 
 deleteCollectionMembershipOf:
 DELETE FROM user_collection_item WHERE item_id = ?;
@@ -988,7 +1093,9 @@ CREATE TABLE download (
     total_bytes INTEGER,
     created_at INTEGER NOT NULL,
     updated_at INTEGER NOT NULL,
-    completed_at INTEGER
+    completed_at INTEGER,
+    -- The profile whose account the copy came from; null for a copy from a source every profile shares.
+    profile_id TEXT
 );
 
 -- A separate subtitle file kept with a download.
@@ -1006,11 +1113,18 @@ CREATE TABLE download_subtitle (
 );
 
 insertDownload:
-INSERT OR IGNORE INTO download(id, item_id, origin_version_id, origin_source_id, origin_path, path, state, failure, bytes_downloaded, total_bytes, created_at, updated_at, completed_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, NULL, 0, ?, ?, ?, NULL);
+INSERT OR IGNORE INTO download(id, item_id, origin_version_id, origin_source_id, origin_path, path, state, failure, bytes_downloaded, total_bytes, created_at, updated_at, completed_at, profile_id)
+VALUES (?, ?, ?, ?, ?, ?, ?, NULL, 0, ?, ?, ?, NULL, (SELECT profile_id FROM source WHERE source.id = ?));
 
 allDownloads:
 SELECT * FROM download ORDER BY created_at, id;
+
+-- The copies the active profile sees: from shared sources, and from its own accounts.
+visibleDownloads:
+SELECT * FROM download WHERE profile_id IS NULL OR profile_id = (SELECT id FROM profile WHERE active = 1) ORDER BY created_at, id;
+
+downloadsOfProfile:
+SELECT * FROM download WHERE profile_id = ? ORDER BY created_at, id;
 
 downloadById:
 SELECT * FROM download WHERE id = ?;
@@ -1067,3 +1181,77 @@ INSERT OR REPLACE INTO setting(key, value) VALUES (?, ?);
 
 deleteSetting:
 DELETE FROM setting WHERE key = ?;
+
+-- Profiles ----------------------------------------------------------------------------------------
+
+profiles:
+SELECT * FROM profile ORDER BY position, created_at, id;
+
+profileById:
+SELECT * FROM profile WHERE id = ?;
+
+activeProfile:
+SELECT * FROM profile WHERE active = 1 LIMIT 1;
+
+insertProfile:
+INSERT OR IGNORE INTO profile(id, name, position, created_at, active) VALUES (?, ?, ?, ?, ?);
+
+renameProfile:
+UPDATE profile SET name = ? WHERE id = ?;
+
+setActiveProfile:
+UPDATE profile SET active = CASE WHEN id = :id THEN 1 ELSE 0 END;
+
+deleteProfile:
+DELETE FROM profile WHERE id = ?;
+
+setProfilePin:
+UPDATE profile SET pin_salt = :salt, pin_verifier = :verifier, pin_failures = 0, pin_locked_until = NULL WHERE id = :id;
+
+recordPinFailure:
+UPDATE profile SET pin_failures = :failures, pin_locked_until = :lockedUntil WHERE id = :id;
+
+setHistoryCleared:
+UPDATE profile SET history_cleared_at = :at WHERE id = :id;
+
+profileSettingValue:
+SELECT value FROM profile_setting WHERE profile_id = ? AND key = ?;
+
+setProfileSetting:
+INSERT OR REPLACE INTO profile_setting(profile_id, key, value) VALUES (?, ?, ?);
+
+deleteProfileSetting:
+DELETE FROM profile_setting WHERE profile_id = ? AND key = ?;
+
+deleteProfileSettingsOf:
+DELETE FROM profile_setting WHERE profile_id = ?;
+
+-- Server endpoints ---------------------------------------------------------------------------------
+
+insertEndpoint:
+INSERT OR IGNORE INTO server_endpoint(id, type, address, display_name, created_at) VALUES (?, ?, ?, ?, ?);
+
+renameEndpoint:
+UPDATE server_endpoint SET display_name = ? WHERE id = ?;
+
+endpoints:
+SELECT * FROM server_endpoint ORDER BY created_at, id;
+
+endpointById:
+SELECT * FROM server_endpoint WHERE id = ?;
+
+deleteUnusedEndpoints:
+DELETE FROM server_endpoint WHERE NOT EXISTS (SELECT 1 FROM source WHERE source.endpoint_id = server_endpoint.id);
+
+-- Every title the installation knows, whoever's account it is on: what a support report must never contain.
+everyTitle:
+SELECT item.title, metadata.title AS described, metadata.original_title FROM item LEFT JOIN metadata ON metadata.item_id = item.id;
+
+-- A profile forgotten how to open: its PIN, its wait, and the moment it cleared its history go with what it kept.
+resetProfileLock:
+UPDATE profile SET pin_salt = NULL, pin_verifier = NULL, pin_failures = 0, pin_locked_until = NULL, history_cleared_at = NULL WHERE id = ?;
+
+-- A shared server whose watch records were compared with a profile that is gone is compared with nobody.
+clearSyncProfile:
+UPDATE source SET sync_profile_id = NULL WHERE sync_profile_id = ?;
+

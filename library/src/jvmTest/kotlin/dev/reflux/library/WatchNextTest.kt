@@ -456,5 +456,29 @@ class WatchNextTest {
         assertEquals(ArtworkLocator.Remote("still"), WatchNext.program(still)!!.artwork?.locator)
     }
 
+    @Test
+    fun theRowIsTheActiveProfilesAndAProfileWithAPinShowsNothingThere() = runTest {
+        scanned("Movies/Heat (1995)/Heat (1995).mkv")
+        val main = library.activeProfile()
+        library.stopped(heat, 40 * MINUTE, 170 * MINUTE)
+        assertEquals(listOf(main), WatchNext.programs(library).map { it.profile }, "each card names the profile it opens in")
+
+        // Another viewer's row has none of it.
+        val sam = library.createProfile("Sam")
+        library.switchProfile(sam)
+        assertTrue(WatchNext.programs(library).isEmpty())
+        library.stopped(heat, 10 * MINUTE, 170 * MINUTE)
+        assertEquals(listOf(sam), WatchNext.programs(library).map { it.profile })
+
+        // A profile with a PIN keeps its viewing off the launcher, which is outside the lock.
+        library.setPin(sam, "1357", MemoryPinKey())
+        assertTrue(WatchNext.programs(library).isEmpty())
+        library.removePin(sam)
+        assertEquals(1, WatchNext.programs(library).size)
+        // The same work in two profiles is two different cards: the row is rewritten when the profile changes.
+        library.switchProfile(main)
+        assertTrue(WatchNext.programs(library).single().fingerprint != WatchNext.programs(library).single().copy(profile = sam).fingerprint)
+    }
+
     private fun assertIsAdd(change: WatchNextChange) = assertTrue(change is WatchNextChange.Add, "expected an addition, was $change")
 }

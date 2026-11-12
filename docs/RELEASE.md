@@ -1,6 +1,6 @@
 # Reflux Release Readiness
 
-What stands between the source tree and builds that can be handed to testers and the public, and the checklists each stage must pass. The milestones themselves are in [ROADMAP.md](ROADMAP.md) (M6 release engineering, security, and legal; M7 compatibility, performance, and release proof; M8–M10 beta to 1.0); version rules are in [VERSIONING.md](VERSIONING.md); the website, beta program, and store tracks are in [LAUNCH.md](LAUNCH.md).
+What stands between the source tree and builds that can be handed to testers and the public, and the checklists each stage must pass. The milestones themselves are in [ROADMAP.md](ROADMAP.md) (M6 release engineering, security, and legal; M7 compatibility, performance, and release proof; M8 to M11 profiles, navigation, the player, and distribution; M12 the qualification campaign and the beta; M13 the release candidate and 1.0); version rules are in [VERSIONING.md](VERSIONING.md); the website, beta program, and store tracks are in [LAUNCH.md](LAUNCH.md).
 
 ## Beta entry checklist (`0.9.0-beta.1`)
 
@@ -15,7 +15,7 @@ What stands between the source tree and builds that can be handed to testers and
 - [ ] At least one physical phone, one physical Google TV / Android TV device, one Fire TV device, and one physical controller verified (VERIFICATION.md).
 - [ ] CI green on GitHub, including Android.
 - [ ] Google Play closed testing track and Amazon Appstore testing set up with the current store requirements read and recorded here.
-- [ ] The website meets the ten conditions in ROADMAP.md, M8, "The website before the beta" (HTTPS on a stable domain, tester routing and instructions, known limitations, feedback, privacy and legal, the current version), with the demo video, signup, install instructions, changelog, and support.
+- [ ] The website meets the ten conditions in ROADMAP.md, M12, "The website before the beta" (HTTPS on a stable domain, tester routing and instructions, known limitations, feedback, privacy and legal, the current version), with the demo video, signup, install instructions, changelog, and support.
 - [ ] Feedback path in the app (link and diagnostics export) works on every platform.
 - [ ] `CHANGELOG.md` has the beta's entry; the `release: 0.9.0-beta.1` commit and tag exist.
 
@@ -35,7 +35,7 @@ What stands between the source tree and builds that can be handed to testers and
 - [ ] The V1 acceptance criteria in ROADMAP.md hold on every V1 target.
 - [ ] `1.0.0` is the final release candidate's commit with only the version changed.
 - [ ] Store listings final on Google Play and the Amazon Appstore; desktop downloads on the website.
-- [ ] Website in its 1.0 state (W4, M10): stable store and download links, final documentation, release notes, support and legal pages current.
+- [ ] Website in its 1.0 state (W4, M13): stable store and download links, final documentation, release notes, support and legal pages current.
 
 ## Release system (M6)
 
@@ -73,7 +73,7 @@ The manifest names the full commit, the version and every derived number, the ch
 | Windows | **None: unsigned, by decision** (DECISIONS.md, 2026-11-08) | — | SHA-256 and provenance instead; see "Windows: unsigned distribution" |
 | Linux | None (no publisher-signing model to match Windows') | — | SHA-256, provenance, and GitHub's release attestation |
 
-Never committed: keystores, passwords, certificates with private keys, signing tokens. The Android build reads signing values only from `REFLUX_SIGNING_*` environment variables or `reflux.signing.*` properties in the user's own `~/.gradle/gradle.properties`; without them a release builds unsigned and the release tool refuses it. Rotating the upload key: generate a new one, register it with Play (Play Console → App integrity → request upload key reset) and with Amazon (contact the Appstore team), replace the four GitHub secrets, and record the date here. The upload key is made at the start of M8 (the first build given to testers), by the owner.
+Never committed: keystores, passwords, certificates with private keys, signing tokens. The Android build reads signing values only from `REFLUX_SIGNING_*` environment variables or `reflux.signing.*` properties in the user's own `~/.gradle/gradle.properties`; without them a release builds unsigned and the release tool refuses it. Rotating the upload key: generate a new one, register it with Play (Play Console → App integrity → request upload key reset) and with Amazon (contact the Appstore team), replace the four GitHub secrets, and record the date here. The upload key is made before the first build given to testers (the beta, M12), by the owner.
 
 ## Android release build
 
@@ -101,6 +101,10 @@ To build locally: `docker build -t reflux-libmpv tools/libmpv`, then `docker run
 
 Reflux for Windows is **unsigned by decision** (DECISIONS.md, 2026-11-08). What stands in for a publisher signature: a stable artifact name, the exact commit, SHA-256 in `SHA256SUMS` and on the download page, GitHub's signed provenance, HTTPS delivery from GitHub releases only, and a download page that says plainly what Windows will show. Observed (VERIFICATION.md, M6): `Get-AuthenticodeSignature` reports NotSigned; Microsoft Defender finds nothing; launched with the download mark, SmartScreen intercepts it ("Windows protected your PC") and it does not start until the user chooses to run it; where Smart App Control is on, Windows blocks unsigned unknown apps outright, with no per-app exception, so this build cannot run there. Users are never told to switch either off. Signing is revisited before or around 1.0, when distribution scale justifies a certificate.
 
+### A library from a newer Reflux
+
+The desktop refuses to open a library whose schema is newer than the build's (`LibraryDatabase.open`, `NewerLibraryException`), before anything is written: a zip of an older Reflux run against a newer library says "This library was created by a newer version of Reflux, and this version can't safely open it. Nothing in it was changed. Install the latest Reflux to use it again.", in a system dialog and on standard error, and ends. Android refuses a downgrade itself (the store will not install a lower `versionCode`, and the platform's database helper throws on one).
+
 ## Store readiness (M7)
 
 Read 2026-11-08 from the stores' current documentation (sources below); recheck when each track is set up. Supersedes the M6 table. Nothing is submitted; no listing exists.
@@ -110,7 +114,7 @@ Read 2026-11-08 from the stores' current documentation (sources below); recheck 
 | Package | `dev.rsxdevelops.reflux`, one bundle for phones, tablets, Android TV, Google TV | `dev.rsxdevelops.reflux`, the APK from the same build and `versionCode` |
 | Target API | 36 required for new apps and updates since 2026-08-31; Reflux targets 36, `minSdk` 26, `compileSdk` 37 | Amazon recommends 36 for Fire OS 16 and requires each Fire OS's floor (34 on Fire OS 14); 36 meets both |
 | Native code | One library (`libandroidx.graphics.path.so`, from Compose), 16 KB-aligned on every ABI and stored uncompressed: meets Play's 16 KB page-size rule | — |
-| Bundle and signing | AAB, Play App Signing; uploads signed with the owner's upload key (made at M8's start) | The APK, signed with the same upload key; Amazon re-signs |
+| Bundle and signing | AAB, Play App Signing; uploads signed with the owner's upload key (made before the first build given to a store; the Play and Amazon app entries are created before M9) | The APK, signed with the same upload key; Amazon re-signs |
 | Manifest | Launcher and leanback launcher, banner, touchscreen and leanback not required, `READ_MEDIA_VIDEO` (TVs only, explained in the listing), `WRITE_EPG_DATA` (Watch Next), cleartext allowed for home servers, no backup | `android.hardware.touchscreen` not required, which Amazon needs to list an app for Fire TV |
 | Exported components | The launcher activity and the read-only artwork provider (`${applicationId}.artwork`) | Same |
 | Release build | R8 and resource shrinking, not debuggable, release logging redacted, no TMDB credential, no endpoint of Reflux's own (it calls only the user's servers and plex.tv) | Same |
@@ -119,6 +123,20 @@ Read 2026-11-08 from the stores' current documentation (sources below); recheck 
 | Listing | `release/store-listing.md`: text, category, content-rating answers; artwork in `design/brand/store` (icon, feature graphic, TV banner, screenshots) | The same text; 114 and 512 px icons, the 1280 × 720 Fire TV icon, 1920 × 1080 screenshots (3 to 10) |
 | Testing track | Closed testing. A **personal** account created after 2023-11-13 must have ≥12 testers opted in for the last 14 days before production access; an **organization** account is exempt. Which the RSX Develops account is: **not readable from this environment** (owner action, M8 entry checklist) | Live App Testing: testers are invited by e-mail and install from the Appstore on their device; they must allow the Appstore's promotional e-mails |
 | Owner actions | Create the app as `dev.rsxdevelops.reflux` in Play Console; read the account type; make the upload key; set the support e-mail | Create the app in the Amazon developer console; set the support e-mail |
+
+### Release preparation (M8)
+
+DECISIONS.md, 2026-11-11 (O-17): the Google Play and Amazon app entries are created before M9, alongside M8, so that Play's testing window (twelve testers for fourteen days, for a personal account) and the TV and Watch Next reviews can start as early as practical. They are made in the stores' consoles with the owner's accounts, so nothing in the repository can make them; M8 prepared everything up to that step.
+
+| Owner action | Where | State (2026-11-11) | What it needs from the repository |
+| --- | --- | --- | --- |
+| Create the app `dev.rsxdevelops.reflux` in Play Console, and read whether the developer account is **personal** or **organization** | Play Console → Create app | **Owner action, open** | Nothing more: the package name, the listing text (`release/store-listing.md`), and the artwork (`design/brand/store/`) are ready |
+| Create the app in the Amazon developer console, for Fire TV on Fire OS only (no Vega OS devices) | Amazon developer console → Add a new app | **Owner action, open** | The same listing and the 1280 × 720 Fire TV icon |
+| Make the upload key, keep one copy offline, put it in GitHub's secrets (`REFLUX_UPLOAD_*`) | The owner's machine, GitHub settings | **Owner action**, due before the first build given to a store (the beta, M12) | "Signing", above |
+| Verify the website in Google Search Console (DNS TXT at Cloudflare) and submit the sitemap | Search Console, Cloudflare | **Owner action, open** | Nothing: the sitemap is at `https://reflux.rsxdevelops.dev/sitemap.xml` (WEBSITE.md, "Search") |
+| Two plex.tv accounts (or their tokens) that can reach a Plex server, for the two-account live test | `~/.reflux-live/plex.env` (`REFLUX_PLEX_URL`, `REFLUX_PLEX_TOKEN_A`, `REFLUX_PLEX_TOKEN_B`) | **Owner action, open**; the test is written and skips until then (VERIFICATION.md, M8) | `PlexTwoAccountsLiveTest` |
+
+When each is done, its row says so, with the date; the Play account type decides whether the beta's closed test needs the twelve-tester period (Store readiness, above).
 
 ### Android developer verification (M7)
 

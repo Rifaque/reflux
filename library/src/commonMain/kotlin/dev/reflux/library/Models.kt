@@ -7,6 +7,7 @@ import dev.reflux.core.model.Availability
 import dev.reflux.core.model.Episode
 import dev.reflux.core.model.MediaItem
 import dev.reflux.core.model.MediaVersion
+import dev.reflux.core.model.ProfileId
 import dev.reflux.core.model.Season
 import dev.reflux.core.model.SourceId
 import dev.reflux.core.model.WatchState
@@ -27,6 +28,10 @@ data class SourceRecord(
     val included: Boolean = true,
     /** It answered, and no longer accepts Reflux's sign-in: signing in again is the way back. */
     val signInRequired: Boolean = false,
+    /** Whose account this is (docs/WATCH_STATE.md, "Profiles"); null for a source every profile shares. */
+    val profileId: ProfileId? = null,
+    /** The server address it was reached at, shared by every profile ([ServerEndpoint]); null for a folder or share. */
+    val endpointId: String? = null,
 )
 
 /**

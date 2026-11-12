@@ -62,7 +62,31 @@ import java.awt.event.WindowEvent
 import java.awt.image.BufferedImage
 import javax.swing.SwingUtilities
 
-fun main() = runReflux(DesktopEnvironment())
+fun main() {
+    val environment = try {
+        DesktopEnvironment()
+    } catch (e: dev.reflux.library.NewerLibraryException) {
+        // A library from a newer Reflux is left exactly as it is; the person is told why this one will not open it.
+        refuseNewerLibrary(e)
+        return
+    }
+    runReflux(environment)
+}
+
+/** Says, in a window of the system's own, that this library needs a newer Reflux, and where it is; then Reflux ends. */
+internal fun refuseNewerLibrary(e: dev.reflux.library.NewerLibraryException) {
+    val message = newerLibraryMessage(e)
+    System.err.println(message)
+    if (!java.awt.GraphicsEnvironment.isHeadless()) {
+        runCatching { javax.swing.JOptionPane.showMessageDialog(null, message, "Reflux", javax.swing.JOptionPane.WARNING_MESSAGE) }
+    }
+}
+
+/** What the person is told: what happened, that nothing was changed, and what to do. */
+internal fun newerLibraryMessage(e: dev.reflux.library.NewerLibraryException): String =
+    "This library was created by a newer version of Reflux, and this version can't safely open it.\n\n" +
+        "Nothing in it was changed. Install the latest Reflux to use it again.\n\n" +
+        "Library: ${e.file}\n(library format ${e.found}; this version of Reflux understands up to ${e.supported})"
 
 /** A running desktop shell, for end-to-end tests that drive the real window. */
 internal class RunningReflux(val app: AppState, val window: ComposeWindow, val exit: () -> Unit)

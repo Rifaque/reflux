@@ -77,7 +77,7 @@ class LibraryDepthUiTest {
 
     @Test
     fun onlineLookupsCanBeTurnedOffAndBackOn() = screen(populated()) { app ->
-        app.navigator.show(Destination.Sources)
+        app.navigator.show(Destination.Settings)
         runCatching { onNode(hasScrollToNodeAction()).performScrollToNode(hasText("Online metadata & artwork")) }
         awaitText("Online metadata & artwork")
         assertTrue(app.canIdentify)
@@ -93,7 +93,7 @@ class LibraryDepthUiTest {
 
     @Test
     fun withoutAProviderThereIsNoSwitchToTurn() = screen(populated(metadata = false)) { app ->
-        app.navigator.show(Destination.Sources)
+        app.navigator.show(Destination.Settings)
         runCatching { onNode(hasScrollToNodeAction()).performScrollToNode(hasText("Media Atmosphere")) }
         awaitText("Media Atmosphere")
         assertTrue(onAllNodesWithText("Online metadata & artwork").fetchSemanticsNodes().isEmpty())

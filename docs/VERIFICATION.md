@@ -1264,3 +1264,76 @@ Nothing was asserted less. The re-added-server case passed on `a905f27`, on GitH
 **Physical Android:** VERIFICATION.md, "M7: the release on the Phone 2a and Pad 7". The Phone 2a on `cfb4865` is the final code apart from the test-only commits after it. The Pad 7 and the Fire TV Stick were walked on `11ec1af` and `4d6538e`.
 
 **Website:** built, checked in CI (17 pages and the 404 prerendered, `check-dist` 0 problems, 18 external links), and not deployed (owner actions, WEBSITE.md, "Deployment").
+
+## M8: Viewer identity, profiles, navigation structure, website search (2026-11-11)
+
+On the developer's Windows 11 machine, uncommitted on `feature/engine-foundation` from `17cd272`; a throwaway Jellyfin server in Docker. Targeted validation, as the M8+ test strategy asks (ROADMAP.md; AGENTS.md, "Milestone execution rules"): the modules M8 touched, locally; the full `check` is CI's on the next push.
+
+**The account-isolation defect, reproduced and closed.** Before M8, a second Jellyfin user signed in after the first saw the first's history, and resuming it reported progress to the second's server account. `ProfilesTest.anotherViewerSignedInToTheSameServerSeesNothingOfTheFirst` walks exactly that with two accounts on one fake server: the second profile sees none of the first's titles, places, favorites, collections, pins, Continue Watching, or sources, and its server account is told nothing of the first's viewing (nor the first's of the second's).
+
+| What | How | Result |
+| --- | --- | --- |
+| Every read model bound to the active profile | `ProfileIsolationTest.noReadGivesAProfileAnotherProfilesTitlesOrViewing`: two profiles, each with its own account on one server, and a shelf both share; movies, shows, recently added, Continue Watching, continuations, Watch Next, favorites, collections, franchises, title search (7 queries), smart search (5), diagnostics (4 lists), downloads, each source's own library, every show's detail and episode version choices, under each profile | Pass. Checked to fail: with visibility forced on for every profile, it and `ProfilesTest` fail (2 of 11), as they must |
+| Every query in `Library.sq` bound to the profile | `ProfileIsolationTest.everyQueryIsBoundToTheActiveProfile`: every labeled query reading versions requires `visible` or `included`, every one reading viewer state names `profile_id`, or is on a listed installation-wide query with its reason | Pass |
+| Every viewer-state table has `profile_id`; every table classified | `ProfileMigrationTest.everyViewerStateTableIsKeyedByProfile` | Pass |
+| Migration 7 from a pre-profile library | `ProfileMigrationTest.aLibraryFromBeforeProfilesBecomesTheFirstProfileAndLosesNothing`: history, server baselines, favorites, collections, pins, and downloads become the first profile's; the server account the first profile's, the share everyone's; a second profile starts with nothing. The older migration tests (schemas 1 to 6) run through it | Pass |
+| A playback stays with its profile | `ProfilesTest.aPlaybackWritesToTheProfileItStartedInWhateverIsActiveLater` (library) and `ProfilesUiTest.switchingProfileWhilePlayingStopsThePlaybackForTheProfileItWasFor` (the switch stops it; the stop is recorded for the profile it played for) | Pass |
+| Clearing local history: local, and not brought back | `WatchReconcilerTest` (three new cases: unchanged record, first meeting after a clearing, undated record; news after it adopted; new viewing sent), `ProfilesTest.clearingLocalWatchHistoryIsLocalAndIsNotBroughtBack` (a real scan of an unchanged server adopts nothing and sends nothing; a later change on the server is adopted), `ProfilesUiTest.clearingWatchHistoryAsksFirstAndEmptiesContinueWatching` | Pass |
+| Accounts | `ProfilesTest.anAccountIsOneProfilesAndCannotBeSignedInToFromAnother`, `aProfilesAccountsMustBeRemovedBeforeIt`, `deletingAProfileRemovesWhatWasItsOwnAndNothingElse` | Pass |
+| PIN | `ProfilesTest.aPinIsCheckedSlowsGuessersDownAndIsNeverKept`: wrong entries slow down, the wait survives reopening the database, the PIN is in no byte of the database file; `ProfileRulesTest` (form, back-off, comparison); `ProfilesUiTest` (asked when chosen, a wrong one said, required at start, Back cannot get past it) | Pass |
+| Launcher | `WatchNextTest.theRowIsTheActiveProfilesAndAProfileWithAPinShowsNothingThere`, `WatchNextLinkTest` (the profile-bound link, and links from before profiles), `ProfilesUiTest.aLauncherCardOpensInItsProfileWithoutAskingAndAPinStillAsks` | Pass (`WatchNextLinkTest` with the Android unit tests, below) |
+| Per-account device identity | `ProfileRulesTest`, `JellyfinConnectorTest.eachAccountSignsInAsItsOwnDeviceNeverTheInstallations`, `PlexConnectorTest.twoAccountsNeverShareAClientIdentityAndAServerWithoutSignInHasItsOwn` (accounts, tokens by digest, the open server: each its own identity, none the installation's own) | Pass |
+| Navigation structure | `NavigationTest`, `HandheldLayoutTest`, `AboutUiTest`, `SourcesUiTest`, `VisualSystemTest`, `LibraryDepthUiTest`, `DownloadsUiTest`: the 12 tests that held the old structure (About and the switches under Sources, two top-corner buttons, six rail stops) rewritten to assert the new one (the utility area at the rail's foot, one profile entry on a phone, Settings); `ProfilesUiTest` (7) | Pass |
+
+**Live: two Jellyfin accounts on a real server** (`JellyfinTwoAccountsLiveTest`, Jellyfin 12.4.0 in Docker from `tools/ci/jellyfin-test-server.sh`; the administrator, and a second user made by the test and deleted after). Observed, not assumed:
+
+- *One identity shared by both accounts, as before M8:* A's playback report was accepted. B signing in from the same identity left A's token working (`Users/Me` 200), and B's worked. The server then listed two sessions under the one identity, B's and A's, and A's lookup of "this device's session" (the server's sessions filtered by the identity, as `JellyfinPlayback` reads them) returned **B's session first, then A's**. B's lookup returned only B's (a non-administrator sees only their own sessions). So before M8 the playback truth layer, signed in as an administrator, could read the other account's session.
+- *Per-account identities, M8:* both accounts were signed in at once; A's lookup by A's identity found only A's sessions; B's identity, read as A, found only B's; B's lookup found only B's. Neither identity ever resolved the other account's session. Signing out ended both tokens.
+
+**Live: two Plex accounts, owner-pending.** `PlexTwoAccountsLiveTest` is written and runs when `REFLUX_PLEX_URL`, `REFLUX_PLEX_TOKEN_A`, and `REFLUX_PLEX_TOKEN_B` are given (the environment or `~/.reflux-live/plex.env`). It needs two plex.tv accounts that can reach a server, which only the owner can provide. Run 2026-11-11: skipped, "owner-pending". No live Plex result is claimed; per-account Plex identity is covered by `PlexConnectorTest` against the fake server.
+
+**Website** (`website/`, built locally):
+
+- `check-dist`: 17 pages and 47 files, 0 problems, with the new checks (titles `Page | Reflux`, home `Reflux | Your media, played well`; no em dash; description lengths; canonical address and `og:url`; JSON-LD that parses and claims no rating or review; one heading 1 and no skipped level; alt text; every page in the sitemap; the 404 `noindex`; `robots.txt` naming the sitemap). It found two descriptions out of range (home 183 characters, Terms 36); both were rewritten.
+- `check-links`: 18 pages, 18 external links, 0 broken.
+- `check-layout`: 17 pages at 7 sizes (2560, 1440, 1280, 820, 1180 on its side, a 390 phone, 844 on its side), 0 problems after fixes. It found the header's logo link 23 px tall, the RSX Develops credit 21 px, and the documentation navigation's links just under 24 px, below the 24 × 24 px target on every page; all three now have a minimum height. No page scrolls sideways at any size; layout shift and largest paint within budget. 119 screenshots for review (phone and tablet pages looked at).
+- Sitemap `<lastmod>` from git, also in a shallow clone (the boundary commit ignored).
+- Production is unchanged until this is pushed and Vercel deploys `main`: the live site still shows the old titles.
+
+**Targeted runs, final tree:** `core` 346 tests, `library` 228, `sources:jellyfin` 63, `sources:plex` 21, `desktop:engine` 44 (6 skipped: live tests without their servers, the Plex two-account test among them), `desktop:app` 41 (11 skipped: window tests, which need `-Preflux.windowTests=true`), `ui` 319 (1 skipped), Android unit tests 51, the Android release Kotlin compile; 0 failed. `JellyfinSignOutLiveTest`, which runs against the owner's own server (`~/.reflux-live/jellyfin.env`, a dedicated non-administrator account), first failed because it looked for Reflux's session under the installation's bare identity; updated to the account's own, it passes there: the session is listed under the per-account identity, signing in again is the same device, and removal ends it.
+
+**Not run in M8, by the strategy:** the full regression on this machine (CI's, on push); the playback format matrix (M12: the engines did not change); device walks on the Phone 2a, Pad 7, and Fire TV (the end-of-milestone walk needs the devices attached and the owner's go-ahead; the shared code is covered offscreen above); Linux (CI's container job).
+
+## M8: architecture challenge (2026-11-11)
+
+A review of the M8 working tree for flaws that would force a redesign in M9 or M10, with three probes written as tests (`ProfileBoundaryTest`). All three failed first, and pass after the corrections:
+
+| Probe | Found | Correction |
+| --- | --- | --- |
+| Taps across the window while a profile's PIN is asked for | A tap opened a title's page behind the question: the overlay drew over the page without taking its input | The page and the navigation are not composed while Reflux asks who is watching, and the overlay takes all pointer input |
+| The eight-destination rail on a television (960 x 540) and a phone on its side (915 x 412, 740 x 360) | The television fits. On the phone the last entry was squeezed to 18 px | A phone's rail shows the primary four and the utility area's one profile entry, as when it is upright (NAVIGATION.md, section 3) |
+| The search text after a profile switch | The last viewer's search was still in the field | Search text, the last playback report, and the notice are cleared on a switch |
+
+Also corrected: the support report's redaction list had been narrowed to the open profile's titles and sources, while the diagnostics log it carries is the installation's; it is the whole installation's again (`Library.privateWords`).
+
+Found and **not** corrected, each recorded in ROADMAP.md, M8, "Open corrections": a forgotten PIN or a lost PIN key on a single-profile installation locks the viewer out; Plex connections made with a token share one source identity; the desktop has no guard against opening a newer library; smaller items listed there.
+
+## M8: corrections (2026-11-12)
+
+The three corrections the architecture challenge required, and the three smaller ones, on the same uncommitted tree.
+
+| Correction | Tests | Result |
+| --- | --- | --- |
+| **Forgot PIN** | `ProfilesTest.aForgottenPinResetsOnlyThatProfileAndTouchesNoServer` (a wrong PIN refused; reset refused until the accounts are signed out; then PIN, history, favorites, collections, pins, and preferences gone, the profile and its name kept, the server's address kept, no server told anything, the other profile and its account exactly as before, a new PIN accepted, and a library opened again finds no PIN). `ProfilesUiTest.aForgottenPinOnTheOnlyProfileIsResetAfterConfirmingAndStaysResetAtTheNextLaunch` (one profile with a PIN, a wrong PIN, Forgot PIN, nothing erased until confirmed, "Keep it" takes it back, the confirmed reset, the media library unchanged, no PIN in anything reported, a new PIN set, the next launch opens with no question). `resettingOneProfilesForgottenPinLeavesAnotherProfileAlone` | Pass |
+| **Plex token identity** | `PlexConnectorTest.twoTokensOnOneServerAreTwoSourcesAndNeverCollide` (two tokens and the open server are three sources; the same token again the same one; the identity survives storing and reading back; no token or name in an identifier; each its own device), `aTokenConnectionStoredBeforeKeepsTheIdentityItHas`, and the earlier test that asserted the collision, now asserting the opposite. `ProfileRulesTest.theDigestIsSha256` (FIPS 180-4's examples and a million-character input) | Pass |
+| **Desktop downgrade guard** | `LibraryDowngradeTest`: the current schema opens and opens again; an older one is migrated with its history; a newer one is refused with the message, and the file's SHA-256 is the same before and after | Pass |
+| Shared server's sync profile on deletion | `ProfilesTest.aSharedServersRecordsAreComparedWithNobodyOnceItsProfileIsGone` (and nobody inherits the server's record) | Pass |
+| Watch Next dismissals per profile | `WatchNextLinkTest.aCardOneViewerRemovedIsNotRemovedForAnother` | Pass |
+| A launcher link to what a profile cannot see | `ProfilesTest.onlyWhatAProfileCanSeeCountsAsSeen`, `ProfilesUiTest.aLinkToWhatAProfileCannotSeeOpensNothingOfIt` | Pass |
+
+**Runs, final tree:** `core` 347, `library` 234 (the isolation sweep and the query check among them), `sources:jellyfin` 63, `sources:plex` 23, `desktop:engine` 44 (6 skipped: live tests without their servers), `desktop:app` 41 (11 skipped: window tests), `ui` 325 (1 skipped), Android unit tests 52, the Android release Kotlin compile; 0 failed. The first Android compile of this pass failed on a missing import in `WatchNextPublisher`, fixed.
+
+**Live, Jellyfin, rerun:** `JellyfinTwoAccountsLiveTest` on Jellyfin 12.4.0 in Docker passes again with the same observations as before (shared identity: the administrator's lookup lists the other account's session; per-account identities: each finds only its own; sign-out ends both tokens). `JellyfinSignOutLiveTest` passes against the owner's server.
+
+**Live, Plex: still owner-pending.** No `~/.reflux-live/plex.env` and no `REFLUX_PLEX_*` variables exist on this machine, so `PlexTwoAccountsLiveTest` was skipped ("owner-pending") and **no live Plex result is claimed**. The test now signs both tokens in through the application's own connections as two profiles on a real data directory (two sources, two profiles, one endpoint, two device identities, no token in an identifier, each profile seeing only its own account), so when it runs it exercises the corrected identity rather than the connector alone.
+

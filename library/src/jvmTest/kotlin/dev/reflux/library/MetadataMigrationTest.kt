@@ -24,6 +24,7 @@ class MetadataMigrationTest {
         JdbcSqliteDriver("jdbc:sqlite:$file").use { RefluxDatabase.Schema.create(it) }
         DriverManager.getConnection("jdbc:sqlite:$file").use { connection ->
             connection.createStatement().use { sql ->
+                shapeBeforeProfiles { sql.execute(it) }
                 sql.execute("DROP TABLE source_metadata")
                 sql.execute("DROP TABLE catalog_description")
                 sql.execute("ALTER TABLE metadata DROP COLUMN match_evidence")
@@ -48,7 +49,7 @@ class MetadataMigrationTest {
 
         val library = Library(LibraryDatabase.open(file)) { 10 }
         assertEquals(1_200_000, library.watchState(MediaId("movie"))!!.positionMs)
-        assertTrue(library.queries.allFavorites().executeAsList().any { it.item_id == "movie" })
+        assertTrue(library.queries.allFavorites("default").executeAsList().any { it.item_id == "movie" })
         assertEquals("sealed:x", library.sources().single().config)
         assertEquals("on", library.setting("appearance.mediaAtmosphere"))
         assertEquals("A cop.", library.metadata(MediaId("movie"))!!.overview)

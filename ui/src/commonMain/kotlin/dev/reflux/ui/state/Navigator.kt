@@ -24,6 +24,19 @@ sealed interface Destination {
     data object Sources : Section
 
     /**
+     * Reflux's settings: the device's (online lookups, Media Atmosphere) and the active profile's own (its name, its
+     * PIN, clearing its watch history), and the way to About. Part of the utility area (docs/NAVIGATION.md, section 1).
+     */
+    data object Settings : Section
+
+    /**
+     * Who is watching: the profiles of this installation, switching between them, adding one. The profile entry of the
+     * utility area; on a phone, where the utility area is this one entry, it also leads to Downloads, Sources, and
+     * Settings.
+     */
+    data object Profiles : Section
+
+    /**
      * A work's page. [scope] is where it was opened from: the unified library, or a source's own library, whose
      * page lists and plays only that source's copies (docs/NAVIGATION.md, section 4).
      */
@@ -60,10 +73,17 @@ sealed interface Destination {
     data class Notice(val name: String) : Destination
 }
 
-/** The global destinations in the navigation's order. */
-val Destinations: List<Destination.Section> = listOf(
-    Destination.Home, Destination.Movies, Destination.Shows, Destination.Search, Destination.Downloads, Destination.Sources,
-)
+/** The primary destinations (docs/NAVIGATION.md, section 1): the library itself, in the navigation's order. */
+val PrimaryDestinations: List<Destination.Section> = listOf(Destination.Home, Destination.Movies, Destination.Shows, Destination.Search)
+
+/**
+ * The utility area (docs/NAVIGATION.md, section 1): managing where the library comes from, what is kept on the device,
+ * settings, and who is watching. At the foot of a rail or sidebar; on a phone, behind the profile entry at the top.
+ */
+val UtilityDestinations: List<Destination.Section> = listOf(Destination.Downloads, Destination.Sources, Destination.Settings, Destination.Profiles)
+
+/** Every global destination, in the navigation's order: the primary ones, then the utility area. */
+val Destinations: List<Destination.Section> = PrimaryDestinations + UtilityDestinations
 
 /**
  * The pages about where the library comes from, and the About pages reached from them: the Sources destination

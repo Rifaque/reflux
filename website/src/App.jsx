@@ -1,6 +1,6 @@
 import { Route, Routes, useLocation } from 'react-router-dom'
 import { useEffect } from 'react'
-import { routeFor } from './routes.js'
+import { routeFor, titleOf } from './routes.js'
 import { Footer, Header } from './components.jsx'
 import { useReveal } from './motion.jsx'
 import Home from './pages/Home.jsx'
@@ -20,7 +20,7 @@ export default function App() {
   // Prerendered pages carry their own titles; moving between them in the browser keeps them right.
   useEffect(() => {
     const route = routeFor(pathname)
-    document.title = route.path === '/' ? route.title : `${route.title} · Reflux`
+    document.title = titleOf(route)
     if (!hash) window.scrollTo(0, 0)
   }, [pathname, hash])
   return (

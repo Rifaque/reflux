@@ -30,11 +30,27 @@ The pictures of Reflux on the site are the real experience layer rendered offscr
 
 No version, address, or checksum is typed into a page. The build fails rather than publish a manifest without a commit or a checksum, or a store record for another package. **Download routing:** Android and Google TV → Google Play; Fire TV → Amazon Appstore; Windows and Linux → the official GitHub release. Android packages are never offered from the site (`check-dist.mjs` fails on an `.apk` or `.aab` link). With nothing published, each section says so.
 
+## Search (M8)
+
+The site is built to be read correctly by search engines and to be useful to whoever arrives from one. Nothing here promises a ranking.
+
+- **Titles:** `Reflux | Your media, played well` for the home page, `Page | Reflux` for every other (DECISIONS.md, 2026-11-11), from one function (`titleOf` in `src/routes.js`) that the prerenderer and the browser both use. Never an em dash: `check-dist` fails on one.
+- **Descriptions:** one per page in `src/routes.js`, 40 to 170 characters, held by `check-dist`.
+- **Canonical addresses, Open Graph, structured data:** each prerendered page names its canonical address, its `og:url`, the sharing image and its alt text, and JSON-LD (`src/seo.js`): RSX Develops as the Organization, the WebSite, Reflux as a SoftwareApplication (multimedia, its platforms, free) on the home page, and a BreadcrumbList on pages beneath it. It claims nothing the site cannot back up: no rating, review, or download count, which Google requires for a software rich result and Reflux does not have; `check-dist` fails on any.
+- **Sitemap and robots:** every route in `sitemap.xml`, with `<lastmod>` from the newest commit touching what the page is made of (in a shallow clone, as CI and Vercel make, the boundary commit is never taken for a change, and a date the history cannot show is left out rather than guessed); `robots.txt` allows everything and names the sitemap; the not-found page is `noindex` and served with status 404.
+- **One address:** any host other than reflux.rsxdevelops.dev (a `*.vercel.app` alias) answers with `X-Robots-Tag: noindex` (`vercel.json`), so only the canonical host is indexed.
+- **Structure:** one heading 1 per page and no skipped heading level; alt text on every image; every documentation page reached from the docs index, the docs navigation, and the footer (`check-dist`, `check-links`).
+- **Search Console** (owner): verify the domain with its DNS TXT record at Cloudflare, submit `https://reflux.rsxdevelops.dev/sitemap.xml`, and inspect the key pages' URLs. Not done from the repository (RELEASE.md, owner actions).
+
+## Responsive (M8)
+
+`node scripts/check-layout.mjs [--screenshots]` serves `dist/` as Vercel does and opens every page in Chromium (Playwright, a development dependency only, pinned; never shipped and not in the site's notices) at seven sizes: a 2560 × 1440 display, a 1440 desktop, a 1280 laptop, an 820 tablet and a 1180 one on its side, a 390 phone upright and an 844 phone on its side. Each page must not scroll sideways, keep its text at 12 px or more, keep every control that is not inline text at 24 × 24 px or more, show its heading and a way to the rest of the site, and stay within the performance budget (layout shift under 0.05, largest contentful paint under 2.5 s, and under 1.6 MB on a desktop; lab numbers, since a new site has no field data). With `--screenshots` it writes every page at every size to `test-results/layout/` (not committed): the set reviewed for M8, and compared against when M11 replaces the content and M12 qualifies the site. CI runs it and keeps the screenshots as an artifact for 14 days.
+
 ## Checks
 
-`npm audit --audit-level=moderate`, `npm run build`, `node scripts/check-dist.mjs`, `node scripts/check-links.mjs` (CI job "Website"):
+`npm audit --audit-level=moderate`, `npm run build`, `node scripts/check-dist.mjs`, `node scripts/check-links.mjs`, `node scripts/check-layout.mjs --screenshots` (CI job "Website"):
 
-- `check-dist`: every route prerendered with a title, a canonical address, and its content in the HTML; a `404.html`; no source maps; no development or private address (localhost, LAN ranges, `*.vercel.app`), plain-HTTP address, credential-shaped string, build secret name, or environment-variable read in any shipped file; no inline script or `style` attribute the CSP would refuse.
+- `check-dist`: every route prerendered with its title in the site's form and no em dash, a description of a readable length, its canonical address and `og:url`, structured data that parses and claims no rating or review, one heading 1 and no skipped heading level, alt text on every image, its place in the sitemap, and its content in the HTML; the not-found page `noindex`; `robots.txt` naming the sitemap; a `404.html`; no source maps; no development or private address (localhost, LAN ranges, `*.vercel.app`), plain-HTTP address, credential-shaped string, build secret name, or environment-variable read in any shipped file; no inline script or `style` attribute the CSP would refuse.
 - `check-links`: every internal link and `#anchor` reaches a page or a file; every external link is HTTPS and answers.
 - `node scripts/serve.mjs` serves `dist/` as Vercel does (clean URLs, `404.html` with status 404, every header in `vercel.json`), so the production build and its CSP are tested locally in a browser.
 
@@ -49,7 +65,7 @@ Project settings: root directory `website`, "include files outside the root dire
 
 **DNS, as Vercel states it (read 2026-11-08 from the project's domain configuration):** rsxdevelops.dev is served by Cloudflare (nameservers `norm.ns.cloudflare.com`, `arushi.ns.cloudflare.com`). Vercel's recommended record for `reflux.rsxdevelops.dev` is **`CNAME reflux → 5abf2611cfb13f8d.vercel-dns-017.com`** (rank 1; the generic `cname.vercel-dns.com` is its second choice), **DNS only, not proxied**, so that Vercel issues and renews the certificate. The domain is not yet added to the project and no record exists ("misconfigured" until both are done).
 
-**State (M7):** the site is built, checked, and ready; nothing is deployed. The owner's actions, in order:
+**State:** live at reflux.rsxdevelops.dev since M7's closure (the owner's actions below were done). Kept for the record: The owner's actions, in order:
 
 1. Push the branch, and connect the GitHub repository to the `reflux-website` project (Vercel → Project → Settings → Git), with the settings above; or, without the Git integration, `npx vercel login`, then in `website/` `npx vercel link` (choose `reflux-website`) and `npx vercel deploy --prod`.
 2. Add `reflux.rsxdevelops.dev` to the project (Settings → Domains), and at Cloudflare add the CNAME above, DNS only.

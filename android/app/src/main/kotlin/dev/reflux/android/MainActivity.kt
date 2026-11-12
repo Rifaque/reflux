@@ -161,10 +161,13 @@ class MainActivity : ComponentActivity() {
         continueFromLauncher(intent)
     }
 
-    /** A Watch Next card names a work; Reflux opens it and plays it from where the user is. */
+    /**
+     * A Watch Next card names a work and the profile whose Continue Watching it was; Reflux opens it in that profile
+     * and plays it from where that viewer is (docs/WATCH_STATE.md, "Profiles").
+     */
     private fun continueFromLauncher(intent: Intent?) {
-        val itemId = WatchNextLink.itemId(intent?.dataString) ?: return
-        app.continueFromOutside(itemId)
+        val target = WatchNextLink.target(intent?.dataString) ?: return
+        app.continueFromOutside(target.itemId, target.profile)
     }
 
     /**

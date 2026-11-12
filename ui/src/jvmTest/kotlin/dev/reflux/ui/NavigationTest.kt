@@ -26,6 +26,8 @@ import dev.reflux.ui.screens.sourceLibraryModel
 import dev.reflux.ui.state.AppState
 import dev.reflux.ui.state.Destination
 import kotlinx.coroutines.runBlocking
+import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.onNodeWithText
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -69,18 +71,19 @@ class NavigationTest {
             assertEquals(listOf(name), node.config.getOrNull(SemanticsProperties.ContentDescription), "but it says its name")
         }
         assertEquals(listOf("Home"), selectedDestination(), "where the viewer is is said, and only that")
-        // Downloads and Sources are within reach without crowding the bar: in the top corner of every destination.
-        assertTrue(bounds(destination("Sources")).top < 80f)
-        assertTrue(bounds(destination("Downloads")).top < 80f)
+        // The utility area is within reach without crowding the bar: one entry in the top corner of every destination.
+        assertTrue(bounds(destination("Profile and settings")).top < 80f)
         assertTrue(onAllNodesWithText("Movies").fetchSemanticsNodes().none { it.boundsInRoot.top > 800f }, "no permanent words in the bar")
         save("nav-phone-portrait")
 
         go("Movies")
         await("Movies") { app.navigator.current == Destination.Movies }
         assertEquals(listOf("Movies"), selectedDestination())
-        go("Sources")
+        go("Profile and settings")
+        await("the utility area") { app.navigator.current == Destination.Profiles }
+        onNodeWithText("Sources").performScrollTo().performClick()
         await("Sources") { app.navigator.current == Destination.Sources }
-        assertEquals(listOf("Sources"), selectedDestination(), "Sources says it is where the viewer is")
+        assertEquals(listOf("Profile and settings"), selectedDestination(), "the utility area's entry says it is where the viewer is")
         assertTrue(runOnIdle { app.navigator.back() })
         assertEquals(Destination.Home, app.navigator.current, "a destination's Back is Home")
     } }
@@ -88,7 +91,8 @@ class NavigationTest {
     @Test
     fun aPhoneOnItsSideHasACompactRailNotTheBarStretchedAcross() = keeping().let { (world, platform) -> screen(world, platform, width = 915, height = 412) { app ->
         awaitText("Recently Added")
-        val names = listOf("Home", "Movies", "Shows", "Search", "Downloads", "Sources")
+        // The library's four and the utility area's one entry, as on the phone held upright.
+        val names = listOf("Home", "Movies", "Shows", "Search", "Profile and settings")
         val rail = names.map { bounds(destination(it)) }
         assertTrue(rail.all { it.right < 80f }, "every destination is in a narrow rail on the left: $rail")
         assertTrue(rail.zipWithNext().all { (a, b) -> b.top > a.top }, "in order, top to bottom")
@@ -151,9 +155,12 @@ class NavigationTest {
             assertEquals(Destination.Movies, app.navigator.current)
             repeat(4) { bumper(GamepadButton.SHOULDER_RIGHT) }
             assertEquals(Destination.Sources, app.navigator.current)
-            assertFalse(bumper(GamepadButton.SHOULDER_RIGHT), "and Sources the last")
+            // The utility area follows, in the navigation's own order.
+            repeat(2) { bumper(GamepadButton.SHOULDER_RIGHT) }
+            assertEquals(Destination.Profiles, app.navigator.current)
+            assertFalse(bumper(GamepadButton.SHOULDER_RIGHT), "and the profile entry the last")
             assertTrue(bumper(GamepadButton.SHOULDER_LEFT))
-            assertEquals(Destination.Downloads, app.navigator.current)
+            assertEquals(Destination.Settings, app.navigator.current)
         }
     }
 
@@ -276,7 +283,7 @@ class NavigationTest {
     fun theRemoteHasARailBesideThePageAndBackGoesToItFirst() = keeping(television = true).let { (world, platform) -> television(world, platform) { app ->
         awaitText("Recently Added")
         await("focus on the page") { has(isFocused()) }
-        val rail = listOf("Home", "Movies", "Shows", "Search", "Downloads", "Sources").map { onNode(destination(it)).fetchSemanticsNode().boundsInRoot.let { r -> Rect(r.left / 2, r.top / 2, r.right / 2, r.bottom / 2) } }
+        val rail = listOf("Home", "Movies", "Shows", "Search", "Downloads", "Sources", "Settings", "Profiles").map { onNode(destination(it)).fetchSemanticsNode().boundsInRoot.let { r -> Rect(r.left / 2, r.top / 2, r.right / 2, r.bottom / 2) } }
         assertTrue(rail.all { it.right < 90f }, "the rail is on the left: $rail")
         save("nav-tv")
         runOnIdle { app.go(Destination.Movies) }
@@ -304,8 +311,13 @@ class NavigationTest {
         await("the rail on Home") { has(isFocused() and destination("Home")) }
         remote(app, Key.ARROW_DOWN, times = 5)
         await("Sources") { has(isFocused() and destination("Sources")) }
+        // The utility area at the rail's foot continues the same list: Settings, then the profile entry.
+        remote(app, Key.ARROW_DOWN, times = 2)
+        await("Profiles") { has(isFocused() and destination("Profiles")) }
         remote(app, Key.ARROW_DOWN)
-        assertTrue(has(isFocused() and destination("Sources")), "no stop after the last destination")
+        assertTrue(has(isFocused() and destination("Profiles")), "no stop after the last destination")
+        remote(app, Key.ARROW_UP, times = 2)
+        await("Sources again") { has(isFocused() and destination("Sources")) }
         remote(app, Key.DPAD_CENTER)
         await("the Sources page") { app.navigator.current == Destination.Sources }
     } }

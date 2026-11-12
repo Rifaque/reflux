@@ -54,7 +54,7 @@ fun Library.unifyWorks(): Int {
                 // What the user said the absorbed work is stays said of the one it became.
                 queries.moveMetadataPin(survivor.id, other.id)
                 queries.moveFavorite(survivor.id, other.id)
-                queries.deleteFavorite(other.id)
+                queries.deleteFavoriteEverywhere(other.id)
                 queries.moveCollectionMembership(survivor.id, other.id)
                 queries.deleteCollectionMembershipOf(other.id)
                 queries.sourcesOfWork(other.id).executeAsList().mapTo(affectedSources, ::SourceId)
