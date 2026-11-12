@@ -2,7 +2,7 @@
 // side for each route in src/routes.js, with that page's title, description, canonical address, sharing card, and
 // structured data, plus 404.html, sitemap.xml (with each page's last change, where git can say), and robots.txt.
 // The browser's script then takes the page over. Run after both Vite builds (npm run build).
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs'
+import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { execFileSync } from 'node:child_process'
 import { fileURLToPath, pathToFileURL } from 'node:url'
@@ -14,12 +14,16 @@ const { routes, notFound, SITE, titleOf } = await import(pathToFileURL(join(site
 const { structuredData } = await import(pathToFileURL(join(site, 'src', 'seo.js')).href)
 const template = readFileSync(join(dist, 'index.html'), 'utf8')
 const escape = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+// Manrope's Latin file, preloaded so the page is drawn once in it (src/styles.css: the face is `font-display: optional`).
+const font = readdirSync(join(dist, 'assets')).find((f) => /^manrope-latin-wght-normal-[\w-]+\.woff2$/.test(f))
+if (!font) throw new Error("Manrope's Latin font is not in dist/assets")
 
 function page(route, url) {
   const title = titleOf(route)
   const address = `${SITE}${route.path === '/' ? '/' : route.path}`
   const indexed = route !== notFound
   const head = [
+    `<link rel="preload" href="/assets/${font}" as="font" type="font/woff2" crossorigin />`,
     `<title>${escape(title)}</title>`,
     `<meta name="description" content="${escape(route.description)}" />`,
     indexed ? `<link rel="canonical" href="${address}" />` : '',
