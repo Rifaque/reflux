@@ -58,6 +58,10 @@ REFLUX_JELLYFIN_TEST_PASSWORD=<its password>
 
 Variables of the same names in the environment take precedence, key by key; only the test reads the file, never Reflux, and nothing in it is repeated in test output. Then `./gradlew :desktop:engine:test --tests "*JellyfinLiveTest*" --rerun-tasks` (Gradle does not treat the file or the environment as an input, so without a forced rerun it may report the test up to date without running it). The test rewrites its user's watch state, so use a dedicated user, not one you care about. With no server of your own, `tools/ci/jellyfin-test-server.sh <scratch-dir>` starts a throwaway one in Docker, and the comment at its top gives the command for it.
 
+Two accounts from one installation (M8, docs/WATCH_STATE.md, "Profiles") have live tests of their own. `JellyfinTwoAccountsLiveTest` makes a second user and deletes it again, so it runs only against a throwaway server whose administrator is named: start one with `tools/ci/jellyfin-test-server.sh <scratch-dir>`, then `REFLUX_JELLYFIN_ADMIN_URL=http://127.0.0.1:8096 REFLUX_JELLYFIN_ADMIN_USER=reflux REFLUX_JELLYFIN_ADMIN_PASSWORD=reflux-test ./gradlew :desktop:engine:test --tests "*JellyfinTwoAccountsLiveTest*" --rerun`; never point it at your own server. `PlexTwoAccountsLiveTest` needs two plex.tv accounts' tokens and a server they can reach, as `REFLUX_PLEX_URL`, `REFLUX_PLEX_TOKEN_A`, and `REFLUX_PLEX_TOKEN_B` in the environment or in `~/.reflux-live/plex.env`. Both write what they observed, without tokens, to `desktop/engine/build/live/`.
+
+To read a failed CI run without its whole log: `tools/ci/failures.sh <run-id>` prints the failed jobs and the failed tests with their first assertion.
+
 Tests that need libmpv, FFmpeg, or a display skip themselves on a machine without them. Set `REFLUX_REQUIRE_ENGINE_TESTS=true` (CI and the container do) to have them fail instead, when a green run must mean they ran.
 
 Shared (`commonMain`) code must stay free of platform APIs; `check` fails when it is not, and the message says which lines.

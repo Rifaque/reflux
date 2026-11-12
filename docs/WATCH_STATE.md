@@ -19,7 +19,7 @@ Media work (movie, episode)
 
 - A **work** is what the media is. An episode is a work; a show and a season are not played and have no watch state of their own.
 - A **version** is one playable copy at one location. A work has as many as its sources hold.
-- The **watch state** (`WatchState`) belongs to the work. There is exactly one per work, in Reflux's own database. No file, version, or source owns progress.
+- The **watch state** (`WatchState`) belongs to the work, for one viewer. There is exactly one per work and profile, in Reflux's own database ("Profiles", below). No file, version, or source owns progress.
 
 The canonical state holds:
 
@@ -197,13 +197,48 @@ Verified end to end there: reading existing state, progress made in Reflux reach
 
 The same test and a walk through the desktop engine also ran against a real home server with a full library (Jellyfin Server 12.2.0, a dedicated test account; VERIFICATION.md has the details). There, a local copy and the server's copy of one film were one work: connecting the server beside existing local progress sent nothing, local progress reached the server at the next scan, and the server's newer position resumed the local copy at the same moment. Episodes of a show, and a film with two copies of different running times on the server, behaved as described above: Next Up followed the episodes' state, and a position travelled only to the server copy on its own timeline while "watched" reached both. Other server versions have not been exercised live.
 
+## Profiles
+
+Since M8 (DECISIONS.md, 2026-11-11) every viewer of an installation is a **profile**: a local identity, never an account with anyone. A new installation has one, "Main", which is never mentioned until a second exists. Everything above is per profile; nothing else about the model changes.
+
+| Whose | What | Where |
+| --- | --- | --- |
+| The installation's, shared by every profile | Works, versions, tracks, metadata, artwork, Identify's corrections, provider collections, sources that are nobody's account (folders, SMB and WebDAV shares, a Plex server open to the network), server addresses (`server_endpoint`), copies of shared sources, device settings (online lookups, Media Atmosphere) | `item`, `version`, `metadata`, `source` with no `profile_id`, `server_endpoint`, `download` with no `profile_id`, `setting` |
+| One profile's | Watch state, what its servers last said (`watch_sync`), favorites, collections, pinned versions, its own preferences, its server accounts, copies of its accounts' media, its PIN, when it last cleared its history | Every viewer-state table carries `profile_id` (`ProfileMigrationTest` fails when one does not, and when a table is added without deciding whose it is) |
+
+**Accounts.** A Jellyfin user or a Plex account (or token) signed in to is the profile's that signed in: `source.profile_id`. A server's address is entered once (`server_endpoint`) and offered to every profile, each signing in with its own account; two profiles on one server are two account sources, and the same film is one work with each profile seeing only its own account's copy. An account already signed in on the device in one profile cannot be signed in from another (`ConnectResult.InAnotherProfile`): an account's server record is one viewer's. A profile signing in to a server as someone other than it was is told so on the form, and that another person wants a profile of their own. Signing out removes the account source; the profile's history stays the profile's. When a profile is deleted, a shared server whose records were compared with it is compared with nobody (`sync_profile_id` cleared): no other profile inherits the server's record of that viewer.
+
+**One device identity per account.** Jellyfin keeps sessions per `DeviceId`, Plex per client identifier, and Reflux finds its own session by that identity (`JellyfinPlayback`). Each account signs in as a device of its own, derived from the installation's identifier, the server, and the account (`AccountDevices`; a Plex token by a SHA-256 digest of it), so two accounts never share one. A Plex connection made with a token alone has no account name, so its *source* is also told apart by a SHA-256 digest of the token (`PlexSource.idOf`): two tokens on one server are two sources in two profiles, the same token again is the same source, and neither is the source a server open to the network is. The token itself is never in an identifier. A token connection stored before M8 keeps the identity its library rows name until it is signed in to again. Observed on a real Jellyfin 12.4.0 (VERIFICATION.md, M8): with one shared identity a second account's sign-in left the first signed in, but the first account's lookup of "this device's session" listed the second account's session first; with per-account identities each lookup finds only its own. A library from before M8 keeps its single account's identity; where two accounts were on one server, all but the first are asked to sign in again, which gives each its own (`SourceConnections.adoptProfiles`).
+
+**Reconciliation.** A source's own records are compared with the watch state of exactly one profile: its account's owner, or for a shared server that keeps watch state the profile that added it (`source.sync_profile_id`). Every profile's accounts are scanned and reconciled whichever profile is active, so a profile is current when it is next opened; only what is shown is the active profile's. Updates are told to a source only for its own profile's viewing: another profile's playback or marks never reach it (`SyncingWatchReporter`, `setWatchedEverywhere`).
+
+**A playback belongs to the profile that started it.** `SyncingWatchReporter` captures the active profile when it is made and writes every report there, whatever profile is active later. Choosing another profile while something plays stops the playback first, which records its stop for the profile it was playing for.
+
+**What each profile sees.** `version.visible` is recomputed with inclusion (`recomputeVisibility`, `recomputeInclusion`) from the active profile: a version is visible when its library's source is shared or the active profile's own, and a copy kept on the device when it came from a shared source or from the active profile's account. Inclusion requires visibility, so every read of the unified library is bound to it; reads of one source's own library require it as well. `ProfileIsolationTest` holds this two ways: every read model the library offers is swept under each of two profiles with their own accounts on one server (no title only on the other's account, no viewing of the other's), and every query in `Library.sq` that reads versions or viewer state is checked to be bound to the active profile, or to be on a short list of installation-wide queries, each with its reason.
+
+**PIN.** Optional, four digits. Kept as a salt and an HMAC-SHA256 verifier under a key the platform's secure store holds (`SealedPinKey` through the platform's `ConfigSeal`: Windows Credential Manager, the Secret Service on Linux, a key in the Android keystore), never as the PIN; never logged, exported, or in a support report. Five wrong entries are free, then the profile waits 30 seconds, doubling to 15 minutes; the count is kept with the profile, so restarting does not reset it (`PinPolicy`). It is a privacy lock between people sharing a device, not a credential: the library database is not encrypted, and ten thousand values cannot resist someone who can read the device's storage and its key. Where Linux has no Secret Service the key is kept as it is, and the PIN locks the interface only (PRIVACY.md). A forgotten PIN is not recovered. The gate offers **Forgot PIN**: after an explicit confirmation the profile is started over (`Library.resetProfile`), losing its PIN and, because the PIN kept them private, everything it kept: watch history, what its servers last said, favorites, collections, pinned versions, preferences, its downloads, and this device's sign-ins to its server accounts (ended as removing a source ends them). The profile and its name stay, open and usable, and can be given a new PIN. No server's own history, media file, shared source, server address, or other profile changes. This is also the way back when the platform's credential store was reset and the PIN key with it. Another profile can still delete a profile with a PIN without knowing it; either way nothing the PIN protected is shown.
+
+**Who is watching.** While Reflux asks, the page and the navigation behind the question are not composed at all, so nothing there can be reached by a finger, a pointer, a keyboard, or assistive technology (`ProfileBoundaryTest`); and when the viewer changes, the last one's search text, last playback report, and notice go with them. A profile with a PIN opens locked, at start and whenever it is chosen. A television with several profiles asks who is watching at every start; a phone or a computer opens the profile it had. With one profile nothing is asked.
+
+## Clearing local watch history
+
+A profile's "Clear watch history" (Settings) forgets Reflux's own record of what it watched: every position, watched mark, and play count, and with them Continue Watching, Next Up, and the launcher row. It changes nothing on any server, deletes no media, download, favorite, or collection, and touches no other profile (`Library.clearWatchHistory`).
+
+The cleared history must not come back from the servers at the next scan, and must not be sent to them. Two rules, in the reconciler itself (`WatchReconciler.reconcile(clearedAtEpochMs)`), so there is still one watch-state engine:
+
+- What a server last said is kept (`watch_sync`). A server record unchanged since then is not news, so it is not adopted; and Reflux's cleared state is not a change of the viewer's, so nothing is sent.
+- The moment of clearing is kept with the profile (`profile.history_cleared_at`). A server record that cannot show it is newer than that, dated at or before it or undated, is not news either, even at a first comparison (a server that was away when the viewer cleared, or newly signed in to).
+
+What happens on a server after the clearing (watched on its own client the next day) is news as usual and is adopted; what the viewer watches in Reflux after it is sent as usual.
+
 ## Outside the application
 
-On Android TV and Google TV the launcher's Watch Next row shows what Continue Watching shows, derived from the same computation (`Library.continuations`, `WatchNext`) each time Reflux brings it up to date. It is a view of the canonical state, not a record of its own: the launcher's rows are only compared with what should be there, a work removed from the launcher is only kept off it (until it is played again), and nothing on the launcher changes a position or marks a work watched (DECISIONS.md, 2026-10-18).
+On Android TV and Google TV the launcher's Watch Next row shows what the active profile's Continue Watching shows, derived from the same computation (`Library.continuations`, `WatchNext.programs(library)`) each time Reflux brings it up to date. Each card names its profile (`reflux://watch/<profile>/<work>`), and opens Reflux in that profile and on that work without asking who is watching; a profile that has a PIN now is asked for it first. A profile with a PIN publishes nothing there: the launcher is outside the lock. Switching profiles rewrites the row. A card a viewer removed from the launcher is remembered per profile and work (`WatchNextDismissals`), so it never hides another viewer's card. A link naming a work the profile cannot see opens nothing of it (`Library.seenByActiveProfile`). It is a view of the canonical state, not a record of its own: the launcher's rows are only compared with what should be there, a work removed from the launcher is only kept off it (until it is played again), and nothing on the launcher changes a position or marks a work watched (DECISIONS.md, 2026-10-18).
 
 ## Not in scope
 
-- A Reflux account, or synchronization between devices. The state is local; sources that keep watch state are the only thing it is reconciled with.
+- A Reflux account, or synchronization or transfer of profiles between devices (Reflux 2.0, with no backend; ROADMAP.md). The state is local; sources that keep watch state are the only thing it is reconciled with.
+- A special guest profile, and Plex Home managed users (DECISIONS.md, 2026-11-11).
 - Matching content by anything other than cut labels and running times.
 - Multi-part files (CD1/CD2) as one timeline.
 
@@ -212,6 +247,7 @@ On Android TV and Google TV the launcher's Watch Next row shows what Continue Wa
 | Piece | Code |
 | --- | --- |
 | Canonical state | `core/model/WatchState.kt` |
+| Profiles, PINs, clearing, endpoints | `library` (`Profiles.kt`, `SealedPinKey`); `core/profile` (`AccountDevices`, `PinPolicy`); schema migration 7 (`7.sqm`) |
 | Completion, resume threshold, recording, merging two histories | `core/watch/WatchRules.kt` |
 | Timelines and cuts | `core/watch/Timeline.kt` |
 | Position handoff | `core/watch/Handoff.kt` |

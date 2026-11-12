@@ -61,6 +61,9 @@ object WatchReconciler {
      * @param playedPast where the source marks a work played by itself when a position is reported to it
      *   (`WatchStateSyncSource.marksPlayedPast`). Reflux's position is compared and sent as the source is told
      *   it ([WatchRules.reportedPosition]), so a source that holds it just short of that point agrees.
+     * @param clearedAtEpochMs when the viewer last cleared their local watch history, if ever. A source record
+     *   that cannot show it is newer than that (dated at or before it, or undated) is history the viewer chose to
+     *   forget, not news: it is never adopted, and the clearing is never sent to the source either.
      */
     fun reconcile(
         itemId: MediaId,
@@ -70,17 +73,20 @@ object WatchReconciler {
         sourceVersion: MediaVersion?,
         nowMs: Long,
         playedPast: Double? = null,
+        clearedAtEpochMs: Long? = null,
     ): Reconciliation {
         val seen = SyncBaseline(source.played, source.positionMs, source.lastPlayedAtEpochMs, nowMs)
         if (agree(local, source, sourceVersion, playedPast)) return Reconciliation(SyncDecision.IN_AGREEMENT, null, null, seen)
 
         val localAt = local?.let(WatchRules::changedAt)
+        val sourceAt = source.lastPlayedAtEpochMs
         val sourceChanged = baseline == null || baseline.played != source.played ||
             baseline.positionMs != source.positionMs || baseline.lastPlayedAtEpochMs != source.lastPlayedAtEpochMs
         val localChanged = if (baseline == null) local != null else localAt != null && localAt > baseline.reconciledAtEpochMs
-        val sourceAt = source.lastPlayedAtEpochMs
         val sourceWins = when {
             !sourceChanged -> false
+            // What the viewer cleared stays cleared: only a record dated after the clearing is something new.
+            clearedAtEpochMs != null && (sourceAt == null || sourceAt <= clearedAtEpochMs) -> false
             // An empty, undated record is a source that was reset, rebuilt, or un-marked, and there is no
             // telling which. Reflux's history is never erased by a source falling silent about a work.
             !localChanged -> saysSomething(source) || sourceAt != null

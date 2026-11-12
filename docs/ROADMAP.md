@@ -5,16 +5,16 @@ The one source of truth for what Reflux is building, in what order, and what is 
 - What was run to verify each piece of work is in [VERIFICATION.md](VERIFICATION.md); it is not repeated here.
 - What a release build needs is in [RELEASE.md](RELEASE.md), and the release and beta checklists are there.
 - How versions are numbered and promoted is [VERSIONING.md](VERSIONING.md).
-- The website is a release workstream across M6, M7, and M8 (below, "The Reflux website"); its visual direction, the demo video, and the beta program are in [LAUNCH.md](LAUNCH.md).
-- Decisions behind the plan are in [DECISIONS.md](DECISIONS.md): the first rebaseline (2026-10-17) and the milestone rebaseline (2026-11-02).
+- The website is a release workstream across the milestones (below, "The Reflux website"); its visual direction, the demo video, and the beta program are in [LAUNCH.md](LAUNCH.md).
+- Decisions behind the plan are in [DECISIONS.md](DECISIONS.md): the first rebaseline (2026-10-17), the milestone rebaseline (2026-11-02), and the rebaseline after M7 (2026-11-11), whose research and reviews are in [planning/M8-M13-REBASELINE.md](planning/M8-M13-REBASELINE.md).
 
-**Current state: M7 operationally complete (2026-11-09; final source `a905f27`). M8 is next, once the owner actions in its entry checklist are done.**
+**Current state: M7 operationally complete (2026-11-09; final source `a905f27`). Rebaselined 2026-11-11: M8 Viewer Identity & Profiles is next.**
 
-This milestone list replaces the one of 2026-10-17 (M0 to M7, with M2 as release engineering and M3 as real-world validation), which replaced the earlier Phase 0–18 plan. Documents and verification sections written before 2026-11-02 use the older numbering; how each old milestone maps to this one is under "Earlier numbering", and DECISIONS.md, 2026-11-02, "The milestone rebaseline", says why.
+This milestone list replaces the one of 2026-11-02 for M8 onwards (M8 Beta, M9 Release Candidate, M10 1.0), which replaced the one of 2026-10-17, which replaced the earlier Phase 0–18 plan. Documents and verification sections keep the numbering they were written with; how each old milestone maps to the current one is under "Earlier numbering", and DECISIONS.md, 2026-11-02 and 2026-11-11, says why.
 
 ## Where Reflux is
 
-Reflux is a **pre-release**. The engine (Media Core, sources, identification, metadata, watch state, Best Version, playback, Smart Offline) is mature and heavily tested; the experience layer runs on desktop, Android phones and tablets, and Android TV. Nothing has been released: the release system, the CI and release pipelines, signed Android release builds as `dev.rsxdevelops.reflux`, the desktop archives with Reflux's own LGPL libmpv, and the website exist and have been rehearsed from clean clones (M6, M7), but nothing has been pushed or deployed, and there is no store listing, no public download, no live website, and no tester outside the project. Playback has been verified on a physical Nothing Phone 2a, Xiaomi Pad 7, and Fire TV Stick 4K Plus, and on the Google TV emulator (VERIFICATION.md); a physical Google TV device has not been used. The current version is `0.9.0-alpha.2` ([VERSIONING.md](VERSIONING.md)).
+Reflux is a **pre-release**. The engine (Media Core, sources, identification, metadata, watch state, Best Version, playback, Smart Offline) is mature and heavily tested; the experience layer runs on desktop, Android phones and tablets, and Android TV. Nothing has been released: the release system, the CI and release pipelines (green on GitHub), signed Android release builds as `dev.rsxdevelops.reflux`, and the desktop archives with Reflux's own LGPL libmpv exist and have been rehearsed from clean clones (M6, M7). The website is live at reflux.rsxdevelops.dev. There is no store listing, no public download, and no tester outside the project. Playback has been verified on a physical Nothing Phone 2a, Xiaomi Pad 7, and Fire TV Stick 4K Plus, and on the Google TV emulator (VERIFICATION.md); a physical Google TV device has not been used. The current version is `0.9.0-alpha.2` ([VERSIONING.md](VERSIONING.md)).
 
 Status words used below:
 
@@ -51,12 +51,15 @@ Status words used below:
 | M5 — Library Depth & Reflux Magic | A richer library and the features that set Reflux apart | **Complete** (2026-11-07), with the limits in its section |
 | M6 — Release Engineering / Security / Legal | Production builds, packaging, signing, security hardening, legal and licensing, store preparation; the website's foundation and its legal and privacy pages | **Complete** (2026-11-08), with the limits in its section |
 | M7 — Compatibility, Release Proof, Brand + Website, and Beta/Test Readiness | The permanent Android identity, the brand, the redesigned website, CI and release proof, the source-built Windows libmpv, the diagnostics export, the M6 stability leftovers, store readiness, and the M8 entry checklist | **Complete** (2026-11-09, operationally: every gate locally and on GitHub, attestations verified), with the owner actions in its M8 entry checklist |
-| M8 — Beta | `0.9.0-beta.N` in testers' hands until the beta exit criteria hold, with the website operating as their entry point | Future |
-| M9 — Release Candidate | `0.9.0-rc.N`, feature freeze, final validation, submissions prepared | Future |
-| M10 — 1.0 | `1.0.0` on every V1 target | Future |
-| The Reflux website | Release infrastructure, not a milestone of its own: foundation in M6, public and tester readiness in M7, required before M8 begins, kept in M8 to M10 (below, "The Reflux website") | **Partial**: built and checked (M7); deployment is an owner action |
+| M8 — Viewer Identity & Profiles, Navigation Structure, Website SEO/Responsive Work, and Release Preparation Foundations | Every piece of viewer state belongs to a profile; Jellyfin and Plex accounts isolated; the navigation's final structure; the website technically indexable and responsive; the store app entries started | **Next** |
+| M9 — Navigation & Surface System 2.0 | The shell unmistakably Reflux on every form factor, on M8's structure | Future |
+| M10 — Player & Playback Experience 2.0 | Playback visually dominant; one session across fullscreen, mini-player, and picture-in-picture | Future |
+| M11 — Distribution & Release Surfaces | Windows installer, first-party Linux packages, the metadata provider gate, the website's final content | Future |
+| M12 — Qualification Campaign & Beta | One comprehensive campaign, then `0.9.0-beta.N` with testers until the exit criteria hold | Future |
+| M13 — Release Candidate & 1.0 | `0.9.0-rc.N`, feature freeze, submissions, then `1.0.0` on every V1 target | Future |
+| The Reflux website | Release infrastructure, not a milestone of its own: foundation in M6, public and tester readiness in M7, technical SEO in M8, final content in M11, kept through M13 (below, "The Reflux website") | **Live** at reflux.rsxdevelops.dev |
 
-**How they relate.** M2P established playback truth and compatibility. M3 establishes how the viewer navigates and controls the media universe that playback operates on. M4 improves the visual system around that product structure. M5 deepens the library experience. M6 prepares the mature product for production release, with its security, legal, and the website's foundation. M7 proves it across the final production matrix and brings the website to public and tester readiness. M8 is the beta, with the website operating as the testers' entry point; M9 and M10 are the release candidate and 1.0.
+**How they relate.** M2P established playback truth and compatibility. M3 establishes how the viewer navigates and controls the media universe that playback operates on. M4 improves the visual system around that product structure. M5 deepens the library experience. M6 prepares the mature product for production release, with its security, legal, and the website's foundation. M7 proves it across the final production matrix and brings the website to public and tester readiness. M8 makes the viewer a first-class identity (profiles, isolated accounts) and settles the navigation's structure; M9 and M10 redesign the shell and the player on it; M11 builds the installers and packages; M12 qualifies everything once and runs the beta; M13 is the release candidate and 1.0.
 
 **Why release engineering is M6, not M2.** The roadmap separates building the product from hardening it for release. Release engineering, security, and legal work come after navigation, the source model, the visual system, and the library's depth are settled, so that what is signed, packaged, reviewed, and submitted is the product as it will ship. Security is not deferred: foundational security work continues whenever it is needed (credentials in the system store, redaction, sign-out on removal, and the checks in VERIFICATION.md are in place now). It does not define the current milestone.
 
@@ -178,7 +181,7 @@ Source adapter → source and library contents → unified Reflux media model �
 | Functional glass only (navigation, panels, sheets, the player's chrome), legible over any artwork on every tier; PREMIUM measures what is behind it | Done |
 | Navigation surfaces as one family: phone bar, compact rail, tablet rail, desktop sidebar, television rail (quiet closed, material open); where the viewer is shown by shape and light | Done; verified on the Phone 2a, the Pad 7, the Fire TV, the Google TV emulator, and real windows on Windows and Linux |
 | Home's hero and a work's header under the rail or sidebar on ENHANCED and PREMIUM; beside it on BASIC | Done |
-| Media Atmosphere: optional, off by default, one switch under Sources, kept in the library | Done |
+| Media Atmosphere: optional, off by default, one switch (under Sources then, in Settings since M8), kept in the library | Done |
 | Motion vocabulary with a restrained television profile; reduced motion makes it immediate | Done |
 | Edge to edge on Android, the status bar protected, controls clear of the system bars | Done |
 | High contrast and reduced transparency followed from the system on Android, Windows, and Linux | Done |
@@ -367,22 +370,22 @@ Nothing here blocks the rest of M7; each is prepared up to the action itself.
 
 ### Moved out of M7
 
-The roadmap of 2026-11-02 placed these in M7. M7's scope (above) is release readiness, not features or broad hardware campaigns, so they move; none is dropped:
+The roadmap of 2026-11-02 placed these in M7. M7's scope (above) is release readiness, not features or broad hardware campaigns, so they move; none is dropped. Their homes below are the 2026-11-11 rebaseline's (planning/M8-M13-REBASELINE.md, sections 8 and 18); M7 had first moved them all to the old M8, Beta:
 
 | Item | Now | Why |
 | --- | --- | --- |
-| Playback parity: held seek acceleration, chapters on Android where Media3 supplies them, media keys on desktop, an explanation on television where sidecar subtitles cannot be read | M8, each by an explicit decision before M9's feature freeze, or V1.x | Features; M7 adds none |
-| A physical Google TV / Android TV device; the Fire TV television; physical Xbox and PlayStation controllers | M8 (the beta's device matrix: LAUNCH.md asks for ≥3 Google TV and ≥3 Fire TV testers and ≥2 with controllers), required by the V1 acceptance criteria before M10 | Hardware the project does not hold; the testers bring it |
-| Clean-machine desktop installs; network failure and recovery on real networks; broader compatibility (other Jellyfin versions, NAS SMB servers, HDR/DV and passthrough on real receivers, physical Linux) | M8 to M9, recorded in VERIFICATION.md as testers' setups allow; V1 acceptance criterion 12 | As above |
-| A large-library performance baseline; a seeded stress harness; image-baseline visual regression | M8 | Engineering hardening that does not gate the beta's entry |
-| TMDB against the live service in a release build | M8, once the build environment holds the credential (attribution is done) | Needs the owner's secret |
-| The demo video (LAUNCH.md, W2) | M8, before the beta's public page | Needs the owner's chosen video tool and approval |
-| Remembering a viewer's subtitle choice per work (the Fire TV replay observation) | M8, as a product decision | A feature; M7 adds none |
-| Replacing the deprecated `Modifier.onFocusedBoundsChanged` | M8 | Its regression test still guards it |
+| Playback parity: held seek acceleration, chapters on Android where Media3 supplies them, media keys on desktop, an explanation on television where sidecar subtitles cannot be read | M10 (Player & Playback Experience 2.0), each decided there, or V1.x | Features; M7 adds none |
+| A physical Google TV / Android TV device; the Fire TV television; physical Xbox and PlayStation controllers | M12 (the campaign's wave 3 and the beta's device matrix: LAUNCH.md asks for ≥3 Google TV and ≥3 Fire TV testers and ≥2 with controllers), required by the V1 acceptance criteria before M13 | Hardware the project does not hold; the testers bring it |
+| Clean-machine desktop installs; network failure and recovery on real networks; broader compatibility (other Jellyfin versions, NAS SMB servers, HDR/DV and passthrough on real receivers, physical Linux) | M11 (clean installs of the new packages) and M12 (the campaign), recorded in VERIFICATION.md; V1 acceptance criterion 12 | As above |
+| A large-library performance baseline; a seeded stress harness; image-baseline visual regression | M11 (the baseline and the harness); M9 (image baselines for the new shell) | Engineering hardening that does not gate the beta's entry |
+| TMDB against the live service in a release build | M11 (the metadata provider gate), once the build environment holds the credential (attribution is done) | Needs the owner's secret |
+| The demo video (LAUNCH.md, W2) | M11, once the interface is final, before the beta's public page | Needs the owner's chosen video tool and approval |
+| Remembering a viewer's subtitle choice per work (the Fire TV replay observation) | M10, as a product decision, kept per profile | A feature; M7 adds none |
+| Replacing the deprecated `Modifier.onFocusedBoundsChanged` | M9 | Its regression test still guards it |
 
-### M8 entry checklist
+### M12 entry checklist (written as M7's "M8 entry checklist")
 
-Each item is PASS (with its evidence) or an owner/external action that must happen before M8 begins. The states are M7's closure (2026-11-09).
+Each item is PASS (with its evidence) or an owner/external action. Written at M7's closure (2026-11-09) for the beta, which the 2026-11-11 rebaseline moved to M12; the Play and Amazon app entries are now due before M9 (DECISIONS.md, 2026-11-11), and the website is live.
 
 | Item | State |
 | --- | --- |
@@ -391,7 +394,7 @@ Each item is PASS (with its evidence) or an owner/external action that must happ
 | Developer verification for the final package | **Owner action**: confirm the account's verification and register `dev.rsxdevelops.reflux` (RELEASE.md, "Android developer verification (M7)") |
 | Play account type known (closed-testing rule) | **Owner action** |
 | Play app created as `dev.rsxdevelops.reflux`; listing material | **Owner action** to create; the material is **PASS** (`release/store-listing.md`, `design/brand/store/`) |
-| Tester requirement (≥12 testers for 14 days, if the account is personal) planned | **PASS** as a plan (RELEASE.md, LAUNCH.md); recruiting is M8 |
+| Tester requirement (≥12 testers for 14 days, if the account is personal) planned | **PASS** as a plan (RELEASE.md, LAUNCH.md); recruiting is M12 |
 | Amazon app created; readiness | **Owner action** to create; readiness **PASS** (RELEASE.md, "Store readiness (M7)") |
 | TMDB | **External**: working non-commercial classification, clarification pending; **owner action**: the `REFLUX_TMDB_TOKEN` secret |
 | Windows libmpv source build and source distribution | **PASS** |
@@ -404,7 +407,7 @@ Each item is PASS (with its evidence) or an owner/external action that must happ
 | Release artifacts from a clean clone, verified | **PASS** (`a905f27`) |
 | Support, legal, and privacy pages | **PASS**; **owner action**: a support e-mail address for the contact line |
 | Final physical-device evidence for M7's build | **PASS**: Fire TV Stick (`4d6538e`); Phone 2a (`557a54b`) and Pad 7 (`5a55a0a`, then `11ec1af`), with the animated launch screen; two defects found and fixed (VERIFICATION.md, "M7: the release on the Phone 2a and Pad 7") |
-| Casting feasibility gate decided (DECISIONS.md, 2026-10-17) | **Open**, decided at M8's start |
+| Casting feasibility gate decided (DECISIONS.md, 2026-10-17) | Decided at M8's start (DECISIONS.md, 2026-11-11, "Casting") |
 
 ### Reflux Website — Public Release & Tester Readiness (workstreams C and D)
 
@@ -422,15 +425,76 @@ M7 turns the M6 foundation into the production website used for the beta and for
 
 **Before M8:** final security and accessibility checks of the site, and its production validation on desktop and mobile browsers.
 
-## M8 — Beta
+## M8 — Viewer Identity & Profiles, Navigation Structure, Website SEO/Responsive Work, and Release Preparation Foundations
 
-Future. `0.9.0-beta.1`, then `beta.2`, `beta.3`, … Entry requires the beta checklist in RELEASE.md, the website ready to serve testers (below), and the casting feasibility gate decided (time-boxed; V1.1 if it fails; DECISIONS.md, 2026-10-17, "Casting is a V1 feasibility gate").
+**Next** (started 2026-11-11). Every piece of viewer state belongs to a profile, accounts are isolated, the navigation's structure is final, the website is technically indexable and responsive, and release preparation has begun. The full scope and its boundaries are the promoted planning record, `docs/planning/M8-M13-REBASELINE.md`: section 3.3 (the data model), section 8 ("M8"), and section 18 (the second review and the owner's decisions); DECISIONS.md, 2026-11-11. Where this summary and that record differ, the record's scope stands.
 
-- Google Play closed testing track; Amazon Appstore testing (Live App Testing) for Fire TV; desktop builds from the website.
-- About 15–20 testers, recruited through the website's beta signup, covering phones, tablets, Google TV, Fire TV, Windows, and Linux, local folders and servers.
-- The website operating as the testers' entry point: announcements per build, test instructions, known issues kept current, and the feedback loop.
-- A feedback path (in-app link to a form or email, a diagnostics export) and a public changelog per beta.
-**The website before the beta.** M8 does not begin until the official website can:
+| Item | What done means |
+| --- | --- |
+| Profiles | A local profile is the viewer identity boundary. One default profile, invisible until a second exists; create, rename, delete; a "Who's watching" choice when there are two or more. No Guest type: a profile with no accounts is the unauthenticated viewer |
+| Profile-scoped viewer state | Watch history, favorites, collections, pinned versions, and viewer preferences carry a profile; a structural test fails when any viewer-state table lacks it |
+| Shared sources, per-profile accounts | A server's address is entered once (a shared endpoint); each profile binds its own Jellyfin or Plex account to it; folders and shares stay shared. A profile sees shared sources and its own accounts' libraries |
+| Account isolation | Reconciliation runs per account with its owning profile's state; a playback writes to the profile that started it; Jellyfin and Plex accounts each have their own device identity; one broad property test proves no read model shows another profile's titles or state |
+| Clear local watch history | Profile-scoped, local only: never changes a server, media, or downloads; a server's unchanged records do not bring the cleared history back |
+| Optional profile PIN | Four digits, never stored in the clear, a verifier keyed by the platform's secret store where it has one, persistent back-off, never logged or exported |
+| Launcher | Watch Next follows the active profile; a card opens in the profile that published it; a PIN-protected profile publishes nothing |
+| Navigation structure | Four primary destinations (Home, Movies, Shows, Search) and a utility area (profile, Sources, Downloads, Settings, About) in their final places on every form factor; a Settings page replaces settings under Sources. M9 restyles, never moves |
+| Website (workstream W) | `Page \| Reflux` titles (home `Reflux \| Your media, played well`) with a build check against em dashes; responsive baselines; structured data without claims the site cannot substantiate; sitemap dates; non-canonical hosts kept out of the index; internal linking; Lighthouse budgets; Search Console (owner) |
+| Release preparation | The Google Play and Amazon app entries are created before M9 (owner, in parallel); recorded in RELEASE.md |
+| Casting gate | Decided at M8's start (DECISIONS.md) |
+
+Live evidence: two Jellyfin accounts and two Plex accounts against real servers, under the old shared identity and the new per-account one, recording what each server actually does: whether account B's sign-in affects account A's token or session, and whether session discovery can ever resolve the other account's session (VERIFICATION.md). Nothing is assumed beforehand. The real two-account Plex run needs two plex.tv accounts or tokens from the owner; until they exist it is recorded as owner-pending, with the per-account identity covered by fake-server tests, and no live result is claimed.
+
+Not in M8 (DECISIONS.md, 2026-11-11): a special Guest type (a profile with no accounts is the unauthenticated viewer), Plex Home managed-user selection, device transfer and synchronization, casting and handoff.
+
+### State (2026-11-11)
+
+Evidence: VERIFICATION.md, "M8". Decisions: DECISIONS.md, 2026-11-11 ("How M8 makes the viewer the identity boundary", "The navigation's final structure", "The website's responsive check uses Playwright").
+
+| Item | State |
+| --- | --- |
+| Profiles, profile-scoped viewer state, shared endpoints, per-profile accounts, account isolation, clearing history, PIN, launcher | **Done** (library, both shells, the experience layer), with targeted tests and the broad isolation test |
+| Per-account device identity, Jellyfin and Plex | **Done** |
+| Live two-account Jellyfin | **Done**: observed on Jellyfin 12.4.0 (VERIFICATION.md) |
+| Live two-account Plex | **Owner-pending**: the test is written and skips until two plex.tv accounts are given (RELEASE.md, "Release preparation (M8)") |
+| Navigation structure, utility area, Settings, profile entry | **Done** |
+| Website: titles, structured data, sitemap dates, non-canonical hosts, responsive and performance checks in CI | **Done**; deployed when `main` is pushed. Search Console verification is an **owner action** |
+| Google Play and Amazon app entries | **Owner action**, before M9 (RELEASE.md, "Release preparation (M8)") |
+| Casting gate | **Decided**: V1.x (DECISIONS.md, 2026-11-11) |
+| End-of-milestone device walk (Phone 2a, Pad 7, Fire TV) on the profile flows and the new navigation | **Open**: needs the devices attached; the shared code is covered offscreen |
+| The full `check` on GitHub CI | **Open**: runs on the next push |
+
+### Corrections from the M8 architecture challenge (2026-11-11), all done
+
+Evidence: VERIFICATION.md, "M8: architecture challenge" and "M8: corrections". None changed the model.
+
+| Correction | State |
+| --- | --- |
+| The PIN gate could be tapped through; the eight-entry rail did not fit a phone on its side; search text outlived a profile switch; the support report's redaction was narrowed to one profile | **Done** during the challenge |
+| A way out of a forgotten PIN, also on the only profile: "Forgot PIN" resets the profile after a confirmation | **Done** |
+| Plex connections by token: a source identity per token (a SHA-256 digest; never the token) | **Done**; the real two-account run stays **owner-pending** |
+| The desktop refuses a library from a newer Reflux, untouched, with a message | **Done** |
+| A shared server's sync profile is cleared when its profile is deleted | **Done** |
+| Watch Next dismissals are per profile | **Done** |
+| A launcher link to a work the profile cannot see opens nothing of it | **Done** |
+
+## M9 — Navigation & Surface System 2.0
+
+Future. Full scope: the planning record, sections 8 ("M9") and 18. The shell is unmistakably Reflux on every form factor, on the structure M8 settled. Step 0 is a time-boxed desktop mini-player trial on a throwaway branch (can the native video window live in a dock?), recorded in DECISIONS.md before the dock is designed. Then: a compact phone bar that hugs its content with a travelling selection indicator, the tablet rail, the desktop sidebar, the television rail, the utility area styled, a mini-player dock in the layout contract, functional glass on the existing tiers, the mark and the RSX Develops credit, an in-app credits and technology section from `legal/`, image-baseline visual tests by window class, and the `onFocusedBoundsChanged` replacement. Not in 1.0: a collapsible desktop sidebar; minimizing the phone bar on scroll only if it passes the accessibility review.
+
+## M10 — Player & Playback Experience 2.0
+
+Future. Full scope: the planning record, section 8 ("M10"), and section 3.2. Playback stays visually dominant, in one session across presentations: a chrome state machine (hidden, shown, loading, ending, failure) where loading is exclusive and uses the Reflux loader; a lighter transport and a one-row bar; fullscreen, mini-player, and the system's picture-in-picture as presentations of one `PlaybackSession`; Back on handhelds and desktop goes to the mini-player; no mini-player on television. Also the playback parity carried from M7, each decided: held seek acceleration, chapters on Android where Media3 supplies them, desktop media keys, the television explanation where sidecar subtitles cannot be read, and the per-work subtitle choice (profile-scoped).
+
+## M11 — Distribution & Release Surfaces
+
+Future. Full scope: the planning record, sections 3.6 to 3.8, 8 ("M11"), and 18. A branded Windows installer (Inno Setup) beside the zip, verified by the release tool; first-party Linux distribution with no application stores (AppImage, `.deb`, `.rpm`, a PKGBUILD in the repository, the tar.gz) with Reflux's own LGPL libmpv bundled and an honest support matrix; the metadata provider gate (TMDB or Trakt, decided at M11's start); the large-library baseline and stress harness; the website's content for the final interface; the demo video; beta operations ready. The Linux work may be pulled forward when an earlier milestone waits on external timing.
+
+## M12 — Qualification Campaign & Beta
+
+Future. Full scope: the planning record, sections 8 ("M12") and 12 (the campaign's waves). One comprehensive qualification campaign on a frozen candidate, in waves (automated, artifacts, upgrade paths across the profile migration, form factors and inputs, sources and playback, profiles and privacy, accessibility, large library, website, the provider live), then `0.9.0-beta.N` with about 15–20 testers through Play closed testing, Amazon Live App Testing, and desktop downloads, one prompt per beta build cycle. Entry requires the beta checklist in RELEASE.md, the owner actions under "M12 entry checklist" above, and the website before the beta (below). **Exit:** no open blocker or critical bug, the V1 acceptance criteria hold, and the last beta ran at least a week without a new critical report.
+
+**The website before the beta.** The beta does not begin until the official website can:
 
 1. explain Reflux clearly;
 2. show the supported platforms;
@@ -443,17 +507,11 @@ Future. `0.9.0-beta.1`, then `beta.2`, `beta.3`, … Entry requires the beta che
 9. work in desktop and mobile browsers;
 10. serve over HTTPS on a stable public domain.
 
-It does not have to be visually finished; it has to be operationally trustworthy. A placeholder page is not enough when the site is the testers' entry point.
+It does not have to be visually finished; it has to be operationally trustworthy. A placeholder page is not enough when the site is the testers' entry point. (Written for the old M8, Beta, on 2026-11-02; it applies to the beta, now M12.)
 
-- Iteration: bug fixes, compatibility, UX, performance, accessibility. New features enter only by an explicit decision recorded in DECISIONS.md; otherwise they wait for V1.x. **Exit:** no open blocker or critical bug, the V1 acceptance criteria hold, and the last beta ran at least a week without a new critical report.
+## M13 — Release Candidate & 1.0
 
-## M9 — Release Candidate
-
-Future. `0.9.0-rc.1`, then `rc.N` only for fixes. Feature freeze, final validation on every target, store listings and submissions prepared, legal pages final; the website presents the release candidate and its notes.
-
-## M10 — 1.0
-
-Future. `1.0.0`, built from the final release candidate's commit with only the version changed ([VERSIONING.md](VERSIONING.md)). Google Play (phones, tablets, Google TV), Amazon Appstore (Fire TV on Fire OS), Windows, Linux; reflux.rsxdevelops.dev in its 1.0 state: stable store and download links, final documentation, public release notes, and support and legal pages kept current.
+Future. Full scope: the planning record, sections 8 ("M13") and 13 (the 1.0 boundary). `0.9.0-rc.N` with feature freeze and blocker fixes only, store submissions (Play TV review, Watch Next certification, Amazon review), legal pages final, a targeted re-qualification of what changed since the campaign; then `1.0.0` from the final release candidate's commit with only the version changed ([VERSIONING.md](VERSIONING.md)), and the website in its 1.0 state.
 
 ## The Reflux website
 
@@ -466,15 +524,17 @@ A required product and release surface, not marketing and not optional. Before t
 | Planning | During M3 to M5 | Lightweight: what the site must say, as navigation, sources, the visual system, and the library settle. Nothing here blocks product work | — |
 | Foundation | M6 | Architecture, domain and hosting, deployment, legal and privacy infrastructure, content model, documentation structure, support and feedback infrastructure, the source of release and version data | W0 foundation; W1 a first public page on it |
 | Public and tester readiness | M7 | The production site, product pages, compatibility information, routing to downloads and tests, the tester hub, documentation, feedback and support, release notes, final security and accessibility checks, production validation | W2 the demo video; W3 the beta launch content |
-| Beta operation | M8 | The live entry point for testers, build announcements, test instructions, known issues kept current, the feedback loop | W3 in operation |
-| Release | M9, M10 | Release candidate and 1.0 presentation, stable store and download links, final documentation, public release notes, support and legal pages maintained | W4 the 1.0 site |
+| Search readiness | M8 | Titles in the `Page \| Reflux` form with a build check against em dashes, structured data, sitemap dates, responsive baselines, internal linking, performance budgets, Search Console | — |
+| Final content | M11 | Product renders from the final interface, profiles, player, installers, and the Linux matrix documented, search-intent pages | W2 the demo video |
+| Beta operation | M12 | The live entry point for testers, build announcements, test instructions, known issues kept current, the feedback loop | W3 in operation |
+| Release | M13 | Release candidate and 1.0 presentation, stable store and download links, final documentation, public release notes, support and legal pages maintained | W4 the 1.0 site |
 
 The W labels name the website's deliverables in LAUNCH.md; the milestones say when they are due.
 
 ### How it relates to the product milestones
 
 - M3 defines navigation and the source information architecture inside Reflux; M4 establishes the product's visual system, which the site may later use; M5 develops the product and library story it tells. None of them waits for the website, and the website's design is not M3's.
-- M6 builds the foundation and the legal and release infrastructure; it is not a product-design milestone. M7 brings the site to polished public and testing readiness. M8 requires it.
+- M6 builds the foundation and the legal and release infrastructure; it is not a product-design milestone. M7 brings the site to polished public and testing readiness. M8 makes it technically excellent for search; M11 gives it the final product's content; the beta (M12) runs through it.
 
 ### Structure
 
@@ -504,7 +564,18 @@ The site routes people to the right channel and does not mirror store packages. 
 
 ## Earlier numbering
 
-What each milestone of the 2026-10-17 roadmap became. Older documents and VERIFICATION.md sections keep the labels they were written with.
+Older documents and VERIFICATION.md sections keep the labels they were written with.
+
+What the 2026-11-02 milestones after M7 became (2026-11-11):
+
+| 2026-11-02 | Now |
+| --- | --- |
+| M8 — Beta | M12 — Qualification Campaign & Beta (M8 to M11 come first) |
+| M9 — Release Candidate | M13 — Release Candidate & 1.0 |
+| M10 — 1.0 | M13 — Release Candidate & 1.0 |
+| Items "moved to M8" by M7 | Placed in M8 to M12 by the rebaseline (planning/M8-M13-REBASELINE.md, sections 8 and 18) |
+
+What each milestone of the 2026-10-17 roadmap became:
 
 | 2026-10-17 | Now |
 | --- | --- |
@@ -541,7 +612,7 @@ What V1 contains, as built from 2026-10-17 to 2026-11-01. Each row is required f
 | Windows and Linux | Partial | Capabilities observed since 2026-10-19. Media keys, scrollbars, and HDR output moved to M7 |
 | Accessibility baseline | Done | Now M1 |
 | About, legal, and attribution | Done 2026-10-19; two parts wait elsewhere | About Reflux: version and build, Reflux's copyright (proprietary, all rights reserved; DECISIONS.md, "Reflux is proprietary"), the metadata provider's credit, what Reflux keeps and sends, and every third-party license text, checked against each build by `check` (DECISIONS.md, 2026-10-19). Waiting: the privacy policy and support links (the website: M6 foundation, live by M8) and libmpv's notice for a bundled build (M6) |
-| Casting | Gate | Decided before M8 (above) |
+| Casting | Decided 2026-11-11: V1.x | The gate closed without a time-box before the beta (DECISIONS.md, 2026-11-11, "Casting") |
 
 The 2026-10-17 M1 was built in slices, recorded in VERIFICATION.md: "From the start" and film version pins (2026-10-17); Watch Next and the Fire TV home-screen decision; the Fire TV smoke test; Identify and folder grouping; Fire OS Watch Next and an episode's versions; Smart Offline complete (all 2026-10-18); WebDAV on Android; Jellyfin sign-out on removal; desktop capabilities observed; About, legal, and attribution (all 2026-10-19); then accessibility (2026-10-31 to 11-01).
 
@@ -562,6 +633,8 @@ The 2026-10-17 M1 was built in slices, recorded in VERIFICATION.md: "From the st
 11. **Installable and upgradable.** Signed builds from CI; an upgrade from the last beta keeps the library, watch state, sources, and downloads.
 12. **Verified for real.** Live TMDB, physical phone, physical Google TV device, physical Fire TV device, physical controllers, clean desktop installs, and a large-library baseline are recorded in VERIFICATION.md.
 13. **Excellent out of the box.** No V1 function requires a setting to be changed first; the beta's critical and blocker reports are closed.
+14. **Each viewer's own.** One profile's history, favorites, collections, pinned versions, and accounts are never shown to, or sent from, another profile; clearing local history never changes a server.
+15. **Installed like a product.** Every published desktop format installs, upgrades, and uninstalls cleanly on the supported Linux matrix and on Windows.
 
 ## V1.x
 
@@ -576,11 +649,14 @@ Candidates after 1.0, each needing its own decision to be promoted:
 - Multi-part files (CD1/CD2) as one version; disc structures (BDMV/VIDEO_TS) playable.
 - Emby and DLNA sources. (Plex is done, in M3.)
 - Linux credential storage without a Secret Service.
+- Plex Home managed-user selection (DECISIONS.md, 2026-11-11: not in 1.0); per-profile download visibility and source inclusion; a guest mode wiped on leaving.
+- A television mini-player; a desktop video mini-player if M9's trial fails; a collapsible desktop sidebar.
+- "Open with Reflux" for loose files; a desktop update check; signed apt and rpm repositories.
 
 ## Future
 
 - Vega OS client (a compatibility track; evaluation first).
-- Device handoff and synchronization of watch state between devices without a server.
+- **Reflux 2.0:** profile transfer between devices (an encrypted export first, then local-network transfer with QR or code pairing), multi-device synchronization, and handoff, with no Reflux backend or account (planning/M8-M13-REBASELINE.md, section 3.4).
 - Recommendations, natural-language search, and higher-level library intelligence, above the deterministic engine.
 - Advanced playback (picture controls, per-title audio/subtitle styling, trip mode for offline).
 - Reflux Pro: possibly, for some advanced capabilities after V1, never by taking anything away from V1. Nothing is decided about it; 1.0 is free and supported by donations (DECISIONS.md, 2026-10-19).

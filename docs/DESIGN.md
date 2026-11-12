@@ -76,7 +76,7 @@ On ENHANCED and PREMIUM, where the navigation runs down the side, a page that op
 
 ### Media Atmosphere
 
-Off by default. The canonical page around artwork is neutral: artwork is the color, and its scrims dissolve into the plain page. Turned on (Sources, "Media Atmosphere"), Home's hero and a work's page wash the page around their artwork with its dominant hue as a deep, muted tone (`ArtworkAtmosphere`; primary text holds 7:1 on it), receding as the artwork scrolls away. It never tints controls, navigation, badges, or focus: functional material picks it up only through what it blurs. It is the only appearance choice Reflux has, and it is not a theme.
+Off by default. The canonical page around artwork is neutral: artwork is the color, and its scrims dissolve into the plain page. Turned on (Settings, "Media Atmosphere"), Home's hero and a work's page wash the page around their artwork with its dominant hue as a deep, muted tone (`ArtworkAtmosphere`; primary text holds 7:1 on it), receding as the artwork scrolls away. It never tints controls, navigation, badges, or focus: functional material picks it up only through what it blurs. It is the only appearance choice Reflux has, and it is not a theme.
 
 ### Edge to edge
 

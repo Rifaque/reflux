@@ -10,6 +10,8 @@ import dev.reflux.core.source.CatalogSeason
 import dev.reflux.core.model.Availability
 import dev.reflux.core.model.CalendarDate
 import dev.reflux.core.model.StableIds
+import dev.reflux.core.model.SourceId
+import dev.reflux.core.profile.Sha256
 import dev.reflux.core.playback.AudioCodec
 import dev.reflux.core.playback.AudioStream
 import dev.reflux.core.playback.Container
@@ -388,8 +390,20 @@ class PlexSource(
         private const val DETAIL_CHUNK = 50
         private const val LIBRARY_IDENTIFIER = "com.plexapp.plugins.library"
 
-        /** The same server for the same account is the same source, however it was reached. */
-        fun idOf(credentials: PlexCredentials) = StableIds.sourceId(TYPE, "${credentials.machineId}/${credentials.account.orEmpty()}")
+        /**
+         * The same server for the same account is the same source, however it was reached. A connection made with a
+         * token alone has no account name to be told apart by, so it is told apart by a SHA-256 digest of its token:
+         * two tokens are two sources, the same token again is the same source, and a server reached without signing in
+         * is a third. The token itself is never part of an identifier (docs/WATCH_STATE.md, "Profiles").
+         */
+        fun idOf(credentials: PlexCredentials): SourceId {
+            val who = when {
+                credentials.account != null -> credentials.account
+                credentials.tokenIdentity && credentials.token != null -> "token:" + Sha256.hex(credentials.token).take(32)
+                else -> ""
+            }
+            return StableIds.sourceId(TYPE, "${credentials.machineId}/$who")
+        }
 
         /** Accepts `host`, `host:32400`, or full URLs; defaults to http and Plex's own port. */
         fun normalizeUrl(input: String): String {

@@ -11,6 +11,7 @@ import androidx.tvprovider.media.tv.TvContractCompat.PreviewPrograms
 import androidx.tvprovider.media.tv.TvContractCompat.WatchNextPrograms
 import androidx.tvprovider.media.tv.WatchNextProgram as TvWatchNextProgram
 import dev.reflux.android.MainActivity
+import dev.reflux.library.activeProfile
 import dev.reflux.library.ArtworkCache
 import dev.reflux.library.Library
 import dev.reflux.library.PublishedProgram
@@ -73,7 +74,8 @@ class WatchNextPublisher(
     }
 
     private fun update() {
-        val programs = WatchNext.programs(library.continuations(WatchNext.LIMIT))
+        // The active profile's, naming it; nothing for a profile with a PIN (docs/WATCH_STATE.md, "Profiles").
+        val programs = WatchNext.programs(library)
         val artwork = programs.associate { it.key to it.artwork?.let { art -> artworkUri(art) } }
         // A row is compared by what it shows, the picture included: artwork that arrives later is written then.
         fun fingerprint(program: WatchNextProgram) = program.fingerprint + FIELD + artwork[program.key]
@@ -87,11 +89,18 @@ class WatchNextPublisher(
             }
         }
         if (plan.dismissed != dismissed()) {
-            dismissals.edit { clear(); plan.dismissed.forEach { (key, engaged) -> putLong(key, engaged) } }
+            val mine = WatchNextDismissals.prefix(library.activeProfile())
+            dismissals.edit {
+                // Only this profile's are rewritten; another viewer's stay theirs. What an earlier version kept without
+                // a profile is dropped: it cannot be said whose it was.
+                dismissals.all.keys.filter { it.startsWith(mine) || !WatchNextDismissals.scoped(it) }.forEach(::remove)
+                plan.dismissed.forEach { (key, engaged) -> putLong(mine + key, engaged) }
+            }
         }
     }
 
-    private fun dismissed(): Map<String, Long> = dismissals.all.mapNotNull { (key, value) -> (value as? Long)?.let { key to it } }.toMap()
+    /** The cards the active profile's viewer removed from the launcher: one viewer's removal never hides another's card. */
+    private fun dismissed(): Map<String, Long> = WatchNextDismissals.of(library.activeProfile(), dismissals.all)
 
     /** Reflux's own rows: the provider shows an application only the programs it added. */
     // The builder's setters and the program columns are the library's documented API (the Watch Next guide uses
@@ -139,7 +148,7 @@ class WatchNextPublisher(
                 if (program.artwork?.shape == WatchNextArtwork.Shape.WIDE) PreviewPrograms.ASPECT_RATIO_16_9 else PreviewPrograms.ASPECT_RATIO_MOVIE_POSTER,
             )
         }
-        setIntent(Intent(Intent.ACTION_VIEW, WatchNextLink.of(program.itemId).toUri(), application, MainActivity::class.java))
+        setIntent(Intent(Intent.ACTION_VIEW, WatchNextLink.of(program.itemId, program.profile).toUri(), application, MainActivity::class.java))
         setInternalProviderId(program.key)
         setContentId(program.key)
         setInternalProviderData(fingerprint.encodeToByteArray())

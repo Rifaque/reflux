@@ -44,16 +44,17 @@ fun Library.franchiseOf(movieId: MediaId): MediaCollection.Franchise? {
     return franchises().firstOrNull { it.id == row.id }
 }
 
-/** The user's own collections, oldest first. */
-fun Library.userCollections(): List<MediaCollection> = queries.userCollections().executeAsList().map { row ->
+/** The active profile's own collections, oldest first. */
+fun Library.userCollections(): List<MediaCollection> = queries.userCollections(activeProfile().value).executeAsList().map { row ->
     if (row.smart_query != null) MediaCollection.Smart(row.id, row.name, row.smart_query) else MediaCollection.Manual(row.id, row.name)
 }
 
 /** Creates a manual collection, or a smart one when [smartQuery] is given. Names need not be unique. */
 fun Library.createCollection(name: String, smartQuery: String? = null): MediaCollection {
     val created = now()
-    val id = "c" + StableIds.hash("collection:$name:$created:${queries.userCollections().executeAsList().size}")
-    queries.insertUserCollection(id, name, smartQuery, created)
+    val profile = activeProfile().value
+    val id = "c" + StableIds.hash("collection:$profile:$name:$created:${queries.userCollections(profile).executeAsList().size}")
+    queries.insertUserCollection(id, name, smartQuery, created, profile)
     return if (smartQuery != null) MediaCollection.Smart(id, name, smartQuery) else MediaCollection.Manual(id, name)
 }
 
@@ -64,7 +65,7 @@ fun Library.deleteCollection(id: String) = database.transaction {
     queries.deleteUserCollection(id)
 }
 
-fun Library.addToCollection(id: String, itemId: MediaId) = queries.addToUserCollection(id, itemId.value, now())
+fun Library.addToCollection(id: String, itemId: MediaId) = queries.addToUserCollection(itemId = itemId.value, addedAt = now(), collectionId = id)
 
 fun Library.removeFromCollection(id: String, itemId: MediaId) = queries.removeFromUserCollection(id, itemId.value)
 

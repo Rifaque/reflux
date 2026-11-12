@@ -153,8 +153,8 @@ class VisualSystemTest {
     fun theMediaAtmosphereSwitchIsAnOrdinarySwitchAndIsRemembered() {
         val world = populated()
         screen(world) { app ->
-            app.navigator.show(Destination.Sources)
-            awaitText("Sources")
+            app.navigator.show(Destination.Settings)
+            awaitText("This device")
             onAllNodes(hasScrollToNodeAction()).onFirst().performScrollToNode(hasText("Media Atmosphere"))
             val switch = onNode(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Switch) and SemanticsMatcher.expectValue(SemanticsProperties.ToggleableState, ToggleableState.Off) and hasText("Media Atmosphere", substring = true))
             switch.performClick()
@@ -185,11 +185,11 @@ class VisualSystemTest {
             // Under the status bar: the hero's artwork (protected by a soft shade), not a band of plain page.
             val top = pixels()[300, 4]
             assertTrue(distance(top, background) > 0.03f, "artwork under the status bar: $top")
-            // The destinations sit above the gesture area, and the way to Sources below the status bar.
+            // The destinations sit above the gesture area, and the utility area's entry below the status bar.
             val home = onNode(destination("Home")).fetchSemanticsNode().boundsInRoot
             assertTrue(home.bottom <= 915f - 24f - 10f, "the bar clears the gesture area: $home")
-            val sources = onNode(destination("Sources")).fetchSemanticsNode().boundsInRoot
-            assertTrue(sources.top >= 32f, "below the status bar: $sources")
+            val utility = onNode(destination("Profile and settings")).fetchSemanticsNode().boundsInRoot
+            assertTrue(utility.top >= 32f, "below the status bar: $utility")
         }
     }
 

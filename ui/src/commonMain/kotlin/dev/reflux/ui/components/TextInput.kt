@@ -59,7 +59,7 @@ import dev.reflux.ui.theme.Text
 import dev.reflux.ui.theme.tween
 
 /** What a field holds, which decides the keyboard a phone or a television offers for it. */
-enum class InputKind { ADDRESS, NAME, SECRET }
+enum class InputKind { ADDRESS, NAME, SECRET, PIN }
 
 /**
  * A labelled, single-line field. It is quiet until it has focus, when its edge lights up in white; a field
@@ -114,7 +114,7 @@ fun TextInput(
             interactionSource = interaction,
             textStyle = LocalTypography.current.body.copy(color = RefluxColors.contentPrimary),
             cursorBrush = SolidColor(RefluxColors.contentPrimary),
-            visualTransformation = if (kind == InputKind.SECRET) PasswordVisualTransformation() else VisualTransformation.None,
+            visualTransformation = if (kind == InputKind.SECRET || kind == InputKind.PIN) PasswordVisualTransformation() else VisualTransformation.None,
             keyboardOptions = KeyboardOptions(
                 capitalization = KeyboardCapitalization.None,
                 autoCorrectEnabled = false,
@@ -122,6 +122,7 @@ fun TextInput(
                     InputKind.ADDRESS -> KeyboardType.Uri
                     InputKind.NAME -> KeyboardType.Text
                     InputKind.SECRET -> KeyboardType.Password
+                    InputKind.PIN -> KeyboardType.NumberPassword
                 },
                 imeAction = if (last) ImeAction.Done else ImeAction.Next,
                 showKeyboardOnFocus = showsKeyboardOnFocus(),

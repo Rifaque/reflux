@@ -5,6 +5,7 @@ import dev.reflux.core.model.ArtworkLocator
 import dev.reflux.core.model.Episode
 import dev.reflux.core.model.MediaId
 import dev.reflux.core.model.Movie
+import dev.reflux.core.model.ProfileId
 import dev.reflux.core.watch.WatchRules
 
 /**
@@ -20,6 +21,17 @@ object WatchNext {
     /** The programs that should be on the row, most recently engaged first. */
     fun programs(continuations: List<Continuation>): List<WatchNextProgram> =
         continuations.sortedByDescending { it.lastEngagedAtEpochMs }.take(LIMIT).mapNotNull(::program)
+
+    /**
+     * What the launcher's row should show (docs/WATCH_STATE.md, "Profiles"): the active profile's Continue Watching,
+     * each program naming that profile so that its card opens in it. A profile with a PIN shows nothing there: the
+     * launcher is outside the lock, so a private profile's viewing is not put in front of whoever holds the remote.
+     */
+    fun programs(library: Library): List<WatchNextProgram> {
+        val profile = library.activeProfile()
+        if (library.profile(profile)?.hasPin != false) return emptyList()
+        return programs(library.continuations(LIMIT)).map { it.copy(profile = profile) }
+    }
 
     /** The program for one continuation, or null for a work that cannot be one (it has no playable kind). */
     fun program(continuation: Continuation): WatchNextProgram? {
@@ -150,6 +162,8 @@ data class WatchNextProgram(
     val lastEngagedAtEpochMs: Long,
     val artwork: WatchNextArtwork? = null,
     val description: String? = null,
+    /** The profile whose Continue Watching this is: the card opens Reflux in it, without asking who is watching. */
+    val profile: ProfileId? = null,
 ) {
     enum class Kind { MOVIE, EPISODE }
 
@@ -163,12 +177,12 @@ data class WatchNextProgram(
     val fingerprint: String
         get() = listOf(
             FINGERPRINT_VERSION, type, kind, title, episodeTitle, seasonNumber, episodeNumber, year, positionMs, durationMs,
-            lastEngagedAtEpochMs, artwork?.shape, artwork?.locator, description,
+            lastEngagedAtEpochMs, artwork?.shape, artwork?.locator, description, profile,
         ).joinToString("\u001F") { it?.toString().orEmpty() }
 
     private companion object {
         /** Changes when the shape of a program changes, so rows written by an older Reflux are rewritten. */
-        const val FINGERPRINT_VERSION = 1
+        const val FINGERPRINT_VERSION = 2
     }
 }
 

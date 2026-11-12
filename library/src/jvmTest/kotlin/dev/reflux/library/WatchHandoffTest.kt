@@ -626,6 +626,7 @@ class WatchHandoffTest {
         val file = Files.createTempDirectory("reflux-migrate").also { it.toFile().deleteOnExit() }.resolve("library.db")
         JdbcSqliteDriver("jdbc:sqlite:$file", Properties()).use { driver ->
             RefluxDatabase.Schema.create(driver)
+            shapeBeforeProfiles { driver.execute(null, it, 0) }
             withoutLibraryDepth(driver)
             withoutSourceLibraries(driver)
             driver.execute(null, "ALTER TABLE version DROP COLUMN video_profile", 0)
@@ -666,6 +667,7 @@ class WatchHandoffTest {
         val file = Files.createTempDirectory("reflux-migrate").also { it.toFile().deleteOnExit() }.resolve("library.db")
         JdbcSqliteDriver("jdbc:sqlite:$file", Properties()).use { driver ->
             RefluxDatabase.Schema.create(driver)
+            shapeBeforeProfiles { driver.execute(null, it, 0) }
             withoutLibraryDepth(driver)
             withoutSourceLibraries(driver)
             driver.execute(null, "ALTER TABLE version DROP COLUMN video_profile", 0)
@@ -690,6 +692,7 @@ class WatchHandoffTest {
         val file = Files.createTempDirectory("reflux-migrate").also { it.toFile().deleteOnExit() }.resolve("library.db")
         JdbcSqliteDriver("jdbc:sqlite:$file", Properties()).use { driver ->
             RefluxDatabase.Schema.create(driver)
+            shapeBeforeProfiles { driver.execute(null, it, 0) }
             withoutLibraryDepth(driver)
             withoutSourceLibraries(driver)
             driver.execute(null, "ALTER TABLE version DROP COLUMN video_profile", 0)
@@ -742,6 +745,7 @@ class WatchHandoffTest {
         val file = Files.createTempDirectory("reflux-migrate").also { it.toFile().deleteOnExit() }.resolve("library.db")
         JdbcSqliteDriver("jdbc:sqlite:$file", Properties()).use { driver ->
             RefluxDatabase.Schema.create(driver)
+            shapeBeforeProfiles { driver.execute(null, it, 0) }
             withoutLibraryDepth(driver)
             withoutSourceLibraries(driver)
             driver.execute(null, "INSERT INTO source (id, type, display_name, locality, config, availability, added_at) VALUES ('s1', 'jellyfin', 'Living Room', 'LOCAL_NETWORK', 'x', 'AVAILABLE', 0)", 0)
@@ -779,6 +783,7 @@ class WatchHandoffTest {
         val file = Files.createTempDirectory("reflux-migrate").also { it.toFile().deleteOnExit() }.resolve("library.db")
         JdbcSqliteDriver("jdbc:sqlite:$file", Properties()).use { driver ->
             RefluxDatabase.Schema.create(driver)
+            shapeBeforeProfiles { driver.execute(null, it, 0) }
             withoutLibraryDepth(driver)
             driver.execute(null, "DROP TABLE setting", 0)
             driver.execute(null, "INSERT INTO item (id, kind, title, title_key, sort_key, added_at) VALUES ('m1', 'MOVIE', 'Heat', 'heat', 'heat', 0)", 0)

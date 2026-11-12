@@ -32,7 +32,7 @@ export function Privacy() {
       <ul>
         <li><strong>Your own servers and shares</strong> (Jellyfin, Plex, SMB, WebDAV): the requests needed to list and play your media and to keep what you watched in step with them. They see what you play from them, as with any client.</li>
         <li><strong>Plex</strong>: when you sign in with a Plex account, your sign-in goes to plex.tv, Plex's service, to find your servers.</li>
-        <li><strong>TMDB</strong> (themoviedb.org): to recognise a film or show and fetch its description and artwork, Reflux sends TMDB the title and year it read from the file's name (or an ID it already has) and your language, with Reflux's own application key; TMDB sees your IP address, as any website does. Never the file's location, your servers, or anything about you. Turn it off under Sources, "Online metadata & artwork", and Reflux uses only your servers and files.</li>
+        <li><strong>TMDB</strong> (themoviedb.org): to recognise a film or show and fetch its description and artwork, Reflux sends TMDB the title and year it read from the file's name (or an ID it already has) and your language, with Reflux's own application key; TMDB sees your IP address, as any website does. Never the file's location, your servers, or anything about you. Turn it off in Settings, "Online metadata & artwork", and Reflux uses only your servers and files.</li>
         <li>Nothing else. Reflux contains no analytics, crash reporting, or advertising service.</li>
       </ul>
 

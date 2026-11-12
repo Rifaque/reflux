@@ -1,6 +1,7 @@
 package dev.reflux.sources.jellyfin
 
 import dev.reflux.core.net.HttpFetcher
+import dev.reflux.core.profile.AccountDevices
 import dev.reflux.core.source.Connection
 import dev.reflux.core.source.ConnectionKind
 import dev.reflux.core.source.ConnectionProblem
@@ -11,10 +12,14 @@ import kotlinx.coroutines.CancellationException
 /**
  * Signing in to a Jellyfin server from an address, a name, and a password. The password is used for the
  * one request that signs in and goes no further; what is kept is the server's access token.
+ *
+ * Each account signs in as a device of its own ([AccountDevices]), derived from [installation]: the server keeps
+ * sessions and tokens per device, and Reflux finds its own playback session by that identity.
  */
 class JellyfinConnector(
     private val http: HttpFetcher,
-    private val deviceId: String,
+    /** This installation's own identifier, from which each account's device identity is derived. */
+    private val installation: String,
     private val deviceName: String = "Reflux",
 ) : SourceConnector {
     override val type: String = JellyfinSource.TYPE
@@ -30,7 +35,7 @@ class JellyfinConnector(
         if (!address.matches(url)) return Connection.Failed(ConnectionProblem.INVALID_ADDRESS)
         val username = request.username?.takeIf { it.isNotBlank() } ?: return Connection.Failed(ConnectionProblem.SIGN_IN_REQUIRED)
         val (credentials, serverName) = try {
-            JellyfinSource.signIn(url, username, request.password.orEmpty(), http, deviceId, deviceName)
+            JellyfinSource.signIn(url, username, request.password.orEmpty(), http, AccountDevices.id(installation, type, url, username), deviceName)
         } catch (e: CancellationException) {
             throw e
         } catch (e: JellyfinException) {
@@ -48,6 +53,9 @@ class JellyfinConnector(
 
     override fun describe(config: String): ConnectionRequest? =
         JellyfinCredentials.decode(config)?.let { ConnectionRequest(it.serverUrl, it.userName) }
+
+    /** Every Jellyfin connection is one user's: the server's own user ID. */
+    override fun account(config: String): String? = JellyfinCredentials.decode(config)?.userId
 
     /** Ends the session of [config]'s access token, and no other (see [JellyfinSource.signOut]). */
     override suspend fun signOut(config: String, keeping: String?): Boolean {

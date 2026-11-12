@@ -7,6 +7,8 @@ import dev.reflux.core.source.ConnectionProblem
 import dev.reflux.core.source.ConnectionRequest
 import dev.reflux.core.source.SectionedSource
 import dev.reflux.core.source.SourceConnector
+import dev.reflux.core.source.WatchStateSyncSource
+import dev.reflux.core.source.CatalogSource
 
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
@@ -24,6 +26,13 @@ sealed interface ConnectResult {
     data class Connected(val sourceId: SourceId, val name: String, val updated: Boolean) : ConnectResult
 
     data class Failed(val problem: ConnectionProblem) : ConnectResult
+
+    /**
+     * The account is already signed in on this device, in profile [profileName]: an account is one viewer's, so
+     * another profile cannot share it (docs/WATCH_STATE.md, "Profiles"). Nothing was added; the sign-in just made
+     * was ended again.
+     */
+    data class InAnotherProfile(val profileName: String) : ConnectResult
 }
 
 /** What came of asking the other side to end a connection that was removed or replaced. */
@@ -164,6 +173,34 @@ class SourceConnections(
         }
     }
 
+    /**
+     * Brings sources from before profiles (M8) into the profile model, once (docs/WATCH_STATE.md, "Profiles"). Run at
+     * start, after [migrateExcludedSections]:
+     * - a server's address becomes a shared endpoint, so another profile can sign in to it without typing it;
+     * - a connection that is nobody's account (a Plex server reached without signing in) becomes shared, with its
+     *   watch state still compared with the profile it had;
+     * - before M8 every account on a device shared one device identity: where two accounts are on the same server,
+     *   all but the first are asked to sign in again, which gives each its own identity (AccountDevices).
+     * Nothing is signed out, and no watch history moves.
+     */
+    fun adoptProfiles() {
+        if (library.setting(PROFILES_ADOPTED) != null) return
+        val firstOnServer = mutableSetOf<String>()
+        for (record in library.sources()) {
+            val connector = connector(record.type) ?: continue
+            val config = runCatching { seal.open(record.id, record.config) }.getOrNull()?.takeIf { it.isNotEmpty() } ?: continue
+            val request = runCatching { connector.describe(config) }.getOrNull()
+            val account = runCatching { connector.account(config) }.getOrNull()
+            val endpoint = if (connector.kind == ConnectionKind.SERVER && request != null) library.endpointFor(record.type, request.address, record.displayName) else record.endpointId
+            val owner = if (account != null) record.profileId ?: library.activeProfile() else null
+            val sync = library.syncProfileOf(record.id)
+            library.queries.setSourceOwnership(endpoint, owner?.value, sync?.value, record.id.value)
+            if (account != null && endpoint != null && !firstOnServer.add(endpoint)) library.queries.setSourceSignInRequired(record.id.value)
+        }
+        library.database.transaction { library.writer.recomputeLibraries() }
+        library.setSetting(PROFILES_ADOPTED, "1")
+    }
+
     /** Lets go of what was kept for a source that is being removed. */
     private fun forget(id: SourceId) {
         runCatching { seal.forget(id) }.onFailure { report("Secure storage did not let go of a removed source's connection", it) }
@@ -264,6 +301,15 @@ class SourceConnections(
         val source = established.source
         val id = source.descriptor.id
         val existing = library.source(id)
+        val profile = library.activeProfile()
+        val account = runCatching { connector.account(established.config) }.getOrNull()
+        // An account is one viewer's: signed in on this device in another profile, it stays there.
+        if (account != null && existing?.profileId != null && existing.profileId != profile) {
+            (source as? AutoCloseable)?.let { runCatching { it.close() } }
+            val other = library.profile(existing.profileId)?.name ?: "another profile"
+            val kept = runCatching { seal.open(existing.id, existing.config) }.getOrNull()
+            return ConnectResult.InAnotherProfile(other) to signOut(Departing(connector, established.config), keeping = kept)
+        }
         // What this replaces, opened before the seal is given the new connection in its place.
         val replaced = (previous ?: existing)?.let { departing(it.id) }
         // A source the user already knows keeps the name it has; only how to reach it changes.
@@ -287,6 +333,21 @@ class SourceConnections(
             library.addSource(source, stored)
             if (name != source.descriptor.displayName) library.queries.renameSource(name, id.value)
         }
+        // Whose it is (docs/WATCH_STATE.md, "Profiles"): an account is the profile's that signed in; anything else is
+        // shared. A server's own records are compared with its account's profile, or for a shared server the profile
+        // that added it; a share keeps none.
+        val endpoint = if (connector.kind == ConnectionKind.SERVER) {
+            runCatching { connector.describe(established.config) }.getOrNull()?.let { library.endpointFor(connector.type, it.address, name) }
+        } else null
+        val sync = when {
+            source !is CatalogSource && source !is WatchStateSyncSource -> null
+            account != null -> profile
+            else -> existing?.let { library.syncProfileOf(it.id) } ?: profile
+        }
+        library.database.transaction {
+            library.queries.setSourceOwnership(endpoint, profile.value.takeIf { account != null }, sync?.value, id.value)
+            library.writer.recomputeLibraries()
+        }
         if (replacing != null && replacing != id) {
             library.removeSource(replacing)
             registry.unregister(replacing)
@@ -298,5 +359,8 @@ class SourceConnections(
     companion object {
         /** Long enough for a server on the network to answer, short enough that nothing lingers on one that cannot. */
         const val SIGN_OUT_WITHIN_MS: Long = 5_000
+
+        /** Set once sources from before profiles were brought into them ([adoptProfiles]). */
+        private const val PROFILES_ADOPTED = "profiles.adopted"
     }
 }

@@ -175,4 +175,46 @@ class WatchReconcilerTest {
         val finished = WatchRules.onStop(null, id, 118 * MINUTE, 120 * MINUTE, 2_000, local)
         assertEquals(SourceUpdate(true, null), reconcile(finished, theirs, baselineOf(theirs, 1_000), now = 3_000, version = extendedOnServer).update)
     }
+
+    // Clearing local watch history (docs/WATCH_STATE.md, "Clearing local watch history") ------------------------
+
+    private fun afterClear(theirs: SourceUserState, baseline: SyncBaseline?, clearedAt: Long, now: Long = 5_000, mine: WatchState? = null) =
+        WatchReconciler.reconcile(id, mine, theirs, baseline, onServer, now, clearedAtEpochMs = clearedAt)
+
+    @Test
+    fun aClearedHistoryIsNotBroughtBackByTheSourcesUnchangedRecord() {
+        val theirs = source(minutes = 40, at = 500)
+        // Compared before: the source has not changed since.
+        val known = afterClear(theirs, baselineOf(theirs, reconciledAt = 1_000), clearedAt = 2_000)
+        assertNull(known.state, "nothing is adopted")
+        assertNull(known.update, "and nothing is sent: clearing is local")
+        // Never compared (the source was away when the viewer cleared, or is newly signed in to): still not news.
+        val firstMeeting = afterClear(theirs, baseline = null, clearedAt = 2_000)
+        assertNull(firstMeeting.state)
+        assertNull(firstMeeting.update)
+        // A played flag the source cannot date is not news after a clearing either.
+        val undated = afterClear(source(played = true), baseline = null, clearedAt = 2_000)
+        assertNull(undated.state)
+        assertNull(undated.update)
+    }
+
+    @Test
+    fun whatHappensOnTheSourceAfterAClearingIsNewsAsUsual() {
+        val before = source(minutes = 40, at = 500)
+        val later = source(minutes = 70, at = 3_000)
+        val outcome = afterClear(later, baselineOf(before, reconciledAt = 1_000), clearedAt = 2_000)
+        assertEquals(SyncDecision.SOURCE_ADOPTED, outcome.decision, "watched elsewhere after the clearing")
+        assertEquals(70 * MINUTE, outcome.state?.positionMs)
+        assertNull(outcome.update)
+    }
+
+    @Test
+    fun playingAgainAfterAClearingIsToldToTheSourceAsBefore() {
+        val theirs = source(minutes = 40, at = 500)
+        val mine = watched(local, 10, at = 3_000)
+        val outcome = afterClear(theirs, baselineOf(theirs, reconciledAt = 1_000), clearedAt = 2_000, mine = mine)
+        assertEquals(SyncDecision.REFLUX_KEPT, outcome.decision)
+        assertEquals(SourceUpdate(played = null, positionMs = 10 * MINUTE), outcome.update, "new viewing is synchronized as usual")
+    }
 }
+

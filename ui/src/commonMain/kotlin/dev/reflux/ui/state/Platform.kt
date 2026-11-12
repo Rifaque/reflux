@@ -121,6 +121,12 @@ interface Platform {
      */
     val connections: SourceConnections? get() = null
 
+    /**
+     * What profile PINs are checked with: a key the platform's secure store holds (docs/WATCH_STATE.md, "Profiles");
+     * null where there is none, and then no profile can have a PIN.
+     */
+    val pinKey: dev.reflux.library.PinKey? get() = null
+
     /** The storage to choose a media folder from, where the platform has no picker of its own; null where it does. */
     val folderBrowser: FolderBrowser? get() = null
 

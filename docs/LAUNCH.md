@@ -4,7 +4,7 @@ The tracks that take Reflux from a working tree to a public product beside the e
 
 ## Website: reflux.rsxdevelops.dev
 
-The website is release infrastructure, not a task for after 1.0 and not optional. It exists before the beta, carries the beta, and becomes Reflux's permanent public home. When each part is due, and what the site must do before the beta may begin, is in ROADMAP.md ("The Reflux website", M6, M7, and M8); this section keeps its deliverables and its visual direction.
+The website is release infrastructure, not a task for after 1.0 and not optional. It exists before the beta, carries the beta, and becomes Reflux's permanent public home. When each part is due, and what the site must do before the beta may begin, is in ROADMAP.md ("The Reflux website", M6 to M13); this section keeps its deliverables and its visual direction.
 
 ### Stages
 
@@ -12,9 +12,9 @@ The website is release infrastructure, not a task for after 1.0 and not optional
 | --- | --- | --- |
 | **W0 — Foundation** | Type, color, spacing, and motion rules for the site; the page skeleton; hosting and the domain; an analytics decision, none by default (ROADMAP.md, "The Reflux website", Privacy) | The empty skeleton is deployed at the domain, over HTTPS, and every later page is built from its rules (M6). Built 2026-11-08 (React + Vite, Vercel; WEBSITE.md); redesigned as Website 2.0 in M7; not yet deployed (owner actions, WEBSITE.md) |
 | **W1 — Early landing page** | One page: what Reflux is in a sentence, a few real screenshots, supported platforms ("coming"), and a quiet way to hear about the beta | Live on the M6 foundation |
-| **W2 — Demo video** | The product demo (below) | Approved by the product owner; embedded on the site before the beta (moved to M8 at M7's closure: not produced; the site uses real product renders until then) |
-| **W3 — Beta launch** | Beta signup (platform, device, sources, so testers can be chosen for coverage), what the beta is and is not, how to install on each platform, how to report problems, the changelog, privacy policy, support contact | Live before `0.9.0-beta.1` (built in M7: the tester hub, install, feedback, changelog, privacy, support pages; the signup is the store test channels; required for M8 entry, operated through M8) |
-| **W4 — 1.0 site** | The product site: the demo, the core ideas (your media wherever it lives, understood automatically, played well), platforms with store badges and desktop downloads, changelog, privacy, support, legal and attribution | Live with `1.0.0` (M10; presented from the release candidate, M9) |
+| **W2 — Demo video** | The product demo (below) | Approved by the product owner; embedded on the site before the beta (moved to M8 at M7's closure, and by the 2026-11-11 rebaseline to M11, once the interface is final; the site uses real product renders until then) |
+| **W3 — Beta launch** | Beta signup (platform, device, sources, so testers can be chosen for coverage), what the beta is and is not, how to install on each platform, how to report problems, the changelog, privacy policy, support contact | Live before `0.9.0-beta.1` (built in M7: the tester hub, install, feedback, changelog, privacy, support pages; the signup is the store test channels; required for the beta's entry, M12, and operated through it) |
+| **W4 — 1.0 site** | The product site: the demo, the core ideas (your media wherever it lives, understood automatically, played well), platforms with store badges and desktop downloads, changelog, privacy, support, legal and attribution | Live with `1.0.0` (M13, presented from its release candidate) |
 
 ### Visual direction
 
@@ -51,7 +51,7 @@ Required for the beta website (W2/W3) and the 1.0 site.
 - **Versions:** `0.9.0-beta.N` ([VERSIONING.md](VERSIONING.md)); every build has a changelog entry and a tag.
 - **Feedback:** an in-app "Send feedback" link (to a form or email) next to an export of the diagnostics log, which is already redacted; a short form per beta (what you played, what failed, what confused you). Reports are triaged into blocker / critical / normal / later.
 - **Cadence:** a beta build when there is something worth testing, at most weekly; the changelog says what to look at.
-- **Exit:** the M8 exit criteria in ROADMAP.md.
+- **Exit:** the M12 exit criteria in ROADMAP.md.
 
 Store testing requirements change; check the current Google Play Console and Amazon Appstore documentation when setting the tracks up, and record what was required in RELEASE.md.
 
@@ -73,6 +73,6 @@ Fire TV is a V1 target in its own right (DECISIONS.md, 2026-10-17). It runs the 
 3. **Continue watching on the Fire TV home screen**: evaluated 2026-10-18. Amazon's Watch Activity needs catalog integration, which an application for personal media cannot have, so Fire TV ships without a home-screen continue row (DECISIONS.md, 2026-10-18).
 4. **Build and lifecycle validation on the hardware** (M7): install, first run, a folder on a USB drive if supported, Jellyfin, playback including 4K/HDR on the television, leaving and returning with the Home button, sleep and wake. The stick's smoke test (2026-10-18) covered install, first run with a folder, playback including 4K60 HEVC, and Home and Back; USB, Jellyfin from the device, HDR output, and sleep and wake remain.
 5. **Appstore preparation** (M6): listing, screenshots at Amazon's sizes, device support list, content rating, privacy policy link, and Amazon's current submission requirements, read from Amazon's documentation at the time. A build installed from outside the Appstore got a generic launcher tile on Fire OS 8, whatever its banner (seen 2026-10-18); community reports say the launcher takes an Appstore application's icon from its listing, which the first Appstore test build should confirm.
-6. **Beta through Amazon's testing path** (M8) with Fire TV testers.
+6. **Beta through Amazon's testing path** (M12) with Fire TV testers.
 
 Vega OS is tracked separately as a future compatibility track (ROADMAP.md, Platforms).

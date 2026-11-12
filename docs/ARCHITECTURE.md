@@ -90,7 +90,7 @@ Media work (movie, episode)
 
 A copy kept on the device for watching offline is one more entry under "Version / cut", in a source of Reflux's own. It is never a work of its own ([OFFLINE.md](OFFLINE.md)).
 
-**Playback progress follows the media work, not the physical file or source.** A work has one watch state, owned by Reflux; its position is carried to whichever version plays next, and never blindly onto a different cut. Sources that keep their own watch state are reconciled with it, not obeyed. The contract is in [WATCH_STATE.md](WATCH_STATE.md).
+**Playback progress follows the media work, not the physical file or source.** A work has one watch state per profile, owned by Reflux; its position is carried to whichever version plays next, and never blindly onto a different cut. Sources that keep their own watch state are reconciled with it, not obeyed. The contract is in [WATCH_STATE.md](WATCH_STATE.md).
 
 ## Local-first state
 
@@ -108,6 +108,10 @@ Core local state should include, where applicable:
 - search index.
 
 A disconnected source should not erase the user's understanding of their library.
+
+### Profiles (M8)
+
+The viewer is the identity boundary of an installation: a **profile**, local, never an account. Media truth (works, versions, metadata, artwork, Identify's corrections, shared sources, server addresses) is the installation's; what a viewer does (watch state, favorites, collections, pinned versions, preferences, server accounts, copies of those accounts' media) is one profile's, keyed by `profile_id` in every table that holds it. Each Jellyfin and Plex account is its own source, owned by one profile, signed in as a device identity of its own; reconciliation runs per account with its owner's state; a playback writes to the profile it started in; and what a profile can see is one flag recomputed with inclusion (`version.visible`), so every read is bound to it. The contract is in [WATCH_STATE.md](WATCH_STATE.md), "Profiles"; the navigation's utility area is where profiles are switched and managed ([NAVIGATION.md](NAVIGATION.md)).
 
 ## Source abstraction
 
@@ -231,8 +235,8 @@ The About page's third-party notices are generated into `ui` from `legal/` at bu
 
 The experience and its information architecture are the same everywhere; where things sit follows the form factor and the input in use (`AdaptiveLayout`).
 
-- **Every form factor.** Six global destinations (Home, Movies, Shows, Search, Downloads where the platform keeps copies, and Sources), one back stack, and the unified library told apart from each source's own (NAVIGATION.md). Sources, adding media, and connecting a server or a share are pages of one centered column; a source's own library is a grid like Movies.
-- **Phone held upright.** Home, Movies, Shows, and Search are icons along the bottom, in reach of a thumb. The top carries only what a page needs there: the way back, Downloads and Sources, a sign of the library being updated. The offline sheet rises from the bottom. The player puts play, back, and ahead in the middle of the picture and keeps the timeline, track menus, speed, and fullscreen in a bar beneath; volume is the device's own buttons. A tap shows or hides the controls, and two taps on a side of the picture skip that way.
+- **Every form factor.** Four primary destinations (Home, Movies, Shows, Search) and a utility area (Downloads where the platform keeps copies, Sources, Settings, and the profile), one back stack, and the unified library told apart from each source's own (NAVIGATION.md). Sources, adding media, and connecting a server or a share are pages of one centered column; a source's own library is a grid like Movies.
+- **Phone held upright.** Home, Movies, Shows, and Search are icons along the bottom, in reach of a thumb. The top carries only what a page needs there: the way back, a sign of the library being updated, and the utility area as one entry, the profile, which leads to Downloads, Sources, and Settings. The offline sheet rises from the bottom. The player puts play, back, and ahead in the middle of the picture and keeps the timeline, track menus, speed, and fullscreen in a bar beneath; volume is the device's own buttons. A tap shows or hides the controls, and two taps on a side of the picture skip that way.
 - **Phone on its side, tablet, and desktop.** The navigation runs down the left side, and pages start beside it: a compact rail of icons on a phone on its side, a rail with names on a tablet, a sidebar with the wordmark and names on a desktop. The top of a page carries the way back. More titles in a row, and details pages with the poster beside the description. A tablet is the same experience as a desktop window of its size, not a larger phone.
 - **Controller in hand**, on any of them: larger targets, visible focus, and button prompts, without a separate mode.
 - **Television.** A rail of icons on the left, which shows their names while it has focus, and the same pages, laid out for a canvas of 960 by 540 inside a 5% safe margin and operated through focus alone. Something always has focus: a page starts on its main action and comes back to the item it was left from; Back on a destination goes to the rail first. Home moves a row at a time, the row with focus at the top with its title showing. The player shows where playback is and nothing to point at: OK plays and pauses, left and right seek, down opens the lists (episodes, chapters, audio, subtitles, speed), up takes an offer on screen such as skipping an intro, and Back closes a list and then the player. Choosing a media folder is a walk through storage with the remote.

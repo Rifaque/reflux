@@ -75,6 +75,8 @@ import dev.reflux.ui.state.SourceRow
 import dev.reflux.ui.state.SourceSetup
 import dev.reflux.ui.state.libraryState
 import dev.reflux.ui.state.sourcesModel
+import dev.reflux.ui.state.otherAccountOfThisProfile
+import dev.reflux.library.endpoints
 import dev.reflux.ui.theme.LocalLayout
 import dev.reflux.ui.theme.LocalTypography
 import dev.reflux.ui.theme.RefluxColors
@@ -161,35 +163,7 @@ internal fun SourcesScreen(app: AppState) {
                 )
             }
         }
-        // The one appearance choice Reflux has: whether artwork may color the space around it. Off by default; it is
-        // not a theme, and nothing else about the interface changes with it (DECISIONS.md, 2026-11-07).
-        item(key = "atmosphere") {
-            SwitchRow(
-                "Media Atmosphere",
-                "Let artwork tint the space around it, on Home and on a title's page.",
-                app.mediaAtmosphere,
-                Modifier.padding(top = 12.dp),
-            ) { app.setMediaAtmosphere(!app.mediaAtmosphere) }
-        }
-        // Whether titles, descriptions, and artwork may be looked up online: a privacy choice, so it is the viewer's
-        // to make. Only where the build has a provider to ask (docs/METADATA.md, "Online lookups").
-        if (app.hasMetadataProvider) {
-            item(key = "online") {
-                SwitchRow(
-                    "Online metadata & artwork",
-                    "Look up titles, descriptions, and artwork by name. Off, Reflux uses what your sources provide and what it already has.",
-                    app.onlineMetadata,
-                ) { app.setOnlineMetadata(!app.onlineMetadata) }
-            }
-        }
-        // Reflux itself, after everything about the library: a quiet way to its version, privacy, and credits.
-        item(key = "about") {
-            val back = rememberFocusReturn("sources/about")
-            Option(Icon.INFO, "About Reflux", "Version ${app.platform.build.version}, privacy, licenses, and credits", back.modifier.padding(top = 12.dp)) {
-                back.leaving()
-                app.navigator.open(Destination.About)
-            }
-        }
+        // Settings (Media Atmosphere, online lookups) and About live in Settings since M8 (docs/NAVIGATION.md, section 1).
     }
 }
 
@@ -359,7 +333,7 @@ private fun LibraryRow(app: AppState, row: SourceRow, library: SourceLibrary, do
  * technology. On is a filled white mark; off, an empty ring. No color is needed to tell them apart.
  */
 @Composable
-private fun SwitchRow(title: String, body: String?, on: Boolean, modifier: Modifier = Modifier, dimmed: Boolean = false, onToggle: () -> Unit) {
+internal fun SwitchRow(title: String, body: String?, on: Boolean, modifier: Modifier = Modifier, dimmed: Boolean = false, onToggle: () -> Unit) {
     val shape = Shapes.medium
     Pressable(onToggle, modifier.fillMaxWidth().semantics { toggleableState = ToggleableState(on) }, shape, lift = 0f, role = Role.Switch) { active ->
         Row(
@@ -424,7 +398,7 @@ internal fun AddSourceScreen(app: AppState) {
 }
 
 @Composable
-private fun Option(icon: Icon, title: String, body: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
+internal fun Option(icon: Icon, title: String, body: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
     val shape = Shapes.large
     Pressable(onClick, modifier.fillMaxWidth(), shape, lift = 0.15f) { active ->
         Row(
@@ -482,8 +456,21 @@ internal fun ConnectScreen(app: AppState, destination: Destination.Connect) {
     } else {
         "Reflux only reads from the share. Leave the name and password empty if it doesn't ask for them."
     }
+    // A server already entered on this device, by this profile or another, is offered rather than typed again.
+    val known by app.libraryState(setup.type) { endpoints().filter { setup.type == null || it.type == setup.type } }
+    val otherAccount by app.libraryState(setup.address, setup.username) { otherAccountOfThisProfile(connections, setup.type, setup.address, setup.username) }
     Page {
         item(key = "heading") { Heading(title, body) }
+        val offered = known.orEmpty().takeIf { server && setup.editing == null }.orEmpty()
+        if (offered.isNotEmpty()) {
+            item(key = "known") {
+                FlowRow(Modifier.padding(bottom = 4.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    offered.forEach { endpoint ->
+                        Button(endpoint.displayName, { setup.address = endpoint.address }, style = ButtonStyle.QUIET, icon = Icon.SERVER, name = "Use ${endpoint.displayName}, ${endpoint.address}")
+                    }
+                }
+            }
+        }
         item(key = "form") {
             Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 val typing: (Boolean) -> Unit = { if (it) app.textInputActive = true else app.textInputActive = false }
@@ -502,6 +489,13 @@ internal fun ConnectScreen(app: AppState, destination: Destination.Connect) {
                     kind = InputKind.NAME, error = setup.problemField == SourceSetup.Field.USERNAME, enabled = !setup.connecting,
                     onFocus = typing, onDone = { focus.moveFocus(FocusDirection.Down) },
                 )
+                otherAccount?.let { who ->
+                    Text(
+                        "This profile is signed in to this server as $who. Signing in as someone else replaces that here. Someone else watching? Add a profile for them instead.",
+                        style = LocalTypography.current.caption,
+                        color = RefluxColors.contentSecondary,
+                    )
+                }
                 TextInput(
                     setup.password, { setup.password = it }, if (plex) "Password or Plex token" else if (setup.anonymous) "Password (if it asks)" else "Password",
                     Modifier.focusRequester(password),

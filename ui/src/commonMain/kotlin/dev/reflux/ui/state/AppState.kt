@@ -46,6 +46,28 @@ import dev.reflux.library.pinVersion
 import dev.reflux.core.playback.TrackPreferences
 import dev.reflux.library.planPlayback
 import dev.reflux.library.setWatchedEverywhere
+import dev.reflux.core.model.ProfileId
+import dev.reflux.core.profile.PinCheck
+import dev.reflux.core.profile.PinPolicy
+import dev.reflux.library.Profile
+import dev.reflux.library.accountSourcesOf
+import dev.reflux.library.checkPin
+import dev.reflux.library.clearWatchHistory
+import dev.reflux.library.createProfile
+import dev.reflux.library.deleteProfile
+import dev.reflux.library.profileDownloadIds
+import dev.reflux.library.profiles
+import dev.reflux.library.removePin
+import dev.reflux.library.renameProfile
+import dev.reflux.library.setPin
+import dev.reflux.library.switchProfile
+import dev.reflux.library.resetProfile
+import dev.reflux.library.keepEndpoints
+import dev.reflux.library.endpoints
+import dev.reflux.library.seenByActiveProfile
+import dev.reflux.library.privateWords
+import dev.reflux.library.visibleSources
+import dev.reflux.library.currentTime
 import kotlinx.coroutines.CancellationException
 import dev.reflux.core.metadata.ProviderAttribution
 import kotlinx.coroutines.CoroutineDispatcher
@@ -158,6 +180,8 @@ class AppState(
     init {
         scope.launch { runCatching { read { setting(MEDIA_ATMOSPHERE) } }.getOrNull()?.let { mediaAtmosphere = it == "on" } }
         scope.launch { runCatching { read { this.onlineMetadata } }.getOrNull()?.let { onlineMetadata = it } }
+        // Who is watching is known, or asked, from the moment Reflux opens (docs/WATCH_STATE.md, "Profiles").
+        scope.launch { askWhoIsWatchingAtStart() }
     }
 
     fun setOnlineMetadata(on: Boolean): Job {
@@ -321,8 +345,11 @@ class AppState(
     /** Whether this platform keeps copies, and so has a Downloads destination. */
     val keepsCopies: Boolean get() = platform.offline != null
 
-    /** The global destinations this platform has, in the navigation's order. */
+    /** The global destinations this platform has, in the navigation's order: the primary ones, then the utility area. */
     val destinations: List<Destination.Section> get() = Destinations.filter { it != Destination.Downloads || keepsCopies }
+
+    /** The utility area this platform has (docs/NAVIGATION.md, section 1), in its order. */
+    val utilityDestinations: List<Destination.Section> get() = UtilityDestinations.filter { it in destinations }
 
     /** Goes to a global destination, or back to its top when it is the one already shown. */
     fun go(section: Destination.Section) {
@@ -554,8 +581,25 @@ class AppState(
      * work's details page opens, and it plays as Play there would, from the work's own place. Should it not
      * play (its source is away), the details page is where the user is left, with the reason.
      */
-    fun continueFromOutside(itemId: MediaId): Job = scope.launch {
-        if (read { item(itemId) } == null) return@launch notify(Problems.NOTHING_TO_PLAY)
+    fun continueFromOutside(itemId: MediaId, profile: ProfileId? = null): Job {
+        // A card says who is watching: the question asked at start is not asked over it.
+        continuedFromOutside = true
+        return continueFromOutsideIn(itemId, profile)
+    }
+
+    private fun continueFromOutsideIn(itemId: MediaId, profile: ProfileId?): Job = scope.launch {
+        // A card opens in the profile whose Continue Watching it was, without asking who is watching; a profile that
+        // has a PIN now is opened with it first (docs/WATCH_STATE.md, "Profiles").
+        loadProfiles()
+        val target = profile?.let { id -> profiles.firstOrNull { it.id == id } } ?: activeProfile
+        when {
+            target == null -> Unit
+            target.hasPin && !(target.active && unlocked) -> return@launch run { profileGate = ProfileGate.Unlock(target, required = true, then = itemId) }
+            !target.active -> becomeProfile(target)
+            else -> profileGate = null
+        }
+        // Only what this profile can see is opened: a link naming anything else shows nothing of it.
+        if (!read { seenByActiveProfile(itemId) }) return@launch notify(Problems.NOTHING_TO_PLAY)
         playback?.close()
         offlineOpen = false
         navigator.show(Destination.Home)
@@ -602,18 +646,21 @@ class AppState(
      */
     suspend fun supportReport(now: String): SupportReport {
         val (sources, titles) = read {
-            val records = sources()
+            // The open profile's view: another profile's accounts are not this viewer's to report (docs/WATCH_STATE.md, "Profiles").
+            val records = visibleSources()
             records.map { record ->
                 val scope = LibraryScope.OfSource(record.id)
                 SupportReport.SourceSummary(
                     kind = sourceKind(record.type), availability = record.availability.name, included = record.included,
                     signInRequired = record.signInRequired, works = movies(scope).size + shows(scope).size,
                 )
-            } to (movies().map { it.item.title } + shows().map { it.item.title } + records.flatMap { listOf(it.displayName, it.config) })
+            } to privateWords()
         }
         val playing = playback?.report().orEmpty().ifEmpty { lastPlayback }
         return SupportReport(
-            build = platform.build, generatedAt = now, environment = platform.platformFacts,
+            build = platform.build, generatedAt = now,
+            // How many profiles there are, never who: names are the viewers' own (docs/WATCH_STATE.md, "Profiles").
+            environment = platform.platformFacts + SupportReport.Fact("Profiles", read { profiles() }.size.toString()),
             capabilities = SupportReport.capabilities(platform.device), sources = sources,
             playback = playing.map { SupportReport.Fact(it.heading, it.text) },
             log = runCatching { platform.recentProblems() }.getOrDefault(emptyList()).takeLast(SUPPORT_LOG_LINES),
@@ -732,6 +779,15 @@ class AppState(
 
     /** Performs a semantic action, whichever input device expressed it. */
     fun dispatch(action: SemanticAction): Boolean {
+        // Asking who is watching covers everything: Back is its own, and lists and fields take the rest.
+        profileGate?.let { gate ->
+            return when (action) {
+                SemanticAction.BACK -> profileGateBack(gate)
+                SemanticAction.NAVIGATE_UP, SemanticAction.NAVIGATE_DOWN, SemanticAction.NAVIGATE_LEFT, SemanticAction.NAVIGATE_RIGHT -> moveFocus?.invoke(action) ?: false
+                SemanticAction.SELECT -> activateFocused?.invoke() ?: false
+                else -> true
+            }
+        }
         playback?.let { return it.handle(action) }
         return when (action) {
             SemanticAction.NAVIGATE_UP, SemanticAction.NAVIGATE_DOWN, SemanticAction.NAVIGATE_LEFT, SemanticAction.NAVIGATE_RIGHT ->
@@ -786,6 +842,232 @@ class AppState(
         }
     }
 
+    // Profiles (docs/WATCH_STATE.md, "Profiles") ----------------------------------------------------------
+
+    /** The profiles of this installation, as last read; one of them is active. */
+    var profiles: List<Profile> by mutableStateOf(emptyList())
+        private set
+
+    /** The profile everything shown is about now. */
+    val activeProfile: Profile? get() = profiles.firstOrNull { it.active }
+
+    /** Whether profiles show at all: an installation with one profile never mentions them. */
+    val profilesShown: Boolean get() = profiles.size > 1
+
+    /** Whether the active profile's PIN was entered since it was last opened: a profile with a PIN opens locked. */
+    private var unlocked = false
+
+    /**
+     * Who is watching, while Reflux asks: at start where it has to (a profile with a PIN, or a television with several
+     * profiles), and whenever a profile with a PIN is opened. It covers everything; nothing behind it can be reached.
+     */
+    var profileGate: ProfileGate? by mutableStateOf(null)
+        private set
+
+    /** Whether profiles can have a PIN here: the platform holds a key to check them with. */
+    val pinsAvailable: Boolean get() = platform.pinKey != null
+
+    internal suspend fun loadProfiles() {
+        profiles = read { profiles() }
+    }
+
+    /** Whether Reflux was opened by a launcher card, which names the profile it is for. */
+    private var continuedFromOutside = false
+
+    private suspend fun askWhoIsWatchingAtStart() {
+        loadProfiles()
+        if (continuedFromOutside) return
+        val active = activeProfile ?: return
+        profileGate = when {
+            active.hasPin -> ProfileGate.Unlock(active, required = true)
+            // A shared screen with several viewers asks, every time; a phone or a computer remembers who it was.
+            platform.television && profilesShown -> ProfileGate.Choose(required = true)
+            else -> null
+        }
+    }
+
+    /** Opens the question of who is watching, from the profile entry. */
+    fun askWhoIsWatching() {
+        scope.launch {
+            loadProfiles()
+            profileGate = ProfileGate.Choose(required = false)
+        }
+    }
+
+    /** The viewer chose [profile]: one with a PIN asks for it first; the one already open just closes the question. */
+    fun chooseProfile(profile: Profile): Job = attempt("That profile couldn't be opened. Try again.") {
+        if (profile.hasPin && !(profile.active && unlocked)) {
+            profileGate = ProfileGate.Unlock(profile, required = (profileGate as? ProfileGate.Choose)?.required == true)
+            return@attempt
+        }
+        if (profile.active) {
+            profileGate = null
+            return@attempt
+        }
+        becomeProfile(profile)
+    }
+
+    /** Checks the PIN entered for the profile being opened, and opens it when it is right. */
+    fun enterPin(pin: String): Job = attempt("That PIN couldn't be checked. Try again.") {
+        val gate = profileGate as? ProfileGate.Unlock ?: return@attempt
+        val key = platform.pinKey ?: return@attempt
+        when (val check = read { checkPin(gate.profile.id, pin, key) }) {
+            PinCheck.Accepted -> {
+                if (gate.profile.active) {
+                    unlocked = true
+                    profileGate = null
+                } else {
+                    becomeProfile(gate.profile)
+                    unlocked = true
+                }
+                gate.then?.let { continueFromOutside(it, gate.profile.id) }
+            }
+            is PinCheck.Rejected -> profileGate = gate.copy(problem = check.lockedUntilEpochMs?.let(::waitFor) ?: "That's not the PIN. Try again.", attempt = gate.attempt + 1)
+            is PinCheck.Locked -> profileGate = gate.copy(problem = waitFor(check.untilEpochMs), attempt = gate.attempt + 1)
+        }
+    }
+
+    private fun waitFor(untilEpochMs: Long): String {
+        val seconds = ((untilEpochMs - library.currentTime()) / 1000).coerceAtLeast(1)
+        return if (seconds < 90) "Too many tries. Try again in $seconds seconds." else "Too many tries. Try again in ${(seconds + 59) / 60} minutes."
+    }
+
+    /** Asks whether to start the profile whose PIN is being asked for over, or with false takes the question back. */
+    fun forgotPin(asking: Boolean = true) {
+        (profileGate as? ProfileGate.Unlock)?.let { profileGate = it.copy(forgetting = asking, problem = null) }
+    }
+
+    /**
+     * Starts the profile whose PIN was forgotten over, once the viewer has confirmed it (docs/WATCH_STATE.md,
+     * "Profiles"): this device is signed out of the profile's server accounts, its downloads are deleted, and its
+     * watch history, favorites, collections, pinned versions, preferences, and PIN are erased, so nothing the PIN
+     * kept private is shown to whoever reset it. The profile stays, open and empty. No server's own history, no
+     * media, no shared source or server address, and no other profile is touched.
+     */
+    fun resetForgottenProfile(): Job = attempt("The profile couldn't be reset. Try again.") {
+        val gate = profileGate as? ProfileGate.Unlock ?: return@attempt
+        if (!gate.forgetting) return@attempt
+        val profile = gate.profile
+        finishPlayback()
+        val addresses = read { endpoints() }
+        read { accountSourcesOf(profile.id) }.forEach { platform.removeSource(it.id) }
+        platform.offline?.let { offline -> read { profileDownloadIds(profile.id) }.forEach { withContext(background) { offline.remove(it) } } }
+        read {
+            resetProfile(profile.id)
+            keepEndpoints(addresses)
+        }
+        loadProfiles()
+        val fresh = profiles.firstOrNull { it.id == profile.id } ?: return@attempt
+        if (fresh.active) {
+            unlocked = true
+            profileGate = null
+            searchQuery = ""
+            lastPlayback = emptyList()
+            navigator.show(Destination.Home)
+            invalidate()
+            watchSources()
+        } else {
+            becomeProfile(fresh)
+        }
+        notify("${profile.name} was reset. It no longer has a PIN.")
+    }
+
+    private fun profileGateBack(gate: ProfileGate): Boolean {
+        if (gate is ProfileGate.Unlock && gate.forgetting) {
+            profileGate = gate.copy(forgetting = false)
+            return true
+        }
+        when (gate) {
+            is ProfileGate.Unlock -> profileGate = if (profilesShown) ProfileGate.Choose(gate.required) else if (gate.required) return false else null
+            // At start, someone has to be watching: Back leaves Reflux instead of getting past the question.
+            is ProfileGate.Choose -> if (gate.required) return false else profileGate = null
+        }
+        return true
+    }
+
+    /**
+     * Makes [profile] the one watching. What was playing stops first and is recorded as the profile it was playing
+     * for; then everything shown is the new profile's, from Home.
+     */
+    private suspend fun becomeProfile(profile: Profile) {
+        finishPlayback()
+        offlineOpen = false
+        folderPicker = null
+        read { switchProfile(profile.id) }
+        // Nothing of the last viewer's session is left for the next: what they searched for, how their last playback
+        // went, what Reflux was telling them.
+        searchQuery = ""
+        lastPlayback = emptyList()
+        notice = null
+        unlocked = false
+        loadProfiles()
+        profileGate = null
+        navigator.show(Destination.Home)
+        invalidate()
+        watchSources()
+        if (profilesShown) notify("Watching as ${profile.name}")
+    }
+
+    /** Adds a profile and opens it: a new viewer starts with nothing of anyone else's. */
+    fun addProfile(name: String): Job = attempt("The profile couldn't be added. Try again.") {
+        val id = read { createProfile(name) }
+        loadProfiles()
+        profiles.firstOrNull { it.id == id }?.let { becomeProfile(it) }
+    }
+
+    fun renameProfile(name: String): Job = attempt("The name couldn't be saved. Try again.") {
+        val active = activeProfile ?: return@attempt
+        read { renameProfile(active.id, name) }
+        loadProfiles()
+    }
+
+    /** Gives the active profile a PIN; says so, or why not. */
+    fun setPin(pin: String): Job = attempt("The PIN couldn't be saved. Try again.") {
+        val active = activeProfile ?: return@attempt
+        val key = platform.pinKey ?: return@attempt
+        if (!PinPolicy.valid(pin)) return@attempt notify("A PIN is ${PinPolicy.LENGTH} digits.")
+        read { setPin(active.id, pin, key) }
+        unlocked = true
+        loadProfiles()
+        invalidate()
+        notify("${active.name} now asks for its PIN.")
+    }
+
+    fun removePin(): Job = attempt("The PIN couldn't be removed. Try again.") {
+        val active = activeProfile ?: return@attempt
+        read { removePin(active.id) }
+        loadProfiles()
+        invalidate()
+        notify("${active.name} no longer asks for a PIN.")
+    }
+
+    /**
+     * Clears the active profile's local watch history: Reflux's own record of what it watched and where it stopped,
+     * and with it Continue Watching. No server, media, download, or other profile is touched.
+     */
+    fun clearWatchHistory(): Job = attempt("Watch history couldn't be cleared. Try again.") {
+        val active = activeProfile ?: return@attempt
+        read { clearWatchHistory(active.id) }
+        invalidate()
+        notify("Watch history cleared on this device. Your servers keep their own.")
+    }
+
+    /**
+     * Deletes another profile and everything that was its own: its server accounts are signed out of and removed, its
+     * downloads deleted, its history gone. The active profile is not deleted from inside itself.
+     */
+    fun deleteProfile(profile: Profile): Job = attempt("The profile couldn't be deleted. Try again.") {
+        if (profile.active || profiles.size <= 1) return@attempt
+        val accounts = read { accountSourcesOf(profile.id) }
+        accounts.forEach { platform.removeSource(it.id) }
+        platform.offline?.let { offline -> read { profileDownloadIds(profile.id) }.forEach { withContext(background) { offline.remove(it) } } }
+        read { deleteProfile(profile.id) }
+        loadProfiles()
+        watchSources()
+        invalidate()
+        notify("${profile.name} was deleted from this device.")
+    }
+
     private companion object {
         val SHORTCUTS = setOf(Key.SHORTCUT_1, Key.SHORTCUT_2, Key.SHORTCUT_3, Key.SHORTCUT_4, Key.SHORTCUT_5, Key.SHORTCUT_6)
         private const val SUPPORT_LOG_LINES = 200
@@ -821,3 +1103,27 @@ internal const val MEDIA_ATMOSPHERE = "appearance.mediaAtmosphere"
 
 /** Where people get help and send feedback: the website's support page. */
 const val SUPPORT_URL = "https://reflux.rsxdevelops.dev/support"
+
+/** Asking who is watching ([AppState.profileGate]). */
+sealed interface ProfileGate {
+    /** Whether it has to be answered: at start, or for a launcher card; Back then leaves Reflux rather than getting past it. */
+    val required: Boolean
+
+    /** Choosing a profile. */
+    data class Choose(override val required: Boolean) : ProfileGate
+
+    /**
+     * Entering [profile]'s PIN. [problem] says what was wrong with the last try, and [attempt] counts them so the same
+     * words are said again. [then] is a work a launcher card asked to continue once the profile is open.
+     */
+    data class Unlock(
+        val profile: Profile,
+        override val required: Boolean,
+        val problem: String? = null,
+        val attempt: Int = 0,
+        val then: MediaId? = null,
+        /** The viewer said they forgot the PIN and is being asked whether to start the profile over. */
+        val forgetting: Boolean = false,
+    ) : ProfileGate
+}
+

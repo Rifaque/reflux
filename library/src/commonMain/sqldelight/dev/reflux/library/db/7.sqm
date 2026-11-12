@@ -1,0 +1,103 @@
+-- Viewer identity and profiles (M8; docs/WATCH_STATE.md, "Profiles"). Everything a viewer does belongs to a profile;
+-- what a library held before belongs to the one it starts with ('default'). Sources a person signed in to (a
+-- Jellyfin user, a Plex account) become that profile's; folders and shares stay shared. No media file is touched.
+-- Kept within SQLite 3.18: tables whose key gains the profile are rebuilt, not altered.
+
+CREATE TABLE IF NOT EXISTS profile (
+    id TEXT NOT NULL PRIMARY KEY,
+    name TEXT NOT NULL,
+    position INTEGER NOT NULL,
+    created_at INTEGER NOT NULL,
+    active INTEGER NOT NULL DEFAULT 0,
+    pin_salt TEXT,
+    pin_verifier TEXT,
+    pin_failures INTEGER NOT NULL DEFAULT 0,
+    pin_locked_until INTEGER,
+    history_cleared_at INTEGER
+);
+
+INSERT OR IGNORE INTO profile(id, name, position, created_at, active) VALUES ('default', 'Main', 0, 0, 1);
+
+CREATE TABLE IF NOT EXISTS profile_setting (
+    profile_id TEXT NOT NULL,
+    key TEXT NOT NULL,
+    value TEXT NOT NULL,
+    PRIMARY KEY (profile_id, key)
+);
+
+CREATE TABLE IF NOT EXISTS server_endpoint (
+    id TEXT NOT NULL PRIMARY KEY,
+    type TEXT NOT NULL,
+    address TEXT NOT NULL,
+    display_name TEXT NOT NULL,
+    created_at INTEGER NOT NULL
+);
+
+-- Sources: which address they were reached at, whose account they are, whose watch state they are compared with.
+ALTER TABLE source ADD COLUMN endpoint_id TEXT;
+ALTER TABLE source ADD COLUMN profile_id TEXT;
+ALTER TABLE source ADD COLUMN sync_profile_id TEXT;
+-- Media servers were signed in to by the one viewer there was. A Plex server reached without signing in is made
+-- shared again at start, where its connection can be read (SourceConnections).
+UPDATE source SET profile_id = 'default', sync_profile_id = 'default' WHERE type IN ('jellyfin', 'plex');
+
+ALTER TABLE version ADD COLUMN visible INTEGER NOT NULL DEFAULT 1;
+ALTER TABLE download ADD COLUMN profile_id TEXT;
+UPDATE download SET profile_id = 'default' WHERE origin_source_id IN (SELECT id FROM source WHERE profile_id IS NOT NULL);
+
+-- Watch state, keyed by profile and work.
+CREATE TABLE watch_state_by_profile (
+    profile_id TEXT NOT NULL,
+    item_id TEXT NOT NULL,
+    position_ms INTEGER NOT NULL,
+    duration_ms INTEGER,
+    completed INTEGER NOT NULL,
+    play_count INTEGER NOT NULL,
+    last_played_at INTEGER,
+    updated_at INTEGER,
+    version_id TEXT,
+    cut TEXT,
+    PRIMARY KEY (profile_id, item_id)
+);
+INSERT INTO watch_state_by_profile(profile_id, item_id, position_ms, duration_ms, completed, play_count, last_played_at, updated_at, version_id, cut)
+SELECT 'default', item_id, position_ms, duration_ms, completed, play_count, last_played_at, updated_at, version_id, cut FROM watch_state;
+DROP TABLE watch_state;
+ALTER TABLE watch_state_by_profile RENAME TO watch_state;
+
+CREATE TABLE watch_sync_by_profile (
+    profile_id TEXT NOT NULL,
+    source_id TEXT NOT NULL,
+    path TEXT NOT NULL,
+    played INTEGER NOT NULL,
+    position_ms INTEGER NOT NULL,
+    last_played_at INTEGER,
+    reconciled_at INTEGER NOT NULL,
+    PRIMARY KEY (profile_id, source_id, path)
+);
+INSERT INTO watch_sync_by_profile(profile_id, source_id, path, played, position_ms, last_played_at, reconciled_at)
+SELECT 'default', source_id, path, played, position_ms, last_played_at, reconciled_at FROM watch_sync;
+DROP TABLE watch_sync;
+ALTER TABLE watch_sync_by_profile RENAME TO watch_sync;
+
+CREATE TABLE favorite_by_profile (
+    profile_id TEXT NOT NULL,
+    item_id TEXT NOT NULL,
+    added_at INTEGER NOT NULL,
+    PRIMARY KEY (profile_id, item_id)
+);
+INSERT INTO favorite_by_profile(profile_id, item_id, added_at) SELECT 'default', item_id, added_at FROM favorite;
+DROP TABLE favorite;
+ALTER TABLE favorite_by_profile RENAME TO favorite;
+
+CREATE TABLE version_preference_by_profile (
+    profile_id TEXT NOT NULL,
+    item_id TEXT NOT NULL,
+    version_id TEXT NOT NULL,
+    PRIMARY KEY (profile_id, item_id)
+);
+INSERT INTO version_preference_by_profile(profile_id, item_id, version_id) SELECT 'default', item_id, version_id FROM version_preference;
+DROP TABLE version_preference;
+ALTER TABLE version_preference_by_profile RENAME TO version_preference;
+
+ALTER TABLE user_collection ADD COLUMN profile_id TEXT NOT NULL DEFAULT 'default';
+ALTER TABLE user_collection_item ADD COLUMN profile_id TEXT NOT NULL DEFAULT 'default';

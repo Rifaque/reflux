@@ -27,7 +27,7 @@ enum class Icon {
     BACK, CHEVRON_RIGHT, CHEVRON_UP, CHEVRON_DOWN, CLOSE, CHECK, PLUS, SEARCH,
     HEART, HEART_FILLED, FOLDER, REFRESH, INFO, OFFLINE, DOWNLOAD, DOWNLOADED, SERVER, NETWORK,
     VOLUME, VOLUME_MUTED, SUBTITLES, AUDIO, CHAPTERS, FULLSCREEN, FULLSCREEN_EXIT, MORE,
-    HOME, MOVIES, SHOWS, SOURCES,
+    HOME, MOVIES, SHOWS, SOURCES, SETTINGS, PROFILE, LOCK,
 }
 
 @Composable
@@ -196,6 +196,21 @@ private fun DrawScope.draw(icon: Icon, color: Color) {
             moveTo(12f, 4f); lineTo(20f, 8.2f); lineTo(12f, 12.4f); lineTo(4f, 8.2f); close()
             moveTo(4f, 12.2f); lineTo(12f, 16.4f); lineTo(20f, 12.2f)
             moveTo(4f, 16f); lineTo(12f, 20.2f); lineTo(20f, 16f)
+        }
+        // Two sliders: settings as things to adjust, not a machine's cog.
+        Icon.SETTINGS -> {
+            stroke(color) { moveTo(4f, 8f); lineTo(20f, 8f); moveTo(4f, 16f); lineTo(20f, 16f) }
+            drawCircle(color, radius = 2.4f, center = Offset(9f, 8f))
+            drawCircle(color, radius = 2.4f, center = Offset(15f, 16f))
+        }
+        // A head and shoulders.
+        Icon.PROFILE -> {
+            drawCircle(color, radius = 3.6f, center = Offset(12f, 8.5f), style = line)
+            stroke(color) { moveTo(5f, 19.5f); cubicTo(5.6f, 15.6f, 8.4f, 13.8f, 12f, 13.8f); cubicTo(15.6f, 13.8f, 18.4f, 15.6f, 19f, 19.5f) }
+        }
+        Icon.LOCK -> {
+            drawRoundRect(color, Offset(5.5f, 10.5f), Size(13f, 9.5f), CornerRadius(2f), style = line)
+            stroke(color) { moveTo(8.5f, 10.5f); lineTo(8.5f, 8f); cubicTo(8.5f, 3.6f, 15.5f, 3.6f, 15.5f, 8f); lineTo(15.5f, 10.5f) }
         }
         Icon.FULLSCREEN_EXIT -> stroke(color) {
             moveTo(9f, 4.5f); lineTo(9f, 9f); lineTo(4.5f, 9f); moveTo(19.5f, 9f); lineTo(15f, 9f); lineTo(15f, 4.5f)

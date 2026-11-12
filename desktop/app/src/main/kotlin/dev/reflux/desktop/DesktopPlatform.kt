@@ -77,6 +77,7 @@ internal class DesktopPlatform(private val environment: DesktopEnvironment) : Pl
     }
 
     override val connections: SourceConnections get() = environment.connections
+    override val pinKey: dev.reflux.library.PinKey get() = environment.pinKey
 
     override val offline: Offline get() = environment.offline
 

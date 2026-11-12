@@ -49,7 +49,7 @@ class HandheldLayoutTest {
         assertTrue(title.top >= 0f && play.bottom < phoneWidth - 16f, "title $title and Play $play are in the first view")
         // On its side the navigation is a narrow rail on the left, not the bottom bar stretched across.
         val home = onNode(destination("Home")).fetchSemanticsNode().boundsInRoot
-        val sources = onNode(destination("Sources")).fetchSemanticsNode().boundsInRoot
+        val sources = onNode(destination("Profile and settings")).fetchSemanticsNode().boundsInRoot
         assertTrue(home.right < 80f && sources.right < 80f && sources.top > home.top, "a rail down the left: $home $sources")
         assertTrue(play.left > home.right, "the page starts beside it: $play")
     }
@@ -73,21 +73,25 @@ class HandheldLayoutTest {
     }
 
     @Test
-    fun thePhonesTopCornerButtonsStandApart() {
-        // Downloads and Sources side by side over Home's artwork: two buttons with clear space between them, on a
-        // common phone and on a small one (M7: on the Phone 2a they touched and read as one shape).
+    fun thePhonesTopCornerIsTheUtilityAreasOneEntry() {
+        // The utility area on a phone held upright (docs/NAVIGATION.md, section 1): one entry at the top right, the
+        // profile, which leads to Downloads, Sources, and Settings; on a common phone and on a small one.
         for ((width, height) in listOf(phoneWidth to phoneHeight, 320 to 640)) {
             val offline = OfflineWorld()
             screen(offline.world, offline.platform, width = width, height = height) { app ->
                 with(offline) { begin(app) }
                 awaitText("Recently Added")
-                val downloads = onNode(destination("Downloads")).fetchSemanticsNode().boundsInRoot
-                val sources = onNode(destination("Sources")).fetchSemanticsNode().boundsInRoot
-                val gap = sources.left - downloads.right
-                assertTrue(gap >= 12f, "at ${width}dp: $gap dp between $downloads and $sources")
-                assertTrue(downloads.width >= 44f && sources.width >= 44f, "comfortable targets at ${width}dp")
-                assertTrue(sources.right <= width && downloads.top < 80f && sources.top == downloads.top, "both in the top corner at ${width}dp")
+                val entry = onNode(destination("Profile and settings")).fetchSemanticsNode().boundsInRoot
+                assertTrue(entry.width >= 44f && entry.height >= 44f, "a comfortable target at ${width}dp: $entry")
+                assertTrue(entry.right <= width && entry.right >= width - 80f && entry.top < 80f, "in the top right corner at ${width}dp: $entry")
+                for (name in listOf("Downloads", "Sources", "Settings")) {
+                    assertTrue(onAllNodes(destination(name)).fetchSemanticsNodes().isEmpty(), "$name is behind the entry, not a button of its own at ${width}dp")
+                }
                 save("phone-top-corner-$width")
+                onNode(destination("Profile and settings")).performTouchInput { click() }
+                awaitText("More")
+                for (name in listOf("Downloads", "Sources", "Settings")) assertTrue(onAllNodesWithText(name).fetchSemanticsNodes().isNotEmpty(), "$name is reached from it")
+                assertEquals(Destination.Profiles, app.navigator.current)
             }
         }
     }
@@ -99,7 +103,7 @@ class HandheldLayoutTest {
         val tabs = listOf("Home", "Movies", "Shows").map { onNode(destination(it)).fetchSemanticsNode().boundsInRoot }
         assertTrue(tabs.all { it.top > phoneHeight * 0.85f && it.right <= phoneWidth }, "the sections are along the bottom: $tabs")
         assertTrue(top("Search") > phoneHeight * 0.85f)
-        assertTrue(onNode(destination("Sources")).fetchSemanticsNode().boundsInRoot.top < 80f, "what is needed less often is in the top corner")
+        assertTrue(onNode(destination("Profile and settings")).fetchSemanticsNode().boundsInRoot.top < 80f, "what is needed less often is in the top corner")
         assertTrue(!shows("Reflux"), "no wordmark competing with the artwork")
         save("phone-home")
 
@@ -113,7 +117,7 @@ class HandheldLayoutTest {
         onNodeWithContentDescription("Heat, 1995").performTouchInput { click() }
         awaitText("Versions")
         assertTrue(top("Back") < 80f)
-        assertTrue(onAllNodes(destination("Sources")).fetchSemanticsNodes().isEmpty(), "Sources is a destination, not a page's button")
+        assertTrue(onAllNodes(destination("Profile and settings")).fetchSemanticsNodes().isEmpty(), "the utility area is a destination's, not a page's button")
         onNodeWithText("Play").assertIsDisplayed()
         onNode(destination("Movies")).assertIsDisplayed()
         save("phone-details")

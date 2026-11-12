@@ -19,6 +19,7 @@ import dev.reflux.library.SourceLibrary
 import dev.reflux.library.inclusion
 import dev.reflux.library.sourceContents
 import dev.reflux.library.userSources
+import dev.reflux.library.activeProfile
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.withContext
 
@@ -194,6 +195,10 @@ class SourceSetup internal constructor(
                 password = ""
                 app.sourceConnected(result.sourceId, result.name, result.updated)
             }
+            is ConnectResult.InAnotherProfile -> {
+                problem = "This account is already signed in on this device, in ${result.profileName}'s profile. Each account belongs to one profile."
+                problemField = Field.USERNAME
+            }
             is ConnectResult.Failed -> {
                 problem = Problems.connection(result.problem, kind, product, examples)
                 problemField = when (result.problem) {
@@ -230,3 +235,20 @@ internal fun Problems.connection(problem: ConnectionProblem, kind: ConnectionKin
         ConnectionProblem.UNKNOWN -> "That couldn't be connected. Try again, and if it keeps happening, the details are in Reflux's log."
     }
 }
+
+/**
+ * Who the open profile is already signed in as on the server at [address] (of [type]), when that is someone other than
+ * [username]: signing in replaces nobody's but this profile's, so the form says so, and that another person wants a
+ * profile of their own (docs/WATCH_STATE.md, "Profiles").
+ */
+internal fun Library.otherAccountOfThisProfile(connections: SourceConnections, type: String?, address: String, username: String): String? {
+    if (address.isBlank() || username.isBlank()) return null
+    val profile = activeProfile()
+    val wanted = address.trim().trimEnd('/').lowercase()
+    return userSources().asSequence()
+        .filter { it.profileId == profile && (type == null || it.type == type) }
+        .mapNotNull { connections.describe(it)?.request }
+        .firstOrNull { it.address.trim().trimEnd('/').lowercase() == wanted && !it.username.equals(username.trim(), ignoreCase = true) }
+        ?.username
+}
+

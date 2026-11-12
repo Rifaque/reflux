@@ -75,8 +75,10 @@ class JellyfinSignOutLiveTest {
             val connected = assertIs<ConnectResult.Connected>(environment.connections.connect(ConnectionKind.SERVER, request))
             val record = environment.library.source(connected.sourceId)!!
             val first = JellyfinCredentials.decode(environment.connections.open(record))!!
-            assertEquals(200, status(url, "Users/Me", environment.deviceId, first.accessToken), "Reflux's session works")
-            assertTrue(environment.deviceId in sessionDevices(url, otherDevice, other), "the server lists Reflux's session")
+            assertEquals(200, status(url, "Users/Me", first.deviceId, first.accessToken), "Reflux's session works")
+            // The account signs in as a device of its own (M8, AccountDevices), never the installation's bare identity.
+            assertNotEquals(environment.deviceId, first.deviceId)
+            assertTrue(first.deviceId in sessionDevices(url, otherDevice, other), "the server lists Reflux's session")
 
             val signOut = environment.removeSource(connected.sourceId)
             assertNull(environment.library.source(connected.sourceId), "removed here")
@@ -88,8 +90,8 @@ class JellyfinSignOutLiveTest {
             assertEquals(SignOut.ENDED, signOut.await(), "the server confirmed the end")
 
             // What the server says now, asked directly.
-            assertEquals(401, status(url, "Users/Me", environment.deviceId, first.accessToken), "the removed token no longer works")
-            assertFalse(environment.deviceId in sessionDevices(url, otherDevice, other), "the server no longer lists Reflux's session")
+            assertEquals(401, status(url, "Users/Me", first.deviceId, first.accessToken), "the removed token no longer works")
+            assertFalse(first.deviceId in sessionDevices(url, otherDevice, other), "the server no longer lists Reflux's session")
             assertEquals(200, status(url, "Users/Me", otherDevice, other), "the other client is still signed in")
             assertTrue(otherDevice in sessionDevices(url, otherDevice, other), "and still listed")
 
@@ -97,12 +99,13 @@ class JellyfinSignOutLiveTest {
             val again = assertIs<ConnectResult.Connected>(environment.connections.connect(ConnectionKind.SERVER, request))
             val second = JellyfinCredentials.decode(environment.connections.open(environment.library.source(again.sourceId)!!))!!
             assertNotEquals(first.accessToken, second.accessToken, "a fresh token")
-            assertEquals(200, status(url, "Users/Me", environment.deviceId, second.accessToken), "which works")
-            assertEquals(401, status(url, "Users/Me", environment.deviceId, first.accessToken), "while the old one stays ended")
+            assertEquals(first.deviceId, second.deviceId, "the same account again is the same device")
+            assertEquals(200, status(url, "Users/Me", second.deviceId, second.accessToken), "which works")
+            assertEquals(401, status(url, "Users/Me", first.deviceId, first.accessToken), "while the old one stays ended")
 
             // Leaving nothing behind.
             assertEquals(SignOut.ENDED, environment.removeSource(again.sourceId).await())
-            assertEquals(401, status(url, "Users/Me", environment.deviceId, second.accessToken))
+            assertEquals(401, status(url, "Users/Me", second.deviceId, second.accessToken))
             val log = data.resolve("reflux.log")
             if (Files.exists(log)) {
                 val text = Files.readString(log)

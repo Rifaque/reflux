@@ -112,6 +112,10 @@ import dev.reflux.ui.components.LocalFocusEntry
 import dev.reflux.ui.components.LocalFocusScreen
 import dev.reflux.ui.components.LocalFocusedControl
 import dev.reflux.ui.components.absorbsPointer
+import dev.reflux.ui.screens.SettingsScreen
+import dev.reflux.ui.screens.ProfilesScreen
+import dev.reflux.ui.screens.ProfileGateOverlay
+import dev.reflux.ui.screens.ProfileMark
 import dev.reflux.ui.screens.BrowseScreen
 import dev.reflux.ui.screens.DetailsScreen
 import dev.reflux.ui.screens.FolderPickerPanel
@@ -119,7 +123,7 @@ import dev.reflux.ui.screens.HomeScreen
 import dev.reflux.ui.screens.IdentifyScreen
 import dev.reflux.ui.screens.DownloadsScreen
 import dev.reflux.ui.state.offlineState
-import dev.reflux.library.downloads
+import dev.reflux.library.visibleDownloads
 import dev.reflux.ui.screens.OfflinePanel
 import dev.reflux.ui.screens.SearchScreen
 import dev.reflux.ui.screens.AboutScreen
@@ -130,6 +134,7 @@ import dev.reflux.ui.screens.ConnectScreen
 import dev.reflux.ui.screens.SourcesScreen
 import dev.reflux.ui.state.AppState
 import dev.reflux.ui.state.Destination
+import dev.reflux.ui.state.PrimaryDestinations
 import dev.reflux.ui.theme.GlassScene
 import dev.reflux.ui.theme.LocalLayout
 import dev.reflux.ui.theme.LocalTypography
@@ -364,7 +369,7 @@ fun RefluxApp(app: AppState, modifier: Modifier = Modifier, bars: SystemBars = S
             // found first (the navigation beside it).
             // The same when a page gains a main action it did not have (a library that just appeared), or a
             // panel over it closes, unless the user has since put focus somewhere in the page themselves.
-            val covered = app.offlineOpen || app.folderPicker != null
+            val covered = app.offlineOpen || app.folderPicker != null || app.profileGate != null
             var started by remember { mutableStateOf<Destination?>(null) }
             LaunchedEffect(app.navigator.current, entry.starts, covered) {
                 if (covered) return@LaunchedEffect
@@ -389,7 +394,7 @@ fun RefluxApp(app: AppState, modifier: Modifier = Modifier, bars: SystemBars = S
         } else if (layout.showsFocus) {
             // A keyboard or a controller at a desk: a panel that closes hands focus back to what opened it at
             // once, not on the next arrow, so a key pressed next acts where the user was.
-            val covered = app.offlineOpen || app.folderPicker != null
+            val covered = app.offlineOpen || app.folderPicker != null || app.profileGate != null
             LaunchedEffect(covered) {
                 if (covered) return@LaunchedEffect
                 repeat(FOCUS_PATIENCE_FRAMES) {
@@ -400,7 +405,7 @@ fun RefluxApp(app: AppState, modifier: Modifier = Modifier, bars: SystemBars = S
         }
         // What is in front is all a screen reader finds: the player, or a panel that holds focus until it closes.
         val panelOpen = app.offlineOpen || app.folderPicker != null
-        val behind = app.playback != null || panelOpen
+        val behind = app.playback != null || panelOpen || app.profileGate != null
         val page = remember { PageScroll() }
         val materialBackdrop = remember { MaterialBackdrop() }
         CompositionLocalProvider(
@@ -441,7 +446,9 @@ fun RefluxApp(app: AppState, modifier: Modifier = Modifier, bars: SystemBars = S
                             ) {
                                 screens.SaveableStateProvider(destination.toString()) {
                                     CompositionLocalProvider(LocalFocusScreen provides destination, LocalChromeInsets provides own) {
-                                        Screen(app, destination)
+                                        // While Reflux asks who is watching, the page is not there at all: not to a
+                                        // finger, a pointer, a keyboard's Tab, or assistive technology.
+                                        if (app.profileGate == null) Screen(app, destination)
                                     }
                                 }
                             }
@@ -484,6 +491,8 @@ private fun Screen(app: AppState, destination: Destination) {
         is Destination.SourceLibrary -> SourceLibraryScreen(app, destination.sourceId, destination.section)
         Destination.AddSource -> AddSourceScreen(app)
         is Destination.Connect -> ConnectScreen(app, destination)
+        Destination.Settings -> SettingsScreen(app)
+        Destination.Profiles -> ProfilesScreen(app)
         Destination.About -> AboutScreen(app)
         Destination.Notices -> NoticesScreen(app)
         is Destination.Notice -> NoticeScreen(app, destination.name)
@@ -500,7 +509,7 @@ private fun Chrome(app: AppState, page: PageScroll, rail: RailFocus, navigationI
     val margin = Modifier.fillMaxSize().padding(start = bars.start, end = bars.end, top = bars.top, bottom = bars.bottom).padding(horizontal = layout.safeMarginDp.dp)
     Box(Modifier.fillMaxSize()) {
         // The navigation's words stop growing before they stop fitting; the destinations always say all of them to a screen reader.
-        LimitedTextSize(NAVIGATION_TEXT_LIMIT) {
+        if (app.profileGate == null) LimitedTextSize(NAVIGATION_TEXT_LIMIT) {
             if (bottomBar) {
                 Box(margin.inert(navigationInert)) { CompactNavigation(app) }
             } else {
@@ -569,6 +578,8 @@ private fun Chrome(app: AppState, page: PageScroll, rail: RailFocus, navigationI
                 }
             }
         }
+        // Who is watching: over everything, which it makes inert (docs/WATCH_STATE.md, "Profiles").
+        app.profileGate?.let { gate -> ProfileGateOverlay(app, gate) }
     }
 }
 
@@ -580,6 +591,8 @@ private fun label(destination: Destination.Section): String = when (destination)
     Destination.Search -> "Search"
     Destination.Downloads -> "Downloads"
     Destination.Sources -> "Sources"
+    Destination.Settings -> "Settings"
+    Destination.Profiles -> "Profiles"
 }
 
 private fun icon(destination: Destination.Section): Icon = when (destination) {
@@ -589,12 +602,14 @@ private fun icon(destination: Destination.Section): Icon = when (destination) {
     Destination.Search -> Icon.SEARCH
     Destination.Downloads -> Icon.DOWNLOAD
     Destination.Sources -> Icon.SOURCES
+    Destination.Settings -> Icon.SETTINGS
+    Destination.Profiles -> Icon.PROFILE
 }
 
 /**
  * Navigation on a phone held upright: Home, Movies, Shows, and Search along the bottom as icons, where a thumb
- * reaches them, and only what a page needs at the top (the way back, Downloads and Sources, a sign of the library
- * being updated).
+ * reaches them, and only what a page needs at the top (the way back, a sign of the library being updated, and the
+ * utility area as one entry: the profile, which leads to Downloads, Sources, and Settings; docs/NAVIGATION.md).
  */
 @Composable
 private fun BoxScope.CompactNavigation(app: AppState) {
@@ -605,15 +620,8 @@ private fun BoxScope.CompactNavigation(app: AppState) {
         if (navigator.current !is Destination.Section) IconButton(Icon.BACK, "Back", { navigator.back() }, size = 44.dp, glass = true)
         Spacer(Modifier.weight(1f))
         ActivityIndicator(activity)
-        // Search has its field across the top; Downloads and Sources are a tap away from every other destination.
-        if (navigator.current is Destination.Section && navigator.current != Destination.Search) {
-            // Two separate glass buttons, apart enough that their frosting never reads as one shape over artwork.
-            Row(horizontalArrangement = Arrangement.spacedBy(TopActionGap), verticalAlignment = Alignment.CenterVertically) {
-                if (app.keepsCopies) DownloadsButton(app, size = 44.dp, glass = true)
-                val here = navigator.section == Destination.Sources
-                IconButton(Icon.SOURCES, "Sources", { app.go(Destination.Sources) }, size = 44.dp, glass = true, selected = here, role = Role.Tab)
-            }
-        }
+        // Search has its field across the top; the utility area is a tap away from every other destination.
+        if (navigator.current is Destination.Section && navigator.current != Destination.Search) ProfileButton(app)
     }
     // While typing, the keyboard owns the bottom of the screen: the destinations step aside rather than sit on
     // top of the keyboard and cover what is being typed into, or the button that comes after it.
@@ -721,26 +729,50 @@ private fun NavigationRail(app: AppState, style: NavigationStyle, focus: RailFoc
             if (style == NavigationStyle.SIDEBAR) {
                 Text("Reflux", Modifier.padding(start = 14.dp, top = 6.dp, bottom = 18.dp), style = LocalTypography.current.title.copy(letterSpacing = (-0.02).em))
             }
-            for (destination in app.destinations) {
+            val shown = when {
+                style == NavigationStyle.SIDEBAR -> NavigationLabel.BESIDE
+                style == NavigationStyle.RAIL -> NavigationLabel.BENEATH
+                // A television's item stays one focusable thing whether its name shows or not, so focus never
+                // drops when the rail widens around it.
+                television -> if (open) NavigationLabel.BESIDE else NavigationLabel.HIDDEN
+                else -> NavigationLabel.NONE
+            }
+            // A phone's rail, on its side, has the height for the library and one more: its utility area is the one
+            // profile entry, as when it is held upright (docs/NAVIGATION.md, section 3).
+            val shownDestinations = if (style == NavigationStyle.COMPACT_RAIL) PrimaryDestinations + Destination.Profiles else app.destinations
+            for (destination in shownDestinations) {
+                // The utility area sits apart, at the foot (docs/NAVIGATION.md, section 1).
+                if (destination == shownDestinations.firstOrNull { it in app.utilityDestinations }) Spacer(Modifier.weight(1f))
+                if (style == NavigationStyle.COMPACT_RAIL && destination == Destination.Profiles) {
+                    CompactProfileEntry(app, if (navigator.highlighted in app.utilityDestinations) Modifier.focusRequester(focus.current) else Modifier)
+                    continue
+                }
                 val here = navigator.highlighted == destination
                 val busy = destination == Destination.Downloads && downloading(app)
+                val name = if (destination == Destination.Profiles) app.activeProfile?.takeIf { app.profilesShown }?.name ?: label(destination) else label(destination)
                 NavigationItem(
                     icon(destination),
-                    label(destination),
+                    name,
                     here,
-                    when {
-                        style == NavigationStyle.SIDEBAR -> NavigationLabel.BESIDE
-                        style == NavigationStyle.RAIL -> NavigationLabel.BENEATH
-                        // A television's item stays one focusable thing whether its name shows or not, so focus never
-                        // drops when the rail widens around it.
-                        television -> if (open) NavigationLabel.BESIDE else NavigationLabel.HIDDEN
-                        else -> NavigationLabel.NONE
-                    },
+                    shown,
                     busy,
                     if (here) Modifier.focusRequester(focus.current) else Modifier,
                 ) { app.go(destination) }
             }
         }
+    }
+}
+
+/** The utility area's one entry in a phone's rail: named as on the phone held upright, lit while the viewer is anywhere in it. */
+@Composable
+private fun CompactProfileEntry(app: AppState, modifier: Modifier) {
+    val here = app.navigator.highlighted in app.utilityDestinations
+    val who = app.activeProfile?.takeIf { app.profilesShown }?.name
+    val busy = downloading(app)
+    val name = listOfNotNull(who?.let { "Profile, $it" } ?: "Profile and settings", "downloading".takeIf { busy }).joinToString(", ")
+    Box {
+        IconButton(Icon.PROFILE, name, { app.go(Destination.Profiles) }, modifier, size = 44.dp, tint = tabColor(here), selected = here, role = Role.Tab)
+        if (busy) BusyDot(Modifier.align(Alignment.TopEnd))
     }
 }
 
@@ -835,7 +867,7 @@ private fun BusyDot(modifier: Modifier = Modifier) {
 @Composable
 private fun downloading(app: AppState): Boolean {
     if (app.platform.offline == null) return false
-    val busy by app.offlineState { downloads().any { it.active } }
+    val busy by app.offlineState { visibleDownloads().any { it.active } }
     return busy == true
 }
 
@@ -875,14 +907,30 @@ private fun PageBar(app: AppState, modifier: Modifier = Modifier) {
 /** The space between the phone's top-corner buttons (Downloads, Sources). */
 internal val TopActionGap = 14.dp
 
-/** The way to Downloads on a phone held upright. While something is being downloaded a small dot says so; it does not move. */
+/**
+ * The utility area on a phone held upright: one entry at the top right, the profile, which leads to who is
+ * watching, Downloads, Sources, and Settings (docs/NAVIGATION.md, section 1). While something is being downloaded a
+ * small dot says so; it does not move.
+ */
 @Composable
-private fun DownloadsButton(app: AppState, size: Dp = 40.dp, glass: Boolean = false) {
+private fun ProfileButton(app: AppState) {
     val busy = downloading(app)
-    val here = app.navigator.section == Destination.Downloads
+    val here = app.navigator.section in app.utilityDestinations
+    val who = app.activeProfile?.takeIf { app.profilesShown }?.name
+    val name = listOfNotNull(who?.let { "Profile, $it" } ?: "Profile and settings", "downloading".takeIf { busy }).joinToString(", ")
     Box {
-        IconButton(Icon.DOWNLOAD, if (busy) "Downloads, downloading" else "Downloads", { app.go(Destination.Downloads) }, size = size, glass = glass, tint = tabColor(here), selected = here, role = Role.Tab)
-        if (busy) Box(Modifier.align(Alignment.TopEnd).padding(top = 7.dp, end = 7.dp).size(7.dp).background(RefluxColors.contentPrimary, CircleShape))
+        Pressable(
+            { app.go(Destination.Profiles) },
+            Modifier.semantics { contentDescription = name; selected = here },
+            CircleShape,
+            lift = 0.4f,
+            role = Role.Tab,
+        ) {
+            Box(Modifier.size(44.dp).glass(MaterialRole.FLOATING, CircleShape), contentAlignment = Alignment.Center) {
+                if (who != null) ProfileMark(app.activeProfile, 34.dp, lit = here) else Icon(Icon.PROFILE, size = 22.dp, tint = tabColor(here))
+            }
+        }
+        if (busy) Box(Modifier.align(Alignment.TopEnd).padding(top = 3.dp, end = 3.dp).size(7.dp).background(RefluxColors.contentPrimary, CircleShape))
     }
 }
 
@@ -914,6 +962,8 @@ private fun accessibleTitle(destination: Destination): String? = when (destinati
     is Destination.Listing -> destination.title
     Destination.Downloads -> "Downloads"
     Destination.Sources -> "Sources"
+    Destination.Settings -> "Settings"
+    Destination.Profiles -> "Profiles"
     Destination.AddSource -> "Add media"
     is Destination.Connect -> "Connect"
     is Destination.SourceLibrary -> null

@@ -52,7 +52,12 @@ fun main(args: Array<String>) {
         return
     }
     val rest = args.drop(1)
-    val env = DesktopEnvironment()
+    val env = try {
+        DesktopEnvironment()
+    } catch (e: dev.reflux.library.NewerLibraryException) {
+        System.err.println(e.message)
+        return
+    }
     val ok = runBlocking {
         when (command) {
             "add" -> add(env, rest)
@@ -94,6 +99,7 @@ private suspend fun add(env: DesktopEnvironment, args: List<String>): Boolean {
 private suspend fun connect(env: DesktopEnvironment, kind: ConnectionKind, request: ConnectionRequest): Boolean =
     when (val result = env.connections.connect(kind, request)) {
         is ConnectResult.Failed -> fail("Could not connect: ${result.problem.name.lowercase().replace('_', ' ')}.")
+        is ConnectResult.InAnotherProfile -> fail("That account is already signed in on this device, in profile ${result.profileName}.")
         is ConnectResult.Connected -> {
             println("Connected ${result.name}. Reading it...")
             refresh(env, result.sourceId)

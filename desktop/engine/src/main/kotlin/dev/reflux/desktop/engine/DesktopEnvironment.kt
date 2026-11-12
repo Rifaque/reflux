@@ -1,5 +1,7 @@
 package dev.reflux.desktop.engine
 
+import dev.reflux.library.PinKey
+import dev.reflux.library.SealedPinKey
 import dev.reflux.core.RefluxBuild
 import dev.reflux.core.metadata.MetadataProvider
 import dev.reflux.core.model.SourceId
@@ -143,7 +145,12 @@ class DesktopEnvironment(
         // A connection an earlier version wrote into the database is moved into the credential store first.
         connections.sealStored()
         connections.migrateExcludedSections()
+        // Sources from before profiles become the first profile's or shared (docs/WATCH_STATE.md, "Profiles").
+        connections.adoptProfiles()
     }
+
+    /** What profile PINs are checked with: a key kept in the system's credential store, like the connections. */
+    val pinKey: PinKey by lazy { SealedPinKey(library, seal) }
 
     /**
      * TMDB is enabled when the environment or the build provides an application credential: the environment first (a

@@ -2,6 +2,7 @@ package dev.reflux.library
 
 import dev.reflux.core.model.MediaId
 import dev.reflux.core.model.MediaVersion
+import dev.reflux.core.model.ProfileId
 import dev.reflux.core.model.SourceId
 import dev.reflux.core.playback.WatchReporter
 import dev.reflux.core.source.MediaSource
@@ -28,15 +29,20 @@ class SyncingWatchReporter(
     private val version: MediaVersion,
     private val source: MediaSource?,
     private val scope: CoroutineScope,
+    /**
+     * Whose playback this is: the profile active when it started. Every report goes there, whichever profile is
+     * active by the time it is made, so a playback never changes hands (docs/WATCH_STATE.md, "Profiles").
+     */
+    val profile: ProfileId = library.activeProfile(),
 ) : WatchReporter {
     override fun progress(itemId: MediaId, positionMs: Long, durationMs: Long?) {
-        library.progress(itemId, positionMs, durationMs, version)
+        library.progress(itemId, positionMs, durationMs, version, profile)
         val told = held(itemId, positionMs)
         sync { it.reportProgress(version.location.path, reported(it, told, durationMs), paused = false) }
     }
 
     override fun stopped(itemId: MediaId, positionMs: Long, durationMs: Long?) {
-        library.stopped(itemId, positionMs, durationMs, version)
+        library.stopped(itemId, positionMs, durationMs, version, profile)
         // A playback that finished (as Reflux records it, by its own rule) is reported as having reached the
         // end of the source's copy, so that the source counts it watched by its own rule, as its own clients
         // do; any other stop is a position.
@@ -53,7 +59,7 @@ class SyncingWatchReporter(
      * the source does not record a few seconds and hand them back at the next scan as news; else the playback's own.
      */
     private fun held(itemId: MediaId, positionMs: Long): Long {
-        val state = library.watchState(itemId)
+        val state = library.watchState(itemId, profile)
         return when (Handoff.relation(state, version)) {
             null, TimelineMatch.DIFFERENT -> positionMs
             else -> state!!.positionMs
@@ -68,6 +74,8 @@ class SyncingWatchReporter(
 
     private fun sync(action: suspend (WatchStateSyncSource) -> Unit) {
         val syncing = source as? WatchStateSyncSource ?: return
+        // A source's account belongs to one profile: another profile's viewing is never told to it.
+        if (library.syncProfileOf(syncing.descriptor.id) != profile) return
         val previous = lastReport
         lastReport = scope.launch {
             previous?.join()
@@ -81,10 +89,13 @@ class SyncingWatchReporter(
  * source that holds one of its versions. Returns the number of source updates that failed (e.g. offline).
  */
 suspend fun Library.setWatchedEverywhere(itemId: MediaId, watched: Boolean, sources: (SourceId) -> MediaSource?): Int {
+    val profile = activeProfile()
     setWatched(itemId, watched)
     var failures = 0
     for (playable in playableIdsOf(itemId)) {
         for (info in versions(playable)) {
+            // Only the active profile's own accounts are told: another profile's server record is not this viewer's.
+            if (syncProfileOf(info.version.location.sourceId) != profile) continue
             val source = sources(info.version.location.sourceId) as? WatchStateSyncSource ?: continue
             if (!bestEffort { source.setPlayed(info.version.location.path, watched) }) failures++
         }
@@ -99,14 +110,15 @@ internal data class PendingSourceUpdate(val path: String, val update: SourceUpda
  * Tells a source what changed in Reflux while the two were out of step: what was watched or marked on
  * another copy, or while the source was away. What cannot be delivered stays pending for the next scan.
  */
-internal suspend fun Library.deliver(source: MediaSource, updates: List<PendingSourceUpdate>) {
+internal suspend fun Library.deliver(source: MediaSource, updates: List<PendingSourceUpdate>, profile: ProfileId?) {
     val syncing = source as? WatchStateSyncSource ?: return
+    profile ?: return
     for ((path, update) in updates) {
         val delivered = bestEffort {
             update.played?.let { syncing.setPlayed(path, it) }
             update.positionMs?.let { syncing.updatePosition(path, it) }
         }
-        if (delivered) queries.markWatchSyncReconciled(now(), source.descriptor.id.value, path)
+        if (delivered) queries.markWatchSyncReconciled(now(), profile.value, source.descriptor.id.value, path)
     }
 }
 
