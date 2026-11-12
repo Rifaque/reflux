@@ -1402,3 +1402,18 @@ Targeted validation, as the milestone rules ask: what M9 changed, offscreen firs
 **Closure corrections, same day:** "Made by RSX Develops" was removed from the desktop sidebar at the owner's request (DECISIONS.md); the maker is credited in About, and the sidebar is the Reflux lockup, the destinations, and the utility area. After it, `ShellSurfaceTest`, `MiniPlayerTest`, `NavigationTest`, `DirectionalInputTest`, `TelevisionTest`, `HandheldLayoutTest`, `AccessibilityTest`, and `VisualSystemTest` pass on Windows and the geometry baseline needed no change (nothing below the destinations moved). The Linux container was not rerun after that one-line removal.
 
 **Still pending, not claimed:** hosted CI and the full Linux `check` (the next push); Wayland; a second display on Linux; a screen reader walk; device walks. Windows two-display verification of the mini-player passed.
+
+**M9: hosted CI (2026-11-12).** The first push carried both M8 and M9 (M8 had not been pushed), so these are the first hosted runs of either. Releases and tags: none made; the version is unchanged.
+
+| Run | Commit | Result |
+| --- | --- | --- |
+| CI 43238252678 (and its re-run) | `89075d0` | **Failed twice, the same way.** Ubuntu check: `MiniPlayerWindowTest` (an unrelated modal "Error" dialog, `SQLITE_CANTOPEN`, was the active window). Website job: layout shift over the 0.05 budget on many pages. Windows, Android, workflow lint, secret scan, release-tools: pass |
+| CI 43256057566 | `347818a` (test diagnostics only) | Same two failures; the dialog's text identified the cause |
+| CI 43268926732 | `e7bc319` | Windows `AboutUiTest.aKeyboardGoesInAndComesBackToWhereItWas` failed once (the intermittent, pre-existing test; unchanged); every other job passed. Re-run of that job: **passed**. **Final result: all 7 jobs green** (Ubuntu check including the window tests and `MiniPlayerWindowTest`; Windows check; Android; website incl. the layout check; release tools; lint; secret scan). The Release workflow also succeeded |
+
+What the two failures were, and the fixes (`e7bc319`):
+
+- **Ubuntu, `MiniPlayerWindowTest`: not the mini-player.** `EmbeddedPlaybackTest` closes its window while playing; the saved place wakes the pages' library reads, which run on after the test deletes its data folder. A blocking database read cannot be cancelled, so it failed with `SQLITE_CANTOPEN` after its caller was cancelled, was reported as an unhandled error, and Compose showed a modal dialog that outlived that test and was found by the next one to ask which window is active. (Windows cannot delete the open database, so it never showed there.) Fix: `AppState.read` ends a failure that arrives after its caller was cancelled as the cancellation it is; `LibraryReadTest` fails without the change (checked) and passes with it. The test's own assertion was left strict.
+- **Website: the web font.** Manrope loaded with `font-display: swap` and no preload, so pages painted in the runner's wider fallback face and re-flowed. It is now declared with `font-display: optional` and preloaded on every page (DECISIONS.md, 2026-11-12). The budget is unchanged and the measurement was correct.
+
+**Left open, honestly:** a library read that fails while its page is still showing still reaches Compose's default exception handler, which shows a raw error dialog; that production robustness gap is not fixed and is noted for M10 or later. The intermittent `AboutUiTest` is still intermittent (it failed on hosted Windows once this run). Device walks, Wayland, a second display on Linux, and a screen reader walk remain not done.
