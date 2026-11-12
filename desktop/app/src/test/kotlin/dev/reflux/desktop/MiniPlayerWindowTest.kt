@@ -196,7 +196,7 @@ class MiniPlayerWindowTest {
             assertFalse(overlay.focusableWindowState, "and never takes the keyboard from the page")
             assertSame(shell.window, overlay.owner, "it belongs to the Reflux window: it goes where that goes, and has no taskbar entry of its own")
             val active = KeyboardFocusManager.getCurrentKeyboardFocusManager().activeWindow
-            assertTrue(active == null || active === shell.window, "the active window is the page's, or another application's: $active")
+            assertTrue(active == null || active === shell.window, "the active window is the page's, or another application's: ${active?.javaClass?.simpleName} ${active?.let(::whatItSays)}")
         }
         assertSame(session, shell.ui { shell.app.playback })
         note("windows: overlay owned by the main window, not always-on-top, not focusable; ${shell.ui { shell.window.ownedWindows.count { it.isShowing } }} owned window showing")
@@ -333,6 +333,23 @@ class MiniPlayerWindowTest {
     }
 
     // What the test reads off the real window --------------------------------------------------------------------
+
+    /**
+     * What a window says in its own words: the toolkit's error dialog (shown when something unhandled reaches the event
+     * queue) carries the exception's text, which a failure message should not leave out.
+     */
+    private fun whatItSays(window: java.awt.Window): String {
+        val found = ArrayList<String>()
+        fun walk(component: Component) {
+            when (component) {
+                is javax.swing.text.JTextComponent -> component.text?.let(found::add)
+                is javax.swing.JLabel -> component.text?.let(found::add)
+            }
+            (component as? java.awt.Container)?.components?.forEach(::walk)
+        }
+        walk(window)
+        return found.joinToString(" | ").take(1500)
+    }
 
     private fun screens(): List<Rectangle> = GraphicsEnvironment.getLocalGraphicsEnvironment().screenDevices.map { it.defaultConfiguration.bounds }
 
