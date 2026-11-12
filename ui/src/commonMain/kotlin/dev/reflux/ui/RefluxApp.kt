@@ -130,6 +130,7 @@ import dev.reflux.ui.screens.AboutScreen
 import dev.reflux.ui.screens.AddSourceScreen
 import dev.reflux.ui.screens.NoticeScreen
 import dev.reflux.ui.screens.NoticesScreen
+import dev.reflux.ui.screens.CreditsScreen
 import dev.reflux.ui.screens.ConnectScreen
 import dev.reflux.ui.screens.SourcesScreen
 import dev.reflux.ui.state.AppState
@@ -146,7 +147,17 @@ import dev.reflux.ui.theme.glass
 import dev.reflux.ui.theme.tween
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.focusGroup
-import androidx.compose.foundation.onFocusedBoundsChanged
+import androidx.compose.foundation.layout.wrapContentWidth
+import androidx.compose.ui.draw.clipToBounds
+import dev.reflux.ui.components.FocusedBounds
+import dev.reflux.ui.components.RefluxLockup
+import dev.reflux.ui.components.RefluxMark
+import dev.reflux.ui.components.SelectionTrack
+import dev.reflux.ui.components.focusedBounds
+import dev.reflux.ui.components.lockupMarkWidth
+import dev.reflux.ui.components.selectionMark
+import dev.reflux.ui.components.selectionPlace
+import dev.reflux.library.Profile
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.heightIn
@@ -158,6 +169,9 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.stateDescription
 import dev.reflux.design.NavigationStyle
+import dev.reflux.design.MiniPlayerDock
+import dev.reflux.ui.player.MiniPlayerDock
+import dev.reflux.ui.state.PlaybackSession
 import dev.reflux.ui.components.Pressable
 import dev.reflux.ui.screens.SourceLibraryScreen
 
@@ -229,7 +243,7 @@ internal val LocalChromeInsets = staticCompositionLocalOf { ChromeInsets(top = P
 /** The row across the top of a page beside a rail: the way back, and a sign of the library being updated. */
 internal val PageBarHeight = 64.dp
 
-private fun chromeInsets(navigation: NavigationStyle, onSection: Boolean, prompts: Boolean, bars: SystemBars, artworkPage: Boolean): ChromeInsets {
+private fun chromeInsets(navigation: NavigationStyle, onSection: Boolean, prompts: Boolean, bars: SystemBars, artworkPage: Boolean, dock: MiniPlayerDock? = null): ChromeInsets {
     val insets = when (navigation) {
         // A page reached from somewhere has a way back in its top corner; with a controller in hand, its
         // button prompts sit above the sections, and the page ends clear of them too.
@@ -239,7 +253,9 @@ private fun chromeInsets(navigation: NavigationStyle, onSection: Boolean, prompt
         else -> ChromeInsets(top = PageBarHeight, bottom = 32.dp, start = navigation.widthDp.dp)
     }
     // Edge to edge: the page is drawn under the system's bars, and its content starts clear of them.
-    val withBars = insets.copy(top = insets.top + bars.top, bottom = insets.bottom + bars.bottom, start = insets.start + bars.start)
+    // A page ends clear of the mini-player too, while something plays there: its last row scrolls out from under it.
+    val docked = dock?.let { (it.heightDp + MiniPlayerDock.GAP_DP).dp } ?: 0.dp
+    val withBars = insets.copy(top = insets.top + bars.top, bottom = insets.bottom + bars.bottom + docked, start = insets.start + bars.start)
     return if (artworkPage && navigation.vertical) withBars.copy(contentStart = withBars.start) else withBars
 }
 
@@ -361,7 +377,8 @@ fun RefluxApp(app: AppState, modifier: Modifier = Modifier, bars: SystemBars = S
         // A page that opens on artwork lets it run under the navigation where the material can carry it (M4); on
         // BASIC the page stays beside the navigation, which is the cleaner layout there.
         val artworkPage = tier.artworkUnderNavigation && opensOnArtwork(app.navigator.current)
-        val insets = chromeInsets(layout.navigation, app.navigator.current is Destination.Section, app.namesButtons, bars, artworkPage)
+        val dock = layout.dock?.takeIf { app.docked != null }
+        val insets = chromeInsets(layout.navigation, app.navigator.current is Destination.Section, app.namesButtons, bars, artworkPage, dock)
         // A television is only ever operated through focus, so something always has it: when a screen
         // appears, or what had focus goes away, it lands where the user left off or on the main action.
         if (layout.formFactor == FormFactor.TV) {
@@ -405,7 +422,8 @@ fun RefluxApp(app: AppState, modifier: Modifier = Modifier, bars: SystemBars = S
         }
         // What is in front is all a screen reader finds: the player, or a panel that holds focus until it closes.
         val panelOpen = app.offlineOpen || app.folderPicker != null
-        val behind = app.playback != null || panelOpen || app.profileGate != null
+        // What plays in the mini-player is beside the page, not in front of it: the page stays the viewer's.
+        val behind = app.watching != null || panelOpen || app.profileGate != null
         val page = remember { PageScroll() }
         val materialBackdrop = remember { MaterialBackdrop() }
         CompositionLocalProvider(
@@ -413,9 +431,8 @@ fun RefluxApp(app: AppState, modifier: Modifier = Modifier, bars: SystemBars = S
             LocalSystemBars provides bars, LocalMaterialBackdrop provides materialBackdrop,
         ) {
             GlassScene(
-                Modifier.fillMaxSize().background(RefluxColors.background).trackPointer(app).onFocusChanged { entry.hasFocus = it.hasFocus }
-                    .onFocusedBoundsChanged { rail.focusedBounds = it?.takeIf { coordinates -> coordinates.isAttached }?.boundsInRoot() },
-                overlay = { Chrome(app, page, rail, navigationInert = behind, noticeInert = app.playback != null) },
+                Modifier.fillMaxSize().background(RefluxColors.background).trackPointer(app).onFocusChanged { entry.hasFocus = it.hasFocus },
+                overlay = { Chrome(app, page, rail, navigationInert = behind, noticeInert = app.watching != null) },
             ) {
                 // Pages start beside a navigation that runs down the side, except a page that opens on artwork where
                 // the material lets it run beneath; focus that scrolls a page stops short of the chrome.
@@ -437,12 +454,14 @@ fun RefluxApp(app: AppState, modifier: Modifier = Modifier, bars: SystemBars = S
                             val named = accessibleTitle(destination)
                             // Each page keeps its own place while it leaves: one that opens on artwork reaches under the
                             // navigation, the others start beside it.
-                            val own = chromeInsets(layout.navigation, destination is Destination.Section, app.namesButtons, bars, tier.artworkUnderNavigation && opensOnArtwork(destination))
+                            val own = chromeInsets(layout.navigation, destination is Destination.Section, app.namesButtons, bars, tier.artworkUnderNavigation && opensOnArtwork(destination), dock)
                             Box(
                                 Modifier.fillMaxSize().padding(start = own.start - own.contentStart).traversal(Traversal.PAGE).inert(leaving || behind)
                                     .then(if (named != null) Modifier.pane(named) else Modifier)
-                                    // Coming back into the page from the navigation lands where focus was in it (RailFocus).
-                                    .focusGroup(),
+                                    // Coming back into the page from the navigation lands where focus was in it (RailFocus):
+                                    // the page is a focus group, and one that can say where focus is inside it. A page on
+                                    // its way out is not asked.
+                                    .then(if (leaving) Modifier.focusGroup() else Modifier.focusedBounds(rail.bounds)),
                             ) {
                                 screens.SaveableStateProvider(destination.toString()) {
                                     CompositionLocalProvider(LocalFocusScreen provides destination, LocalChromeInsets provides own) {
@@ -495,6 +514,7 @@ private fun Screen(app: AppState, destination: Destination) {
         Destination.Profiles -> ProfilesScreen(app)
         Destination.About -> AboutScreen(app)
         Destination.Notices -> NoticesScreen(app)
+        Destination.Credits -> CreditsScreen(app)
         is Destination.Notice -> NoticeScreen(app, destination.name)
     }
 }
@@ -516,6 +536,30 @@ private fun Chrome(app: AppState, page: PageScroll, rail: RailFocus, navigationI
                 Box(Modifier.fillMaxSize().padding(start = bars.start, end = bars.end).inert(navigationInert)) {
                     NavigationRail(app, layout.navigation, rail, Modifier.align(Alignment.TopStart).padding(top = bars.top, bottom = bars.bottom).traversal(Traversal.BEFORE_PAGE))
                     PageBar(app, Modifier.align(Alignment.TopStart).padding(start = layout.navigation.widthDp.dp, top = bars.top).traversal(Traversal.BEFORE_PAGE))
+                }
+            }
+        }
+        // What is playing, beside the page while the viewer browses (docs/NAVIGATION.md, section 8): part of the
+        // navigation's own layer, above the phone's bar or in the page's bottom corner beside a rail or a sidebar.
+        layout.dock?.takeIf { app.profileGate == null }?.let { dock ->
+            var shown by remember { mutableStateOf<PlaybackSession?>(null) }
+            app.docked?.let { shown = it }
+            val place = if (bottomBar) {
+                // Above the destinations, and above what a controller's buttons are said to do there.
+                margin.padding(bottom = 10.dp + NavigationBarHeight + MiniPlayerDock.GAP_DP.dp + if (app.namesButtons) 52.dp else 0.dp)
+            } else {
+                Modifier.fillMaxSize().padding(end = bars.end + DockMargin, bottom = bars.bottom + DockMargin)
+            }
+            Box(place.inert(navigationInert), contentAlignment = if (bottomBar) Alignment.BottomCenter else Alignment.BottomEnd) {
+                // It arrives and leaves in place: the picture travels to and from it, and words that slid would
+                // move the box the picture is heading for.
+                AnimatedVisibility(
+                    app.docked != null && app.folderPicker == null && !(bottomBar && app.textInputActive),
+                    Modifier.traversal(Traversal.AFTER_PAGE),
+                    enter = fadeIn(Motion.playerDock.tween()),
+                    exit = fadeOut(Motion.controlsHide.tween()),
+                ) {
+                    shown?.let { MiniPlayerDock(app, it, dock) }
                 }
             }
         }
@@ -559,8 +603,12 @@ private fun Chrome(app: AppState, page: PageScroll, rail: RailFocus, navigationI
                     if (aboveSheet) {
                         Modifier.align(Alignment.TopCenter).padding(top = 12.dp + 44.dp + 12.dp)
                     } else {
-                        Modifier.align(Alignment.BottomCenter).padding(bottom = if (bottomBar) 10.dp + NavigationBarHeight + 14.dp else 32.dp)
-                            .padding(start = layout.navigation.widthDp.dp)
+                        // Never over the mini-player: above it on a phone, beside it where it is in the page's corner.
+                        val docked = layout.dock?.takeIf { app.docked != null }
+                        val aboveDock = if (bottomBar && docked != null) (docked.heightDp + MiniPlayerDock.GAP_DP).dp else 0.dp
+                        val besideDock = if (!bottomBar && docked != null) (docked.widthDp + MiniPlayerDock.GAP_DP).dp else 0.dp
+                        Modifier.align(Alignment.BottomCenter).padding(bottom = (if (bottomBar) 10.dp + NavigationBarHeight + 14.dp else 32.dp) + aboveDock)
+                            .padding(start = layout.navigation.widthDp.dp, end = besideDock)
                     }
                 ).announces(app.notice.takeUnless { noticeInert }),
                 transitionSpec = {
@@ -579,7 +627,13 @@ private fun Chrome(app: AppState, page: PageScroll, rail: RailFocus, navigationI
             }
         }
         // Who is watching: over everything, which it makes inert (docs/WATCH_STATE.md, "Profiles").
-        app.profileGate?.let { gate -> ProfileGateOverlay(app, gate) }
+        // It is there at once when Reflux opens on it; asked for later it arrives as a page does, and it leaves the
+        // way one leaves, so that choosing who is watching is one movement into their Home.
+        var asked by remember { mutableStateOf(app.profileGate) }
+        app.profileGate?.let { asked = it }
+        AnimatedVisibility(app.profileGate != null, enter = fadeIn(LocalMotion.current.pageEnter.tween()), exit = fadeOut(Motion.focusChange.tween())) {
+            asked?.let { gate -> Box(Modifier.fillMaxSize().inert(app.profileGate == null)) { ProfileGateOverlay(app, gate) } }
+        }
     }
 }
 
@@ -638,17 +692,23 @@ private fun BoxScope.CompactNavigation(app: AppState) {
                     family,
                 )
             }
+            // The bar is as wide as its four destinations and no wider: a compact capsule that floats over the page.
+            val track = remember { SelectionTrack() }
             Row(
-                Modifier.align(Alignment.CenterHorizontally).widthIn(max = 360.dp).fillMaxWidth().height(NavigationBarHeight).glass(MaterialRole.FLOATING, CircleShape).absorbsPointer()
-                    .onFocusChanged { entry?.chrome = SemanticAction.NAVIGATE_UP.takeIf { _ -> it.hasFocus } }.selectableGroup().padding(horizontal = 6.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                Modifier.align(Alignment.CenterHorizontally).height(NavigationBarHeight).glass(MaterialRole.FLOATING, CircleShape).absorbsPointer()
+                    .onFocusChanged { entry?.chrome = SemanticAction.NAVIGATE_UP.takeIf { _ -> it.hasFocus } }.selectableGroup().padding(horizontal = 6.dp)
+                    // Where the viewer is: one lit pill, which travels to the destination they go to.
+                    .selectionMark(track, navigator.highlighted.takeIf { it in PrimaryDestinations }),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 // Icons, with no words beneath them: each still says its name and whether it is where the viewer is.
-                listOf(Destination.Home, Destination.Movies, Destination.Shows, Destination.Search).forEach { destination ->
+                PrimaryDestinations.forEach { destination ->
                     val here = navigator.highlighted == destination
-                    // Where the viewer is: a lit pill around a white icon. Shape and light, not color alone.
-                    IconButton(icon(destination), label(destination), { app.go(destination) }, size = 44.dp, width = 64.dp, tint = tabColor(here), selected = here, role = Role.Tab)
+                    // A white icon in the lit pill. Shape and light, not color alone.
+                    Box(Modifier.selectionPlace(track, destination)) {
+                        IconButton(icon(destination), label(destination), { app.go(destination) }, size = 44.dp, width = 64.dp, tint = tabColor(here), selected = here, role = Role.Tab, lit = false)
+                    }
                 }
             }
         }
@@ -661,8 +721,9 @@ private fun BoxScope.CompactNavigation(app: AppState) {
 internal class RailFocus {
     internal val current = FocusRequester()
 
-    /** Where what has focus is, in the window, as the toolkit reports it on every focus change. */
-    internal var focusedBounds: androidx.compose.ui.geometry.Rect? = null
+    /** Where what has focus is, in the window, asked of the toolkit when a move needs to know. */
+    internal val bounds = FocusedBounds()
+    internal val focusedBounds: androidx.compose.ui.geometry.Rect? get() = bounds.now()
 
     internal fun focusCurrent(): Boolean = runCatching { current.requestFocus() }.getOrDefault(false)
 
@@ -688,6 +749,10 @@ private fun NavigationRail(app: AppState, style: NavigationStyle, focus: RailFoc
     val navigator = app.navigator
     val entry = LocalFocusEntry.current
     val television = style == NavigationStyle.TV_RAIL
+    val compact = style == NavigationStyle.COMPACT_RAIL
+    val track = remember { SelectionTrack() }
+    // A phone's rail has one entry for the whole utility area; it is where the viewer is while they are anywhere in it.
+    val marked: Any? = navigator.highlighted?.let { if (compact && it in app.utilityDestinations) Destination.Profiles else it }
     var focused by remember { mutableStateOf(false) }
     // A television's rail widens over the page while it has focus, to say what each icon is.
     val open = television && focused
@@ -722,12 +787,26 @@ private fun NavigationRail(app: AppState, style: NavigationStyle, focus: RailFoc
                 .focusProperties { onEnter = { focus.focusCurrent() } }
                 .focusGroup()
                 .selectableGroup()
-                .padding(vertical = if (television) 28.dp else 12.dp, horizontal = if (television) 10.dp else 6.dp),
+                .padding(vertical = if (television) 28.dp else 12.dp, horizontal = if (television) 10.dp else 6.dp)
+                // Where the viewer is: one lit shape with a bar at its leading edge, which travels between destinations.
+                .selectionMark(track, marked, radius = if (compact) null else Radius.MEDIUM.dp, bar = !compact),
             verticalArrangement = Arrangement.spacedBy(if (style == NavigationStyle.SIDEBAR) 4.dp else 6.dp),
             horizontalAlignment = if (style == NavigationStyle.SIDEBAR || open) Alignment.Start else Alignment.CenterHorizontally,
         ) {
-            if (style == NavigationStyle.SIDEBAR) {
-                Text("Reflux", Modifier.padding(start = 14.dp, top = 6.dp, bottom = 18.dp), style = LocalTypography.current.title.copy(letterSpacing = (-0.02).em))
+            // Reflux says its own name where there is room to: the lockup on a desktop, the mark alone on a tablet, and
+            // on a television the mark, joined by the wordmark while the rail is open. A phone's rail has no room.
+            when (style) {
+                NavigationStyle.SIDEBAR -> RefluxLockup(Modifier.padding(start = 10.dp, top = 8.dp, bottom = 18.dp).semantics { contentDescription = "Reflux" }, height = 22.dp)
+                NavigationStyle.RAIL -> RefluxMark(Modifier.padding(top = 6.dp, bottom = 12.dp).clearAndSetSemantics { }, size = 26.dp)
+                NavigationStyle.TV_RAIL -> {
+                    val height = 20.dp
+                    val mark = lockupMarkWidth(height)
+                    val whole = height * (dev.reflux.design.BrandMark.LOCKUP_WIDTH / dev.reflux.design.BrandMark.LOCKUP_HEIGHT)
+                    Box(Modifier.padding(start = if (open) 10.dp else 0.dp, bottom = 14.dp).width(mark + (whole - mark) * openness).height(height).clipToBounds().clearAndSetSemantics { }) {
+                        RefluxLockup(Modifier.wrapContentWidth(Alignment.Start, unbounded = true), height = height, color = RefluxColors.contentPrimary.copy(alpha = 0.62f + 0.38f * openness))
+                    }
+                }
+                else -> Unit
             }
             val shown = when {
                 style == NavigationStyle.SIDEBAR -> NavigationLabel.BESIDE
@@ -739,24 +818,32 @@ private fun NavigationRail(app: AppState, style: NavigationStyle, focus: RailFoc
             }
             // A phone's rail, on its side, has the height for the library and one more: its utility area is the one
             // profile entry, as when it is held upright (docs/NAVIGATION.md, section 3).
-            val shownDestinations = if (style == NavigationStyle.COMPACT_RAIL) PrimaryDestinations + Destination.Profiles else app.destinations
+            val shownDestinations = if (compact) PrimaryDestinations + Destination.Profiles else app.destinations
             for (destination in shownDestinations) {
-                // The utility area sits apart, at the foot (docs/NAVIGATION.md, section 1).
-                if (destination == shownDestinations.firstOrNull { it in app.utilityDestinations }) Spacer(Modifier.weight(1f))
-                if (style == NavigationStyle.COMPACT_RAIL && destination == Destination.Profiles) {
-                    CompactProfileEntry(app, if (navigator.highlighted in app.utilityDestinations) Modifier.focusRequester(focus.current) else Modifier)
+                // The utility area sits apart, at the foot (docs/NAVIGATION.md, section 1), beneath a hairline.
+                if (destination == shownDestinations.firstOrNull { it in app.utilityDestinations }) {
+                    Spacer(Modifier.weight(1f))
+                    if (!compact) Box(Modifier.fillMaxWidth().padding(horizontal = 10.dp).padding(bottom = 4.dp).height(1.dp).background(RefluxColors.divider))
+                }
+                if (compact && destination == Destination.Profiles) {
+                    Box(Modifier.selectionPlace(track, destination)) {
+                        CompactProfileEntry(app, if (navigator.highlighted in app.utilityDestinations) Modifier.focusRequester(focus.current) else Modifier)
+                    }
                     continue
                 }
                 val here = navigator.highlighted == destination
                 val busy = destination == Destination.Downloads && downloading(app)
-                val name = if (destination == Destination.Profiles) app.activeProfile?.takeIf { app.profilesShown }?.name ?: label(destination) else label(destination)
+                // Once there are several viewers, the profile entry is the viewer: their name, and their initial.
+                val viewer = app.activeProfile?.takeIf { destination == Destination.Profiles && app.profilesShown }
                 NavigationItem(
                     icon(destination),
-                    name,
+                    viewer?.name ?: label(destination),
                     here,
                     shown,
                     busy,
                     if (here) Modifier.focusRequester(focus.current) else Modifier,
+                    Modifier.selectionPlace(track, destination),
+                    viewer,
                 ) { app.go(destination) }
             }
         }
@@ -771,7 +858,7 @@ private fun CompactProfileEntry(app: AppState, modifier: Modifier) {
     val busy = downloading(app)
     val name = listOfNotNull(who?.let { "Profile, $it" } ?: "Profile and settings", "downloading".takeIf { busy }).joinToString(", ")
     Box {
-        IconButton(Icon.PROFILE, name, { app.go(Destination.Profiles) }, modifier, size = 44.dp, tint = tabColor(here), selected = here, role = Role.Tab)
+        IconButton(Icon.PROFILE, name, { app.go(Destination.Profiles) }, modifier, size = 44.dp, tint = tabColor(here), selected = here, role = Role.Tab, lit = false)
         if (busy) BusyDot(Modifier.align(Alignment.TopEnd))
     }
 }
@@ -786,18 +873,25 @@ private val TV_RAIL_SHADE = 56.dp
 private enum class NavigationLabel { NONE, HIDDEN, BENEATH, BESIDE }
 
 /**
- * One destination in a rail or a sidebar. Where the viewer is, is a lit pill and, beside it, a short bar at the
- * leading edge: shape and light together, so it never rests on a color or a brightness alone. Hover and focus are
- * the active state (a quieter light); focus adds the ring for input that needs one.
+ * One destination in a rail or a sidebar. Where the viewer is, is the navigation's one lit shape and the short bar at
+ * its leading edge ([selectionMark]), drawn behind the destinations and travelling between them: shape and light
+ * together, so it never rests on a color or a brightness alone. Hover and focus are the active state (a quieter
+ * light), which each destination shows itself; focus adds the ring for input that needs one.
+ *
+ * @param place on the destination's outermost box: where it is, for the mark.
+ * @param viewer the profile this entry stands for, shown as its initial in place of the icon.
  */
 @Composable
-private fun NavigationItem(icon: Icon, label: String, selected: Boolean, shown: NavigationLabel, busy: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
+private fun NavigationItem(
+    icon: Icon, label: String, selected: Boolean, shown: NavigationLabel, busy: Boolean, modifier: Modifier = Modifier, place: Modifier = Modifier, viewer: Profile? = null,
+    onClick: () -> Unit,
+) {
     val name = if (busy) "$label, downloading" else label
     if (shown == NavigationLabel.NONE) {
         // An icon alone still names itself to assistive technology and, to a resting pointer, to the eye.
-        Box {
+        Box(place) {
             // The focus requester goes on the button itself: a box around it cannot take focus.
-            IconButton(icon, name, onClick, modifier, size = 44.dp, tint = tabColor(selected), selected = selected, role = Role.Tab)
+            IconButton(icon, name, onClick, modifier, size = 44.dp, tint = tabColor(selected), selected = selected, role = Role.Tab, lit = false)
             if (busy) BusyDot(Modifier.align(Alignment.TopEnd))
         }
         return
@@ -806,7 +900,7 @@ private fun NavigationItem(icon: Icon, label: String, selected: Boolean, shown: 
     val television = layout.formFactor == FormFactor.TV
     Pressable(
         onClick,
-        modifier.fillMaxWidth()
+        place.then(modifier).fillMaxWidth()
             .semantics {
                 this.selected = selected
                 if (busy) stateDescription = "Downloading"
@@ -817,18 +911,15 @@ private fun NavigationItem(icon: Icon, label: String, selected: Boolean, shown: 
         role = Role.Tab,
     ) { active ->
         val tint = tabColor(selected || active)
-        val fill by animateColorAsState(
-            States.layer((if (selected) StateLayers.SELECTED else 0f) + (if (active) StateLayers.HOVER else 0f)),
-            Motion.focusChange.tween(),
-        )
+        val fill by animateColorAsState(States.layer(if (active) StateLayers.HOVER else 0f), Motion.focusChange.tween())
         val background = Modifier.background(fill)
         if (shown == NavigationLabel.BESIDE || shown == NavigationLabel.HIDDEN) {
             Row(
-                background.fillMaxWidth().heightIn(min = maxOf(layout.minTargetDp.dp, 44.dp)).drawBehind { if (selected) selectionBar() }.padding(horizontal = 10.dp),
+                background.fillMaxWidth().heightIn(min = maxOf(layout.minTargetDp.dp, 44.dp)).padding(horizontal = 10.dp),
                 horizontalArrangement = Arrangement.spacedBy(14.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Box { Icon(icon, size = 20.dp, tint = tint); if (busy) BusyDot(Modifier.align(Alignment.TopEnd)) }
+                Box { if (viewer != null) ProfileMark(viewer, 22.dp, lit = selected) else Icon(icon, size = 20.dp, tint = tint); if (busy) BusyDot(Modifier.align(Alignment.TopEnd)) }
                 if (shown == NavigationLabel.BESIDE) {
                     Text(label, style = if (television) LocalTypography.current.tvLabel else LocalTypography.current.navigation, color = tint, maxLines = 1)
                 }
@@ -839,23 +930,11 @@ private fun NavigationItem(icon: Icon, label: String, selected: Boolean, shown: 
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterVertically),
             ) {
-                Box { Icon(icon, size = 22.dp, tint = tint); if (busy) BusyDot(Modifier.align(Alignment.TopEnd)) }
+                Box { if (viewer != null) ProfileMark(viewer, 24.dp, lit = selected) else Icon(icon, size = 22.dp, tint = tint); if (busy) BusyDot(Modifier.align(Alignment.TopEnd)) }
                 Text(label, style = LocalTypography.current.navigationCompact, color = tint, maxLines = 1)
             }
         }
     }
-}
-
-/** The short bar at the leading edge of the destination the viewer is in. */
-private fun androidx.compose.ui.graphics.drawscope.DrawScope.selectionBar() {
-    val height = minOf(size.height * 0.45f, 20.dp.toPx())
-    val width = 3.dp.toPx()
-    drawRoundRect(
-        RefluxColors.contentPrimary,
-        topLeft = Offset(0f, (size.height - height) / 2),
-        size = Size(width, height),
-        cornerRadius = androidx.compose.ui.geometry.CornerRadius(width / 2),
-    )
 }
 
 @Composable
@@ -903,6 +982,9 @@ private fun PageBar(app: AppState, modifier: Modifier = Modifier) {
         ActivityIndicator(activity)
     }
 }
+
+/** How far the mini-player's dock sits from the window's bottom corner, where the navigation runs down the side. */
+internal val DockMargin = 24.dp
 
 /** The space between the phone's top-corner buttons (Downloads, Sources). */
 internal val TopActionGap = 14.dp
@@ -969,6 +1051,7 @@ private fun accessibleTitle(destination: Destination): String? = when (destinati
     is Destination.SourceLibrary -> null
     Destination.About -> "About Reflux"
     Destination.Notices -> "Third-party software"
+    Destination.Credits -> "Credits and technology"
     is Destination.Notice -> destination.name
     is Destination.Details -> null
     is Destination.Identify -> "Identify"

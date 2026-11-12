@@ -160,6 +160,40 @@ class PlaybackSession internal constructor(
     var interactions by mutableIntStateOf(0)
         private set
 
+    /**
+     * How this session is shown now. It is the same session either way: nothing about what plays, what was planned,
+     * what is reported, or whose it is changes with it.
+     */
+    var presentation by mutableStateOf(PlayerPresentation.FULL)
+        private set
+
+    /** The source what is playing comes from, for whoever is about to take that source away. */
+    internal val playingFrom: SourceId? get() = sourceId
+
+    /**
+     * Steps aside into the mini-player, where the device has one, so the viewer can browse while this plays. A
+     * failure is not put aside: it is read and answered where it is.
+     *
+     * @return whether the session is in the mini-player now.
+     */
+    fun collapse(): Boolean {
+        if (closed || !app.miniPlayerAvailable || error != null) return false
+        if (presentation == PlayerPresentation.MINI) return true
+        menu = null
+        // The window goes back to how it was before the player took it: browsing is not done across a whole screen
+        // the viewer did not ask for.
+        if (app.platform.fullscreen != wasFullscreen) app.platform.requestFullscreen(wasFullscreen)
+        presentation = PlayerPresentation.MINI
+        return true
+    }
+
+    /** Comes back from the mini-player to the full player. */
+    fun expand() {
+        if (closed || presentation == PlayerPresentation.FULL) return
+        presentation = PlayerPresentation.FULL
+        touch()
+    }
+
     init {
         player.setVolume(app.volume)
         player.setMuted(app.muted)
@@ -406,6 +440,7 @@ class PlaybackSession internal constructor(
         val open = menu
         val prompt = upNext
         when {
+            action == SemanticAction.MINI_PLAYER -> if (presentation == PlayerPresentation.MINI) expand() else collapse()
             action == SemanticAction.STOP -> close()
             action == SemanticAction.FULLSCREEN -> app.platform.requestFullscreen(!app.platform.fullscreen)
             open != null -> handleInMenu(open, action)

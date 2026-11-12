@@ -1,0 +1,24 @@
+# What Reflux is built on and works with, as the About page credits it ("Credits and technology"; docs/RELEASE.md,
+# "Third-party notices"). Names and roles only: no logos, and nothing that reads as an endorsement.
+#
+# One line each, four fields separated by "|":
+#   name | role | targets | note
+#
+#   role     what it does for Reflux, in a few words a viewer would use
+#   targets  where the credit applies: android, desktop, or both
+#   note     one sentence shown with it, or empty. A service Reflux only connects to says that it is its owner's
+#            and that Reflux is not affiliated with it.
+#
+# The licenses of the software Reflux includes are in components.txt, which the build checks; this file is the
+# readable credit, and may name things Reflux works with and does not include (media servers).
+
+mpv | Plays video on Windows and Linux | desktop | Reflux plays through libmpv, mpv's player library.
+FFmpeg | Reads and decodes media, inside mpv | desktop |
+AndroidX Media3 | Plays video on Android, Android TV, and Fire TV | android |
+Compose Multiplatform | Draws the interface | android desktop | By JetBrains, on Jetpack Compose.
+Kotlin | The language Reflux is written in | android desktop |
+SQLite and SQLDelight | Keep your library on this device | android desktop |
+smbj | Reads Windows and NAS shares | android desktop |
+OkHttp | Reads web shares on Android | android |
+Jellyfin | A media server Reflux can connect to | android desktop | Jellyfin is the Jellyfin project's. Reflux is an independent client: not affiliated with, endorsed by, or certified by it.
+Plex | A media server Reflux can connect to | android desktop | Plex is a trademark of Plex, Inc. Reflux is an independent client: not affiliated with, endorsed by, or certified by Plex.

@@ -35,6 +35,13 @@ abstract class GenerateNotices : DefaultTask() {
             val platforms = targets.split(" ").filter(String::isNotEmpty).joinToString(", ") { "NoticeTarget.${it.uppercase()}" }
             "        ThirdPartyComponent(${literal(name)}, ${literal(spdx)}, listOf(${named.joinToString(", ") { literal(it) }}), setOf($platforms), ${note.takeIf(String::isNotEmpty)?.let(::literal) ?: "null"}),"
         }
+        // The readable credits (legal/credits.txt): what Reflux is built on and works with, by name and role.
+        val credits = legal.file("credits.txt").get().asFile.takeIf { it.exists() }?.readLines().orEmpty()
+            .filter { it.isNotBlank() && !it.startsWith("#") }.map { it.split("|").map(String::trim) }.map { fields ->
+                if (fields.size != 4) throw GradleException("legal/credits.txt: \"${fields.first()}\" needs four fields: name | role | targets | note")
+                val platforms = fields[2].split(" ").filter(String::isNotEmpty).joinToString(", ") { "NoticeTarget.${it.uppercase()}" }
+                "        TechnologyCredit(${literal(fields[0])}, ${literal(fields[1])}, setOf($platforms), ${fields[3].takeIf(String::isNotEmpty)?.let(::literal) ?: "null"}),"
+            }
         val own = license.orNull?.asFile?.takeIf { it.exists() }?.readText()
         val file = output.get().file("dev/reflux/ui/legal/NoticeData.kt").asFile
         file.parentFile.mkdirs()
@@ -44,6 +51,7 @@ abstract class GenerateNotices : DefaultTask() {
                 append("/** Generated from legal/ by the ui build (GenerateNotices); never edited. */\n")
                 append("internal object NoticeData {\n")
                 append("    val components: List<ThirdPartyComponent> = listOf(\n").append(components.joinToString("\n")).append("\n    )\n\n")
+                append("    val credits: List<TechnologyCredit> = listOf(\n").append(credits.joinToString("\n")).append("\n    )\n\n")
                 append("    val refluxLicense: String? = ").append(own?.let(::literal) ?: "null").append("\n\n")
                 append("    fun text(file: String): String? = when (file) {\n")
                 texts.forEach { append("        ${literal(it.name)} -> Texts.").append(it.nameWithoutExtension.replace(Regex("[^A-Za-z0-9]"), "_").uppercase()).append('\n') }

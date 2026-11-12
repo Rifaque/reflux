@@ -8,7 +8,7 @@ The one source of truth for what Reflux is building, in what order, and what is 
 - The website is a release workstream across the milestones (below, "The Reflux website"); its visual direction, the demo video, and the beta program are in [LAUNCH.md](LAUNCH.md).
 - Decisions behind the plan are in [DECISIONS.md](DECISIONS.md): the first rebaseline (2026-10-17), the milestone rebaseline (2026-11-02), and the rebaseline after M7 (2026-11-11), whose research and reviews are in [planning/M8-M13-REBASELINE.md](planning/M8-M13-REBASELINE.md).
 
-**Current state: M7 operationally complete (2026-11-09; final source `a905f27`). Rebaselined 2026-11-11: M8 Viewer Identity & Profiles is next.**
+**Current state: M8 implemented and committed (`212150a`, 2026-11-12), with the open items in its section. M9 Navigation & Surface System 2.0 implemented 2026-11-12 and awaiting review and its commit; M10 Player & Playback Experience 2.0 is next.**
 
 This milestone list replaces the one of 2026-11-02 for M8 onwards (M8 Beta, M9 Release Candidate, M10 1.0), which replaced the one of 2026-10-17, which replaced the earlier Phase 0–18 plan. Documents and verification sections keep the numbering they were written with; how each old milestone maps to the current one is under "Earlier numbering", and DECISIONS.md, 2026-11-02 and 2026-11-11, says why.
 
@@ -51,9 +51,9 @@ Status words used below:
 | M5 — Library Depth & Reflux Magic | A richer library and the features that set Reflux apart | **Complete** (2026-11-07), with the limits in its section |
 | M6 — Release Engineering / Security / Legal | Production builds, packaging, signing, security hardening, legal and licensing, store preparation; the website's foundation and its legal and privacy pages | **Complete** (2026-11-08), with the limits in its section |
 | M7 — Compatibility, Release Proof, Brand + Website, and Beta/Test Readiness | The permanent Android identity, the brand, the redesigned website, CI and release proof, the source-built Windows libmpv, the diagnostics export, the M6 stability leftovers, store readiness, and the M8 entry checklist | **Complete** (2026-11-09, operationally: every gate locally and on GitHub, attestations verified), with the owner actions in its M8 entry checklist |
-| M8 — Viewer Identity & Profiles, Navigation Structure, Website SEO/Responsive Work, and Release Preparation Foundations | Every piece of viewer state belongs to a profile; Jellyfin and Plex accounts isolated; the navigation's final structure; the website technically indexable and responsive; the store app entries started | **Next** |
-| M9 — Navigation & Surface System 2.0 | The shell unmistakably Reflux on every form factor, on M8's structure | Future |
-| M10 — Player & Playback Experience 2.0 | Playback visually dominant; one session across fullscreen, mini-player, and picture-in-picture | Future |
+| M8 — Viewer Identity & Profiles, Navigation Structure, Website SEO/Responsive Work, and Release Preparation Foundations | Every piece of viewer state belongs to a profile; Jellyfin and Plex accounts isolated; the navigation's final structure; the website technically indexable and responsive; the store app entries started | **Implemented** (2026-11-12, `212150a`), with the open items in its section (device walk, hosted CI, owner actions) |
+| M9 — Navigation & Surface System 2.0 | The shell unmistakably Reflux on every form factor, on M8's structure; the desktop mini-player question answered | **Implemented** (2026-11-12), awaiting review; the limits and open items are in its section |
+| M10 — Player & Playback Experience 2.0 | Playback visually dominant; one session across fullscreen, mini-player, and picture-in-picture | **Next** |
 | M11 — Distribution & Release Surfaces | Windows installer, first-party Linux packages, the metadata provider gate, the website's final content | Future |
 | M12 — Qualification Campaign & Beta | One comprehensive campaign, then `0.9.0-beta.N` with testers until the exit criteria hold | Future |
 | M13 — Release Candidate & 1.0 | `0.9.0-rc.N`, feature freeze, submissions, then `1.0.0` on every V1 target | Future |
@@ -427,7 +427,7 @@ M7 turns the M6 foundation into the production website used for the beta and for
 
 ## M8 — Viewer Identity & Profiles, Navigation Structure, Website SEO/Responsive Work, and Release Preparation Foundations
 
-**Next** (started 2026-11-11). Every piece of viewer state belongs to a profile, accounts are isolated, the navigation's structure is final, the website is technically indexable and responsive, and release preparation has begun. The full scope and its boundaries are the promoted planning record, `docs/planning/M8-M13-REBASELINE.md`: section 3.3 (the data model), section 8 ("M8"), and section 18 (the second review and the owner's decisions); DECISIONS.md, 2026-11-11. Where this summary and that record differ, the record's scope stands.
+**Implemented** (started 2026-11-11, committed 2026-11-12 as `212150a`; the items marked Open or Owner in "State" below stand). Every piece of viewer state belongs to a profile, accounts are isolated, the navigation's structure is final, the website is technically indexable and responsive, and release preparation has begun. The full scope and its boundaries are the promoted planning record, `docs/planning/M8-M13-REBASELINE.md`: section 3.3 (the data model), section 8 ("M8"), and section 18 (the second review and the owner's decisions); DECISIONS.md, 2026-11-11. Where this summary and that record differ, the record's scope stands.
 
 | Item | What done means |
 | --- | --- |
@@ -480,11 +480,39 @@ Evidence: VERIFICATION.md, "M8: architecture challenge" and "M8: corrections". N
 
 ## M9 — Navigation & Surface System 2.0
 
-Future. Full scope: the planning record, sections 8 ("M9") and 18. The shell is unmistakably Reflux on every form factor, on the structure M8 settled. Step 0 is a time-boxed desktop mini-player trial on a throwaway branch (can the native video window live in a dock?), recorded in DECISIONS.md before the dock is designed. Then: a compact phone bar that hugs its content with a travelling selection indicator, the tablet rail, the desktop sidebar, the television rail, the utility area styled, a mini-player dock in the layout contract, functional glass on the existing tiers, the mark and the RSX Develops credit, an in-app credits and technology section from `legal/`, image-baseline visual tests by window class, and the `onFocusedBoundsChanged` replacement. Not in 1.0: a collapsible desktop sidebar; minimizing the phone bar on scroll only if it passes the accessibility review.
+**Implemented** (2026-11-12, on `212150a`; not yet committed). The shell is unmistakably Reflux on every form factor, on the structure M8 settled, and the desktop mini-player question is answered. Scope: the planning record, sections 8 ("M9") and 18. Decisions: DECISIONS.md, 2026-11-12. Specification: NAVIGATION.md (sections 3 and 8), DESIGN.md ("Navigation surfaces"), PLAYBACK.md (section 18). Evidence: VERIFICATION.md, "M9".
+
+| Item | State |
+| --- | --- |
+| Step 0, the desktop mini-player trial | **Done. Verdict: viable with an architectural adjustment.** Real libmpv in the real shell on Windows 11 (two displays at different scales) and on Linux X11; kept as `MiniPlayerWindowTest` |
+| The foundation the trial needed: one session with a presentation (`FULL`, `MINI`), the shell told where its video surface goes (`VideoFrame`), a platform capability (`docksVideo`) | **Done**; desktop only. Nothing below the experience layer changed |
+| A mini-player dock in the layout contract, for every form factor | **Done** (`LayoutProfile.dock`): a row on phones, a card on tablets and desktops, none on a television. Shown where the platform can dock video, which in M9 is the desktop |
+| The mini-player itself, as far as the trial's proof needs | **Done on desktop**: into it from the player ("Mini player", `I`), out of it by the picture, `I`, or Play on the same title; play or pause and stop; an accessibility model; one session throughout |
+| A compact phone bar that hugs its content, with a travelling selection indicator | **Done** |
+| The tablet rail, the desktop sidebar, the television rail; the utility area styled | **Done**: one travelling mark, the lockup or mark at their head, a hairline above the utility area, the viewer's initial in the profile entry |
+| Functional glass on the existing tiers | **Done**: no new material; the dock is FLOATING like the navigation |
+| The mark, and the RSX Develops credit | **Done**: the mark in the navigation; the credit stays in About (not in the navigation, by decision) |
+| Credits and technology on About, from `legal/` | **Done** (`legal/credits.txt`): names and roles, no logos |
+| Visual tests of the shell by window class, a phone-sized window on a tablet among them | **Done as a structural baseline** (`shell-baseline.txt`) and pixel probes; committed pictures rejected (DECISIONS.md) |
+| The `onFocusedBoundsChanged` replacement | **Done** |
+| Motion: selection, the question of who is watching, pages; reduced motion | **Done** |
+| Minimizing the phone's bar on scroll | **Not built**: the accessibility review does not support it; stays V1.x (DECISIONS.md) |
+| One walk per form factor on hardware (Phone 2a, Pad 7, Fire TV) | **Open**: no device was attached. The shared code is covered offscreen at each window class; the desktop was walked in real windows on Windows and Linux |
+| The full `check` on GitHub CI | **Open**: runs on the next push (M8's is open too). The Linux container's full `check` was stopped for lack of memory and not rerun, so on Linux only targeted tests have run: the mini-player trial, the shell and navigation tests, and About (VERIFICATION.md, "M9") |
+
+**Limits recorded, not blocking:**
+
+- The mini-player is on the desktop only. Android does not place its video surface yet, so handhelds have none until M10 builds it on the same contract; a television has none by decision.
+- Back still closes the player. Whether Back goes to the mini-player, and what Back at Home does with one playing, are M10's (planning record, R12).
+- The picture in the dock is square-cornered and is put there in one move, not animated: a native video window allows neither (DECISIONS.md). Under a sheet, a picker, or the question of who is watching it is out of sight, with the sound going on.
+- Wayland was not exercised on a Wayland compositor: Reflux's toolkit runs through XWayland, and X11 was verified. A second display was exercised on Windows only. Physical Linux hardware stays waived as since M2P.
+- No screen reader walk: the mini-player's and the navigation's semantics are held by the automated tests. A desktop screen reader still depends on the toolkit (M1's limit).
+- `AboutUiTest.aKeyboardGoesInAndComesBackToWhereItWas` is intermittent on this machine, on the M8 commit and on M9 alike (the first arrow focuses nothing in the offscreen renderer; skipped on headless Linux for the same symptom since M7). Not caused by M9 and not touched: carried to M10, where the player's focus work is.
+- `PlannedPlaybackWindowTest` (a live Jellyfin test) failed in the closure run because the live server was unreachable; its result on M9 is unknown (VERIFICATION.md, "M9"). The hosted CI gate and the full Linux `check` are pending.
 
 ## M10 — Player & Playback Experience 2.0
 
-Future. Full scope: the planning record, section 8 ("M10"), and section 3.2. Playback stays visually dominant, in one session across presentations: a chrome state machine (hidden, shown, loading, ending, failure) where loading is exclusive and uses the Reflux loader; a lighter transport and a one-row bar; fullscreen, mini-player, and the system's picture-in-picture as presentations of one `PlaybackSession`; Back on handhelds and desktop goes to the mini-player; no mini-player on television. Also the playback parity carried from M7, each decided: held seek acceleration, chapters on Android where Media3 supplies them, desktop media keys, the television explanation where sidecar subtitles cannot be read, and the per-work subtitle choice (profile-scoped).
+**Next.** Full scope: the planning record, section 8 ("M10"), and section 3.2. It builds on what M9 proved and left (PLAYBACK.md, section 18): the presentation model and the desktop mini-player exist; M10 owns Back going to the mini-player (and Back at Home with one playing), the handheld mini-player (Android placing its surface by the same `VideoFrame`), picture-in-picture as a presentation, the chrome state machine, the player's visual redesign, and the About keyboard test carried from M9. Playback stays visually dominant, in one session across presentations: a chrome state machine (hidden, shown, loading, ending, failure) where loading is exclusive and uses the Reflux loader; a lighter transport and a one-row bar; fullscreen, mini-player, and the system's picture-in-picture as presentations of one `PlaybackSession`; Back on handhelds and desktop goes to the mini-player; no mini-player on television. Also the playback parity carried from M7, each decided: held seek acceleration, chapters on Android where Media3 supplies them, desktop media keys, the television explanation where sidecar subtitles cannot be read, and the per-work subtitle choice (profile-scoped).
 
 ## M11 — Distribution & Release Surfaces
 
@@ -650,7 +678,7 @@ Candidates after 1.0, each needing its own decision to be promoted:
 - Emby and DLNA sources. (Plex is done, in M3.)
 - Linux credential storage without a Secret Service.
 - Plex Home managed-user selection (DECISIONS.md, 2026-11-11: not in 1.0); per-profile download visibility and source inclusion; a guest mode wiped on leaving.
-- A television mini-player; a desktop video mini-player if M9's trial fails; a collapsible desktop sidebar.
+- A television mini-player; a collapsible desktop sidebar; minimizing the phone's bar on scroll (M9's accessibility review did not support it). (The desktop video mini-player passed M9's trial and is in.)
 - "Open with Reflux" for loose files; a desktop update check; signed apt and rpm repositories.
 
 ## Future
@@ -658,6 +686,7 @@ Candidates after 1.0, each needing its own decision to be promoted:
 - Vega OS client (a compatibility track; evaluation first).
 - **Reflux 2.0:** profile transfer between devices (an encrypted export first, then local-network transfer with QR or code pairing), multi-device synchronization, and handoff, with no Reflux backend or account (planning/M8-M13-REBASELINE.md, section 3.4).
 - Recommendations, natural-language search, and higher-level library intelligence, above the deterministic engine.
+- An integration interface for assistants and other applications (a Reflux 2.0 direction; nothing is designed or built). The seams it would use exist for other reasons and are kept clean for it: semantic actions rather than keys (INPUT_MODEL.md), one playback session with presentations (PLAYBACK.md, section 18), the profile as the identity boundary, and launcher links that carry their profile.
 - Advanced playback (picture controls, per-title audio/subtitle styling, trip mode for offline).
 - Reflux Pro: possibly, for some advanced capabilities after V1, never by taking anything away from V1. Nothing is decided about it; 1.0 is free and supported by donations (DECISIONS.md, 2026-10-19).
 - iOS / iPadOS.

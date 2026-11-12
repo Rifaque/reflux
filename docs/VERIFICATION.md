@@ -1337,3 +1337,68 @@ The three corrections the architecture challenge required, and the three smaller
 
 **Live, Plex: still owner-pending.** No `~/.reflux-live/plex.env` and no `REFLUX_PLEX_*` variables exist on this machine, so `PlexTwoAccountsLiveTest` was skipped ("owner-pending") and **no live Plex result is claimed**. The test now signs both tokens in through the application's own connections as two profiles on a real data directory (two sources, two profiles, one endpoint, two device identities, no token in an identifier, each profile seeing only its own account), so when it runs it exercises the corrected identity rather than the connector alone.
 
+
+## M9: the desktop mini-player trial (2026-11-12)
+
+The feasibility trial that opened M9 (ROADMAP.md, M9; DECISIONS.md, 2026-11-12, "The desktop mini-player"), on the M8 commit `212150a` with M9's uncommitted tree. It was run as a real-window test, `MiniPlayerWindowTest`, which stays as the regression test: the real desktop shell, real libmpv rendering into the native child window, generated media, input delivered through the application's own event queue.
+
+**Verdict: viable with an architectural adjustment.**
+
+| Question | How it was asked | Windows 11 | Linux, X11 |
+| --- | --- | --- | --- |
+| One session, moved to a dock and back, without recreating anything | The same `PlaybackSession` object and the same native surface component before and after; position advancing throughout | Pass | Pass |
+| The browsing shell stays interactive | Pages opened and left by mouse and by Escape while the picture plays; the session untouched | Pass | Pass |
+| A visible compact presentation | The screen itself read: 137 to 194 distinct colors inside the dock's picture box, the page's own beside it | Pass | Not read (screen capture is not dependable on X11; the surface's bounds are asserted instead) |
+| Pointer routing | The system asked which window a point reaches (`WindowFromPoint`): the controls window over the picture, the main window over the page | Pass | Not applicable |
+| Focus and stacking | The controls window is owned by the main window, not focusable, and on top only as far as its owner is; the active window stays the page's | Pass | Pass |
+| The dock operates the same session | Pause and play from the dock; `I` to the player and back | Pass | Pass |
+| What covers the page | The offline sheet opened: the surface leaves the window, its controls window hides, playback goes on, the same surface returns | Pass | Pass |
+| Resize | The window made smaller and restored: the picture follows its box | Pass | Pass |
+| Another display | Moved to the second display (scale 1.5) and back (scale 1.25): the picture stays in its dock and plays | Pass | One display there; not exercised |
+| Fullscreen | From fullscreen, `I`: the window is restored and the same surface docked | Pass | Pass |
+| No duplicate session | Another title played while one is docked: one surface, the first engine gone, its place recorded | Pass | Pass |
+| Lifecycle | Stop from the dock: no surface, no controls window, the place recorded | Pass | Pass |
+
+**Measured, Windows:** with the surface made to travel over 280 ms, the toolkit moved it 10 and 16 times in two runs with gaps of 183 and 104 ms between moves (a few uneven jumps, not motion). Placed at once it is two moves in under 3 ms. That is why a native surface is placed and not animated.
+
+**Environments:** Windows 11 with two displays (2560x1440 at 125% and 2560x1600 at 150%), the development libmpv; Linux in the `tools/ci` container (Ubuntu 24.04, Xvfb at 1600x1000, openbox, xcompmgr, the distribution's libmpv). A Wayland compositor was not used: the toolkit runs through XWayland, so X11 is what a Wayland session exercises. Physical Linux hardware remains waived (M2P).
+
+## M9: Navigation & Surface System 2.0 (2026-11-12)
+
+Targeted validation, as the milestone rules ask: what M9 changed, offscreen first, then real windows. No device was attached, so no device walk was made; the full `check` on GitHub runs on the next push.
+
+| What | Tests | Result |
+| --- | --- | --- |
+| One session, several presentations | `PresentationTest` (17): one engine and one load across collapse and expand; what is recorded and when; no mini-player without a dock or on a television; a failure is not put aside; keys are the page's while docked and media keys still reach the session; fullscreen left on collapse; another title replaces the session, the same one brings it back; the full player still blocks a second start; the video frame the shell is told | Pass |
+| Profile ownership across presentations | `PresentationTest.aPlaybackInTheMiniPlayerStaysItsProfiles` (a profile switch ends the docked session, recorded for the profile that started it and for nobody else), `whatIsRecordedFromTheDockIsRecordedForWhoeverStartedIt`, `takingASourceAwayEndsWhatPlaysFromItFirst` | Pass |
+| The mini-player on screen | `MiniPlayerTest` (10): into the dock and back with one engine; the dock's controls; three stops with roles, an action label, and focusability; a failure announced from a live region; no control offered without a dock; a television has none | Pass |
+| Every window class | `MiniPlayerTest.everyWindowWithADockShowsItClearOfTheNavigation` at 412x915, 915x412, 640x800, 800x1280, 1100x800, 1280x720, 1920x1080: inside the window, clear of every destination, the picture 16:9 in its box, 48 dp targets for a finger | Pass |
+| Text at 200%, reduced motion, what covers the page, the question of who is watching, notices clear of the dock | `MiniPlayerTest` | Pass |
+| The travelling mark | `ShellSurfaceTest`: lit where the viewer is, between destinations only mid-journey, arrived and gone from where it was; at once with motion reduced; gone when the viewer is in none of the bar's four; what a screen reader hears is never mid-journey | Pass |
+| The phone's bar | `ShellSurfaceTest.thePhonesBarIsAsWideAsItsDestinations` at 320, 360, 412, 480 dp | Pass |
+| The shell by window class | `ShellSurfaceTest.theShellInEveryWindowClassIsAsItsBaselineSays` against `shell-baseline.txt`: ten window classes, a phone-sized window on a tablet among them, and a television | Pass |
+| Brand and credits | `ShellSurfaceTest`: the lockup named once on a desktop and absent on a phone; the credits per build, Jellyfin and Plex said to be independent of Reflux, no image | Pass |
+| The dock's geometry | `LayoutTest.everyWindowButATelevisionHasADockForWhatIsPlaying` (found, while it was written, that a 640 dp tablet window got a card over half its page; such windows now have the row) | Pass |
+| M1 and M8 guarantees | The existing suites unchanged: `AccessibilityTest`, `NavigationTest`, `DirectionalInputTest` (which holds the focus-bounds replacement), `TelevisionTest`, `HandheldLayoutTest`, `VisualSystemTest`, `ProfilesUiTest`, `ProfileBoundaryTest`, `PlaybackSessionTest`, `AppStateTest` | Pass, none edited |
+
+**Runs, Windows, final tree (the closure pass, 2026-11-12):** `core` 347 and `design` 37, all passing; `ui` 359 (1 skipped), all passing in this run; `desktop:app` with the window tests 42 (3 skipped), 41 passing and 1 failed in the full runs (the live test below, which passes when run alone); the Android debug Kotlin compile passes. `ui` renders were saved and read for each form factor (desktop, tablet, phone upright and on its side, television open and closed, the dock at each window class, the credits page).
+
+**Runs, Linux (the `tools/ci` container, Ubuntu 24.04, headless for `ui`, Xvfb with openbox and a compositor for windows):** targeted only, on the final tree. `design` (all), and `ui`: `ShellSurfaceTest`, `MiniPlayerTest`, `PresentationTest`, `NavigationTest`, `DirectionalInputTest`, `TelevisionTest`, `ProfileBoundaryTest`, `HandheldLayoutTest`, `LayoutTest`: 73 tests, **one failed**: `ShellSurfaceTest.theShellInEveryWindowClassIsAsItsBaselineSays`, because the baseline recorded the last row's bottom in rails and sidebars, which is the machine's font (the container's was 2 dp from Windows'). That was a defect in the test's own claim of machine independence, not in the shell: the measure was removed from the baseline (it is asserted to be inside the window instead), the baseline rewritten, and the test rerun on Windows and in the container, where it passes. Windows: `MiniPlayerWindowTest` (the trial, passing, with the Linux readings above), `AboutWindowTest`, `DesktopShellTest` (6, 1 skipped): pass. **The full Linux `check` and window suite were not run to completion**: the first attempt was stopped by the machine's low-memory guard and was not repeated here; it belongs to hosted CI.
+
+**Failures and classifications:**
+
+- `PlannedPlaybackWindowTest.aPlanIsCarriedOutInTheRealWindow` (a live test: it plays real films from the owner's Jellyfin server in a real window) has an **environmental, intermittent** record on M9's tree and no implementation defect found. Failed once with the server unreachable (`UNREACHABLE (server unreachable)` while the host was reachable by the system). Rerun when the server answered: **passed** alone, twice (the second time with the final sidebar). Failed once more inside a full `desktop:app` window run, at its last step (`closes()`, the session was already gone when the test went to close it: playback ended by itself during a 14 s capture loop on a live stream); it was not diagnosed further. It does not use the mini-player and M9 changed nothing in planning, negotiation, or the engine (`git diff` over `core/playback`, `library`, `sources`, and `playback` is empty), so it is classed as a live-server test that is intermittent on this machine; it was **not run against the M8 commit**, so "pre-existing" is not claimed for it. It should be watched, with the owner's server healthy, in the M12 campaign.
+- `AboutUiTest.aKeyboardGoesInAndComesBackToWhereItWas` is **intermittent and pre-existing**, not caused by M9 and not fixed in it. Checked on this machine: on the untouched M8 commit (`212150a`, M9 stashed) it failed when run alone, and passed in a later run of the whole class; on M9's tree it passed in one whole-class run, failed in another, failed alone, and passed in the final full run. The symptom (the first arrow focuses nothing in the offscreen renderer) matches the headless-Linux skip recorded in VERIFICATION.md, M7. The test was not edited, weakened, or deleted; its real-window counterpart passes. Carried to M10.
+- `AboutWindowTest` failed on the M8 commit because it still looked for About under Sources, where M8 moved it to Settings. It now follows M8's structure (Settings, About, and back to Settings) and passes; nothing it asserts about About was changed. Passes on Windows and Linux.
+
+**Not done, and said so:**
+
+- No device walk (Phone 2a, Pad 7, Fire TV): none was attached. M9's Android-visible changes are the navigation's look (covered offscreen at each window class); Android has no mini-player yet.
+- No screen reader was used. The semantics are held by the tests above.
+- No Wayland compositor, no second display on Linux, no physical Linux hardware.
+- The full Linux `check` in the container, and the hosted CI run: pending (the next push).
+- The full `check` on GitHub CI: on the next push.
+
+**Closure corrections, same day:** "Made by RSX Develops" was removed from the desktop sidebar at the owner's request (DECISIONS.md); the maker is credited in About, and the sidebar is the Reflux lockup, the destinations, and the utility area. After it, `ShellSurfaceTest`, `MiniPlayerTest`, `NavigationTest`, `DirectionalInputTest`, `TelevisionTest`, `HandheldLayoutTest`, `AccessibilityTest`, and `VisualSystemTest` pass on Windows and the geometry baseline needed no change (nothing below the destinations moved). The Linux container was not rerun after that one-line removal.
+
+**Still pending, not claimed:** hosted CI and the full Linux `check` (the next push); Wayland; a second display on Linux; a screen reader walk; device walks. Windows two-display verification of the mini-player passed.

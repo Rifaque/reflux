@@ -136,3 +136,29 @@ fun RefluxMarkDrawIn(modifier: Modifier = Modifier, size: Dp = 64.dp) {
         }
     }
 }
+
+/** The lockup's outline, parsed once. */
+private val LockupPath: Path by lazy { PathParser().parsePathString(BrandMark.LOCKUP).toPath().apply { fillType = PathFillType.EvenOdd } }
+private val MarkPath: Path by lazy { PathParser().parsePathString(BrandMark.FILL).toPath().apply { fillType = PathFillType.EvenOdd } }
+
+/**
+ * The Reflux mark, still, in the interface's own neutral (design/brand/README.md: no color of its own, never smaller
+ * than 24 dp in an interface unless it stands in a row of icons of its size). For the eye: where it names Reflux to
+ * assistive technology, the caller says so.
+ */
+@Composable
+fun RefluxMark(modifier: Modifier = Modifier, size: Dp = 24.dp, color: Color = RefluxColors.contentPrimary) {
+    Canvas(modifier.size(size)) { inMark { drawPath(MarkPath, color) } }
+}
+
+/** The lockup, mark and wordmark side by side, [height] tall and as wide as its own proportions make it. */
+@Composable
+fun RefluxLockup(modifier: Modifier = Modifier, height: Dp = 22.dp, color: Color = RefluxColors.contentPrimary) {
+    Canvas(modifier.size(height * (BrandMark.LOCKUP_WIDTH / BrandMark.LOCKUP_HEIGHT), height)) {
+        val unit = this.size.height / BrandMark.LOCKUP_HEIGHT
+        scale(unit, unit, pivot = Offset.Zero) { drawPath(LockupPath, color) }
+    }
+}
+
+/** How wide the mark is within a lockup of [height]: what is left of it when only the mark has room. */
+fun lockupMarkWidth(height: Dp): Dp = height * (BrandMark.VIEWPORT / BrandMark.LOCKUP_HEIGHT)

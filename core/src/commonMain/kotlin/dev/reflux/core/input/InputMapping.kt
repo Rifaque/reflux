@@ -60,6 +60,8 @@ object InputMapping {
         Key.F -> SemanticAction.FULLSCREEN
         // A keyboard without a Menu key still reaches the player's lists. Outside the player a letter means nothing.
         Key.O -> if (context == InputContext.PLAYBACK) SemanticAction.MENU else null
+        // The player steps aside into its dock, and comes back from it; with nothing playing it means nothing.
+        Key.I -> SemanticAction.MINI_PLAYER
         Key.M, Key.VOLUME_MUTE -> SemanticAction.MUTE
         Key.J -> if (context == InputContext.PLAYBACK) SemanticAction.SEEK_BACKWARD else null
         Key.L -> if (context == InputContext.PLAYBACK) SemanticAction.SEEK_FORWARD else null

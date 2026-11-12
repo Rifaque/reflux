@@ -4,6 +4,10 @@ What changes for people using Reflux, version by version. The rules for versions
 
 ## Unreleased
 
+- Reflux for Windows and Linux has a mini-player. In the player, "Mini player" (or the I key) puts what you're watching in a corner of the window so you can keep browsing while it plays; click the picture, press I again, or press Play on the same title to go back to the full player. Its stop button ends playback and keeps your place. Playing something else replaces it.
+- The navigation is tidier and moves: the highlight for where you are slides to the destination you choose, the phone's bar is only as wide as its four buttons, the desktop sidebar and the TV and tablet rails carry the Reflux mark, and your profile's initial shows in the navigation once there are several profiles. With reduce motion on, nothing slides.
+- About Reflux has "Credits and technology": what Reflux is built on and the media servers it works with.
+
 - Profiles: everyone who watches on one device can have their own. Each profile keeps its own watch history, Continue Watching, favorites, collections, chosen versions, and its own Jellyfin and Plex accounts, and never sees another's. One profile is never mentioned; add a second from the profile entry in the navigation. Your existing library becomes the first profile, "Main", with everything it had.
 - A server is entered once: another profile signs in to the same Jellyfin or Plex server by choosing it, with its own account. An account already signed in in one profile can't be signed in from another, and signing in to a server as someone new in your own profile tells you so first.
 - Each Jellyfin and Plex account now signs in as a device of its own, so two accounts on one server never get each other's sessions.

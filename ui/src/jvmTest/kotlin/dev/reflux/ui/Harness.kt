@@ -22,13 +22,20 @@ import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.v2.runDesktopComposeUiTest
 import androidx.compose.ui.unit.Density
+import androidx.compose.ui.platform.testTag
 import dev.reflux.ui.player.PlayerOverlay
+import dev.reflux.ui.player.VideoStage
+import dev.reflux.ui.player.rememberVideoPlacement
+import dev.reflux.ui.state.PlayerPresentation
 import dev.reflux.ui.state.AppState
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.skia.EncodedImageFormat
 import org.jetbrains.skia.Image
 import java.io.File
 import kotlin.test.assertNotNull
+
+/** The stand-in for a shell's video surface, for tests that ask where it is. */
+internal const val VIDEO_SURFACE = "video-surface"
 
 /** Where `-Preflux.screenshots=<dir>` asks rendered screens to be saved for visual review, if anywhere. */
 private val screenshots: File? = System.getProperty("reflux.screenshots")?.takeIf { it.isNotBlank() }?.let(::File)
@@ -64,8 +71,13 @@ internal fun screen(
                 Box(Modifier.fillMaxSize()) {
                     RefluxApp(state, bars = bars)
                     state.playback?.let { session ->
-                        Box(Modifier.fillMaxSize().background(Brush.linearGradient(listOf(Color(0xFF5A3E2B), Color(0xFF0E1A2B)))))
-                        PlayerOverlay(state, session)
+                        // As a shell does: one video surface, placed where the experience layer says, with the full
+                        // player's controls over it only while it is the whole window.
+                        val placement = rememberVideoPlacement(state)
+                        VideoStage(placement, Modifier.fillMaxSize()) {
+                            Box(Modifier.fillMaxSize().background(Brush.linearGradient(listOf(Color(0xFF5A3E2B), Color(0xFF0E1A2B)))).testTag(VIDEO_SURFACE))
+                        }
+                        if (session.presentation == PlayerPresentation.FULL && placement.full) PlayerOverlay(state, session)
                     }
                 }
             }

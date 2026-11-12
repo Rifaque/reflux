@@ -314,6 +314,8 @@ class FakePlatform(
     override val notices: NoticeTarget? = NoticeTarget.DESKTOP,
     artworkFiles: Map<String, java.io.File> = emptyMap(),
     override val pinKey: dev.reflux.library.PinKey? = TestPinKey(),
+    /** Whether this shell can show its video surface in the mini-player's dock (a desktop's can). */
+    override val docksVideo: Boolean = false,
 ) : Platform {
     override val artwork: FakeArtwork = FakeArtwork(artwork, backdrops, posters, artworkFiles)
     override var device: DeviceCapabilities = testDevice

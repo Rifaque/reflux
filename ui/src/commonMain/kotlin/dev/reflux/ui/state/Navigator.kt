@@ -69,6 +69,9 @@ sealed interface Destination {
     /** The third-party software in this build, each with its license. */
     data object Notices : Destination
 
+    /** What Reflux is built on and works with, by name and role (About, "Credits and technology"). */
+    data object Credits : Destination
+
     /** One component's notice and license texts, by its [name] in the notices (or Reflux's own license). */
     data class Notice(val name: String) : Destination
 }
@@ -91,7 +94,7 @@ val Destinations: List<Destination.Section> = PrimaryDestinations + UtilityDesti
  */
 val Destination.aboutSources: Boolean
     get() = this is Destination.Sources || this is Destination.AddSource || this is Destination.Connect || this is Destination.SourceLibrary ||
-        this is Destination.About || this is Destination.Notices || this is Destination.Notice
+        this is Destination.About || this is Destination.Notices || this is Destination.Credits || this is Destination.Notice
 
 /**
  * Back-stack navigation (docs/NAVIGATION.md, section 2). Home is always the root: another section replaces
