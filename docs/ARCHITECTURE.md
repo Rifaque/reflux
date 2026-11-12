@@ -192,6 +192,8 @@ A shell supplies what only a platform can, through `Platform`: decoded artwork, 
 
 Failures are part of the contracts rather than exceptions that escape: engines say why playback stopped, adding a folder has explicit outcomes, and the experience layer turns each into words in one place (`Problems`) while the cause goes to the shell's diagnostics (decision log, "Failures are states").
 
+A session has a **presentation**, and it is the same session in each (PLAYBACK.md, section 18): the full player, or, where the platform can place its video surface (`Platform.docksVideo`), the mini-player in the navigation's dock while the viewer browses. The experience layer says where the surface goes (`AppState.videoFrame`: the whole window, the dock's picture box, or out of sight under whatever covers the page) and the shell puts it there (`VideoStage`); the experience layer never knows what the surface is, and no shell decides where it goes. Nothing below the experience layer knows a presentation exists.
+
 Video is always a platform surface beneath the experience layer's transparent `PlayerOverlay` (a native child window with libmpv on desktop, a `SurfaceView` with Media3 on Android, laid out to the picture's own shape), so the engine keeps its direct path to the display. The layout comes from `AdaptiveLayout` for the window and the current input modality, and is animated when the modality changes.
 
 ### What a platform supplies
@@ -204,6 +206,7 @@ There are two shells, `desktop:app` and `android:app`. Each supplies what only i
 | Hosting the experience layer | A Compose window, with the player's controls in a window above the video | One activity (`MainActivity`), edge to edge, with the controls composed above the video |
 | Input normalization into `Key`, `GamepadButton`, and `InputSignal` | AWT keys; XInput, HID, and joystick readers | Key and motion events (`Input`, `StickDirections`); Back through the system's back dispatcher |
 | Playback engine behind `Player` | libmpv into a native child window | Media3 (ExoPlayer) into a `SurfaceView` (`Media3Player`); subtitles are drawn by the shell. The same engine is the device's media session, so headset buttons and the system's own controls act on the one playback state |
+| Presenting a session beside the page (`Platform.docksVideo`) | Yes: the native child window is moved to the dock's picture box in one move, its controls window with it (the mini-player, M9) | Not yet: the player is the whole screen or closed (M10 places the `SurfaceView`); never on a television |
 | Leaving the app while playing | The window stays where it is | On a phone or tablet, picture-in-picture: the activity becomes a small window of the picture's shape showing only the picture. On a television, and when stopped, covered, or with the screen off, playback pauses and the player releases its decoders and audio focus until it is seen again |
 | Problem reports | `DiagnosticLog`, a file in the data directory | The system log and a file in the app's storage. Both pass through `Redaction` in `core`, so no log carries credentials |
 | `MediaProber` | libmpv | The platform's `MediaExtractor` (`AndroidMediaProber`) |

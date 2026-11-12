@@ -41,7 +41,12 @@ import dev.reflux.desktop.engine.DesktopEnvironment
 import dev.reflux.desktop.gamepad.GamepadInput
 import dev.reflux.desktop.gamepad.GamepadReader
 import dev.reflux.ui.RefluxApp
+import dev.reflux.ui.player.MiniPlayerSurface
 import dev.reflux.ui.player.PlayerOverlay
+import dev.reflux.ui.player.VideoStage
+import dev.reflux.ui.player.rememberVideoPlacement
+import dev.reflux.ui.state.PlayerPresentation
+import dev.reflux.ui.state.VideoFrame
 import dev.reflux.ui.state.AppState
 import dev.reflux.ui.theme.RefluxColors
 import kotlinx.coroutines.CoroutineExceptionHandler
@@ -186,10 +191,16 @@ internal fun runReflux(
                 }
             }
 
+            // Where the one video surface is: the whole window under the full player, or in the mini-player's dock
+            // beside the page (docs/PLAYBACK.md, "One session, several presentations").
+            // The surface is a native window, which is put where it belongs in one move rather than made to travel.
+            val placement = rememberVideoPlacement(app, travels = false)
             Box(Modifier.fillMaxSize().background(RefluxColors.background)) {
                 RefluxApp(app)
                 platform.video.canvas?.let { canvas ->
-                    key(canvas) { SwingPanel(factory = { canvas }, modifier = Modifier.fillMaxSize()) }
+                    VideoStage(placement, Modifier.fillMaxSize()) {
+                        key(canvas) { SwingPanel(factory = { canvas }, modifier = Modifier.fillMaxSize()) }
+                    }
                 }
             }
 
@@ -197,12 +208,18 @@ internal fun runReflux(
             // it must not be torn down while the engine is being torn down (see X11ErrorGuard), and the
             // surface only goes away once the engine has.
             platform.video.canvas?.let { canvas ->
-                VideoOverlay(window, canvas) {
+                VideoOverlay(window, canvas, shown = app.videoFrame != VideoFrame.Hidden) {
                     val session = app.playback ?: return@VideoOverlay
                     // An almost invisible fill keeps the whole overlay window hit-testable; fully transparent
                     // pixels would let pointer input fall through to the video surface.
                     Box(Modifier.fillMaxSize().background(Color(0x01000000))) {
-                        PlayerOverlay(app, session, hiddenCursor = HiddenCursor)
+                        // The full player's controls belong over a picture that is the whole window and at rest. In
+                        // the dock, and on the way there and back, the picture is only the way back to the player.
+                        if (session.presentation == PlayerPresentation.FULL && placement.full) {
+                            PlayerOverlay(app, session, hiddenCursor = HiddenCursor)
+                        } else {
+                            MiniPlayerSurface(app, session)
+                        }
                     }
                 }
             }

@@ -317,6 +317,8 @@ private fun Controls(app: AppState, session: PlaybackSession, state: PlayerState
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (controls.back) IconButton(Icon.BACK, "Back to library", { session.close() }, glass = true, shortcut = "Esc")
+        // Where the device has a mini-player: keep watching while browsing. A failure is answered here first.
+        if (controls.back && app.miniPlayerAvailable && !failed) IconButton(Icon.MINI_PLAYER, "Mini player", { session.collapse() }, glass = true, shortcut = "I")
         if (compact) NowPlaying(session, compact = true)
     }
 

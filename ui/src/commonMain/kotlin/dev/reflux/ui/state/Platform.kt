@@ -172,6 +172,14 @@ interface Platform {
     /** Removes a source and what Reflux derived from it. The user's files are never touched. */
     suspend fun removeSource(id: SourceId)
 
+    /**
+     * Whether the video surface from [createPlayer] can be shown anywhere in the window, not only across all of it:
+     * the shell then places it where [AppState.videoFrame] says, and what is playing can step aside into the
+     * mini-player's dock while the viewer browses. Where it cannot (or the shell has not been taught to), there is no
+     * mini-player, and the player is the whole window or closed, as before.
+     */
+    val docksVideo: Boolean get() = false
+
     /** What [requestFullscreen] does here, so the player offers it only where it changes something. */
     val fullscreenMode: FullscreenMode get() = FullscreenMode.WINDOW
 

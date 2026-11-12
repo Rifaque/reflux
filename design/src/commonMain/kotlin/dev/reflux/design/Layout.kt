@@ -39,6 +39,48 @@ enum class NavigationStyle {
         }
 }
 
+/** How the mini-player is laid out in its dock. */
+enum class DockStyle {
+    /** One row: the picture at its leading end, what is playing beside it, and its controls. For short or narrow windows. */
+    BAR,
+
+    /** The picture above what is playing and its controls, in a corner of the page. */
+    CARD,
+}
+
+/**
+ * Where what is playing sits while the viewer browses: the mini-player's dock (docs/NAVIGATION.md, section 8). The
+ * dock is part of the navigation's own layer: above the phone's bar, or in the bottom corner of the page beside a
+ * rail or a sidebar. Whether a device presents playback there at all is the platform's to say, not the layout's.
+ */
+data class MiniPlayerDock(
+    val style: DockStyle,
+    /** The dock's width; a [DockStyle.BAR] is at most this wide and narrower where the window is. */
+    val widthDp: Float,
+    /** The picture's box inside the dock, 16:9; the video is fitted inside it at its own shape. */
+    val videoWidthDp: Float,
+) {
+    val videoHeightDp: Float get() = videoWidthDp * 9f / 16f
+
+    /** How tall the dock is, before a large text size grows its words. */
+    val heightDp: Float
+        get() = when (style) {
+            DockStyle.BAR -> videoHeightDp + 2 * PADDING_DP
+            DockStyle.CARD -> PADDING_DP + videoHeightDp + CARD_STRIP_DP + PADDING_DP
+        }
+
+    companion object {
+        /** The space between the dock's edge and what is in it. */
+        const val PADDING_DP = 8f
+
+        /** The row beneath a card's picture: what is playing, and its controls. */
+        const val CARD_STRIP_DP = 60f
+
+        /** The space kept between the dock and the navigation or the window's edge. */
+        const val GAP_DP = 8f
+    }
+}
+
 /** Concrete layout values for a window. Recomputed whenever the window size or input modality changes. */
 data class LayoutProfile(
     val formFactor: FormFactor,
@@ -60,6 +102,8 @@ data class LayoutProfile(
     val showsFocus: Boolean,
     /** Where the global navigation sits. */
     val navigation: NavigationStyle = NavigationStyle.BOTTOM_BAR,
+    /** The mini-player's dock in this window; null where there is none (a television). */
+    val dock: MiniPlayerDock? = null,
 ) {
     val posterHeightDp: Float get() = posterWidthDp * 1.5f
 }
@@ -137,6 +181,24 @@ object AdaptiveLayout {
             showsButtonPrompts = directional,
             showsFocus = directional || modality == InputModality.KEYBOARD,
             navigation = navigation,
+            dock = dock(navigation, widthDp),
         )
+    }
+
+    /**
+     * The mini-player's dock for a window whose navigation is [navigation]. A phone has a row: above its bar when held
+     * upright, in the bottom corner on its side, where the screen is too short for a picture above words. A tablet and
+     * a desktop have a card in the bottom corner of the page, which never takes more than half the page's width: a
+     * tablet window too narrow for that (one of two side by side) has the row instead. A television has none: its
+     * player is the whole screen, and leaving it pauses (DECISIONS.md, 2026-11-12).
+     */
+    fun dock(navigation: NavigationStyle, widthDp: Float): MiniPlayerDock? = when (navigation) {
+        NavigationStyle.BOTTOM_BAR -> MiniPlayerDock(DockStyle.BAR, widthDp = 360f, videoWidthDp = 96f)
+        NavigationStyle.COMPACT_RAIL -> MiniPlayerDock(DockStyle.BAR, widthDp = 328f, videoWidthDp = 96f)
+        NavigationStyle.RAIL ->
+            if ((widthDp - navigation.widthDp) / 2 >= 288f) MiniPlayerDock(DockStyle.CARD, widthDp = 288f, videoWidthDp = 272f)
+            else MiniPlayerDock(DockStyle.BAR, widthDp = 328f, videoWidthDp = 96f)
+        NavigationStyle.SIDEBAR -> MiniPlayerDock(DockStyle.CARD, widthDp = 336f, videoWidthDp = 320f)
+        NavigationStyle.TV_RAIL -> null
     }
 }

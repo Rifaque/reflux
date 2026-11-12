@@ -1228,3 +1228,65 @@ M8 owns where things are; M9 owns how they look (DECISIONS.md, 2026-11-11, the r
 ## 2026-11-11 — The website's responsive check uses Playwright
 
 The M8 responsive pass needs every page at real viewport sizes, and keeping it needs that in CI. Playwright (Apache-2.0) drives Chromium for `check-layout.mjs`: a development dependency, pinned to 1.64.1 (a patch release a month old), never shipped and not in the site's notices (which list only what the built site contains). Committed pixel baselines were rejected: font rendering differs between Windows, the CI runner, and contributors' machines, so pixel comparison would fail for no defect. The check asserts what makes a layout wrong (sideways scrolling, unreadable text, small targets, missing heading or navigation, the performance budget), and the screenshots are kept as a CI artifact and a local folder for review.
+
+## 2026-11-12 — The desktop mini-player: viable, with an architectural adjustment
+
+M9 opened with the trial the rebaseline asked for (planning/M8-M13-REBASELINE.md, section 8, "Step 0"): can one playback session be shown across the whole window and, while the viewer browses, in a dock, when desktop video is a native child window that libmpv renders into? **Verdict: viable with an architectural adjustment.** Evidence: VERIFICATION.md, "M9: the desktop mini-player trial"; the trial is kept as `MiniPlayerWindowTest`.
+
+**What was found, on Windows 11 and on Linux (X11) with real libmpv:**
+
+- The native surface can be moved and resized inside its window under a running engine. Playback continues, the same surface and the same engine throughout; nothing is recreated.
+- The controls window (the transparent, never-focused window owned by the main window) follows the surface to the dock. Owned, it is above the Reflux window and nothing else, has no taskbar entry, and is never always-on-top. Keyboard focus stays with the main window, so the page is operated as usual while the picture plays.
+- The system routes pointer input over the picture to the controls window and input over the page to the page (Windows, asked of the system itself).
+- Moving the window to a second display at another scale (1.25 to 1.5), resizing it, and fullscreen and back all keep the picture in its dock.
+- **A native surface does not travel.** Resizing it on every frame of a 280 ms transition came out as 10 to 16 moves with gaps of 100 to 180 ms: a few uneven jumps. So the surface is put where it belongs in one move, and the dock arriving around it carries the eye.
+- **A native surface is above everything Reflux draws in its window** (the airspace rule already recorded on 2026-10-09). The dock is therefore a region nothing else is drawn over, the picture is square-cornered inside the dock's rounded material, and whatever covers the page (a sheet, a picker, the question of who is watching) takes the picture out of sight while the sound goes on.
+
+**The adjustment** (docs/PLAYBACK.md, "One session, several presentations"): the session gains a presentation (`FULL`, `MINI`); the experience layer tells the shell where its video surface goes (`VideoFrame`: the whole window, the dock's picture box, or out of sight) and never knows what the surface is; a platform says whether its surface can be placed (`Platform.docksVideo`). Nothing in `core`, the planner, the engines, or watch reporting changed, and there is no second player.
+
+**Not chosen:** a separate always-on-top mini window (focus and stacking the viewer did not ask for, and a second surface for the engine, which libmpv's `wid` cannot change while playing); rendering video into the toolkit through mpv's render API (the rewrite of desktop video output that the 2026-10-09 decision and the rebaseline both rule out for 1.0); the "now playing" bar without video (the accepted fallback, O-8, not needed).
+
+**Limits, stated:**
+
+- Wayland: Reflux's toolkit runs through XWayland, so a Wayland session behaves as X11 does; it was verified on X11 (Xvfb, openbox, a compositor), not on a Wayland compositor. A second display was exercised on Windows only.
+- Rounded corners on the picture, and the picture travelling, need a different video path and are not planned.
+- A television has no mini-player (leaving its player pauses: 2026-10-18), and Android's shell is not taught to place its surface yet: both are M10's to decide and build on this contract. Back still closes the player everywhere; whether Back goes to the mini-player is M10's.
+
+## 2026-11-12 — What M9 built of the mini-player, and what it left
+
+The trial's "minimum foundation" is real code on the desktop, because a foundation nobody can reach proves nothing: the full player has a "Mini player" button (and the key `I`), the dock shows the picture with what is playing, play or pause, and stop, and a click on the picture, `I`, or Play on the same title brings the player back. Choices made building it:
+
+- **The dock is the navigation's.** It is drawn by the shell's chrome, in functional material, above the phone's bar or in the page's bottom corner beside a rail or sidebar (`LayoutProfile.dock`), and pages and notices end clear of it. It is not a floating window with a look of its own.
+- **Browsing is browsing.** With the picture in the dock, keys and focus are the page's: Escape is Back, arrows move focus, Space activates what has focus. Only what a page has no use for reaches the session: media keys, mute, volume keys, and `I`.
+- **One session, never two.** Playing another title ends the docked session first (its place recorded) and the new one takes the screen; playing the same title brings it back; the full player still lets nothing start under it.
+- **Whose it is does not change.** A profile switch ends the session first, as M8 decided, wherever it is shown; removing the source it plays from ends it first.
+- **Nothing takes the screen from a viewer who is browsing.** A failure, "Still watching?", and the next episode's countdown are said in the dock (and announced); the player is one action away.
+- **A failure is not put aside:** the full player with a failure showing does not collapse.
+- **Collapsing leaves fullscreen**, back to the window the viewer had; coming back does not re-enter it.
+
+Left to M10: Back going to the mini-player, the handheld mini-player (Android placing its `SurfaceView` by the same `VideoFrame`), the chrome state machine, and the player's visual redesign.
+
+## 2026-11-12 — Navigation & Surface System 2.0
+
+M9 changes how M8's navigation looks and moves, and nothing about where things are (NAVIGATION.md; DESIGN.md, "Navigation surfaces").
+
+- **One mark for where the viewer is, and it travels.** Each navigation draws a single lit shape behind its destinations (with the leading bar in rails and the sidebar) instead of each destination lighting itself. Going somewhere moves it there in 260 ms (`Motion.selectionTravel`); a destination moved by the layout takes the mark with it; with nowhere to be it fades; with motion reduced it is there at once. What assistive technology hears is unchanged, and is never mid-journey.
+- **The phone's bar hugs its content:** four destinations and the space between them, centred, not a bar stretched to 360 dp.
+- **Reflux says its own name where there is room:** the lockup at the head of the desktop sidebar (drawn from the brand geometry, replacing the word set in the system's typeface), the mark on a tablet's rail, and on a television the mark, joined by the wordmark while the rail is open. A phone has no room, and nothing stands in for it.
+- **The utility area is set apart by a hairline**, and its profile entry is the viewer (their initial and name) once there are several.
+- **The navigation does not credit RSX Develops.** A first draft put "Made by RSX Develops" at the foot of the desktop sidebar; it was removed the same day (the owner's correction): the shell stays product-focused, and the maker is credited in About, on the website, and in the release and legal surfaces.
+- **Asking who is watching arrives and leaves as a page does**, so choosing a viewer is one movement into their Home. At start it is simply there.
+- **Not built, and staying V1.x:** minimizing the phone's bar on scroll. The 2026-11-11 rule kept it only if an accessibility review supported it; the review's answer is no for 1.0: a bar that leaves takes four destinations out of reach of switch access and of a keyboard's focus order while it is away, and bringing it back by scrolling is a gesture a screen reader's user does not make. A collapsible desktop sidebar also stays out.
+- **No new material.** The glass tiers are M4's; nothing refracts.
+
+## 2026-11-12 — The shell's baselines are structural, not pictures
+
+The roadmap asked M9 for image-baseline tests of the shell by window class. Committed pictures were rejected for the app for the reason the website's were (2026-11-11): text is rendered with each machine's own fonts, so a picture made on Windows fails on the Linux runner for no defect, and a tolerance wide enough to pass hides real ones. What is committed instead is `ui/src/jvmTest/resources/shell-baseline.txt`: for eleven window classes (phones, a phone-sized window on a tablet, tablets upright, on their side, and split, desktop windows, a television), which navigation and which dock the window gets and where every destination is, in the measures a font does not change (a row's height is its label's, so for rails and sidebars that carry words only where the first starts is recorded; the Linux container's fonts differed from Windows' by 2 dp in a first draft that recorded the last row's bottom, and that is how it was found). `ShellSurfaceTest` compares it exactly, and a deliberate change rewrites it (`REFLUX_WRITE_BASELINES=1`) to be reviewed as a diff. What only a picture shows (the lit mark, its journey, its absence) is held by pixel probes, as `VisualSystemTest` does, and the rendered screens are still saved for review (`-Preflux.screenshots`).
+
+## 2026-11-12 — Credits name things; they show no logos
+
+About has "Credits and technology" (`legal/credits.txt`, generated into the app like the notices): what Reflux is built on and what it works with, each by name and by what it does for Reflux. Per the plan's O-15, no logo is shown: Jellyfin and Plex are services Reflux connects to, not partners, and each says in words that it is its owner's and that Reflux is independent of it. TMDB's credit stays as its terms ask, on the About page, and is not repeated here. Licenses stay on the third-party page, which the build checks; the credits are a readable page and may name what Reflux does not include.
+
+## 2026-11-12 — Where focus is, is asked, not listened for
+
+`Modifier.onFocusedBoundsChanged` is deprecated and will stop reporting. The one thing that used it (telling a move that only went partly left from one that went left, so that Left reaches the rail: NAVIGATION.md, section 3) now asks when it needs to know: each page is a focus group that can say where focus is inside it (`focusedBounds`, on the toolkit's `FocusTargetModifierNode.getFocusedRect`). `DirectionalInputTest` holds the behavior as before.

@@ -49,7 +49,7 @@ STROKE_WIDTH = float(re.search(r'stroke-width="([\d.]+)"', _STROKE).group(1))
 
 
 def brand_kotlin():
-    """The mark's geometry for the app's own drawing of it (the loader, the first-run mark): design's BrandMark."""
+    """The brand's geometry for the app's own drawing of it (the loader, the first-run mark, the navigation's lockup): design's BrandMark."""
     return '\n'.join([
         'package dev.reflux.design',
         '',
@@ -66,6 +66,14 @@ def brand_kotlin():
         '    const val FIRST_PASS: String = "%s"' % STROKE_FIRST,
         '    const val RETURN_PASS: String = "%s"' % STROKE_RETURN,
         '    const val STROKE_WIDTH: Float = %.2ff' % STROKE_WIDTH,
+        '',
+        '    /**',
+        '     * The lockup, mark and wordmark side by side, as one filled outline (even-odd) in a box of [LOCKUP_WIDTH] by',
+        '     * [LOCKUP_HEIGHT]: for the navigation, where Reflux says its own name.',
+        '     */',
+        '    const val LOCKUP: String = "%s"' % LOCK_DATA,
+        '    const val LOCKUP_WIDTH: Float = %.2ff' % LOCK_VIEW[2],
+        '    const val LOCKUP_HEIGHT: Float = %.2ff' % LOCK_VIEW[3],
         '}',
         '',
     ])

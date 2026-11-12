@@ -1,0 +1,11 @@
+phone, small (320x640): BOTTOM_BAR, dock BAR 360x70 | Profile and settings 260,12 44x44; Home 26,580 64x44; Movies 94,580 64x44; Shows 162,580 64x44; Search 230,580 64x44
+phone (412x915): BOTTOM_BAR, dock BAR 360x70 | Profile and settings 352,12 44x44; Home 72,855 64x44; Movies 140,855 64x44; Shows 208,855 64x44; Search 276,855 64x44
+phone on its side (915x412): COMPACT_RAIL, dock BAR 328x70 | Home 16,22 44x44; Movies 16,72 44x44; Shows 16,122 44x44; Search 16,172 44x44; Profile and settings 16,346 44x44
+phone-sized window on a tablet (400x700): BOTTOM_BAR, dock BAR 360x70 | Profile and settings 340,12 44x44; Home 66,640 64x44; Movies 134,640 64x44; Shows 202,640 64x44; Search 270,640 64x44
+tablet, upright (800x1280): RAIL, dock CARD 288x229 | Home x14 w64; Movies x14 w64; Shows x14 w64; Search x14 w64; Sources x14 w64; Settings x14 w64; Profiles x14 w64 | first top 72
+tablet, on its side (1280x800): SIDEBAR, dock CARD 336x256 | Home x14 w192; Movies x14 w192; Shows x14 w192; Search x14 w192; Sources x14 w192; Settings x14 w192; Profiles x14 w192 | first top 74
+tablet, split in two (640x800): RAIL, dock BAR 328x70 | Home x14 w64; Movies x14 w64; Shows x14 w64; Search x14 w64; Sources x14 w64; Settings x14 w64; Profiles x14 w64 | first top 72
+desktop, smallest window (1200x600): SIDEBAR, dock CARD 336x256 | Home x14 w192; Movies x14 w192; Shows x14 w192; Search x14 w192; Sources x14 w192; Settings x14 w192; Profiles x14 w192 | first top 74
+desktop (1440x900): SIDEBAR, dock CARD 336x256 | Home x14 w192; Movies x14 w192; Shows x14 w192; Search x14 w192; Sources x14 w192; Settings x14 w192; Profiles x14 w192 | first top 74
+desktop, large (1920x1080): SIDEBAR, dock CARD 336x256 | Home x14 w192; Movies x14 w192; Shows x14 w192; Search x14 w192; Sources x14 w192; Settings x14 w192; Profiles x14 w192 | first top 74
+television (960x540): TV_RAIL, dock none | Home 10,68 44x46; Movies 10,120 44x46; Shows 10,172 44x46; Search 10,224 44x46; Sources 10,362 44x46; Settings 10,414 44x46; Profiles 10,466 44x46

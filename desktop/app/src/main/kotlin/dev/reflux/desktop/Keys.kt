@@ -41,6 +41,7 @@ internal fun KeyEvent.toRefluxKey(): Key? {
         KeyEvent.VK_J -> Key.J
         KeyEvent.VK_L -> Key.L
         KeyEvent.VK_O -> Key.O
+        KeyEvent.VK_I -> Key.I
         KeyEvent.VK_PERIOD -> Key.PERIOD
         KeyEvent.VK_COMMA -> Key.COMMA
         KeyEvent.VK_PAGE_UP -> Key.PAGE_UP

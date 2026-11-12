@@ -65,6 +65,12 @@ internal class DesktopPlatform(private val environment: DesktopEnvironment) : Pl
 
     override val canPlay: Boolean get() = environment.canPlay
 
+    /**
+     * The video surface is a native child of the main window, and a child window can be anywhere in its parent: in
+     * the mini-player's dock as well as across all of it (DECISIONS.md, 2026-11-12; verified on Windows and X11).
+     */
+    override val docksVideo: Boolean get() = true
+
     override val build: BuildIdentity = readBuildIdentity()
 
     override val notices: NoticeTarget = NoticeTarget.DESKTOP

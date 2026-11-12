@@ -126,6 +126,15 @@ internal fun AboutScreen(app: AppState) {
                 }
             }
         }
+        if (target != null && Notices.credits(target).isNotEmpty()) {
+            item(key = "technology") {
+                val back = rememberFocusReturn("about/credits")
+                Link("Credits and technology", "What Reflux is built on, and the media servers it works with", back.modifier) {
+                    back.leaving()
+                    app.navigator.open(Destination.Credits)
+                }
+            }
+        }
         // Last, help: where to ask, and a report to attach that Reflux makes only when asked and never sends.
         item(key = "help") {
             val back = rememberFocusReturn("about/help")
@@ -208,6 +217,41 @@ internal fun NoticesScreen(app: AppState) {
             NoticeRow(component, if (index == 0) back.modifier.initialFocus() else back.modifier) {
                 back.leaving()
                 app.navigator.open(Destination.Notice(component.name))
+            }
+        }
+    }
+}
+
+/**
+ * What Reflux is built on and works with, by name and by what each does for it (`legal/credits.txt`). Words only: no
+ * logo is anyone's to lend here, and a service Reflux merely connects to is said to be its owner's, not Reflux's
+ * partner. The licenses are a page of their own.
+ */
+@Composable
+internal fun CreditsScreen(app: AppState) {
+    val target = app.platform.notices ?: return
+    val credits = remember(target) { Notices.credits(target) }
+    Page {
+        item(key = "heading") {
+            Heading("Credits and technology", "Reflux stands on other people's work. This is what it is built on and what it works with; each belongs to its own makers.")
+        }
+        itemsIndexed(credits, key = { _, it -> it.name }) { index, credit ->
+            // One stop each, for a remote and a screen reader: the name, what it does here, and whose it is.
+            Column(
+                Modifier.fillMaxWidth().then(if (index == 0) Modifier.initialFocus() else Modifier).readable(Shapes.large).glass(MaterialRole.ELEVATED, Shapes.large)
+                    .semantics(mergeDescendants = true) {}.padding(horizontal = 18.dp, vertical = 13.dp),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                Text(credit.name, style = LocalTypography.current.bodyStrong)
+                Text(credit.role, style = LocalTypography.current.caption, color = RefluxColors.contentSecondary)
+                credit.note?.let { Text(it, Modifier.padding(top = 2.dp), style = LocalTypography.current.caption, color = RefluxColors.contentTertiary) }
+            }
+        }
+        item(key = "licenses") {
+            val back = rememberFocusReturn("credits/notices")
+            Link("Third-party software", "The licenses of the software Reflux includes", back.modifier) {
+                back.leaving()
+                app.navigator.open(Destination.Notices)
             }
         }
     }

@@ -459,6 +459,33 @@ A local file has no server, so these test reading, assessing, planning, and the 
 
 **Known platform limits:** Android's own extractor drops a TrueHD track from a local file's probe, so its silence is found at playback, not planned, and said then; Fire OS 8 reports no VP9 profile, so depth stays unknown; Media3 does not follow a chained SeekHead.
 
+## 18. One session, several presentations (M9)
+
+A playback is one `PlaybackSession`: one plan, one engine, one video surface, one watch reporter, one profile. How it is shown is a property of the session, never another playback (DECISIONS.md, 2026-11-12).
+
+```text
+PlaybackSession (plan, engine, reporting, profile)
+       │
+       ├── FULL   the player has the screen; everything behind it is inert
+       ├── MINI   the picture and a few controls in the navigation's dock; the page is the viewer's
+       └── (later: the system's picture-in-picture, as a presentation rather than a shell's side effect: M10)
+```
+
+| Piece | Where | What it is |
+| --- | --- | --- |
+| `PlayerPresentation` | `ui/state` | `FULL` or `MINI`, on the session (`collapse()`, `expand()`). Moving between them plans nothing, loads nothing, and makes no engine |
+| `AppState.watching`, `AppState.docked` | `ui/state` | The session that has the screen, or the one beside the page. Input, inertness, and notices follow `watching`; `playback` is the session either way |
+| `VideoFrame` | `ui/state` | Where the shell's surface goes: `Full`, `Docked(bounds)`, or `Hidden` (something covers the page; the sound goes on). The experience layer computes it from its own layout |
+| `Platform.docksVideo` | `ui/state` | Whether the shell can place its surface. False means no mini-player there, and nothing offers one |
+| `VideoStage`, `rememberVideoPlacement` | `ui/player` | Places any surface by the frame; a surface the toolkit composes may travel, a native one moves once |
+| `MiniPlayerDock` | `ui/player`, drawn by the shell's chrome | The dock: the picture's box, what is playing, play or pause, stop |
+| `MiniPlayerSurface` | `ui/player` | What a shell layers over a native surface in the dock: a click goes back to the player |
+| `LayoutProfile.dock` | `design` | The dock's geometry per window; none on a television |
+
+What does not change with the presentation: the plan and its comparison with what happened, track choices, the silent-source rules, watch reporting and whose it is (the profile that started it), and the one-engine rule. `PresentationTest` holds each of these.
+
+**Desktop.** libmpv renders into the same native child window throughout; the shell moves that window to the dock's picture box and back, and the controls window follows it (section "Desktop video" of DECISIONS.md, 2026-10-09, still stands). **Android** does not place its surface yet (`docksVideo` is false), so it has no mini-player and behaves as before; a `SurfaceView` is composed by the toolkit, so M10 gives it the same `VideoStage`. **Television** has none by decision.
+
 ## Sources
 
 | Source | Plan |

@@ -2,7 +2,9 @@ package dev.reflux.desktop
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
@@ -19,6 +21,8 @@ import java.awt.Toolkit
 import java.awt.event.ComponentAdapter
 import java.awt.event.ComponentEvent
 import java.awt.event.ComponentListener
+import java.awt.event.HierarchyBoundsAdapter
+import java.awt.event.HierarchyEvent
 
 /**
  * The native surface libmpv renders into.
@@ -70,12 +74,20 @@ internal class VideoSurface {
 
 /**
  * Hosts [content] in a transparent, undecorated window that exactly covers [anchor] and follows it as
- * [owner] moves and resizes. The window never takes keyboard focus, so keys keep going to [owner].
+ * [owner] moves and resizes, and as [anchor] itself is moved inside it (to the mini-player's dock and back). The
+ * window never takes keyboard focus, so keys keep going to [owner]; it belongs to [owner], so it is above that window
+ * and no other, and is never on top of other applications.
+ *
+ * @param shown false while the surface is out of sight (something covers the dock): the window goes with it.
  */
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
-internal fun VideoOverlay(owner: ComposeWindow, anchor: Component, content: @Composable () -> Unit) {
+internal fun VideoOverlay(owner: ComposeWindow, anchor: Component, shown: Boolean = true, content: @Composable () -> Unit) {
     val current by rememberUpdatedState(content)
+    val visible by rememberUpdatedState(shown)
+    var realign by remember { mutableStateOf<(() -> Unit)?>(null) }
+    // Out of sight and back again is not a move of the surface that a listener would hear of.
+    SideEffect { realign?.invoke() }
     DisposableEffect(owner, anchor) {
         val overlay = ComposeDialog(owner).apply {
             isUndecorated = true
@@ -85,7 +97,7 @@ internal fun VideoOverlay(owner: ComposeWindow, anchor: Component, content: @Com
             setContent { current() }
         }
         fun align() {
-            if (!anchor.isShowing) {
+            if (!anchor.isShowing || !visible) {
                 overlay.isVisible = false
                 return
             }
@@ -101,10 +113,20 @@ internal fun VideoOverlay(owner: ComposeWindow, anchor: Component, content: @Com
         }
         owner.addComponentListener(follow)
         anchor.addComponentListener(follow)
+        // The surface is the toolkit's child of a holder that Compose places: on the way to the dock it is the holder
+        // that moves, and the surface hears of it as an ancestor's move.
+        val ancestors = object : HierarchyBoundsAdapter() {
+            override fun ancestorMoved(event: HierarchyEvent) = align()
+            override fun ancestorResized(event: HierarchyEvent) = align()
+        }
+        anchor.addHierarchyBoundsListener(ancestors)
+        realign = ::align
         align()
         onDispose {
+            realign = null
             owner.removeComponentListener(follow)
             anchor.removeComponentListener(follow)
+            anchor.removeHierarchyBoundsListener(ancestors)
             overlay.dispose()
         }
     }

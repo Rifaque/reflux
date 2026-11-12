@@ -123,6 +123,30 @@ class LayoutTest {
     }
 
     @Test
+    fun everyWindowButATelevisionHasADockForWhatIsPlaying() {
+        fun dock(width: Float, height: Float, television: Boolean = false) = AdaptiveLayout.profile(width, height, television, InputModality.TOUCH).dock
+        // A phone has a row, upright and on its side: its screen is too short or too narrow for a picture above words.
+        assertEquals(DockStyle.BAR, dock(412f, 915f)?.style)
+        assertEquals(DockStyle.BAR, dock(915f, 412f)?.style)
+        // A tablet and a desktop have a card in the page's corner, the picture above what is playing.
+        assertEquals(DockStyle.CARD, dock(800f, 1280f)?.style)
+        assertEquals(DockStyle.CARD, dock(1440f, 900f)?.style)
+        // A television's player is the whole screen.
+        // A tablet window with no room for a card beside its page (two windows side by side) has the row.
+        assertEquals(DockStyle.BAR, dock(640f, 800f)?.style)
+        assertNull(dock(960f, 540f, television = true))
+        for ((width, height) in listOf(320f to 568f, 412f to 915f, 915f to 412f, 640f to 800f, 800f to 1280f, 1200f to 600f, 1920f to 1080f)) {
+            val layout = AdaptiveLayout.profile(width, height, false, InputModality.TOUCH)
+            val spec = assertNotNull(layout.dock)
+            assertEquals(16f / 9f, spec.videoWidthDp / spec.videoHeightDp, 0.001f, "the picture's box is the shape of a picture")
+            assertTrue(spec.videoWidthDp + 2 * MiniPlayerDock.PADDING_DP <= spec.widthDp, "the picture fits in its dock at ${width}x$height")
+            // It leaves the page most of the window: beside a rail or sidebar it is a corner, on a phone a row.
+            assertTrue(spec.heightDp <= height * 0.45f, "the dock is ${spec.heightDp} of $height high at ${width}x$height")
+            if (spec.style == DockStyle.CARD) assertTrue(spec.widthDp <= (width - layout.navigation.widthDp) * 0.5f, "a card leaves the page its width at ${width}x$height")
+        }
+    }
+
+    @Test
     fun touchTargetsAreLargeEnough() {
         assertTrue(AdaptiveLayout.profile(390f, 844f, false, InputModality.TOUCH).minTargetDp >= 48f)
         assertEquals(1f, AdaptiveLayout.profile(390f, 844f, false, InputModality.TOUCH).focusScale)

@@ -35,7 +35,7 @@ The information architecture never changes; where the navigation sits follows th
 
 | Window | Navigation | The utility area |
 | --- | --- | --- |
-| Phone, portrait | A floating bar along the bottom: Home, Movies, Shows, Search as icons with no permanent words | One entry at the top right of each section's page: the profile ("Profile and settings", or the viewer's initial once there are several), which opens Profiles, where Downloads, Sources, and Settings are |
+| Phone, portrait | A floating bar along the bottom, as wide as its four destinations: Home, Movies, Shows, Search as icons with no permanent words | One entry at the top right of each section's page: the profile ("Profile and settings", or the viewer's initial once there are several), which opens Profiles, where Downloads, Sources, and Settings are |
 | Phone, landscape | A compact rail on the left: the primary four as icons | One entry at the rail's foot, the profile, as when the phone is upright: a phone's short side has the height for the library and one more, not for eight (found by the M8 architecture challenge) |
 | Tablet | A rail on the left: icons with their names beneath | At the rail's foot |
 | Desktop | A sidebar on the left: the wordmark, then icons with their names beside | At the sidebar's foot |
@@ -43,14 +43,14 @@ The information architecture never changes; where the navigation sits follows th
 
 The profile entry is named after the viewer once there are several profiles, and "Profiles" (or "Profile and settings" on a phone) while there is one. Not in 1.0: a collapsible desktop sidebar; minimizing the phone's bar on scroll, unless M9's accessibility review supports it (DECISIONS.md, 2026-11-11).
 
-How each of these looks (M4): one family of functional material, a lit pill and a leading bar for where the viewer is, and, on capable devices, Home's hero and a work's header running under a rail or sidebar while every other page starts beside it. DESIGN.md, "Visual System 2.0 (M4)", "Navigation surfaces" and "Hero artwork and the navigation". None of it changes where the navigation is, what it holds, or how focus moves through it.
+How each of these looks (M4, refined in M9): one family of functional material, one lit mark with a leading bar for where the viewer is, which travels to the destination they go to, Reflux's own lockup or mark at the head of a sidebar or rail, and, on capable devices, Home's hero and a work's header running under a rail or sidebar while every other page starts beside it. DESIGN.md, "Visual System 2.0 (M4)", "Navigation surfaces" and "Hero artwork and the navigation". None of it changes where the navigation is, what it holds, or how focus moves through it.
 
 - Icons without words always say their names to assistive technology, with the role of a tab and whether they are selected; a pointer resting on one shows its name.
 - Pages stacked above a section show a Back button at their top-left on touch and pointer layouts (a remote has its own Back).
 - The library-activity sign and, with a controller in hand, the button prompts sit at the top-right of the page on rail and sidebar layouts.
 - Directional input, wherever the navigation runs down the side (television, and a keyboard or controller on the others): Left from the page's first column enters the rail, on the current destination. A Left that the toolkit would send only partly left (to a button above, in a centred column) goes to the rail instead. Right from the rail returns to the control focus left from, whether it got there by Left or, on a television, by Back. Up and Down move one destination at a time, through the primary four and then the utility area, in that order; there are no other stops in the rail. A controller's bumpers step through the same list.
 - Television: the rail widens over the page while it has focus, to show the names; its items stay the same focusable controls, so focus never drops as it widens. A page that arrives, or gains its main action, takes focus unless the viewer is already in the page.
-- Desktop: Ctrl+1 to Ctrl+6 go to Home, Movies, Shows, Search, Downloads, and Sources, also from a text field; Escape is Back; the mouse's back button is Back on Windows. Tab walks the page in the order it is built, then the sidebar drawn beside it.
+- Desktop: Ctrl+1 to Ctrl+6 go to Home, Movies, Shows, Search, Downloads, and Sources, also from a text field; Escape is Back; the mouse's back button is Back on Windows; `I` puts the player in the mini-player and brings it back (section 8). Tab walks the page in the order it is built, then the sidebar drawn beside it.
 
 ## 4. The unified library and source libraries
 
@@ -146,3 +146,21 @@ A show's page lists its seasons as tabs and the chosen season's episodes. An epi
 ## 8. The player
 
 The player is a takeover above the current page, never a page itself. While it is open everything behind it is inert to touch, pointer, focus, and assistive technology. Closing it returns to the page it was opened from, which was never left: its scroll position and the focused item are where they were. Playback opened from a source library plays within that source's scope.
+
+### The mini-player (M9)
+
+Where a device has one, what is playing can step aside into the **mini-player** while the viewer browses: the same session, shown in the navigation's dock (docs/PLAYBACK.md, section 18; DECISIONS.md, 2026-11-12). In M9 that is the desktop; a television has none, and handhelds get theirs in M10.
+
+| Window | The dock |
+| --- | --- |
+| Phone, portrait | A row above the bar: the picture, what is playing, play or pause, stop |
+| Phone, landscape | The same row, in the page's bottom corner |
+| Tablet, desktop | A card in the page's bottom corner: the picture above what is playing and its controls. A tablet window too narrow to give a card half its page (one of two side by side) has the row |
+| Television | None |
+
+- **Into it:** the player's "Mini player" button, or `I`. A player showing a failure stays. Fullscreen is left for the window the viewer had.
+- **Out of it:** a click on the picture or on what is playing, the picture activated with a keyboard or a controller (it is a button), `I`, or Play on the same title. "Stop playing" ends playback and records the place.
+- **While it plays there the page is the viewer's.** Navigation, focus, Back, and every key mean what they mean while browsing; nothing is inert. Media keys, mute, the volume keys, and `I` still reach what is playing. Back never ends it.
+- **Its place is the navigation's.** Pages end clear of it and notices are said beside or above it. What covers the page (the offline sheet, a folder picker, the question of who is watching) covers it too, and takes its picture out of sight while the sound goes on.
+- **One session.** Playing something else ends it first and the new playback has the screen. A profile switch, or removing the source it plays from, ends it first.
+- **To assistive technology** it is one named part of the screen, "Mini player", with three stops in the page's focus order after the page: what is playing and how it stands (activating it returns to the player), play or pause, and stop. A failure and "Still watching?" are announced when they happen; nothing takes the screen to say them.

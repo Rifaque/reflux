@@ -37,7 +37,7 @@ import kotlin.test.assertTrue
 /** A television: 960 by 540 whatever its resolution, a remote, and nothing else to operate it with. */
 internal const val TV_WIDTH = 960
 internal const val TV_HEIGHT = 540
-private const val TV_DENSITY = 2f
+internal const val TV_DENSITY = 2f
 
 @OptIn(ExperimentalTestApi::class)
 internal fun television(

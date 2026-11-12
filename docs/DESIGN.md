@@ -62,13 +62,16 @@ Glass is a functional material, not decoration. It is for the phone's bar, the r
 
 ### Navigation surfaces
 
-One family: functional material, a lit pill for where the viewer is, and focus as a ring.
+One family: functional material, one lit mark for where the viewer is, and focus as a ring. M9 refined it without moving anything (DECISIONS.md, 2026-11-12, "Navigation & Surface System 2.0").
 
-- **Where the viewer is** is shown by shape and light together, never by a color or a brightness alone: a lit pill (`StateLayers.SELECTED`) and, in rails and the sidebar, a short bar at the item's leading edge. Hover and focus are the quieter active state; focus adds the ring for input that needs one.
-- **Phone, upright:** a floating capsule of FLOATING material above the gesture area; each destination a pill 64 dp wide. Downloads and Sources stay in the top corner (M3).
-- **Phone on its side, and tablet:** a floating rail of FLOATING material with xlarge corners; icons alone (compact) or with their names beneath (tablet), at the widths M3 set.
-- **Desktop:** the same material as a sidebar, with the wordmark and names beside the icons.
-- **Television:** closed, its icons over a shade that fades into the page; open, it widens to 208 dp over the page as FLOATING material with rounded trailing corners, the names in the television label style. It widens in 180 ms; with motion reduced, at once.
+- **Where the viewer is** is shown by shape and light together, never by a color or a brightness alone: one lit shape (`StateLayers.SELECTED`) drawn behind the destinations and, in rails and the sidebar, a short bar at its leading edge. It is the navigation's, not each destination's: going somewhere moves it there (`Motion.selectionTravel`), a destination the layout moves takes it along, and where the viewer is in none of them it fades away. Hover and focus are the quieter active state, each destination's own; focus adds the ring for input that needs one.
+- **Phone, upright:** a floating capsule of FLOATING material above the gesture area, as wide as its four destinations (each a pill 64 dp wide) and no wider. The utility area is the one profile entry at the top right (M8).
+- **Phone on its side, and tablet:** a floating rail of FLOATING material with xlarge corners; icons alone (compact) or with their names beneath (tablet), at the widths M3 set. A tablet's rail carries the mark at its head.
+- **Desktop:** the same material as a sidebar: the Reflux lockup at its head, names beside the icons, and the utility area at its foot. The shell is the product's alone: RSX Develops is credited in About, on the website, and in the release and legal surfaces, not in the navigation.
+- **Television:** closed, its icons over a shade that fades into the page, the mark quiet at its head; open, it widens to 208 dp over the page as FLOATING material with rounded trailing corners, the wordmark joining the mark and the names in the television label style. It widens in 180 ms; with motion reduced, at once.
+- **The utility area** sits at the foot of a rail or sidebar beneath a hairline. Its profile entry is the viewer, by initial and name, once there are several.
+- **The mini-player's dock** is this family's too: FLOATING material with xlarge corners, above the phone's bar or in the page's bottom corner, holding the picture, what is playing, and two controls (NAVIGATION.md, section 8). The picture is the platform's video surface, so nothing is drawn over it and its corners are square inside the dock's rounded edge.
+- **The brand** in the navigation is drawn from the brand geometry (`BrandMark`), in the interface's neutral, at the sizes design/brand/README.md allows; never a logo treatment on a page.
 
 ### Hero artwork and the navigation
 
@@ -94,6 +97,10 @@ On Android the application is drawn under the status and navigation bars: the sh
 | `artworkReveal` | 240 ms | Artwork arriving over its placeholder |
 | `sheetEnter`, `sheetExit` | 260, 200 ms | Sheets and panels |
 | `inputMorph` | 360 ms | The controller morph |
+| `selectionTravel` | 260 ms | Where the viewer is, moving from one destination to another |
+| `playerDock` | 280 ms | The mini-player's dock arriving; a video surface the toolkit composes travelling to it (a native one moves once) |
+
+The question of who is watching arrives as a page does and leaves as one leaves, so the profile entry, the utility pages, and every other page share one movement.
 
 `MotionProfile` applies it per form factor: a television's pages fade in place in 240 ms without travelling, its sheets fade, and its rail widens fastest. Nothing moves on its own: no background motion, no per-card animation, no staggering. With the system's reduce-motion setting every one of these takes no time and the end state is drawn as it would have been, so a state is never left ambiguous.
 

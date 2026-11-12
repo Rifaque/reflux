@@ -16,8 +16,23 @@ data class ThirdPartyComponent(
     val note: String?,
 )
 
+/**
+ * Something Reflux is built on or works with, as `legal/credits.txt` credits it: its name and what it does for
+ * Reflux, in words. A credit, not a license notice (those are [ThirdPartyComponent]s), and never a logo.
+ */
+data class TechnologyCredit(
+    val name: String,
+    val role: String,
+    val targets: Set<NoticeTarget>,
+    /** One sentence shown with it: for a service Reflux only connects to, whose it is and that Reflux is independent of it. */
+    val note: String?,
+)
+
 /** The third-party notices and license texts the About page shows. Generated from `legal/` at build time. */
 object Notices {
+    /** What [target]'s build is credited as built on and working with, in the order `legal/credits.txt` gives. */
+    fun credits(target: NoticeTarget): List<TechnologyCredit> = NoticeData.credits.filter { target in it.targets }
+
     /** What [target]'s build contains, in the order `legal/components.txt` gives. */
     fun components(target: NoticeTarget): List<ThirdPartyComponent> = NoticeData.components.filter { target in it.targets }
 

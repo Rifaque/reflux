@@ -40,6 +40,12 @@ object Motion {
     val sheetEnter = MotionSpec(260, emphasized)
     val sheetExit = MotionSpec(200, exit)
 
+    /** What is playing moving between the whole window and its dock. */
+    val playerDock = MotionSpec(280, emphasized)
+
+    /** Where the viewer is, travelling from one destination to another in the navigation. */
+    val selectionTravel = MotionSpec(260, emphasized)
+
     /** Player controls hide after this much inactivity while playing. */
     const val CONTROLS_AUTO_HIDE_MS: Long = 3_500
 

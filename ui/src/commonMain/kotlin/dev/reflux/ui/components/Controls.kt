@@ -302,6 +302,8 @@ fun IconButton(
     expanded: Boolean? = null,
     /** Wider than tall, as a pill (a destination in the phone's bar); round when null. */
     width: Dp? = null,
+    /** Whether the button lights itself while [selected]; false where something around it shows that (the navigation's travelling mark). */
+    lit: Boolean = true,
 ) {
     val layout = LocalLayout.current
     val target = maxOf(size.value, minOf(layout.minTargetDp, 56f)).dp
@@ -325,7 +327,7 @@ fun IconButton(
         Box(
             Modifier.size(width?.coerceAtLeast(target) ?: target, target)
                 .then(if (glass) Modifier.glass(MaterialRole.INTERACTIVE, CircleShape) else Modifier)
-                .background(States.layer((if (selected) StateLayers.ON else 0f) + (if (active) StateLayers.ACTIVE_ON_GLASS else 0f))),
+                .background(States.layer((if (selected && lit) StateLayers.ON else 0f) + (if (active) StateLayers.ACTIVE_ON_GLASS else 0f))),
             contentAlignment = Alignment.Center,
         ) {
             Icon(icon, size = (target.value * 0.5f).dp, tint = if (enabled) tint else RefluxColors.contentTertiary)

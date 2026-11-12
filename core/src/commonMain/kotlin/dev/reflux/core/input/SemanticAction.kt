@@ -24,6 +24,9 @@ enum class SemanticAction {
     MUTE,
     FULLSCREEN,
 
+    /** Moves what is playing between the full player and the mini-player, where the device has one. */
+    MINI_PLAYER,
+
     /** The global destinations (docs/NAVIGATION.md), reached directly. */
     GO_HOME,
     GO_MOVIES,
@@ -60,7 +63,7 @@ enum class GamepadButton {
 enum class Key {
     ARROW_UP, ARROW_DOWN, ARROW_LEFT, ARROW_RIGHT,
     ENTER, SPACE, ESCAPE, BACKSPACE, TAB,
-    F, M, K, J, L, O, PERIOD, COMMA,
+    F, M, K, J, L, O, I, PERIOD, COMMA,
     PAGE_UP, PAGE_DOWN,
     DPAD_CENTER, BACK, MENU,
     MEDIA_PLAY_PAUSE, MEDIA_PLAY, MEDIA_PAUSE, MEDIA_STOP, MEDIA_NEXT, MEDIA_PREVIOUS,

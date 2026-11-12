@@ -116,6 +116,35 @@ class AppState(
     var playback: PlaybackSession? by mutableStateOf(null)
         private set
 
+    /** The session that has the screen: the full player. Null while nothing plays, or it plays in the mini-player. */
+    val watching: PlaybackSession? get() = playback?.takeIf { it.presentation == PlayerPresentation.FULL }
+
+    /** The session playing in the mini-player while the viewer browses, if one is. */
+    val docked: PlaybackSession? get() = playback?.takeIf { it.presentation == PlayerPresentation.MINI }
+
+    /**
+     * Whether what is playing can step aside into a mini-player here: the shell can show its video surface in the
+     * dock, and the device is not a television, whose player is the whole screen (docs/NAVIGATION.md, section 8).
+     */
+    val miniPlayerAvailable: Boolean get() = platform.docksVideo && !platform.television
+
+    /** Where the mini-player's picture is in the window, as its dock last laid it out; null while there is no dock. */
+    internal var dockSlot: androidx.compose.ui.geometry.Rect? by mutableStateOf(null)
+
+    /** Whether something covers the page, and with it the dock: a sheet, a picker, the question of who is watching. */
+    private val pageCovered: Boolean get() = offlineOpen || folderPicker != null || profileGate != null
+
+    /**
+     * Where the shell's video surface goes now (see [VideoFrame]). Until the dock has been laid out the surface stays
+     * where it is, so it moves once, to where it belongs.
+     */
+    val videoFrame: VideoFrame
+        get() = when {
+            docked == null -> VideoFrame.Full
+            pageCovered -> VideoFrame.Hidden
+            else -> dockSlot?.let { VideoFrame.Docked(it) } ?: VideoFrame.Full
+        }
+
     private var offlineShown by mutableStateOf(false)
 
     /** Whether the sheet about what is kept on the device is open. */
@@ -513,7 +542,16 @@ class AppState(
         }
     }
 
+    /**
+     * What plays from [id] stops, and its place is recorded, before that source is taken away: with a mini-player the
+     * viewer can be in Sources while something plays.
+     */
+    private suspend fun stopPlayingFrom(id: SourceId) {
+        if (playback?.playingFrom == id) finishPlayback()
+    }
+
     fun removeSource(id: SourceId): Job = attempt("That source couldn't be removed.") {
+        stopPlayingFrom(id)
         platform.removeSource(id)
         watchSources()
         invalidate()
@@ -550,15 +588,21 @@ class AppState(
      * @param scope where it is played from: a source's page plays that source's copy (docs/NAVIGATION.md, section 4).
      */
     fun play(itemId: MediaId, versionId: VersionId? = null, resume: Boolean = true, scope: LibraryScope = LibraryScope.Unified): Job = attempt("This couldn't be played right now.") {
-        if (playback != null || starting) return@attempt
+        // The full player is in the way of everything, so nothing is started from under it. What plays in the
+        // mini-player gives way to what the viewer chose next: one session, never two.
+        if (watching != null || starting) return@attempt
         starting = true
         try {
             // One engine and one video surface at a time: the player that was just closed is gone first.
             awaitRelease()
             val playable = read { playableFor(itemId, scope) } ?: return@attempt notify(Problems.NOTHING_TO_PLAY)
+            // Play on what is already playing beside the page is the way back to it, not a second start.
+            docked?.takeIf { versionId == null && resume && it.entry?.item?.id == playable }?.let { return@attempt it.expand() }
             val plan = read { planPlayback(playable, platform.device, sources, versionId, resume, preferences = viewer, scope = scope) }
                 ?: return@attempt notify(read { unplayableReason(playable, platform.device, sources, viewer, scope) })
             if (!platform.canPlay) return@attempt notify(Problems.noEngine(platform.playbackSetupHint))
+            // Only now that there is something to play instead: what was in the mini-player ends, its place recorded.
+            if (playback != null) finishPlayback()
             val player = platform.createPlayer() ?: run {
                 platform.report("The playback engine is installed but could not be started")
                 return@attempt notify(Problems.PLAYBACK_DID_NOT_START)
@@ -745,7 +789,7 @@ class AppState(
 
     /** The player is one context, everything with focus and lists another: browsing, and the player's menus. */
     private val context: InputContext
-        get() = if (playback?.menu == null && playback != null) InputContext.PLAYBACK else InputContext.BROWSE
+        get() = if (watching?.menu == null && watching != null) InputContext.PLAYBACK else InputContext.BROWSE
 
     /** Reports raw input evidence (pointer travel, touches, controller use) from the shell or the UI. */
     fun onSignal(signal: InputSignal) {
@@ -759,7 +803,8 @@ class AppState(
      */
     fun onKey(key: Key): Boolean {
         onSignal(InputSignal.KeyPress(key))
-        val browsing = playback == null
+        // With what is playing in the mini-player, the viewer is browsing: keys are the page's.
+        val browsing = watching == null
         // The player is operated by its keys. Tab would only walk the page behind the video, which nobody can see.
         if (!browsing && key == Key.TAB) return true
         // A field is one line: up and down move between fields, everything else is typing, but for the
@@ -788,7 +833,7 @@ class AppState(
                 else -> true
             }
         }
-        playback?.let { return it.handle(action) }
+        watching?.let { return it.handle(action) }
         return when (action) {
             SemanticAction.NAVIGATE_UP, SemanticAction.NAVIGATE_DOWN, SemanticAction.NAVIGATE_LEFT, SemanticAction.NAVIGATE_RIGHT ->
                 moveFocus?.invoke(action) ?: false
@@ -838,7 +883,9 @@ class AppState(
                 platform.requestFullscreen(!platform.fullscreen)
                 true
             }
-            else -> false
+            // What browsing has no use for still reaches what is playing beside it: media keys, mute, and the key
+            // that brings the player back.
+            else -> docked?.takeIf { action in DOCKED_ACTIONS }?.handle(action) ?: false
         }
     }
 
@@ -1059,7 +1106,10 @@ class AppState(
     fun deleteProfile(profile: Profile): Job = attempt("The profile couldn't be deleted. Try again.") {
         if (profile.active || profiles.size <= 1) return@attempt
         val accounts = read { accountSourcesOf(profile.id) }
-        accounts.forEach { platform.removeSource(it.id) }
+        accounts.forEach {
+            stopPlayingFrom(it.id)
+            platform.removeSource(it.id)
+        }
         platform.offline?.let { offline -> read { profileDownloadIds(profile.id) }.forEach { withContext(background) { offline.remove(it) } } }
         read { deleteProfile(profile.id) }
         loadProfiles()
@@ -1069,6 +1119,11 @@ class AppState(
     }
 
     private companion object {
+        /** What a session in the mini-player still answers to while the viewer browses. */
+        val DOCKED_ACTIONS = setOf(
+            SemanticAction.PLAY_PAUSE, SemanticAction.STOP, SemanticAction.NEXT, SemanticAction.PREVIOUS, SemanticAction.SEEK_FORWARD,
+            SemanticAction.SEEK_BACKWARD, SemanticAction.MUTE, SemanticAction.VOLUME_UP, SemanticAction.VOLUME_DOWN, SemanticAction.MINI_PLAYER,
+        )
         val SHORTCUTS = setOf(Key.SHORTCUT_1, Key.SHORTCUT_2, Key.SHORTCUT_3, Key.SHORTCUT_4, Key.SHORTCUT_5, Key.SHORTCUT_6)
         private const val SUPPORT_LOG_LINES = 200
         const val NOTICE_MS = 4_500L

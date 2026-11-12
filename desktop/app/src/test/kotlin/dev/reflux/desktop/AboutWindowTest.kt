@@ -36,8 +36,9 @@ class AboutWindowTest {
         assumeTrue("window tests not requested", windowTestsRequested)
         try {
             Shell(environment()).use { shell ->
-                shell.awaitShown("Sources")
-                shell.click("Sources")
+                // About is reached from Settings since M8 (docs/NAVIGATION.md, section 1).
+                shell.awaitShown("Settings")
+                shell.click("Settings")
                 shell.click("About Reflux")
                 // The build this window is: the version and the commit its build recorded.
                 shell.awaitShown("Version ${readBuildIdentity().label}")
@@ -75,9 +76,9 @@ class AboutWindowTest {
                 shell.awaitShown("Privacy")
                 shell.await("focus back on the notices row", state = { "focused: ${shell.focused()}" }) { arrowUntilFocused(shell, "Third-party software") }
                 shell.key(KeyEvent.VK_ESCAPE)
-                shell.await("the media sources") { shell.app.navigator.current == Destination.Sources }
+                shell.await("Settings again") { shell.app.navigator.current == Destination.Settings }
                 shell.await("focus back on About", state = { "focused: ${shell.focused()}" }) { shell.focused() == "About Reflux" }
-                assertEquals(Destination.Sources, shell.ui { shell.app.navigator.current })
+                assertEquals(Destination.Settings, shell.ui { shell.app.navigator.current })
             }
         } finally {
             root.toFile().deleteRecursively()
