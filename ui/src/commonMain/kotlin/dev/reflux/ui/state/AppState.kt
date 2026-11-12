@@ -74,7 +74,9 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.plus
@@ -277,7 +279,18 @@ class AppState(
         watchJob = pipeline.watch(scope + background)
     }
 
-    internal suspend fun <T> read(block: suspend Library.() -> T): T = withContext(background) { library.block() }
+    /**
+     * Runs [block] on the library, off the UI thread. A read that fails after its caller has gone away (the page was
+     * left, the window closed) ends as the cancellation it is: the failure is no one's to report, and reported, it
+     * would reach the window as an unhandled error. A library read cannot be interrupted, so it can still fail after
+     * the caller was cancelled, which coroutines would otherwise surface instead of the cancellation.
+     */
+    internal suspend fun <T> read(block: suspend Library.() -> T): T = try {
+        withContext(background) { library.block() }
+    } catch (e: Exception) {
+        currentCoroutineContext().ensureActive()
+        throw e
+    }
 
     /** Tells every screen that user state changed. */
     fun invalidate() {

@@ -19,7 +19,7 @@ What changes for people using Reflux, version by version. The rules for versions
 - Something playing keeps counting for the profile that started it, even if someone switches profiles; switching stops it first.
 - On Android TV and Google TV, the launcher's continue row shows the profile you're in, and a card opens Reflux in that profile, straight to the title. A profile with a PIN keeps its viewing off the launcher.
 - The navigation has its final layout: Home, Movies, Shows, and Search, then Downloads, Sources, Settings, and your profile. On a phone, held upright or on its side, there is one button for your profile, which leads to Downloads, Sources, and Settings. Online metadata, Media Atmosphere, and About Reflux moved from Sources to the new Settings page.
-- The website's page titles read "Page | Reflux", and its pages tell search engines what Reflux is and when each page last changed. Small links (the logo, the RSX Develops credit, the documentation list) are easier to tap.
+- The website's page titles read "Page | Reflux", and its pages tell search engines what Reflux is and when each page last changed. Small links (the logo, the RSX Develops credit, the documentation list) are easier to tap. Its pages no longer jump as they finish loading: the text is drawn once, in its final typeface.
 
 - Reflux opens with its mark drawing itself on Android 12 and later, greets a first run with it, and shows it flowing while a library is being built or read, or a video is loading, instead of an empty page. With reduce motion on, it stays still.
 - On Android, a subtitle line that is already showing where you skip to now appears straight away, instead of only from the next line.

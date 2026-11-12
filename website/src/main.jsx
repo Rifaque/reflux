@@ -1,7 +1,6 @@
 import { StrictMode } from 'react'
 import { hydrateRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
-import '@fontsource-variable/manrope/wght.css'
 import App from './App.jsx'
 import './styles.css'
 
