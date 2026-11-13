@@ -304,6 +304,8 @@ fun IconButton(
     width: Dp? = null,
     /** Whether the button lights itself while [selected]; false where something around it shows that (the navigation's travelling mark). */
     lit: Boolean = true,
+    /** The glyph's size where it is not half the target: a light glyph in a generous touch target (the player's transport). */
+    iconSize: Dp? = null,
 ) {
     val layout = LocalLayout.current
     val target = maxOf(size.value, minOf(layout.minTargetDp, 56f)).dp
@@ -330,7 +332,7 @@ fun IconButton(
                 .background(States.layer((if (selected && lit) StateLayers.ON else 0f) + (if (active) StateLayers.ACTIVE_ON_GLASS else 0f))),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(icon, size = (target.value * 0.5f).dp, tint = if (enabled) tint else RefluxColors.contentTertiary)
+            Icon(icon, size = iconSize ?: (target.value * 0.5f).dp, tint = if (enabled) tint else RefluxColors.contentTertiary)
         }
     }
 }
@@ -465,6 +467,23 @@ fun SectionHeader(title: String, modifier: Modifier = Modifier, action: String? 
     }
 }
 
+/** How a [Slider] is drawn and how much room a pointer has for it. The defaults are the volume's and a handheld's timeline's. */
+data class SliderStyle(
+    val trackDp: Float = 4f,
+    val trackActiveDp: Float = 6f,
+    /** The thumb's diameter at rest (0: none until the slider is hovered or dragged) and while hovered or dragged. */
+    val thumbDp: Float = 0f,
+    val thumbActiveDp: Float = 14f,
+    val hitDp: Float = 28f,
+    val inactiveAlpha: Float = 0.26f,
+    /** A soft dark edge under the track, so a thin line stays visible over a bright scene. */
+    val halo: Boolean = false,
+) {
+    companion object {
+        val Default = SliderStyle()
+    }
+}
+
 /**
  * A horizontal slider for the timeline and the volume. [onChange] follows the pointer while dragging;
  * [onChangeFinished] reports where it was released.
@@ -485,6 +504,7 @@ fun Slider(
     enabled: Boolean = true,
     color: Color = Color.White,
     valueText: String? = null,
+    style: SliderStyle = SliderStyle.Default,
 ) {
     // A finger gets the height of a target; what is drawn stays a line through its middle.
     val touch = LocalLayout.current.modality == InputModality.TOUCH
@@ -492,11 +512,12 @@ fun Slider(
     val hovered by interaction.collectIsHoveredAsState()
     var dragging by remember { mutableStateOf(false) }
     val active = enabled && (hovered || dragging)
-    val thickness by animateDpAsState(if (active) 6.dp else 4.dp, Motion.focusChange.tween())
+    val thickness by animateDpAsState(if (active) style.trackActiveDp.dp else style.trackDp.dp, Motion.focusChange.tween())
+    val thumb by animateDpAsState(if (active) style.thumbActiveDp.dp else if (enabled) style.thumbDp.dp else 0.dp, Motion.focusChange.tween())
     val change by rememberUpdatedState(onChange)
     val finished by rememberUpdatedState(onChangeFinished)
     Canvas(
-        modifier.height(if (touch) 48.dp else 28.dp)
+        modifier.height(if (touch) 48.dp else style.hitDp.dp)
             .semantics {
                 contentDescription = description
                 progressBarRangeInfo = ProgressBarRangeInfo(fraction.coerceIn(0f, 1f), 0f..1f)
@@ -530,11 +551,15 @@ fun Slider(
         val y = size.height / 2
         val stroke = thickness.toPx()
         val x = size.width * fraction.coerceIn(0f, 1f)
-        drawLine(States.layer(0.26f), Offset(0f, y), Offset(size.width, y), stroke, StrokeCap.Round)
+        if (style.halo) drawLine(Color.Black.copy(alpha = 0.35f), Offset(0f, y), Offset(size.width, y), stroke + 2.dp.toPx(), StrokeCap.Round)
+        drawLine(States.layer(style.inactiveAlpha), Offset(0f, y), Offset(size.width, y), stroke, StrokeCap.Round)
         if (x > 0f) drawLine(color, Offset(0f, y), Offset(x, y), stroke, StrokeCap.Round)
         marks.forEach { mark ->
             drawRect(Color.Black.copy(alpha = 0.6f), Offset(size.width * mark - 1.dp.toPx(), y - stroke / 2), Size(2.dp.toPx(), stroke))
         }
-        if (active) drawCircle(Color.White, radius = 7.dp.toPx(), center = Offset(x, y))
+        if (thumb > 0.dp) {
+            if (style.halo) drawCircle(Color.Black.copy(alpha = 0.35f), radius = thumb.toPx() / 2f + 1.dp.toPx(), center = Offset(x, y))
+            drawCircle(Color.White, radius = thumb.toPx() / 2f, center = Offset(x, y))
+        }
     }
 }

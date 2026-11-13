@@ -1,9 +1,12 @@
 package dev.reflux.library
 
+import dev.reflux.core.model.Episode
+import dev.reflux.core.model.MediaId
 import dev.reflux.core.model.ProfileId
 import dev.reflux.core.model.SourceId
 import dev.reflux.core.model.StableIds
 import dev.reflux.core.profile.PinCheck
+import dev.reflux.core.playback.SubtitlePreference
 import dev.reflux.core.profile.PinPolicy
 
 /**
@@ -241,6 +244,19 @@ fun Library.profileSetting(key: String): String? = queries.profileSettingValue(a
 fun Library.setProfileSetting(key: String, value: String?) {
     val profile = activeProfile().value
     if (value == null) queries.deleteProfileSetting(profile, key) else queries.setProfileSetting(profile, key, value)
+}
+
+/** What a subtitle choice is remembered for: a movie itself, an episode's show (a choice made in one episode carries through it). */
+internal fun Library.subtitleWork(itemId: MediaId): MediaId = (item(itemId) as? Episode)?.showId ?: itemId
+
+/** What [profile] last chose for the subtitles of the work [itemId] belongs to, or null when they never chose. Another profile's is never read. */
+fun Library.subtitlePreference(itemId: MediaId, profile: ProfileId = activeProfile()): SubtitlePreference? =
+    SubtitlePreference.decode(queries.profileSettingValue(profile.value, SubtitlePreference.key(subtitleWork(itemId).value)).executeAsOneOrNull())
+
+/** Remembers [preference] as [profile]'s choice for the work [itemId] belongs to; null forgets it. Only the viewer's own choice is kept, never an automatic one. */
+fun Library.rememberSubtitle(itemId: MediaId, preference: SubtitlePreference?, profile: ProfileId = activeProfile()) {
+    val key = SubtitlePreference.key(subtitleWork(itemId).value)
+    if (preference == null) queries.deleteProfileSetting(profile.value, key) else queries.setProfileSetting(profile.value, key, preference.encode())
 }
 
 // Server endpoints ----------------------------------------------------------------------------------

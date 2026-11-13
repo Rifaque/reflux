@@ -459,21 +459,24 @@ A local file has no server, so these test reading, assessing, planning, and the 
 
 **Known platform limits:** Android's own extractor drops a TrueHD track from a local file's probe, so its silence is found at playback, not planned, and said then; Fire OS 8 reports no VP9 profile, so depth stays unknown; Media3 does not follow a chained SeekHead.
 
-## 18. One session, several presentations (M9)
+## 18. One session, several presentations (M9, M10)
 
-A playback is one `PlaybackSession`: one plan, one engine, one video surface, one watch reporter, one profile. How it is shown is a property of the session, never another playback (DECISIONS.md, 2026-11-12).
+A playback is one `PlaybackSession`: one plan, one engine, one video surface, one watch reporter, one profile. How it is shown is a property of the session, never another playback (DECISIONS.md, 2026-11-12 and 2026-11-13).
 
 ```text
-PlaybackSession (plan, engine, reporting, profile)
+PlaybackSession (plan, engine, reporting, profile = the owner, held once)
        │
-       ├── FULL   the player has the screen; everything behind it is inert
-       ├── MINI   the picture and a few controls in the navigation's dock; the page is the viewer's
-       └── (later: the system's picture-in-picture, as a presentation rather than a shell's side effect: M10)
+       ├── FULL    the player has the screen; everything behind it is inert
+       ├── MINI    the picture and a few controls in the navigation's dock; the page is the viewer's
+       └── SYSTEM  the system's own window (Android's picture-in-picture): the picture, and what the viewer must not miss
 ```
 
 | Piece | Where | What it is |
 | --- | --- | --- |
-| `PlayerPresentation` | `ui/state` | `FULL` or `MINI`, on the session (`collapse()`, `expand()`). Moving between them plans nothing, loads nothing, and makes no engine |
+| `PlayerPresentation` | `ui/state` | `FULL`, `MINI`, or `SYSTEM`, on the session (`collapse()`, `expand()`; `enterSystem()` and `leaveSystem(expanded)`, called only by a shell from the platform's confirmed callbacks). Moving between them plans nothing, loads nothing, and makes no engine |
+| `BackRoute` | `ui/state` | What Back does now, derived from the state (`AppState.backRoute`): `SYSTEM` (the platform's own Back runs), `APP`, `COLLAPSE` (the full player steps into the mini-player), `SYSTEM_PRESENTATION` (what plays in the dock goes into the system's window). `dispatch(BACK)` returns false exactly when the route is `SYSTEM` |
+| `ChromeMode`, `chrome()` | `ui/player` | What the full player draws, as one derived value (below) |
+| `SeekHold` | `core/playback` | A held seek key: accelerates by time held, shows its target, seeks once |
 | `AppState.watching`, `AppState.docked` | `ui/state` | The session that has the screen, or the one beside the page. Input, inertness, and notices follow `watching`; `playback` is the session either way |
 | `VideoFrame` | `ui/state` | Where the shell's surface goes: `Full`, `Docked(bounds)`, or `Hidden` (something covers the page; the sound goes on). The experience layer computes it from its own layout |
 | `Platform.docksVideo` | `ui/state` | Whether the shell can place its surface. False means no mini-player there, and nothing offers one |
@@ -482,9 +485,25 @@ PlaybackSession (plan, engine, reporting, profile)
 | `MiniPlayerSurface` | `ui/player` | What a shell layers over a native surface in the dock: a click goes back to the player |
 | `LayoutProfile.dock` | `design` | The dock's geometry per window; none on a television |
 
-What does not change with the presentation: the plan and its comparison with what happened, track choices, the silent-source rules, watch reporting and whose it is (the profile that started it), and the one-engine rule. `PresentationTest` holds each of these.
+What does not change with the presentation: the plan and its comparison with what happened, track choices, the silent-source rules, watch reporting and whose it is (the profile that started it, held by the session as `owner` and used for every report and every remembered choice), and the one-engine rule. `PresentationTest` and `PlayerM10Test` hold each of these.
 
-**Desktop.** libmpv renders into the same native child window throughout; the shell moves that window to the dock's picture box and back, and the controls window follows it (section "Desktop video" of DECISIONS.md, 2026-10-09, still stands). **Android** does not place its surface yet (`docksVideo` is false), so it has no mini-player and behaves as before; a `SurfaceView` is composed by the toolkit, so M10 gives it the same `VideoStage`. **Television** has none by decision.
+**Desktop.** libmpv renders into the same native child window throughout; the shell moves that window to the dock's picture box and back, and the controls window follows it (section "Desktop video" of DECISIONS.md, 2026-10-09, still stands). **Television** has none by decision.
+
+**Android (M10).** One `SurfaceView` for the whole of a playback, composed once inside `VideoStage` and put where `VideoFrame` says by laying it out: its parent and its place in the composition never change, so the decoder is never restarted and no surface is destroyed or made again (`SurfaceContinuityOnDeviceTest`; probe P1 in VERIFICATION.md). Its buffer is the picture's own size (`holder.setFixedSize`), so moving it is the compositor scaling it. Unlike the desktop's native window it travels between the whole window and the dock. The dock's picture shows no subtitle lines (too small to read); they are drawn in the full player and in the system's window.
+
+**Back.** Reflux enables a back handler only where it has something to do with Back, and none at the root: Android's own Back (back-to-home with its predictive animation) runs there. A handler is `PredictiveBackHandler` for `COLLAPSE` (a gesture's progress shrinks the picture in place by 10% and fades the controls; the session changes only when the gesture completes, so a cancel restores everything because nothing else was changed; with reduced motion there is no preview), `BackHandler` for `APP` and `SYSTEM_PRESENTATION`, and on Android 11 and earlier one that moves the task back. Precedence, first that applies: asking who is watching; the system's window (no Back there); an open list; a failure (Back closes it); the full player (Back steps into the mini-player where there is one, else closes); a text field, the folder picker, the offline sheet; the navigator; then at the root, a mini-player that is playing or buffering with nothing to answer goes into the system's window, and anything else is the system's own Back. Back never ends a session that is in the dock.
+
+**System window.** `Platform.systemPresentation` is true on a handheld whose system has picture-in-picture. The shell asks for it on leaving while something is playing (`setAutoEnterEnabled`, and `onUserLeaveHint` before Android 12) and by Back at the root; the window is the session's `SYSTEM` presentation from the platform's `onPictureInPictureModeChanged`. Its shape is the picture's (clamped to the 1:2.39 to 2.39:1 the system accepts), its `sourceRectHint` is the picture's box, seamless resize is on, and on Android 15 and later `onPictureInPictureUiStateChanged(isTransitioningToPip)` takes the controls away before the animation. The system's controls (play or pause, next, previous) are the activity's own media session; there is no `MediaSessionService` (DECISIONS.md, 2026-11-13). When the window goes: with the activity still started it was expanded (the session is `FULL`); with the activity already stopped it was closed (the session ends and its place is recorded). Observed on a Phone 2a (probe P2): expanding, and launching the app while in the window, arrive with the activity `STARTED`; the close button and swiping the window away arrive with it `CREATED`. Failures and questions in the window are said there (a glyph and a line over the picture); expanding shows the player with them.
+
+**Chrome.** The full player's controls are the value `chrome(facts, hold, now)` and nothing else: `NONE` (not the full player, or the system's window is on its way), `FAILURE`, `ENDING` (the next episode's prompt), `LOADING` (opening; or buffering past a 600 ms grace, unless the viewer is dragging the timeline or holding a seek), `SHOWN`, `HIDDEN`, in that order of precedence. Each mode has the layers it may draw (`ChromeMode.layers()`), so loading draws the Reflux loader and the way out and none of the transport, timeline, lists, or skip offer. What keeps `SHOWN` up is the viewer's last doing for their patience (scaled by the system's accessibility timeout) and pins: paused, a list open, a screen reader running (never hidden), focus inside the controls with a keyboard, controller or remote, a pointer over them, dragging the timeline, a held seek. A touch on the picture puts away what only softly pins. The player waits for one deadline (`nextChange`) and for nothing else.
+
+**Held seek.** A press is the ten-second seek it always was, at once; held, a key only moves a target (10, 30, then 60 media seconds per second held, by time and not by the platform's repeat rate), shown on the timeline, and one seek is made when the key is let go, or 400 ms after the last repeat for a platform that tells nothing of a release. Android's repeat count and AWT's repeats (with X11's release-and-press pairs folded into repeats) say which presses are repeats; quick separate presses (a double tap, an arrow tapped quickly) are separate seeks, and a controller's presses are single presses.
+
+**Chapters on Android** are what Media3 reads out of the file: `Chapter` metadata on the tracks' formats, from Matroska and WebM, and from MP4's `chpl` and QuickTime chapter tracks (`ChaptersOnDeviceTest` plays generated files of each). Streams Media3 describes none of (a server's converted HLS among them) have none; nothing in Reflux parses a file for them.
+
+**A viewer's subtitle choice** is kept per profile and per work (the show, for an episode) in `profile_setting`, as a description of the track (off, or language, forced, hearing impaired), never as a position. The planner matches it against each version's tracks (`SubtitleChoice.Preferred`; embedded first, then files; language, then forced, then hearing impaired) and plans a version it matches nothing in as the automatic choice would, leaving the memory as it was. Only a choice the viewer makes is kept.
+
+**A failure stays where the viewer is.** In the full player it is read and answered there (Back closes it). In the dock it is the same dock: the picture is taken out of sight, it says "Playback stopped", offers Try again where there is one, and Close, and is announced; it does not take the screen from someone browsing. A next episode that cannot be played is such a failure, and no longer a silent end.
 
 ## Sources
 
@@ -754,3 +773,5 @@ Media3 is the cause and could not be changed from here. What was Reflux's was se
 - [ExoPlayer FFmpeg module README](https://build.khadas.com/khadas/test/edge2/external/exoplayer/tree_15dc86382f17a24a3e881e52e31a810c1ea44b49/extensions/ffmpeg/README.md): legacy; built from source, not on Google's Maven.
 - [NextLib](https://github.com/anilbeesetti/nextlib): a community FFmpeg extension for Media3.
 - [mpv issue 13899](https://github.com/mpv-player/mpv/issues/13899): `target-colorspace-hint` behavior differing by graphics API, for the HDR session.
+
+**Final qualification (2026-11-13).** The desktop picture's corners in the dock are a window region on the native surface plus a rim (DECISIONS.md, 2026-11-13, final pass); the session, the surface, and the engine are the same ones. A recreated Android activity ends its playback cleanly (confirmed on the Phone 2a and the Pad 7).

@@ -220,6 +220,8 @@ Since M8 (DECISIONS.md, 2026-11-11) every viewer of an installation is a **profi
 
 **Who is watching.** While Reflux asks, the page and the navigation behind the question are not composed at all, so nothing there can be reached by a finger, a pointer, a keyboard, or assistive technology (`ProfileBoundaryTest`); and when the viewer changes, the last one's search text, last playback report, and notice go with them. A profile with a PIN opens locked, at start and whenever it is chosen. A television with several profiles asks who is watching at every start; a phone or a computer opens the profile it had. With one profile nothing is asked.
 
+**A viewer's subtitle choice** (M10) is the profile's: for each work (the show, for an episode) it keeps what the viewer last chose, as a description of the track (off, or language, forced, hearing impaired) in `profile_setting` under `subtitles.work:<work>`, never as a stream index that another version numbers differently. It is written for the playback's owner when the viewer chooses in the player's list, never for an automatic choice, read when a work is planned, matched against that version's tracks, and ignored where nothing matches. A profile's reset removes it; clearing its watch history does not (it is a preference, not history). `SubtitleMemoryTest` and `ProfileIsolationTest` hold it.
+
 ## Clearing local watch history
 
 A profile's "Clear watch history" (Settings) forgets Reflux's own record of what it watched: every position, watched mark, and play count, and with them Continue Watching, Next Up, and the launcher row. It changes nothing on any server, deletes no media, download, favorite, or collection, and touches no other profile (`Library.clearWatchHistory`).
@@ -256,3 +258,5 @@ On Android TV and Google TV the launcher's Watch Next row shows what the active 
 | Persistence, the scan-time comparison, delivery of updates | `library` (`watch_state`, `watch_sync`; `Library.kt`, `WatchSync.kt`, `Playback.kt`) |
 | Translation of a server's records | the source adapter (`sources/jellyfin`) |
 | The launcher's Watch Next row | `library` (`WatchNext.kt`, `Library.continuations`); the Android shell (`launcher/WatchNextPublisher.kt`) |
+
+**Note (2026-11-13).** An activity recreated mid-playback records the place as it ends the session (confirmed on two devices); the new activity starts with nothing playing.

@@ -130,6 +130,19 @@ class AppState(
      */
     val miniPlayerAvailable: Boolean get() = platform.docksVideo && !platform.television
 
+    /** Whether what is playing can go on in the system's own window when Reflux is left ([Platform.systemPresentation]). */
+    val systemPresentationAvailable: Boolean get() = platform.systemPresentation && !platform.television
+
+    /**
+     * How far a back gesture has gone (0 to 1) toward collapsing the full player into the mini-player, while one is in
+     * progress. Only what is drawn follows it: the session changes when the gesture completes, so cancelling it leaves
+     * nothing to restore (docs/planning/M10-PLAYER-SPEC.md, section 4.4).
+     */
+    var backPreview: Float? by mutableStateOf(null)
+
+    /** The system is animating the window into its picture-in-picture (Android 15 and later): the player's controls have already left. Set by the shell. */
+    var systemTransition: Boolean by mutableStateOf(false)
+
     /** Where the mini-player's picture is in the window, as its dock last laid it out; null while there is no dock. */
     internal var dockSlot: androidx.compose.ui.geometry.Rect? by mutableStateOf(null)
 
@@ -144,6 +157,8 @@ class AppState(
         get() = when {
             docked == null -> VideoFrame.Full
             pageCovered -> VideoFrame.Hidden
+            // A dead picture is not left showing in the dock: the dock says what happened.
+            docked?.error != null -> VideoFrame.Hidden
             else -> dockSlot?.let { VideoFrame.Docked(it) } ?: VideoFrame.Full
         }
 
@@ -814,7 +829,7 @@ class AppState(
      * Handles a key from a keyboard, media keys, or a remote. Returns false when the key is not Reflux's to
      * handle, so the toolkit can process it (typing, activating the focused control).
      */
-    fun onKey(key: Key): Boolean {
+    fun onKey(key: Key, repeat: Boolean = false): Boolean {
         onSignal(InputSignal.KeyPress(key))
         // With what is playing in the mini-player, the viewer is browsing: keys are the page's.
         val browsing = watching == null
@@ -826,7 +841,17 @@ class AppState(
         val action = InputMapping.map(key, context) ?: return false
         // The toolkit activates the focused control for Enter and Space itself.
         if (browsing && action == SemanticAction.SELECT) return false
+        // A held seek key is one seek, made when it is let go: repeats go to the session as repeats.
+        if (repeat && !browsing && (action == SemanticAction.SEEK_FORWARD || action == SemanticAction.SEEK_BACKWARD) && profileGate == null) {
+            watching?.let { session -> if (session.menu == null && session.error == null) return run { session.seekKey(action, repeat = true); true } }
+        }
         return dispatch(action)
+    }
+
+    /** A key was let go: the held seek's one seek is made. */
+    fun onKeyReleased(key: Key) {
+        val action = InputMapping.map(key, context)
+        if (action == SemanticAction.SEEK_FORWARD || action == SemanticAction.SEEK_BACKWARD) watching?.seekKeyReleased()
     }
 
     /** Handles a controller button, named by its position so every controller family works alike. */
@@ -846,12 +871,14 @@ class AppState(
                 else -> true
             }
         }
+        // In the system's window there is no Reflux to act on: the window is the picture, and its controls are the system's.
+        if (playback?.presentation == PlayerPresentation.SYSTEM) return false
         watching?.let { return it.handle(action) }
         return when (action) {
             SemanticAction.NAVIGATE_UP, SemanticAction.NAVIGATE_DOWN, SemanticAction.NAVIGATE_LEFT, SemanticAction.NAVIGATE_RIGHT ->
                 moveFocus?.invoke(action) ?: false
             SemanticAction.SELECT -> activateFocused?.invoke() ?: false
-            SemanticAction.BACK -> when {
+            SemanticAction.BACK -> if (backRoute == BackRoute.SYSTEM_PRESENTATION) platform.enterSystemPresentation() else when {
                 // With a keyboard, Escape first lets go of the field. A remote's Back has already put the
                 // on-screen keyboard away by the time it gets here, and goes back.
                 textInputActive && !platform.television -> {
@@ -900,6 +927,40 @@ class AppState(
             // that brings the player back.
             else -> docked?.takeIf { action in DOCKED_ACTIONS }?.handle(action) ?: false
         }
+    }
+
+    /**
+     * Who handles Back now, from the state alone (docs/planning/M10-PLAYER-SPEC.md, section 4). The platform shell enables
+     * exactly one handler for it, so that where Reflux has nothing to do with Back the system's own runs, back-to-home
+     * animation and all. It agrees with `dispatch(BACK)` by construction: [BackRoute.SYSTEM] is exactly where that
+     * returns false.
+     */
+    val backRoute: BackRoute
+        get() {
+            profileGate?.let { return if (it.backLeaves()) BackRoute.SYSTEM else BackRoute.APP }
+            val session = playback
+            if (session?.presentation == PlayerPresentation.SYSTEM) return BackRoute.SYSTEM
+            watching?.let { full ->
+                return when {
+                    full.menu != null || full.error != null -> BackRoute.APP
+                    miniPlayerAvailable -> BackRoute.COLLAPSE
+                    else -> BackRoute.APP
+                }
+            }
+            return when {
+                textInputActive && !platform.television -> BackRoute.APP
+                folderPicker != null || offlineOpen -> BackRoute.APP
+                platform.television && navigator.current is Destination.Section -> BackRoute.APP
+                navigator.canGoBack -> BackRoute.APP
+                // Playing in the dock, and the system has a window for it: leaving is not stopping.
+                systemPresentationAvailable && docked?.runningInDock() == true -> BackRoute.SYSTEM_PRESENTATION
+                else -> BackRoute.SYSTEM
+            }
+        }
+
+    private fun ProfileGate.backLeaves(): Boolean = when (this) {
+        is ProfileGate.Choose -> required
+        is ProfileGate.Unlock -> !forgetting && !profilesShown && required
     }
 
     // Profiles (docs/WATCH_STATE.md, "Profiles") ----------------------------------------------------------

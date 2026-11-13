@@ -149,7 +149,7 @@ The player is a takeover above the current page, never a page itself. While it i
 
 ### The mini-player (M9)
 
-Where a device has one, what is playing can step aside into the **mini-player** while the viewer browses: the same session, shown in the navigation's dock (docs/PLAYBACK.md, section 18; DECISIONS.md, 2026-11-12). In M9 that is the desktop; a television has none, and handhelds get theirs in M10.
+Where a device has one, what is playing can step aside into the **mini-player** while the viewer browses: the same session, shown in the navigation's dock (docs/PLAYBACK.md, section 18; DECISIONS.md, 2026-11-12). It is on the desktop and, since M10, on phones and tablets; a television has none.
 
 | Window | The dock |
 | --- | --- |
@@ -158,9 +158,12 @@ Where a device has one, what is playing can step aside into the **mini-player** 
 | Tablet, desktop | A card in the page's bottom corner: the picture above what is playing and its controls. A tablet window too narrow to give a card half its page (one of two side by side) has the row |
 | Television | None |
 
-- **Into it:** the player's "Mini player" button, or `I`. A player showing a failure stays. Fullscreen is left for the window the viewer had.
+- **Into it:** Back, the player's "Minimize player" button (top left), or `I`; where Back is a gesture, its progress previews the picture shrinking and a cancelled gesture changes nothing. A player showing a failure stays. Fullscreen is left for the window the viewer had. Ending playback is its own button in the player ("Stop playing", top right), and the dock's.
 - **Out of it:** a click on the picture or on what is playing, the picture activated with a keyboard or a controller (it is a button), `I`, or Play on the same title. "Stop playing" ends playback and records the place.
-- **While it plays there the page is the viewer's.** Navigation, focus, Back, and every key mean what they mean while browsing; nothing is inert. Media keys, mute, the volume keys, and `I` still reach what is playing. Back never ends it.
+- **While it plays there the page is the viewer's.** Navigation, focus, Back, and every key mean what they mean while browsing; nothing is inert. Media keys, mute, the volume keys, and `I` still reach what is playing. Back never ends it. At the root (nothing left to go back to), Back with it playing takes it into the system's window on a handheld (Android's picture-in-picture) instead of leaving it behind; paused, ended, failed, or with a question showing, Back is the system's own and the session waits in the dock.
+- **A failure does not take the screen.** The dock says "Playback stopped" (announced), its picture is taken away, and it offers Try again where that can help, and Close; its picture, or the key, opens the player with the failure.
 - **Its place is the navigation's.** Pages end clear of it and notices are said beside or above it. What covers the page (the offline sheet, a folder picker, the question of who is watching) covers it too, and takes its picture out of sight while the sound goes on.
 - **One session.** Playing something else ends it first and the new playback has the screen. A profile switch, or removing the source it plays from, ends it first.
 - **To assistive technology** it is one named part of the screen, "Mini player", with three stops in the page's focus order after the page: what is playing and how it stands (activating it returns to the player), play or pause, and stop. A failure and "Still watching?" are announced when they happen; nothing takes the screen to say them.
+
+**Note (2026-11-13).** On the desktop, Escape in the full player puts it in the dock; it ends playback only from a failure or the dock's Stop.

@@ -8,7 +8,7 @@ The one source of truth for what Reflux is building, in what order, and what is 
 - The website is a release workstream across the milestones (below, "The Reflux website"); its visual direction, the demo video, and the beta program are in [LAUNCH.md](LAUNCH.md).
 - Decisions behind the plan are in [DECISIONS.md](DECISIONS.md): the first rebaseline (2026-10-17), the milestone rebaseline (2026-11-02), and the rebaseline after M7 (2026-11-11), whose research and reviews are in [planning/M8-M13-REBASELINE.md](planning/M8-M13-REBASELINE.md).
 
-**Current state: M8 implemented and committed (`212150a`, 2026-11-12), with the open items in its section. M9 Navigation & Surface System 2.0 implemented 2026-11-12 and awaiting review and its commit; M10 Player & Playback Experience 2.0 is next.**
+**Current state: M8 and M9 are complete and closed (M8 `212150a`; M9 `89075d0` through `1dbbc11`, green on hosted CI). M10 Player & Playback Experience 2.0 is implemented (2026-11-13, uncommitted, awaiting review), with the open items in its section; M11 is next.**
 
 This milestone list replaces the one of 2026-11-02 for M8 onwards (M8 Beta, M9 Release Candidate, M10 1.0), which replaced the one of 2026-10-17, which replaced the earlier Phase 0–18 plan. Documents and verification sections keep the numbering they were written with; how each old milestone maps to the current one is under "Earlier numbering", and DECISIONS.md, 2026-11-02 and 2026-11-11, says why.
 
@@ -52,8 +52,8 @@ Status words used below:
 | M6 — Release Engineering / Security / Legal | Production builds, packaging, signing, security hardening, legal and licensing, store preparation; the website's foundation and its legal and privacy pages | **Complete** (2026-11-08), with the limits in its section |
 | M7 — Compatibility, Release Proof, Brand + Website, and Beta/Test Readiness | The permanent Android identity, the brand, the redesigned website, CI and release proof, the source-built Windows libmpv, the diagnostics export, the M6 stability leftovers, store readiness, and the M8 entry checklist | **Complete** (2026-11-09, operationally: every gate locally and on GitHub, attestations verified), with the owner actions in its M8 entry checklist |
 | M8 — Viewer Identity & Profiles, Navigation Structure, Website SEO/Responsive Work, and Release Preparation Foundations | Every piece of viewer state belongs to a profile; Jellyfin and Plex accounts isolated; the navigation's final structure; the website technically indexable and responsive; the store app entries started | **Implemented** (2026-11-12, `212150a`), with the open items in its section (device walk, hosted CI, owner actions) |
-| M9 — Navigation & Surface System 2.0 | The shell unmistakably Reflux on every form factor, on M8's structure; the desktop mini-player question answered | **Implemented** (2026-11-12), awaiting review; the limits and open items are in its section |
-| M10 — Player & Playback Experience 2.0 | Playback visually dominant; one session across fullscreen, mini-player, and picture-in-picture | **Next** |
+| M9 — Navigation & Surface System 2.0 | The shell unmistakably Reflux on every form factor, on M8's structure; the desktop mini-player question answered | **Complete** (`89075d0`, validated fixes through `1dbbc11`; green on hosted CI); the limits are in its section |
+| M10 — Player & Playback Experience 2.0 | Playback visually dominant; one session across fullscreen, mini-player, and picture-in-picture | **Implemented**, awaiting review |
 | M11 — Distribution & Release Surfaces | Windows installer, first-party Linux packages, the metadata provider gate, the website's final content | Future |
 | M12 — Qualification Campaign & Beta | One comprehensive campaign, then `0.9.0-beta.N` with testers until the exit criteria hold | Future |
 | M13 — Release Candidate & 1.0 | `0.9.0-rc.N`, feature freeze, submissions, then `1.0.0` on every V1 target | Future |
@@ -512,7 +512,51 @@ Evidence: VERIFICATION.md, "M8: architecture challenge" and "M8: corrections". N
 
 ## M10 — Player & Playback Experience 2.0
 
-**Next.** Full scope: the planning record, section 8 ("M10"), and section 3.2. It builds on what M9 proved and left (PLAYBACK.md, section 18): the presentation model and the desktop mini-player exist; M10 owns Back going to the mini-player (and Back at Home with one playing), the handheld mini-player (Android placing its surface by the same `VideoFrame`), picture-in-picture as a presentation, the chrome state machine, the player's visual redesign, and the About keyboard test carried from M9. Playback stays visually dominant, in one session across presentations: a chrome state machine (hidden, shown, loading, ending, failure) where loading is exclusive and uses the Reflux loader; a lighter transport and a one-row bar; fullscreen, mini-player, and the system's picture-in-picture as presentations of one `PlaybackSession`; Back on handhelds and desktop goes to the mini-player; no mini-player on television. Also the playback parity carried from M7, each decided: held seek acceleration, chapters on Android where Media3 supplies them, desktop media keys, the television explanation where sidecar subtitles cannot be read, and the per-work subtitle choice (profile-scoped).
+**Implemented** (2026-11-13, on `1dbbc11`; not committed). Playback is visually dominant, in one `PlaybackSession` shown three ways: the full player, the mini-player (desktop as built in M9, and now handheld Android on its one `SurfaceView`), and Android's picture-in-picture as the presentation `SYSTEM`. Specification: [planning/M10-PLAYER-SPEC.md](planning/M10-PLAYER-SPEC.md). Decisions: DECISIONS.md, 2026-11-13 (two entries). Contracts: PLAYBACK.md (section 18), NAVIGATION.md (section 8), INPUT_MODEL.md, DESIGN.md. Evidence: VERIFICATION.md, "M10".
+
+| Item | State |
+| --- | --- |
+| Step 0: the three probes | **Done, no fallback needed.** P1 the Android surface travels on a picture-sized buffer (Phone 2a); P2 a closed picture-in-picture window is told from an expanded one by whether the activity is still started (Phone 2a); P3 Windows media keys reach a focused window with the system's key number in `rawCode`. Linux media keys were not probed: V1.x |
+| One session across `FULL`, `MINI`, `SYSTEM`; one owner profile held by the session | **Done**, tested (`PlayerM10Test`, `PresentationTest`) |
+| Back from the state alone (`BackRoute`); nothing enabled at the root; the full player steps into the mini-player; Back at Home takes a playing mini-player into the system's window | **Done**; the three-button path walked on the Phone 2a and the Pad 7. **The predictive gesture's preview and cancel were not driven on hardware** (below); held by `MiniPlayerTest` and `PlayerM10Test` |
+| The handheld mini-player: one `SurfaceView` placed by `VideoStage`, decoder and surface undisturbed | **Done** and walked on the Phone 2a (row above the navigation bar) and the Pad 7 (card in the corner); `SurfaceContinuityOnDeviceTest` |
+| Picture-in-picture: auto-enter while playing, `sourceRectHint`, seamless resize, UI-state callback, expand and close told apart, system controls from the activity's media session; no `MediaSessionService`, no Jetpack PiP library | **Done**; walked on the Phone 2a: enter, expand, close, swipe away, launch while in the window |
+| One chrome model, loading exclusive, one deadline, pins | **Done** (`ChromeModelTest`, a property over every combination of facts) |
+| A failure stays where the viewer is (a failure dock; a failed next episode is a failure) | **Done**, tested; not walked on a device (no way to make a real device playback fail on demand in this run) |
+| The player's lighter look: glyph transport, one bottom row, scrims, reduced transparency and high contrast | **Done**, seen on the Phone 2a and the Pad 7 |
+| Android chapters from Media3's own metadata | **Done**; MKV and MP4 on the Phone 2a (`ChaptersOnDeviceTest`); HLS has none |
+| Desktop media keys | **Windows done** (focused window); **Linux not probed: V1.x**; the system's global transport controls V1.x |
+| Held seek acceleration | **Done**, tested (`SeekHoldTest`, `PlayerM10Test`, `KeyRepeats`); **not walked on a Fire TV remote** |
+| The television's sidecar-subtitle explanation | **Done**, tested |
+| A viewer's subtitle choice per profile and work | **Done**, tested (`SubtitleMemoryTest`) |
+| The activity recreation leak, and the system bars in the mini-player | **Fixed**; `ActivityRecreationOnDeviceTest` fails on the old code and passes on the new |
+| `AboutUiTest.aKeyboardGoesInAndComesBackToWhereItWas` (**known intermittent since M8; not an M10 defect**) | **Not reproduced alone**: five runs alone and one full suite passed, one full `ui` suite failed it (414 tests, 1 skipped, 1 failed); not diagnosed, not claimed fixed; still carried. `PointerTest.firstRunAnswersToAClick` and `SourcesUiTest.aServersLibrariesAreSwitchedOutOfTheLibraryAndStayOnItsPage` likewise: three runs alone and the full suite passed |
+| Accessibility on devices | The accessibility *tree* was checked on a real framework (`PlayerAccessibilityOnDeviceTest`) and **found a real defect**: the dock's picture has no node on Android, so the dock's title and status are the stop there (`Platform.dockPictureIsAStop`; cause not found). **TalkBack itself was not driven** (no gesture could be injected on the Phone 2a, the Pad 7, or the emulator): open |
+| The Fire TV walk | **Done, limited**: full-screen only, the lighter chrome, Back closes the player, no sidecar row on Fire OS 8; a held seek on its real remote was not tried |
+| Desktop mini-player picture rounded on Windows (final pass) | **Done**: a window region plus a rim; the region is asserted present in the dock, absent in the whole window, and again after fullscreen (`MiniPlayerWindowTest`, real libmpv on Windows at 125%); seen on screen. Linux stays square. 100, 150, and 200% were not driven on a display |
+| Desktop player chrome tiers (final pass) | **Done**, tested (`PlayerChromeTest`, `PlayerChromeLayoutTest`), seen rendered at 1100, 1440, and 2560 wide; handheld and television sizes unchanged. **Follows a window being dragged** (a real mouse drag on Windows, tiers up and down, session unchanged: `PlayerChromeResizeTest`; the first version did not: the controls' dialog was not laid out after the operating system's resize loop). **Not walked in a real fullscreen window on the 2560 x 1440 display** |
+| Android rounded mini-player and the radius pass (final pass) | **Done**; seen on the Phone 2a and the Pad 7; `PictureRadiusTest` |
+| 200% text on the Phone 2a (final pass) | **Done**: the dock's failure status takes two lines and keeps Try again and Close in reach (found and fixed); the title still ends in an ellipsis, said in full to a screen reader |
+| A configuration change that recreates the activity, on both devices (final pass) | **Done**: playback ends cleanly (no engine, no duplicate), as specified |
+| Picture-in-picture on both devices (final pass) | **Done on both, both Android 16 (API 36)**: enter, expand by launch (`STARTED`), close with X (`CREATED`, `engines=0`). **A second Android version was not available: open** |
+| The full `check` on GitHub CI | **Open**: runs on the next push (nothing was pushed) |
+
+**How the remaining items are classified (2026-11-13).**
+
+- *Implemented and tested:* everything marked **Done** above (local suites green except the known intermittent test; real-window desktop tests green).
+- *Physically unqualified (not invented, not passed):* (1) the predictive back gesture must be driven by a human on a device; (2) a second Android version for the picture-in-picture lifecycle rule (both handhelds are Android 16, API 36); (3) a held seek on a physical remote; (4) the Windows corners at 100, 150, and 200% on a display (125% only); (5) the player chrome in a real fullscreen window on the 2560 x 1440 display; (6) TalkBack was not rerun in the final pass (the earlier pass's walk stands); (7) hosted CI.
+- *Known existing and intermittent:* `AboutUiTest.aKeyboardGoesInAndComesBackToWhereItWas`; the `SourcesUiTest` connect-timeout family (2026-11-08; failed again on this tree in 2 of 10 runs of the class alone against 0 of 16 on a clean `1dbbc11`, cause not found, VERIFICATION.md, "Final qualification pass"); `PointerTest.firstRunAnswersToAClick` and `SourcesUiTest.aServersLibrariesAreSwitchedOutOfTheLibraryAndStayOnItsPage` failed once in an earlier run and passed since (not diagnosed).
+- *Intentionally deferred to V1.x:* Linux media keys, Linux corner rounding, the system's global transport controls.
+- *By design, not a leak:* a recreated Android activity **ends** its playback (M10 spec 6.7): no engine, audio, or session is left, the place is recorded, and the next play starts one engine.
+
+**Limits recorded, not blocking:**
+
+- The back gesture's preview (the picture shrinking, a cancel restoring it) has been seen only in the experience layer's tests, not on a device: no tool could inject the system's edge gesture (many tries, final pass included), so it needs a hand on a device.
+- Held seek on a real remote: no remote was available (the Fire TV was reachable only through adb).
+- The close-versus-expand rule for the system's window is two devices on one Android version (Phone 2a and Pad 7, both Android 16); another version's callbacks may differ.
+- No real screen reader walk (TalkBack was not driven on any device). The accessibility tree test is not what TalkBack says, and the picture's missing node is worked around, not explained.
+- Linux has no media keys, and neither platform has the system's global transport controls.
+- A loading state and a dock failure were produced on a device in the final pass (a stalled and a reset HTTP source on the Phone 2a); TalkBack was driven on the Phone 2a and the Pad 7 in the earlier pass, and not again in the final one.
 
 ## M11 — Distribution & Release Surfaces
 

@@ -34,6 +34,9 @@ internal object Problems {
     const val ENTER_USERNAME = "Enter the user name you use for this server."
     const val SOURCE_NOT_REMOVED = "That source couldn't be removed."
     const val TRACK_GONE ="That track is no longer available."
+
+    /** The television's subtitle list, for a local video with no subtitle in it (DECISIONS.md, 2026-10-17). */
+    const val SIDECARS_UNREADABLE = "Subtitle files beside videos can't be read on this TV"
     const val PLAYBACK_STALLED = "Playback isn't starting. The file may be slow to reach, or video couldn't be started on this device."
     const val NO_SOUND = "This is playing without sound. Its audio can't be decoded on this device."
     const val SUBTITLE_UNAVAILABLE = "These subtitles couldn't be loaded. Playback continues without them."

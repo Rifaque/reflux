@@ -111,10 +111,20 @@ A remote has a D-pad, OK, Back, and sometimes play/pause, rewind, and fast-forwa
   - Only devices with buttons and a stick count as controllers, and whatever is held when one appears is not a press.
 - With a controller in use the navigation bar and the player show what the buttons do, labelled for that controller's family (Cross/Circle, A/B, ...). The first directional press on a screen focuses its main action; coming back to a screen returns focus to the item that was opened from it; focus that scrolls a page stays clear of the navigation bar; the sources panel keeps focus until it is closed.
 - Confirm on a controller activates the focused control through the experience layer, because there is no key for the toolkit to handle.
-- Not yet read on desktop: media keys. Controller support is exercised from the reader interface upward and against the platform APIs; real hardware has so far only supplied devices that are *not* controllers (which found two defects). A session with a physical Xbox or PlayStation controller is still owed, and `PhysicalControllerTest` walks a person through it.
+- Media keys (play or pause, next, previous, stop) are read on Windows while a Reflux window has focus: the toolkit gives them no key code and the system's virtual-key in an event's `rawCode`, which the shell normalizes to `Key.MEDIA_*` (probe P3, VERIFICATION.md); `InputMapping` already says what they mean, and they reach what plays in the mini-player as before. The volume keys are the system's and are not read. Media keys while Reflux is not the focused window (the system's transport controls) and on Linux are V1.x. Controller support is exercised from the reader interface upward and against the platform APIs; real hardware has so far only supplied devices that are *not* controllers (which found two defects). A session with a physical Xbox or PlayStation controller is still owed, and `PhysicalControllerTest` walks a person through it.
+
+## Back (M10)
+
+Back is one semantic action with one derivation (`AppState.backRoute`; docs/PLAYBACK.md, section 18). On Android the shell enables one handler to match it and none at the root, so the system's own Back runs there; a controller's cancel button at the root is given to the system's Back as a remote's is; Escape, Backspace, a mouse's back button and a controller's cancel are the same action on a desktop.
+
+## Held keys (M10)
+
+A held seek key (a remote's, a keyboard's) is one seek: down is the ten-second seek at once; repeats move a shown target faster the longer the key is held (10, 30, then 60 media seconds per second); one seek is made on release. The shells say which presses are repeats and when a key is let go (`AppState.onKey(key, repeat)`, `onKeyReleased`); the semantic actions are unchanged.
 
 ## Configuration
 
 Users may eventually override mappings, but sensible controller mappings must work without configuration.
 
 Controller support is a product capability, not a compatibility checkbox.
+
+**Note (2026-11-13).** Back in the player on a device with a mini-player is "step aside", not "stop"; held seek on a physical remote is still unqualified (none was available).

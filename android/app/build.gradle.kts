@@ -104,6 +104,23 @@ abstract class GenerateTestMedia : DefaultTask() {
                 "-c:a", "dca", "-strict", "-2", "-ar", "48000", "-ac", "2", output.get().file("dts.mkv").asFile.path,
             )
         }
+        // A film of three seconds with three chapters, as Matroska and as MP4: what Media3 reads chapters out of
+        // (docs/PLAYBACK.md, section 18). The same chapters for both; clip.mp4 is the film that has none.
+        val chapterList = output.get().file("chapters.ffmetadata").asFile
+        chapterList.writeText(
+            ";FFMETADATA1\n" + listOf("Opening", "The heist", "Aftermath").withIndex().joinToString("") { (index, title) ->
+                "[CHAPTER]\nTIMEBASE=1/1000\nSTART=${index * 1000}\nEND=${index * 1000 + 1000}\ntitle=$title\n"
+            },
+        )
+        for (name in listOf("chapters.mkv", "chapters.mp4")) {
+            exec.exec {
+                commandLine(
+                    "ffmpeg", "-loglevel", "error", "-y", "-f", "lavfi", "-i", "testsrc=size=320x180:rate=10", "-f", "lavfi", "-i", "sine=frequency=440",
+                    "-i", chapterList.path, "-t", "3", "-map", "0:v", "-map", "1:a", "-map_metadata", "2", "-map_chapters", "2",
+                    "-c:v", "libx264", "-preset", "ultrafast", "-pix_fmt", "yuv420p", "-c:a", "aac", output.get().file(name).asFile.path,
+                )
+            }
+        }
         // A plain Matroska file, and the same file laid out as some real ones are: its first SeekHead only points to a
         // second one at the end, which is the one that names the cues. Valid, and the same media byte for byte.
         val seekable = output.get().file("seekable.mkv").asFile

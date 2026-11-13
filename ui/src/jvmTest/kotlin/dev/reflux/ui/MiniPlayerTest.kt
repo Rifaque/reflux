@@ -19,6 +19,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performSemanticsAction
 import dev.reflux.core.input.InputSignal
 import dev.reflux.core.input.Key
+import dev.reflux.core.input.SemanticAction
 import dev.reflux.core.playback.PlayerStatus
 import dev.reflux.design.AdaptiveLayout
 import dev.reflux.design.DockStyle
@@ -83,7 +84,7 @@ class MiniPlayerTest {
             assertFalse(saysAnywhere("Recently Added"), "and the page behind the player is not there")
             save("mini-player-full")
 
-            onNodeWithContentDescription("Mini player").performClick()
+            onNodeWithContentDescription("Minimize player").performClick()
             await("the mini-player") { exists(dock) && app.videoFrame is VideoFrame.Docked }
             waitForIdle()
             assertSame(session, app.playback)
@@ -164,7 +165,7 @@ class MiniPlayerTest {
         screen(populated(), plain) { app ->
             awaitText("Recently Added")
             playing(app, plain)
-            assertFalse(exists("Mini player"), "nothing offers what the shell cannot do")
+            assertFalse(exists("Minimize player"), "nothing offers what the shell cannot do")
         }
         // A television's player is the whole screen, whatever its shell can do with a surface.
         val tv = FakePlatform(television = true, docksVideo = true)
@@ -172,7 +173,7 @@ class MiniPlayerTest {
             awaitText("Recently Added")
             runOnIdle { app.play(app.library.movies().first { it.item.title == "Heat" }.item.id) }
             await("the player") { app.playback != null && exists("Timeline") }
-            assertFalse(exists("Mini player"))
+            assertFalse(exists("Minimize player"))
             runOnIdle { app.onKey(Key.I) }
             waitForIdle()
             assertEquals(PlayerPresentation.FULL, app.playback?.presentation)
@@ -313,6 +314,59 @@ class MiniPlayerTest {
             val box = node(dock).boundsInRoot
             assertFalse(notice.overlaps(box), "the notice $notice is clear of the dock $box")
             assertNull(app.watching)
+        }
+    }
+
+    // A back gesture on its way (docs/planning/M10-PLAYER-SPEC.md, section 4.4) ---------------------------------------
+
+    @Test
+    fun aBackGestureInProgressShrinksThePictureAndNothingElseAndCancellingLetsItGo() {
+        val platform = docking()
+        screen(populated(), platform) { app ->
+            awaitText("Recently Added")
+            playing(app, platform)
+            val session = app.playback!!
+            val whole = Rect(0f, 0f, 1440f, 900f)
+            assertTrue(near(video(), whole))
+
+            runOnIdle { app.backPreview = 0.5f }
+            waitForIdle()
+            val half = video()
+            assertTrue(half.width < whole.width && half.width > whole.width * 0.9f, "on its way: $half")
+            assertTrue(kotlin.math.abs((half.left + half.right) / 2 - 720f) < 2f && kotlin.math.abs((half.top + half.bottom) / 2 - 450f) < 2f, "about its middle: $half")
+            assertEquals(PlayerPresentation.FULL, session.presentation, "the session moves when the gesture completes")
+            assertSame(session, app.watching)
+
+            runOnIdle { app.backPreview = 1f }
+            waitForIdle()
+            assertTrue(near(video(), Rect(72f, 45f, 1368f, 855f)), "the end of the preview is the window at 90%: ${video()}")
+
+            // Taken back: nothing was changed but the preview, so the picture is the whole window again and nothing else moved.
+            runOnIdle { app.backPreview = null }
+            waitForIdle()
+            assertTrue(near(video(), whole), "restored: ${video()}")
+            assertEquals(PlayerPresentation.FULL, session.presentation)
+            assertSame(session, app.watching)
+            assertEquals(1, platform.players.size)
+        }
+    }
+
+    @Test
+    fun aBackGestureThatIsCompletedStepsAsideIntoTheDock() {
+        val platform = docking()
+        screen(populated(), platform) { app ->
+            awaitText("Recently Added")
+            playing(app, platform)
+            val session = app.playback!!
+            runOnIdle {
+                app.backPreview = 1f
+                app.backPreview = null
+                app.dispatch(SemanticAction.BACK)
+            }
+            await("the mini-player") { exists(dock) && app.videoFrame is VideoFrame.Docked }
+            assertSame(session, app.playback)
+            assertEquals(PlayerPresentation.MINI, session.presentation)
+            assertEquals(1, platform.players.size)
         }
     }
 }

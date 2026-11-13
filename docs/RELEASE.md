@@ -230,7 +230,7 @@ Known, deliberate, and visible in the library rather than silent:
 - Verified: Windows 11, and Linux on X11 with a compositing manager (Ubuntu 24.04). Wayland has only been reached through XWayland; X11 without a compositor shows the player's controls window opaque.
 - Controllers: the readers and everything above them are tested; a session with physical Xbox and PlayStation controllers is still owed (`PhysicalControllerTest` is the script for it).
 - Television: verified on the Google TV emulator only. A real television or streaming box is still owed, and with it everything an emulator cannot show: hardware decoding, 4K, HDR and Dolby Vision, an HDMI receiver's audio formats, drives plugged into the device, and a real remote in the hand.
-- Media keys are not captured on desktop.
+- Media keys on desktop are read on Windows while Reflux has focus (M10); Linux, and the system's own transport controls while Reflux is not the focused window (Windows SMTC, Linux MPRIS), are V1.x.
 
 ## Third-party notices
 
@@ -259,3 +259,7 @@ Questions for legal advice before builds go to people outside the project. None 
 - The CI workflow (`.github/workflows/ci.yml`) runs the full check on Linux and Windows and the window tests on Linux. It has been run in its container locally but never on GitHub, because nothing has been pushed since it was written. Android is not deliberately part of it: the workflow sets up no Android SDK, so whether the Android modules build there depends on the hosted runner image happening to provide `ANDROID_HOME`; no instrumented test, emulator, or release build is run, and the Linux container has no SDK at all.
 - The developer CLI is a diagnostic tool and is not distributed.
 - TMDB (METADATA.md, "Provider and licensing"): its API licence is non-commercial and commercial use needs a written agreement; whether a free application supported by voluntary donations is commercial must be confirmed with TMDB in writing before release. Also: its six-month limit on keeping its data, for a device that stays offline longer; which attribution wording applies (the terms' or the FAQ's); and shipping an application key in a client, which the terms do not address.
+
+**M10 qualification still owed to a release (2026-11-13):** the predictive back gesture on hardware, picture-in-picture on a second Android version, a held seek on a physical remote, the Windows corners at 100, 150, and 200%, and the hosted `check`.
+
+**Classification of what M10 leaves (2026-11-13).** Physically unqualified: the predictive back gesture (a human on a device), a second Android version for the picture-in-picture rule, a held seek on a physical remote, the Windows corners at 100, 150, and 200%, the 2560 x 1440 fullscreen chrome walk, TalkBack in the final pass, and hosted CI. Known intermittent: `AboutUiTest.aKeyboardGoesInAndComesBackToWhereItWas` (since M8). Deferred to V1.x: Linux media keys and corners.

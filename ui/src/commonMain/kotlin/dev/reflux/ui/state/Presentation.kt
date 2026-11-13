@@ -13,6 +13,30 @@ enum class PlayerPresentation {
 
     /** The picture and a few controls in the navigation's dock, while the viewer browses. */
     MINI,
+
+    /**
+     * The system's own window: Android's picture-in-picture. Reflux draws no page and no player in it, only the picture;
+     * what the system draws over it reaches the session through its media session. Set only by a shell, only when the
+     * platform has confirmed the window ([PlaybackSession.enterSystem]), and left the same way ([PlaybackSession.leaveSystem]).
+     */
+    SYSTEM,
+}
+
+/**
+ * What Back does now, derived from the state ([AppState.backRoute]). A platform shell enables one handler to match, or none.
+ */
+enum class BackRoute {
+    /** Reflux has nothing to do with Back: the platform's own runs (back-to-home, leaving the app). */
+    SYSTEM,
+
+    /** Reflux handles it as the semantic action `BACK`, with no gesture preview. */
+    APP,
+
+    /** The full player steps into the mini-player: a gesture's progress may preview it. */
+    COLLAPSE,
+
+    /** What plays in the dock goes on in the system's own window. */
+    SYSTEM_PRESENTATION,
 }
 
 /**

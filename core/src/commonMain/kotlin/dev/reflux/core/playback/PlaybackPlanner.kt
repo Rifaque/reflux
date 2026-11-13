@@ -11,11 +11,17 @@ sealed interface AudioChoice {
     data class Explicit(val index: Int) : AudioChoice
 }
 
-/** Which subtitle is wanted. [Explicit] is a viewer's choice, by position among embedded or external tracks. */
+/**
+ * Which subtitle is wanted. [Explicit] is a viewer's choice, by position among embedded or external tracks. [Preferred] is
+ * a choice the viewer made earlier for this work, kept as a description of the track and not as a position
+ * ([SubtitlePreference]): each version's tracks are matched against it, and a version it matches nothing in is planned
+ * as [Automatic] would.
+ */
 sealed interface SubtitleChoice {
     data object Off : SubtitleChoice
     data object Automatic : SubtitleChoice
     data class Explicit(val index: Int, val external: Boolean = false) : SubtitleChoice
+    data class Preferred(val language: String?, val forced: Boolean, val hearingImpaired: Boolean) : SubtitleChoice
 }
 
 /**
@@ -333,10 +339,13 @@ object PlaybackPlanner {
         private fun planSubtitle(audioIndex: Int?, delivery: DeliveryMode): ChosenSubtitle {
             val embedded = stream.subtitles
             val external = requirements.version.externalSubtitles
-            val explicit = requirements.subtitle is SubtitleChoice.Explicit
+            // What the viewer chose earlier counts as their choice where it matches a track here, and as nothing where it does not.
+            val preferred = (requirements.subtitle as? SubtitleChoice.Preferred)?.let { SubtitleMatch.find(it, embedded, external) }
+            val explicit = requirements.subtitle is SubtitleChoice.Explicit || preferred != null
             val (index, isExternal) = when (val choice = requirements.subtitle) {
                 SubtitleChoice.Off -> return ChosenSubtitle(SubtitlePlan.NONE)
                 is SubtitleChoice.Explicit -> choice.index to choice.external
+                is SubtitleChoice.Preferred -> preferred ?: automaticSubtitle(audioIndex, embedded, external) ?: return ChosenSubtitle(SubtitlePlan.NONE)
                 SubtitleChoice.Automatic -> automaticSubtitle(audioIndex, embedded, external) ?: return ChosenSubtitle(SubtitlePlan.NONE)
             }
             val format = (if (isExternal) external.getOrNull(index)?.format else embedded.getOrNull(index)?.format)

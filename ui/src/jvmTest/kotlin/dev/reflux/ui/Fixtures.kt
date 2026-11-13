@@ -316,7 +316,20 @@ class FakePlatform(
     override val pinKey: dev.reflux.library.PinKey? = TestPinKey(),
     /** Whether this shell can show its video surface in the mini-player's dock (a desktop's can). */
     override val docksVideo: Boolean = false,
+    /** Whether the system has a window of its own for what plays when the app is left (Android's picture-in-picture). */
+    override val systemPresentation: Boolean = false,
+    /** Whether a subtitle file beside a local video can be read here (a television from Android 13 cannot). */
+    override val readsSidecarSubtitles: Boolean = true,
 ) : Platform {
+    /** How many times the experience layer asked the system for its window, and whether the system said yes. */
+    var systemRequests = 0
+    var systemAccepts = true
+
+    override fun enterSystemPresentation(): Boolean {
+        systemRequests++
+        return systemAccepts
+    }
+
     override val artwork: FakeArtwork = FakeArtwork(artwork, backdrops, posters, artworkFiles)
     override var device: DeviceCapabilities = testDevice
     override val preferredLanguages: List<String> = listOf("en")
@@ -336,7 +349,15 @@ class FakePlatform(
     /** What every new engine says about moving in what it is given ([FakePlayer.seekable]). */
     var seekable: (PlaybackRequest) -> Boolean? = { null }
 
-    override suspend fun createPlayer(): Player? = if (failToStart) null else FakePlayer(device).also { it.starts = starts; it.seekable = seekable; players += it }
+    /** The tracks every new engine finds in what it is given, where a test wants others than [FakePlayer]'s own. */
+    var engineTracks: List<PlayerTrack>? = null
+
+    override suspend fun createPlayer(): Player? = if (failToStart) null else FakePlayer(device).also {
+        it.starts = starts
+        it.seekable = seekable
+        engineTracks?.let { tracks -> it.tracks = tracks }
+        players += it
+    }
 
     /** Completes when the engine may go; lets a test hold a player in the middle of being released. */
     var releaseGate: CompletableDeferred<Unit>? = null
@@ -435,7 +456,13 @@ class FakePlayer(override val capabilities: DeviceCapabilities) : Player {
 
     override fun play() = mutable.update { it.copy(status = PlayerStatus.PLAYING) }
     override fun pause() = mutable.update { it.copy(status = PlayerStatus.PAUSED) }
-    override fun seekTo(positionMs: Long) = mutable.update { it.copy(positionMs = if (it.seekable == false) 0 else positionMs) }
+    /** Every place the engine was asked to go, in order. */
+    val seeks = mutableListOf<Long>()
+
+    override fun seekTo(positionMs: Long) {
+        seeks += positionMs
+        mutable.update { it.copy(positionMs = if (it.seekable == false) 0 else positionMs) }
+    }
     override fun setSpeed(speed: Double) = mutable.update { it.copy(speed = speed) }
     override fun setVolume(volume: Int) = mutable.update { it.copy(volume = volume) }
     override fun setMuted(muted: Boolean) = mutable.update { it.copy(muted = muted) }
