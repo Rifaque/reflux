@@ -2,6 +2,7 @@ package dev.reflux.android
 
 import dev.reflux.core.BuildIdentity
 import dev.reflux.ui.legal.NoticeTarget
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
@@ -106,6 +107,28 @@ internal class AndroidPlatform(private val environment: AndroidEnvironment, over
 
     /** Asks for the user's leave to read storage, if it is still needed; false when they refuse. Set by the activity. */
     var allowStorage: (suspend () -> Boolean)? = null
+
+    /** Asks the system for its picture-in-picture window and says whether it was given. Set by the activity. */
+    var enterSystem: (() -> Boolean)? = null
+
+    /**
+     * The one video surface is a `SurfaceView` the toolkit lays out, so it can be placed in the mini-player's dock and moved
+     * there with the engine running and neither decoder nor surface disturbed (VERIFICATION.md, M10 probe P1); a television's
+     * player is the whole screen.
+     */
+    override val docksVideo: Boolean get() = !television
+
+    /** Handheld Android with the system's picture-in-picture, which a low-memory device may not have. */
+    override val systemPresentation: Boolean
+        get() = !television && environment.context.packageManager.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE)
+
+    override fun enterSystemPresentation(): Boolean = enterSystem?.invoke() == true
+
+    /** Android's accessibility tree has no node for the dock's picture (PlayerAccessibilityOnDeviceTest): its title and status are the stop. */
+    override val dockPictureIsAStop: Boolean get() = false
+
+    /** A television reads a local folder through `READ_MEDIA_VIDEO` from Android 13, which lists only videos (DECISIONS.md, 2026-10-17). */
+    override val readsSidecarSubtitles: Boolean get() = !(television && Build.VERSION.SDK_INT >= 33)
 
     override val offline: Offline get() = environment.offline
 

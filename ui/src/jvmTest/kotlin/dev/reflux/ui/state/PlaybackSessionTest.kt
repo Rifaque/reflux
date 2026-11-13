@@ -43,6 +43,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
+import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -874,8 +875,12 @@ class PlaybackSessionTest {
         playing.world.registry.unregister(playing.world.source.descriptor.id)
         playing.session.playNext()
         runCurrent()
-        assertNull(playing.app.playback)
-        assertEquals("This can't be played right now. Media isn't connected.", playing.app.notice)
+        // M10: not a silent end. The session is still there, and says why where it is (the player, the dock, the system's window).
+        assertSame(playing.session, playing.app.playback)
+        val error = assertNotNull(playing.session.error)
+        assertEquals("This can't be played right now. Media isn't connected.", error.message)
+        assertFalse(error.canRetry, "there is nothing to try again: the way out is Close")
+        assertNull(playing.session.upNext)
     }
 
     @Test

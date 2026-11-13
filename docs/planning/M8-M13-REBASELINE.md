@@ -476,21 +476,28 @@ M9 restyles the structure settled in M8; it does not move destinations.
 
 ### M10: Player & Playback Experience 2.0
 
-The desktop mini-player question is already answered (M9, Step 0); M10 implements whichever outcome was recorded.
+**Corrected 2026-11-13** (planning session, Opus 5.5, after M9 closed at `1dbbc11`). The implementation-ready specification, and M10's one master prompt, is [`M10-PLAYER-SPEC.md`](M10-PLAYER-SPEC.md). The decisions are in DECISIONS.md, 2026-11-13. What follows is the summary. Where the earlier text of this section differs, the specification wins: it was checked against the post-M9 code and the current Android documentation.
+
+The desktop mini-player question was answered in M9 (viable; one native surface moved once). M10 builds on it.
 
 **In scope**
 
-- **A chrome state machine:** Hidden / Shown / Loading (opening or buffering) / Ending (next-episode countdown) / Failure. Loading is exclusive: the loader on a material disc, back and title only, no transport. Title and context fade with the chrome.
-- **Visual weight:** a smaller centre play/pause with no heavy disc; ±10 s as glyphs that light only when pressed; a one-row bottom bar (timeline, times, actions).
-- **Presentation:** Fullscreen / Mini / System (PiP) for one `PlaybackSession`. Back on handhelds and desktop goes to Mini (predictive back drives the shrink on Android 14+). Tap or Enter on the mini expands it; an explicit close stops playback. The mini is responsive: above the phone bar, a corner of the content area on tablets and desktop. **TV:** no mini; Back keeps today's behavior.
-- A profile switch ends the session first.
-- **Playback parity carried from M7, each decided:** held seek acceleration (TV), chapters on Android where Media3 supplies them, desktop media keys, the TV explanation where sidecar subtitles cannot be read, and the per-work subtitle choice.
+- **Presentation:** `FULL | MINI | SYSTEM` for one `PlaybackSession`. `SYSTEM` is Android's picture-in-picture, set only from the platform's confirmed callback. The transient "entering PiP" state is a shell input to the chrome, not a session state. There is no second player, no `MediaSessionService` (proven unnecessary: everything happens while an activity is visible, and the activity-owned media session already drives the PiP controls), and no Jetpack PiP library (alpha).
+- **Back follows UI state:** one derived `BackRoute` (system, app, collapse, into PiP), shared with `dispatch(BACK)`. The always-enabled root callback is removed, so Android's back-to-home animation runs at Reflux's root. Back in the full player collapses to the mini-player on handhelds and the desktop, previewed by the predictive gesture. The preview is UI state; the session changes only on commit; when collapsing releases a landscape lock, the surface does not travel. At the root, a docked session that is playing goes into PiP; paused, ended, or failed, the system's Back runs. A television's Back keeps closing the player.
+- **Handheld mini-player:** the one `SurfaceView`, placed by `VideoFrame` through `VideoStage`, never re-parented or hidden by visibility, with a fixed-size buffer if the Step 0 probe confirms it. Proven continuous: the same engine, decoder, tracks, position, reporter, and owner.
+- **PiP lifecycle:** auto-enter only while playing; `sourceRectHint` from the picture's box (from the full player or the dock); seamless resize; hide chrome on `isTransitioningToPip` (API 35+); expanded → FULL; closed → the session ends with its place recorded. Failures, endings, and autoplay inside PiP are defined.
+- **One chrome model:** a pure reducer with a fixed precedence (NONE, FAILURE, ENDING, LOADING, SHOWN, HIDDEN), one inactivity deadline, and explicit pins (paused, menu, screen reader, focus, pointer, scrubbing, held seek). Loading is exclusive. Buffering shorter than a 600 ms grace changes nothing, so seeks are never cut off.
+- **Failure:** a mini-player failure stays in the dock as a failure dock (the picture out of sight, "Playback stopped", Try again or Close, announced). It is not escalated to the full player, which would take the screen from someone browsing (M9's rule). A failed next episode is a stated failure, not a silent close.
+- **Visual:** a lighter transport (glyphs, no discs), restrained ±10, one bottom row on a scrim instead of a glass panel, measured coverage targets, and reduced transparency and high contrast handled.
+- **Parity:** Android chapters from Media3's own `Chapter` metadata (Matroska, MP4 `chpl` and QuickTime; not HLS); desktop media keys for a focused window (Windows; Linux only if the probe shows delivery without D-Bus); held seek acceleration as one committed seek; the television sidecar-subtitle row decided on 2026-10-17.
+- **Subtitle preference:** per profile, per work (the show for an episode), stored as a track description in `profile_setting`, and resolved by the planner (`SubtitleChoice.Preferred`). No migration.
+- **Found in code and fixed in M10:** system bars hidden in the mini-player; an engine left running when the activity is recreated; the session's owner held once rather than re-read on each load.
 
 **Gates**
 
-- `PlaybackSession` presentation-state tests; chrome state-machine tests (no loader with transport); watch reporting unchanged across collapse and expand.
-- Accessibility: the mini as one stop with actions; TalkBack on the Pad 7.
-- Device walks: Phone 2a, Pad 7, Fire TV (lighter chrome and loading only), Windows, Linux.
+- Step 0: three time-boxed probes recorded before dependent work (surface continuity on the Phone 2a, PiP close versus expand, desktop media-key delivery).
+- Automated: presentation, Back-route invariant, predictive-back cancel, chrome reducer, failure, PiP shell logic, surface continuity (instrumented), ownership, subtitle preference isolation, chapters, media keys, held seek, the television row, accessibility semantics, and insets.
+- Physical: Phone 2a, Pad 7 (each with TalkBack), Fire TV (the player's television changes), Windows, and the Linux container.
 
 ### M11: Distribution & Release Surfaces
 

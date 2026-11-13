@@ -180,6 +180,35 @@ interface Platform {
      */
     val docksVideo: Boolean get() = false
 
+    /**
+     * Whether the system has a window of its own for what is playing while Reflux is not shown (Android's
+     * picture-in-picture): what is playing can go on in it ([PlayerPresentation.SYSTEM]), and Back at the root, with
+     * playback running in the dock, goes there. False where there is none, and on a television, whose player is the
+     * whole screen.
+     */
+    val systemPresentation: Boolean get() = false
+
+    /**
+     * Asks the system to take what is playing into its window. True when it is accepted; the window itself is
+     * reported by the shell through [PlaybackSession.enterSystem] when the system has made it.
+     */
+    fun enterSystemPresentation(): Boolean = false
+
+    /**
+     * Whether a subtitle file beside a local video can be read here. False on a television from Android 13, where a folder is
+     * read through a permission that lists only videos (DECISIONS.md, 2026-10-17): there a local work has its embedded
+     * subtitles and the subtitle list says why a file beside it is not offered.
+     */
+    val readsSidecarSubtitles: Boolean get() = true
+
+    /**
+     * Whether a screen reader can reach the mini-player's picture as its stop (the way back to the player). False where the
+     * platform's accessibility tree leaves it out: Android's omits it for a reason not found (PlayerAccessibilityOnDeviceTest,
+     * M10: the picture's node is missing from the tree on a Phone 2a and an emulator while its neighbours are there), so there
+     * the dock's title and status are that stop, and the picture is only a picture.
+     */
+    val dockPictureIsAStop: Boolean get() = true
+
     /** What [requestFullscreen] does here, so the player offers it only where it changes something. */
     val fullscreenMode: FullscreenMode get() = FullscreenMode.WINDOW
 

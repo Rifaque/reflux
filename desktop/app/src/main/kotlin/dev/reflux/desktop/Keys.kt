@@ -24,6 +24,8 @@ internal fun KeyEvent.toRefluxKey(): Key? {
         }
     }
     if (isControlDown || isAltDown || isMetaDown) return null
+    // The toolkit has no key code for a media key: it arrives with the system's own number (probe P3, VERIFICATION.md).
+    if (keyCode == KeyEvent.VK_UNDEFINED) return mediaKeyOf(toString())
     return when (keyCode) {
         KeyEvent.VK_UP, KeyEvent.VK_KP_UP -> Key.ARROW_UP
         KeyEvent.VK_DOWN, KeyEvent.VK_KP_DOWN -> Key.ARROW_DOWN
@@ -58,3 +60,33 @@ internal fun KeyEvent.toRefluxKey(): Key? {
  */
 internal fun MouseEvent.isBackButtonPress(os: String = System.getProperty("os.name")): Boolean =
     id == MouseEvent.MOUSE_PRESSED && button == 4 && os.startsWith("Windows")
+
+
+/**
+ * Which media key a key event is, from the number the system gave it, for the transport keys only (play or pause, next,
+ * previous, stop). On Windows the toolkit delivers a media key to the focused window as a press with no key code of its own
+ * and the system's virtual-key in `rawCode`, which is not public API: it is read from the event's description, and a
+ * description with none, or one from a system whose numbers these are not, is no media key.
+ *
+ * Volume keys are not read: the system changes the volume itself, and Reflux changing its own as well would be twice.
+ * Media keys while Reflux is not the focused window are the system's, and are not read here (DECISIONS.md, 2026-11-13).
+ */
+internal fun mediaKeyOf(description: String, os: String = System.getProperty("os.name")): Key? {
+    if (!os.startsWith("Windows")) return null
+    val raw = Regex("""rawCode=(\d+)""").find(description)?.groupValues?.get(1)?.toIntOrNull() ?: return null
+    return when (raw) {
+        WINDOWS_MEDIA_PLAY_PAUSE -> Key.MEDIA_PLAY_PAUSE
+        WINDOWS_MEDIA_NEXT_TRACK -> Key.MEDIA_NEXT
+        WINDOWS_MEDIA_PREV_TRACK -> Key.MEDIA_PREVIOUS
+        WINDOWS_MEDIA_STOP -> Key.MEDIA_STOP
+        WINDOWS_PLAY -> Key.MEDIA_PLAY
+        else -> null
+    }
+}
+
+// Windows' virtual-key codes (winuser.h).
+private const val WINDOWS_MEDIA_NEXT_TRACK = 0xB0
+private const val WINDOWS_MEDIA_PREV_TRACK = 0xB1
+private const val WINDOWS_MEDIA_STOP = 0xB2
+private const val WINDOWS_MEDIA_PLAY_PAUSE = 0xB3
+private const val WINDOWS_PLAY = 0xFA

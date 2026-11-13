@@ -2,6 +2,7 @@ package dev.reflux.library
 
 import dev.reflux.core.model.Episode
 import dev.reflux.core.model.MediaId
+import dev.reflux.core.model.ProfileId
 import dev.reflux.core.model.Movie
 import dev.reflux.core.model.SourceId
 import dev.reflux.core.model.VersionId
@@ -62,7 +63,7 @@ data class PlaybackPlan(
  *   where the viewer is even near the end, where Play would otherwise start the work over.
  * @param preferences the viewer's languages.
  * @param audio the viewer's own audio track, if they chose one.
- * @param subtitle the viewer's own subtitle, if they chose one.
+ * @param subtitle the viewer's own subtitle, if they chose one now; otherwise what [profile] chose for the work before.
  * @param originalFailed what a real attempt showed cannot be played as it is.
  * @return null when no version is currently playable (e.g. its source is offline).
  */
@@ -78,6 +79,7 @@ suspend fun Library.planPlayback(
     subtitle: SubtitleChoice = SubtitleChoice.Automatic,
     originalFailed: Set<PlanPart> = emptySet(),
     scope: LibraryScope = LibraryScope.Unified,
+    profile: ProfileId = activeProfile(),
 ): PlaybackPlan? {
     val capabilities = { id: SourceId -> sources(id)?.descriptor?.capabilities.orEmpty() }
     val selection = selectVersion(itemId, device, resuming = resume, continuing = continuing, preferences = preferences, sourceCapabilities = capabilities, scope = scope)
@@ -88,8 +90,10 @@ suspend fun Library.planPlayback(
     } ?: return null
     val version = chosen.version
     val source = sources(version.location.sourceId) ?: return null
+    // What this viewer chose for the work before stands in for the automatic choice; their choice now outranks it.
+    val wanted = if (subtitle == SubtitleChoice.Automatic) subtitlePreference(itemId, profile)?.choice() ?: subtitle else subtitle
     val requirements = PlaybackRequirements(
-        version, preferences ?: TrackPreferences(emptyList()), source.descriptor.capabilities.conversionsOf(source), audio, subtitle, originalFailed,
+        version, preferences ?: TrackPreferences(emptyList()), source.descriptor.capabilities.conversionsOf(source), audio, wanted, originalFailed,
     )
     var planned = PlaybackPlanner.plan(requirements, device)
     if (planned.outcome == PlanOutcome.CANNOT_PLAY) return null
@@ -148,7 +152,7 @@ private fun directive(version: MediaVersion, planned: PlannedPlayback, requireme
     val described = version.stream.subtitles.isNotEmpty() || version.externalSubtitles.isNotEmpty()
     val subtitleIndex = planned.subtitleIndex
     val subtitle = when {
-        planned.subtitles == SubtitlePlan.NONE && !described && requirements.subtitle == SubtitleChoice.Automatic -> SubtitleDirective.EngineChoice
+        planned.subtitles == SubtitlePlan.NONE && !described && (requirements.subtitle == SubtitleChoice.Automatic || requirements.subtitle is SubtitleChoice.Preferred) -> SubtitleDirective.EngineChoice
         delivered -> SubtitleDirective.Attached(attachments)
         subtitleIndex == null || planned.subtitles == SubtitlePlan.NONE || planned.subtitles == SubtitlePlan.BURN_IN -> SubtitleDirective.Off
         planned.subtitleExternal -> SubtitleDirective.Attached(subtitleIndex)

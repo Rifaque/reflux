@@ -13,6 +13,7 @@ import androidx.media3.common.ForwardingPlayer
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.MimeTypes
+import androidx.media3.common.Metadata
 import androidx.media3.common.PlaybackException
 import androidx.media3.exoplayer.hls.SampleQueueMappingException
 import androidx.media3.common.PlaybackParameters
@@ -30,8 +31,10 @@ import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.source.MergingMediaSource
 import androidx.media3.exoplayer.source.ProgressiveMediaSource
 import androidx.media3.extractor.ExtractorsFactory
+import androidx.media3.extractor.metadata.Chapter as MediaChapter
 import androidx.media3.session.MediaSession
 import dev.reflux.core.net.Redaction
+import dev.reflux.core.playback.Chapter
 import dev.reflux.core.playback.DecoderInUse
 import dev.reflux.core.playback.DeviceCapabilities
 import dev.reflux.core.playback.PlaybackFailure
@@ -86,9 +89,34 @@ class Media3Player(context: Context, override val capabilities: DeviceCapabiliti
     /** The shape of the picture (width over height) once known. The surface is laid out to it; the engine fills whatever it is given. */
     val videoAspect: StateFlow<Float?> = mutableAspect.asStateFlow()
 
+    private val mutableVideoSize = MutableStateFlow<Pair<Int, Int>?>(null)
+
+    /** The picture's size in pixels once known: the buffer the shell gives the surface, so that moving it never reallocates one. */
+    val videoSize: StateFlow<Pair<Int, Int>?> = mutableVideoSize.asStateFlow()
+
     /** Called for the system's next (true) and previous (false) controls. Set by the shell. */
     @Volatile
     var onSkip: ((forward: Boolean) -> Unit)? = null
+
+    /**
+     * How the video decoder has been used, for proving that moving the picture between presentations does not disturb it
+     * (docs/PLAYBACK.md, section 18): decoders started, times video was switched off, and frames dropped. Read on any thread.
+     */
+    @Volatile
+    var decoderStarts = 0
+        private set
+
+    @Volatile
+    var videoDisabled = 0
+        private set
+
+    @Volatile
+    var framesDropped = 0L
+        private set
+
+    init {
+        open.incrementAndGet()
+    }
 
     private var session: MediaSession? = null
     private var engine: ExoPlayer? = null
@@ -137,7 +165,10 @@ class Media3Player(context: Context, override val capabilities: DeviceCapabiliti
         override fun onPositionDiscontinuity(oldPosition: EnginePlayer.PositionInfo, newPosition: EnginePlayer.PositionInfo, reason: Int) = publish()
 
         override fun onVideoSizeChanged(videoSize: VideoSize) {
-            if (videoSize.width > 0 && videoSize.height > 0) mutableAspect.value = videoSize.width * videoSize.pixelWidthHeightRatio / videoSize.height
+            if (videoSize.width > 0 && videoSize.height > 0) {
+                mutableAspect.value = videoSize.width * videoSize.pixelWidthHeightRatio / videoSize.height
+                mutableVideoSize.value = videoSize.width to videoSize.height
+            }
         }
 
         override fun onCues(cueGroup: CueGroup) {
@@ -176,6 +207,7 @@ class Media3Player(context: Context, override val capabilities: DeviceCapabiliti
             .clearOverridesOfType(C.TRACK_TYPE_AUDIO).setTrackTypeDisabled(C.TRACK_TYPE_AUDIO, false).build()
         mutableCues.value = emptyList()
         mutableAspect.value = null
+        mutableVideoSize.value = null
 
         // A PGS file is read beside the media by Reflux's own extractor; everything else is side-loaded as it was.
         val (sup, sideLoaded) = request.subtitles.withIndex().partition { subtitleMimeType(it.value.target.uri) == SupExtractor.MIME }
@@ -302,6 +334,7 @@ class Media3Player(context: Context, override val capabilities: DeviceCapabiliti
     override fun close() = onMain {
         if (closed) return@onMain
         closed = true
+        open.decrementAndGet()
         main.removeCallbacks(ticker)
         session?.release()
         session = null
@@ -326,7 +359,16 @@ class Media3Player(context: Context, override val capabilities: DeviceCapabiliti
             player.addAnalyticsListener(object : AnalyticsListener {
                 override fun onVideoDecoderInitialized(eventTime: AnalyticsListener.EventTime, decoderName: String, initializedTimestampMs: Long, initializationDurationMs: Long) {
                     videoDecoder = DecoderInUse(decoderName, AndroidCapabilities.isHardware(decoderName))
+                    decoderStarts++
                     publish()
+                }
+
+                override fun onVideoDisabled(eventTime: AnalyticsListener.EventTime, decoderCounters: androidx.media3.exoplayer.DecoderCounters) {
+                    videoDisabled++
+                }
+
+                override fun onDroppedVideoFrames(eventTime: AnalyticsListener.EventTime, droppedFrames: Int, elapsedMs: Long) {
+                    framesDropped += droppedFrames
                 }
             })
             player.setVideoSurfaceView(surface)
@@ -380,6 +422,7 @@ class Media3Player(context: Context, override val capabilities: DeviceCapabiliti
                 selectedAudioId = tracks.firstOrNull { it.second && it.first.type == TrackType.AUDIO }?.first?.id,
                 selectedSubtitleId = tracks.firstOrNull { it.second && it.first.type == TrackType.SUBTITLE }?.first?.id,
                 seekable = seekableOf(player),
+                chapters = chaptersOf(entriesOf(player.currentTracks)),
             )
         }
     }
@@ -432,6 +475,28 @@ class Media3Player(context: Context, override val capabilities: DeviceCapabiliti
     }
 
     companion object {
+        /** How many engines are alive (made and not closed): one while something plays, none otherwise. A leak shows here. */
+        internal val open = java.util.concurrent.atomic.AtomicInteger(0)
+
+        /**
+         * What every track's format says about the file, from the container's own metadata: Media3 reads chapters out of
+         * Matroska and WebM, and out of MP4's `chpl` and QuickTime chapter tracks, and says nothing for formats it does not
+         * (a server's converted HLS stream among them). Nothing here parses a file.
+         */
+        internal fun entriesOf(tracks: Tracks): List<Metadata.Entry> = tracks.groups.flatMap { group ->
+            (0 until group.length).flatMap { index ->
+                val metadata = group.getTrackFormat(index).metadata
+                if (metadata == null) emptyList() else (0 until metadata.length()).map(metadata::get)
+            }
+        }
+
+        /** The chapters among [entries], in order of their start: hidden ones left out, one to a start, titles as the file has them. */
+        internal fun chaptersOf(entries: List<Metadata.Entry>): List<Chapter> = entries.filterIsInstance<MediaChapter>()
+            .filter { !it.isHidden && it.startTimeMs >= 0 }
+            .sortedBy { it.startTimeMs }
+            .distinctBy { it.startTimeMs }
+            .map { Chapter(it.title?.value?.takeIf { title -> title.isNotBlank() }, it.startTimeMs) }
+
         private const val POSITION_INTERVAL_MS = 500L
 
         /**

@@ -11,6 +11,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.awt.ComposeDialog
 import androidx.compose.ui.awt.ComposeWindow
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import com.sun.jna.Native
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.withTimeoutOrNull
@@ -103,6 +113,11 @@ internal fun VideoOverlay(owner: ComposeWindow, anchor: Component, shown: Boolea
             }
             val origin = anchor.locationOnScreen
             overlay.setBounds(origin.x, origin.y, anchor.width, anchor.height)
+            // A window the viewer is dragging the edge of is resized inside the operating system's own sizing loop, and a window
+            // resized there is not laid out again by the toolkit: its dialog had the new size while its root pane, and the Compose
+            // layer in it, kept the old one (measured: 1684 x 964 around 1000 x 640), so the controls were composed for a
+            // window that was no longer there. Laying the dialog out is what hands the content its size.
+            overlay.validate()
             if (!overlay.isVisible) overlay.isVisible = true
         }
         val follow: ComponentListener = object : ComponentAdapter() {
@@ -131,3 +146,23 @@ internal fun VideoOverlay(owner: ComposeWindow, anchor: Component, shown: Boolea
         }
     }
 }
+
+/**
+ * Rounds what the controls window draws over the picture to [radius] and draws the picture's rim: a 1.5 dp black arc at
+ * each corner, centred on the edge of the surface's window region. A region's edge is hard; this antialiased rim is what the
+ * eye sees (the black is the picture box's own colour). It draws arcs only, so the straight edges get no frame line.
+ */
+internal fun Modifier.pictureRim(radius: Dp): Modifier =
+    if (radius.value <= 0f) this else clip(RoundedCornerShape(radius)).drawWithContent {
+        drawContent()
+        val stroke = 1.5.dp.toPx()
+        val half = stroke / 2f
+        val r = radius.toPx().coerceAtMost(minOf(size.width, size.height) / 2f)
+        val diameter = 2f * (r - half)
+        val style = Stroke(width = stroke, cap = StrokeCap.Butt)
+        val arc = Size(diameter, diameter)
+        drawArc(androidx.compose.ui.graphics.Color.Black, 180f, 90f, false, Offset(half, half), arc, style = style)
+        drawArc(androidx.compose.ui.graphics.Color.Black, 270f, 90f, false, Offset(size.width - 2f * r + half, half), arc, style = style)
+        drawArc(androidx.compose.ui.graphics.Color.Black, 0f, 90f, false, Offset(size.width - 2f * r + half, size.height - 2f * r + half), arc, style = style)
+        drawArc(androidx.compose.ui.graphics.Color.Black, 90f, 90f, false, Offset(half, size.height - 2f * r + half), arc, style = style)
+    }

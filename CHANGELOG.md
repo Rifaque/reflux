@@ -4,7 +4,22 @@ What changes for people using Reflux, version by version. The rules for versions
 
 ## Unreleased
 
-- Reflux for Windows and Linux has a mini-player. In the player, "Mini player" (or the I key) puts what you're watching in a corner of the window so you can keep browsing while it plays; click the picture, press I again, or press Play on the same title to go back to the full player. Its stop button ends playback and keeps your place. Playing something else replaces it.
+- The player is lighter: the controls are a title and the way out, a play button and ten-second skips that are plain symbols, and one row with the timeline and the actions, and they go away while you watch. While a film is opening or waiting for data you see only Reflux's loader and the way out, never a pause button beside it.
+- Phones and tablets have a mini-player. Back (or the Minimize button) in the player puts what you're watching in a small player above the navigation while you browse; on Android 14 and later the back gesture shows the picture shrinking, and taking the gesture back leaves the player as it was. Tap the mini-player to bring the player back. The player's Close button, at the top right, is what ends playback.
+- On Android phones and tablets, pressing Back at the top of Reflux while something is playing in the mini-player keeps it going in a small floating window, as leaving Reflux does; paused, finished, or failed playback is left alone and Back does what it does in any app. Closing the floating window ends playback and remembers where you were.
+- Playback that stops with an error while it's in the mini-player says so there, with Try again where it can help and Close, without taking over the screen. A next episode that can't be played now says so too, instead of quietly ending.
+- The mini-player's picture has rounded corners that follow the dock's, on Android and on Windows, not only in the layout around it; the player's menu options share the corner of other rows.
+- On a large desktop window or fullscreen (and as you drag a window's edge, live) the player's controls, times, title, and timeline are larger and the timeline is easier to see and to grab (a thumb at rest, a stronger track); a small window keeps its sizes, and phones, tablets, and televisions are unchanged.
+- On the desktop, Escape in the player puts it in the mini-player instead of ending playback; Stop is the mini-player's button.
+- Reflux remembers the subtitles you chose for a film or a show, separately for each profile: the next episode, or another copy of the film, starts with the same language.
+- On Android, the mini-player can be reached by a screen reader: its title and status are the way back to the player.
+- On Android, a film's own chapters (from Matroska and MP4 files) are in the player's Chapters list and marked on the timeline.
+- Holding a seek key (a remote's left and right, or the keyboard's arrows) now speeds up the longer you hold it, shows where it will land, and makes one jump when you let go.
+- On Windows, the keyboard's play/pause, next, previous, and stop keys control playback while Reflux is the window you're using.
+- On a TV, the subtitles list says "Subtitle files beside videos can't be read on this TV" when a local video has none of its own, instead of being empty.
+- Fixed: on Android, if the app was recreated while something was playing (changing the text size was one way), playback could carry on unseen and its place was not saved. Changing the text size no longer restarts the app at all.
+
+- Reflux for Windows and Linux has a mini-player. In the player, "Minimize player" (or the I key) puts what you're watching in a corner of the window so you can keep browsing while it plays; click the picture, press I again, or press Play on the same title to go back to the full player. Its stop button ends playback and keeps your place. Playing something else replaces it.
 - The navigation is tidier and moves: the highlight for where you are slides to the destination you choose, the phone's bar is only as wide as its four buttons, the desktop sidebar and the TV and tablet rails carry the Reflux mark, and your profile's initial shows in the navigation once there are several profiles. With reduce motion on, nothing slides.
 - About Reflux has "Credits and technology": what Reflux is built on and the media servers it works with.
 

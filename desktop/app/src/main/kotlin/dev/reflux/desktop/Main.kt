@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -157,8 +158,23 @@ internal fun runReflux(
                 darkTitleBar(window)
                 // One input path for the whole app: keys reach Reflux whichever component has focus,
                 // including the native video surface.
+                // A held key is told from a key pressed again, and a let-go key is known (the held seek is one seek).
+                val repeats = KeyRepeats(
+                    schedule = { delay, action ->
+                        val timer = javax.swing.Timer(delay.toInt()) { action() }.apply { isRepeats = false; start() }
+                        timer::stop
+                    },
+                    onReleased = app::onKeyReleased,
+                )
                 val keys = KeyEventDispatcher { event ->
-                    event.id == KeyEvent.KEY_PRESSED && event.toRefluxKey()?.let(app::onKey) == true
+                    when (event.id) {
+                        KeyEvent.KEY_PRESSED -> event.toRefluxKey()?.let { key -> app.onKey(key, repeat = repeats.pressed(key)) } == true
+                        KeyEvent.KEY_RELEASED -> {
+                            event.toRefluxKey()?.let(repeats::released)
+                            false
+                        }
+                        else -> false
+                    }
                 }
                 val focus = KeyboardFocusManager.getCurrentKeyboardFocusManager()
                 focus.addKeyEventDispatcher(keys)
@@ -199,7 +215,13 @@ internal fun runReflux(
                 RefluxApp(app)
                 platform.video.canvas?.let { canvas ->
                     VideoStage(placement, Modifier.fillMaxSize()) {
-                        key(canvas) { SwingPanel(factory = { canvas }, modifier = Modifier.fillMaxSize()) }
+                        key(canvas) { SwingPanel(
+                            factory = { canvas },
+                            modifier = Modifier.fillMaxSize(),
+                            // The toolkit's holder paints a light panel colour in the corners the picture's region cuts away
+                            // (SurfaceCorners); there it paints what the dock's glass is instead.
+                            update = { (it.parent as? javax.swing.JComponent)?.apply { isOpaque = true; background = DockGlass } },
+                        ) }
                     }
                 }
             }
@@ -208,6 +230,12 @@ internal fun runReflux(
             // it must not be torn down while the engine is being torn down (see X11ErrorGuard), and the
             // surface only goes away once the engine has.
             platform.video.canvas?.let { canvas ->
+                // The picture's corners follow the dock's: a region on the surface's window, and a rim over it (SurfaceCorners).
+                val corners = remember(canvas) { SurfaceCorners(canvas, window) }
+                DisposableEffect(corners) { onDispose { corners.close() } }
+                // Read here, in the composition, so that a change of the radius recomposes this; an effect does not observe what it reads.
+                val radius = placement.pictureRadius.value
+                SideEffect { corners.radiusDp = radius }
                 VideoOverlay(window, canvas, shown = app.videoFrame != VideoFrame.Hidden) {
                     val session = app.playback ?: return@VideoOverlay
                     // An almost invisible fill keeps the whole overlay window hit-testable; fully transparent
@@ -218,13 +246,23 @@ internal fun runReflux(
                         if (session.presentation == PlayerPresentation.FULL && placement.full) {
                             PlayerOverlay(app, session, hiddenCursor = HiddenCursor)
                         } else {
-                            MiniPlayerSurface(app, session)
+                            MiniPlayerSurface(app, session, Modifier.pictureRim(placement.pictureRadius))
                         }
                     }
                 }
             }
         }
     }
+}
+
+/** What the dock's glass is, flat: the page's colour with the surface's tint over it, as FLOATING material lays it (design/Material.kt). */
+private val DockGlass: java.awt.Color = run {
+    fun mix(shift: Int): Int {
+        val page = Palette.background.value.toInt() shr shift and 0xFF
+        val tint = Palette.surface.value.toInt() shr shift and 0xFF
+        return (page * 44 + tint * 56) / 100
+    }
+    java.awt.Color(mix(16), mix(8), mix(0))
 }
 
 private val HiddenCursor = PointerIcon(

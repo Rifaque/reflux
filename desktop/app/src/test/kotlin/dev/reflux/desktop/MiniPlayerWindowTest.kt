@@ -56,6 +56,10 @@ class MiniPlayerWindowTest {
 
     private fun note(line: String) = println("TRIAL $line")
 
+    private companion object {
+        const val COMPLEX_REGION = 3
+    }
+
     @Test
     fun onePlaybackMovesBetweenTheWholeWindowAndTheDock() {
         assumeTrue("window tests not requested", windowTestsRequested)
@@ -108,7 +112,7 @@ class MiniPlayerWindowTest {
     private fun stepsAsideIntoTheDock(session: PlaybackSession): Component {
         val surface = surface()
         shell.hoverSurface(0.5f, 0.5f)
-        shell.awaitShown("Mini player")
+        shell.awaitShown("Minimize player")
         // Watched as it goes: every time the toolkit moves or resizes the surface on its way is one step of the journey.
         val steps = java.util.Collections.synchronizedList(ArrayList<Long>())
         val journey = object : java.awt.event.HierarchyBoundsAdapter() {
@@ -116,7 +120,7 @@ class MiniPlayerWindowTest {
             override fun ancestorResized(event: java.awt.event.HierarchyEvent) { steps += System.nanoTime() }
         }
         shell.ui { surface.addHierarchyBoundsListener(journey) }
-        shell.click("Mini player")
+        shell.click("Minimize player")
         shell.await("the picture to be in the dock", state = ::describe) { docked() && covered() }
         shell.ui { surface.removeHierarchyBoundsListener(journey) }
         val times = steps.toList()
@@ -137,8 +141,11 @@ class MiniPlayerWindowTest {
 
         val before = position
         awaitPlayer("playback to go on in the dock") { it.status == PlayerStatus.PLAYING && it.positionMs > before + 1_500 }
+        theCornersAreRound(true)
         // The picture is on screen there, and the page is on screen around it.
+        note("region before capture: ${regionNow()}")
         shell.capture("mini-docked")?.let { image ->
+            note("region after capture: ${regionNow()}")
             val (inDock, onPage) = shell.ui {
                 val scale = scale()
                 val content = shell.window.contentPane
@@ -210,7 +217,7 @@ class MiniPlayerWindowTest {
         // The keyboard's way back to the player, and back out again.
         shell.key(KeyEvent.VK_I)
         shell.await("I to bring the player back", state = ::describe) { session.presentation == PlayerPresentation.FULL && fillsTheWindow() && covered() }
-        shell.awaitShown("Back to library")
+        shell.awaitShown("Minimize player")
         shell.key(KeyEvent.VK_I)
         shell.await("I to put it aside again", state = ::describe) { session.presentation == PlayerPresentation.MINI && docked() && covered() }
         assertSame(session, shell.ui { shell.app.playback })
@@ -272,7 +279,8 @@ class MiniPlayerWindowTest {
         shell.await("a click on the picture to bring the player back", state = ::describe) {
             session.presentation == PlayerPresentation.FULL && fillsTheWindow() && covered()
         }
-        shell.awaitShown("Back to library")
+        shell.awaitShown("Minimize player")
+        theCornersAreRound(false)
         assertSame(session, shell.ui { shell.app.playback })
         assertSame(surface, surface())
         assertTrue(position >= before, "playback carried on from where it was: $before to $position")
@@ -291,6 +299,7 @@ class MiniPlayerWindowTest {
         shell.await("the window to be a window again, with the picture in its dock", state = ::describe) {
             !shell.app.platform.fullscreen && restored(shell.window.bounds, windowed) && docked() && covered()
         }
+        theCornersAreRound(true)
         assertSame(session, shell.ui { shell.app.playback })
         assertSame(surface, surface())
         val before = position
@@ -349,6 +358,41 @@ class MiniPlayerWindowTest {
         }
         walk(window)
         return found.joinToString(" | ").take(1500)
+    }
+
+    /**
+     * The picture's corners are cut into its window as a region while it is in the dock, at the size it has there, in device
+     * pixels and the radius of the display it is on; and there is none across the whole window. Skipped off Windows, where the
+     * picture stays square.
+     */
+    private fun theCornersAreRound(inDock: Boolean) {
+        if (!System.getProperty("os.name").startsWith("Windows")) return
+        shell.await("the picture's corners to be ${if (inDock) "round" else "square"}", state = { regionNow().toString() }) {
+            val (kind, box, client, dpi) = regionNow()
+            if (inDock) {
+                kind == COMPLEX_REGION && box == client && client.first > 0
+            } else {
+                kind != COMPLEX_REGION
+            }
+        }
+        if (inDock) {
+            val (_, _, client, dpi) = regionNow()
+            val radius = cornerRegion(client.first, client.second, dpi, 16f)!!.radiusPx
+            note("corners: region ${client.first}x${client.second} px at ${dpi} dpi, radius $radius px")
+            assertEquals(Math.round(16f * dpi / 96f), radius, "the radius follows the display's scale")
+        }
+    }
+
+    private data class Region(val kind: Int, val box: Pair<Int, Int>, val client: Pair<Int, Int>, val dpi: Int)
+
+    private fun regionNow(): Region = shell.ui {
+        val handle = com.sun.jna.Native.getComponentPointer(surface())
+        val client = Rect().also { User32.INSTANCE.GetClientRect(handle, it) }
+        val current = Gdi32.INSTANCE.CreateRectRgn(0, 0, 0, 0)
+        val kind = User32.INSTANCE.GetWindowRgn(handle, current)
+        val box = Rect().also { Gdi32.INSTANCE.GetRgnBox(current, it) }
+        Gdi32.INSTANCE.DeleteObject(current)
+        Region(kind, (box.right - box.left) to (box.bottom - box.top), (client.right - client.left) to (client.bottom - client.top), User32.INSTANCE.GetDpiForWindow(handle))
     }
 
     private fun screens(): List<Rectangle> = GraphicsEnvironment.getLocalGraphicsEnvironment().screenDevices.map { it.defaultConfiguration.bounds }

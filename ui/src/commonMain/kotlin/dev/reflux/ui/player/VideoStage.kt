@@ -13,6 +13,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import dev.reflux.design.Radius
 import dev.reflux.design.Motion
 import dev.reflux.ui.state.AppState
 import dev.reflux.ui.state.VideoFrame
@@ -34,11 +37,31 @@ class VideoPlacement internal constructor() {
     internal var hidden by mutableStateOf(false)
 
     /**
+     * How far a back gesture has gone toward stepping aside (0 to 1), read where the surface is laid out: while it is
+     * in progress the picture shrinks in place by [PREVIEW_SCALE], and a cancelled gesture lets it go back by itself
+     * because nothing but this changed (docs/planning/M10-PLAYER-SPEC.md, section 4.4).
+     */
+    internal var preview: () -> Float? = { null }
+
+    /**
      * Whether the surface is the whole window, and at rest there. The full player's controls belong over it only
      * then; while it travels, and in the dock, the shell shows the mini-player's own surface instead.
      */
     val full: Boolean by derivedStateOf { docking.value == 0f && !hidden }
+
+    /**
+     * The corner radius the picture has at this moment: none across the whole window, [DOCK_PICTURE_RADIUS] in the dock, and
+     * in between as far along as it has travelled. A surface a shell composes itself is clipped to this, because the toolkit
+     * cannot round what a surface puts on screen: the dock's rounded box is only drawn around it.
+     */
+    val pictureRadius: Dp get() = DOCK_PICTURE_RADIUS * docking.value
 }
+
+/**
+ * The radius of the dock's picture: one step below the dock's own (nested shapes step down one size, `Radius`), which is
+ * the corner the picture's padding leaves concentric. The dock draws its picture box with the same size.
+ */
+val DOCK_PICTURE_RADIUS: Dp = Radius.LARGE.dp
 
 /**
  * Follows [AppState.videoFrame] for a shell. A new playback always starts across the whole window.
@@ -51,7 +74,7 @@ class VideoPlacement internal constructor() {
  */
 @Composable
 fun rememberVideoPlacement(app: AppState, travels: Boolean = true): VideoPlacement {
-    val placement = remember(app) { VideoPlacement() }
+    val placement = remember(app) { VideoPlacement().also { it.preview = { app.backPreview } } }
     val frame = app.videoFrame
     val playing = app.playback != null
     LaunchedEffect(frame, playing) {
@@ -84,15 +107,28 @@ fun VideoStage(placement: VideoPlacement, modifier: Modifier = Modifier, surface
         val docking = placement.docking.value
         val whole = Rect(0f, 0f, width.toFloat(), height.toFloat())
         val bounds = if (dock == null || docking == 0f) whole else lerp(whole, dock, docking)
+        // On its way to being put aside by a gesture: the whole window shrinks toward its middle.
+        val previewed = placement.preview()?.takeIf { it > 0f && docking == 0f && !placement.hidden }
+            ?.let { lerp(whole, shrunk(whole), it.coerceIn(0f, 1f)) } ?: bounds
         val placeables = measurables.map {
-            it.measure(Constraints.fixed(bounds.width.roundToInt().coerceAtLeast(1), bounds.height.roundToInt().coerceAtLeast(1)))
+            it.measure(Constraints.fixed(previewed.width.roundToInt().coerceAtLeast(1), previewed.height.roundToInt().coerceAtLeast(1)))
         }
         layout(width, height) {
-            val x = if (placement.hidden) -(bounds.width.roundToInt() + OUT_OF_SIGHT_PX) else bounds.left.roundToInt()
-            placeables.forEach { it.place(x, bounds.top.roundToInt()) }
+            val x = if (placement.hidden) -(previewed.width.roundToInt() + OUT_OF_SIGHT_PX) else previewed.left.roundToInt()
+            placeables.forEach { it.place(x, previewed.top.roundToInt()) }
         }
     }
 }
+
+/** The window as it is drawn at the end of a back gesture's preview: centred, at [PREVIEW_SCALE]. */
+internal fun shrunk(whole: Rect): Rect {
+    val dx = whole.width * (1f - PREVIEW_SCALE) / 2f
+    val dy = whole.height * (1f - PREVIEW_SCALE) / 2f
+    return Rect(whole.left + dx, whole.top + dy, whole.right - dx, whole.bottom - dy)
+}
+
+/** How small the window gets at the end of a back gesture (Android's own back animations scale to about 90%). */
+internal const val PREVIEW_SCALE = 0.9f
 
 private fun lerp(from: Rect, to: Rect, fraction: Float): Rect = Rect(
     from.left + (to.left - from.left) * fraction,

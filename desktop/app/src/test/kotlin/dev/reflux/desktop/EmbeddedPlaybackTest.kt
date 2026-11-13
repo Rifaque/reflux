@@ -8,6 +8,7 @@ import dev.reflux.core.playback.PlayerState
 import dev.reflux.core.playback.PlayerStatus
 import dev.reflux.desktop.engine.DesktopEnvironment
 import dev.reflux.ui.state.Destination
+import dev.reflux.ui.state.PlayerPresentation
 import kotlinx.coroutines.runBlocking
 import org.junit.Assume.assumeTrue
 import java.awt.event.KeyEvent
@@ -141,7 +142,7 @@ class EmbeddedPlaybackTest {
         shell.click("Normal")
         awaitPlayer("the speed to return to normal") { it.speed == 1.0 }
 
-        shell.wheel("Back to library", 1)
+        shell.wheel("Minimize player", 1)
         awaitPlayer("the wheel to turn the volume down") { it.volume == 95 }
         shell.click("Mute")
         awaitPlayer("mute") { it.muted }
@@ -184,7 +185,7 @@ class EmbeddedPlaybackTest {
         shell.drag("Timeline", from = 0.2f, to = 0.7f)
         awaitPlayer("the seek") { it.positionMs in 99_000..111_000 }
         val left = position
-        shell.click("Back to library")
+        shell.click("Stop playing")
         shell.await("the player to close") { shell.app.playback == null && shell.find { it.name == VideoSurface.NAME } == null }
         shell.await("the window to be as it was", state = { "window=${shell.window.bounds}" }) { !shell.app.platform.fullscreen }
         shell.await("the position to be saved") { environment.library.watchState(movie)?.positionMs in (left - 1_500)..(left + 1_500) }
@@ -195,9 +196,12 @@ class EmbeddedPlaybackTest {
         shell.click("Resume")
         awaitPlayer("playback to resume near where it stopped") { it.status == PlayerStatus.PLAYING && it.positionMs >= left - 3_000 }
         assertTrue(position < left + 15_000)
+        // Escape steps the player aside into the dock (the desktop has one) and the playback goes on; it does not end it.
         shell.key(KeyEvent.VK_ESCAPE)
-        shell.await("Escape to close the player") { shell.app.playback == null }
-        assertTrue(shell.ui { shell.app.navigator.current } is Destination.Details, "Escape closed the player, not the page under it")
+        shell.await("Escape to put the player in the dock") { shell.app.playback?.presentation == PlayerPresentation.MINI }
+        assertTrue(shell.ui { shell.app.navigator.current } is Destination.Details, "Escape left the page under the player where it was")
+        shell.click("Stop playing")
+        shell.await("the dock's stop to end playback") { shell.app.playback == null }
     }
 
     private fun episodesFollowEachOther(episodes: List<MediaId>) {
@@ -253,7 +257,11 @@ class EmbeddedPlaybackTest {
         }
         shell.await("the second playback to start") { shell.app.playback?.state?.value?.let { it.status == PlayerStatus.PLAYING && it.positionMs > 300 } == true }
         shell.await("the controls to cover the new video") { covered() }
+        // Escape puts it in the dock (still playing, one surface); stopping from there lets go of the surface.
         shell.key(KeyEvent.VK_ESCAPE)
+        shell.await("the player to be in the dock") { shell.app.playback?.presentation == PlayerPresentation.MINI }
+        assertEquals(null, shell.ui { shell.app.playback?.error }, "the dock holds a playing picture")
+        shell.click("Stop playing")
         shell.await("the player to close") { shell.app.playback == null && shell.find { it.name == VideoSurface.NAME } == null }
     }
 

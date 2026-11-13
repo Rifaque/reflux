@@ -10,6 +10,7 @@ import dev.reflux.core.input.SemanticAction
 import dev.reflux.core.model.Episode
 import dev.reflux.core.model.MediaId
 import dev.reflux.core.model.MediaItem
+import dev.reflux.core.model.ProfileId
 import dev.reflux.core.model.SourceId
 import dev.reflux.core.playback.AutoplayPolicy
 import dev.reflux.core.model.VersionId
@@ -23,22 +24,27 @@ import dev.reflux.core.playback.PlaybackController
 import dev.reflux.core.playback.PlaybackEvidence
 import dev.reflux.core.playback.PlayerTrack
 import dev.reflux.core.playback.SubtitleChoice
+import dev.reflux.core.playback.SubtitlePreference
 import dev.reflux.core.playback.TrackType
 import dev.reflux.core.playback.PlaybackFailure
 import dev.reflux.core.playback.Player
 import dev.reflux.core.playback.PlayerState
 import dev.reflux.core.playback.PlayerStatus
+import dev.reflux.core.playback.SeekHold
 import dev.reflux.core.playback.SkipSegment
 import dev.reflux.core.playback.SkipSegments
 import dev.reflux.core.playback.WatchReporter
 import dev.reflux.core.source.NegotiatingSource
 import dev.reflux.core.source.PlaybackEvidenceSource
+import dev.reflux.core.source.SourceLocality
 import dev.reflux.core.source.SourceCapability
 import dev.reflux.library.Library
 import dev.reflux.library.LibraryEntry
 import dev.reflux.library.PlaybackPlan
 import dev.reflux.library.SyncingWatchReporter
+import dev.reflux.library.activeProfile
 import dev.reflux.library.planPlayback
+import dev.reflux.library.rememberSubtitle
 import dev.reflux.library.LibraryScope
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
@@ -110,6 +116,13 @@ class PlaybackSession internal constructor(
     private var closing: Job? = null
     private val closed: Boolean get() = closing != null
 
+    /**
+     * Whose this playback is: the profile that was watching when it began. Everything the session keeps for a viewer (its
+     * reports, the subtitle choice it remembers) is theirs, whoever is watching later; a profile switch ends the session
+     * first (docs/WATCH_STATE.md, "Profiles").
+     */
+    val owner: ProfileId = app.library.activeProfile()
+
     val state: StateFlow<PlayerState> get() = player.state
 
     var entry: LibraryEntry? by mutableStateOf(null)
@@ -167,6 +180,13 @@ class PlaybackSession internal constructor(
     var presentation by mutableStateOf(PlayerPresentation.FULL)
         private set
 
+    /**
+     * Whether the picture is moving and nothing needs the viewer: playing or waiting for data, with no failure and no
+     * question. What Back at the root takes into the system's window rather than leaving paused.
+     */
+    internal fun runningInDock(): Boolean =
+        !closed && error == null && upNext == null && player.state.value.status.let { it == PlayerStatus.PLAYING || it == PlayerStatus.BUFFERING }
+
     /** The source what is playing comes from, for whoever is about to take that source away. */
     internal val playingFrom: SourceId? get() = sourceId
 
@@ -177,9 +197,10 @@ class PlaybackSession internal constructor(
      * @return whether the session is in the mini-player now.
      */
     fun collapse(): Boolean {
-        if (closed || !app.miniPlayerAvailable || error != null) return false
+        if (closed || !app.miniPlayerAvailable || error != null || presentation == PlayerPresentation.SYSTEM) return false
         if (presentation == PlayerPresentation.MINI) return true
         menu = null
+        cancelSeekHold()
         // The window goes back to how it was before the player took it: browsing is not done across a whole screen
         // the viewer did not ask for.
         if (app.platform.fullscreen != wasFullscreen) app.platform.requestFullscreen(wasFullscreen)
@@ -189,9 +210,37 @@ class PlaybackSession internal constructor(
 
     /** Comes back from the mini-player to the full player. */
     fun expand() {
-        if (closed || presentation == PlayerPresentation.FULL) return
+        if (closed || presentation != PlayerPresentation.MINI) return
         presentation = PlayerPresentation.FULL
         touch()
+    }
+
+    /**
+     * The system's window has taken the picture (Android's picture-in-picture), confirmed by the platform. The same
+     * session, the same engine: nothing is loaded and nothing is planned. Refused where the platform has no such window.
+     */
+    fun enterSystem(): Boolean {
+        if (closed || !app.systemPresentationAvailable) return false
+        if (presentation == PlayerPresentation.SYSTEM) return true
+        menu = null
+        cancelSeekHold()
+        presentation = PlayerPresentation.SYSTEM
+        return true
+    }
+
+    /**
+     * The system's window is gone. [expanded]: the viewer brought the app back, so the full player has the screen, whatever
+     * presentation it came from; otherwise they closed the window, which is ending playback: its place is recorded and its
+     * stream released, as Stop does.
+     */
+    fun leaveSystem(expanded: Boolean) {
+        if (closed || presentation != PlayerPresentation.SYSTEM) return
+        if (expanded) {
+            presentation = PlayerPresentation.FULL
+            touch()
+        } else {
+            close()
+        }
     }
 
     init {
@@ -239,7 +288,7 @@ class PlaybackSession internal constructor(
         next = details.neighbours.second
         sourceId = plan.version.version.location.sourceId
         val reporter = SerialWatchReporter(
-            SyncingWatchReporter(app.library, plan.version.version, plan.source, app.scope + app.background),
+            SyncingWatchReporter(app.library, plan.version.version, plan.source, app.scope + app.background, profile = owner),
             app.scope,
             app.background,
         )
@@ -450,7 +499,9 @@ class PlaybackSession internal constructor(
                 action in LEAVING -> if (error?.canRetry == true) retry() else close()
             }
             action == SemanticAction.MENU -> showMenu(defaultMenu())
-            action == SemanticAction.BACK -> close()
+            // Where the device has a mini-player, Back steps aside into it and the playback goes on; elsewhere it is the way out.
+            action == SemanticAction.BACK -> if (!collapse()) close()
+            action == SemanticAction.SEEK_FORWARD || action == SemanticAction.SEEK_BACKWARD -> seekKey(action, repeat = false)
             action == SemanticAction.PLAY_PAUSE || action == SemanticAction.SELECT -> when {
                 prompt == null -> controller?.handle(SemanticAction.PLAY_PAUSE)
                 prompt.asks -> continueWatching()
@@ -496,6 +547,59 @@ class PlaybackSession internal constructor(
         interactions++
     }
 
+    // Held seek ----------------------------------------------------------------------------------
+
+    private val seekHold = SeekHold()
+    private var seekIdle: Job? = null
+
+    /** Where the seek key held now would land, while one is held past its first press: the timeline shows this, not the position. */
+    var seekPreview: Long? by mutableStateOf(null)
+        private set
+
+    /**
+     * A seek key. Down is the ten-second seek it always was, at once. Held, it only moves the target (shown in
+     * [seekPreview]), faster the longer it is held, and one seek is made when it is let go ([seekKeyReleased]) or has gone
+     * quiet, so a held key is not a burst of seeks (docs/INPUT_MODEL.md).
+     *
+     * @param repeat the platform says this is the held key repeating.
+     */
+    internal fun seekKey(action: SemanticAction, repeat: Boolean, nowMs: Long = UiClock.nowMs()) {
+        val direction = if (action == SemanticAction.SEEK_FORWARD) 1 else -1
+        touch()
+        if (repeat) {
+            val target = seekHold.repeat(nowMs) ?: return
+            seekPreview = target
+            seekIdle?.cancel()
+            seekIdle = scope.launch {
+                delay(SeekHold.IDLE_MS)
+                commitSeekHold()
+            }
+            return
+        }
+        seekIdle?.cancel()
+        // What an earlier hold left unsaid is made first: this press starts from where the viewer is.
+        commitSeekHold()
+        val state = player.state.value
+        seekHold.press(direction, state.positionMs, state.durationMs, nowMs)
+        controller?.handle(action)
+    }
+
+    /** The seek key is let go: the one seek of a hold is made. */
+    internal fun seekKeyReleased() = commitSeekHold()
+
+    private fun commitSeekHold() {
+        seekIdle?.cancel()
+        val target = seekHold.release()
+        seekPreview = null
+        if (target != null) seekTo(target)
+    }
+
+    private fun cancelSeekHold() {
+        seekIdle?.cancel()
+        seekHold.release()
+        seekPreview = null
+    }
+
     // Menus --------------------------------------------------------------------------------------
 
     /** The menus that have something to choose from for what is playing, in the order they are offered. */
@@ -503,7 +607,7 @@ class PlaybackSession internal constructor(
         PlayerMenu.EPISODES.takeIf { next != null || previous != null },
         PlayerMenu.CHAPTERS.takeIf { state.chapters.size > 1 },
         PlayerMenu.AUDIO.takeIf { (fileAudio() ?: state.audioTracks).size > 1 },
-        PlayerMenu.SUBTITLES.takeIf { (fileSubtitles() ?: state.subtitleTracks).isNotEmpty() },
+        PlayerMenu.SUBTITLES.takeIf { (fileSubtitles() ?: state.subtitleTracks).isNotEmpty() || sidecarsUnreadable(state) },
         PlayerMenu.SPEED,
         PlayerMenu.INFO.takeIf { current?.planned != null },
     )
@@ -513,6 +617,14 @@ class PlaybackSession internal constructor(
     /** Why this playback is what it is, in words, for the Playback info list (PlaybackReport). */
     fun report(state: PlayerState = player.state.value): List<PlaybackReport.Line> =
         current?.planned?.let { PlaybackReport.of(it, comparison, state) }.orEmpty()
+
+    /**
+     * A local video with no subtitle in it, on a device that cannot read the files beside it: the subtitle list is there to say
+     * so, not to look empty or to offer what cannot be had (DECISIONS.md, 2026-10-17). A network source's files are read as
+     * ever.
+     */
+    private fun sidecarsUnreadable(state: PlayerState): Boolean =
+        !app.platform.readsSidecarSubtitles && state.subtitleTracks.isEmpty() && current?.source?.descriptor?.locality == SourceLocality.DEVICE
 
     /** A converted stream carries one audio track and no subtitles: what can be chosen is what the file has. */
     private val converted: Boolean get() = current?.planned?.let { it.delivery != DeliveryMode.DIRECT_PLAY } == true
@@ -538,6 +650,12 @@ class PlaybackSession internal constructor(
         val item = itemId ?: return
         touch()
         val place = whereTheViewerIs()
+        when (subtitle) {
+            SubtitleChoice.Off -> remember(SubtitlePreference.OFF)
+            is SubtitleChoice.Explicit -> fileSubtitles()?.firstOrNull { it.position == subtitle.index && it.external == subtitle.external }
+                ?.let { remember(SubtitlePreference(false, it.language, it.forced, it.hearingImpaired)) }
+            else -> Unit
+        }
         controller?.stop(final = false)
         replan(
             item, "Changing a track failed", "That track couldn't be played right now.", continuing = true, version = plan.version.version.id, from = place,
@@ -555,7 +673,7 @@ class PlaybackSession internal constructor(
         }
         PlayerMenu.AUDIO -> fileAudio()?.map { MenuOption(Formatting.track(it), selected = it.position == current?.planned?.audioIndex) }
             ?: state.audioTracks.map { MenuOption(Formatting.track(it), selected = it.id == state.selectedAudioId) }
-        PlayerMenu.SUBTITLES -> fileSubtitles()?.let { tracks ->
+        PlayerMenu.SUBTITLES -> if (sidecarsUnreadable(state)) listOf(MenuOption(Problems.SIDECARS_UNREADABLE)) else fileSubtitles()?.let { tracks ->
             val planned = current?.planned
             listOf(MenuOption("Off", selected = planned?.subtitleIndex == null)) +
                 tracks.map { MenuOption(Formatting.track(it), selected = it.position == planned?.subtitleIndex && it.external == planned?.subtitleExternal) }
@@ -603,6 +721,8 @@ class PlaybackSession internal constructor(
             PlayerMenu.SUBTITLES -> {
                 val inFile = fileSubtitles()
                 when {
+                    // The one line says why; there is nothing to choose.
+                    sidecarsUnreadable(state) -> Unit
                     inFile == null -> if (index == 0) selectSubtitle(null) else state.subtitleTracks.getOrNull(index - 1)?.let { selectSubtitle(it.id) }
                     index == 0 -> chooseInFile(null, SubtitleChoice.Off)
                     else -> inFile.getOrNull(index - 1)?.let { chooseInFile(null, SubtitleChoice.Explicit(it.position!!, it.external)) }
@@ -648,8 +768,15 @@ class PlaybackSession internal constructor(
     /** Selects a subtitle track, or turns subtitles off with null. */
     fun selectSubtitle(trackId: String?) {
         touch()
-        if (trackId != null && player.state.value.subtitleTracks.none { it.id == trackId }) return app.notify(Problems.TRACK_GONE)
+        val chosen = trackId?.let { id -> player.state.value.subtitleTracks.firstOrNull { it.id == id } ?: return app.notify(Problems.TRACK_GONE) }
         player.selectSubtitle(trackId)
+        remember(if (chosen == null) SubtitlePreference.OFF else SubtitlePreference(false, chosen.language, chosen.forced, chosen.hearingImpaired))
+    }
+
+    /** Keeps what the viewer chose for this work's subtitles, as theirs: the next episode and the next version start from it. */
+    private fun remember(preference: SubtitlePreference) {
+        val item = itemId ?: return
+        scope.launch { app.read { rememberSubtitle(item, preference, owner) } }
     }
 
     /** How much of the bottom of the window (0–1) the controls cover; subtitles are kept above it. */
@@ -692,6 +819,7 @@ class PlaybackSession internal constructor(
     fun close(): Job {
         closing?.let { return it }
         countdown?.cancel()
+        cancelSeekHold()
         rememberVolume()
         controller?.stop()
         scope.cancel()
@@ -721,8 +849,21 @@ class PlaybackSession internal constructor(
 
     private fun switchTo(target: LibraryEntry?): Boolean {
         if (target == null || closed) return false
-        replan(target.item.id, "Moving to another episode failed", "That episode couldn't be played right now.")
+        replan(target.item.id, "Moving to another episode failed", "That episode couldn't be played right now.", episodeSwitch = true)
         return true
+    }
+
+    /**
+     * Playback that cannot go on to the episode asked for is a stated failure where the session is, not a silent end: the
+     * finished episode's place is kept, and whoever holds the session (the full player, the dock, the system's window)
+     * says so and offers the way out.
+     */
+    private fun failedToSwitch(message: String) {
+        countdown?.cancel()
+        upNext = null
+        menu = null
+        error = PlaybackError(message, null, canRetry = false)
+        app.platform.report("Playback of \"$title\" could not go on: $message")
     }
 
     /**
@@ -742,6 +883,7 @@ class PlaybackSession internal constructor(
         subtitle: SubtitleChoice = SubtitleChoice.Automatic,
         originalFailed: Set<PlanPart> = emptySet(),
         from: Long? = null,
+        episodeSwitch: Boolean = false,
     ) {
         countdown?.cancel()
         upNext = null
@@ -751,11 +893,14 @@ class PlaybackSession internal constructor(
                 reporter?.flush()
                 releaseStream()
                 val plan = app.read {
-                    planPlayback(itemId, app.platform.device, app.sources, versionId = version, continuing = continuing, preferences = app.viewer, audio = audio, subtitle = subtitle, originalFailed = originalFailed, scope = libraryScope)
+                    planPlayback(itemId, app.platform.device, app.sources, versionId = version, continuing = continuing, preferences = app.viewer, audio = audio, subtitle = subtitle, originalFailed = originalFailed, scope = libraryScope, profile = owner)
                 }
                 if (plan == null) {
-                    app.notify(app.read { unplayableReason(itemId, app.platform.device, app.sources, app.viewer, libraryScope) })
-                    close()
+                    val reason = app.read { unplayableReason(itemId, app.platform.device, app.sources, app.viewer, libraryScope) }
+                    if (episodeSwitch) failedToSwitch(reason) else {
+                        app.notify(reason)
+                        close()
+                    }
                 } else {
                     load(if (from == null) plan else plan.copy(request = plan.request.copy(startPositionMs = from)))
                 }
@@ -763,8 +908,10 @@ class PlaybackSession internal constructor(
                 throw e
             } catch (e: Exception) {
                 app.platform.report(failure, e)
-                app.notify(notice)
-                close()
+                if (episodeSwitch) failedToSwitch(notice) else {
+                    app.notify(notice)
+                    close()
+                }
             }
         }
     }

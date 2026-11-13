@@ -37,7 +37,10 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
@@ -114,6 +117,7 @@ internal fun MiniPlayerDock(app: AppState, session: PlaybackSession, dock: MiniP
     val playing = listOfNotNull(session.title.ifEmpty { "Player" }, session.subtitle).joinToString(", ")
     val attention = status.takeIf { session.error != null || session.upNext?.asks == true }
     val card = dock.style == DockStyle.CARD
+    val pictureIsAStop = app.platform.dockPictureIsAStop
     val padding = MiniPlayerDock.PADDING_DP.dp
 
     @Composable
@@ -121,21 +125,28 @@ internal fun MiniPlayerDock(app: AppState, session: PlaybackSession, dock: MiniP
         // One stop: what is playing and how it stands, and activating it goes back to the full player.
         Pressable(
             { session.expand() },
-            pictureModifier.semantics {
-                contentDescription = playing
-                status?.takeIf { it != session.subtitle }?.let { stateDescription = it }
+            // Where a screen reader can reach it, the picture is the stop; where it cannot, the words are (Platform.dockPictureIsAStop).
+            if (pictureIsAStop) {
+                pictureModifier.semantics {
+                    contentDescription = playing
+                    status?.takeIf { it != session.subtitle }?.let { stateDescription = it }
+                }
+            } else {
+                pictureModifier.clearAndSetSemantics { }
             },
-            Shapes.small,
+            Shapes.large,
             lift = 0f,
             actionLabel = "return to the player",
         ) {
             Box(
-                Modifier.fillMaxSize().clip(Shapes.small).background(Color.Black)
+                Modifier.fillMaxSize().clip(Shapes.large).background(Color.Black)
                     .onGloballyPositioned { app.dockSlot = Rect(it.positionInRoot(), it.size.toSize()) },
                 contentAlignment = Alignment.Center,
             ) {
-                // Seen only while the picture is away: something covers the page, or the surface is still arriving.
-                Icon(Icon.PLAY, size = 20.dp, tint = RefluxColors.contentTertiary)
+                // Seen only while the picture is away: something covers the page, the surface is still arriving, or playback
+                // stopped (the dead picture is not left showing, and the words beside it say what happened).
+                if (session.error != null) Icon(Icon.INFO, size = 22.dp, tint = RefluxColors.warning)
+                else Icon(Icon.PLAY, size = 20.dp, tint = RefluxColors.contentTertiary)
             }
         }
         DisposableEffect(app) { onDispose { app.dockSlot = null } }
@@ -143,20 +154,38 @@ internal fun MiniPlayerDock(app: AppState, session: PlaybackSession, dock: MiniP
 
     @Composable
     fun Words(wordsModifier: Modifier) {
-        // The picture already says this, as one stop; here it is for the eye, and a click on it goes back too.
+        // The picture already says this, as one stop; here it is for the eye, and a click on it goes back too. Where the picture
+        // cannot be reached, these words are the stop.
         Column(
-            wordsModifier.clearAndSetSemantics { }.pointerInput(session) { detectTapGestures { session.expand() } },
+            wordsModifier.then(
+                if (pictureIsAStop) {
+                    Modifier.clearAndSetSemantics { }
+                } else {
+                    // One node that says it all: the texts inside are cleared, or a screen reader says the name twice.
+                    Modifier.clearAndSetSemantics {
+                        contentDescription = playing
+                        status?.takeIf { it != session.subtitle }?.let { stateDescription = it }
+                        role = Role.Button
+                        onClick(label = "return to the player") {
+                            session.expand()
+                            true
+                        }
+                    }
+                },
+            ).pointerInput(session) { detectTapGestures { session.expand() } },
             verticalArrangement = Arrangement.spacedBy(1.dp),
         ) {
+            // What went wrong is the part not to cut short at a large text size (two lines); the name has its full form for a screen reader.
             Text(session.title, style = LocalTypography.current.bodyStrong, maxLines = 1)
-            status?.let { Text(it, style = LocalTypography.current.caption, color = RefluxColors.contentSecondary, maxLines = 1) }
+            status?.let { Text(it, style = LocalTypography.current.caption, color = RefluxColors.contentSecondary, maxLines = if (attention != null) 2 else 1) }
         }
     }
 
     @Composable
     fun Controls() {
         action?.let { (icon, name) -> IconButton(icon, name, { session.handle(SemanticAction.PLAY_PAUSE) }) }
-        IconButton(Icon.CLOSE, "Stop playing", { session.close() }, tint = RefluxColors.contentSecondary)
+        // After a failure there is nothing playing to stop: it is closed.
+        IconButton(Icon.CLOSE, if (session.error != null) "Close" else "Stop playing", { session.close() }, tint = RefluxColors.contentSecondary)
     }
 
     Box(
@@ -204,20 +233,26 @@ private fun Progress(state: PlayerState, modifier: Modifier = Modifier) {
  * for itself (a native window): a click on the picture goes back to the full player, a resting pointer is shown
  * that it will, and a wait is shown as one. It says nothing to assistive technology: the dock's own picture box, in
  * the window beneath, is the stop that speaks and acts for it.
+ *
+ * @param silent whether this layer clears its own semantics, as it must in a window of its own (the desktop's). Where it
+ * is laid over the dock's picture in the same tree (Android's), it must have no semantics node at all: a node over the
+ * picture covers it, and the framework leaves a covered node out of what a screen reader can reach, which took the way back
+ * to the player out of it (found by `PlayerAccessibilityOnDeviceTest`, M10).
  */
 @Composable
-fun MiniPlayerSurface(app: AppState, session: PlaybackSession, modifier: Modifier = Modifier) {
+fun MiniPlayerSurface(app: AppState, session: PlaybackSession, modifier: Modifier = Modifier, silent: Boolean = true) {
     RefluxTheme(app, modifier) {
         val state by session.state.collectAsState()
         val interaction = remember { MutableInteractionSource() }
         val hovered by interaction.collectIsHoveredAsState()
         val waiting = session.error == null && (state.status == PlayerStatus.LOADING || state.status == PlayerStatus.BUFFERING)
         Box(
-            Modifier.fillMaxSize().clearAndSetSemantics { }.trackPointer(app).hoverable(interaction)
+            Modifier.fillMaxSize().then(if (silent) Modifier.clearAndSetSemantics { } else Modifier).trackPointer(app).hoverable(interaction)
                 .pointerInput(session) { detectTapGestures { session.expand() } },
             contentAlignment = Alignment.Center,
         ) {
-            if (waiting) RefluxLoader(size = 28.dp)
+            // After the same grace as the player's: a seek or a moment's buffering is not a wait to show.
+            if (waiting) RefluxLoader(size = 28.dp, delayMs = ChromeClock.LOADING_GRACE_MS)
             AnimatedVisibility(hovered && !waiting, enter = fadeIn(Motion.focusChange.tween()), exit = fadeOut(Motion.focusChange.tween())) {
                 Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.38f)), contentAlignment = Alignment.Center) {
                     Icon(Icon.FULLSCREEN, size = 26.dp)
