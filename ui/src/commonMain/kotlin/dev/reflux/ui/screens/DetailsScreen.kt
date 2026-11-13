@@ -326,46 +326,53 @@ private fun Header(
                     }
                     // On a narrow screen the lesser actions go to a second line rather than off the edge. On a
                     // television the focused action grows and wears a ring, so its neighbours stand further off.
-                    val gap = if (LocalLayout.current.formFactor == FormFactor.TV) 22.dp else 12.dp
+                    val gap = if (LocalLayout.current.formFactor == FormFactor.TV) 22.dp else 10.dp
                     FlowRow(Modifier.padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(gap), verticalArrangement = Arrangement.spacedBy(10.dp), itemVerticalAlignment = Alignment.CenterVertically) {
                         val playId = details.playId
                         Button(details.playLabel, { playId?.let { app.play(it, scope = libraryScope) } }, Modifier.initialFocus(), icon = Icon.PLAY, style = ButtonStyle.PRIMARY, enabled = playId != null && !card.offline)
-                        if (details.resumes && playId != null) Button("From the start", { app.play(playId, resume = false, scope = libraryScope) })
-                        IconButton(
-                            Icon.CHECK,
-                            if (card.watched) "Mark as unwatched" else "Mark as watched",
-                            { app.setWatched(card.id, !card.watched) },
-                            glass = true,
-                            selected = card.watched,
-                        )
-                        IconButton(
-                            if (card.entry.favorite) Icon.HEART_FILLED else Icon.HEART,
-                            if (card.entry.favorite) "Remove from favorites" else "Add to favorites",
-                            { app.toggleFavorite(card.entry) },
-                            glass = true,
-                        )
-                        // A film, an episode on its own page, or a show (its next few episodes); a season is kept from beside its tabs.
-                        if (offline?.offered == true) {
-                            // The sheet this opens takes focus; when it closes, focus comes back here, not to Play.
-                            val download = remember { FocusRequester() }
-                            val entry = LocalFocusEntry.current
+                        if (details.resumes && playId != null) Button("From the start", { app.play(playId, resume = false, scope = libraryScope) }, style = ButtonStyle.QUIET)
+                        // The compact actions are one group, and wrap together: four actions must never leave one icon alone on a line, and
+                        // the group's own gap is tighter than the line's (a television's stays wide: its focus ring needs the room).
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(if (LocalLayout.current.formFactor == FormFactor.TV) gap else 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
                             IconButton(
-                                if (offline.downloaded) Icon.DOWNLOADED else Icon.DOWNLOAD,
-                                when {
-                                    offline.downloaded -> "Downloaded"
-                                    offline.busy -> "Downloading"
-                                    offline.failed -> "Download didn't finish"
-                                    else -> "Download"
-                                },
-                                // What Reflux would keep, to confirm, and what of it is kept already, with what can be done about it.
-                                {
-                                    entry?.afterPanel = download
-                                    app.reviewDownload(card.id, libraryScope)
-                                },
-                                Modifier.focusRequester(download),
+                                Icon.CHECK,
+                                if (card.watched) "Mark as unwatched" else "Mark as watched",
+                                { app.setWatched(card.id, !card.watched) },
                                 glass = true,
-                                selected = offline.downloaded,
+                                selected = card.watched,
                             )
+                            IconButton(
+                                if (card.entry.favorite) Icon.HEART_FILLED else Icon.HEART,
+                                if (card.entry.favorite) "Remove from favorites" else "Add to favorites",
+                                { app.toggleFavorite(card.entry) },
+                                glass = true,
+                            )
+                            // A film, an episode on its own page, or a show (its next few episodes); a season is kept from beside its tabs.
+                            if (offline?.offered == true) {
+                                // The sheet this opens takes focus; when it closes, focus comes back here, not to Play.
+                                val download = remember { FocusRequester() }
+                                val entry = LocalFocusEntry.current
+                                IconButton(
+                                    if (offline.downloaded) Icon.DOWNLOADED else Icon.DOWNLOAD,
+                                    when {
+                                        offline.downloaded -> "Downloaded"
+                                        offline.busy -> "Downloading"
+                                        offline.failed -> "Download didn't finish"
+                                        else -> "Download"
+                                    },
+                                    // What Reflux would keep, to confirm, and what of it is kept already, with what can be done about it.
+                                    {
+                                        entry?.afterPanel = download
+                                        app.reviewDownload(card.id, libraryScope)
+                                    },
+                                    Modifier.focusRequester(download),
+                                    glass = true,
+                                    selected = offline.downloaded,
+                                )
+                            }
                         }
                         // Telling Reflux what this is, when it guessed wrong; offered more plainly below when it is unsure.
                         // An episode is identified through its show, which its page leads back to.

@@ -142,6 +142,7 @@ class MiniPlayerWindowTest {
         val before = position
         awaitPlayer("playback to go on in the dock") { it.status == PlayerStatus.PLAYING && it.positionMs > before + 1_500 }
         theCornersAreRound(true)
+        noLightLineBesideThePicture()
         // The picture is on screen there, and the page is on screen around it.
         note("region before capture: ${regionNow()}")
         shell.capture("mini-docked")?.let { image ->
@@ -383,6 +384,33 @@ class MiniPlayerWindowTest {
         }
     }
 
+    /**
+     * Nothing light is drawn down the picture's edges. The toolkit works in whole units where the video is whole physical pixels
+     * (321 units of 1.25 around 401 pixels), so its cut-out for the native window is a pixel wider than the video, and what shows
+     * in that pixel is the content pane's colour: it was a bright column along the right edge (237 in all three channels,
+     * found at physical pixels). Read from a native-resolution grab, the two columns beyond the picture and the one before
+     * its first column are dark, whatever the display's scale. Skipped off Windows.
+     */
+    private fun noLightLineBesideThePicture() {
+        if (!System.getProperty("os.name").startsWith("Windows")) return
+        val handle = shell.ui { com.sun.jna.Native.getComponentPointer(surface()) }
+        val box = EdgeRect()
+        User32Probe.INSTANCE.GetWindowRect(handle, box)
+        val scale = shell.ui { shell.window.graphicsConfiguration.defaultTransform.scaleX }
+        val user = java.awt.Rectangle(((box.left - 20) / scale).toInt(), ((box.top - 10) / scale).toInt(), ((box.right - box.left + 40) / scale).toInt() + 2, ((box.bottom - box.top + 20) / scale).toInt() + 2)
+        Thread.sleep(500)
+        val grab = java.awt.Robot().createMultiResolutionScreenCapture(user).resolutionVariants.last() as java.awt.image.BufferedImage
+        val originX = Math.round(user.x * scale).toInt()
+        val originY = Math.round(user.y * scale).toInt()
+        val midY = (box.top + box.bottom) / 2 - originY
+        for (column in listOf(box.left - 1, box.right, box.right + 1)) {
+            val pixel = grab.getRGB(column - originX, midY)
+            val brightest = maxOf((pixel shr 16) and 0xFF, (pixel shr 8) and 0xFF, pixel and 0xFF)
+            assertTrue(brightest < 100, "the column at $column beside the picture is dark, not light: $brightest (${box.left}..${box.right})")
+        }
+        note("edge: the columns beside the picture (${box.left - 1}, ${box.right}, ${box.right + 1}) are dark")
+    }
+
     private data class Region(val kind: Int, val box: Pair<Int, Int>, val client: Pair<Int, Int>, val dpi: Int)
 
     private fun regionNow(): Region = shell.ui {
@@ -481,4 +509,18 @@ private object HitTest {
         val hit = user32.WindowFromPoint((y shl 32) or (x and 0xFFFFFFFFL)) ?: return null
         return user32.GetAncestor(hit, GA_ROOT)
     }
+}
+
+@com.sun.jna.Structure.FieldOrder("left", "top", "right", "bottom")
+class EdgeRect : com.sun.jna.Structure() {
+    @JvmField var left = 0
+    @JvmField var top = 0
+    @JvmField var right = 0
+    @JvmField var bottom = 0
+}
+
+interface User32Probe : com.sun.jna.Library {
+    fun GetWindowRect(window: com.sun.jna.Pointer, rect: EdgeRect): Boolean
+
+    companion object { val INSTANCE: User32Probe by lazy { com.sun.jna.Native.load("user32", User32Probe::class.java) } }
 }
