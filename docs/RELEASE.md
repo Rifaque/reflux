@@ -10,7 +10,7 @@ What stands between the source tree and builds that can be handed to testers and
 - [ ] About page with version and build, Reflux's copyright, third-party licenses, TMDB attribution, privacy and support links (done 2026-10-19 apart from the privacy policy and support links, which wait for the website to have them).
 - [ ] Android: signed release build from CI; R8 on, keep rules validated by a release build on a device; upgrade from the last alpha keeps library, watch state, sources, and downloads.
 - [ ] Fire TV: the developer's devices inspected (model, Fire OS, API level) and the release build run on them.
-- [ ] Desktop: Windows installer and Linux package installing libmpv with provenance; a clean-machine install on each.
+- [ ] Desktop: the Windows ZIP and the Linux tarball, verified (checksum, provenance), installed, updated, and removed on a clean machine each (M11.5, M11.6; the 2026-11-13 decision replaced "installer and package" with the archives, see planning/M11-DISTRIBUTION-PLAN.md).
 - [x] TMDB decided for public builds: on, under the working non-commercial classification, formal clarification pending (DECISIONS.md, 2026-11-08); the credential comes from the release workflow's secret. Reconciled with TMDB's answer when it arrives.
 - [ ] At least one physical phone, one physical Google TV / Android TV device, one Fire TV device, and one physical controller verified (VERIFICATION.md).
 - [ ] CI green on GitHub, including Android.
@@ -144,7 +144,7 @@ When each is done, its row says so, with the date; the Play account type decides
 - **Google Play distribution (Reflux's path):** Play registers Play packages; apps created in Play Console since 2026-03-30 are registered to the account when they are created, and every Play package must be registered. So creating `dev.rsxdevelops.reflux` in Play Console registers it; the Play Console's own identity verification of the account must be complete (the owner checks its status on the Android developer verification page).
 - **Outside Play:** Reflux offers no Android file outside the stores (the website never links one), so no Android Developer Console registration is needed now. If that changes, `dev.rsxdevelops.reflux` is registered there with the upload-key certificate before any APK is offered.
 - **Fire TV** runs Fire OS, which is not Google-certified Android and is outside the scheme; Amazon verifies its own developer accounts.
-- `dev.reflux`, the development identity, is never registered.
+- `dev.reflux`, the development identity, is never registered. **Known inconsistency (2026-11-13):** the build no longer has a development identity: every variant, debug included, is `dev.rsxdevelops.reflux`, so debug builds and rehearsal-signed release builds install under the permanent name (the Phone 2a holds a `DEBUGGABLE` one). The M11 plan (section 4.2) audits those installs, gives the debug build type its own ID suffix, and cleans the devices before the first store-delivered install; until then a debug or dry-run-signed copy of the permanent package must be uninstalled before a store build can be installed over it.
 
 Sources (read 2026-11-08): Google Play Console Help, "Registering Play package names" and "Registering Android package names"; Android Developers, "Register on Android Developer Console"; Play Console Help on testing requirements for new personal accounts; Amazon developer docs, "Developing for Fire TV devices running Fire OS 16", "Device filtering and compatibility", "Step 3: Add Appstore details", and Live App Testing's "Prepare app testers".
 
@@ -263,3 +263,13 @@ Questions for legal advice before builds go to people outside the project. None 
 **M10 qualification still owed to a release (2026-11-13):** (the predictive back gesture on hardware passed on the Phone 2a, Android 16) picture-in-picture on a second Android version, a held seek on a physical remote, the Windows corners at 100, 150, and 200%, and the hosted `check`.
 
 **Classification of what M10 leaves (2026-11-13).** Physically unqualified: the predictive back gesture (a human on a device), a second Android version for the picture-in-picture rule, a held seek on a physical remote, the Windows corners at 100, 150, and 200%, the 2560 x 1440 fullscreen chrome walk, TalkBack in the final pass, and hosted CI. Known intermittent: `AboutUiTest.aKeyboardGoesInAndComesBackToWhereItWas` (since M8). Deferred to V1.x: Linux media keys and corners.
+
+## Distribution (M11)
+
+M11 sets up and rehearses distribution; it is specified in [planning/M11-DISTRIBUTION-PLAN.md](planning/M11-DISTRIBUTION-PLAN.md) and decided in DECISIONS.md, 2026-11-13. What it adds to this document's contracts, once done:
+
+- **One chain**, with no hand-typed seam: commit → version → tag → `release-info` → artifacts → `SHA256SUMS`, `manifest.json`, provenance → GitHub release → the website and the store listings. The published record (`release/published/<version>.json`) is written by a checked step from the verified draft's manifest, not copied by hand.
+- **GitHub is the canonical desktop release surface.** The public release carries the Windows ZIP, the Linux tarball, the libmpv source offer, and the three records. Whether the AAB and APK are also public release assets is an open owner decision (plan, D1); the recommendation is that they are not (store-only Android), because this document says Reflux offers no Android file outside the stores and the draft job currently attaches them.
+- **Windows** stays a ZIP, unsigned by decision; gate G-WIN (plan, M11.5) decides signing or the Microsoft Store before broad 1.0 distribution. **Linux** stays a tarball that needs the distribution's libmpv (`libmpv2`; Ubuntu 22.04 does not ship it).
+- **Store setup:** the Play and Amazon tracks configured and rehearsed with the owner's accounts and devices; the closed-test period and Live App Testing with real testers are M12's.
+- **Owner-pending, by name:** the Play account type and developer-verification status; the Play and Amazon app entries; the upload key; reviewer-access test source; D1, D2, D3, D5; the Windows signing eligibility check.

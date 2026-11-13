@@ -94,6 +94,10 @@ Windows installers need a numeric `MAJOR.MINOR.BUILD` that increases for upgrade
 - Promotion order is always alpha → beta → rc → release. Skipping a stage (alpha straight to rc, beta straight to release) needs a decision recorded in DECISIONS.md.
 - Entering beta requires the beta checklist in RELEASE.md; entering rc requires the beta exit criteria in ROADMAP.md (M12); releasing requires the release checklist in RELEASE.md and the V1 acceptance criteria.
 
+## The distribution chain (M11)
+
+A version is one chain, never retyped: `reflux.version` → the `release: <version>` commit → the annotated tag `v<version>` → `release-info.json` → the artifacts → `SHA256SUMS`, `manifest.json`, `provenance.intoto.json` → the GitHub release → `release/published/<version>.json` and the website → the store listings. No link may carry an independently typed version, `versionCode`, or checksum; M11 turns the two hand-copied links (the published record, the store record) into checked steps (planning/M11-DISTRIBUTION-PLAN.md, M11.1). The package identity is part of the chain: the permanent Android package is `dev.rsxdevelops.reflux`, and until M11.2 step 0 gives debug builds their own ID suffix, a debug or dry-run-signed install of it must be uninstalled before a store-delivered build is installed.
+
 ## Rules for AI agents
 
 1. Read this document before changing `reflux.version`, `CHANGELOG.md` headings, Git tags, store listings, package metadata, or anything that computes a version.

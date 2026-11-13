@@ -61,8 +61,8 @@ Store testing requirements change; check the current Google Play Console and Ama
 | --- | --- | --- | --- |
 | Android phone, tablet, Android TV / Google TV | Google Play | One app bundle | TV quality review applies to the television listing |
 | Fire TV (Fire OS) | Amazon Appstore | APK built from the same source and `versionCode` | Separate listing, review, and device targeting. Devices on Vega OS cannot run it and must not be targeted |
-| Windows | GitHub release, linked from the website; a store later if decided | Zip with the Java runtime and libmpv | **Unsigned by decision** (DECISIONS.md, 2026-11-08): SHA-256 and provenance; the download page says what Windows will show. libmpv's source published beside each release before the first public download (M7) |
-| Linux | GitHub release, linked from the website; a distribution package or Flatpak later if decided | tar.gz with the Java runtime; the distribution's libmpv | SHA-256 and provenance (RELEASE.md) |
+| Windows | GitHub release, linked from the website; signing or the Microsoft Store decided at gate G-WIN before broad 1.0 distribution | Zip with the Java runtime and libmpv | **Unsigned by decision** (DECISIONS.md, 2026-11-08): SHA-256 and provenance; the download page says what Windows will show. The M12 beta uses the direct ZIP (DECISIONS.md, 2026-11-13). libmpv's source published beside each release before the first public download (M7) |
+| Linux | GitHub release, linked from the website; distribution packages are V1.x unless the beta shows the tarball cannot serve its users | tar.gz with the Java runtime; the distribution's libmpv (`libmpv2`; Ubuntu 22.04 does not ship it) | SHA-256 and provenance (RELEASE.md) |
 
 ### Fire TV / Amazon Appstore plan
 
@@ -76,3 +76,7 @@ Fire TV is a V1 target in its own right (DECISIONS.md, 2026-10-17). It runs the 
 6. **Beta through Amazon's testing path** (M12) with Fire TV testers.
 
 Vega OS is tracked separately as a future compatibility track (ROADMAP.md, Platforms).
+
+## Distribution (M11)
+
+M11 prepares every channel above and rehearses them end to end without a public release; the beta that uses them is M12 (planning/M11-DISTRIBUTION-PLAN.md). What changes in this plan: the website is the public entry point for releases and reads one release record (M11.7); the demo video's shot list and captures belong to M11.7 with production waiting for the owner's tool (W2); beta *operations* (the tester routes, templates, opt-in links) are set up in M11 and run in M12; the Google Play closed test (twelve testers, fourteen days, if the account is personal) and Amazon Live App Testing with Appstore Beta Hub are M12's campaign, not M11's rehearsal.
