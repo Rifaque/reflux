@@ -155,6 +155,11 @@ internal fun runReflux(
                 platform.window = window
                 window.minimumSize = Dimension(900, 600)
                 window.background = java.awt.Color(Palette.background.value.toInt(), true)
+                // What shows where the toolkit cuts the native video window out of the page: the video is 401 physical pixels
+                // wide where the toolkit works in whole units of 1.25, so its cut-out is a pixel wider than the video, and the
+                // content pane's panel colour (light grey) was a bright column down the picture's edge (measured at physical
+                // pixels). In the dock it is the dock's glass; across the whole window there is no room for it to show.
+                window.contentPane.background = DockGlass
                 darkTitleBar(window)
                 // One input path for the whole app: keys reach Reflux whichever component has focus,
                 // including the native video surface.

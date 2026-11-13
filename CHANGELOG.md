@@ -11,6 +11,7 @@ What changes for people using Reflux, version by version. The rules for versions
 - The mini-player's picture has rounded corners that follow the dock's, on Android and on Windows, not only in the layout around it; the player's menu options share the corner of other rows.
 - On a large desktop window or fullscreen (and as you drag a window's edge, live) the player's controls, times, title, and timeline are larger and the timeline is easier to see and to grab (a thumb at rest, a stronger track); a small window keeps its sizes, and phones, tablets, and televisions are unchanged.
 - On the desktop, Escape in the player puts it in the mini-player instead of ending playback; Stop is the mini-player's button.
+- On a work's page, the watched and favorite buttons (and download) are one group that moves together, so a lone heart is never left on a second line; on a phone with a half-watched film, Resume, From the start (now a quiet text button), watched, and favorite share one line.
 - Reflux remembers the subtitles you chose for a film or a show, separately for each profile: the next episode, or another copy of the film, starts with the same language.
 - On Android, the mini-player can be reached by a screen reader: its title and status are the way back to the player.
 - On Android, a film's own chapters (from Matroska and MP4 files) are in the player's Chapters list and marked on the timeline.
