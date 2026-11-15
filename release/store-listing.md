@@ -71,14 +71,14 @@ Dashes are plain text on purpose (Amazon rejects markup). Two things differ by s
 | TV banner 1280 × 720 | `play-tv-banner-1280x720.png` |
 | Phone screenshots (2:1) | `screenshots/phone-home-1080x2160.jpg` |
 | Tablet screenshots | `screenshots/tablet-home-2328x1554.jpg`, `tablet-details-2328x1554.jpg` |
-| TV screenshots 1920 × 1080 | `screenshots/tv-home-1920x1080.jpg`, `tv-movies-1920x1080.jpg` |
+| TV screenshots 1920 × 1080 | `screenshots/tv-home-1920x1080.jpg`, `tv-movies-1920x1080.jpg`, `tv-details-1920x1080.jpg` |
 
 | Amazon Appstore (Fire TV) | File |
 | --- | --- |
 | Small icon 114 × 114, large icon 512 × 512 | `amazon-icon-114.png`, `amazon-icon-512.png` |
 | Fire TV app icon 1280 × 720 | `amazon-firetv-icon-1280x720.png` |
 | Background 1920 × 1080 (required by the console) | `amazon-firetv-background-1920x1080.png` |
-| Screenshots 1920 × 1080 (3 to 10) | `screenshots/tv-*.jpg`: **two exist, Amazon needs at least three**; they were generated 2026-11-08, before M9 and M10 changed navigation and the player, so regenerate all from the final interface (M11.7) before upload |
+| Screenshots 1920 × 1080 (3 to 10) | `screenshots/tv-*.jpg`: three (home, movies, a film's details), regenerated 2026-11-15 from the final interface (M10), RGB JPG |
 
 Amazon's asset rules (read 2026-11-15, developer.amazon.com, "Step 3: Add Appstore Details"): small and large icons PNG; Fire TV app icon 1280 × 720 PNG **with no transparency**, subject inside the 882 × 448 safe area; Fire TV background 1920 × 1080 (required by the console), JPG or 24-bit PNG with no transparency, subject inside 1214 × 830; screenshots 3 to 10, 1920 × 1080 landscape, JPG or 24-bit PNG with no transparency, not distorted or pixelated. The Fire TV files in `design/brand/store` are fully opaque but saved as RGBA PNG; export them as RGB if the console objects.
 
