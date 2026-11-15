@@ -4,6 +4,8 @@ Owner steps in console order. Every step is **setup and rehearsal (M11)** unless
 
 Fire TV runs Fire OS. Vega OS devices run no Android apps and are never targeted. Fire TV is never "Android TV" in any listing text.
 
+**State on 2026-11-15** (docs/VERIFICATION.md, "M11 console session"): steps 1 and 2 are done (account review complete; the app entry exists, draft, its list shows "Fire OS / Vega OS" until an APK sets the devices); step 5's text, step 6's Fire TV images and icons, the privacy policy URL, and step 8's content rating (complete) are saved; step 10(a) is done (the Stick's sideloaded copies are removed). Open: steps 3, 4, 9, 10(b to d) (they need the release workflow's APK), step 5's category and support contact, the target audience, step 7 (D5).
+
 ## Order of work
 
 | # | Console | Action | Why | Needs first | Expected result |

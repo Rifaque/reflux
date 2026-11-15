@@ -4,6 +4,8 @@ Owner steps to get Reflux onto Google Play, in order. Each step says where, what
 
 Identity: the package is `dev.rsxdevelops.reflux`, permanent once created (it can never be renamed or reused). Debug builds are `dev.rsxdevelops.reflux.debug` and are never uploaded or registered. Android files are **not** GitHub release assets (DECISIONS D1): the signed AAB reaches Play only from the release workflow's artifacts.
 
+**State on 2026-11-15** (docs/VERIFICATION.md, "M11 console session"): steps 1, 2, 3, and 5 are done (personal account; the app exists; the package is registered; Play App Signing is on, no upload key yet); step 7 is saved as a draft except a second phone screenshot; step 8's privacy policy, ads, advertising ID, government, financial, and health forms are saved; step 5a has Android TV added, its review-policy agreement still yours. Open: steps 4, 6, 8's remaining forms, 9. Step 10 is done for the Fire TV Stick and the Phone 2a. **Never upload a dry-run or debug AAB: the first upload fixes the upload key.**
+
 ## 1. Account type and developer verification
 
 - **Where:** Play Console → Settings → Developer account (account details), and the Android developer verification page (Play Console → the page named "Android developer verification").
