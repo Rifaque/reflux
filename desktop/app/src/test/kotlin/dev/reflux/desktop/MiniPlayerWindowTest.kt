@@ -144,9 +144,10 @@ class MiniPlayerWindowTest {
         theCornersAreRound(true)
         noLightLineBesideThePicture()
         // The picture is on screen there, and the page is on screen around it.
-        note("region before capture: ${regionNow()}")
+        // The window region is a Windows (User32/Gdi32) diagnostic; elsewhere there is none to read.
+        if (isWindows) note("region before capture: ${regionNow()}")
         shell.capture("mini-docked")?.let { image ->
-            note("region after capture: ${regionNow()}")
+            if (isWindows) note("region after capture: ${regionNow()}")
             val (inDock, onPage) = shell.ui {
                 val scale = scale()
                 val content = shell.window.contentPane
