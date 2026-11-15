@@ -24,6 +24,7 @@ export function Privacy() {
         <li>Your library: the folders, servers, and shares you add, the titles found in them, their descriptions and pictures, what you have watched and where you stopped, your favorites and choices.</li>
         <li>How to reach your servers and shares. On Android it is encrypted with a key held in the system's keystore; on Windows it is kept in Windows Credential Manager; on Linux in the system's secret store where one runs, otherwise in Reflux's own files. Passwords for Jellyfin and Plex servers are used to sign in and are not kept; the session they open is.</li>
         <li>Copies you choose to keep for watching offline, in Reflux's own storage.</li>
+        <li>Profiles: the people sharing a device each get their own watch state and choices. A profile's optional PIN is never stored: only a check value made with a key that the system's secure store holds (Credential Manager, the Secret Service, or the Android keystore). It is a lock between people sharing a device, not encryption of the library, and a forgotten PIN is not recovered. On Linux without a Secret Service the key is in Reflux's own files and the PIN locks the interface only.</li>
         <li>A diagnostics log of problems, with credentials and tokens removed. It never leaves your device unless you send it yourself.</li>
       </ul>
       <p>On Android, Reflux's data is excluded from device backups. Uninstalling Reflux removes it. On Windows and Linux it stays in Reflux's data folder (see <Link to="/download">Download</Link>) until you delete it.</p>
@@ -37,7 +38,7 @@ export function Privacy() {
       </ul>
 
       <h2>On Android TV and Google TV</h2>
-      <p>To show "continue watching" on the home screen, Reflux writes the titles you are watching, with their pictures, into the system's TV provider, which the launcher reads. On Fire TV it does not.</p>
+      <p>To show "continue watching" on the home screen, Reflux writes the titles you are watching, with their pictures, into the system's TV provider, which the launcher reads, each naming the profile it belongs to. A profile with a PIN writes nothing there, because the launcher is outside the PIN's lock. On Fire TV it does not.</p>
 
       <h2>This website</h2>
       <p>This website sets no cookies, runs no analytics, and loads nothing from anyone else: its fonts and images are its own. It is hosted by Vercel, which handles the requests your browser makes to it (including your IP address) to serve its pages.</p>
@@ -76,6 +77,14 @@ export function Notices() {
           ))}
         </tbody>
       </table>
+      <h2 id="libmpv-source">Source for the playback engine on Windows</h2>
+      <p>
+        Reflux for Windows includes libmpv, which is licensed under the LGPL. Its complete corresponding source, as built into the release, is offered
+        {release.latest && release.latest.artifacts.find((a) => a.kind === 'source' && a.url)
+          ? <> as <Out href={release.latest.artifacts.find((a) => a.kind === 'source').url}>{release.latest.artifacts.find((a) => a.kind === 'source').name}</Out>, beside the Windows download on Reflux’s GitHub release.</>
+          : <> beside the Windows download on Reflux’s GitHub release, and will be linked here when a release is published.</>}
+        {' '}Reflux for Linux uses the libmpv your distribution provides.
+      </p>
       <h2>This website</h2>
       <p>Its type is Manrope, by The Manrope Project Authors, under the SIL Open Font License 1.1, served from this site; Reflux’s wordmark is drawn from it. The website is built with the open-source libraries below, which your browser receives as part of its pages. Their license texts: <a href="/third-party-licenses.txt">third-party-licenses.txt</a>.</p>
       <table>

@@ -16,7 +16,8 @@ import subprocess
 import sys
 
 ON_DEVICE = "/data/local/tmp/reflux-live.env"
-RUNNER = "dev.rsxdevelops.reflux.test/androidx.test.runner.AndroidJUnitRunner"
+# The debug build's test APK (android/app/build.gradle.kts: applicationIdSuffix ".debug"); a scratch build overrides it.
+RUNNER = os.environ.get("REFLUX_TEST_RUNNER", "dev.rsxdevelops.reflux.debug.test/androidx.test.runner.AndroidJUnitRunner")
 DEFAULT_CLASSES = "dev.reflux.android.JellyfinExecutionOnDeviceTest,dev.reflux.android.CapabilityReportOnDeviceTest"
 
 

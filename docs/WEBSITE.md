@@ -28,7 +28,14 @@ The pictures of Reflux on the site are the real experience layer rendered offscr
 | `legal/components.txt`, `LICENSE`, the website's lockfile | Third-party notices, Terms |
 | `design/brand/reflux-mark.svg`, `reflux-lockup.svg` | The mark and lockup, inline |
 
-No version, address, or checksum is typed into a page. The build fails rather than publish a manifest without a commit or a checksum, or a store record for another package. **Download routing:** Android and Google TV → Google Play; Fire TV → Amazon Appstore; Windows and Linux → the official GitHub release. Android packages are never offered from the site (`check-dist.mjs` fails on an `.apk` or `.aab` link). With nothing published, each section says so.
+No version, address, or checksum is typed into a page; the site is not a second registry. The rules live in `scripts/release-lib.mjs` (pure, tested by `npm test`, which runs `node --test` over `scripts/*.test.mjs`) and the build fails on any violation:
+
+- **`release/stores.json`**, one record per store (`googlePlay`, `amazonAppstore`): `package` equals `reflux.android.applicationId`; `state` is `not listed`, `testing`, or `available`; `url` is `null` exactly when `not listed`, otherwise an https address on the store's domain (`play.google.com`, `amazon.com`; a Play address names the package); `testing` is `null` or `{ "kind": "closed-test-opt-in" | "live-app-testing", "url"?: https on the store's domain, "instructions"?: "/testing" }`, the tester route, shown on the Testing page and never as a download. Only an `available` store is linked from the availability table and the Download page.
+- **`release/published/<version>.json`**, a byte-identical copy of the build's `manifest.json`, written by `release.py publish-record`: the file is named for its `version`; `tag` is `v<version>`; `repository` is the project's; `commit` is a full SHA; every artifact is named `reflux-<version>-...` and has a size and a SHA-256; the version is not newer than `reflux.version`; `CHANGELOG.md` has a `## <version>` section (the release notes); the newest build is the highest version. Each artifact's `distribution` is `github-release` (zip, tar.gz, libmpv source: given a download address) or `store` (apk, aab: given none); a missing field means `store` for Android and `github-release` otherwise, and an APK or AAB marked `github-release` fails the build. This is the stale-record check: a record that disagrees with itself, its tag, or the repository stops the build rather than reach a page. `check-dist.mjs` then reads `download.html` against the data: the newest record's version is presented, every GitHub archive has its link and SHA-256, no store package is linked, `SHA256SUMS` is linked, a store is linked only when `available`, and with nothing published no release download link exists.
+
+**Download routing:** Android and Google TV → Google Play; Fire TV → Amazon Appstore; Windows and Linux → the official GitHub release (the zip or tar.gz, the libmpv source beside the Windows zip, `SHA256SUMS`, `manifest.json`, `provenance.intoto.json`). Android packages are never offered from the site. The Download page opens with one availability table (platform, channel, state, link) built from both sources; a desktop platform is `available` only when a record has its archive, otherwise it says "No public build yet". With nothing published, each section says so.
+
+**Tests of the data step** set `RELEASE_PUBLISHED_DIR` (another folder of records) and `RELEASE_DATA_OUT` (another output file); they are for the tests only and are never set in a deployed build (the project has no environment variables).
 
 ## Search (M8)
 
@@ -48,7 +55,7 @@ The site is built to be read correctly by search engines and to be useful to who
 
 ## Checks
 
-`npm audit --audit-level=moderate`, `npm run build`, `node scripts/check-dist.mjs`, `node scripts/check-links.mjs`, `node scripts/check-layout.mjs --screenshots` (CI job "Website"):
+`npm audit --audit-level=moderate`, `npm test`, `npm run build`, `node scripts/check-dist.mjs`, `node scripts/check-links.mjs`, `node scripts/check-layout.mjs --screenshots` (CI job "Website"):
 
 - `check-dist`: every route prerendered with its title in the site's form and no em dash, a description of a readable length, its canonical address and `og:url`, structured data that parses and claims no rating or review, one heading 1 and no skipped heading level, alt text on every image, its place in the sitemap, and its content in the HTML; the not-found page `noindex`; `robots.txt` naming the sitemap; a `404.html`; no source maps; no development or private address (localhost, LAN ranges, `*.vercel.app`), plain-HTTP address, credential-shaped string, build secret name, or environment-variable read in any shipped file; no inline script or `style` attribute the CSP would refuse.
 - `check-links`: every internal link and `#anchor` reaches a page or a file; every external link is HTTPS and answers.
