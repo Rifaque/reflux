@@ -30,7 +30,7 @@ The single source of text and artwork for Reflux's Google Play and Amazon Appsto
 
 > Reflux plays the films and shows you already have, from folders, Jellyfin, Plex, and network shares, in one library. It picks the copy your device plays best. No account, no ads, no tracking.
 
-(193 characters.) Continue it, in the same field, with the full description below (about 1,300 characters in all). Amazon's long description (4,000 characters, plain text, no HTML; shown on the website and Fire tablets, not on Fire TV) takes the full description unchanged.
+(193 characters.) **The console's limit is 1,200 characters** (read in the console on 2026-11-15, not the 2,000 bytes above), so the opener plus the full description (about 1,480) does not fit: the short description is the opener alone, which is all Fire TV shows. Amazon's long description (4,000 characters, plain text, no HTML; shown on the website and Fire tablets, not on Fire TV) takes the full description unchanged.
 
 **Amazon product feature bullets (3 to 5, one per line):**
 
@@ -40,7 +40,7 @@ The single source of text and artwork for Reflux's Google Play and Amazon Appsto
 > Keep films and episodes for offline
 > Works with the Fire TV remote and game controllers; no account, no ads, no tracking
 
-**Amazon keywords (optional, comma-separated):** media player, video player, Jellyfin, Plex, library, local media, offline, subtitles, home media, controller
+**Amazon keywords (optional, comma-separated):** media player, video player, Jellyfin, Plex, library, local media, offline, subtitles, home media, controller (the console splits on spaces as well as commas, so it stores these as single words)
 
 ## Full description (both stores; plain text)
 

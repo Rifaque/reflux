@@ -273,6 +273,8 @@ The identity audit (4.2, step 1); the verified artifact set and its attestation 
 
 ## 8. Owner actions and external dependencies
 
+**State on 2026-11-15 (console session; VERIFICATION.md, "M11 console session", has the full table):** the Play account is **personal** (12 testers / 14 days applies); the Play app `dev.rsxdevelops.reflux` exists, is **registered** for developer verification, and has **Play App Signing on** with no upload key yet (no bundle uploaded); the Amazon app entry exists (draft, no APK); **immutable releases are on**; the old installs of the permanent ID on the Fire TV Stick and the Phone 2a are **removed**; D1, D2, D3 are decided. Still the owner's: the upload key and its four secrets and variable (none exist), the support e-mail, the reviewer test source, the remaining console forms, D5, the Windows eligibility check.
+
 | Action | Needed for | Clock / note |
 | --- | --- | --- |
 | Read and record the Play account type and its developer-verification status | M11.2; whether 12 testers / 14 days applies | First; an organization account is exempt from the closed-test rule (a D-U-N-S number can take time) |
