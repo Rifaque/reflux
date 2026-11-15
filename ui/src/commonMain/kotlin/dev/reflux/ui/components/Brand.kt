@@ -160,5 +160,17 @@ fun RefluxLockup(modifier: Modifier = Modifier, height: Dp = 22.dp, color: Color
     }
 }
 
+/**
+ * Where the mark ends inside the lockup, in the lockup's own units: the right edge of its outlines (the loop, and the
+ * tail that reaches under it), which sit apart from the wordmark's. Not the mark's 100-unit square: in the lockup the
+ * mark is drawn at another scale, and clipping it to 100 cut the loop off (seen on the television's closed rail).
+ */
+internal val LockupMarkRight: Float by lazy {
+    val parts = BrandMark.LOCKUP.split('Z').map { it.trim() }.filter { it.isNotEmpty() }
+        .map { PathParser().parsePathString("$it Z").toPath().getBounds() }
+    val loop = parts.first()
+    parts.filter { it.left < loop.right }.maxOf { it.right }
+}
+
 /** How wide the mark is within a lockup of [height]: what is left of it when only the mark has room. */
-fun lockupMarkWidth(height: Dp): Dp = height * (BrandMark.VIEWPORT / BrandMark.LOCKUP_HEIGHT)
+fun lockupMarkWidth(height: Dp): Dp = height * ((LockupMarkRight + 1f) / BrandMark.LOCKUP_HEIGHT)

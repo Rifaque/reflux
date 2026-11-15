@@ -4,6 +4,7 @@ What changes for people using Reflux, version by version. The rules for versions
 
 ## Unreleased
 
+- On a TV, the Reflux mark at the top of the closed side menu is shown whole; its loop was cut off on the right.
 - Dragging the player's timeline lands where you let go: the times on either side of it no longer change the bar's width as they count, so the thumb stays under the pointer or finger.
 - Development builds of the Android app install as a separate app, "Reflux (debug)", beside the one from a store.
 - The player is lighter: the controls are a title and the way out, a play button and ten-second skips that are plain symbols, and one row with the timeline and the actions, and they go away while you watch. While a film is opening or waiting for data you see only Reflux's loader and the way out, never a pause button beside it.
