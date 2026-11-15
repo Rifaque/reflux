@@ -134,6 +134,9 @@ class WebsiteShowcaseTest {
             app.navigator.show(Destination.Movies)
             awaitText("Big Buck Bunny")
             shoot("movies-tv")
+            app.navigator.open(Destination.Details(app.library.movies().first { it.item.title == "Sintel" }.item.id))
+            awaitText("A lonely young woman searches the world for the baby dragon she raised, after it is taken from her.")
+            shoot("details-tv")
         }
         // A phone held upright, and a tablet on its side.
         screen(world(), platform(), width = 412, height = 915, density = 2.625f) {
