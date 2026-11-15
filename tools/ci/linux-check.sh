@@ -49,7 +49,8 @@ fi
 status=0
 # As in CI: everything without a display first, then the window tests on a virtual one.
 if [ "${1:-}" != "window" ]; then
-    ./gradlew check :tools:cli:installDist --continue --stacktrace || status=$?
+    # The same sans-serif as the hosted job (tools/ci/fonts.conf): the text-measuring layout tests assume it.
+    FONTCONFIG_FILE=/work/tools/ci/fonts.conf ./gradlew check :tools:cli:installDist --continue --stacktrace || status=$?
     results check
 fi
 for round in $(seq 1 "${2:-1}"); do
