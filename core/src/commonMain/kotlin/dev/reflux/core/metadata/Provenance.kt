@@ -59,7 +59,7 @@ enum class Authority {
     FALLBACK,
 }
 
-/** Where one value came from: its [authority] and the witness that gave it (`source:<id>`, `tmdb`, `file name`). */
+/** Where one value came from: its [authority] and the witness that gave it (`source:<id>`, `trakt`, `file name`). */
 data class Provenance(val authority: Authority, val origin: String) {
     override fun toString(): String = "${authority.name.lowercase()} ($origin)"
 }
@@ -136,7 +136,7 @@ enum class MatchEvidence {
     /** Chosen by the user in the Identify flow. */
     USER,
 
-    /** The provider's own ID in a file or folder name (`{tmdb-603}`), or reported by a server. */
+    /** The provider's own ID in a file or folder name (`{trakt-1430}`), or reported by a server. */
     PROVIDER_ID,
 
     /** Another catalog's ID (IMDb, TVDB) resolved through the provider. */

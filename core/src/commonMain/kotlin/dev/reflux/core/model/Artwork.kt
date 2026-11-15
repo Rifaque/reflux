@@ -15,6 +15,6 @@ data class Artwork(
     val itemId: MediaId,
     val kind: ArtworkKind,
     val locator: ArtworkLocator,
-    /** Provider or rule that produced the artwork, e.g. `local` or `tmdb`. */
+    /** Provider or rule that produced the artwork, e.g. `local` or `trakt`. */
     val origin: String,
 )

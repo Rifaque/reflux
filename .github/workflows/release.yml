@@ -77,11 +77,17 @@ jobs:
           distribution: temurin
           java-version: 21
       - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
+      # A release carries Trakt's production Client ID (DECISIONS.md, "Trakt is the metadata provider"): a repository
+      # variable, not a secret (it identifies the application), never printed. A rehearsal builds without one.
+      - name: The metadata provider's Client ID is set (release)
+        if: inputs.tag != ''
+        env:
+          REFLUX_TRAKT_CLIENT_ID: ${{ vars.REFLUX_TRAKT_CLIENT_ID }}
+        run: |
+          [ -n "${REFLUX_TRAKT_CLIENT_ID// /}" ] || { echo "::error::a release needs the repository variable REFLUX_TRAKT_CLIENT_ID (Trakt's production Client ID; docs/RELEASE.md, \"Metadata provider\")"; exit 1; }
       - run: ./gradlew --no-configuration-cache releaseInfo :desktop:app:packageDesktopArchive -Preflux.android=false
         env:
-          # The metadata provider's application credential (DECISIONS.md, "TMDB: working non-commercial classification"),
-          # for a real release only.
-          REFLUX_TMDB_TOKEN: ${{ inputs.tag != '' && secrets.REFLUX_TMDB_TOKEN || '' }}
+          REFLUX_TRAKT_CLIENT_ID: ${{ inputs.tag != '' && vars.REFLUX_TRAKT_CLIENT_ID || '' }}
       - run: |
           mkdir out
           for f in desktop/app/build/release/*.tar.gz; do cp "$f" out/; cp build/release/release-info.json "out/$(basename "$f").release-info.json"; done
@@ -158,7 +164,8 @@ jobs:
         if: inputs.tag != ''
         shell: bash
         env:
-          REFLUX_TMDB_TOKEN: ${{ secrets.REFLUX_TMDB_TOKEN }}
+          # Trakt's production Client ID (a variable, not a secret); release.py refuses a release without it.
+          REFLUX_TRAKT_CLIENT_ID: ${{ vars.REFLUX_TRAKT_CLIENT_ID }}
           # The upload key's certificate SHA-256 (not a secret): the tool refuses an APK signed by any other key.
           REFLUX_EXPECTED_SIGNER_SHA256: ${{ vars.REFLUX_UPLOAD_CERT_SHA256 }}
           TAG: ${{ inputs.tag }}

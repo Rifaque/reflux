@@ -17,7 +17,7 @@ export function Privacy() {
       <h1>Privacy</h1>
       <Review />
       <h2>In short</h2>
-      <p>Reflux has no account, no analytics, no advertising, and no tracking. It sends nothing to RSX Develops, its maker. What it knows about your media stays on your device, apart from what it must send to the servers and services you choose to use, listed below.</p>
+      <p>Reflux has no account, no analytics, no advertising, and no tracking. It sends nothing to RSX Develops, its maker, which runs no server for it. What it knows about your media stays on your device, apart from what is listed below: the requests to the servers and shares you add, and, while "Online metadata & artwork" is on (as it is unless you turn it off), the titles of your films and shows, looked up on Trakt.</p>
 
       <h2>What Reflux keeps on your device</h2>
       <ul>
@@ -33,7 +33,7 @@ export function Privacy() {
       <ul>
         <li><strong>Your own servers and shares</strong> (Jellyfin, Plex, SMB, WebDAV): the requests needed to list and play your media and to keep what you watched in step with them. They see what you play from them, as with any client.</li>
         <li><strong>Plex</strong>: when you sign in with a Plex account, your sign-in goes to plex.tv, Plex's service, to find your servers.</li>
-        <li><strong>TMDB</strong> (themoviedb.org): to recognise a film or show and fetch its description and artwork, Reflux sends TMDB the title and year it read from the file's name (or an ID it already has) and your language, with Reflux's own application key; TMDB sees your IP address, as any website does. Never the file's location, your servers, or anything about you. Turn it off in Settings, "Online metadata & artwork", and Reflux uses only your servers and files.</li>
+        <li><strong>Trakt</strong> (trakt.tv), a third-party metadata service, not part of Reflux: to recognise a film or show and fetch its description and artwork, your device asks Trakt directly, over an encrypted connection. It sends the title Reflux read from the file's name or your server (or a catalog ID it already has, such as an IMDb or TMDB number), your language when it is not English, and Reflux's application identifier (its Trakt Client ID, which identifies the app, not you); Trakt sees your IP address, as any website does. Reflux then downloads the pictures Trakt names and keeps them on your device. Trakt handles these requests under its own <Out href="https://trakt.tv/privacy">privacy policy</Out>. It never sends the file's location, your servers' addresses, your sign-ins or tokens, your profiles or PINs, or anything else about your library or you, and it uses no Trakt account. Turn it off in Settings, "Online metadata & artwork": Reflux then sends Trakt nothing and fetches no new pictures from it, and uses your servers, your files, and what it already has.</li>
         <li>Nothing else. Reflux contains no analytics, crash reporting, or advertising service.</li>
       </ul>
 
@@ -44,7 +44,7 @@ export function Privacy() {
       <p>This website sets no cookies, runs no analytics, and loads nothing from anyone else: its fonts and images are its own. It is hosted by Vercel, which handles the requests your browser makes to it (including your IP address) to serve its pages.</p>
 
       <h2>Children</h2>
-      <p>Reflux plays media you already have; it does not collect information from anyone, children included.</p>
+      <p>Reflux plays media you already have. RSX Develops collects no information from anyone, children included; the lookups on Trakt described above carry the titles of films and shows, not information about the person watching.</p>
 
       <h2>Changes and contact</h2>
       <p>Changes to this page are listed in Reflux's <Link to="/releases">release notes</Link>. Questions: <Link to="/support">Support</Link>.</p>
@@ -91,9 +91,8 @@ export function Notices() {
         <thead><tr><th scope="col">Library</th><th scope="col">Version</th><th scope="col">License</th></tr></thead>
         <tbody>{release.site.map((p) => <tr key={p.name}><td>{p.name}</td><td>{p.version}</td><td>{p.license}</td></tr>)}</tbody>
       </table>
-      <h2 id="tmdb">TMDB</h2>
-      <img className="tmdb-logo" src="/tmdb-logo.svg" width="137" height="18" alt="TMDB" />
-      <p>Reflux identifies films and shows and fetches their descriptions and artwork with TMDB, The Movie Database (<Out href="https://www.themoviedb.org">themoviedb.org</Out>). This product uses the TMDB API but is not endorsed or certified by TMDB.</p>
+      <h2 id="trakt">Trakt</h2>
+      <p>Reflux identifies films and shows and fetches their descriptions and artwork with <Out href="https://trakt.tv">Trakt</Out>. Reflux is an independent client: Trakt does not sponsor, review, or stand behind it. Reflux uses Trakt but is not endorsed or certified by Trakt.</p>
       <h2 id="artwork">Artwork on this site</h2>
       <p>The films in the pictures of Reflux on this site are the Blender Foundation's open films; their posters and stills are used under their Creative Commons licenses, unchanged apart from being shown inside Reflux. The titles' descriptions are Reflux's own words.</p>
       <table>

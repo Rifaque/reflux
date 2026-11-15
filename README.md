@@ -88,11 +88,11 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#implementation) for the module l
 ./gradlew :desktop:app:run
 ```
 
-Choose a media folder on first run, or connect a Jellyfin or Plex server or a network share from the same screen; everything else is automatic. Mouse, keyboard, and game controllers (Xbox, PlayStation, Switch Pro, and generic pads) all work without setup; picking up a controller reshapes the interface for it. Playback needs libmpv (below); without it the library is still fully browsable. Titles, artwork, and details come from TMDB when `REFLUX_TMDB_TOKEN` is set; without it Reflux shows what it identified from file names. Library state lives in the platform data directory (override with `REFLUX_HOME`), never in your media folders; problems are written to `reflux.log` there.
+Choose a media folder on first run, or connect a Jellyfin or Plex server or a network share from the same screen; everything else is automatic. Mouse, keyboard, and game controllers (Xbox, PlayStation, Switch Pro, and generic pads) all work without setup; picking up a controller reshapes the interface for it. Playback needs libmpv (below); without it the library is still fully browsable. Titles, artwork, and details come from Trakt when a Trakt Client ID is given (`REFLUX_TRAKT_CLIENT_ID`, or `-Preflux.trakt.clientId=<id>` when building); without one Reflux shows what it identified from file names and what your servers say. Library state lives in the platform data directory (override with `REFLUX_HOME`), never in your media folders; problems are written to `reflux.log` there.
 
 ### Developer CLI
 
-`tools/cli` runs the same engine from a terminal, for diagnosing identification, metadata, and playback on real libraries: it scans folders (read-only), probes files with libmpv when installed, fetches metadata when `REFLUX_TMDB_TOKEN` is set, and plays in an mpv window.
+`tools/cli` runs the same engine from a terminal, for diagnosing identification, metadata, and playback on real libraries: it scans folders (read-only), probes files with libmpv when installed, fetches metadata when `REFLUX_TRAKT_CLIENT_ID` is set, and plays in an mpv window.
 
 ```sh
 ./gradlew :tools:cli:installDist

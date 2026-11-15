@@ -62,6 +62,42 @@ class MetadataTest {
     }
 
     @Test
+    fun aChangeOfProviderFindsTheSameWorkByItsIdsAndKeepsWhatWasKnownUntilThen() = runTest {
+        // Matched with the provider Reflux used before, which gave the work's catalog IDs.
+        val oldRef = provider.movie("603", "The Matrix", 1999, artwork = arrayOf(RemoteArtwork(ArtworkKind.POSTER, "https://old.example/p.jpg")))
+        provider.works[oldRef] = provider.works[oldRef]!!.copy(externalIds = mapOf("tmdb" to "603", "imdb" to "tt0133093"))
+        file("Movies/The.Matrix.1999.mkv")
+        library.scan(source)
+        assertEquals(1, library.refreshMetadata(provider, "en-US").matched)
+
+        val next = FakeMetadataProvider("trakt")
+        val ref = next.movie("481", "The Matrix (new provider)", 1999, artwork = arrayOf(RemoteArtwork(ArtworkKind.POSTER, "https://new.example/p.webp")))
+        next.externalIds["tmdb" to "603"] = ref
+
+        // A work is asked about at most once a week, so the change reaches it within a week of its last lookup.
+        clock += 8 * 24 * 3_600_000L
+        // Out of reach: nothing known is lost.
+        next.offline = true
+        assertTrue(library.refreshMetadata(next, "en-US").offline)
+        assertEquals("The Matrix", library.movies().single().metadata?.title)
+        assertEquals(ArtworkLocator.Remote("https://old.example/p.jpg"), library.movies().single().artwork[ArtworkKind.POSTER])
+
+        // Back: the same work, found by the ID the old entry gave, not by a title search; the old pictures go.
+        next.offline = false
+        clock += 8 * 24 * 3_600_000L
+        assertEquals(1, library.refreshMetadata(next, "en-US").matched)
+        val entry = library.movies().single()
+        assertEquals("The Matrix (new provider)", entry.metadata?.title)
+        assertEquals(ArtworkLocator.Remote("https://new.example/p.webp"), entry.artwork[ArtworkKind.POSTER])
+        assertTrue("find:tmdb:603" in next.calls)
+        assertTrue(next.calls.none { it.startsWith("search:") }, "no title search: ${next.calls}")
+        // Asked again, nothing more is fetched: the work is the new provider's now.
+        next.calls.clear()
+        library.refreshMetadata(next, "en-US")
+        assertTrue(next.calls.isEmpty(), "${next.calls}")
+    }
+
+    @Test
     fun localArtworkWinsOverProviderArtwork() = runTest {
         provider.movie("1", "Heat", 1995, artwork = arrayOf(RemoteArtwork(ArtworkKind.POSTER, "https://img/heat.jpg")))
         file("Heat (1995)/Heat (1995).mkv")

@@ -121,6 +121,8 @@ class MediaPathParserTest {
         assertEquals("Interstellar", parsed.title)
         assertEquals(mapOf("tmdb" to "157336"), parsed.externalIds)
         assertEquals(ConfidenceLevel.HIGH, parsed.confidence.level)
+        // The metadata provider's own ID is named the same way.
+        assertEquals(mapOf("trakt" to "1430"), parse("Movies/Interstellar (2014) [trakt-1430]/Interstellar (2014).mkv").externalIds)
     }
 
     @Test

@@ -169,7 +169,19 @@ def check_tag(tag: str, version: str, commit: str) -> list:
     return problems
 
 
+def metadata_provider(tag, environ) -> str:
+    """What the build says about its metadata provider: Trakt's Client ID supplied or not, never the ID itself.
+
+    A real release (a tag) must carry the production Client ID (REFLUX_TRAKT_CLIENT_ID, a GitHub Actions variable);
+    a rehearsal builds without one, and the app then makes no lookups."""
+    supplied = bool((environ.get("REFLUX_TRAKT_CLIENT_ID") or "").strip())
+    if tag and not supplied:
+        sys.exit("a release needs Trakt's production Client ID in REFLUX_TRAKT_CLIENT_ID (docs/RELEASE.md, \"Metadata provider\")")
+    return "client id supplied" if supplied else "no client id"
+
+
 def build(args) -> int:
+    provider = metadata_provider(args.tag, os.environ)
     status = run(["git", "status", "--porcelain"])
     if status.strip() and not args.allow_modified:
         sys.exit("the tree has changes: a release is built from a clean commit (commit or use a clean worktree)")
@@ -251,7 +263,7 @@ def build(args) -> int:
         "windowsVersion": info["windowsVersion"], "linuxVersion": info["linuxVersion"], "channel": info["channel"],
         "androidPackage": info["androidPackage"], "commit": commit, "repository": "https://github.com/Rifaque/reflux", "tag": "v" + version,
         "builtAt": finished.strftime("%Y-%m-%dT%H:%M:%SZ"), "builder": "local" if not os.environ.get("GITHUB_ACTIONS") else "github-actions",
-        "tmdb": "credential supplied" if os.environ.get("REFLUX_TMDB_TOKEN") else "no credential", "artifacts": artifacts,
+        "metadataProvider": {"name": "trakt", "clientId": provider}, "artifacts": artifacts,
     }
     # LF everywhere: `sha256sum -c` on Linux and macOS reads a CRLF SHA256SUMS as names ending in \r.
     (out / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8", newline="\n")

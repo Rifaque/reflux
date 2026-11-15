@@ -10,7 +10,7 @@
     "build": "node scripts/release-data.mjs && vite build && vite build --ssr src/entry-server.jsx --outDir dist-server && node scripts/prerender.mjs",
     "preview": "vite preview",
     "check-dist": "node scripts/check-dist.mjs",
-    "check-links": "node scripts/check-links.mjs",
+    "check-links": "node --max-http-header-size=65536 scripts/check-links.mjs",
     "test": "node --test scripts/*.test.mjs"
   },
   "dependencies": {

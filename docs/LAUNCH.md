@@ -28,7 +28,7 @@ The site follows the product's own principle: let the media be colorful; let the
 - **RSX Develops** is named as the maker in the footer and on the about/legal pages; the brand on the site is Reflux.
 - Fast and accessible: static pages, images sized for the screen, WCAG AA contrast, real text (not text in images), keyboard navigable.
 
-Content the site must carry by W4: supported platforms (Android phone/tablet, Android TV / Google TV, Fire TV, Windows, Linux) and what each needs; the beta call to action until 1.0; the changelog (from `CHANGELOG.md`); privacy policy (what Reflux stores, that it has no account and sends nothing to RSX Develops, what TMDB and the user's own servers receive); support; licenses (Reflux's own copyright, proprietary and all rights reserved, apart from the third-party licenses) and TMDB attribution; and "Support Reflux" (below).
+Content the site must carry by W4: supported platforms (Android phone/tablet, Android TV / Google TV, Fire TV, Windows, Linux) and what each needs; the beta call to action until 1.0; the changelog (from `CHANGELOG.md`); privacy policy (what Reflux stores, that it has no account and sends nothing to RSX Develops, what the metadata provider, Trakt, and the user's own servers receive); support; licenses (Reflux's own copyright, proprietary and all rights reserved, apart from the third-party licenses) and Trakt's attribution; and "Support Reflux" (below).
 
 ### Support Reflux
 

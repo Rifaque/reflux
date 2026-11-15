@@ -24,7 +24,7 @@ import dev.reflux.core.metadata.ProviderRef
 import dev.reflux.core.metadata.RemoteArtwork
 import dev.reflux.core.metadata.SeasonMetadata
 import dev.reflux.core.metadata.WorkMetadata
-import dev.reflux.metadata.tmdb.TmdbProvider
+import dev.reflux.metadata.trakt.TraktProvider
 import dev.reflux.core.model.ArtworkKind
 import dev.reflux.core.model.ArtworkLocator
 import dev.reflux.core.model.CalendarDate
@@ -126,8 +126,8 @@ class TestWorld(metadata: Boolean = true, catalog: MetadataProvider = FakeCatalo
 
 /** A tiny provider catalog covering [TestWorld.populate]. Artwork URLs are resolved by [FakeArtwork]. */
 object FakeCatalog : MetadataProvider {
-    override val id = "tmdb"
-    override val attribution = TmdbProvider.ATTRIBUTION
+    override val id = "trakt"
+    override val attribution = TraktProvider.ATTRIBUTION
 
     private class Work(
         val key: String,

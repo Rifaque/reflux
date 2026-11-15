@@ -11,13 +11,14 @@ import dev.reflux.core.metadata.SeasonMetadata
 import dev.reflux.core.metadata.WorkMetadata
 
 /** An in-memory provider catalog for tests. */
-class FakeMetadataProvider : MetadataProvider {
-    override val id: String = "tmdb"
+class FakeMetadataProvider(override val id: String = "tmdb") : MetadataProvider {
     val works = mutableMapOf<ProviderRef, WorkMetadata>()
     val popularity = mutableMapOf<ProviderRef, Double>()
     val seasons = mutableMapOf<Pair<ProviderRef, Int>, SeasonMetadata>()
     val externalIds = mutableMapOf<Pair<String, String>, ProviderRef>()
     var offline = false
+    /** When offline, how long the provider says to wait (a rate limit), if it says. */
+    var retryAfterMs: Long? = null
     val calls = mutableListOf<String>()
 
     fun movie(id: String, title: String, year: Int, popularity: Double = 10.0, original: String? = null, vararg artwork: dev.reflux.core.metadata.RemoteArtwork): ProviderRef {
@@ -46,7 +47,7 @@ class FakeMetadataProvider : MetadataProvider {
     }
 
     private fun checkOnline() {
-        if (offline) throw MetadataUnavailableException("offline")
+        if (offline) throw MetadataUnavailableException("offline", retryAfterMs = retryAfterMs)
     }
 
     override suspend fun search(query: MetadataQuery): List<MetadataCandidate> {

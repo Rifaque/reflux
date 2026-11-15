@@ -36,8 +36,8 @@ suspend fun Library.refreshMetadata(
 fun Library.metadata(itemId: MediaId): ItemMetadata? = resolvedMetadata(listOf(itemId.value))[itemId.value]
 
 /**
- * Re-reads matched works whose provider metadata is older than [staleAfterMs] (90 days by default: well within
- * the six months TMDB's terms allow a copy to be kept), at most [limit] of them. Only the entry already matched is
+ * Re-reads matched works whose provider metadata is older than [staleAfterMs] (90 days by default, so a copy
+ * follows the provider's corrections without the library ever being read again at once), at most [limit] of them. Only the entry already matched is
  * read; a failure changes nothing. Returns how many were refreshed, or null when the provider was out of reach.
  */
 suspend fun Library.refreshStaleMetadata(

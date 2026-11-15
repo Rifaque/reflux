@@ -6,7 +6,7 @@ import dev.reflux.core.model.CalendarDate
 /** Which provider catalog a work is looked up in. */
 enum class MetadataKind { MOVIE, SHOW }
 
-/** A provider's reference to a work, e.g. `tmdb` / `movie` / `157336`. */
+/** A provider's reference to a work, e.g. `trakt` / `movie` / `1430`. */
 data class ProviderRef(val provider: String, val kind: MetadataKind, val id: String) {
     override fun toString(): String = "$provider:${kind.name.lowercase()}:$id"
 
@@ -24,7 +24,7 @@ data class MetadataQuery(
     val kind: MetadataKind,
     val title: String,
     val year: Int?,
-    /** IDs found in file names (`tmdb`, `imdb`, `tvdb`). An exact ID beats any title search. */
+    /** IDs found in file names or given by a server (`trakt`, `tmdb`, `imdb`, `tvdb`). An exact ID beats any title search. */
     val externalIds: Map<String, String> = emptyMap(),
     /** BCP 47 language for titles and overviews, e.g. `en-US`. */
     val language: String,
@@ -98,7 +98,7 @@ data class SeasonMetadata(
 )
 
 /**
- * A metadata provider adapter (TMDB first). Providers enrich the library; they never decide identity on
+ * A metadata provider adapter (Trakt in the product). Providers enrich the library; they never decide identity on
  * their own — the deterministic [MetadataMatcher] does — and the library stays fully usable without one.
  */
 interface MetadataProvider {
@@ -131,8 +131,12 @@ data class ProviderAttribution(val name: String, val notice: String, val site: S
  */
 data class ProviderLogo(val pathData: String, val width: Float, val height: Float, val stops: List<Pair<Float, Long>>)
 
-/** Thrown when a provider cannot be reached or refuses requests; the caller retries later. */
-class MetadataUnavailableException(message: String, cause: Throwable? = null) : Exception(message, cause)
+/**
+ * Thrown when a provider cannot be reached or refuses requests; the caller retries later. [retryAfterMs] is how
+ * long the provider itself asked to be left alone (a rate limit's `Retry-After`), when it said; callers do not ask
+ * again sooner.
+ */
+class MetadataUnavailableException(message: String, cause: Throwable? = null, val retryAfterMs: Long? = null) : Exception(message, cause)
 
 /** A work's metadata as a [Description] layer, the shape every witness is resolved in. */
 fun WorkMetadata.description(): Description = Description(

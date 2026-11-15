@@ -20,10 +20,12 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         // The launcher label; the debug build type says so in its own (below).
         manifestPlaceholders["appLabel"] = "Reflux"
-        // The metadata provider's application credential, from the build environment (a CI secret, never the
-        // repository), in every build that is given one (DECISIONS.md, "TMDB: working non-commercial classification").
-        (providers.gradleProperty("reflux.tmdb.token").orNull ?: providers.environmentVariable("REFLUX_TMDB_TOKEN").orNull)
-            ?.takeIf { it.isNotBlank() }?.let { resValue("string", "reflux_tmdb_token", it) }
+        // The metadata provider's application identifier, Trakt's Client ID (DECISIONS.md, "Trakt is the metadata
+        // provider"): -Preflux.trakt.clientId=<id> or REFLUX_TRAKT_CLIENT_ID (a GitHub Actions variable in a release).
+        // It is not a secret, but it is not in the repository either: development and production use different IDs.
+        // Without one, the app makes no lookups.
+        (providers.gradleProperty("reflux.trakt.clientId").orNull ?: providers.environmentVariable("REFLUX_TRAKT_CLIENT_ID").orNull)
+            ?.trim()?.takeIf { it.isNotEmpty() }?.let { resValue("string", "reflux_trakt_client_id", it) }
         // -Preflux.jellyfin=<url> points the on-device continuity test at a real server (see JellyfinContinuityTest).
         providers.gradleProperty("reflux.jellyfin").orNull?.takeIf { it.isNotBlank() }?.let { testInstrumentationRunnerArguments["refluxJellyfin"] = it }
     }
@@ -348,7 +350,7 @@ dependencies {
     implementation(project(":sources:plex"))
     implementation(project(":sources:webdav"))
     implementation(project(":sources:smb"))
-    implementation(project(":metadata:tmdb"))
+    implementation(project(":metadata:trakt"))
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.sqldelight.android.driver)
     implementation(libs.androidx.activity.compose)
