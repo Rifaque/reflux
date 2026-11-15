@@ -8,5 +8,6 @@ libgl1-mesa-dri
 libglx-mesa0
 libegl1
 fonts-dejavu-core
+fonts-liberation
 git
 binutils

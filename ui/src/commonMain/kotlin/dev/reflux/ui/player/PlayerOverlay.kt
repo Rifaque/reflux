@@ -81,6 +81,11 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.reflux.core.input.ControllerFamily
@@ -637,9 +642,19 @@ private fun Timeline(session: PlaybackSession, state: PlayerState, remote: Boole
     val style = SliderStyle(
         chrome.trackDp, chrome.trackActiveDp, chrome.thumbDp, chrome.thumbActiveDp, chrome.timelineHitDp, chrome.inactiveTrackAlpha, chrome.trackHalo,
     )
+    // Each clock keeps the width of the widest time it can show for this duration, so the bar between them does not
+    // grow or shrink while it is dragged (the font's digits are not all one width): the thumb stays under the pointer.
+    val positionWidth = clockWidth(duration?.let { Formatting.clock(it) }, clock)
+    val remainingWidth = clockWidth(duration?.let { "-" + Formatting.clock(it) }, clock)
     Row(modifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(chrome.clockGapDp.dp)) {
         // The slider says where it is and how long it all is, so the two clocks beside it are not said again.
-        Text(Formatting.clock(position), Modifier.clearAndSetSemantics { }, style = clock, color = RefluxColors.contentSecondary, maxLines = 1)
+        Text(
+            Formatting.clock(position),
+            Modifier.widthIn(min = positionWidth).clearAndSetSemantics { },
+            style = clock.copy(textAlign = TextAlign.End),
+            color = RefluxColors.contentSecondary,
+            maxLines = 1,
+        )
         Slider(
             fraction = if (duration == null) 0f else (position.toFloat() / duration).coerceIn(0f, 1f),
             description = "Timeline",
@@ -662,11 +677,28 @@ private fun Timeline(session: PlaybackSession, state: PlayerState, remote: Boole
         )
         Text(
             duration?.let { "-" + Formatting.clock((it - position).coerceAtLeast(0)) } ?: "",
-            Modifier.clearAndSetSemantics { },
+            Modifier.widthIn(min = remainingWidth).clearAndSetSemantics { },
             style = clock,
             color = RefluxColors.contentSecondary,
             maxLines = 1,
         )
+    }
+}
+
+/**
+ * The width of the widest text a clock shaped like [longest] can show (every digit tried as each of 0 to 9, since
+ * proportional digits differ), or nothing without a duration.
+ */
+@Composable
+private fun clockWidth(longest: String?, style: TextStyle): Dp {
+    val measurer = rememberTextMeasurer()
+    val density = LocalDensity.current
+    return remember(longest, style, density) {
+        if (longest == null) return@remember 0.dp
+        val widest = ('0'..'9').maxOf { digit ->
+            measurer.measure(longest.map { if (it.isDigit()) digit else it }.joinToString(""), style, maxLines = 1).size.width
+        }
+        with(density) { widest.toDp() }
     }
 }
 

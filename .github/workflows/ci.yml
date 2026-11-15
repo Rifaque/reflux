@@ -43,8 +43,13 @@ jobs:
 
       # -Preflux.android=false: the Android modules have a job of their own, with the SDK set up on purpose.
       # bash on Windows too: PowerShell would split -Preflux.android=false into two arguments.
+      # On Linux, text is measured with Liberation Sans, not DejaVu Sans (tools/ci/fonts.conf says why): the layout
+      # tests that fit the details page's actions into a phone's width model a phone's font, and DejaVu is wider than
+      # Android's and Windows' defaults. Empty on Windows, which does not read it.
       - name: Build and test
         shell: bash
+        env:
+          FONTCONFIG_FILE: ${{ runner.os == 'Linux' && format('{0}/tools/ci/fonts.conf', github.workspace) || '' }}
         run: ./gradlew check :tools:cli:installDist -Preflux.android=false --stacktrace
 
       # The real desktop shell in a real window, on a virtual display. tools/ci/linux-check.sh runs these same
@@ -99,6 +104,7 @@ jobs:
           node-version: 22
       - run: npm ci
       - run: npm audit --audit-level=moderate
+      - run: npm test
       - run: npm run build
       # No source maps, no development addresses, nothing that looks like a secret, every route rendered.
       - run: node scripts/check-dist.mjs
