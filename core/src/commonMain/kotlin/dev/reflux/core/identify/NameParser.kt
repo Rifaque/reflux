@@ -40,7 +40,7 @@ internal data class NameParts(
  */
 internal class NameParser(private val maxYear: Int) {
     private val externalIdPattern = Regex(
-        """[\[{]\s*(tmdb|imdb|tvdb)(?:id)?\s*[-=:]\s*([a-z0-9]+)\s*[\]}]""",
+        """[\[{]\s*(trakt|tmdb|imdb|tvdb)(?:id)?\s*[-=:]\s*([a-z0-9]+)\s*[\]}]""",
         RegexOption.IGNORE_CASE,
     )
     private val plexEditionPattern = Regex("""\{\s*edition-([^{}]+)\}""", RegexOption.IGNORE_CASE)

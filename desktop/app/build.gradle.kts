@@ -38,18 +38,19 @@ val generateBuildIdentity by tasks.registering {
         file.writeText(identity.get())
     }
 }
-// The metadata provider's application credential, when the build environment gives one (REFLUX_TMDB_TOKEN, a CI
-// secret; DECISIONS.md, "TMDB: working non-commercial classification"). Never in the repository; absent, the packaged
-// app makes no lookups.
+// The metadata provider's application identifier, Trakt's Client ID, when the build is given one
+// (-Preflux.trakt.clientId=<id> or REFLUX_TRAKT_CLIENT_ID, a GitHub Actions variable in a release; DECISIONS.md, "Trakt
+// is the metadata provider"). Not a secret, but not in the repository: development and production use different IDs.
+// Absent, the packaged app makes no lookups.
 val generateProviderCredential by tasks.registering {
-    val token = providers.environmentVariable("REFLUX_TMDB_TOKEN").orElse(providers.gradleProperty("reflux.tmdb.token")).orElse("")
+    val token = providers.gradleProperty("reflux.trakt.clientId").orElse(providers.environmentVariable("REFLUX_TRAKT_CLIENT_ID")).orElse("")
     val output = layout.buildDirectory.dir("generated/provider")
     inputs.property("digest", token.map { value -> MessageDigest.getInstance("SHA-256").digest(value.toByteArray()).joinToString("") { b -> "%02x".format(b) } })
     outputs.dir(output)
     doLast {
         val file = output.get().file("dev/reflux/desktop/provider.properties").asFile
         file.parentFile.mkdirs()
-        if (token.get().isBlank()) file.delete() else file.writeText("tmdb=" + token.get().trim() + System.lineSeparator())
+        if (token.get().isBlank()) file.delete() else file.writeText("trakt.clientId=" + token.get().trim() + System.lineSeparator())
     }
 }
 sourceSets.main { resources.srcDir(generateBuildIdentity); resources.srcDir(generateProviderCredential) }

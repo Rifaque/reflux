@@ -111,7 +111,7 @@ kotlin {
             implementation(libs.compose.ui.test)
             implementation(compose.desktop.currentOs)
             implementation(project(":sources:local"))
-            implementation(project(":metadata:tmdb")) // its real attribution, for the About page's tests
+            implementation(project(":metadata:trakt")) // its real attribution, for the About page's tests
         }
     }
 }

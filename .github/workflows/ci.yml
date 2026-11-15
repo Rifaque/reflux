@@ -108,7 +108,8 @@ jobs:
       - run: npm run build
       # No source maps, no development addresses, nothing that looks like a secret, every route rendered.
       - run: node scripts/check-dist.mjs
-      - run: node scripts/check-links.mjs
+      # trakt.tv answers with about 32 KB of headers, over Node's 16 KB default.
+      - run: node --max-http-header-size=65536 scripts/check-links.mjs
       # Every page at seven sizes, from a large display to a phone on its side: no sideways scrolling, readable text,
       # targets big enough to tap, and the performance budget; the screenshots are kept for review (docs/WEBSITE.md).
       - run: npx playwright install --with-deps chromium

@@ -15,7 +15,7 @@ dependencies {
     implementation(project(":sources:plex"))
     implementation(project(":sources:webdav"))
     implementation(project(":sources:smb"))
-    implementation(project(":metadata:tmdb"))
+    implementation(project(":metadata:trakt"))
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.jna) // the Windows Credential Manager, for source connections
     runtimeOnly(libs.slf4j.nop) // smbj logs through SLF4J; shells report problems themselves

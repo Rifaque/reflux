@@ -222,6 +222,24 @@ More text under the list.
 """
 
 
+class MetadataProvider(unittest.TestCase):
+    """A release carries Trakt's production Client ID; a rehearsal needs none; the ID itself is never recorded."""
+
+    def test_a_release_without_the_client_id_fails_clearly(self):
+        for environ in ({}, {"REFLUX_TRAKT_CLIENT_ID": "  "}):
+            with self.assertRaises(SystemExit) as refused:
+                release.metadata_provider("v0.9.0-beta.1", environ)
+            self.assertIn("REFLUX_TRAKT_CLIENT_ID", str(refused.exception.code))
+
+    def test_a_rehearsal_builds_without_one(self):
+        self.assertEqual("no client id", release.metadata_provider(None, {}))
+
+    def test_the_manifest_says_whether_one_was_supplied_never_what_it_is(self):
+        said = release.metadata_provider("v0.9.0-beta.1", {"REFLUX_TRAKT_CLIENT_ID": "abc123-not-real"})
+        self.assertEqual("client id supplied", said)
+        self.assertNotIn("abc123", said)
+
+
 class Notes(unittest.TestCase):
     def test_the_versions_section_is_found_and_bounded(self):
         heading, body = release.changelog_section(CHANGELOG, "0.9.0-beta.1")

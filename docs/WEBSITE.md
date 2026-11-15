@@ -8,7 +8,7 @@ reflux.rsxdevelops.dev: Reflux's public home (LAUNCH.md for its stages and visua
 - **Routes** (`src/routes.js`, the one list the app, the prerenderer, and the checks read): Home, Platforms and compatibility, Sources, Download, Testing (the tester hub), Documentation (Getting started, Adding sources, How playback works, Your library, Troubleshooting and FAQ), Releases, Support, Privacy, Terms, Third-party notices (with the artwork credits), Security, and a not-found page.
 - **Visual system** (`src/styles.css`): the product's own rules (DESIGN.md, LAUNCH.md "Visual direction"): near-black, one typeface (Manrope, self-hosted from `@fontsource-variable/manrope`, the brand's wordmark face; declared in `styles.css` with `font-display: optional` and its Latin file preloaded on every page by `prerender.mjs`, so text is never re-flowed when the font arrives: DECISIONS.md, 2026-11-12), hairlines and quiet surfaces, glass only on the sticky header, colour only from real product images, motion only on the hero's entrance and nothing with reduced motion. The brand (design/brand) is drawn inline from the master geometry.
 - **Motion** (`src/motion.jsx`, the end of `src/styles.css`): the shared motion language (DESIGN.md, "Motion language") with browser features only. The script sets `html.motion`; without it, or with `prefers-reduced-motion`, every element is in its finished state. Navigation uses React Router's `viewTransition` (the View Transition API where the browser has it).
-- **RSX Develops** is credited in the footer and on Terms with its own wordmark (`public/brand/`); TMDB on the third-party page with its logo and notice.
+- **RSX Develops** is credited in the footer and on Terms with its own wordmark (`public/brand/`); Trakt on the third-party page with its notice (no logo).
 - **Hosting: Vercel** (DECISIONS.md, 2026-11-08), team "rifaque's projects", project `reflux-website`.
 
 ## Product images
@@ -55,7 +55,7 @@ The site is built to be read correctly by search engines and to be useful to who
 
 ## Checks
 
-`npm audit --audit-level=moderate`, `npm test`, `npm run build`, `node scripts/check-dist.mjs`, `node scripts/check-links.mjs`, `node scripts/check-layout.mjs --screenshots` (CI job "Website"):
+`npm audit --audit-level=moderate`, `npm test`, `npm run build`, `node scripts/check-dist.mjs`, `node --max-http-header-size=65536 scripts/check-links.mjs` (trakt.tv answers with about 32 KB of headers, over Node's default), `node scripts/check-layout.mjs --screenshots` (CI job "Website"):
 
 - `check-dist`: every route prerendered with its title in the site's form and no em dash, a description of a readable length, its canonical address and `og:url`, structured data that parses and claims no rating or review, one heading 1 and no skipped heading level, alt text on every image, its place in the sitemap, and its content in the HTML; the not-found page `noindex`; `robots.txt` naming the sitemap; a `404.html`; no source maps; no development or private address (localhost, LAN ranges, `*.vercel.app`), plain-HTTP address, credential-shaped string, build secret name, or environment-variable read in any shipped file; no inline script or `style` attribute the CSP would refuse.
 - `check-links`: every internal link and `#anchor` reaches a page or a file; every external link is HTTPS and answers.

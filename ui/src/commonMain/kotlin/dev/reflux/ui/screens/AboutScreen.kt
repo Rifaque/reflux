@@ -99,7 +99,10 @@ internal fun AboutScreen(app: AppState) {
                 )
                 Text(
                     listOfNotNull(
-                        attribution?.let { "To recognize your movies and shows and fetch their artwork, Reflux looks up their titles on ${it.name}." },
+                        attribution?.let {
+                            "To recognize your movies and shows and fetch their artwork, Reflux sends ${it.name} their titles, " +
+                                "never where your files are or anything about you. \"Online metadata & artwork\" in Settings turns it off."
+                        },
                         "A server or share you add sees what you browse and play from it, and a server keeps your progress on what you play from it.",
                     ).joinToString(" "),
                     color = RefluxColors.contentSecondary,
@@ -129,7 +132,7 @@ internal fun AboutScreen(app: AppState) {
         if (target != null && Notices.credits(target).isNotEmpty()) {
             item(key = "technology") {
                 val back = rememberFocusReturn("about/credits")
-                Link("Credits and technology", "What Reflux is built on, and the media servers it works with", back.modifier) {
+                Link("Credits and technology", "What Reflux is built on, and the media servers and services it works with", back.modifier) {
                     back.leaving()
                     app.navigator.open(Destination.Credits)
                 }

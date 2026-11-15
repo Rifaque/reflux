@@ -66,6 +66,24 @@ class ProviderGateTest {
     }
 
     @Test
+    fun whatTheProviderAsksIsKeptEvenWhenTheViewerAsks() = runTest {
+        provider.offline = true
+        provider.retryAfterMs = 5 * 60_000L
+        assertFailsWith<MetadataUnavailableException> { gate.details(ref, "en-US") }
+        provider.offline = false
+        // The viewer asking (wake, reset) ends Reflux's own rest, never the wait the provider asked for.
+        gate.wake()
+        gate.reset()
+        time += 2 * 60_000
+        val refused = assertFailsWith<MetadataUnavailableException> { gate.details(ref, "en-US") }
+        assertEquals(3 * 60_000L, refused.retryAfterMs, "callers are told how long is left")
+        assertEquals(1, gate.requests, "nothing reached the provider while it asked to wait")
+        time += 3 * 60_000
+        assertEquals("The Matrix", gate.details(ref, "en-US")?.title)
+        assertEquals(2, gate.requests)
+    }
+
+    @Test
     fun requestsAreSpacedApart() = runTest {
         var now = 0L
         val spaced = ProviderGate(provider, spacingMs = 500, clock = { now })

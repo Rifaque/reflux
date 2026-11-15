@@ -27,6 +27,9 @@ import kotlin.time.TimeSource
  * - **Backing off.** After the provider cannot be reached, it is not asked again for a while (from
  *   [initialBackoffMs], doubling up to [maxBackoffMs]); callers are told it is unavailable at once, as they would
  *   be by the provider, and keep what they have.
+ * - **Being told.** When the provider says how long to wait (a rate limit's `Retry-After`, carried as
+ *   [MetadataUnavailableException.retryAfterMs]), it is not asked before then, even by the viewer: [wake] and
+ *   [reset] open the gate early only for Reflux's own backing off, never past what the provider asked.
  *
  * It changes no answer: what the provider says, or that it cannot be reached, is passed on as it is.
  */
@@ -48,6 +51,7 @@ class ProviderGate(
     private val turn = Mutex()
     private var lastRequestAt = Long.MIN_VALUE
     private var closedUntil = Long.MIN_VALUE
+    private var providerAskedUntil = Long.MIN_VALUE
     private var backoff = initialBackoffMs
 
     /** How many requests reached the provider, for tests and diagnostics. */
@@ -83,6 +87,9 @@ class ProviderGate(
         val (waiting, owner) = lock.withLock {
             val now = clock()
             memory[key]?.let { (at, value) -> if (now - at < memoryMs) return value as T else memory.remove(key) }
+            if (now < providerAskedUntil) {
+                throw MetadataUnavailableException("${provider.id} asked to wait", retryAfterMs = providerAskedUntil - now)
+            }
             if (now < closedUntil) throw MetadataUnavailableException("${provider.id} is resting after failing")
             inFlight[key]?.let { return@withLock it to false }
             CompletableDeferred<Any?>().also { inFlight[key] = it } to true
@@ -107,8 +114,10 @@ class ProviderGate(
         } catch (e: Throwable) {
             lock.withLock {
                 if (e is MetadataUnavailableException) {
-                    closedUntil = clock() + backoff
+                    val now = clock()
+                    closedUntil = now + backoff
                     backoff = (backoff * 2).coerceAtMost(maxBackoffMs)
+                    e.retryAfterMs?.takeIf { it > 0 }?.let { providerAskedUntil = maxOf(providerAskedUntil, now + it) }
                 }
                 inFlight.remove(key)
             }

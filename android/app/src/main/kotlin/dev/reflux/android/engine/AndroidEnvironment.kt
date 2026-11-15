@@ -35,7 +35,7 @@ import dev.reflux.library.SourceRecord
 import dev.reflux.library.SignOut
 import dev.reflux.library.SourceRegistry
 import dev.reflux.library.db.RefluxDatabase
-import dev.reflux.metadata.tmdb.TmdbProvider
+import dev.reflux.metadata.trakt.TraktProvider
 import dev.reflux.sources.local.LocalFolderSource
 import dev.reflux.sources.jellyfin.JellyfinConnector
 import dev.reflux.sources.jellyfin.JellyfinCredentials
@@ -193,8 +193,8 @@ class AndroidEnvironment(context: Context, dataDirectory: File = context.filesDi
     /** What profile PINs are checked with: a key sealed by the Android keystore, like the connections. */
     val pinKey: PinKey by lazy { SealedPinKey(library, seal) }
 
-    /** TMDB is enabled when the build provides an application credential; without one, names come from files. */
-    val metadata: MetadataProvider? = tmdbToken(application)?.let { TmdbProvider(it, http) }
+    /** Trakt is enabled when the build provides its Client ID; without one, names come from files and sources. */
+    val metadata: MetadataProvider? = TraktProvider.fromClientId(traktClientId(application), http)
 
     val pipeline = LibraryPipeline(
         library = library,
@@ -330,8 +330,8 @@ class AndroidEnvironment(context: Context, dataDirectory: File = context.filesDi
 
         private const val MAX_LOG_BYTES = 512 * 1024L
 
-        private fun tmdbToken(context: Context): String? {
-            val id = context.resources.getIdentifier("reflux_tmdb_token", "string", context.packageName)
+        private fun traktClientId(context: Context): String? {
+            val id = context.resources.getIdentifier("reflux_trakt_client_id", "string", context.packageName)
             return if (id == 0) null else context.getString(id).takeIf { it.isNotBlank() }
         }
     }

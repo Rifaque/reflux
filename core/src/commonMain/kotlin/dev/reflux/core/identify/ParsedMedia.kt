@@ -65,7 +65,7 @@ data class ParsedMedia(
     val episodeTitle: String? = null,
     val edition: String? = null,
     val part: Int? = null,
-    /** Provider IDs embedded in names, e.g. `{tmdb-157336}`. Keys: `tmdb`, `imdb`, `tvdb`. */
+    /** Provider IDs embedded in names, e.g. `{tmdb-157336}`. Keys: `trakt`, `tmdb`, `imdb`, `tvdb`. */
     val externalIds: Map<String, String> = emptyMap(),
     val stream: StreamInfo = StreamInfo(),
     val confidence: Confidence = Confidence(0.0, emptySet()),

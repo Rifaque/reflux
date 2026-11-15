@@ -74,7 +74,7 @@ internal class MetadataSync(database: RefluxDatabase, private val now: () -> Lon
         var report = MetadataReport()
         val retryBefore = now() - retryAfterMs
         try {
-            for (row in queries.worksNeedingMetadata(retryBefore, limit.toLong()).executeAsList()) {
+            for (row in queries.worksNeedingMetadata(provider.id, retryBefore, limit.toLong()).executeAsList()) {
                 report = when (refreshWork(row, provider, language, pinned = null)) {
                     AttemptOutcome.MATCHED -> report.copy(matched = report.matched + 1)
                     AttemptOutcome.AMBIGUOUS -> report.copy(ambiguous = report.ambiguous + 1)
@@ -109,10 +109,23 @@ internal class MetadataSync(database: RefluxDatabase, private val now: () -> Lon
         // What is known stands unless the provider's own ID is now named and what is known is weaker than that.
         val knownRef = known?.provider_ref?.let(ProviderRef::parse)?.takeIf { it.provider == provider.id && it.kind == kind }
             ?.takeIf { hinted == null || (known.evidence() ?: MatchEvidence.TITLE) <= MatchEvidence.PROVIDER_ID }
+        // A work matched with another provider (the one Reflux used before) keeps the catalog IDs that entry gave
+        // (IMDb, TMDB, TVDB): they find the same work here, so the change of provider never falls back to a guess.
+        val carried = known?.takeIf { knownRef == null && ProviderRef.parse(it.provider_ref)?.let { old -> old.provider != provider.id && old.kind == kind } == true }
         val ref = chosen
             ?: knownRef?.also { evidence = known.evidence() ?: MatchEvidence.TITLE; score = known.match_score }
             ?: hinted?.also { evidence = MatchEvidence.PROVIDER_ID }
             ?: hints.entries.firstNotNullOfOrNull { (source, id) -> provider.findByExternalId(kind, source, id) }?.also { evidence = MatchEvidence.EXTERNAL_ID }
+            ?: carried?.let { old ->
+                decodePairs(old.external_ids).entries.firstNotNullOfOrNull { (source, id) ->
+                    if (source == provider.id) ProviderRef(provider.id, kind, id) else provider.findByExternalId(kind, source, id)
+                }?.also { found ->
+                    // What the viewer chose stays theirs: the choice is carried to the same work's entry here.
+                    val wasChosen = old.evidence() == MatchEvidence.USER
+                    evidence = if (wasChosen) MatchEvidence.USER else MatchEvidence.EXTERNAL_ID
+                    if (wasChosen) queries.pinMetadata(row.id, found.toString())
+                }
+            }
             ?: run {
                 val query = MetadataQuery(kind, row.title, row.year?.toInt(), hints, language)
                 when (val result = MetadataMatcher.match(query, provider.search(query))) {
@@ -151,6 +164,7 @@ internal class MetadataSync(database: RefluxDatabase, private val now: () -> Lon
 
     private fun store(itemId: String, details: WorkMetadata, score: Double, providerId: String, language: String, evidence: MatchEvidence) =
         db.transaction {
+            retireOtherProvider(itemId, providerId)
             queries.upsertMetadata(
                 item_id = itemId,
                 provider_ref = details.ref.toString(),
@@ -181,6 +195,17 @@ internal class MetadataSync(database: RefluxDatabase, private val now: () -> Lon
             storeArtwork(itemId, providerId, chooseArtwork(details.artwork, language))
             queries.recordMetadataAttempt(itemId, now(), AttemptOutcome.MATCHED.name)
         }
+
+    /**
+     * When an entry from another provider (the one Reflux used before) is replaced, that provider's pictures go with
+     * it, so the two never compete as witnesses and nothing is fetched from a provider Reflux no longer uses. Until it
+     * is replaced, the old entry and its cached pictures stay: a provider failing or out of reach removes nothing.
+     */
+    private fun retireOtherProvider(itemId: String, providerId: String) {
+        val previous = queries.metadataOf(itemId).executeAsOneOrNull()?.provider_ref?.substringBefore(':')
+            ?.takeIf { it.isNotBlank() && it != providerId } ?: return
+        queries.deleteArtworkOfItemByOrigin(itemId, previous)
+    }
 
     private fun storeArtwork(itemId: String, providerId: String, artwork: Map<ArtworkKind, String>) {
         queries.deleteArtworkOfItemByOrigin(itemId, providerId)
@@ -266,6 +291,7 @@ internal class MetadataSync(database: RefluxDatabase, private val now: () -> Lon
     }
 
     private fun storeSeason(itemId: String, season: SeasonMetadata, providerId: String, evidence: MatchEvidence?) = db.transaction {
+        retireOtherProvider(itemId, providerId)
         val today = todayFromClock()
         val aired = season.episodes.count { episode -> episode.airDate.let { it == null || it <= today } }
         upsertSimple(
@@ -276,6 +302,7 @@ internal class MetadataSync(database: RefluxDatabase, private val now: () -> Lon
     }
 
     private fun storeEpisode(itemId: String, episode: EpisodeMetadata, show: ProviderRef, providerId: String, evidence: MatchEvidence?) = db.transaction {
+        retireOtherProvider(itemId, providerId)
         upsertSimple(
             itemId, episode.title, episode.overview, episode.airDate, episode.runtimeMinutes,
             "$show/${episode.seasonNumber}/${episode.episodeNumber}", rating = episode.rating, evidence = evidence,

@@ -13,7 +13,6 @@ import androidx.compose.ui.test.isFocused
 import androidx.compose.ui.test.isHeading
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
-import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -22,7 +21,6 @@ import androidx.compose.ui.test.pressKey
 import dev.reflux.core.BuildIdentity
 import dev.reflux.core.RefluxBuild
 import dev.reflux.core.input.Key
-import dev.reflux.metadata.tmdb.TmdbProvider
 import dev.reflux.ui.legal.NoticeTarget
 import dev.reflux.ui.legal.Notices
 import dev.reflux.ui.state.AppState
@@ -96,25 +94,20 @@ class AboutUiTest {
     @Test
     fun theMetadataProviderIsCreditedAsItsTermsAsk() = screen(populated()) { app ->
         openAbout(app)
-        // Word for word, with its approved logo, on the About page.
-        awaitText("This product uses the TMDB API but is not endorsed or certified by TMDB.")
-        assertTrue(shows("Titles, artwork, and details come from TMDB (themoviedb.org)."))
-        val logo = onNodeWithContentDescription("TMDB", useUnmergedTree = true).fetchSemanticsNode()
-        assertEquals(Role.Image, logo.config.getOrNull(SemanticsProperties.Role))
-        // Less prominent than Reflux's own name, and drawn in its own proportions.
-        val name = onNode(hasText("Reflux") and isHeading(), useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
-        val mark = logo.boundsInRoot
-        assertTrue(mark.height < name.height, "the logo ($mark) is smaller than the name ($name)")
-        val published = TmdbProvider.ATTRIBUTION.logo!!
-        assertEquals(published.width / published.height, mark.width / mark.height, 0.05f)
-        assertTrue(shows("Reflux looks up their titles on TMDB", substring = true), "the privacy note says what TMDB is asked")
+        // Word for word, as Trakt's API use policy asks, on the About page.
+        awaitText("Reflux uses Trakt but is not endorsed or certified by Trakt.")
+        assertTrue(shows("Titles, artwork, and details come from Trakt (trakt.tv)."))
+        // No Trakt mark: the logo is optional, and Reflux draws none of Trakt's marks.
+        assertEquals(0, onAllNodesWithContentDescription("Trakt", useUnmergedTree = true).fetchSemanticsNodes().size)
+        assertTrue(shows("Reflux sends Trakt their titles, never where your files are", substring = true), "the privacy note says what Trakt is sent")
+        assertTrue(shows("\"Online metadata & artwork\" in Settings turns it off", substring = true))
+        assertFalse(shows("TMDB", substring = true))
     }
 
     @Test
     fun withoutAProviderNothingIsCreditedOrClaimed() = screen(TestWorld(metadata = false)) { app ->
         openAbout(app)
-        assertFalse(shows("TMDB", substring = true))
-        assertEquals(0, onAllNodesWithContentDescription("TMDB", useUnmergedTree = true).fetchSemanticsNodes().size)
+        assertFalse(shows("Trakt", substring = true))
         assertTrue(shows("Reflux has no account", substring = true))
     }
 

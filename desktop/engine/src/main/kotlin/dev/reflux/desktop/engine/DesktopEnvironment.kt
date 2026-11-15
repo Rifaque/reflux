@@ -22,7 +22,7 @@ import dev.reflux.library.SourceRecord
 import dev.reflux.library.SignOut
 import dev.reflux.library.SourceRegistry
 import dev.reflux.library.net.JdkHttpFetcher
-import dev.reflux.metadata.tmdb.TmdbProvider
+import dev.reflux.metadata.trakt.TraktProvider
 import dev.reflux.playback.mpv.DecodeEvidence
 import dev.reflux.playback.mpv.MpvDecodeProbe
 import dev.reflux.playback.mpv.MpvPlayer
@@ -153,12 +153,16 @@ class DesktopEnvironment(
     val pinKey: PinKey by lazy { SealedPinKey(library, seal) }
 
     /**
-     * TMDB is enabled when the environment or the build provides an application credential: the environment first (a
-     * developer's), then what a release build packed in (`provider.properties`, from the build's REFLUX_TMDB_TOKEN).
+     * Trakt is enabled when the environment or the build provides its Client ID: the environment first (a
+     * developer's REFLUX_TRAKT_CLIENT_ID or `-Dreflux.trakt.clientId`), then what the build packed in
+     * (`provider.properties`, from the build's REFLUX_TRAKT_CLIENT_ID). Without one, names come from files and sources.
      */
-    val metadata: MetadataProvider? = (System.getenv("REFLUX_TMDB_TOKEN") ?: System.getProperty("reflux.tmdb.token") ?: packedCredential())
-        ?.takeIf { it.isNotBlank() }
-        ?.let { TmdbProvider(it, http) }
+    val metadata: MetadataProvider? = TraktProvider.fromClientId(
+        System.getenv("REFLUX_TRAKT_CLIENT_ID")?.takeIf { it.isNotBlank() }
+            ?: System.getProperty("reflux.trakt.clientId")?.takeIf { it.isNotBlank() }
+            ?: packedCredential(),
+        http,
+    )
 
     val prober = MpvProbe.createOrNull()
 
@@ -293,9 +297,9 @@ class DesktopEnvironment(
 /** How Reflux names itself to the servers it talks to, with the one product version (docs/VERSIONING.md). */
 private val USER_AGENT = "Reflux/${RefluxBuild.VERSION}"
 
-/** The metadata provider's credential a release build packed in, if it did. */
+/** The metadata provider's Client ID the build packed in, if it did. */
 private fun packedCredential(): String? = runCatching {
     DesktopEnvironment::class.java.getResourceAsStream("/dev/reflux/desktop/provider.properties")?.use { stream ->
-        java.util.Properties().apply { load(stream) }.getProperty("tmdb")
+        java.util.Properties().apply { load(stream) }.getProperty("trakt.clientId")
     }
 }.getOrNull()

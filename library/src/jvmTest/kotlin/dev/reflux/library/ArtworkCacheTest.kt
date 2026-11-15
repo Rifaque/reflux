@@ -56,6 +56,26 @@ class ArtworkCacheTest {
     }
 
     @Test
+    fun aTraktImageIsDownloadedOnceKeptAsWebpAndNeverFetchedWhileLookupsAreOff() = runTest {
+        // Trakt requires its images to be cached, never loaded from its CDN by the app: the interface draws only
+        // what this cache returns, a local file.
+        var lookups = true
+        val cache = ArtworkCache(directory.resolve("art"), http, remoteAllowed = { lookups })
+        val poster = ArtworkLocator.Remote("https://media.trakt.tv/images/movies/000/000/481/posters/medium/p.jpg.webp")
+        val file = assertNotNull(cache.get(poster) { null })
+        assertTrue(file.startsWith(directory), "a local file in Reflux's cache: $file")
+        assertTrue(file.fileName.toString().endsWith(".webp"))
+        assertEquals(file, cache.get(poster) { null })
+        assertEquals(1, downloads.size, "downloaded once")
+
+        // "Online metadata & artwork" off: what is kept is still shown, nothing new is fetched.
+        lookups = false
+        assertEquals(file, cache.get(poster) { null })
+        assertNull(cache.get(ArtworkLocator.Remote("https://media.trakt.tv/images/movies/000/000/481/fanarts/medium/f.jpg.webp")) { null })
+        assertEquals(1, downloads.size)
+    }
+
+    @Test
     fun aCacheWhoseDirectoryWasTakenAwayStartsAgain() = runTest {
         val cache = ArtworkCache(directory.resolve("art"), http)
         val poster = ArtworkLocator.Remote("https://img/poster.jpg")

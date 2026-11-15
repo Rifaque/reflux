@@ -44,7 +44,7 @@ Usage: reflux <command> [arguments]
   doctor                       Library health: weak identification, missing episodes, offline sources
 
 Data lives in the platform data directory (override with REFLUX_HOME).
-Metadata needs a TMDB credential in REFLUX_TMDB_TOKEN."""
+Metadata needs a Trakt Client ID in REFLUX_TRAKT_CLIENT_ID."""
 
 fun main(args: Array<String>) {
     val command = args.firstOrNull() ?: run {
@@ -153,7 +153,7 @@ private suspend fun refresh(env: DesktopEnvironment, only: dev.reflux.core.model
         println("$name: ${report.status.name.lowercase()} - ${report.added} added, ${report.updated} updated, ${report.removed} removed, ${report.unchanged} unchanged; skipped: $skipped; weak identification: ${report.lowConfidence}")
     }
     if (env.prober == null) println("libmpv not found: stream details come from file names only.")
-    if (env.metadata == null) println("No TMDB credential (REFLUX_TMDB_TOKEN): titles come from file and folder names; local artwork only.")
+    if (env.metadata == null) println("No Trakt Client ID (REFLUX_TRAKT_CLIENT_ID): titles come from file and folder names; local artwork only.")
     return true
 }
 

@@ -14,6 +14,9 @@ class RedactionTest {
         assertFalse("hunter2" in clean("https://jf/Videos/1/stream?static=true&api_key=hunter2"))
         assertFalse("hunter2" in clean("Authorization: Basic hunter2"))
         assertFalse("hunter2" in clean("X-Emby-Token: hunter2"))
+        // The metadata provider's Client ID is not a secret, but it is never written down either.
+        assertFalse("client123" in clean("GET https://api.trakt.tv/search/movie trakt-api-key: client123"))
+        assertFalse("client123" in clean("{trakt-api-key=client123, trakt-api-version=2}"))
     }
 
     @Test

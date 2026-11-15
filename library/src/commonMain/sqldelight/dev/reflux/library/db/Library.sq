@@ -90,7 +90,7 @@ CREATE TABLE item (
     episode_number_end INTEGER,
     absolute_number INTEGER,
     air_date TEXT,
-    -- Provider IDs found in file names, e.g. "tmdb=157336" (newline separated).
+    -- Provider IDs found in file names, e.g. "tmdb=157336" or "trakt=1430" (newline separated).
     external_hints TEXT NOT NULL DEFAULT '',
     -- For movies and shows: the identity key the work was created from (after aliasing).
     identity_key TEXT,
@@ -785,10 +785,13 @@ creditsOf:
 SELECT * FROM credit WHERE item_id = ? ORDER BY position;
 
 -- Movies and shows to look up: no metadata yet, and no recent unsuccessful attempt.
+-- Works with no provider entry, or with one from a provider Reflux no longer uses (its entry stays until replaced).
 worksNeedingMetadata:
 SELECT item.* FROM item
 WHERE item.kind IN ('MOVIE', 'SHOW')
-  AND NOT EXISTS (SELECT 1 FROM metadata WHERE metadata.item_id = item.id)
+  AND NOT EXISTS (
+    SELECT 1 FROM metadata WHERE metadata.item_id = item.id AND substr(metadata.provider_ref, 1, instr(metadata.provider_ref, ':') - 1) = :provider
+  )
   AND NOT EXISTS (
     SELECT 1 FROM metadata_attempt WHERE metadata_attempt.item_id = item.id AND metadata_attempt.attempted_at > :retryBefore
   )
