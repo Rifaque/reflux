@@ -36,7 +36,7 @@
         android:usesCleartextTraffic="true"
         android:icon="@mipmap/ic_launcher"
         android:banner="@drawable/tv_banner"
-        android:label="Reflux"
+        android:label="${appLabel}"
         android:supportsRtl="true"
         android:theme="@style/Theme.Reflux">
 

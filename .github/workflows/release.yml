@@ -8,8 +8,10 @@ name: Release
 #   distribution. Every artifact gets GitHub's signed build provenance, verified in the same job against this
 #   repository, this workflow, and this commit. Nothing is tagged, released, or kept: no app binary is uploaded.
 # - Release, run by hand with a tag: the same build from the tagged commit, signed with the upload key, attested, and
-#   a DRAFT GitHub release holding it, which a separate job downloads and verifies on another operating system.
-#   Publishing the draft, and uploading to the stores, are people's decisions, made after the release checklist.
+#   a DRAFT GitHub release holding the desktop files and records only (store-only Android: the APK and AAB are built,
+#   verified, and attested, and reach the stores as this run's artifacts, never the public release), which a separate
+#   job downloads and verifies on another operating system. Publishing the draft, and uploading to the stores, are
+#   people's decisions, made after the release checklist.
 on:
   push:
   workflow_dispatch:
@@ -130,17 +132,26 @@ jobs:
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: linux
-          path: linux
+          path: build/linux
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: libmpv
           path: build/libmpv
+      # The tag is v<reflux.version>, an annotated tag, on the commit this run built, and that commit is on main
+      # (docs/VERSIONING.md). release.py build checks the first three again from the Gradle release identity.
       - name: The tag is the version
         if: inputs.tag != ''
         shell: bash
+        env:
+          TAG: ${{ inputs.tag }}
         run: |
           version=$(sed -n 's/^reflux.version=//p' gradle.properties)
-          test "v$version" = "${{ inputs.tag }}" || { echo "tag ${{ inputs.tag }} is not v$version"; exit 1; }
+          test "v$version" = "$TAG" || { echo "tag $TAG is not v$version"; exit 1; }
+          test "$(git cat-file -t "refs/tags/$TAG")" = tag || { echo "tag $TAG is not an annotated tag"; exit 1; }
+          test "$(git rev-parse "$TAG^{commit}")" = "$(git rev-parse HEAD)" || { echo "tag $TAG is not the checked-out commit"; exit 1; }
+          # On main, or on its own hotfix branch (docs/VERSIONING.md, "Hotfixes": hotfix/<version>).
+          git merge-base --is-ancestor HEAD origin/main || git merge-base --is-ancestor HEAD "origin/hotfix/$version" 2>/dev/null \
+            || { echo "$TAG is neither on main nor on hotfix/$version"; exit 1; }
       # A release: the upload key lives only in GitHub's encrypted secrets (docs/RELEASE.md, "Signing"); it is written
       # to the runner's temporary folder, passed to the build as REFLUX_SIGNING_* through a file, and never printed.
       - name: Build, sign, checksum, and describe (release)
@@ -148,6 +159,9 @@ jobs:
         shell: bash
         env:
           REFLUX_TMDB_TOKEN: ${{ secrets.REFLUX_TMDB_TOKEN }}
+          # The upload key's certificate SHA-256 (not a secret): the tool refuses an APK signed by any other key.
+          REFLUX_EXPECTED_SIGNER_SHA256: ${{ vars.REFLUX_UPLOAD_CERT_SHA256 }}
+          TAG: ${{ inputs.tag }}
           UPLOAD_KEY: ${{ secrets.REFLUX_UPLOAD_KEYSTORE_BASE64 }}
           STORE_PASSWORD: ${{ secrets.REFLUX_UPLOAD_STORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.REFLUX_UPLOAD_KEY_ALIAS }}
@@ -157,7 +171,7 @@ jobs:
           printf '%s' "$UPLOAD_KEY" | base64 -d > "$key"
           printf 'REFLUX_SIGNING_STORE_FILE=%s\nREFLUX_SIGNING_STORE_PASSWORD=%s\nREFLUX_SIGNING_KEY_ALIAS=%s\nREFLUX_SIGNING_KEY_PASSWORD=%s\n' \
             "$key" "$STORE_PASSWORD" "$KEY_ALIAS" "$KEY_PASSWORD" > "$RUNNER_TEMP/signing.env"
-          python -I tools/release/release.py build --signing-env "$RUNNER_TEMP/signing.env" --out out --add linux/*.tar.gz
+          python -I tools/release/release.py build --signing-env "$RUNNER_TEMP/signing.env" --out out --tag "$TAG" --add build/linux/*.tar.gz
           rm -f "$key" "$RUNNER_TEMP/signing.env"
       # A rehearsal: a throwaway key made here (tools/release/make-dry-run-key.py, its certificate "Reflux internal dry
       # run (not for distribution)"), never the upload key, and no secret of any kind.
@@ -170,6 +184,22 @@ jobs:
       - name: Verify the release locally
         shell: bash
         run: python -I tools/release/release.py verify out
+      # What the draft will carry: the public files only (never the APK or AAB), checked as a downloader would, and the
+      # release notes and the store "What's new" from CHANGELOG.md. A release needs the version's own section; a
+      # rehearsal (an unreleased version) uses Unreleased.
+      - name: The public release's files, release notes, and store text
+        shell: bash
+        env:
+          ALLOW_UNRELEASED: ${{ inputs.tag == '' && '--allow-unreleased' || '' }}
+        run: |
+          version=$(sed -n 's/^reflux.version=//p' gradle.properties)
+          python -I tools/release/release.py stage-public out --out public
+          (cd public && sha256sum -c SHA256SUMS)
+          if ls public/*.apk public/*.aab > /dev/null 2>&1; then echo "an Android package is in the public release"; exit 1; fi
+          mkdir notes
+          # shellcheck disable=SC2086 # the flag, or nothing
+          python -I tools/release/release.py notes --version "$version" $ALLOW_UNRELEASED --out-notes notes/notes.md --out-store notes/store-whats-new.txt
+          { echo "### Store What's new"; echo '```'; cat notes/store-whats-new.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
       - name: Build provenance for every artifact
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
@@ -196,11 +226,22 @@ jobs:
               --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/release.yml" --source-digest "$sha"
           done
           { echo "### Attested artifacts ($sha)"; echo '```'; cat out/SHA256SUMS; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+      # The store files (APK, AAB) are in this artifact, which is how they reach the stores: kept 14 days, not the
+      # default 90, and never attached to the GitHub release.
       - if: inputs.tag != ''
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: release
           path: out/
+          retention-days: 14
+          if-no-files-found: error
+      - if: inputs.tag != ''
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-notes
+          path: notes/
+          retention-days: 14
+          if-no-files-found: error
 
   draft:
     name: Draft the GitHub release
@@ -211,16 +252,29 @@ jobs:
     permissions:
       contents: write      # the draft release, and only here
     steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.tag }}
+          persist-credentials: false
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: release
           path: out
-      - env:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release-notes
+          path: notes
+      # The public release is exactly the manifest's github-release artifacts and the three records (store-only Android:
+      # the APK and AAB stay in the "release" artifact). stage-public copies those and verifies the copy as a download.
+      - name: Stage the public files and draft the release
+        env:
           GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag }}
         run: |
-          gh release create "${{ inputs.tag }}" --draft --verify-tag --title "Reflux ${{ inputs.tag }}" --repo "$GITHUB_REPOSITORY" \
-            --notes "Draft made by the release workflow. Release notes are added from CHANGELOG.md before publishing (docs/RELEASE.md)." \
-            out/*.apk out/*.aab out/*.zip out/*.tar.gz out/*.tar.xz out/SHA256SUMS out/manifest.json out/provenance.intoto.json
+          python3 -I tools/release/release.py stage-public out --out public
+          ls public
+          gh release create "$TAG" --draft --verify-tag --title "Reflux $TAG" --repo "$GITHUB_REPOSITORY" \
+            --notes-file notes/notes.md public/*
 
   verify:
     name: Verify the draft independently
@@ -229,25 +283,59 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     permissions:
-      contents: read
+      contents: write      # a draft is visible only to writers; this job only reads it and uploads nothing to it
       attestations: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.tag }}
-      # aapt2 and apksigner, for the release tool's reading of the APK.
-      - uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd # v4.0.4
-        with:
-          packages: build-tools;36.0.0
-      # What a person downloading the release would do: fetch it from GitHub, check every checksum, check that GitHub's
-      # attestation says this repository's workflow built each file, and run the release tool's own verification.
+          persist-credentials: false
+      # What a person downloading the release would do: fetch it from GitHub, check every checksum with no flags, check
+      # that GitHub's attestation says this repository's workflow built each file, and run the release tool's own
+      # verification of a public release. There is no Android package to read: none is on the release, and this job
+      # confirms it.
       - name: Download, checksum, attestation, manifest
         env:
           GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag }}
         run: |
-          mkdir dl && gh release download "${{ inputs.tag }}" --dir dl --repo "${{ github.repository }}"
+          mkdir dl && gh release download "$TAG" --dir dl --repo "$GITHUB_REPOSITORY"
+          if ls dl/*.apk dl/*.aab > /dev/null 2>&1; then echo "an Android package is on the public release"; exit 1; fi
+          names=$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name')
+          if echo "$names" | grep -qE '\.(apk|aab)$'; then echo "an Android package is a release asset"; exit 1; fi
           (cd dl && sha256sum -c SHA256SUMS)
-          for f in dl/*.apk dl/*.aab dl/*.zip dl/*.tar.gz dl/*.tar.xz; do
-            gh attestation verify "$f" --repo "${{ github.repository }}" --signer-workflow "${{ github.repository }}/.github/workflows/release.yml"
+          for f in dl/*.zip dl/*.tar.gz dl/*.tar.xz; do
+            gh attestation verify "$f" --repo "$GITHUB_REPOSITORY" --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/release.yml"
           done
-          python3 -I tools/release/release.py verify dl
+          python3 -I tools/release/release.py verify dl --public
+      # The publication record (docs/RELEASE.md): written by the tool from the verified manifest, compared with the
+      # digests GitHub holds, and kept as an artifact for the `release: record` commit; nothing here commits it.
+      - name: The publication record
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag }}
+        run: |
+          python3 -I tools/release/release.py publish-record dl --out record --expect-commit "$(git rev-parse HEAD)" --github-release "$TAG"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: published-record
+          path: record/
+          retention-days: 30
+          if-no-files-found: error
+      # Once the release is published with immutable releases enabled (a repository setting, owner), GitHub's release
+      # attestation exists too; a draft has none, so this step only acts on a published, immutable release (a re-run
+      # after publishing).
+      - name: Release attestation (published, immutable releases only)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag }}
+        run: |
+          state=$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json isDraft,isImmutable --jq '"\(.isDraft) \(.isImmutable)"')
+          if [ "$state" = "false true" ]; then
+            gh release verify "$TAG" --repo "$GITHUB_REPOSITORY"
+            for f in dl/*.zip dl/*.tar.gz dl/*.tar.xz dl/SHA256SUMS dl/manifest.json dl/provenance.intoto.json; do
+              gh release verify-asset "$TAG" "$f" --repo "$GITHUB_REPOSITORY"
+            done
+          else
+            echo "release state (draft immutable): $state; the release attestation exists once it is published as an immutable release"
+          fi

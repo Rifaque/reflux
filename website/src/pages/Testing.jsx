@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import release from '../generated/release.json'
-import { PageHead } from '../components.jsx'
+import { Out, PageHead } from '../components.jsx'
 
 const channels = [
   ['Android phones, tablets, and Google TV', 'Google Play’s closed testing. You join with the Google account you use on the device, then install Reflux from Google Play as usual; updates arrive the same way.'],
@@ -27,6 +27,7 @@ export default function Testing() {
       <section aria-labelledby="channels">
         <h2 id="channels">How each platform joins</h2>
         <dl className="steps">{channels.map(([name, how]) => <div key={name}><dt>{name}</dt><dd>{how}</dd></div>)}</dl>
+        {Object.values(release.stores).map((s) => s.testing?.url && <p key={s.testing.url}><Out href={s.testing.url}>{s.testing.kind === 'closed-test-opt-in' ? 'Join the closed test' : 'Join the live app test'}</Out></p>)}
         <p className="quiet small">Testers are chosen for coverage: the devices, sources, and controllers they use, so that Reflux is tried on as many setups as possible.</p>
       </section>
       <section aria-labelledby="report">

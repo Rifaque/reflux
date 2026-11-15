@@ -18,6 +18,8 @@ android {
         versionCode = rootProject.extra["reflux.versionCode"] as Int
         versionName = rootProject.extra["reflux.version"] as String
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        // The launcher label; the debug build type says so in its own (below).
+        manifestPlaceholders["appLabel"] = "Reflux"
         // The metadata provider's application credential, from the build environment (a CI secret, never the
         // repository), in every build that is given one (DECISIONS.md, "TMDB: working non-commercial classification").
         (providers.gradleProperty("reflux.tmdb.token").orNull ?: providers.environmentVariable("REFLUX_TMDB_TOKEN").orNull)
@@ -43,6 +45,13 @@ android {
     }
 
     buildTypes {
+        // A debug build is its own app on the device, never the permanent identity: it installs beside a store or
+        // release build instead of over it, and is never registered or listed (DECISIONS.md, "The permanent Android
+        // identity"). The test APK follows: <applicationId>.debug.test. The release build type keeps the ID exactly.
+        debug {
+            applicationIdSuffix = ".debug"
+            manifestPlaceholders["appLabel"] = "Reflux (debug)"
+        }
         release {
             isMinifyEnabled = true
             isShrinkResources = true

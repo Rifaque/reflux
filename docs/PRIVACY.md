@@ -35,7 +35,7 @@ What Reflux stores, sends, and to whom, as the code does it (checked 2026-11-08 
 - Do you provide a way for users to request that their data be deleted? Not applicable: there is no account or server-side data; uninstalling removes it.
 - Privacy policy URL: `https://reflux.rsxdevelops.dev/privacy`.
 
-**Amazon Appstore:** no personal information collected or shared; no account; no advertising ID; privacy policy at the same URL.
+**Amazon Appstore:** the User Data Privacy Questionnaire (which must be complete before a new app or an update can be published) is answered from this section: no personal information collected or shared; no account; no advertising ID; privacy policy at the same URL. The TMDB title-and-year lookup is answered per the metadata provider decision (D5, owner-pending), and third-party code's data collection is declared as the questionnaire asks (none of Reflux's libraries sends anything of its own).
 
 ## The website
 

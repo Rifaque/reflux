@@ -1,4 +1,5 @@
 import release from '../generated/release.json'
+import { Link } from 'react-router-dom'
 import { PageHead } from '../components.jsx'
 
 export default function Releases() {
@@ -13,7 +14,8 @@ export default function Releases() {
             {section.version === 'Unreleased' ? 'Unreleased' : `Reflux ${section.version}`}
             {section.date && <span className="quiet release-date"> · {section.date}</span>}
           </h2>
-          {section.version === 'Unreleased' && <p className="quiet small">In development as {release.version}.</p>}
+          {section.version === 'Unreleased' && <p className="quiet small">In development as {release.version}; not released.</p>}
+          {section.version === release.latest?.version && <p className="quiet small">The current release. <Link to="/download">Download</Link>.</p>}
           <ul className="changes">{section.items.map((item, i) => <li key={i}>{item}</li>)}</ul>
         </section>
       ))}

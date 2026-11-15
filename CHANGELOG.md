@@ -4,6 +4,8 @@ What changes for people using Reflux, version by version. The rules for versions
 
 ## Unreleased
 
+- Dragging the player's timeline lands where you let go: the times on either side of it no longer change the bar's width as they count, so the thumb stays under the pointer or finger.
+- Development builds of the Android app install as a separate app, "Reflux (debug)", beside the one from a store.
 - The player is lighter: the controls are a title and the way out, a play button and ten-second skips that are plain symbols, and one row with the timeline and the actions, and they go away while you watch. While a film is opening or waiting for data you see only Reflux's loader and the way out, never a pause button beside it.
 - Phones and tablets have a mini-player. Back (or the Minimize button) in the player puts what you're watching in a small player above the navigation while you browse; on Android 14 and later the back gesture shows the picture shrinking, and taking the gesture back leaves the player as it was. Tap the mini-player to bring the player back. The player's Close button, at the top right, is what ends playback.
 - On Android phones and tablets, pressing Back at the top of Reflux while something is playing in the mini-player keeps it going in a small floating window, as leaving Reflux does; paused, finished, or failed playback is left alone and Back does what it does in any app. Closing the floating window ends playback and remembers where you were.

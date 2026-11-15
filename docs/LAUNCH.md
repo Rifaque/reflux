@@ -44,6 +44,23 @@ Required for the beta website (W2/W3) and the 1.0 site.
 - Produced with the video-generation skill the product owner will name; until then, the shot list and capture plan are the deliverable.
 - Short (60–90 s), with captions and no reliance on sound.
 
+**Shot list and capture plan (M11.7, 2026-11-15; production waits for the owner's tool).** Every shot from a real build over the Blender open-films library the site's renders use (`WebsiteShowcaseTest`'s films and artwork):
+
+| # | Shot (about) | Source | Caption |
+| --- | --- | --- | --- |
+| 1 | First run on the desktop, "Add a folder", the folder chosen (8 s) | The desktop window (window test harness, Linux container so no private screen is caught) | Point Reflux at a folder |
+| 2 | The library filling with posters and backdrops (8 s) | The same run | It finds and understands your films |
+| 3 | A film's page: description, credits, Resume / From the start / watched / favorite (8 s) | Offscreen renderer, desktop and phone | Everything about it, in one place |
+| 4 | Play: the player opening on the right version, the light controls fading (10 s) | Desktop window with libmpv | Press Play |
+| 5 | Dragging the timeline, then the mini-player while browsing (8 s) | Desktop window | Keep browsing while you watch |
+| 6 | The same film resuming on a phone at the same place (8 s) | Phone 2a capture, `.debug` build, test server | Pick up where you left off |
+| 7 | A television by remote: home, the film's page, playback (12 s) | Google TV emulator or the Fire TV Stick capture | Made for the remote |
+| 8 | A controller moving through the library (6 s) | Desktop window with a controller | And for a controller |
+| 9 | Download for offline, then playing with the network off (8 s) | Phone capture | Keep it for offline |
+| 10 | The platforms and where to get Reflux (6 s) | The site's Download page | Android, Fire TV, Windows, Linux |
+
+Captures are made after the M12 candidate is frozen, so the film shows the build testers get; none shows a feature that does not exist, and no commercial title appears.
+
 ## Beta program
 
 - **Size:** about 15–20 testers, chosen from the signup for coverage, not the first to arrive: phones and tablets, at least three Google TV / Android TV devices, at least three Fire TV devices on Fire OS, Windows and Linux desktops, local folders, Jellyfin servers, and SMB shares; at least two testers using controllers.
@@ -80,3 +97,5 @@ Vega OS is tracked separately as a future compatibility track (ROADMAP.md, Platf
 ## Distribution (M11)
 
 M11 prepares every channel above and rehearses them end to end without a public release; the beta that uses them is M12 (planning/M11-DISTRIBUTION-PLAN.md). What changes in this plan: the website is the public entry point for releases and reads one release record (M11.7); the demo video's shot list and captures belong to M11.7 with production waiting for the owner's tool (W2); beta *operations* (the tester routes, templates, opt-in links) are set up in M11 and run in M12; the Google Play closed test (twelve testers, fourteen days, if the account is personal) and Amazon Live App Testing with Appstore Beta Hub are M12's campaign, not M11's rehearsal.
+
+**Done in M11 (2026-11-15):** the Download page is built only from `release/stores.json` and `release/published/<version>.json`: one availability table (Android and Android TV / Google TV → Google Play; Fire TV → Amazon Appstore; Windows and Linux → the GitHub release), the desktop archives with size, SHA-256, commit, and release link, the libmpv source offer beside the Windows zip, the SmartScreen / Smart App Control and Linux libmpv / Secret Service notes, install / update / removal steps, and the checksum and `gh attestation verify` commands; with no published record it says no public build exists yet. No Android file is ever linked. The tester page shows a store's test link only when `stores.json` records one. Amazon's presubmission and test criteria were re-read and are mapped in `release/amazon-appstore.md`; Beta Hub (Fire OS 7+) redeems invitations, and an update that does not appear is fetched with Settings → Account & Profile Settings → Sync Amazon Content. **Open:** the support e-mail (stores require a support contact), the Privacy page's "pre-release" banner at release, Trakt attribution if D5 chooses it.
