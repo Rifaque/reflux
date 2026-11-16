@@ -15,7 +15,7 @@ const application = {
   url: `${SITE}/`,
   applicationCategory: 'MultimediaApplication',
   operatingSystem: 'Android, Android TV, Fire OS, Windows, Linux',
-  description: 'A media player for your own films and shows: local folders, Jellyfin, Plex, and network shares. No account, no tracking.',
+  description: 'A media player for your own films and shows: local folders, Jellyfin, Plex, and network shares. No Reflux account, no ads, no tracking.',
   offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
   publisher: { '@id': publisher['@id'] },
 }

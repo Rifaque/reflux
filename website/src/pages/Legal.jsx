@@ -68,7 +68,7 @@ export function Notices() {
   return (
     <article className="page legal">
       <h1>Third-party notices</h1>
-      <p className="lead">Reflux is built with the software below, each under its own license. Every build lists these with their full license texts on its About page; the texts are also in the legal folder of <a href="https://github.com/Rifaque/reflux" rel="noopener noreferrer">Reflux's source repository</a>.</p>
+      <p className="lead">Reflux is built with the software below, each under its own license. Every build lists these with their full license texts in the app, under About Reflux; the texts are also in the legal folder of <a href="https://github.com/Rifaque/reflux" rel="noopener noreferrer">Reflux's source repository</a>.</p>
       <table>
         <thead><tr><th scope="col">Component</th><th scope="col">License</th><th scope="col">In</th></tr></thead>
         <tbody>
@@ -92,12 +92,15 @@ export function Notices() {
         <tbody>{release.site.map((p) => <tr key={p.name}><td>{p.name}</td><td>{p.version}</td><td>{p.license}</td></tr>)}</tbody>
       </table>
       <h2 id="trakt">Trakt</h2>
-      <p>Reflux identifies films and shows and fetches their descriptions and artwork with <Out href="https://trakt.tv">Trakt</Out>. Reflux is an independent client: Trakt does not sponsor, review, or stand behind it. Reflux uses Trakt but is not endorsed or certified by Trakt.</p>
+      <p>Reflux uses <Out href="https://trakt.tv">Trakt</Out> for film and show metadata and artwork: it identifies titles and fetches their descriptions and pictures from Trakt's public data, without a Trakt account. Reflux is an independent product.</p>
+      <p><strong>Reflux uses Trakt but is not endorsed or certified by Trakt.</strong></p>
+      <h2 id="media-servers">Media servers Reflux works with</h2>
+      <p>Reflux connects to Jellyfin and Plex servers that you run or have access to. It is an independent client: it is not an official Jellyfin or Plex app, and it is not affiliated with, endorsed by, or certified by the Jellyfin project or Plex, Inc. Their names are used only to say that Reflux works with them, and Reflux uses neither one's logo. Jellyfin is the Jellyfin project's name. Plex and Plex Media Server are trademarks of Plex and used under a license.</p>
       <h2 id="artwork">Artwork on this site</h2>
-      <p>The films in the pictures of Reflux on this site are the Blender Foundation's open films; their posters and stills are used under their Creative Commons licenses, unchanged apart from being shown inside Reflux. The titles' descriptions are Reflux's own words.</p>
+      <p>The films in the pictures of Reflux on this site are the Blender Foundation's open films; their posters and stills are used under their Creative Commons licenses (one is dedicated to the public domain), unchanged apart from being scaled and shown inside Reflux. The titles' descriptions are Reflux's own words. The films' titles and the logos on some posters belong to their owners and are not licensed by these Creative Commons licenses.</p>
       <table>
         <thead><tr><th scope="col">Artwork</th><th scope="col">By</th><th scope="col">License</th></tr></thead>
-        <tbody>{showcase.artwork.map((a) => <tr key={a.file}><td><Out href={a.source}>{a.file}</Out></td><td>{a.author}</td><td>{a.license}</td></tr>)}</tbody>
+        <tbody>{showcase.artwork.map((a) => <tr key={a.file}><td><Out href={a.source}>{a.file}</Out></td><td>{a.author}</td><td><Out href={a.licenseUrl}>{a.license}</Out></td></tr>)}</tbody>
       </table>
     </article>
   )
@@ -110,7 +113,9 @@ export function Security() {
       <h2>Reporting a problem</h2>
       <p>Report security problems privately through <a href="https://github.com/Rifaque/reflux/security/advisories/new" rel="noopener noreferrer">GitHub's private vulnerability reporting</a> for Reflux, not in a public issue. Please include what is affected and how to reproduce it.</p>
       <h2>Verifying a download</h2>
-      <p>Every Windows and Linux build is published on Reflux's GitHub releases with its SHA-256 checksum and the commit it was built from. Windows builds are not signed with a publisher certificate yet: check the checksum before opening one (see <Link to="/download">Download</Link>).</p>
+      <p>{release.latest ? 'Every Windows and Linux build is published' : 'No build has been published yet. When one is, each Windows and Linux build will be published'} on Reflux's GitHub releases with its SHA-256 checksum, the commit it was built from, and GitHub's build provenance. Windows builds are not signed with a publisher certificate yet: check the checksum before opening one (see <Link to="/download">Download</Link>).</p>
+      <h2>Other questions</h2>
+      <p>For anything that is not a vulnerability, e-mail <a href="mailto:support@rsxdevelops.dev">support@rsxdevelops.dev</a> or see <Link to="/support">Support</Link>.</p>
       <h2>How Reflux handles your sign-ins</h2>
       <p>See <Link to="/privacy">Privacy</Link>, and the project's <a href="https://github.com/Rifaque/reflux/blob/main/SECURITY.md" rel="noopener noreferrer">security policy</a>.</p>
     </article>

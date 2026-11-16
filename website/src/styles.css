@@ -316,7 +316,8 @@ td { color: var(--text-2); min-width: 9rem; }
 
 /* The one-library moment: three copies of a film converge into one, which becomes Reflux's page for it. */
 .converge { margin: 0; }
-.converge-stage { position: relative; aspect-ratio: 1440 / 879; }
+.converge-stage { position: relative; aspect-ratio: 1440 / 1011; }
+.player-shot { margin: 1.5rem 0 0; }
 .converge-result { position: absolute; inset: 0; }
 .copy { position: absolute; left: 50%; top: 50%; width: 23%; transform: translate(-50%, -50%); display: none; }
 .copy img { width: 100%; border-radius: 12px; border: 1px solid var(--line-strong); box-shadow: 0 30px 60px -20px rgba(0, 0, 0, 0.8); }

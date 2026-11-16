@@ -2,11 +2,11 @@
  "images": {
   "home-desktop": [
    1680,
-   1050
+   1027
   ],
   "details-desktop": [
    1440,
-   879
+   1011
   ],
   "movies-tv": [
    1680,
@@ -14,85 +14,80 @@
   ],
   "details-tablet": [
    1400,
-   935
+   872
   ],
   "home-phone": [
    640,
-   1421
+   1280
+  ],
+  "player-tv": [
+   1680,
+   945
   ]
  },
  "artwork": [
   {
    "file": "Big buck bunny poster big.jpg",
    "license": "CC BY 3.0",
-   "author": "(c) copyright Blender Foundation | peach.blender.org",
-   "source": "https://commons.wikimedia.org/wiki/File:Big_buck_bunny_poster_big.jpg"
-  },
-  {
-   "file": "Blender Open Movie - Spring (2019).png",
-   "license": "CC0",
-   "author": "Alexandru.rosu",
-   "source": "https://commons.wikimedia.org/wiki/File:Blender_Open_Movie_-_Spring_(2019).png"
-  },
-  {
-   "file": "Charge-movie poster.jpg",
-   "license": "CC BY 4.0",
-   "author": "Blender Studio",
-   "source": "https://commons.wikimedia.org/wiki/File:Charge-movie_poster.jpg"
-  },
-  {
-   "file": "Charge - Blender Open Movie-YouTube thumbnail.jpg",
-   "license": "CC BY 4.0",
-   "author": "Blender Studio",
-   "source": "https://commons.wikimedia.org/wiki/File:Charge_-_Blender_Open_Movie-YouTube_thumbnail.jpg"
+   "author": "(c) copyright Blender Foundation | www.bigbuckbunny.org",
+   "source": "https://commons.wikimedia.org/wiki/File:Big_buck_bunny_poster_big.jpg",
+   "licenseUrl": "https://creativecommons.org/licenses/by/3.0/"
   },
   {
    "file": "Coffee Run - screenshot-Location 01 Outisde-Run 1-coffee.png",
    "license": "CC BY 4.0",
    "author": "Blender Foundation",
-   "source": "https://commons.wikimedia.org/wiki/File:Coffee_Run_-_screenshot-Location_01_Outisde-Run_1-coffee.png"
+   "source": "https://commons.wikimedia.org/wiki/File:Coffee_Run_-_screenshot-Location_01_Outisde-Run_1-coffee.png",
+   "licenseUrl": "https://creativecommons.org/licenses/by/4.0/"
   },
   {
    "file": "Coffee Run - screenshot-Location 06 Wedding-Run 2.png",
    "license": "CC BY 4.0",
    "author": "Blender Foundation",
-   "source": "https://commons.wikimedia.org/wiki/File:Coffee_Run_-_screenshot-Location_06_Wedding-Run_2.png"
+   "source": "https://commons.wikimedia.org/wiki/File:Coffee_Run_-_screenshot-Location_06_Wedding-Run_2.png",
+   "licenseUrl": "https://creativecommons.org/licenses/by/4.0/"
   },
   {
    "file": "CosmosLaundromatPoster.jpg",
    "license": "CC BY 4.0",
-   "author": "Andy Goralczyk and the Blender Foundation",
-   "source": "https://commons.wikimedia.org/wiki/File:CosmosLaundromatPoster.jpg"
+   "author": "Andy Goralczyk and the Blender Foundation (CC-BY 2015, Blender Foundation, cloud.blender.org)",
+   "source": "https://commons.wikimedia.org/wiki/File:CosmosLaundromatPoster.jpg",
+   "licenseUrl": "https://creativecommons.org/licenses/by/4.0/"
   },
   {
    "file": "Elephants Dream cover.jpg",
    "license": "CC BY 2.5",
-   "author": "Ton Roosendaal et al.",
-   "source": "https://commons.wikimedia.org/wiki/File:Elephants_Dream_cover.jpg"
+   "author": "(c) copyright 2006, Blender Foundation / Netherlands Media Art Institute / www.elephantsdream.org",
+   "source": "https://commons.wikimedia.org/wiki/File:Elephants_Dream_cover.jpg",
+   "licenseUrl": "https://creativecommons.org/licenses/by/2.5/"
   },
   {
    "file": "Elephants Dream s5 both.jpg",
    "license": "CC BY 2.5",
-   "author": "Ton Roosendaal et al.",
-   "source": "https://commons.wikimedia.org/wiki/File:Elephants_Dream_s5_both.jpg"
+   "author": "(c) copyright 2006, Blender Foundation / Netherlands Media Art Institute / www.elephantsdream.org",
+   "source": "https://commons.wikimedia.org/wiki/File:Elephants_Dream_s5_both.jpg",
+   "licenseUrl": "https://creativecommons.org/licenses/by/2.5/"
   },
   {
    "file": "Sintel poster.jpg",
    "license": "CC BY 3.0",
-   "author": "(c) copyright Blender Foundation | durian.blender.org",
-   "source": "https://commons.wikimedia.org/wiki/File:Sintel_poster.jpg"
+   "author": "© copyright Blender Foundation – durian.blender.org",
+   "source": "https://commons.wikimedia.org/wiki/File:Sintel_poster.jpg",
+   "licenseUrl": "https://creativecommons.org/licenses/by/3.0/"
   },
   {
    "file": "Sprite Fright-movie poster.jpg",
    "license": "CC BY 4.0",
    "author": "Blender Studio",
-   "source": "https://commons.wikimedia.org/wiki/File:Sprite_Fright-movie_poster.jpg"
+   "source": "https://commons.wikimedia.org/wiki/File:Sprite_Fright-movie_poster.jpg",
+   "licenseUrl": "https://creativecommons.org/licenses/by/4.0/"
   },
   {
    "file": "Tos-poster.png",
    "license": "CC BY 3.0",
-   "author": "(CC) Blender Foundation | Project Mango",
-   "source": "https://commons.wikimedia.org/wiki/File:Tos-poster.png"
+   "author": "(CC) Blender Foundation | Project Mango (mango.blender.org)",
+   "source": "https://commons.wikimedia.org/wiki/File:Tos-poster.png",
+   "licenseUrl": "https://creativecommons.org/licenses/by/3.0/"
   }
  ]
 }

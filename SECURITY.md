@@ -15,7 +15,7 @@ None yet: Reflux has not been released. Once it is, the latest release on each p
 - **Native code on Windows:** `libmpv-2.dll` is built by Reflux from pinned, checksummed sources in a digest-pinned image (tools/libmpv), reproducibly, so its digest is pinned and any other DLL is refused.
 - **CI:** GitHub Actions pinned by commit SHA; no secret in any CI job but the release workflow's upload key.
 - **Support reports:** made only on request, never sent by Reflux, and redacted by shape and by name (credentials, cookies, addresses, paths, e-mail addresses, token-like strings, titles, source names); docs/DECISIONS.md, "The support report".
-- **Android:** release builds are minified, not debuggable, exclude app data from backup and device transfer, export only the launcher activity and a read-only artwork provider, and carry no metadata-provider credential. Plain HTTP is allowed for the user's own home servers; user-added certificate authorities are not trusted.
+- **Android:** release builds are minified, not debuggable, exclude app data from backup and device transfer, export only the launcher activity and a read-only artwork provider, and carry no secret: the Trakt Client ID they carry identifies the application to Trakt and is not a secret (docs/METADATA.md). Plain HTTP is allowed for the user's own home servers; user-added certificate authorities are not trusted.
 
 ## How Reflux handles credentials
 

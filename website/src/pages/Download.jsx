@@ -106,8 +106,8 @@ export default function Download() {
       <section aria-labelledby="verify">
         <h2 id="verify">Check what you downloaded</h2>
         <p>
-          Every desktop release lists the SHA-256 of each file
-          {latest ? <> in <Out href={latest.checksumsUrl}>SHA256SUMS</Out>, with the <Out href={latest.manifestUrl}>manifest</Out> and the <Out href={latest.provenanceUrl}>build provenance</Out> beside it</> : ', and publishes SHA256SUMS, the manifest, and the build provenance beside the files'}.
+          {latest ? 'Every desktop release lists' : 'Each desktop release will list'} the SHA-256 of each file
+          {latest ? <> in <Out href={latest.checksumsUrl}>SHA256SUMS</Out>, with the <Out href={latest.manifestUrl}>manifest</Out> and the <Out href={latest.provenanceUrl}>build provenance</Out> beside it</> : ', and publish SHA256SUMS, the manifest, and the build provenance beside the files'}.
           Put the file and SHA256SUMS in one folder, then:
         </p>
         <pre className="notice-text">{`# Linux (and macOS)

@@ -11,14 +11,18 @@ const platforms = [
   { name: 'Linux', needs: '64-bit, with your distribution’s libmpv', from: 'GitHub Release, linked from Download', notes: 'Runs on X11 and through XWayland. Install libmpv2 (Debian, Ubuntu) or mpv-libs (Fedora).' },
 ]
 
-// What was seen playing on real devices (docs/PLAYBACK.md, section 17). "Converted": a server changes that part.
+// What was seen playing on real devices and the Google TV emulator (docs/PLAYBACK.md, section 17), and nothing more.
+// "Not decoded*": the device cannot play it; from a Jellyfin server that part is converted (see the note under the table).
 const rows = [
-  ['H.264 and HEVC to 1080p', 'Yes', 'Yes', 'Yes', 'Yes'],
-  ['HEVC 10-bit 4K', 'Yes', 'Yes', 'Yes', 'Depends on the device'],
-  ['AV1', 'Yes', 'Yes', 'Yes, to 1080p in software on some', 'Depends on the device'],
-  ['VP9', 'Yes', 'Yes', 'Yes', 'Yes'],
-  ['AAC, AC-3, E-AC-3', 'Yes', 'Yes', 'Yes on most; converted where a phone lacks AC-3', 'Depends on the device'],
-  ['DTS and TrueHD', 'Yes', 'Converted by a server', 'Converted by a server', 'Converted by a server'],
+  ['H.264 and HEVC (8-bit) to 1080p', 'Yes', 'Yes', 'Yes', 'Yes'],
+  ['HEVC 10-bit to 1080p', 'Yes', 'Yes', 'Yes', 'Not decoded*'],
+  ['HEVC 10-bit 4K', 'Yes', 'Yes', 'Yes on the Pad 7; not tested on the phone', 'Not decoded*'],
+  ['H.264 10-bit', 'Yes', 'Not decoded*', 'Yes on the Phone 2a; not decoded* on the Pad 7', 'Not decoded*'],
+  ['AV1', 'Yes', 'Yes, in hardware, to 4K', 'To 1080p in software on the Pad 7; not tested on the phone', 'To 1080p in software'],
+  ['VP9', 'Yes', 'Yes', 'Yes on the Pad 7; not tested on the phone', 'Yes'],
+  ['AAC, AC-3, E-AC-3', 'Yes', 'Yes', 'Yes on the Pad 7; AC-3 and E-AC-3 not decoded* on the Phone 2a', 'AAC yes; AC-3 and E-AC-3 not decoded*'],
+  ['DTS and TrueHD', 'Yes', 'Not decoded*', 'Not decoded*', 'Not decoded*'],
+  ['Opus', 'Yes', 'Yes', 'Yes on the Pad 7; not tested on the phone', 'Yes'],
   ['Text subtitles (SRT, ASS)', 'Yes', 'Yes', 'Yes', 'Yes'],
   ['Image subtitles (PGS, VobSub)', 'Yes', 'Yes', 'Yes', 'Yes'],
 ]
@@ -46,11 +50,12 @@ export default function Platforms() {
         <p>Reflux plays your files as they are whenever the device can. When it cannot and the file is on a Jellyfin server, Reflux asks the server to convert only what the device lacks, usually the sound, and keeps the original picture. Local files and shares are played by the device alone, so what the device cannot decode is said, not hidden.</p>
         <div className="table-wrap">
           <table>
-            <thead><tr><th scope="col">Format</th><th scope="col">Windows</th><th scope="col">Fire TV Stick 4K Plus</th><th scope="col">Android phones and tablets</th><th scope="col">Google TV</th></tr></thead>
+            <thead><tr><th scope="col">Format</th><th scope="col">Windows</th><th scope="col">Fire TV Stick 4K Plus</th><th scope="col">Android phone and tablet</th><th scope="col">Google TV (emulator)</th></tr></thead>
             <tbody>{rows.map(([name, ...cells]) => <tr key={name}><th scope="row">{name}</th>{cells.map((c, i) => <td key={i}>{c}</td>)}</tr>)}</tbody>
           </table>
         </div>
-        <p className="quiet small">Seen on a Windows 11 laptop, a Fire TV Stick 4K Plus, a Xiaomi Pad 7, a Nothing Phone 2a, and the Google TV emulator; other devices differ by their decoders, and Reflux asks each device what it has rather than assuming. Linux plays what its libmpv was built with.</p>
+        <p className="quiet small">* Not decoded by that device. When the file is on a Jellyfin server, Reflux asks the server to convert only that part (the sound alone when only the sound is the problem). From a folder, a share, or Plex, Reflux plays what the device can and says what it cannot: a film whose sound the device cannot decode plays without that track, and Reflux says so.</p>
+        <p className="quiet small">Seen on a Windows 11 laptop, a Fire TV Stick 4K Plus, a Xiaomi Pad 7, a Nothing Phone 2a, and the Google TV emulator (no physical Google TV device yet); other devices differ by their decoders, and Reflux asks each device what it has rather than assuming. Linux plays what its libmpv was built with.</p>
       </section>
 
       <section aria-labelledby="hdr">
@@ -64,7 +69,7 @@ export default function Platforms() {
 
       <section aria-labelledby="input">
         <h2 id="input">Remotes, controllers, and screen readers</h2>
-        <p>Touch, mouse, keyboard, TV remotes, and Xbox and PlayStation controllers all drive Reflux (physical controllers are among what the beta verifies); the first press of a controller turns the interface into one laid out for it. Every control is labelled for screen readers, and Reflux follows the system's text size and reduce-motion settings.</p>
+        <p>Reflux is built for touch, mouse, keyboard, TV remotes, and game controllers with Xbox and PlayStation layouts; the first press of a controller turns the interface into one laid out for it. The Fire TV and Google TV remotes are used on real devices and the emulator every milestone; physical controllers are among what the beta qualifies. Every control is labelled for screen readers, and Reflux follows the system's text size and reduce-motion settings.</p>
       </section>
     </article>
   )
