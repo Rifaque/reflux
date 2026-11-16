@@ -21,5 +21,5 @@ SQLite and SQLDelight | Keep your library on this device | android desktop |
 smbj | Reads Windows and NAS shares | android desktop |
 OkHttp | Reads web shares on Android | android |
 Jellyfin | A media server Reflux can connect to | android desktop | Jellyfin is the Jellyfin project's. Reflux is an independent client: not affiliated with, endorsed by, or certified by it.
-Plex | A media server Reflux can connect to | android desktop | Plex is a trademark of Plex, Inc. Reflux is an independent client: not affiliated with, endorsed by, or certified by Plex.
+Plex | A media server Reflux can connect to | android desktop | Plex and Plex Media Server are trademarks of Plex and used under a license. Reflux is an independent client: not affiliated with, endorsed by, or certified by Plex.
 Trakt | Recognizes films and shows, and gives their descriptions and artwork | android desktop | Reflux uses Trakt but is not endorsed or certified by Trakt. Reflux is an independent client of its API.

@@ -11,7 +11,7 @@ const channels = [
 const report = [
   'What you were doing, on which device, and what you expected.',
   'In Reflux: About Reflux → “Save a support report”. It holds your version, device, sources’ kinds, the last playback, and recent problems, with passwords, addresses, file paths, and titles removed. Reflux never sends it; you attach it.',
-  'Send both through Support.',
+  'Send both to support@rsxdevelops.dev, or through the other routes on Support.',
 ]
 
 export default function Testing() {

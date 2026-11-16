@@ -7,7 +7,7 @@ const articles = [
     body: (
       <>
         <h2>Install</h2>
-        <p>Get Reflux for your platform from <Link to="/download">Download</Link>: Google Play on Android phones, tablets, and Google TV; the Amazon Appstore on Fire TV; a zip for Windows and a tar.gz for Linux. Nothing asks you for an account.</p>
+        <p>Get Reflux for your platform from <Link to="/download">Download</Link>: Google Play on Android phones, tablets, and Google TV; the Amazon Appstore on Fire TV; a zip for Windows and a tar.gz for Linux. Reflux has no account of its own: you sign in only to your own servers, if you add any.</p>
         <h2>Your first library</h2>
         <ol className="plain numbered">
           <li>Open Reflux. It offers two ways in: <strong>Choose a folder</strong>, or <strong>Connect a server or share</strong>.</li>
@@ -17,7 +17,7 @@ const articles = [
         </ol>
         <p>Add more folders, servers, and shares under <strong>Sources</strong> at any time.</p>
         <h2>Moving around</h2>
-        <p>Home, Movies, Shows, Search, Downloads, and Sources are always one step away: a bar at the bottom on a phone, a rail on a tablet or TV (press Left on the remote), a sidebar on a desktop. On a desktop, Ctrl+1 to Ctrl+6 go straight to each; with a controller, the bumpers step through them.</p>
+        <p>Home, Movies, Shows, and Search are always one step away, and so are Downloads, Sources, and Settings: a rail on a tablet or TV (press Left on the remote), a sidebar on a desktop, and on a phone a bar at the bottom with your profile button leading to Downloads, Sources, and Settings. On a desktop, Ctrl+1 to Ctrl+6 go straight to Home through Sources; with a controller, the bumpers step through them.</p>
       </>
     ),
   },
@@ -61,7 +61,10 @@ const articles = [
         <h2>How Reflux recognises titles</h2>
         <p>From ordinary file and folder names: title, year, season and episode numbers, and the edition or quality where the name says. Episodes in a folder with no show name become a show named after the folder. Disc folders (BDMV, VIDEO_TS) are not played yet.</p>
         <h2>Where details and artwork come from</h2>
-        <p>Your servers describe their titles: summaries, genres, ratings, runtimes, dates, cast, posters, and episode stills. Files bring their own artwork where it sits beside them, and Trakt fills in what neither has: Reflux sends it a title, nothing about you. A title with no artwork gets a designed look of its own rather than a blank. "Online metadata & artwork" in Settings turns the lookups off.</p>
+        <p>Your servers describe their titles: summaries, genres, ratings, runtimes, dates, cast, posters, and episode stills. Files bring their own artwork where it sits beside them, and Trakt, an online film and TV database, fills in what neither has. A title with no artwork gets a designed look of its own rather than a blank.</p>
+        <h2>Online metadata &amp; artwork</h2>
+        <p>To recognise a title, your device asks Trakt directly with the title Reflux read (or an ID such as an IMDb number, when it already has one), and your language when it is not English. The year is used on your device to pick the right match and is not sent; nothing about you, your files' locations, or your servers is sent, and no Trakt account is used. Reflux then downloads the pictures Trakt names and keeps them on your device.</p>
+        <p>Turn <strong>Online metadata &amp; artwork</strong> off in Settings and Reflux sends Trakt nothing and fetches no new pictures from it. What it already found stays, your servers and files still describe your titles, and Identify waits until you turn it back on. See <Link to="/privacy">Privacy</Link>.</p>
         <h2>Identify</h2>
         <p>When Reflux has a title wrong, open its page and choose <strong>Identify</strong>: search, pick the right one, and Reflux remembers it through rescans, keeping your progress, favourites, and chosen version. <strong>Let Reflux identify it</strong> undoes it.</p>
         <h2>Nothing changes on your disk</h2>
@@ -74,7 +77,7 @@ const articles = [
     body: (
       <>
         <h2>Is Reflux free? Does it need an account?</h2>
-        <p>Yes, and no. Reflux is free, with no subscription, paid tier, or ads, and nothing in it needs an account.</p>
+        <p>Reflux is free of charge, with no subscription, paid tier, or ads. It is proprietary software, not open source. It has no account of its own; you sign in only to your own Jellyfin or Plex server, if you use one.</p>
         <h2>A title plays without sound</h2>
         <p>The device cannot decode its audio (DTS or TrueHD on most phones and TVs). Reflux says so on screen. If the file is on a Jellyfin server, Reflux asks the server to convert the sound; from a folder or a share, choose another audio track or another version.</p>
         <h2>A server says it cannot be reached</h2>

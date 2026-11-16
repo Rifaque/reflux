@@ -4,6 +4,7 @@ What changes for people using Reflux, version by version. The rules for versions
 
 ## Unreleased
 
+- Reflux's website shows Reflux as it is today, captured from real phones, tablets, TVs, and Windows; it names the support address (support@rsxdevelops.dev), credits Trakt, Jellyfin, and Plex as their owners ask, and says exactly what is sent to Trakt.
 - On a TV, the Reflux mark at the top of the closed side menu is shown whole; its loop was cut off on the right.
 - Dragging the player's timeline lands where you let go: the times on either side of it no longer change the bar's width as they count, so the thumb stays under the pointer or finger.
 - Development builds of the Android app install as a separate app, "Reflux (debug)", beside the one from a store.

@@ -405,7 +405,7 @@ Each item is PASS (with its evidence) or an owner/external action. Written at M7
 | Stability: the M6 intermittents classified | **PASS** |
 | Branding in the apps, the site, and the store material | **PASS** |
 | Release artifacts from a clean clone, verified | **PASS** (`a905f27`) |
-| Support, legal, and privacy pages | **PASS**; **owner action**: a support e-mail address for the contact line |
+| Support, legal, and privacy pages | **PASS**; the support e-mail address (support@rsxdevelops.dev) is on the contact line since 2026-11-16 |
 | Final physical-device evidence for M7's build | **PASS**: Fire TV Stick (`4d6538e`); Phone 2a (`557a54b`) and Pad 7 (`5a55a0a`, then `11ec1af`), with the animated launch screen; two defects found and fixed (VERIFICATION.md, "M7: the release on the Phone 2a and Pad 7") |
 | Casting feasibility gate decided (DECISIONS.md, 2026-10-17) | Decided at M8's start (DECISIONS.md, 2026-11-11, "Casting") |
 
