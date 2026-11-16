@@ -55,16 +55,22 @@ import dev.reflux.ui.theme.glass
 class FocusEntry {
     /** Whether anything on the screen has focus. Observable, so a television can notice when nothing does. */
     internal var hasFocus by mutableStateOf(false)
-    private var initial: Offer? = null
-    private var returning: Offer? = null
+
+    /**
+     * Each page's starting control and the control to come back to, kept per page. While one page gives way to
+     * another both are composed for a moment, and the leaving one can still offer: a list item that arrives late
+     * (Home's featured title, once the library has been read) composes on the page being left. Kept in one slot,
+     * that offer replaced the arriving page's, and withdrawing it when the page went left the arriving page with
+     * none, so the first arrow fell to the toolkit's own search (on About, the Back button).
+     */
+    private val initial = HashMap<Any?, FocusRequester>()
+    private val returning = HashMap<Any?, FocusRequester>()
 
     /**
      * The page on screen. While one page gives way to another both exist for a moment, and only what the
      * arriving one offers counts: focus put on the page that is leaving is lost when it goes.
      */
     internal var screen: Any? = null
-
-    private class Offer(val requester: FocusRequester, val screen: Any?)
 
     /**
      * The item the user last went into on each page (see [rememberFocusReturn]), so that coming back to any
@@ -97,16 +103,17 @@ class FocusEntry {
 
     internal fun offer(requester: FocusRequester, screen: Any?, returning: Boolean = false) {
         if (returning) {
-            this.returning = Offer(requester, screen)
+            this.returning[screen] = requester
         } else {
-            initial = Offer(requester, screen)
+            initial[screen] = requester
             starts++
         }
     }
 
+    /** Takes back what [requester] offered, on whichever page it offered it; nothing another control offered. */
     internal fun withdraw(requester: FocusRequester) {
-        if (initial?.requester === requester) initial = null
-        if (returning?.requester === requester) returning = null
+        initial.entries.removeAll { it.value === requester }
+        returning.entries.removeAll { it.value === requester }
     }
 
     /**
@@ -132,11 +139,11 @@ class FocusEntry {
             afterPanel = null
             if (runCatching { requester.requestFocus(FocusDirection.Enter) }.getOrNull() == true) return true
         }
-        return focus(returning) || focus(initial)
+        return focus(returning[screen]) || focus(initial[screen])
     }
 
-    private fun focus(offer: Offer?): Boolean =
-        runCatching { offer?.takeIf { it.screen == screen }?.requester?.requestFocus(FocusDirection.Enter) }.getOrNull() ?: false
+    private fun focus(requester: FocusRequester?): Boolean =
+        runCatching { requester?.requestFocus(FocusDirection.Enter) }.getOrNull() ?: false
 }
 
 val LocalFocusEntry = staticCompositionLocalOf<FocusEntry?> { null }
