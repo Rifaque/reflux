@@ -24,6 +24,8 @@ import dev.reflux.ui.components.InputKind
 import dev.reflux.ui.components.TextInput
 import dev.reflux.ui.components.heading
 import dev.reflux.ui.components.initialFocus
+import dev.reflux.ui.components.readable
+import androidx.compose.ui.semantics.semantics
 import dev.reflux.ui.components.rememberFocusReturn
 import dev.reflux.ui.state.AppState
 import dev.reflux.ui.state.Destination
@@ -99,6 +101,18 @@ internal fun SettingsScreen(app: AppState) {
                     app.onlineMetadata,
                 ) { app.setOnlineMetadata(!app.onlineMetadata) }
             }
+        } else {
+            // A build without a provider (a development build, say) says so, where the switch would be, instead of
+            // leaving placeholders unexplained. Not a switch, and nothing to do: a sentence to read, which a remote,
+            // a keyboard, or a screen reader can reach like any other row.
+            item(key = "online-unavailable") {
+                Text(
+                    ONLINE_METADATA_UNAVAILABLE,
+                    Modifier.fillMaxWidth().readable(Shapes.medium).semantics(mergeDescendants = true) {}.padding(horizontal = 14.dp, vertical = 11.dp),
+                    style = LocalTypography.current.caption,
+                    color = RefluxColors.contentSecondary,
+                )
+            }
         }
         // The one appearance choice Reflux has: whether artwork may color the space around it. Off by default; it is
         // not a theme, and nothing else about the interface changes with it (DECISIONS.md, 2026-11-07).
@@ -117,6 +131,9 @@ internal fun SettingsScreen(app: AppState) {
         }
     }
 }
+
+/** Settings' sentence for a build that has no metadata provider to ask. */
+internal const val ONLINE_METADATA_UNAVAILABLE = "Online metadata is unavailable in this build."
 
 @Composable
 private fun Section(title: String) {

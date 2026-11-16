@@ -476,7 +476,14 @@ fun RefluxApp(app: AppState, modifier: Modifier = Modifier, bars: SystemBars = S
                             }
                         }
                     }
-                    if (layout.formFactor == FormFactor.TV) {
+                    // What has scrolled up under the top bar is faded out rather than left showing through it: on a
+                    // television, where pages move a row at a time; and beside a navigation down the side (tablet,
+                    // desktop) on a page with its way back floating in that bar, where rows otherwise passed behind
+                    // and beside the Back button (a show's season tabs on a tablet). The band is the chrome's own top
+                    // inset, status bar included. A phone's corner Back is left as it was.
+                    val scrimsTopBar = layout.formFactor == FormFactor.TV ||
+                        (layout.navigation.vertical && app.navigator.current !is Destination.Section)
+                    if (scrimsTopBar) {
                         val fade by animateFloatAsState(if (page.scrolled) 1f else 0f, Motion.navigation.tween())
                         val background = RefluxColors.background
                         Box(
