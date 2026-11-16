@@ -243,6 +243,9 @@ internal val LocalChromeInsets = staticCompositionLocalOf { ChromeInsets(top = P
 /** The row across the top of a page beside a rail: the way back, and a sign of the library being updated. */
 internal val PageBarHeight = 64.dp
 
+/** How far below the top bar its scrim fades out, once a page has scrolled. */
+internal val TopBarScrimFade = 24.dp
+
 private fun chromeInsets(navigation: NavigationStyle, onSection: Boolean, prompts: Boolean, bars: SystemBars, artworkPage: Boolean, dock: MiniPlayerDock? = null): ChromeInsets {
     val insets = when (navigation) {
         // A page reached from somewhere has a way back in its top corner; with a controller in hand, its
@@ -496,9 +499,21 @@ fun RefluxApp(
                     if (scrimsTopBar) {
                         val fade by animateFloatAsState(if (page.scrolled) 1f else 0f, Motion.navigation.tween())
                         val background = RefluxColors.background
+                        // Opaque enough through the whole bar, its Back button included (the bar ends at the band's
+                        // inset), then a soft fade below it: the bar's controls never sit over bright rows, and the
+                        // page meets the bar without an edge. It is there only once the page has moved.
+                        val band = insets.top + TopBarScrimFade
+                        val barEnd = insets.top / band
                         Box(
-                            Modifier.fillMaxWidth().height(insets.top).graphicsLayer { alpha = fade }
-                                .background(Brush.verticalGradient(0f to background, 0.72f to background.copy(alpha = 0.94f), 1f to Color.Transparent)),
+                            Modifier.fillMaxWidth().height(band).graphicsLayer { alpha = fade }
+                                .background(
+                                    Brush.verticalGradient(
+                                        0f to background,
+                                        barEnd * 0.6f to background.copy(alpha = 0.97f),
+                                        barEnd to background.copy(alpha = 0.9f),
+                                        1f to Color.Transparent,
+                                    ),
+                                ),
                         )
                     }
                     // Edge to edge, the system's status bar sits over the page: a soft protection keeps its icons

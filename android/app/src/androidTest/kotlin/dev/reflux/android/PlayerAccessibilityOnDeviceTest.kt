@@ -80,6 +80,9 @@ class PlayerAccessibilityOnDeviceTest {
             val movie = environment.library.movies().single { it.item.title == "Night Drive" }.item.id
             val activity = instrumentation.startActivitySync(Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             val app = appOf(activity)
+            // A handheld's player and mini-player: a television has no dock and no Minimize (DESIGN.md, the layout contract), so
+            // this does not apply there (it timed out on the Fire TV Stick, 2026-11-16, waiting for Minimize).
+            org.junit.Assume.assumeFalse("a television has no mini-player", app.platform.television)
             val density = context.resources.displayMetrics.density
             val minimum = (48 * density).toInt() - 2
             // A finger, as on any handheld in hand (and a screen reader is touch): the targets are the touch size.
