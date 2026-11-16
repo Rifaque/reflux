@@ -1680,3 +1680,26 @@ The website, the store source material, and the legal and credit text were broug
 - **Regression coverage:** `FocusEntryTest` (two tests: a leaving page's late starting control, and its control to come back to) drives the exact sequence; both fail on the previous `FocusEntry` with the symptom and pass on the fix. `AboutUiTest`'s keyboard walk is unchanged and passes.
 - **Local (Windows):** `AboutUiTest` and `FocusEntryTest`, five consecutive runs, 14 of 14 each.
 
+### Hosted CI on `bf71793`, the Pad 7's missing metadata, and the Windows archive (2026-11-16)
+
+**CI run 43821371836 (`bf71793`).** Failed job: Check (windows-2025), step Build and test, `:ui:jvmTest`: `DownloadsUiTest.aRemoteReachesEveryDownloadControlAndFocusComesBack`, "Timed out waiting for the navigation, on Downloads" (read from the run's uploaded test report). Every other job passed; the Release rehearsal (run 43821371814) passed. The test had not failed in the previous 60 CI runs.
+- **Cause (production, `RefluxApp.kt`, the television's start rule):** the rule that places focus on a television restarts whenever a page offers a new first item (`FocusEntry.starts`), and left focus alone only if it was in the page: focus on the navigation counted as unplaced and was moved into the page. In the test, Back put focus on the navigation, and the removal of the first copy finished a moment later; the next copy became the page's first item, offered, and the rule pulled focus back to it. A deterministic reproduction (`focusTheViewerPutOnTheNavigationStaysWhenThePageGainsANewFirstLine`) failed 3 of 3 before the fix, and failed the same way with `e5ecd97`'s `FocusEntry`: the race predates `68a99b6`, which did not cause it.
+- **Fix:** once a screen has started, focus on the navigation is the viewer's and is kept; on arrival (and while a screen has never placed focus) the rule still starts the page as before.
+- **Local (Windows):** the reproduction passes; `DownloadsUiTest`, `TelevisionTest`, `NavigationTest`, `AboutUiTest`, `FocusEntryTest` three consecutive runs, 39 of 39 each; full `check` 1,428 tests, 0 failed, 22 skipped.
+
+**The Pad 7: "placeholder artwork and S10 · E16".** Traced on the device (the app's own database, read through `run-as`; nothing printed but counts, kinds, and titles):
+- The installed app was the debug build made for the website's captures, built with `-Preflux.trakt.clientId=` on purpose: its APK has no `reflux_trakt_client_id` resource (checked with `aapt2`), so there was no metadata provider, and Settings rightly showed no "Online metadata & artwork" switch.
+- Its two sources were local folders (`android-folder`), not Jellyfin. Folders carry no description and here no artwork; with no provider, both titles had no description, no artwork rows, and Smallville's 21 episodes no titles: the placeholders and `S10 · E16` were the honest fallback, not a lost title.
+
+| Item | Discovery | Identity | Trakt request | Response | Persistence | UI |
+| --- | --- | --- | --- | --- | --- | --- |
+| Casino Royale, first build | Found (1 version, folder) | Movie, 2006, from the name | None: no provider in the build | None | Nothing to store | Placeholder (correct fallback) |
+| Smallville, first build | Found (21 episodes, folder) | Show; S10E1 to S10E21 from the names | None: no provider in the build | None | Nothing to store | Numbers only (correct fallback) |
+| Casino Royale, build with the development Client ID | Same | `trakt:movie:23217`, title and year, score 1.0 | Made (search, summary, people, studios) | Overview, tagline, genres, 144 minutes, PG-13, rating, director, poster, backdrop, logo | `metadata` row; 3 Trakt artwork rows; 3 WebP files in the artwork cache | Full page (screenshot, scratchpad only: commercial artwork) |
+| Smallville, same build | Same | `trakt:show:4580` | Made (search, summary, people, season info and episodes) | Show art; all 21 episode titles ("Lazarus" to "Finale"), stills, dates, runtimes, overviews | 21 episode `metadata` rows; stills on view | Episode list with names and stills |
+
+- **Restart:** after a force-stop and relaunch both works show the same, and their `fetched_at` did not change: read from what was kept, not fetched again.
+- **No metadata code change was needed.** The privacy boundary is as tested (`TraktProviderTest`: the search sends the title alone, never the year).
+- **Seen, not fixed (owner's call or later work):** on a tablet, a season page's sticky "Season 10" title slides under the Back button when scrolled.
+
+**Windows archive (manual testing path).** `packageDesktopArchive` built `reflux-0.9.0-alpha.2-windows-x64.zip` (106 MB) from the pinned libmpv; extracted outside the repository with `REFLUX_HOME` in a scratch folder, `Reflux.exe` opened its window within 2 seconds, drew the first-run screen with its wordmark, icons, and type, created its data folder, closed cleanly on a window close, and relaunched and closed again. Keyboard navigation in that window was **not** verified: keys sent with `WScript.Shell.SendKeys` did not reach it.
