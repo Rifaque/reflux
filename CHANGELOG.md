@@ -4,6 +4,8 @@ What changes for people using Reflux, version by version. The rules for versions
 
 ## Unreleased
 
+## 0.9.0-beta.1 — 2026-11-16
+
 - On a tablet or a computer, each source in Sources has In your library and Refresh on its card, with a clearer arrow for opening it; opening it shows its libraries, Open, Sign in again or Change, and Remove. Phones and TVs work as before.
 - On a tablet or a computer, the Reflux name at the top of the navigation takes you Home, as on the website.
 - On a tablet, opening the on-screen keyboard (in Search, for one) no longer switches Reflux to a phone's layout: the navigation keeps the Reflux mark and all its destinations, and only the page moves above the keyboard.
