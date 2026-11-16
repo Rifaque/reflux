@@ -4,6 +4,7 @@ What changes for people using Reflux, version by version. The rules for versions
 
 ## Unreleased
 
+- On a TV, after Back takes you to the navigation, a page whose first item changes a moment later (a download you removed finishing its removal) no longer pulls focus back into the page.
 - With a keyboard, remote, or controller, the first arrow on a page goes to that page's first item even when you left the page before it had finished loading; it could go to the page's Back button instead.
 - Reflux's website shows Reflux as it is today, captured from real phones, tablets, TVs, and Windows; it names the support address (support@rsxdevelops.dev), credits Trakt, Jellyfin, and Plex as their owners ask, and says exactly what is sent to Trakt.
 - On a TV, the Reflux mark at the top of the closed side menu is shown whole; its loop was cut off on the right.

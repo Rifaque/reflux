@@ -460,6 +460,39 @@ class DownloadsUiTest {
         }
     }
 
+    /**
+     * Back on a television's destination puts focus on the navigation; a page that then gains a new first line (a
+     * removal finishing a moment later, as on CI run 43821371836) does not pull focus back into the page. Before the
+     * fix the television's start rule treated focus on the navigation as unplaced and moved it to the new first line.
+     */
+    @Test
+    fun focusTheViewerPutOnTheNavigationStaysWhenThePageGainsANewFirstLine() {
+        val downloads = DownloadsWorld()
+        television(downloads.world, downloads.tvPlatform()) { app ->
+            awaitText("Recently Added")
+            with(downloads) { begin(app) }
+            runBlocking { downloads.offline.enqueue(downloads.offline.planFor(listOf(downloads.episode(1, 1), downloads.episode(1, 2)))) }
+            await("two copies") { app.library.downloads().count { it.state == DownloadState.COMPLETED } == 2 }
+            runOnIdle { app.navigator.open(Destination.Downloads) }
+            await("focus on the first copy", { focused() }) { onAllNodes(isFocused() and hasText("Good News About Hell", substring = true)).fetchSemanticsNodes().isNotEmpty() }
+            remote(app, Key.BACK)
+            await("the navigation, on Downloads") { onAllNodes(isFocused() and destination("Downloads")).fetchSemanticsNodes().isNotEmpty() }
+            // The first copy goes while the viewer is on the navigation: the page's first line is now another.
+            val first = app.library.downloads().single { it.itemId == downloads.episode(1, 1) }.id
+            runOnIdle { app.removeDownload(first) }
+            await("the copy to be gone") { app.library.downloads().size == 1 }
+            await("the next copy to be the page's first line") {
+                onAllNodesWithText("Half Loop", substring = true).fetchSemanticsNodes().isNotEmpty() &&
+                    onAllNodesWithText("Good News About Hell", substring = true).fetchSemanticsNodes().isEmpty()
+            }
+            // Longer than the television's patience for placing focus (30 frames): focus stays where the viewer put it.
+            val moved = runCatching {
+                waitUntil(timeoutMillis = 3_000) { onAllNodes(isFocused() and destination("Downloads")).fetchSemanticsNodes().isEmpty() }
+            }.isSuccess
+            assertFalse(moved, "focus left the navigation for the page: ${focused()}")
+        }
+    }
+
     @Test
     fun aRemoteRemovesACopyFromTheSheetWithoutLosingFocus() {
         val downloads = DownloadsWorld()

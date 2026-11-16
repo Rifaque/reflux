@@ -385,7 +385,10 @@ fun RefluxApp(app: AppState, modifier: Modifier = Modifier, bars: SystemBars = S
             // A screen that has just appeared starts on its own main action, not on whatever the toolkit
             // found first (the navigation beside it).
             // The same when a page gains a main action it did not have (a library that just appeared), or a
-            // panel over it closes, unless the user has since put focus somewhere in the page themselves.
+            // panel over it closes, unless the user has since put focus somewhere themselves: in the page, or on
+            // the navigation. Once the screen has started, focus on the navigation is the viewer's doing (Back on
+            // a destination puts it there); a page that then gains a new first line (a removal finishing a moment
+            // later) must not pull it back. On arrival it is not: that is where the toolkit put it.
             val covered = app.offlineOpen || app.folderPicker != null || app.profileGate != null
             var started by remember { mutableStateOf<Destination?>(null) }
             LaunchedEffect(app.navigator.current, entry.starts, covered) {
@@ -393,7 +396,7 @@ fun RefluxApp(app: AppState, modifier: Modifier = Modifier, bars: SystemBars = S
                 val arrived = started != app.navigator.current
                 repeat(FOCUS_PATIENCE_FRAMES) {
                     withFrameNanos { }
-                    if (!arrived && entry.hasFocus && !entry.inChrome && !entry.inPanel) return@LaunchedEffect
+                    if (!arrived && entry.hasFocus && !entry.inPanel) return@LaunchedEffect
                     if (entry.start()) {
                         started = app.navigator.current
                         return@LaunchedEffect
