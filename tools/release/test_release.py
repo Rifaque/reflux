@@ -202,6 +202,11 @@ class PackageIdentity(unittest.TestCase):
         self.assertEqual([], release.check_apk_identity(self.GOOD, self.WANT, "AB" * 32))
         self.assertTrue(release.check_apk_identity(self.GOOD, self.WANT, "cd" * 32))
 
+    def test_a_signer_written_as_keytool_prints_it_is_the_same_certificate(self):
+        colons = ":".join(["AB"] * 32)
+        self.assertEqual([], release.check_apk_identity(self.GOOD, self.WANT, colons))
+        self.assertTrue(release.check_apk_identity(self.GOOD, self.WANT, ":".join(["CD"] * 32)))
+
 
 CHANGELOG = """# Changelog
 

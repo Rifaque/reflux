@@ -150,7 +150,10 @@ def check_apk_identity(identity: dict, expected: dict, signer: str = None) -> li
             problems.append("%s is %r, expected %r" % (key, identity.get(key), value))
     if identity.get("debuggable"):
         problems.append("debuggable")
-    if signer and (identity.get("signerSha256") or "").lower() != signer.lower():
+    # Either form of a fingerprint: keytool's colon-separated upper case, or plain hex (0.9.0-beta.1's first release
+    # run failed on that difference alone, with the right certificate).
+    def plain(fingerprint): return "".join(fingerprint.split()).replace(":", "").lower()
+    if signer and plain(identity.get("signerSha256") or "") != plain(signer):
         problems.append("signed by certificate %s, expected %s" % (identity.get("signerSha256"), signer))
     return problems
 
