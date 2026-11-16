@@ -257,11 +257,12 @@ class SourcesUiTest {
             save("sources-disconnected")
 
             // Trying again while it is still away changes nothing; once it is back, it is connected again.
-            onNodeWithText("Try again").performClick()
+            // Beside a sidebar, Try again is on the card itself, named with the source.
+            onNodeWithContentDescription("Try again Living Room").performClick()
             await("the check to finish") { app.checking.isEmpty() }
             assertTrue(shows("Can't be reached"))
             HomeNetwork.serverUp = true
-            onNodeWithText("Try again").performClick()
+            onNodeWithContentDescription("Try again Living Room").performClick()
             await("the server to be back") { !shows("Can't be reached") }
 
             // Signing in again keeps the source, its name, and its library.
@@ -361,7 +362,10 @@ class SourcesUiTest {
     }
 
     private fun switchOf(name: String) =
-        hasText(name, substring = true) and SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Switch)
+        (hasText(name, substring = true) or hasContentDescription(name, substring = true)) and SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Switch)
+
+    /** The server's own switch, on its card beside a sidebar. */
+    private val SERVER_SWITCH = "In your library, Living Room"
 
     private fun DesktopComposeUiTest.isOn(name: String) =
         onNode(switchOf(name)).fetchSemanticsNode().config.getOrNull(SemanticsProperties.ToggleableState) == ToggleableState.On
@@ -386,7 +390,7 @@ class SourcesUiTest {
             onNodeWithText("Living Room").performClick()
             awaitText("In your library")
             await("its libraries") { onAllNodes(switchOf("Kids")).fetchSemanticsNodes().isNotEmpty() }
-            assertTrue(isOn("In your library") && isOn("Films") && isOn("Kids"))
+            assertTrue(isOn(SERVER_SWITCH) && isOn("Films") && isOn("Kids"))
             save("library-switches")
             onNode(switchOf("Kids")).performClick()
             await("Paddington to leave the unified library") { world.library.movies().none { it.item.title == "Paddington" } }
@@ -396,13 +400,13 @@ class SourcesUiTest {
             assertFalse("lib-k" in world.library.sources().single { it.type == "home" }.config, "inclusion is not the connection's")
 
             // The server off keeps the Kids switch as it was, and on again restores it.
-            onNode(switchOf("In your library")).performClick()
+            onNode(switchOf(SERVER_SWITCH)).performClick()
             await("Ronin to leave") { world.library.movies().none { it.item.title == "Ronin" } }
             await("said on the card") { shows("Not in your library") }
             assertFalse(isOn("Kids"), "Kids keeps its own switch")
             assertTrue(isOn("Films"), "and so does Films")
             save("library-switches-source-off")
-            onNode(switchOf("In your library")).performClick()
+            onNode(switchOf(SERVER_SWITCH)).performClick()
             await("Ronin again") { world.library.movies().any { it.item.title == "Ronin" } }
             assertTrue(world.library.movies().none { it.item.title == "Paddington" }, "Kids is still out")
 

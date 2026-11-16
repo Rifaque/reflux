@@ -4,6 +4,9 @@ What changes for people using Reflux, version by version. The rules for versions
 
 ## Unreleased
 
+- On a tablet or a computer, each source in Sources has In your library and Refresh on its card, with a clearer arrow for opening it; opening it shows its libraries, Open, Sign in again or Change, and Remove. Phones and TVs work as before.
+- On a tablet or a computer, the Reflux name at the top of the navigation takes you Home, as on the website.
+- On a tablet, opening the on-screen keyboard (in Search, for one) no longer switches Reflux to a phone's layout: the navigation keeps the Reflux mark and all its destinations, and only the page moves above the keyboard.
 - On a tablet or a computer, what scrolls up under a page's Back button (a show's season tabs, for one) no longer shows through beside and behind it.
 - In a build that cannot look anything up online, Settings says "Online metadata is unavailable in this build." where the switch for it would be, instead of leaving placeholders unexplained.
 - On a TV, after Back takes you to the navigation, a page whose first item changes a moment later (a download you removed finishing its removal) no longer pulls focus back into the page.

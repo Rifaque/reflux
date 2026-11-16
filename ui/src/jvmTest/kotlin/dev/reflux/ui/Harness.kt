@@ -57,6 +57,8 @@ internal fun screen(
     around: @Composable (@Composable () -> Unit) -> Unit = { it() },
     /** The system's bars around the window, as an edge-to-edge shell passes them. */
     bars: SystemBars = SystemBars.None,
+    /** The on-screen keyboard's room, as an Android shell passes it (`RefluxApp`'s `keyboard`). */
+    keyboard: Modifier = Modifier,
     /** Where library reads run: a slow one shows what a large library looks like while it is read. */
     background: kotlinx.coroutines.CoroutineDispatcher = kotlinx.coroutines.Dispatchers.Default,
     block: DesktopComposeUiTest.(AppState) -> Unit,
@@ -69,7 +71,7 @@ internal fun screen(
         CompositionLocalProvider(LocalDensity provides Density(density, fontScale)) {
             around {
                 Box(Modifier.fillMaxSize()) {
-                    RefluxApp(state, bars = bars)
+                    RefluxApp(state, bars = bars, keyboard = keyboard)
                     state.playback?.let { session ->
                         // As a shell does: one video surface, placed where the experience layer says, with the full
                         // player's controls over it only while it is the whole window.

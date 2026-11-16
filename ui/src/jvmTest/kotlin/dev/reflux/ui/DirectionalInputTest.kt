@@ -15,6 +15,7 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performKeyInput
 import androidx.compose.ui.test.performMouseInput
@@ -144,8 +145,11 @@ class DirectionalInputTest {
         press(app, GamepadButton.FACE_SOUTH)
         awaitText("Refresh")
         press(app, GamepadButton.DPAD_DOWN)
-        // Its first control is its switch, never Remove.
-        onNode(hasText("In your library", substring = true) and SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Switch)).assertIsFocused()
+        // Beside a sidebar its switch and Refresh are on the card itself, so its first control inside is Open, never Remove.
+        onNodeWithText("Open").assertIsFocused()
+        press(app, GamepadButton.DPAD_UP)
+        press(app, GamepadButton.DPAD_RIGHT)
+        onNode(hasContentDescription("In your library, Media") and SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Switch)).assertIsFocused()
         assertTrue(press(app, GamepadButton.FACE_EAST))
         assertEquals(Destination.Home, app.navigator.current)
     }

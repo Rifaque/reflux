@@ -274,9 +274,10 @@ class MainActivity : ComponentActivity() {
                 end = insets.calculateEndPadding(direction),
             )
             // In the system's own window there is no page to read: the window is the picture.
-            val page = Modifier.windowInsetsPadding(WindowInsets.ime.exclude(WindowInsets.systemBars))
-                .then(if (presentation == PlayerPresentation.SYSTEM) Modifier.clearAndSetSemantics { } else Modifier)
-            RefluxApp(app, page, bars = bars)
+            val page = if (presentation == PlayerPresentation.SYSTEM) Modifier.clearAndSetSemantics { } else Modifier
+            // The keyboard's room is given to the pages, not taken from the window the layout is chosen from: a
+            // tablet with its keyboard up is still a tablet (it had turned into a phone on its side on the Pad 7).
+            RefluxApp(app, page, bars = bars, keyboard = Modifier.windowInsetsPadding(WindowInsets.ime.exclude(WindowInsets.systemBars)))
             // Video is a platform surface beneath the controls: the engine keeps its direct path to the display. One surface
             // for the whole of a playback, put where the experience layer says (the window, the dock, out of sight) by
             // laying it out, never by making another (docs/PLAYBACK.md, "One session, several presentations").
