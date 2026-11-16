@@ -1851,3 +1851,58 @@ Stack: `SQLITE_BUSY` from `SQLiteConfig.apply` while `JdbcSqliteDriver`'s `Threa
 | Release rehearsal and provenance | 43883736950 green; it attested the Linux archive (attestation 68152382) and verified it in the job (`gh attestation verify` with the signer workflow and source digest). Independent verification from a second machine needs a release-mode run's assets |
 | The Linux container's full `check` | **Not run this pass** (hosted Ubuntu CI is green on the same tree) |
 | Hosted CI on `ee54b9a` | Run 43892966850, **first attempt: Check (windows-2025) failed** `AccessibilityTest.theSystemsTextSizeIsAppliedWhereTheToolkitDoesNot` (`NoSuchElementException` at `.single()`): the test waited for the text "Movies", which the navigation's own label satisfies before the page's heading exists. A test race, not caused by this pass; the test now waits for the page's heading itself, assertions unchanged (39 of 39 locally). Every other job green; Release rehearsal 43892966948 green |
+
+## 0.9.0-beta.1: the version cut, the release-mode run, and M11's exit (2026-11-16)
+
+Owner decisions: DECISIONS.md, 2026-11-16 ("`0.9.0-beta.1` is cut to close M11..."). Starting point: `main` = `origin/main` = `3007c3a`, clean; CI 43902388855 and rehearsal 43902388722 green.
+
+### The cut
+
+- `2aa2041` the decision record; `2113fb5` **`release: 0.9.0-beta.1`** (only `reflux.version` and the changelog heading `## 0.9.0-beta.1 — 2026-11-16`, `Unreleased` kept above it). Local: `releaseInfo` 0.9.0-beta.1 / 90031 / Windows 0.9.31 / Linux 0.9.0~beta.1 / channel beta; release tools 46 tests OK; `release.py notes` (348 of 500 store characters); the website builds (17 pages, 0 problems) and still says the version "is in development and has not been released yet". Hosted CI 43911248247 on `2113fb5`: all seven jobs green, first attempt; rehearsal 43911248283 green.
+- **Annotated tag `v0.9.0-beta.1` on `2113fb5`**, pushed (the tag's own push rehearsal: 43918527544).
+
+### The release-mode run
+
+- **First run 43918527632: failed** in "Build, sign, checksum, and describe (release)": `release.py` refused the APK as "signed by certificate 288c…1370, expected 28:8C:…:13:70": the right certificate, compared as plain lower-case hex against the variable's keytool form. A defect in the tool's comparison, never exercised by a rehearsal (no signer is pinned there). Nothing was drafted.
+- **Remedy without touching the tag:** the variable `REFLUX_UPLOAD_CERT_SHA256` rewritten to the same fingerprint as plain hex (not a key change); the tool fixed on `main` afterwards (`2755062`, both forms compared as plain hex, with a test).
+- **Second run 43920389594: success**, every job: Windows libmpv from source, Linux archive, Android / Windows / provenance (signed with the upload key, attested), **Draft the GitHub release**, **Verify the draft independently** (download, `sha256sum`, `gh attestation verify`, `release.py verify --public`, the publication record).
+- **The GitHub release is a draft**: `isDraft` true, not immutable, not published. Assets: the Windows ZIP, the Linux tarball, the libmpv source, `SHA256SUMS`, `manifest.json`, `provenance.intoto.json`. No APK or AAB. Nothing was uploaded to Google Play or the Amazon Appstore (the workflow does not; the APK and AAB are this run's artifact `release`).
+
+### Verified again on this machine (a second machine)
+
+| Check | Result |
+| --- | --- |
+| APK identity (aapt2) | `dev.rsxdevelops.reflux`, versionCode 90031, versionName 0.9.0-beta.1, not debuggable |
+| APK signature (apksigner) | v2, one signer, the upload certificate: SHA-256 equal to `REFLUX_UPLOAD_CERT_SHA256`; organisation RSX Develops |
+| `release.py verify` with the signer pinned | 5 artifacts of Reflux 0.9.0-beta.1 (`2113fb5`) verified |
+| `sha256sum -c SHA256SUMS` | ZIP, tarball, libmpv source: OK |
+| `gh attestation verify` (repository, release workflow) | APK, AAB, ZIP, tarball, libmpv source: each verified (exit 0; one attestation each) |
+| Build identity inside each package | `commit=2113fb5`, `modified=false` (APK, AAB, Windows and Linux jars) |
+| Trakt Client ID | Production (digest `6bdc5161`) in the APK, the AAB, and the Windows and Linux `provider.properties`; the development ID in none |
+| Manifest | schema 2, `channel` beta, `metadataProvider` "client id supplied", APK and AAB `store`, the rest `github-release`, tag and full commit |
+| Key material | No keystore, key, or signing file in any archive |
+| Install and upgrade | versionCode 90031 > 90002 (the last alpha's); the store-delivered install is the owner's first Play internal-testing upload. The upload-key-signed APK was not side-loaded on the owner's devices, so as not to leave an install a store build cannot update |
+
+### Android XR
+
+Play's Advanced settings → Form factors → **Android XR** → Manage offers only "the same release track" or "a dedicated track"; it has no opt-out. Google documents the opt-out as excluding XR devices in the **Device catalog** (developer.android.com/develop/xr/package-and-distribute, read 2026-11-16), which appears only after an app bundle has been uploaded. Not changed; the step follows the first AAB upload (`release/google-play.md`).
+
+### M11 exit (the plan's gate, as recorded on 2026-11-15)
+
+| Criterion | State | Evidence |
+| --- | --- | --- |
+| Release mode on a tag from a clean commit, verified | **PASS** | Run 43920389594; the draft verified in the workflow and here |
+| Provenance verified by a second machine | **PASS** | `gh attestation verify` here, five artifacts |
+| Cross-surface facts agree (version, commit, package, versionCode, checksums, Trakt ID) | **PASS** | Table above |
+| Every store step rehearsed or named as owner-pending | **PASS** | `release/google-play.md`, `release/amazon-appstore.md`, "Owner actions" in ROADMAP M11 |
+| The first AAB in Play internal testing; the APK in Amazon with Fire TV-only targeting and Live App Testing | **OWNER ACTION** | The artifacts exist and verify; uploading fixes Play's upload key and is the owner's step |
+| Play and Amazon declarations | **OWNER ACTION** | PRIVACY.md, "Declaration matrix"; content rating, target audience, sign-in details, the Android TV agreement |
+| Android XR opt-out | **OWNER ACTION** | Device catalog, after the first upload |
+| Windows on a clean machine; Windows' own display scaling | **OWNER ACTION** | No clean Windows here; display scaling is a system setting |
+| Phone 2a instrumented tests | **OWNER ACTION** | The phone attached (M12 Wave 0) |
+
+**M11 is not complete:** its last condition, "no open owner action blocks a `0.9.0-beta.1` hand-off", still has the owner actions above. Everything the repository and CI can do is done.
+
+### M12 handoff
+
+**Candidate: `0.9.0-beta.1` (`2113fb5`, tag `v0.9.0-beta.1`, release run 43920389594).** Waves on it: Wave 9 (production metadata) passed on the same code; Wave 0's local `check` and the Fire TV instrumented suite ran on `3007c3a`'s tree, which differs from the candidate only in the version and changelog; Wave 1 (artifacts) **passed for what CI and a second machine can show** (above), its installs on store tracks and a clean Windows machine still open; Wave 3 partial. Not started: Waves 2, 4, 5, 6, 7, 8. No tester has been recruited, no closed test started, and no 14-day clock is running; the build reaches testers only after the beta checklist (DECISIONS.md, 2026-11-16).
