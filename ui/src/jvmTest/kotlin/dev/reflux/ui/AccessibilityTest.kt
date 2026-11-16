@@ -577,9 +577,12 @@ class AccessibilityTest {
         // The navigation stops at its limit; a page goes on: both are larger than at the plain size or equal to it.
         screen(populated(), platform) { app ->
             runOnIdle { app.navigator.show(Destination.Movies) }
-            awaitText("Movies")
+            // The page's own heading, not the navigation's "Movies", which is there before the page is (hosted Windows
+            // CI 43892966850 found no heading yet when the navigation's label had already satisfied a wait for the text).
+            val pageHeading = hasText("Movies") and SemanticsMatcher("a heading") { SemanticsProperties.Heading in it.config }
+            await("the page's heading") { onAllNodes(pageHeading).fetchSemanticsNodes().isNotEmpty() }
             assertTrue(onNode(destination("Home")).fetchSemanticsNode().boundsInRoot.height >= plain)
-            val heading = onAllNodes(hasText("Movies") and SemanticsMatcher("a heading") { SemanticsProperties.Heading in it.config }).fetchSemanticsNodes().single()
+            val heading = onAllNodes(pageHeading).fetchSemanticsNodes().single()
             assertTrue(heading.boundsInRoot.height >= 30f * 1.12f * 1.4f, "a page's heading grows: ${heading.boundsInRoot}")
         }
     }
