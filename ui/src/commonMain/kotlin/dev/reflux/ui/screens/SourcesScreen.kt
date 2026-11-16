@@ -51,6 +51,10 @@ import dev.reflux.core.source.SectionKind
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.foundation.layout.heightIn
+import dev.reflux.design.NavigationStyle
 import kotlinx.coroutines.withContext
 import dev.reflux.design.FormFactor
 import dev.reflux.design.MaterialRole
@@ -199,36 +203,58 @@ private fun SourceItem(app: AppState, row: SourceRow, expanded: Boolean, scannin
         }
         asked = removing
     }
+    // Beside a navigation down the side (tablet, desktop) the two everyday actions sit on the card itself, at its right;
+    // phones and televisions keep every action one step in (DECISIONS.md, 2026-11-16, "Sources: two actions inline").
+    val inline = sourceActionsInline(LocalLayout.current.navigation)
+    val refreshLabel = if (row.connected && !row.signInRequired) "Refresh" else "Try again"
     Column(Modifier.fillMaxWidth().glass(MaterialRole.ELEVATED, shape)) {
-        Pressable(
-            onToggle,
-            Modifier.fillMaxWidth().focusProperties { if (expanded) down = firstAction }.semantics { stateDescription = if (expanded) "Open" else "Closed" },
-            shape,
-            lift = 0f,
-        ) { active ->
-            Row(
-                Modifier.fillMaxWidth().background(States.layer(if (active) 0.06f else 0f)).padding(horizontal = 16.dp, vertical = 14.dp),
-                horizontalArrangement = Arrangement.spacedBy(14.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                val away = !row.connected || row.signInRequired
-                Box(Modifier.size(40.dp).background(States.layer(0.07f), CircleShape), contentAlignment = Alignment.Center) {
-                    Icon(iconOf(row.kind), size = 20.dp, tint = if (away) RefluxColors.unavailable else RefluxColors.contentPrimary)
-                }
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text(row.name, style = LocalTypography.current.bodyStrong, maxLines = 1)
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-                        val status = if (scanning) (if (row.connected) "Updating…" else "Connecting…") else row.statusLabel
-                        if (away && !scanning) Box(Modifier.size(6.dp).background(RefluxColors.unavailable, CircleShape))
-                        Text(
-                            listOfNotNull(row.kindLabel, status, row.inclusionLabel).joinToString("  ·  "),
-                            style = LocalTypography.current.caption,
-                            color = if (away && !scanning) RefluxColors.contentSecondary else RefluxColors.contentTertiary,
-                            maxLines = 1,
-                        )
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Pressable(
+                onToggle,
+                Modifier.weight(1f).focusProperties { if (expanded) down = firstAction }.semantics { stateDescription = if (expanded) "Open" else "Closed" },
+                shape,
+                lift = 0f,
+            ) { active ->
+                Row(
+                    Modifier.fillMaxWidth().background(States.layer(if (active) 0.06f else 0f)).padding(start = 16.dp, end = if (inline) 10.dp else 16.dp, top = 14.dp, bottom = 14.dp),
+                    horizontalArrangement = Arrangement.spacedBy(14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    val away = !row.connected || row.signInRequired
+                    Box(Modifier.size(40.dp).background(States.layer(0.07f), CircleShape), contentAlignment = Alignment.Center) {
+                        Icon(iconOf(row.kind), size = 20.dp, tint = if (away) RefluxColors.unavailable else RefluxColors.contentPrimary)
+                    }
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text(row.name, style = LocalTypography.current.bodyStrong, maxLines = 1)
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                            val status = if (scanning) (if (row.connected) "Updating…" else "Connecting…") else row.statusLabel
+                            if (away && !scanning) Box(Modifier.size(6.dp).background(RefluxColors.unavailable, CircleShape))
+                            Text(
+                                listOfNotNull(row.kindLabel, status, row.inclusionLabel).joinToString("  ·  "),
+                                style = LocalTypography.current.caption,
+                                color = if (away && !scanning) RefluxColors.contentSecondary else RefluxColors.contentTertiary,
+                                maxLines = 1,
+                            )
+                        }
+                    }
+                    if (inline) {
+                        // Where the card's own controls sit beside it, its opening is said by a chevron with a surface of
+                        // its own, so that it reads as something to press and not as decoration.
+                        Box(Modifier.size(28.dp).background(States.layer(if (active) 0.14f else 0.07f), CircleShape), contentAlignment = Alignment.Center) {
+                            Icon(if (expanded) Icon.CHEVRON_UP else Icon.CHEVRON_DOWN, size = 16.dp, tint = RefluxColors.contentSecondary)
+                        }
+                    } else {
+                        Icon(if (expanded) Icon.CHEVRON_UP else Icon.CHEVRON_DOWN, size = 16.dp, tint = RefluxColors.contentTertiary)
                     }
                 }
-                Icon(if (expanded) Icon.CHEVRON_UP else Icon.CHEVRON_DOWN, size = 16.dp, tint = RefluxColors.contentTertiary)
+            }
+            if (inline) {
+                // Down from either goes into the open card's first control, as from the card itself.
+                val intoCard = Modifier.focusProperties { if (expanded) down = firstAction }
+                Row(Modifier.padding(start = 4.dp, end = 12.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                    InlineSwitch("In your library", "In your library, ${row.name}", row.included, intoCard) { app.setSourceIncluded(row.id, !row.included, row.name) }
+                    Button(refreshLabel, { app.checkSource(row.id) }, intoCard, icon = Icon.REFRESH, style = ButtonStyle.QUIET, enabled = !scanning, name = "$refreshLabel ${row.name}")
+                }
             }
         }
         AnimatedVisibility(expanded, enter = fadeIn(Motion.controlsShow.tween()) + expandVertically(Motion.controlsShow.tween()), exit = fadeOut(Motion.controlsHide.tween()) + shrinkVertically(Motion.controlsHide.tween())) {
@@ -247,13 +273,16 @@ private fun SourceItem(app: AppState, row: SourceRow, expanded: Boolean, scannin
                 }
                 note?.let { Text(it, Modifier.padding(start = 54.dp), style = LocalTypography.current.caption, color = RefluxColors.contentSecondary) }
                 if (!removing) {
-                    // In the library or not: the source stays connected and can always be opened here.
-                    SwitchRow(
-                        "In your library",
-                        if (row.included) "Its movies and shows are in Home, Movies, Shows, and Search." else "Its movies and shows are only here, under Sources.",
-                        row.included,
-                        Modifier.focusRequester(firstAction).then(if (row.libraries.isEmpty()) Modifier.focusProperties { down = open } else Modifier),
-                    ) { app.setSourceIncluded(row.id, !row.included, row.name) }
+                    // In the library or not: the source stays connected and can always be opened here. Where the switch
+                    // is on the card itself, it is not repeated inside.
+                    if (!inline) {
+                        SwitchRow(
+                            "In your library",
+                            if (row.included) "Its movies and shows are in Home, Movies, Shows, and Search." else "Its movies and shows are only here, under Sources.",
+                            row.included,
+                            Modifier.focusRequester(firstAction).then(if (row.libraries.isEmpty()) Modifier.focusProperties { down = open } else Modifier),
+                        ) { app.setSourceIncluded(row.id, !row.included, row.name) }
+                    }
                     if (row.libraries.isNotEmpty()) {
                         Text(
                             if (row.included) "Libraries" else "Libraries · they count again when ${row.name} is in your library",
@@ -262,7 +291,8 @@ private fun SourceItem(app: AppState, row: SourceRow, expanded: Boolean, scannin
                             color = RefluxColors.contentSecondary,
                         )
                         row.libraries.forEach { library ->
-                            LibraryRow(app, row, library, if (library == row.libraries.last()) open else null)
+                            val first = inline && library == row.libraries.first()
+                            LibraryRow(app, row, library, if (library == row.libraries.last()) open else null, if (first) Modifier.focusRequester(firstAction) else Modifier)
                         }
                     } else if (row.sectioned && row.connected) {
                         Text("No libraries with movies or shows yet.", Modifier.padding(start = 4.dp), style = LocalTypography.current.caption, color = RefluxColors.contentTertiary)
@@ -291,8 +321,10 @@ private fun SourceItem(app: AppState, row: SourceRow, expanded: Boolean, scannin
                 } else {
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         val back = rememberFocusReturn("sources/open/${row.id.value}")
-                        Button("Open", { back.leaving(); app.navigator.open(Destination.SourceLibrary(row.id)) }, back.modifier.focusRequester(open), icon = Icon.CHEVRON_RIGHT)
-                        Button(if (row.connected && !row.signInRequired) "Refresh" else "Try again", { app.checkSource(row.id) }, icon = Icon.REFRESH, enabled = !scanning)
+                        // With the switch on the card and no libraries, Open is the first control inside.
+                        val firstInside = if (inline && row.libraries.isEmpty()) Modifier.focusRequester(firstAction) else Modifier
+                        Button("Open", { back.leaving(); app.navigator.open(Destination.SourceLibrary(row.id)) }, back.modifier.focusRequester(open).then(firstInside), icon = Icon.CHEVRON_RIGHT)
+                        if (!inline) Button(refreshLabel, { app.checkSource(row.id) }, icon = Icon.REFRESH, enabled = !scanning)
                         row.kind?.let { kind ->
                             Button(if (kind == ConnectionKind.SERVER) "Sign in again" else "Change", { app.navigator.open(Destination.Connect(kind, row.id)) })
                         }
@@ -309,7 +341,7 @@ private fun SourceItem(app: AppState, row: SourceRow, expanded: Boolean, scannin
  * would not count; and the way into what it holds.
  */
 @Composable
-private fun LibraryRow(app: AppState, row: SourceRow, library: SourceLibrary, downTo: FocusRequester?) {
+private fun LibraryRow(app: AppState, row: SourceRow, library: SourceLibrary, downTo: FocusRequester?, switchModifier: Modifier = Modifier) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
         val kind = when (library.kind) {
             SectionKind.MOVIES -> "Movies"
@@ -320,11 +352,43 @@ private fun LibraryRow(app: AppState, row: SourceRow, library: SourceLibrary, do
             library.name,
             listOfNotNull(kind, Formatting.contents(library.contents.movies, library.contents.shows)).joinToString("  ·  "),
             library.included,
-            Modifier.weight(1f).then(if (downTo != null) Modifier.focusProperties { down = downTo } else Modifier),
+            switchModifier.weight(1f).then(if (downTo != null) Modifier.focusProperties { down = downTo } else Modifier),
             dimmed = !row.included,
         ) { app.setLibraryIncluded(row.id, library.id, !library.included, library.name) }
         val back = rememberFocusReturn("sources/library/${row.id.value}/${library.id}")
         IconButton(Icon.CHEVRON_RIGHT, "Open ${library.name}", { back.leaving(); app.navigator.open(Destination.SourceLibrary(row.id, library.id)) }, back.modifier, tint = RefluxColors.contentSecondary)
+    }
+}
+
+/**
+ * Whether a source card carries its two everyday actions (In your library, Refresh) on itself: beside a navigation down
+ * the side, where a tablet or a desktop has the width. A phone, on its side or upright, and a television keep them one
+ * step in, as before: a remote moves through one card at a time, and a phone has no room beside the name.
+ */
+internal fun sourceActionsInline(navigation: NavigationStyle): Boolean =
+    navigation == NavigationStyle.RAIL || navigation == NavigationStyle.SIDEBAR
+
+/**
+ * A switch small enough to sit on a card beside other things: its short label and its mark. [name] is what a screen
+ * reader says for it, which names what it switches, since several cards carry the same label.
+ */
+@Composable
+private fun InlineSwitch(label: String, name: String, on: Boolean, modifier: Modifier = Modifier, onToggle: () -> Unit) {
+    Pressable(onToggle, modifier.semantics { contentDescription = name; toggleableState = ToggleableState(on) }, CircleShape, lift = 0f, role = Role.Switch) { active ->
+        Row(
+            Modifier.background(States.layer(if (active) 0.07f else 0f)).heightIn(min = maxOf(40f, LocalLayout.current.minTargetDp).dp).padding(horizontal = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(label, Modifier.clearAndSetSemantics { }, style = LocalTypography.current.caption, color = if (on) RefluxColors.contentPrimary else RefluxColors.contentSecondary, maxLines = 1)
+            Box(
+                Modifier.size(36.dp, 22.dp).background(States.layer(if (on) 0.9f else 0f), CircleShape)
+                    .border(1.5.dp, States.layer(if (on) 0f else 0.35f), CircleShape).padding(3.dp),
+                contentAlignment = if (on) Alignment.CenterEnd else Alignment.CenterStart,
+            ) {
+                Box(Modifier.size(16.dp).background(if (on) RefluxColors.background else States.layer(0.55f), CircleShape))
+            }
+        }
     }
 }
 

@@ -1366,6 +1366,17 @@ M11 decided the open items of its plan (planning/M11-DISTRIBUTION-PLAN.md, secti
 - **Amazon's `preferExternal` install-location recommendation is not adopted.** Reflux keeps its library and downloads in internal storage, which `preferExternal` does not move, and the Fire TV Stick has no adoptable storage; revisited only if review asks.
 - **Linux CI measures text with Liberation Sans** (`tools/ci/fonts.conf`): the tests that fit the details page's actions into a phone's width model a phone's font, and Linux's default DejaVu Sans is wider than both Roboto and Segoe UI. The player's clocks were a real defect, not a font question, and were fixed in the product: each clock keeps the width of the widest time it can show for the duration, so the timeline no longer changes width under a drag (this failed on Linux with DejaVu, 3 of 3, and passes there now without the pinned font).
 
+## 2026-11-16 — Sources: two actions on the card beside a side navigation; the logo goes Home; the keyboard does not choose the layout
+
+**Context.** The owner approved the Sources assessment of 2026-11-16 (VERIFICATION.md, "Post-M11 follow-up") and asked for the sidebar's Reflux name to go Home, as the website's does. On the Pad 7 the owner saw Search with no mark in the rail: the keyboard's inset was taken from the window the layout is chosen from, so a tablet in landscape (about 1164 × 777 dp) fell under 600 dp tall and was laid out as a phone on its side.
+
+**Decisions.**
+- Beside a navigation down the side (`RAIL`, `SIDEBAR`), a source card carries **In your library** (a compact switch, named "In your library, <source>" for a screen reader) and **Refresh / Try again** (named with the source) at its right; opening the card shows the rest without repeating them. Remove stays inside, behind its question. Phones (`BOTTOM_BAR`, `COMPACT_RAIL`) and televisions (`TV_RAIL`) are unchanged: a remote moves one card at a time and a phone has no room beside the name (`sourceActionsInline`).
+- The Reflux name at the head of a tablet's rail and a desktop's sidebar is a button, "Reflux, Home", that does what choosing Home does (the stack back to Home alone; playback, the profile, and the library untouched; pressing it at Home adds nothing). A television's rail keeps its mark as decoration, not a focus stop, so remote behaviour does not change.
+- The layout (form factor, navigation) is chosen from the **whole window**; the on-screen keyboard's inset is given to the pages and to what floats over them (`RefluxApp(keyboard = ...)`). A side navigation keeps the window's height and the keyboard rises over its foot.
+
+**Alternatives rejected.** Keeping the compact rail while typing (the layout morphing under the viewer's fingers, losing the mark and the utility area); padding the side navigation too (its eight entries do not fit above a tablet keyboard); making the logo a stop on a television (an extra stop above Home for every remote user).
+
 ## 2026-11-15 — Trakt is the metadata provider (M11 D5)
 
 The owner decided D5 (planning/M11-DISTRIBUTION-PLAN.md, section 3): **TMDB is out; Trakt is Reflux's metadata provider.** This supersedes "TMDB: working non-commercial classification" (2026-11-08), whose clarification request had gone unanswered since it was sent.

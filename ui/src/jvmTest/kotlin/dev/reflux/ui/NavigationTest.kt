@@ -263,7 +263,8 @@ class NavigationTest {
             awaitText("Media")
             onNode(hasText("Media")).performClick()
             awaitText("In your library")
-            val switch = hasText("In your library") and SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Switch)
+            // Beside a sidebar the switch is on the card itself, named with the source it switches.
+            val switch = hasContentDescription("In your library, Media") and SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Switch)
             assertEquals(androidx.compose.ui.state.ToggleableState.On, onNode(switch).fetchSemanticsNode().config.getOrNull(SemanticsProperties.ToggleableState))
             save("sources-switch-on")
             onNode(switch).performClick()

@@ -327,7 +327,17 @@ internal fun Modifier.trackPointer(app: AppState): Modifier = pointerInput(app) 
  * clear of them; the shell does not pad the application for them.
  */
 @Composable
-fun RefluxApp(app: AppState, modifier: Modifier = Modifier, bars: SystemBars = SystemBars.None) {
+fun RefluxApp(
+    app: AppState,
+    modifier: Modifier = Modifier,
+    bars: SystemBars = SystemBars.None,
+    /**
+     * The room the on-screen keyboard takes at the bottom of the window (Android passes its inset). Pages and what
+     * floats over them move above it; the layout is still chosen from the whole window, so a tablet stays a tablet
+     * while the viewer types (VERIFICATION.md, 2026-11-16, "Search on the Pad 7").
+     */
+    keyboard: Modifier = Modifier,
+) {
     RefluxTheme(app, modifier) {
         val focus = LocalFocusManager.current
         val entry = remember { FocusEntry() }
@@ -435,11 +445,11 @@ fun RefluxApp(app: AppState, modifier: Modifier = Modifier, bars: SystemBars = S
         ) {
             GlassScene(
                 Modifier.fillMaxSize().background(RefluxColors.background).trackPointer(app).onFocusChanged { entry.hasFocus = it.hasFocus },
-                overlay = { Chrome(app, page, rail, navigationInert = behind, noticeInert = app.watching != null) },
+                overlay = { Chrome(app, page, rail, navigationInert = behind, noticeInert = app.watching != null, keyboard = keyboard) },
             ) {
                 // Pages start beside a navigation that runs down the side, except a page that opens on artwork where
                 // the material lets it run beneath; focus that scrolls a page stops short of the chrome.
-                Box(Modifier.fillMaxSize().padding(end = bars.end)) {
+                Box(Modifier.fillMaxSize().then(keyboard).padding(end = bars.end)) {
                     FocusScrollInsets(start = insets.top, end = insets.bottom + 8.dp) {
                         AnimatedContent(
                             targetState = app.navigator.current,
@@ -531,23 +541,25 @@ private fun Screen(app: AppState, destination: Destination) {
 
 /** Everything that floats above the screens: navigation, the offline sheet, button prompts, and notices. */
 @Composable
-private fun Chrome(app: AppState, page: PageScroll, rail: RailFocus, navigationInert: Boolean, noticeInert: Boolean) {
+private fun Chrome(app: AppState, page: PageScroll, rail: RailFocus, navigationInert: Boolean, noticeInert: Boolean, keyboard: Modifier) {
     val layout = LocalLayout.current
     val bars = LocalSystemBars.current
     val bottomBar = layout.navigation == NavigationStyle.BOTTOM_BAR
     // Controls stay clear of the system's bars; what floats is placed inside them.
     val margin = Modifier.fillMaxSize().padding(start = bars.start, end = bars.end, top = bars.top, bottom = bars.bottom).padding(horizontal = layout.safeMarginDp.dp)
+    // The navigation's words stop growing before they stop fitting; the destinations always say all of them to a screen reader.
+    // A navigation down the side keeps the window's height while the on-screen keyboard is up, which rises over its foot;
+    // everything else here moves above the keyboard, as the page does.
     Box(Modifier.fillMaxSize()) {
-        // The navigation's words stop growing before they stop fitting; the destinations always say all of them to a screen reader.
-        if (app.profileGate == null) LimitedTextSize(NAVIGATION_TEXT_LIMIT) {
-            if (bottomBar) {
-                Box(margin.inert(navigationInert)) { CompactNavigation(app) }
-            } else {
-                Box(Modifier.fillMaxSize().padding(start = bars.start, end = bars.end).inert(navigationInert)) {
-                    NavigationRail(app, layout.navigation, rail, Modifier.align(Alignment.TopStart).padding(top = bars.top, bottom = bars.bottom).traversal(Traversal.BEFORE_PAGE))
-                    PageBar(app, Modifier.align(Alignment.TopStart).padding(start = layout.navigation.widthDp.dp, top = bars.top).traversal(Traversal.BEFORE_PAGE))
-                }
+        if (app.profileGate == null && !bottomBar) LimitedTextSize(NAVIGATION_TEXT_LIMIT) {
+            Box(Modifier.fillMaxSize().padding(start = bars.start, end = bars.end).inert(navigationInert)) {
+                NavigationRail(app, layout.navigation, rail, Modifier.align(Alignment.TopStart).padding(top = bars.top, bottom = bars.bottom).traversal(Traversal.BEFORE_PAGE))
+                PageBar(app, Modifier.align(Alignment.TopStart).padding(start = layout.navigation.widthDp.dp, top = bars.top).traversal(Traversal.BEFORE_PAGE))
             }
+        }
+    Box(Modifier.fillMaxSize().then(keyboard)) {
+        if (app.profileGate == null && bottomBar) LimitedTextSize(NAVIGATION_TEXT_LIMIT) {
+            Box(margin.inert(navigationInert)) { CompactNavigation(app) }
         }
         // What is playing, beside the page while the viewer browses (docs/NAVIGATION.md, section 8): part of the
         // navigation's own layer, above the phone's bar or in the page's bottom corner beside a rail or a sidebar.
@@ -644,6 +656,7 @@ private fun Chrome(app: AppState, page: PageScroll, rail: RailFocus, navigationI
         AnimatedVisibility(app.profileGate != null, enter = fadeIn(LocalMotion.current.pageEnter.tween()), exit = fadeOut(Motion.focusChange.tween())) {
             asked?.let { gate -> Box(Modifier.fillMaxSize().inert(app.profileGate == null)) { ProfileGateOverlay(app, gate) } }
         }
+    }
     }
 }
 
@@ -805,9 +818,16 @@ private fun NavigationRail(app: AppState, style: NavigationStyle, focus: RailFoc
         ) {
             // Reflux says its own name where there is room to: the lockup on a desktop, the mark alone on a tablet, and
             // on a television the mark, joined by the wordmark while the rail is open. A phone's rail has no room.
+            // On a tablet and a desktop it is also the way Home, as a website's name is: the same as choosing Home (the
+            // stack back to Home alone, playback and the library untouched). A television's rail is left as it was.
             when (style) {
-                NavigationStyle.SIDEBAR -> RefluxLockup(Modifier.padding(start = 10.dp, top = 8.dp, bottom = 18.dp).semantics { contentDescription = "Reflux" }, height = 22.dp)
-                NavigationStyle.RAIL -> RefluxMark(Modifier.padding(top = 6.dp, bottom = 12.dp).clearAndSetSemantics { }, size = 26.dp)
+                NavigationStyle.SIDEBAR -> BrandHome(app, Modifier.padding(start = 4.dp, top = 2.dp, bottom = 12.dp)) {
+                    RefluxLockup(Modifier.padding(horizontal = 6.dp, vertical = 6.dp), height = 22.dp)
+                }
+                // The same height as the mark alone had (44), so the destinations beneath stay where they were.
+                NavigationStyle.RAIL -> BrandHome(app, Modifier.padding(bottom = 6.dp)) {
+                    RefluxMark(Modifier.padding(6.dp), size = 26.dp)
+                }
                 NavigationStyle.TV_RAIL -> {
                     val height = 20.dp
                     val mark = lockupMarkWidth(height)
@@ -859,6 +879,26 @@ private fun NavigationRail(app: AppState, style: NavigationStyle, focus: RailFoc
         }
     }
 }
+
+/**
+ * Reflux's name at the head of a rail or a sidebar, which goes Home when chosen: a button named "Reflux, Home" for a
+ * screen reader, a stop for a keyboard (above Home), and lit when pointed at like the destinations beneath it.
+ */
+@Composable
+private fun BrandHome(app: AppState, modifier: Modifier, mark: @Composable () -> Unit) {
+    Pressable(
+        { app.go(Destination.Home) },
+        modifier.semantics { contentDescription = BRAND_HOME_NAME },
+        Shapes.medium,
+        lift = 0f,
+        actionLabel = "go to Home",
+    ) { active ->
+        Box(Modifier.background(States.layer(if (active) 0.06f else 0f)).clearAndSetSemantics { }) { mark() }
+    }
+}
+
+/** What the navigation's Reflux mark is called to a screen reader, and found by in tests. */
+internal const val BRAND_HOME_NAME = "Reflux, Home"
 
 /** The utility area's one entry in a phone's rail: named as on the phone held upright, lit while the viewer is anywhere in it. */
 @Composable
