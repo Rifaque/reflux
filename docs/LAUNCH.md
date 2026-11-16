@@ -72,6 +72,27 @@ Captures are made after the M12 candidate is frozen, so the film shows the build
 
 Store testing requirements change; check the current Google Play Console and Amazon Appstore documentation when setting the tracks up, and record what was required in RELEASE.md.
 
+### Beta operations, prepared 2026-11-16 (M12 Phase B; nothing sent, no tester recruited)
+
+**Recruitment text** (for the owner to post; plain text):
+
+> Reflux is looking for about 15 to 20 beta testers. Reflux is a media player for the films and shows you already have: folders, Jellyfin, Plex, and network shares, on Android phones and tablets, Google TV and Android TV, Fire TV, Windows, and Linux. We are choosing testers to cover devices and sources, not first come first served. Tell us: your devices (model and OS), your media sources (folders, Jellyfin, Plex, SMB, WebDAV), whether you use a game controller, and the e-mail address of your Google account (Android) or Amazon account (Fire TV). Android testers must stay opted in to the test for at least 14 days. Reflux sends nothing to its makers; see reflux.rsxdevelops.dev/privacy. Contact: support@rsxdevelops.dev.
+
+**Coverage tracker** (one row per accepted tester; filled from replies only, never invented):
+
+| Tester (initials) | Channel (Play / Amazon LAT / desktop) | Devices | Sources | Controller | Opted in (console date) | Active this build |
+| --- | --- | --- | --- | --- | --- | --- |
+
+The coverage targets are the "Size" line above; a gap stays a gap until a real tester fills it.
+
+**The Play clock.** Production access for a personal account needs a closed test with at least 12 testers opted in for 14 continuous days (Play Console dashboard, read 2026-11-16: 0 opted in). The clock starts only when an owner-approved beta build is on the closed track and 12 testers have opted in; recruit 15 or more so a drop-out does not reset it. Opt-ins are counted from the console, never from replies.
+
+**Channels.** Play closed testing: an e-mail list of the testers' Google accounts, the opt-in link published on the website's tester page only when `release/stores.json` records it. Amazon Live App Testing: testers' Amazon account e-mails in the console, installed through Appstore Beta Hub (`release/amazon-appstore.md`, "Tester instructions"). Windows and Linux: the website's Download page, from the verified release record only.
+
+**Triage** (as above): **blocker** (data loss, a crash on launch, playback impossible on a supported target, a privacy breach) → fixed before the next build; **critical** (a main flow broken for a form factor, source, or input) → fixed in the cycle; **normal** → a known issue on the tester page, fixed when it fits; **later** → V1.x. Each report gets one of these, a device and build, and a link to its fix or known-issue entry.
+
+**Release notes per build:** the version's `CHANGELOG.md` section, through `release.py notes` (both stores' "What's new" and the GitHub draft); never retyped.
+
 ## Store and distribution tracks
 
 | Target | Channel | Package | Notes |
