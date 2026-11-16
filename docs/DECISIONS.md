@@ -1366,6 +1366,14 @@ M11 decided the open items of its plan (planning/M11-DISTRIBUTION-PLAN.md, secti
 - **Amazon's `preferExternal` install-location recommendation is not adopted.** Reflux keeps its library and downloads in internal storage, which `preferExternal` does not move, and the Fire TV Stick has no adoptable storage; revisited only if review asks.
 - **Linux CI measures text with Liberation Sans** (`tools/ci/fonts.conf`): the tests that fit the details page's actions into a phone's width model a phone's font, and Linux's default DejaVu Sans is wider than both Roboto and Segoe UI. The player's clocks were a real defect, not a font question, and were fixed in the product: each clock keeps the width of the widest time it can show for the duration, so the timeline no longer changes width under a drag (this failed on Linux with DejaVu, 3 of 3, and passes there now without the pinned font).
 
+## 2026-11-16 — `0.9.0-beta.1` is cut to close M11 and be M12's candidate; the privacy reading is the literal one; Android XR is opted out
+
+**Decided by the owner (2026-11-16).** (1) Cut `0.9.0-beta.1` and run the release workflow's release mode on its tag, for M11's exit (the release-mode run, the draft, the first store-ready AAB and APK) and as M12's qualification candidate. (2) The store privacy declarations follow the conservative, literal reading of the stores' definitions (data leaving the device is collected, whoever runs the server), validated against the exact definitions (PRIVACY.md). (3) Opt out of Android XR for V1.
+
+**The conflict this resolves, stated.** VERSIONING.md says entering beta requires the beta checklist in RELEASE.md, and that checklist is not complete (the website's beta conditions, a physical Google TV and a controller, the legal review, the clean-machine desktop runs, the in-app feedback path on every platform). The owner's decision is that the version is cut now, as the candidate, and that **no tester receives `0.9.0-beta.1` until the beta checklist is complete** (or a later `beta.N` goes instead): the build reaches no one outside CI except the owner's own internal-testing installs. Nothing is published: the GitHub release stays a draft, and no store submission or closed-test start is made without a further decision.
+
+**Not changed:** the promotion rules, the versionCode scheme, the beta checklist itself.
+
 ## 2026-11-16 — Sources: two actions on the card beside a side navigation; the logo goes Home; the keyboard does not choose the layout
 
 **Context.** The owner approved the Sources assessment of 2026-11-16 (VERIFICATION.md, "Post-M11 follow-up") and asked for the sidebar's Reflux name to go Home, as the website's does. On the Pad 7 the owner saw Search with no mark in the rail: the keyboard's inset was taken from the window the layout is chosen from, so a tablet in landscape (about 1164 × 777 dp) fell under 600 dp tall and was laid out as a phone on its side.
