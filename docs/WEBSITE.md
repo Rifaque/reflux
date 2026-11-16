@@ -9,7 +9,7 @@ reflux.rsxdevelops.dev: Reflux's public home (LAUNCH.md for its stages and visua
 - **Visual system** (`src/styles.css`): the product's own rules (DESIGN.md, LAUNCH.md "Visual direction"): near-black, one typeface (Manrope, self-hosted from `@fontsource-variable/manrope`, the brand's wordmark face; declared in `styles.css` with `font-display: optional` and its Latin file preloaded on every page by `prerender.mjs`, so text is never re-flowed when the font arrives: DECISIONS.md, 2026-11-12), hairlines and quiet surfaces, glass only on the sticky header, colour only from real product images, motion only on the hero's entrance and nothing with reduced motion. The brand (design/brand) is drawn inline from the master geometry.
 - **Motion** (`src/motion.jsx`, the end of `src/styles.css`): the shared motion language (DESIGN.md, "Motion language") with browser features only. The script sets `html.motion`; without it, or with `prefers-reduced-motion`, every element is in its finished state. Navigation uses React Router's `viewTransition` (the View Transition API where the browser has it).
 - **RSX Develops** is credited in the footer and on Terms with its own wordmark (`public/brand/`); Trakt on the third-party page with its notice (no logo).
-- **Hosting: Vercel** (DECISIONS.md, 2026-11-08), team "rifaque's projects", project `reflux-website`.
+- **Hosting: Vercel** (DECISIONS.md, 2026-11-08), team "rifaque's projects", project `reflux`.
 
 ## Product images
 
