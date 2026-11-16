@@ -1776,3 +1776,7 @@ No candidate is frozen yet: the proposal is the commit after this record once it
 | 7 Large library | **Not started** | No baseline exists yet (moved from M11) |
 | 8 Website | **Not started** | |
 | 9 Production metadata | **PASS** for the engine and the build configuration (above) | A signed release build on a device and a live 429 remain |
+
+### Hosted CI on `0e8b89d`
+
+Run 43873870448, first attempt: six jobs green, **Check (windows-2025) failed** one test, `DownloadsUiTest.aWholeSeasonIsKeptAndTheShowSaysHowMuchOfItIs` (438 tests, 1 failed): `org.sqlite.SQLiteException: [SQLITE_BUSY] The database file is locked`, thrown while the test's polling read (`library.downloads()`, line 266) opened a new connection and `SQLiteConfig.apply` ran the connection's pragmas, during the season's removal. Not caused by this change (it touches neither Downloads nor the library). Two attempted reproductions in `library` (a reader's first connection while another holds `BEGIN IMMEDIATE`; 200 first reads while another connection commits and checkpoints with `TRUNCATE` in a loop) both passed on the current code, so no fix is claimed and no test was added; `DownloadsUiTest` passed 3 of 3 locally. **Attempt 2 (the failed job rerun): all seven jobs green.** Release rehearsal 43873949669 on `0e8b89d`: green. Carried to M12's flake backlog with this trace: the leading hypothesis is a per-connection `journal_mode=WAL` pragma meeting a lock it cannot wait on (`LibraryDatabase.open` sets WAL on every connection); it is unproven until it reproduces.
