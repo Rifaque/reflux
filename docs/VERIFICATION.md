@@ -1712,3 +1712,67 @@ The website, the store source material, and the legal and credit text were broug
 - **Local (Windows):** full `check` 1,433 tests, 2 failed, 22 skipped. The two failures, `PointerTest.controlsLeaveWhilePlayingAndReturnWithThePointer` and `SourcesUiTest.removingAServerSignsOutOfItAndAddingItAgainSignsInAfresh`, are intermittent and not caused by this change: the two classes three times each, with the change and on `897e477` without it, failed 2 of 3 runs both ways (the pointer test failed twice on the baseline). Not weakened; left for M12's flake work.
 - **Sources (assessment only, not implemented):** a source's actions (In your library, Refresh, Sign in again or Change, Remove) are reached only by opening its card. Recommendation for owner approval: on a side navigation (tablet, desktop) show the card's two common actions inline at its right and keep the rest behind the opening, with a visible chevron for the opening; phones and televisions unchanged.
 - **Pad 7 re-check (owner):** install a debug build from this commit, open a show with several seasons, scroll its episodes up: nothing shows through beside or behind the Back button, the bar clears as the page leaves its top and the scrim fades when scrolled back.
+
+## M11 closure and M12 Phase A start (2026-11-16)
+
+Starting point: `main` at `ee7edef`, clean, equal to `origin/main`; hosted CI run 43854951567 green (all seven jobs, after a rerun of an initial Ubuntu failure) and Release rehearsal 43854951277 green. `reflux.version` stays `0.9.0-alpha.2`; nothing was tagged, released, published, uploaded as a build, or submitted for review. Tiers as before: **automated**, **physical device**, **external console**, **owner**.
+
+### The Sources card, the Reflux name, and the keyboard (automated)
+
+- **Implemented** (DECISIONS.md, 2026-11-16): source cards carry In your library and Refresh / Try again beside a side navigation; the rail's and sidebar's Reflux name goes Home; the layout is chosen from the whole window, the keyboard's inset given to the pages (`RefluxApp(keyboard = ...)`, `MainActivity`).
+- **The Pad 7's "no logo in Search"** was not a Search layout: Android padded the whole app by the keyboard's inset before the layout was chosen, so the tablet (about 1164 × 777 dp) became about 1164 × 420 with the keyboard up, under the 600 dp phone threshold, and got a phone-on-its-side rail (four destinations and the profile entry, no mark). Every page typed into on a tablet in landscape did the same.
+- **Tests:** `SourcesInlineAndBrandHomeTest` (8): the rule per navigation style; tablet (1180 × 820) and desktop (1440 × 900) cards with the inline switch and Refresh named with the source, inclusion changed without touching the connection, Refresh not navigating, one switch and one Refresh when open, Remove behind Keep; phone upright and on its side, and television, with nothing inline; the name going Home from a details page, Home alone on the stack, a second press adding nothing, the profile unchanged; no name to press on a phone; Home by the name leaving the docked playback the same session with no second player; a 1164 × 777 tablet with a 360 dp keyboard keeping its rail, its mark, and its utility destinations, with the search field above the keyboard. Updated for the inline controls (assertions kept, the controls found by their new names): `SourcesUiTest`, `NavigationTest.theSourceSwitch...`, `DirectionalInputTest.theSourcesPage...` (Down from an open card is now its first inside control, Open, never Remove; the inline switch is reached with Right), `ShellSurfaceTest.refluxSaysItsName...`. The shell baseline (`shell-baseline.txt`) is unchanged: the rail's head keeps its 44 dp.
+- **Local (Windows):** `:ui:jvmTest` 438 tests, 0 failed, 1 skipped (`WebsiteShowcaseTest`); `:android:app:compileDebugKotlin`, `assembleDebug`, `assembleRelease`. The two intermittents carried from the follow-up (`PointerTest.controlsLeaveWhilePlayingAndReturnWithThePointer`, `SourcesUiTest.aServerThatIsAway...`) passed in that suite run: one pass is not a diagnosis; they stay in M12's backlog.
+
+### Physical devices
+
+Debug build of this tree, `dev.rsxdevelops.reflux.debug` 0.9.0-alpha.2 / 90002, installed in place with `adb install -r` over the same debug signer on each device; no uninstall, no data cleared.
+
+| Device | Connection | OS | Scenario | Result |
+| --- | --- | --- | --- | --- |
+| Xiaomi Pad 7 `2410CRP4CI` | USB `852ec620` | Android 16 / API 36 | Sources: both folder cards show In your library and Refresh at the right and a chevron in a circle; opening Casino Royale shows "Updated just now", Open, Remove only | **PASS** |
+| Pad 7 | | | In your library off and on (Casino Royale): the switch changes; the film is on Home again afterwards | **PASS** |
+| Pad 7 | | | The rail's Reflux mark from Sources, and from Search with the keyboard up: Home, keyboard closed | **PASS** |
+| Pad 7 | | | Search with the keyboard shown (`mInputShown=true`): the tablet rail with its mark and labelled destinations stays; the utility area is under the keyboard | **PASS** (before: a phone's compact rail, no mark) |
+| Pad 7 | | | Top bar scrim, Smallville's episodes scrolled: rows in the status bar and the bar's band are faded out | **PASS, with an observation:** the band ends about the middle of the floating Back button, so the next row's thumbnail passes behind the button's lower half at full brightness (owner's call whether to deepen the band) |
+| Nothing Phone 2a `A142` | USB `0005534AN000190` | Android 16 / API 36 | Sources: the closed card shows no inline control; opened, the switch with its explanation, Libraries, Open, Try again, Sign in again, Remove, as before; no Reflux name in the phone's navigation | **PASS** |
+| Fire TV Stick 4K Plus `AFTMA08C15` | Wi-Fi adb `192.168.1.176:5555` | Fire OS 8.1.8.5 / API 30 | By remote: rail, Sources, a card (closed: no inline control), OK, Down to In your library with its explanation, Down to its library; Back to the rail, Home, out; the mark is not a focus stop | **PASS** |
+
+The Fire TV walk's first attempt sent remote keys while the Fire TV home was in front (the app had not come up yet), which opened Netflix; nothing played, and Home left it. Later keys were sent only after `dumpsys window` showed Reflux in front.
+
+### Windows packaged app (keyboard)
+
+`packageDesktopArchive` (this tree) extracted to a scratch folder, `REFLUX_HOME` a scratch library pre-filled by the CLI (five generated clips named after Blender films and the CC series Pioneer One). Real input: `SendInput` keys, each sent only after `GetForegroundWindow` was Reflux; captures of Reflux's own window only (`PrintWindow`). Display at 125% (window DPI 120).
+
+- **PASS:** launch outside the IDE; the first Down puts a visible ring on Play; Down twice moves into the rows (the page scrolls); Left enters the sidebar on Home.
+- **Not done:** before step 4 another window took the foreground (the machine was in use), and the guard stopped the walk; no key went elsewhere. Not retried, to avoid pulling focus from the owner. Still owed: the logo with Enter, Escape and focus return, Ctrl+1 to Ctrl+6, Settings, Sources, Search, the player, pointer, 100/150/200%, close and relaunch (the owner procedure in "Post-M11 follow-up" stands, plus the logo). **Clean machine:** still unavailable (Windows 11 Home has no Sandbox).
+
+### Trakt Production
+
+- **Console (owner's signed-in browser):** the Read-only Reflux app (Production) has a Client ID and **no Client Secret** ("Not issued"; PKCE only; no members). The Development app is separate.
+- **GitHub:** the repository variable `REFLUX_TRAKT_CLIENT_ID` (set 2026-11-16 06:52 UTC, before this session) equals the Production Client ID (SHA-256 prefix compared with the console's value in the browser) and differs from the Development ID in the local Gradle properties. The value is not repeated here. `release.yml` passes it to the Linux, Android, and Windows release builds and fails a tagged run without it; a rehearsal passes none. No secret is read for Trakt.
+- **Release-configured builds with the Production ID:** the release APK (`dev.rsxdevelops.reflux` 90002, unsigned for this check) carries it as `reflux_trakt_client_id`, and the desktop build's `provider.properties` carries it (both compared by digest). A Gradle property beats the environment variable, so a local release would carry a developer's ID (RELEASE.md, "Metadata provider").
+- **Live, with the Production ID** (the desktop engine through the developer CLI, a scratch `REFLUX_HOME`, request lines logged by the JDK client without headers): Big Buck Bunny (2008), Sintel (2010), Tears of Steel (2012), and the show Pioneer One identified; 19 requests to `api.trakt.tv`, 12 image downloads from `media.trakt.tv`, no other host. Searches sent **the title alone** (`/search/movie?query=Sintel&extended=full,images&limit=20`): no year, path, file name, or anything else. The Client ID appears nowhere in the log. Stored: 7 `metadata` rows, 15 `artwork` rows, 12 WebP files in the data directory's artwork cache. A second `refresh`: **0** requests to Trakt. **Not exercised live:** a 429, offline and "Online metadata & artwork" off (held by tests), a signed release build on a device.
+
+### Consoles (drafts only; nothing sent for review, no agreement accepted)
+
+**Google Play** (dashboard: 5 of 11 setup tasks, 0 testers opted in, production access unavailable): the full description replaced with `store-listing.md`'s Trakt text (1,544 characters, no TMDB; read back after a reload); the second phone screenshot added (2 of 8); contact details support@rsxdevelops.dev and https://reflux.rsxdevelops.dev; Data safety saved at step 2 (collects or shares: Yes; encrypted in transit: Yes; no account creation). Play's own definition, read on the form, counts data "transmitted off the user's device, either to you or a third party" as collected, so the titles sent to Trakt are collected and shared. **Android XR** is Active with no Remove control; it is not a V1 target. Left to the owner: the outside-account question, the data type step, Sign in details, IARC, target audience, the Android TV agreement, XR.
+
+**Amazon** (app entry Draft, "Fire OS / Vega OS" until an APK sets devices): the long description replaced with the Amazon text (Trakt, no Watch Next clause; autosaved); the short description equal to the source; the support e-mail present; user data privacy **Yes**, questionnaire saved: Files and docs collected **Yes** and transferred **Yes**, App functionality only; account creation **No**. Amazon's privacy-label page (developer.amazon.com/docs/app-submission/appstore-privacy-labels.html, "Last updated: Feb 17, 2026", read 2026-11-16) puts information about a user's files, such as file names, under Files and docs, and does not define "collected" for a direct device-to-API call; the conservative answer was given. Left to the owner: the deletion question, category, target audience, everything needing the APK.
+
+### M12 Phase A: where each wave stands (2026-11-16)
+
+No candidate is frozen yet: the proposal is the commit after this record once its hosted CI is green; Phase A's device waves run on it.
+
+| Wave | State | Evidence or gap |
+| --- | --- | --- |
+| 0 Automated and release baseline | **In progress** | Hosted CI and rehearsal green on `ee7edef`; this push's run is recorded below when it ends. Owed: one local full `check` (Windows and the Linux container) on the candidate, instrumented suites on one phone and the TV image, attestation verification of a release-mode run |
+| 1 Artifacts (AAB, APK, Windows ZIP, Linux tarball, sums, manifest, provenance) | **Blocked** | A release-mode run needs a version cut and a tag (owner). Rehearsal artifacts were verified in M11 |
+| 2 Upgrade paths | **Not started** | Needs the candidate on each device, with backed-up scratch data |
+| 3 Form factors and inputs | **Partial** | Touch (phone, tablet), the Fire TV remote, Windows keyboard (partial) today. **Not available:** a physical Google TV, a Fire TV television; the Xbox and PlayStation pads are paired but were not connected |
+| 4 Sources and playback | **Not started** | |
+| 5 Profiles and privacy | **Not started** | |
+| 6 Accessibility | **Not started** | |
+| 7 Large library | **Not started** | No baseline exists yet (moved from M11) |
+| 8 Website | **Not started** | |
+| 9 Production metadata | **PASS** for the engine and the build configuration (above) | A signed release build on a device and a live 429 remain |

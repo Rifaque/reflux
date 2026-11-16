@@ -6,6 +6,8 @@ Fire TV runs Fire OS. Vega OS devices run no Android apps and are never targeted
 
 **State on 2026-11-15** (docs/VERIFICATION.md, "M11 console session"): steps 1 and 2 are done (account review complete; the app entry exists, draft, its list shows "Fire OS / Vega OS" until an APK sets the devices); step 5's text, step 6's Fire TV images and icons, the privacy policy URL, and step 8's content rating (complete) are saved; step 10(a) is done (the Stick's sideloaded copies are removed). Open: steps 3, 4, 9, 10(b to d) (they need the release workflow's APK), step 5's category and support contact, the target audience, step 7 (its facts are ready: D5 is decided, Trakt). **The long description saved on 2026-11-15 still has the TMDB sentence**: replace it with `store-listing.md`'s current text (Trakt, and Trakt's attribution as its last line).
 
+**State on 2026-11-16** (docs/VERIFICATION.md, "M11 closure and M12 Phase A start"): the long description now carries `store-listing.md`'s Amazon text (Trakt, no TMDB, no Watch Next clause; autosaved); the short description matches the source exactly; the support e-mail is entered. Step 7 is saved as a draft, not submitted: collects or transfers user data **Yes**; Files and docs collected **Yes** and transferred to a third party **Yes**, purpose App functionality only (Amazon's type covers "information about their files ... such as file names"; its page does not define "collected" for a direct device-to-API call, so the conservative answer is given); account creation **No**. Still yours: the data-deletion question (RSX Develops holds no data; recommended **No**), the category (recommended **Movies & TV**), the target audience, and everything that needs the release APK (steps 3, 4, 9, 10b to d).
+
 ## Order of work
 
 | # | Console | Action | Why | Needs first | Expected result |
@@ -50,7 +52,7 @@ Fire TV runs Fire OS. Vega OS devices run no Android apps and are never targeted
 
 ## Owner-pending (named)
 
-Entering the support e-mail (support@rsxdevelops.dev) in step 1; the app entry; Trakt's production Client ID (the `REFLUX_TRAKT_CLIENT_ID` variable; D5 is decided); the reviewer test source; a Fire TV television (M12 hardware).
+The category and target audience; the data-deletion answer; the reviewer test source; a Fire TV television (M12 hardware); every APK-dependent step (needs an authorised build). Done 2026-11-16: the support e-mail; Trakt's production Client ID is the `REFLUX_TRAKT_CLIENT_ID` variable.
 
 ## Sources (read 2026-11-15)
 

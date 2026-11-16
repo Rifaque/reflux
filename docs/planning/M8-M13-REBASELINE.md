@@ -637,6 +637,8 @@ These are to be added to ROADMAP.md (governance) and AGENTS.md once approved.
 | 8 | Website: responsive matrix (desktop, laptop, tablet, phone portrait and landscape, large displays) in Chromium, Firefox, and Safari (WebKit via Playwright); Search Console coverage and URL Inspection; Lighthouse lab; links; CSP | Browser automation |
 | 9 | Metadata provider live in a release build (credential from the workflow secret) | Release build |
 
+**Reconciled 2026-11-16 with later decisions (the table above is kept as written on 2026-11-11):** wave 1 tests the V1 formats M11 actually ships: the Android AAB and Amazon APK (store-only, D1), the Windows **ZIP** (the Inno Setup installer moved to gate G-WIN), and the Linux **tarball** (AppImage, deb, rpm, PKGBUILD are V1.x unless the beta shows a need; DECISIONS.md, 2026-11-13). Wave 9's credential is the repository **variable** `REFLUX_TRAKT_CLIENT_ID` (Trakt replaced TMDB, D5, 2026-11-15), not a secret. Wave 7's "M11 performance baseline" was moved to M12 itself on 2026-11-13; no baseline exists yet, so wave 7 measures the first one.
+
 - **Evidence once:** each cell records device, build, result, and date in VERIFICATION.md as a table row. A summary per wave, not a log dump.
 - **Failure policy:** blocker or critical → fix, retest the cell plus T0; normal → beta known issue; later → V1.x.
 - **Exit = beta entry:** the amended V1 acceptance criteria hold, except the criteria that only testers can satisfy (e.g. tester-count coverage), which are beta exit criteria.

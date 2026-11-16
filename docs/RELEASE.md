@@ -217,7 +217,8 @@ The diagnostics log, the Android system log, and Reflux's own log file pass ever
 - **Attribution** (Trakt's API use policy): "Reflux uses Trakt but is not endorsed or certified by Trakt." on the About page whenever the provider is in the build, on the website's third-party page, and in the store descriptions (`release/store-listing.md`). No Trakt logo is used.
 - **Images** are Trakt's own URLs, cached by `ArtworkCache`, never hotlinked (METADATA.md, "Artwork cache").
 - **Rate limits** are followed by the adapter (METADATA.md, "Requests to Trakt").
-- **Owner action:** create the Trakt API app(s) (development now; production when granted), set the variable, and make one live lookup with the development ID (VERIFICATION.md lists it as not yet run). The live service has not been exercised from this repository's tests; the provider is tested against recorded response shapes.
+- **State (2026-11-16):** Trakt granted read-only Production access; the Production app (no Client Secret issued; user sign-in off) is the repository variable `REFLUX_TRAKT_CLIENT_ID`, confirmed by digest against the Trakt console and against the Development ID (different). Live lookups with the Production ID, release-configured desktop and Android builds carrying it, artwork cached, and title-only requests are recorded in VERIFICATION.md ("M11 closure and M12 Phase A start"). The development ID was used live on 2026-11-16 (VERIFICATION.md, "D5").
+- **Never cut a release locally.** A Gradle property (`-Preflux.trakt.clientId`, or `reflux.trakt.clientId` in `~/.gradle/gradle.properties`) takes precedence over `REFLUX_TRAKT_CLIENT_ID`; a machine with the development ID in its Gradle properties would build it into a "release". The workflow's runners have no such property, so the variable is what a release carries.
 
 ## Media handling gaps
 
