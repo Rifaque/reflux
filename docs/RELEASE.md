@@ -12,13 +12,13 @@ What stands between the source tree and builds that can be handed to testers and
 - [ ] Fire TV: the developer's devices inspected (model, Fire OS, API level) and the release build run on them.
 - [ ] Desktop: the Windows ZIP and the Linux tarball, verified (checksum, provenance), installed, updated, and removed on a clean machine each (M11.5, M11.6; the 2026-11-13 decision replaced "installer and package" with the archives, see planning/M11-DISTRIBUTION-PLAN.md).
 - [x] Metadata provider decided (D5, 2026-11-15): **Trakt** (DECISIONS.md, "Trakt is the metadata provider"); TMDB is no longer used. The production Client ID comes from the repository variable `REFLUX_TRAKT_CLIENT_ID` ("Metadata provider", below).
-- [ ] Trakt's production Client ID set as the repository variable `REFLUX_TRAKT_CLIENT_ID`, and one live lookup made with the development Client ID (owner).
+- [x] Trakt's production Client ID set as the repository variable `REFLUX_TRAKT_CLIENT_ID`, and one live lookup made with the development Client ID (owner). Done 2026-11-16; the production ID is in every `0.9.0-beta.1` artifact (VERIFICATION.md).
 - [ ] At least one physical phone, one physical Google TV / Android TV device, one Fire TV device, and one physical controller verified (VERIFICATION.md).
-- [ ] CI green on GitHub, including Android.
+- [x] CI green on GitHub, including Android (43911248247 on `2113fb5`, the `0.9.0-beta.1` commit).
 - [ ] Google Play closed testing track and Amazon Appstore testing set up with the current store requirements read and recorded here.
 - [ ] The website meets the ten conditions in ROADMAP.md, M12, "The website before the beta" (HTTPS on a stable domain, tester routing and instructions, known limitations, feedback, privacy and legal, the current version), with the demo video, signup, install instructions, changelog, and support.
 - [ ] Feedback path in the app (link and diagnostics export) works on every platform.
-- [ ] `CHANGELOG.md` has the beta's entry; the `release: 0.9.0-beta.1` commit and tag exist.
+- [x] `CHANGELOG.md` has the beta's entry; the `release: 0.9.0-beta.1` commit and tag exist (`2113fb5`, `v0.9.0-beta.1`, release run 43920389594, draft not published; DECISIONS.md, 2026-11-16: no tester receives it before this checklist is complete).
 
 ## Release checklist (every build given to anyone outside CI)
 

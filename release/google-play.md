@@ -58,6 +58,8 @@ Identity: the package is `dev.rsxdevelops.reflux`, permanent once created (it ca
 
 ## 6. First bundle to internal testing
 
+**Ready (2026-11-16):** `reflux-0.9.0-beta.1-android.aab` from release run 43920389594 (artifact `release`), signed by the upload key and verified (VERIFICATION.md, "0.9.0-beta.1"). After it is uploaded: **Android XR opt-out** in Release → Device catalog (filter the Android XR devices, exclude them; the Form factors page offers no opt-out), decided by the owner on 2026-11-16.
+
 - **Where:** Play Console → Testing → Internal testing → Create new release; GitHub → Actions → the Release workflow run.
 - **Do:** Once the agent has a release-workflow run from a clean commit for a version (it will say which), download the `release` workflow artifact, take `reflux-<version>-android.aab` (name per release.py), and upload it as the first internal-testing release. Add release notes. Add yourself and your own devices' Google accounts as internal testers and copy the opt-in link.
 - **Why:** Internal testing needs no review and proves the upload key, Play App Signing, and the install from Play. Do **not** build locally and upload that: only the workflow's attested bundle is distributed.
