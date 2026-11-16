@@ -53,6 +53,35 @@ No longer true, and not to be used: "no user data leaves the device". With "Onli
 
 **Amazon Appstore:** the User Data Privacy Questionnaire (which must be complete before a new app or an update can be published) is answered from this section and the table above: no account; no advertising ID; no personal information collected by RSX Develops; the titles of the user's media (or catalog IDs) sent from the device to Trakt, a third party, over HTTPS, for app functionality only, optional through "Online metadata & artwork"; third-party code collects nothing of its own; privacy policy at the same URL. Match each answer to the questionnaire's own categories when it is filled, and record them.
 
+### Review against the consoles' own definitions (2026-11-16; recommendation, not submitted)
+
+Read 2026-11-16: Google Play Console Help, "Provide information for Google Play's Data safety section" (support.google.com/googleplay/android-developer/answer/10787469), and the Data safety form itself; Amazon, "Appstore privacy labels" (developer.amazon.com/docs/app-submission/appstore-privacy-labels.html, last updated 2026-02-17), and its questionnaire.
+
+**What the definitions say.** Play: collecting is transmitting data from the app off the user's device, to the developer or to anyone else; sharing is transferring collected data to a third party (any organisation other than the developer or its service providers). Collection has two exemptions only: data that never leaves the device, and end-to-end encryption that no intermediary can read. Sharing has four: service providers, legal purposes, a specific user-initiated action the user expects to share data, and fully anonymous data. Neither page says anything about data sent to a server the user chooses (the user's own Jellyfin server, their plex.tv account). Amazon's page does not define "collected" on its own; its disclosure covers what the app "(or any third-party plug-in or service provider your app uses) collects". Both define **Files and docs** as a user's files or documents, or information about them such as file names.
+
+**What actually leaves the device, by kind:**
+
+| Data | Where to | When | Notes |
+| --- | --- | --- | --- |
+| A work's title, or a catalog ID (Trakt, IMDb, TMDB, TVDB) for it; the language if not English | Trakt (third party) over HTTPS | Automatically, while "Online metadata & artwork" is on (the default) | Verified live 2026-11-16: the search carries the title alone. Never the year, a file name as a path, a path, or file contents. A title comes from a file name or the user's server; the catalog ID from a name, a server, or an earlier lookup |
+| Media files themselves | Nowhere | Never uploaded | Read from the user's folders, servers, and shares only |
+| Jellyfin user name and password | The user's own Jellyfin server | When the user signs in | Password used once and not stored; the session token is stored on the device. The server may be plain HTTP if the user chose that address |
+| Plex account e-mail or user name and password, or a token | plex.tv (Plex, a third party), then the user's Plex servers | When the user signs in with Plex | HTTPS to plex.tv; a local Plex server may be plain HTTP |
+| SMB and WebDAV user name and password | The user's own share | When connecting | Stored sealed on the device |
+| Playback progress and played state | The user's own Jellyfin or Plex server | While playing a title from it | Two-way watch state is a feature of those sources |
+| A device identity per account (derived, not the device ID) | The user's own server | With each request, as clients identify themselves | Not an advertising or hardware ID |
+
+**Recommendation.** Two readings are possible for the server traffic, and the choice changes more than one answer:
+
+- **Reading A, literal (recommended).** By Play's definition, anything the app transmits off the device is collected, and no listed exemption covers the user's own servers. Declare: **Files and docs**, collected and shared (Trakt), optional, purpose App functionality, not processed ephemerally; **Personal info → User IDs** and **Email address**, collected, not shared (sent only by the user's own sign-in to their server or to plex.tv: the user-initiated exemption), optional (local folders need no sign-in), purposes App functionality and Account management; **App activity → Other actions** (playback progress and played state), collected, not shared (to the user's own server at their direction), optional, purpose App functionality. Then **"Is all of the user data collected by your app encrypted in transit?" must be No**: a user may connect their own server over plain HTTP. **The Play draft saved on 2026-11-16 answers Yes there**; under this reading that answer is wrong.
+- **Reading B, narrow.** Data sent to infrastructure the user owns and points the app at is not "collection" by the app. Then only Trakt is declared (Files and docs, collected and shared), and "encrypted in transit" is Yes. This matches how many self-hosted clients describe themselves, but neither page supports it, and Plex's sign-in goes to plex.tv, which is not the user's own infrastructure.
+
+**Account questions (Play).** "Which methods of account creation does your app support?": **My app does not allow users to create an account** (Reflux has none). "Can users log in to your app with accounts created outside of the app?": **Yes** under Reading A (Jellyfin and Plex accounts are signed in to inside Reflux), **No** only under Reading B. Data deletion (optional): RSX Develops holds nothing; a user's data is on their device (uninstall, or a profile's "Forgot PIN"); an honest answer is **No** (no request mechanism, nothing held), or leave the optional question unanswered. Google's page does not say how its account-deletion requirement applies to sign-ins to services the user already has; the form's own help text is the place to confirm.
+
+**Amazon.** The saved answers (Files and docs collected and transferred, App functionality; account creation No) are right under either reading for Trakt and stay. Under Reading A, add **User Info → User IDs** and **Email address** as collected, not transferred (the user's own sign-in), purposes App functionality; under Reading B, nothing more. Data deletion: **No**, for the same reason as Play. Answer both stores the same way.
+
+**Not to be declared under either reading:** location, contacts, financial, health, messages, photos and videos or audio as data (the media is played, not collected), web browsing, installed apps, advertising ID, crash logs or diagnostics (the diagnostics log leaves the device only if the user sends it themselves; the table above).
+
 ## The website
 
 Hosted by Vercel, which processes requests (IP addresses) to serve the pages. No cookies, no analytics, no third-party scripts, fonts, or images (the Manrope font and every image are served by the site itself; a `default-src 'self'` content security policy), no forms.

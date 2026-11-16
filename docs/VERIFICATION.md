@@ -1780,3 +1780,73 @@ No candidate is frozen yet: the proposal is the commit after this record once it
 ### Hosted CI on `0e8b89d`
 
 Run 43873870448, first attempt: six jobs green, **Check (windows-2025) failed** one test, `DownloadsUiTest.aWholeSeasonIsKeptAndTheShowSaysHowMuchOfItIs` (438 tests, 1 failed): `org.sqlite.SQLiteException: [SQLITE_BUSY] The database file is locked`, thrown while the test's polling read (`library.downloads()`, line 266) opened a new connection and `SQLiteConfig.apply` ran the connection's pragmas, during the season's removal. Not caused by this change (it touches neither Downloads nor the library). Two attempted reproductions in `library` (a reader's first connection while another holds `BEGIN IMMEDIATE`; 200 first reads while another connection commits and checkpoints with `TRUNCATE` in a loop) both passed on the current code, so no fix is claimed and no test was added; `DownloadsUiTest` passed 3 of 3 locally. **Attempt 2 (the failed job rerun): all seven jobs green.** Release rehearsal 43873949669 on `0e8b89d`: green. Carried to M12's flake backlog with this trace: the leading hypothesis is a per-connection `journal_mode=WAL` pragma meeting a lock it cannot wait on (`LibraryDatabase.open` sets WAL on every connection); it is unproven until it reproduces.
+
+## Follow-up: the scrim's depth, the Windows walk, the privacy review, Wave 9, and Wave 0 (2026-11-16, later)
+
+Starting point: `main` at `623c73b`, clean; hosted CI 43883737102 and Release rehearsal 43883736950 green; the four `REFLUX_UPLOAD_*` secrets, `REFLUX_UPLOAD_CERT_SHA256`, and `REFLUX_TRAKT_CLIENT_ID` present. No version change, tag, release, or submission.
+
+### The top bar's scrim (automated, physical)
+
+- **Cause of the Pad 7 observation:** the bar is 64 dp under the status bar, its Back button spans 10 to 54 dp of it, and the scrim was exactly the bar's band, opaque only to 72% of it and transparent at its foot. With a 32 dp status bar the band is 96 dp, so it faded from about 69 dp while the button's lower half sits at about 75 to 86 dp.
+- **Fix (`RefluxApp.kt`):** the scrim holds (0.97 to 0.9 opacity) through the whole bar and fades to nothing over 24 dp below it (`TopBarScrimFade`). Still only once the page has scrolled, on pages below the top level beside a side navigation; phones and televisions unchanged.
+- **Tests:** `PageBarScrimTest` now measures the whole Back button's height (desktop, no system bars) and adds a 1164 × 777 tablet with a 32 dp status bar. Before the fix both fail (the tablet case: 51 bright pixels behind the button's lower half); after, both pass. `ShellSurfaceTest`, `TelevisionTest`, `HandheldLayoutTest` pass.
+- **Pad 7 (physical, debug build of this tree installed in place):** Smallville's episodes scrolled: behind the whole Back button the rows are dark, and below the bar they brighten through the fade with no edge. **PASS.**
+
+### Windows packaged app, keyboard (real input)
+
+The archive from this tree, a scratch `REFLUX_HOME`, `SendInput` only while `GetForegroundWindow` is Reflux, `PrintWindow` captures of Reflux's window only. Display 125% (DPI 120). Runs were split into short launches because another window took the foreground twice (the guard stopped those runs; no key went elsewhere).
+
+| Step | Result |
+| --- | --- |
+| First Down: ring on Play | **PASS** |
+| Ctrl+2 Movies; Down to the first poster; Enter opens its page; Esc back with focus on the same poster | **PASS** |
+| Left into the sidebar; Up twice to the Reflux name (ring); Enter: Home | **PASS** |
+| Ctrl+3 Shows, Ctrl+4 Search (its field focused), Ctrl+5 Downloads, Ctrl+6 Sources | **PASS** |
+| Sources: Down twice to the card; Right to its inline switch | **PASS** |
+| Settings: from Sources, Down to Add media, Left into the sidebar, Down and Enter: Settings | **PASS** |
+| Player (a 60 s clip): Down and Enter on Play starts it; Space pauses (8.375 s held over 4 s); Space resumes (9.875 → 12.750); Right three times while paused seeks 30 s (3.5 → 33.5); Esc puts it in the mini-player in the corner | **PASS** |
+| Close and relaunch: about ten launches and window closes; each relaunch kept the library and resume positions | **PASS** |
+| Scale: the app at `sun.java2d.uiScale` 1.0, 1.5, 2.0 (windows 1088 × 688, 1632 × 1032, 2176 × 1298): first focus, the sidebar, Sources render and respond | **PASS** for the app's own scale. **Not done:** Windows' display scaling at 100/150/200% (a system setting; not changed) |
+| Pointer | **Not done:** a real mouse would move the owner's own pointer |
+
+Behaviour seen, by design: on a page with nothing focused yet, Enter does nothing and Left is the first arrow into the page, not the sidebar; the first arrow places focus (DECISIONS.md, M1). With focus on the sidebar, Ctrl+6 changes the page and leaves focus where the viewer put it.
+
+**Clean machine: not available.** Windows 11 Home (no Hyper-V or Sandbox); an empty `VMware` folder with no Workstation; no Windows image here. Steps for the owner on any clean Windows 11 PC or VM: download the ZIP and `SHA256SUMS` from the release (or the rehearsal's archive); `certutil -hashfile <zip> SHA256` matches; extract to `%USERPROFILE%\Apps\Reflux`; run `Reflux.exe`: SmartScreen shows "Windows protected your PC" (unsigned, by decision) → More info → Run anyway; the first-run screen appears, choose a folder, playback starts; close; relaunch: library kept in `%LOCALAPPDATA%\Reflux`; delete the folder and `%LOCALAPPDATA%\Reflux`: nothing else remains.
+
+### The privacy review
+
+Recorded in PRIVACY.md, "Review against the consoles' own definitions". In short: Trakt's title or catalog-ID lookups are **Files and docs**, collected and shared, optional, App functionality, under either reading. Google's definition counts any transmission off the device as collection and has no exemption for the user's own server, so the literal reading also declares Jellyfin and Plex sign-ins (User IDs, Email address) and playback progress to the user's own server (Other actions) as collected, not shared (user-initiated), and then "encrypted in transit" must be **No** (a user's own server may be plain HTTP): **the saved Play answer (Yes) is wrong under that reading.** Neither console was changed in this pass; the choice of reading is the owner's, and both stores are to be answered the same way.
+
+### Wave 9: production metadata
+
+| Requirement | Evidence | Tier | Result |
+| --- | --- | --- | --- |
+| 429 handling | `TraktProviderTest`: a short Retry-After waited out; a long one fails at once and nothing is asked until then; no Retry-After backs off bounded, with jitter; the rate-limit header followed; requests paced | Automated (in the full `check` below) | **PASS** |
+| Offline | `MetadataTest.offlineProviderStopsAndRetriesLater`, `metadataStaysWhileTheSourceIsOffline`; `ProviderGateTest` (rest after failure, growth, reset) | Automated | **PASS** |
+| Online metadata off | `LibraryDepthTest.turningOnlineLookupsOffAsksTheProviderNothing`; `SettingsMetadataUiTest` | Automated | **PASS** |
+| Release-configured artifacts | Release APK and desktop `provider.properties` carry the Production ID (by digest; earlier today); now a **signed** release build (`dev.rsxdevelops.reflux.prodcheck`, scratch ID, dry-run key, Production ID by digest) | Release build | **PASS** |
+| Live lookup on a device | Fire TV Stick, the signed build, five scratch clips in their own folder: all five identified, Big Buck Bunny "2008 · 8m · G · ★ 7" with Trakt's description, posters and the backdrop drawn | Physical, live API | **PASS** |
+| Persistence across restart | The same build force-stopped and relaunched: the same metadata and artwork at once | Physical | **PASS** |
+| No duplicate requests | Second `refresh`: 0 requests to Trakt (desktop engine, earlier today) | Live API | **PASS** (desktop; a release APK is not debuggable, so its requests were not counted on the device) |
+| Title-only privacy | Request lines logged: `query=<title>` only (earlier today) | Live API | **PASS** |
+| Artwork cached as WebP, not hotlinked | 12 WebP files in the cache, 15 artwork rows (desktop, earlier today); `everyImageUrlIsTraktsOwnAndAbsoluteForTheArtworkCache`; the interface draws only from `ArtworkCache` | Live API, automated, code | **PASS** |
+| A live 429 and live offline on a device | Not provoked on purpose (no hammering); turning a device's Wi-Fi off is not done here | — | **Not done, by choice** |
+
+The scratch package and its media were removed afterwards; the Stick keeps the debug app and its RefluxSmoke library.
+
+**Wave 9: PASS**, with a live 429 and a live offline device run left to the automated tests.
+
+### `DownloadsUiTest` (CI run 43873870448, attempt 1)
+
+Stack: `SQLITE_BUSY` from `SQLiteConfig.apply` while `JdbcSqliteDriver`'s `ThreadedConnectionManager` opened a new connection for the test thread's polling read (`library.downloads()`), during the season's removal. Each test has its own temporary database (`createTempDirectory`; `TestWorld` and `DownloadsWorld`), no parallel forks are configured, so no path is shared between tests: the contention is inside one test, between the test thread and the app's background writes. Two library-level reproductions passed on the current code; the class passed 3 of 3 locally and in the full local `check`. **Not reproduced; no change made; carried in M12's backlog.**
+
+### Wave 0
+
+| Item | Result |
+| --- | --- |
+| Full local `check` (Windows) on `623c73b` + this pass's scrim change | **BUILD SUCCESSFUL, first attempt**: 1,442 tests, 0 failed, 22 skipped (window tests and live servers not asked for). Per module: Android 56, core 364, design 43, desktop app 54 (13 skipped), desktop engine 44 (6), library 244, Trakt 23, playback 53, Jellyfin 63, local 6, Plex 23, SMB 10 (2), WebDAV 20, ui 439 (1) |
+| Android instrumented suite, Fire TV Stick (Fire OS 8.1.8.5) | **First attempt: 55 tests, 1 failed**: `PlayerAccessibilityOnDeviceTest.theMiniPlayerIsOnePane...` timed out waiting for Minimize, which a television does not have; the test now assumes a handheld (`assumeFalse(platform.television)`) and is skipped there, passing 1 of 1 as skipped; it still runs on handhelds |
+| Android instrumented suite, a phone | **Not run:** the Phone 2a was not connected; the Pad 7 holds the owner's library, which instrumented tests would run inside |
+| Hosted CI | 43883737102 green on `623c73b`; earlier first attempts that failed are recorded (43854951567, Ubuntu, rerun green; 43873870448, Windows, `DownloadsUiTest`, rerun green) |
+| Release rehearsal and provenance | 43883736950 green; it attested the Linux archive (attestation 68152382) and verified it in the job (`gh attestation verify` with the signer workflow and source digest). Independent verification from a second machine needs a release-mode run's assets |
+| The Linux container's full `check` | **Not run this pass** (hosted Ubuntu CI is green on the same tree) |
