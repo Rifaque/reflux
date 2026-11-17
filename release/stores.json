@@ -1,4 +1,4 @@
 {
-  "googlePlay": { "package": "dev.rsxdevelops.reflux", "state": "not listed", "url": null, "testing": null },
-  "amazonAppstore": { "package": "dev.rsxdevelops.reflux", "state": "not listed", "url": null, "testing": null }
+  "googlePlay": { "package": "dev.rsxdevelops.reflux", "state": "testing", "url": null, "testing": { "kind": "closed-test-opt-in", "url": "https://play.google.com/apps/testing/dev.rsxdevelops.reflux", "instructions": "/testing" } },
+  "amazonAppstore": { "package": "dev.rsxdevelops.reflux", "state": "testing", "url": null, "testing": { "kind": "live-app-testing", "instructions": "/testing" } }
 }
