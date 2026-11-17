@@ -7,7 +7,7 @@ const articles = [
     body: (
       <>
         <h2>Install</h2>
-        <p>Get Reflux for your platform from <Link to="/download">Download</Link>: Google Play on Android phones, tablets, and Google TV; the Amazon Appstore on Fire TV; a zip for Windows and a tar.gz for Linux. Reflux has no account of its own: you sign in only to your own servers, if you add any.</p>
+        <p>Get Reflux for your platform from <Link to="/download">Download</Link>: Google Play on Android phones, tablets, and Google TV; the Amazon Appstore on Fire TV; a zip for Windows and a tar.gz for Linux. During the beta, Android and Fire TV builds reach invited testers only (<Link to="/testing">the beta</Link> says how to join). Reflux has no account of its own: you sign in only to your own servers, if you add any.</p>
         <h2>Your first library</h2>
         <ol className="plain numbered">
           <li>Open Reflux. It offers two ways in: <strong>Choose a folder</strong>, or <strong>Connect a server or share</strong>.</li>

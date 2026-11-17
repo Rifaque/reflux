@@ -2,6 +2,7 @@ import { Link, NavLink, useLocation } from 'react-router-dom'
 import { useEffect, useRef } from 'react'
 import release from './generated/release.json'
 import showcase from './showcase.json'
+import { TIMELINE } from './beta.js'
 
 /** The Reflux mark, in the colour of the text around it. Decorative unless given a label. */
 export function Mark({ className = 'mark', label }) {
@@ -58,6 +59,7 @@ export function Out({ href, children, className }) {
 const primary = [
   ['/platforms', 'Platforms'],
   ['/sources', 'Sources'],
+  ['/testing', 'Beta'],
   ['/docs', 'Docs'],
   ['/releases', 'Releases'],
   ['/support', 'Support'],
@@ -89,7 +91,7 @@ export function Header() {
 }
 
 export function Footer() {
-  const status = release.latest ? `Reflux ${release.latest.version}` : `Reflux ${release.version}, in development`
+  const status = release.latest ? `Reflux ${release.latest.version}${release.latest.version.includes('-') ? ', in beta' : ''}` : `Reflux ${release.version}, in development`
   return (
     <footer className="site-footer">
       <div className="footer-grid">
@@ -105,7 +107,7 @@ export function Footer() {
           <Link to="/sources" viewTransition>Sources</Link>
           <Link to="/download" viewTransition>Download</Link>
           <Link to="/releases" viewTransition>Releases</Link>
-          <Link to="/testing" viewTransition>Testing</Link>
+          <Link to="/testing" viewTransition>Beta</Link>
         </nav>
         <nav aria-label="Help">
           <h2>Help</h2>
@@ -142,7 +144,25 @@ export function PageHead({ eyebrow, title, children }) {
 
 /** The project's current state, said the same way everywhere. */
 export function Status() {
-  return release.latest
-    ? <span className="status-pill"><span className="dot" aria-hidden="true" />Reflux {release.latest.version} is available</span>
-    : <span className="status-pill"><span className="dot pending" aria-hidden="true" />In development · beta coming</span>
+  const latest = release.latest
+  if (!latest) return <span className="status-pill"><span className="dot pending" aria-hidden="true" />In development · beta coming</span>
+  // A pre-release (x.y.z-beta.n) is a beta in testing, never presented as the release.
+  return latest.version.includes('-')
+    ? <Link to="/testing" className="status-pill"><span className="dot" aria-hidden="true" />Beta {latest.version} · testing now</Link>
+    : <span className="status-pill"><span className="dot" aria-hidden="true" />Reflux {latest.version} is available</span>
+}
+
+/** The steps from the beta to 1.0 (src/beta.js): the first has happened, the rest are a plan. */
+export function Timeline() {
+  return (
+    <ol className="loop timeline">
+      {TIMELINE.map(([when, what, text], i) => (
+        <li key={what} className={i === 0 ? 'done' : undefined}>
+          <span className="loop-step">{when}</span>
+          <h3>{what}</h3>
+          <p>{text}</p>
+        </li>
+      ))}
+    </ol>
+  )
 }

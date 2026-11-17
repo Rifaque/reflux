@@ -8,9 +8,14 @@ const megabytes = (bytes) => `${Math.round(bytes / 1048576)} MB`
 const notes = latest ? release.changelog.find((s) => s.version === latest.version) : null
 
 /** A store's listing, once it exists; until then, a plain word about when. The site never offers an Android file. */
-function Store({ name, listing }) {
+function Store({ name, listing, beta, how }) {
   if (listing?.state === 'available' && listing.url) return <Out className="button" href={listing.url}>Get it on {name}</Out>
-  if (listing?.state === 'testing') return <p className="quiet">In testing on {name}, not yet open to everyone. <Link to="/testing">How testing works</Link>.</p>
+  if (listing?.state === 'testing') return (
+    <>
+      <p>{how} Reflux is not on public {name.replace(/^the /, '')} until 1.0.</p>
+      <p><Link className="button" to={`/testing#${beta}`}>Join the beta</Link></p>
+    </>
+  )
   return <p className="quiet">Not listed yet. Reflux will be on {name} when testing opens; it will be linked here.</p>
 }
 
@@ -31,7 +36,8 @@ function Desktop({ platform }) {
 
 function Where({ row }) {
   if (row.url) return <Out href={row.url}>{row.channel === 'GitHub Release' ? `Reflux ${row.version}` : 'Open the listing'}</Out>
-  return <span className="quiet">{row.note ?? (row.state === 'testing' ? 'Invited testers only' : 'Not yet')}</span>
+  if (row.state === 'testing') return <Link to="/testing">Join the beta</Link>
+  return <span className="quiet">{row.note ?? 'Not yet'}</span>
 }
 
 export default function Download() {
@@ -42,9 +48,10 @@ export default function Download() {
     <article className="page">
       <PageHead eyebrow="Download" title="Get Reflux.">
         <p>
-          {latest ? `Reflux ${latest.version}.` : `Reflux ${release.version} is in development and has not been released yet.`} Android and Google TV come from
+          {latest ? `Reflux ${latest.version}.` : `Reflux ${release.version} is in development and has not been released yet.`}
+          {latest?.version.includes('-') && ' A beta, tested until 15 December 2026; Reflux 1.0 is planned for December.'} Android and Google TV come from
           Google Play, Fire TV from the Amazon Appstore, and Windows and Linux from Reflux's GitHub releases. Nothing else is official.
-          {' '}<Link to="/testing">How testing will work</Link>.
+          {' '}<Link to="/testing">About the beta</Link>.
         </p>
       </PageHead>
 
@@ -53,7 +60,7 @@ export default function Download() {
         <div className="table-wrap">
           <table>
             <thead><tr><th scope="col">Platform</th><th scope="col">From</th><th scope="col">State</th><th scope="col">Link</th></tr></thead>
-            <tbody>{rows.map((r) => <tr key={r.name}><th scope="row">{r.name}</th><td>{r.channel}</td><td>{STATE_LABELS[r.state]}</td><td><Where row={r} /></td></tr>)}</tbody>
+            <tbody>{rows.map((r) => <tr key={r.name}><th scope="row">{r.name}</th><td>{r.channel}</td><td>{STATE_LABELS[r.label ?? r.state]}</td><td><Where row={r} /></td></tr>)}</tbody>
           </table>
         </div>
       </section>
@@ -62,35 +69,35 @@ export default function Download() {
         <section className="download" aria-labelledby="android">
           <h2 id="android">Android phones, tablets, Android TV, and Google TV</h2>
           <p className="quiet small">Android 8.0 or later. Install from Google Play and it updates there; there is no file to download.</p>
-          <Store name="Google Play" listing={release.stores.googlePlay} />
+          <Store name="Google Play" listing={release.stores.googlePlay} beta="android" how="A closed beta on Google Play: invited Google accounts opt in, then install and update from Google Play." />
         </section>
         <section className="download" aria-labelledby="fire-tv">
           <h2 id="fire-tv">Fire TV</h2>
           <p className="quiet small">Fire OS 7 or later. Not for devices on Vega OS. Install from the Appstore and it updates there.</p>
-          <Store name="the Amazon Appstore" listing={release.stores.amazonAppstore} />
+          <Store name="the Amazon Appstore" listing={release.stores.amazonAppstore} beta="fire-tv" how="A beta by invitation, through Amazon Live App Testing: invited Amazon accounts install it with Appstore Beta Hub." />
         </section>
         <section className="download" aria-labelledby="windows">
           <h2 id="windows">Windows</h2>
-          <p className="quiet small">Windows 10 or 11, 64-bit. A zip, with the playback engine inside.</p>
+          <p className="quiet small">Windows 10 or 11, 64-bit (x64). A zip with everything inside, the playback engine and its own Java runtime included; nothing else to install. There is no installer yet.</p>
           <Desktop platform="windows" />
           <h3>Install, update, remove</h3>
           <ol className="plain numbered small">
             <li>Extract <code>{windowsName}</code> to a folder you will keep.</li>
-            <li>Open <code>Reflux.exe</code> in it.</li>
-            <li><strong>Update:</strong> extract the newer zip to a new folder, then delete the old folder. Your library stays in <code>%LOCALAPPDATA%\Reflux</code>.</li>
+            <li>Open <code>Reflux.exe</code> in it. If Windows says “Windows protected your PC”, choose More info, then Run anyway (see below). For a shortcut, right-click <code>Reflux.exe</code> and choose Send to → Desktop (create shortcut); on Windows 11 it is under Show more options.</li>
+            <li><strong>Update:</strong> Reflux does not update itself. When a new build is announced here and on <Link to="/releases">Releases</Link>, extract the newer zip to a new folder, then delete the old folder. Your library stays in <code>%LOCALAPPDATA%\Reflux</code>.</li>
             <li><strong>Remove:</strong> delete the folder. To remove your library too, delete <code>%LOCALAPPDATA%\Reflux</code> and the “Reflux” entries in Windows Credential Manager.</li>
           </ol>
         </section>
         <section className="download" aria-labelledby="linux">
           <h2 id="linux">Linux</h2>
-          <p className="quiet small">64-bit, on X11 or through XWayland. A tar.gz with its own Java runtime; it plays through your distribution’s libmpv.</p>
+          <p className="quiet small">64-bit x86 (x86-64), on X11 or through XWayland. A tar.gz with its own Java runtime; it plays through your distribution’s libmpv. No AppImage, Flatpak, or distribution package yet.</p>
           <Desktop platform="linux" />
           <h3>Install, update, remove</h3>
           <ol className="plain numbered small">
             <li>Install libmpv: <code>libmpv2</code> on Debian 12 or later and Ubuntu 24.04 or later, <code>mpv-libs</code> on Fedora. Ubuntu 22.04 does not package <code>libmpv2</code>, so there Reflux needs libmpv installed another way, or a newer Ubuntu.</li>
             <li>To keep server sign-ins in your desktop’s Secret Service, install <code>secret-tool</code> (<code>libsecret-tools</code> on Debian and Ubuntu, <code>libsecret</code> on Fedora). Without it Reflux keeps them in its own files and says so in its log.</li>
-            <li>Extract <code>{linuxName}</code> (<code>tar -xzf</code>) and run <code>bin/Reflux</code>.</li>
-            <li><strong>Update:</strong> extract the newer archive to a fresh folder, then remove the old one. Your library in <code>~/.local/share/reflux</code> is not touched.</li>
+            <li>Extract <code>{linuxName}</code> (<code>tar -xzf</code>) anywhere you can write, such as <code>~/Applications</code>, and run <code>bin/Reflux</code>. No root access is needed; the archive keeps its execute permission.</li>
+            <li><strong>Update:</strong> Reflux does not update itself. Extract the newer archive to a fresh folder, then remove the old one. Your library in <code>~/.local/share/reflux</code> is not touched.</li>
             <li><strong>Remove:</strong> delete the folder; delete <code>~/.local/share/reflux</code> as well to remove your library.</li>
           </ol>
         </section>

@@ -4,7 +4,7 @@ import showcase from '../showcase.json'
 import { Out, Publisher } from '../components.jsx'
 
 const Review = () => (
-  <p className="quiet review">This page describes Reflux as it is built today. Its wording has not yet had legal review, which is due before Reflux is released (it is pre-release software, not yet distributed).</p>
+  <p className="quiet review">This page describes Reflux as it is built today. Its wording has not yet had legal review, which is due before Reflux 1.0 (Reflux is in beta: given to testers since 17 November 2026).</p>
 )
 
 /**
