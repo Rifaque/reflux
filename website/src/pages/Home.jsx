@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
-import { Shot, Status } from '../components.jsx'
+import { Shot, Status, Timeline } from '../components.jsx'
+import { V1_WINDOW } from '../beta.js'
 import { MarkMotion, useDepth } from '../motion.jsx'
 
 const loop = [
@@ -17,12 +18,13 @@ const sources = [
   ['Web shares', 'WebDAV: a NAS, Nextcloud, or any web server that serves files.'],
 ]
 
+// Where each platform's beta comes from today; 1.0 moves the Android and Fire TV ones to the public stores.
 const platforms = [
-  ['Android phones and tablets', 'Google Play'],
-  ['Android TV and Google TV', 'Google Play'],
-  ['Fire TV', 'Amazon Appstore'],
-  ['Windows', 'Download'],
-  ['Linux', 'Download'],
+  ['Android phones and tablets', 'Google Play closed beta'],
+  ['Android TV and Google TV', 'Google Play closed beta'],
+  ['Fire TV', 'Amazon, by invitation'],
+  ['Windows', 'Beta download'],
+  ['Linux', 'Beta download'],
 ]
 
 /** Two copies of one film, from two places, becoming one film in Reflux: the library's idea, in motion. */
@@ -165,8 +167,8 @@ export default function Home() {
           <p>
             Reflux sends nothing to RSX Develops: no telemetry, no analytics, no advertising. Your library, your
             progress, and your downloads stay on your device; your own servers see what you play from them. To recognise
-            your films and fetch their artwork, Reflux asks Trakt directly, with the title alone, and you can turn that
-            off. When a source is away, the library stays, and anything you kept for offline still plays.
+            your films and fetch their artwork, Reflux asks Trakt directly with the title, never anything about you, and you
+            can turn that off. When a source is away, the library stays, and anything you kept for offline still plays.
           </p>
           <p><Link to="/privacy" className="more">Read the privacy page</Link></p>
         </div>
@@ -178,13 +180,22 @@ export default function Home() {
         </div>
       </section>
 
+      <section className="band">
+        <div className="section-head" data-reveal>
+          <p className="eyebrow">The road to 1.0</p>
+          <h2>In beta now. Reflux 1.0 is planned for December.</h2>
+          <p className="lead">{V1_WINDOW}</p>
+        </div>
+        <div data-reveal><Timeline /></div>
+      </section>
+
       <section className="closing" data-reveal>
         <MarkMotion className="mark-motion closing-mark" />
         <h2>Reflux is free.</h2>
-        <p className="lead">No subscription, no paid tier, no ads. The beta will open on every platform above.</p>
+        <p className="lead">No subscription, no paid tier, no ads. Try the beta on any of the platforms above.</p>
         <div className="actions center">
-          <Link to="/testing" className="button">How testing will work</Link>
-          <Link to="/docs/getting-started" className="button ghost">Getting started</Link>
+          <Link to="/testing" className="button">Join the beta</Link>
+          <Link to="/download" className="button ghost">Download for Windows or Linux</Link>
         </div>
       </section>
     </>

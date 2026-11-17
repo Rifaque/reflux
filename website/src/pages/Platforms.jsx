@@ -4,9 +4,9 @@ import { PageHead } from '../components.jsx'
 
 // Each platform's needs and how it is distributed (docs/ROADMAP.md, Platforms; docs/RELEASE.md).
 const platforms = [
-  { name: 'Android phones and tablets', needs: 'Android 8.0 or later', from: 'Google Play', notes: 'Folders are chosen with the system picker, one at a time, read-only. Picture-in-picture where the device offers it.' },
-  { name: 'Android TV and Google TV', needs: 'Android 8.0 or later', from: 'Google Play', notes: 'Built for the remote. What you are watching and your next episodes appear in the home screen’s Watch Next row.' },
-  { name: 'Fire TV', needs: 'Fire OS 7 or later', from: 'Amazon Appstore', notes: 'Devices on Vega OS do not run Android apps and are not supported.' },
+  { name: 'Android phones and tablets', needs: 'Android 8.0 or later', from: 'Google Play (closed beta until 1.0)', notes: 'Folders are chosen with the system picker, one at a time, read-only. Picture-in-picture where the device offers it.' },
+  { name: 'Android TV and Google TV', needs: 'Android 8.0 or later', from: 'Google Play (closed beta until 1.0)', notes: 'Built for the remote. What you are watching and your next episodes appear in the home screen’s Watch Next row.' },
+  { name: 'Fire TV', needs: 'Fire OS 7 or later', from: 'Amazon Appstore (beta by invitation until 1.0)', notes: 'Devices on Vega OS do not run Android apps and are not supported.' },
   { name: 'Windows', needs: 'Windows 10 or 11, 64-bit (tested on Windows 11)', from: 'GitHub Release, linked from Download', notes: 'Everything included, playback engine too. Not yet signed by a publisher, so Windows may warn before it first opens.' },
   { name: 'Linux', needs: '64-bit, with your distribution’s libmpv', from: 'GitHub Release, linked from Download', notes: 'Runs on X11 and through XWayland. Install libmpv2 (Debian, Ubuntu) or mpv-libs (Fedora).' },
 ]
@@ -42,7 +42,7 @@ export default function Platforms() {
             <tbody>{platforms.map((p) => <tr key={p.name}><th scope="row">{p.name}</th><td>{p.needs}</td><td>{p.from}</td><td>{p.notes}</td></tr>)}</tbody>
           </table>
         </div>
-        <p className="quiet small">Not supported: iOS, iPadOS, macOS, and Fire TV devices on Vega OS. {release.latest ? `The current release is ${release.latest.version}; ` : 'Reflux has not been released yet; '}see <Link to="/download">Download</Link> for where each platform stands.</p>
+        <p className="quiet small">Not supported: iOS, iPadOS, macOS, and Fire TV devices on Vega OS. {release.latest ? `The current ${release.latest.version.includes('-') ? 'beta' : 'release'} is ${release.latest.version}; ` : 'Reflux has not been released yet; '}see <Link to="/download">Download</Link> for where each platform stands.</p>
       </section>
 
       <section aria-labelledby="plays">

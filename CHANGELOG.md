@@ -1,6 +1,6 @@
 # Changelog
 
-What changes for people using Reflux, version by version. The rules for versions and for this file are in [docs/VERSIONING.md](docs/VERSIONING.md). Nothing has been released yet.
+What changes for people using Reflux, version by version. The rules for versions and for this file are in [docs/VERSIONING.md](docs/VERSIONING.md). `0.9.0-beta.1` is the first build given to people outside the project (a beta, from 17 November 2026).
 
 ## Unreleased
 

@@ -69,5 +69,12 @@
       ]
     }
   ],
-  "trailingSlash": false
+  "trailingSlash": false,
+  "redirects": [
+    {
+      "source": "/beta",
+      "destination": "/testing",
+      "permanent": false
+    }
+  ]
 }

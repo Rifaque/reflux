@@ -1,7 +1,7 @@
 // Where each platform stands, from the data the build read (docs/WEBSITE.md, "Release data"): the store records and
 // the newest publication record. Plain and free of React, so the page and its tests share it.
 
-export const STATE_LABELS = { 'not listed': 'Not listed yet', testing: 'In testing', available: 'Available' }
+export const STATE_LABELS = { 'not listed': 'Not listed yet', testing: 'Beta, by invitation', available: 'Available', beta: 'Beta download' }
 
 /** The desktop archive a record offers for a platform: a GitHub-distributed one, never a store package. */
 export const desktopFile = (latest, platform) =>
@@ -12,7 +12,7 @@ export function availability({ stores, latest }) {
   const store = (channel, listing) => ({ channel, state: listing.state, url: listing.state === 'available' ? listing.url : null })
   const desktop = (name, platform) => {
     const file = desktopFile(latest, platform)
-    if (file) return { name, channel: 'GitHub Release', state: 'available', url: file.url, version: latest.version }
+    if (file) return { name, channel: 'GitHub Release', state: 'available', label: latest.version.includes('-') ? 'beta' : 'available', url: file.url, version: latest.version }
     return { name, channel: 'GitHub Release', state: 'not listed', note: latest ? `Not in Reflux ${latest.version}` : 'No public build yet', url: null }
   }
   return [

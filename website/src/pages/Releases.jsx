@@ -8,14 +8,14 @@ export default function Releases() {
       <PageHead eyebrow="Releases" title="What's new in Reflux.">
         <p>Every change people using Reflux will notice, version by version, from its changelog. {release.latest ? '' : 'Nothing has been released yet; “Unreleased” is what the next build brings.'}</p>
       </PageHead>
-      {release.changelog.map((section) => (
+      {release.changelog.filter((section) => section.items.length || section.version !== 'Unreleased').map((section) => (
         <section key={section.version} className="release" aria-labelledby={`v-${section.version}`}>
           <h2 id={`v-${section.version}`}>
             {section.version === 'Unreleased' ? 'Unreleased' : `Reflux ${section.version}`}
             {section.date && <span className="quiet release-date"> · {section.date}</span>}
           </h2>
           {section.version === 'Unreleased' && <p className="quiet small">In development as {release.version}; not released.</p>}
-          {section.version === release.latest?.version && <p className="quiet small">The current release. <Link to="/download">Download</Link>.</p>}
+          {section.version === release.latest?.version && <p className="quiet small">{section.version.includes('-') ? <>The current beta. <Link to="/testing">Join the beta</Link> or <Link to="/download">download it</Link>.</> : <>The current release. <Link to="/download">Download</Link>.</>}</p>}
           <ul className="changes">{section.items.map((item, i) => <li key={i}>{item}</li>)}</ul>
         </section>
       ))}

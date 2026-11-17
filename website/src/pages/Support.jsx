@@ -14,7 +14,7 @@ export default function Support() {
         </section>
         <section aria-labelledby="problem">
           <h2 id="problem">Report a problem or send feedback</h2>
-          <p>E-mail <a href="mailto:support@rsxdevelops.dev">support@rsxdevelops.dev</a>, or open an issue on <Out href="https://github.com/Rifaque/reflux/issues">Reflux’s GitHub</Out>. Say what you were doing and on which device, and attach a support report: in Reflux, <strong>Settings → About Reflux → Save a support report</strong>. It has passwords, addresses, file paths, and titles taken out, and Reflux never sends it by itself.</p>
+          <p>E-mail <a href="mailto:support@rsxdevelops.dev">support@rsxdevelops.dev</a>: it is the one place every report is read, and it needs no account. Say what you were doing and on which device, and attach a support report: in Reflux, <strong>Settings → About Reflux → Save a support report</strong>. It has passwords, addresses, file paths, and titles taken out, and Reflux never sends it by itself. Beta testers: <Link to="/testing#report">what to include</Link>. If you prefer GitHub, an <Out href="https://github.com/Rifaque/reflux/issues">issue</Out> works too, but it is public.</p>
         </section>
         <section aria-labelledby="security">
           <h2 id="security">Security problems</h2>
