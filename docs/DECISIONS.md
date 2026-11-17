@@ -1374,6 +1374,14 @@ M11 decided the open items of its plan (planning/M11-DISTRIBUTION-PLAN.md, secti
 
 **Not changed:** the promotion rules, the versionCode scheme, the beta checklist itself.
 
+## 2026-11-17 — `0.9.0-beta.1` goes to selected testers; M11 closes; M12's beta starts
+
+**Decided by the owner (2026-11-17).** `0.9.0-beta.1` goes to selected testers through Play closed testing and Amazon Live App Testing. This **supersedes the 2026-11-16 restriction** above that no tester receives it until the beta checklist is complete; the checklist's open items become M12 work, tracked in RELEASE.md, not entry conditions for this build. Authorised: completing the store listings and declarations, uploading the verified AAB and APK, configuring closed testing and Live App Testing, sending the closed-testing changes and the Live App Test for the stores' processing, and excluding Android XR. Not authorised: a production release, 1.0.0, a new version without a technical need, key rotation, tag or history changes, a public GitHub release.
+
+- **Play reviewer access** is declared as restricted, with Jellyfin's public demo server as the sign-in entry, and the console's "full access" attestation ticked on the owner's decision: Reflux has no account or paid content, everything else is reachable from a local folder, and Plex, SMB, and WebDAV are explained as needing the user's own server.
+- **Physical acceptance** that the agent cannot perform (Windows display scaling, the Windows clean machine, the Phone 2a's instrumented tests) is recorded as owner-observed (VERIFICATION.md, 2026-11-17), never as the agent's.
+- **M11 is complete**: its exit asked for a distributable `0.9.0-beta.1` through every channel with no open owner action. The stores' own review and processing are external and belong to M12's Phase B, which cannot invite anyone until the Play track is approved and the Amazon test is live.
+
 ## 2026-11-16 — Sources: two actions on the card beside a side navigation; the logo goes Home; the keyboard does not choose the layout
 
 **Context.** The owner approved the Sources assessment of 2026-11-16 (VERIFICATION.md, "Post-M11 follow-up") and asked for the sidebar's Reflux name to go Home, as the website's does. On the Pad 7 the owner saw Search with no mark in the rail: the keyboard's inset was taken from the window the layout is chosen from, so a tablet in landscape (about 1164 × 777 dp) fell under 600 dp tall and was laid out as a phone on its side.

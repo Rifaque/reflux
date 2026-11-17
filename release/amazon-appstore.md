@@ -8,6 +8,8 @@ Fire TV runs Fire OS. Vega OS devices run no Android apps and are never targeted
 
 **State on 2026-11-16** (docs/VERIFICATION.md, "M11 closure and M12 Phase A start"): the long description now carries `store-listing.md`'s Amazon text (Trakt, no TMDB, no Watch Next clause; autosaved); the short description matches the source exactly; the support e-mail is entered. Step 7 is saved as a draft, not submitted: collects or transfers user data **Yes**; Files and docs collected **Yes** and transferred to a third party **Yes**, purpose App functionality only (Amazon's type covers "information about their files ... such as file names"; its page does not define "collected" for a direct device-to-API call, so the conservative answer is given); account creation **No**. **Reviewed 2026-11-16 (later; docs/PRIVACY.md, "Review against the consoles' own definitions"):** the saved Files and docs answer stays (it is right for Trakt under either reading); whether to add User Info for Jellyfin and Plex sign-ins depends on the reading you choose, the same for both stores. Still yours: the data-deletion question (RSX Develops holds no data; recommended **No**), the category (recommended **Movies & TV**), the target audience, and everything that needs the release APK (steps 3, 4, 9, 10b to d).
 
+**State on 2026-11-17** (docs/VERIFICATION.md, "M11 closure and the M12 beta launch"): steps 3, 4, 7, 9 are done and the remaining App Setup answers are saved: the `0.9.0-beta.1` APK (90031) with **Fire TV-only** targeting (82 Fire TV devices; no tablets, Automotive, or Vega OS); target audience 13+; account creation and data deletion **No**; category Photo & Video; export compliance (the owner). **Live App Test 1 submitted** to the tester group "Reflux" (status "Test submitted"; a first submission can take up to 24 hours; Amazon e-mails the invitations when it is live). Open: step 10's Beta Hub install on the Stick once the test is live, step 11, and M12's real testers (step 12).
+
 ## Order of work
 
 | # | Console | Action | Why | Needs first | Expected result |
@@ -52,7 +54,7 @@ Fire TV runs Fire OS. Vega OS devices run no Android apps and are never targeted
 
 ## Owner-pending (named)
 
-The category and target audience; the data-deletion answer; the reviewer test source; a Fire TV television (M12 hardware); every APK-dependent step (needs an authorised build). Done 2026-11-16: the support e-mail; Trakt's production Client ID is the `REFLUX_TRAKT_CLIENT_ID` variable.
+A Fire TV television (M12 hardware); step 10 (Beta Hub install, a second LAT build, removal) once the test is live. Done 2026-11-17: the category, target audience, the data-deletion answer, the APK upload and targeting, and the Live App Test submission. Done 2026-11-16: the support e-mail; Trakt's production Client ID is the `REFLUX_TRAKT_CLIENT_ID` variable.
 
 ## Sources (read 2026-11-15)
 
