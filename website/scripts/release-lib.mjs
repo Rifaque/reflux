@@ -29,6 +29,9 @@ export function validateStores(stores, androidPackage) {
     if (!STORE_STATES.includes(listing.state)) { problems.push(`${at}: state "${listing.state}" is not one of ${STORE_STATES.join(', ')}`); continue }
     if (listing.state === 'not listed') {
       if (listing.url !== null) problems.push(`${at}: "not listed" must have a null url`)
+    } else if (listing.state === 'testing' && listing.url === null) {
+      // A closed or invite-only test has no public listing to link; it is reached by its tester route alone.
+      if (!listing.testing) problems.push(`${at}: "testing" with no public listing needs a tester route`)
     } else if (typeof listing.url !== 'string' || !onDomain(listing.url, domain)) {
       problems.push(`${at}: state "${listing.state}" needs an https url on ${domain}`)
     } else if (key === 'googlePlay' && !listing.url.includes(androidPackage)) {

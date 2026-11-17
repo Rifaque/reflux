@@ -19,6 +19,7 @@ test('an unknown state fails', () => assert.match(validateStores(stores({ state:
 test('"not listed" with a url fails', () => assert.match(validateStores(stores({ url: PLAY }), PKG)[0], /null url/))
 test('a listed state without a url fails', () => {
   assert.equal(validateStores(stores({ state: 'testing', url: null }), PKG).length, 1)
+  assert.equal(validateStores(stores({ state: 'testing', url: 'https://example.com/?id=' + PKG }), PKG).length, 1)
   assert.equal(validateStores(stores({ state: 'available' }), PKG).length, 1)
 })
 test('a url off the store domain, or not https, fails', () => {
@@ -35,6 +36,12 @@ test('a missing store record, an unknown store, and a missing testing field fail
   assert.equal(validateStores({ ...stores(), huawei: store() }, PKG).length, 1)
   const { testing, ...bare } = store()
   assert.equal(validateStores({ googlePlay: bare, amazonAppstore: store() }, PKG).length, 1)
+})
+test('a closed test with no public listing is valid only with its tester route', () => {
+  const play = { kind: 'closed-test-opt-in', url: 'https://play.google.com/apps/testing/' + PKG, instructions: '/testing' }
+  const amazon = { kind: 'live-app-testing', instructions: '/testing' }
+  assert.deepEqual(validateStores(stores({ state: 'testing', url: null, testing: play }, { state: 'testing', url: null, testing: amazon }), PKG), [])
+  assert.match(validateStores(stores({ state: 'testing', url: null, testing: null }), PKG)[0], /tester route/)
 })
 test('testing routes: valid kinds pass, bad ones fail', () => {
   const ok = { kind: 'closed-test-opt-in', url: 'https://play.google.com/apps/testing/' + PKG, instructions: '/testing' }
