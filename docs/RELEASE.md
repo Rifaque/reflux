@@ -20,6 +20,10 @@ What stands between the source tree and builds that can be handed to testers and
 - [ ] Feedback path in the app (link and diagnostics export) works on every platform.
 - [x] `CHANGELOG.md` has the beta's entry; the `release: 0.9.0-beta.1` commit and tag exist (`2113fb5`, `v0.9.0-beta.1`, release run 43920389594, draft not published; DECISIONS.md, 2026-11-16: no tester receives it before this checklist is complete).
 
+## Beta Season (17 November to 15 December 2026)
+
+Fix-only (ROADMAP.md, "Beta Season"): a fix is permitted only for a release blocker, a crash or data loss, security or privacy, a critical playback failure, or a serious platform compatibility defect, and states its regression risk. A new `0.9.0-beta.N` is cut only when permitted fixes justify one, through the release checklist below; never for a cosmetic issue. `v0.9.0-beta.1` was published on GitHub as a **pre-release** on 2026-11-17 (owner-authorised; not marked Latest; same tag, commit, and assets; re-verified by `release.py publish-record --github-release`, record `release/published/0.9.0-beta.1.json`). Each platform's 1.0 path is separate (ROADMAP.md, "Beta Season"; Amazon: release/amazon-appstore.md, "V1 production runbook"). No Windows installer is part of the beta: none is built or tested, and adding one needs a new build, so it is a 1.0-or-later decision; the zip is the supported form, with extraction, SmartScreen, update, and removal steps on the website.
+
 ## Release checklist (every build given to anyone outside CI)
 
 - [ ] Built by CI from a clean tree at a tagged commit; version follows VERSIONING.md (no hand-written `versionCode`).

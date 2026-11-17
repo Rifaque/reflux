@@ -52,6 +52,20 @@ Fire TV runs Fire OS. Vega OS devices run no Android apps and are never targeted
 | Compile errors (method count) | Not applicable at Reflux's size; R8 is on |
 | Minimum functionality, test credentials | The app is empty without media: provide a reachable test source (open films) and instructions for the reviewer, and keep it up during review |
 
+## V1 production runbook (prepared 2026-11-17; nothing submitted)
+
+The Live App Test proves the beta channel (the owner installed `0.9.0-beta.1` through Beta Hub on the Fire TV Stick 4K Plus), not a public listing. Amazon production is published together with 1.0 (ROADMAP.md, "Beta Season"), never earlier, and the Live App Test is left as it is until then. Amazon's pages read 2026-11-17: Live App Testing FAQ and "Manage your test", "Add release details", "Staged rollouts".
+
+1. **The build.** 1.0 is `1.0.0` from the release workflow (VERSIONING.md), so its `versionCode` is higher than the beta's 90031 and than anything live; Amazon requires each uploaded binary's version code to be unique and higher than the live version. The beta binary is never promoted to production.
+2. **Test it first (recommended).** Upload the `1.0.0` APK to the Live App Test as a new build, let testers update through Beta Hub, and walk the test criteria above on the Stick.
+3. **Promote.** On the Live App Testing dashboard, the test's menu, "Promote to upcoming". This copies the tested binary and its metadata into the upcoming version (it overwrites an existing upcoming version) without a re-upload. One binary type only: the test holds an APK and no VPKG (no Vega build exists or is planned for V1).
+4. **Complete the listing fields Live App Testing does not need:** long description and keywords (`store-listing.md`), Fire TV screenshots (1920x1080; the device captures of 2026-11-16 in `design/brand/store/screenshots/tv-*.jpg` show the current interface; recapture only if 1.0 changes the TV layout, for example after the scale finding), icons, the privacy policy URL (https://reflux.rsxdevelops.dev/privacy), the support contact, the content rating questionnaire, the reviewer's test source and instructions (the presubmission table above), and the `preferExternal` decision.
+5. **Release date.** Set "Release date" to the coordinated 1.0 day so that approval does not publish early (left blank, Amazon publishes as soon as the app passes testing; the date can be changed after submission while it is in the future). Then "Submit for review".
+6. **Review.** Submitted, In review, Approved, Live on Appstore; Amazon publishes a few hours after the chosen time. It states no fixed review time and says to contact it after six days, so submit at least a week before the target day.
+7. **No staged rollout for 1.0.** Amazon's percentage rollout (1% to 100%, raised by hand) exists only for updates to an app already live with at least 10,000 unique downloads in three years. 1.0 is a full release; staged rollouts may apply to later updates.
+
+Fire OS only: Beta Hub also runs on Vega OS, but Reflux has no Vega build or qualification, and its targeting excludes Vega devices.
+
 ## Owner-pending (named)
 
 A Fire TV television (M12 hardware); step 10 (Beta Hub install, a second LAT build, removal) once the test is live. Done 2026-11-17: the category, target audience, the data-deletion answer, the APK upload and targeting, and the Live App Test submission. Done 2026-11-16: the support e-mail; Trakt's production Client ID is the `REFLUX_TRAKT_CLIENT_ID` variable.
