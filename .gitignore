@@ -49,3 +49,5 @@ skills-lock.json
 
 # Local browser-automation artifacts (screenshots and snapshots); never committed.
 .playwright-mcp/
+
+brag-output/
