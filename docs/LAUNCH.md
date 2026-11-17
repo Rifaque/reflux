@@ -72,7 +72,23 @@ Captures are made after the M12 candidate is frozen, so the film shows the build
 
 Store testing requirements change; check the current Google Play Console and Amazon Appstore documentation when setting the tracks up, and record what was required in RELEASE.md.
 
-### Beta operations, prepared 2026-11-16 (M12 Phase B; nothing sent, no tester recruited)
+### Beta operations (M12 Phase B; prepared 2026-11-16, channels submitted 2026-11-17)
+
+**Channel state (2026-11-17, VERIFICATION.md):** Play closed testing (`Closed testing - Alpha`) sent for Google's review; Amazon Live App Test 1 submitted. Testers: the owner only. **The 14-day clock has not started.** No invitation goes out before the channel it names is approved or live.
+
+**Tester invitation** (for the owner to send to accepted testers, once their channel is live; plain text):
+
+> Thanks for testing Reflux 0.9.0-beta.1. Android phone, tablet, Google TV, or Android TV: open https://play.google.com/apps/testing/dev.rsxdevelops.reflux while signed in to the Google account you gave us, tap "Become a tester", then install Reflux from Google Play, and please stay opted in for at least 14 days. Fire TV: Amazon e-mails your Amazon account an invitation; install Amazon Appstore Beta Hub (Amazon Appstore Testers) on the Fire TV, accept the invitation, and install Reflux from it. Report problems to support@rsxdevelops.dev with your device, the build (Settings, About Reflux), and what happened, and attach Settings' diagnostics export if you can. Reflux sends nothing to its makers: https://reflux.rsxdevelops.dev/privacy.
+
+**14-day tracker** (Play; filled from the console only):
+
+| Day | Date | Opted-in testers (console) | Approved build on the track | Notes |
+| --- | --- | --- | --- | --- |
+| 0 | (the first day with 12 or more opted in on an approved track) | | | |
+
+The clock restarts if opt-ins fall below 12.
+
+**Desktop testers** are not invited with this message: the `0.9.0-beta.1` GitHub release is a draft and publishing it is a separate owner decision; the Download page offers it only from the published release record.
 
 **Recruitment text** (for the owner to post; plain text):
 

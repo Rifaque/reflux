@@ -15,7 +15,7 @@ What stands between the source tree and builds that can be handed to testers and
 - [x] Trakt's production Client ID set as the repository variable `REFLUX_TRAKT_CLIENT_ID`, and one live lookup made with the development Client ID (owner). Done 2026-11-16; the production ID is in every `0.9.0-beta.1` artifact (VERIFICATION.md).
 - [ ] At least one physical phone, one physical Google TV / Android TV device, one Fire TV device, and one physical controller verified (VERIFICATION.md).
 - [x] CI green on GitHub, including Android (43911248247 on `2113fb5`, the `0.9.0-beta.1` commit).
-- [ ] Google Play closed testing track and Amazon Appstore testing set up with the current store requirements read and recorded here.
+- [x] Google Play closed testing track and Amazon Appstore testing set up with the current store requirements read and recorded here. (2026-11-17: Play closed track sent for review; Amazon Live App Test submitted; VERIFICATION.md, 2026-11-17. The owner decided the same day that `0.9.0-beta.1` goes to selected testers before the rest of this checklist is done, DECISIONS.md.)
 - [ ] The website meets the ten conditions in ROADMAP.md, M12, "The website before the beta" (HTTPS on a stable domain, tester routing and instructions, known limitations, feedback, privacy and legal, the current version), with the demo video, signup, install instructions, changelog, and support.
 - [ ] Feedback path in the app (link and diagnostics export) works on every platform.
 - [x] `CHANGELOG.md` has the beta's entry; the `release: 0.9.0-beta.1` commit and tag exist (`2113fb5`, `v0.9.0-beta.1`, release run 43920389594, draft not published; DECISIONS.md, 2026-11-16: no tester receives it before this checklist is complete).

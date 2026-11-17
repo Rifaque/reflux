@@ -1908,3 +1908,45 @@ Play's Advanced settings → Form factors → **Android XR** → Manage offers o
 **Candidate: `0.9.0-beta.1` (`2113fb5`, tag `v0.9.0-beta.1`, release run 43920389594).** Waves on it: Wave 9 (production metadata) passed on the same code; Wave 0's local `check` and the Fire TV instrumented suite ran on `3007c3a`'s tree, which differs from the candidate only in the version and changelog; Wave 1 (artifacts) **passed for what CI and a second machine can show** (above), its installs on store tracks and a clean Windows machine still open; Wave 3 partial. Not started: Waves 2, 4, 5, 6, 7, 8. No tester has been recruited, no closed test started, and no 14-day clock is running; the build reaches testers only after the beta checklist (DECISIONS.md, 2026-11-16).
 
 **Hosted CI after the cut.** `2755062` (the tool fix): CI 43924088665 and rehearsal 43924088400 green. `2ed1437` (documents only): CI 43926073679 **first attempt failed** on Ubuntu, `FirstRunTest.choosingAFolderBuildsTheLibraryAndTheNextLaunchRemembersIt` (`IllegalStateException` at `NativeDialogs.answer`, with X `BadWindow` errors: the real folder dialog under Xvfb); the same code passed on `2113fb5` and `2755062`. Attempt 2 (the failed job rerun): all seven jobs green. Rehearsal 43926073611 green. Carried to M12's flake backlog beside `DownloadsUiTest`.
+
+## M11 closure and the M12 beta launch: consoles, submissions, owner acceptance (2026-11-17)
+
+Owner mandate of 2026-11-17 (DECISIONS.md, same date). Done in the owner's authenticated browser; each state below was read back from the console after saving, unless marked as the owner's.
+
+### Google Play (closed testing)
+
+| Item | State read back |
+| --- | --- |
+| AAB | `reflux-0.9.0-beta.1-android.aab` from release run 43920389594 (SHA-256 matches the signed manifest), **uploaded by the owner** (the browser tool's 10.4 MB upload limit is below the bundle's 11.6 MB); versionCode 90031 (0.9.0-beta.1) on **Closed testing - Alpha** |
+| Track | 178 countries/regions; testers by the e-mail list "Reflux Beta" (the owner's account only so far); feedback channel support@rsxdevelops.dev |
+| App content | Privacy policy https://reflux.rsxdevelops.dev/privacy; ads, advertising ID, government, financial, health declarations; content rating (IARC questionnaire submitted); target audience 13+ (13-15, 16-17, 18+); Data safety completed per PRIVACY.md, "Declaration matrix"; photo and video permissions declaration |
+| Sign in details | "Restricted: yes", one entry "Jellyfin public demo (optional)": no account needed, choose a folder to review everything; Jellyfin's public demo server (https://demo.jellyfin.org/stable, user `demo`, empty password; its login answered 200 on 2026-11-17). The "full access" attestation was ticked **on the owner's explicit decision**; Plex, SMB, and WebDAV need a reviewer's own server, which the note says |
+| Store listing | Saved (Trakt text, two phone screenshots, contact details); category Video Players & Editors |
+| Form factors | Android TV opted in (its agreement accepted); **Android XR excluded** in the Device catalog (both XR devices "Excluded manually") |
+| Quick checks | First run: one issue, "Missing sign in details"; fixed as above; the rerun showed no issue |
+| Submission | **16 changes sent for review** (closed track, listing, app content, Android TV opt-in, category); no production release among them. Publishing overview: **"Changes in review"**, the quick checks finishing first. Managed publishing off |
+| Opt-in URL | https://play.google.com/apps/testing/dev.rsxdevelops.reflux, **not yet active**: it works once Google approves the closed track |
+| Testers | 1 (the owner); **the 14-day clock has not started** (it needs 12 opted-in testers on an approved closed track) |
+
+### Amazon Appstore (Live App Testing)
+
+| Item | State read back |
+| --- | --- |
+| APK | `reflux-0.9.0-beta.1-android.apk` from the same run (SHA-256 matches the manifest), version code 90031 |
+| Devices | **Fire TV only**: 82 of 101 Fire TV devices selected (Fire OS); Fire tablets 0; Automotive 0; the Vega OS device not targeted |
+| Export compliance | Ticked **by the owner** (the agent's click was refused by its safety classifier); read back as ticked |
+| Tester group | "Reflux" (added by the owner), selected for the test |
+| Submission | **Live App Test submitted**: Live App Testing → Test 1 → release `0.9.0-beta.1`, Fire OS, started 2026-11-17, status **"Test submitted"**. Amazon: a first LAT submission can take up to 24 hours; invitations go out when the test is live |
+| App Setup | Target audience: restricted, 13-15, 16-17, 18+ (no 0-12); account creation **No**; data deletion without an account **No** (PRIVACY.md); privacy policy URL set; questionnaire "Saved for review"; autosaved, read back |
+
+### Owner-confirmed physical acceptance (observed by the owner, not executed by the agent; 2026-11-17)
+
+| Check | Result (owner) |
+| --- | --- |
+| Windows display scaling at 100%, 150%, 200% (the 0.9.0-beta.1 ZIP) | PASS |
+| Windows clean machine: the ZIP verified, extracted, run, replaced, removed | PASS |
+| Phone 2a: the Android instrumented tests | PASS |
+
+### Not verified here
+
+The Play opt-in link working (inactive until approval); the Amazon invitation and Appstore Beta Hub install (not live yet); any tester other than the owner. These are M12 Phase B's first entries.
