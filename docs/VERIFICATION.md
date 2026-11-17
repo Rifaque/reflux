@@ -1950,3 +1950,11 @@ Owner mandate of 2026-11-17 (DECISIONS.md, same date). Done in the owner's authe
 ### Not verified here
 
 The Play opt-in link working (inactive until approval); the Amazon invitation and Appstore Beta Hub install (not live yet); any tester other than the owner. These are M12 Phase B's first entries.
+
+## Beta Season start: desktop pre-release and website (2026-11-17)
+
+- **GitHub release:** `v0.9.0-beta.1` (tag object `209ddd2`, commit `2113fb5`) changed from draft to a published **pre-release**, not Latest, on the owner's authorisation; no tag, commit, or asset changed. All six assets were downloaded again from the public `releases/download/v0.9.0-beta.1/` addresses into an empty folder: `sha256sum -c SHA256SUMS` OK for the Windows zip, the Linux tar.gz, and the libmpv source; `gh attestation verify` (this repository, `release.yml`) exit 0 for the zip and the tar.gz; `release.py publish-record --expect-commit 2113fb5… --github-release v0.9.0-beta.1` wrote `release/published/0.9.0-beta.1.json`. Archive layouts match the website's steps (`Reflux.exe` at the top of the zip; `bin/Reflux` executable in the tar.gz).
+  - Windows zip: 106,558,560 bytes, SHA-256 `1ffa087a348ed5ee548b2ec68275ea0998cfb5dda7bfd7ee1f7b7dd3b8c468a2`.
+  - Linux tar.gz: 91,882,910 bytes, SHA-256 `56310b3c76e95ee3ebdd8ba270b00d157d309095b6359729d855cf7414ffc14e`.
+- **Fire TV scale (owner report "slightly zoomed in"):** `wm size` 3840x2160 physical, 1920x1080 override; `wm density` 320; Fire OS `overscan_enabled=0`. Reflux therefore draws on the standard 960x540 dp television canvas, as on the Google TV emulator; the look is its ten-foot sizing (ROADMAP.md, "Beta Season"). No build change.
+- **Website:** `npm test` 32 of 32 (the new rule for a `testing` store with no listing included); `npm run build`; `check-dist` 0 problems; `check-layout --screenshots` 0 problems at 7 sizes (Beta, Download, and Home reviewed by eye at desktop and phone); `check-links`: every internal link and anchor resolves; one external failure, `https://www.plex.tv/about/privacy-legal/` (on Privacy since 2026-11-16), answers non-browser clients with a 301 to itself; checked in a browser at deployment (below).

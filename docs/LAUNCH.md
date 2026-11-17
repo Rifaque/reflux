@@ -88,7 +88,7 @@ Store testing requirements change; check the current Google Play Console and Ama
 
 The clock restarts if opt-ins fall below 12.
 
-**Desktop testers** are not invited with this message: the `0.9.0-beta.1` GitHub release is a draft and publishing it is a separate owner decision; the Download page offers it only from the published release record.
+**Desktop testers** need no invitation: on 2026-11-17 the owner authorised publishing the `0.9.0-beta.1` GitHub release as a **pre-release** (not "Latest"), and the Download page offers its Windows zip and Linux tar.gz from the published record. The website's Beta page (/testing, also reached at /beta) holds every platform's instructions, the report template, and the known issues; the one feedback route is support@rsxdevelops.dev (GitHub issues stay open but are public and secondary).
 
 **Recruitment text** (for the owner to post; plain text):
 

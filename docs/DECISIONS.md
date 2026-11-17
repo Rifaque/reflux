@@ -1382,6 +1382,17 @@ M11 decided the open items of its plan (planning/M11-DISTRIBUTION-PLAN.md, secti
 - **Physical acceptance** that the agent cannot perform (Windows display scaling, the Windows clean machine, the Phone 2a's instrumented tests) is recorded as owner-observed (VERIFICATION.md, 2026-11-17), never as the agent's.
 - **M11 is complete**: its exit asked for a distributable `0.9.0-beta.1` through every channel with no open owner action. The stores' own review and processing are external and belong to M12's Phase B, which cannot invite anyone until the Play track is approved and the Amazon test is live.
 
+## 2026-11-17 — Beta Season: a fix-only freeze, a public desktop pre-release, one feedback route, and a December window for 1.0
+
+**Decided by the owner (2026-11-17).**
+
+- **Freeze.** 17 November to 15 December 2026 is fix-only (ROADMAP.md, "Beta Season"): no feature work, redesigns, migrations, speculative integrations, needless dependency upgrades, cosmetic version bumps, or destabilising refactors. The owner's time goes mostly to other projects.
+- **Desktop builds are public.** The `v0.9.0-beta.1` GitHub release, a draft until now, was published as a pre-release (not Latest) with no change to its tag, commit, or assets; this narrows the entry below, which had not authorised a public GitHub release. Rejected: hosting the archives on the website (the Windows zip is over 100 MB, and it would duplicate artifacts outside the attested release), and keeping desktop invitation-only (the zip and tar.gz were verified and need no store).
+- **Store states.** `release/stores.json` records both stores as `testing` with no public listing (`url: null`) and their tester routes; the website's rule allows `testing` without a listing only when a tester route exists.
+- **Feedback.** One route for testers: e-mail to support@rsxdevelops.dev with fixed fields (platform and device, version, source, steps, expected, actual, screenshot or support report). GitHub issues remain, secondary and public.
+- **1.0 communication.** "Planned for December 2026", depending on feedback, qualification, and store approval; 10 December is an internal readiness checkpoint and 15 December the release decision, never a promised release date. Each platform publishes through its own path.
+- **No Windows installer in the beta**: none exists or is tested, and building one would change the release; reconsidered for 1.0.
+
 ## 2026-11-16 — Sources: two actions on the card beside a side navigation; the logo goes Home; the keyboard does not choose the layout
 
 **Context.** The owner approved the Sources assessment of 2026-11-16 (VERIFICATION.md, "Post-M11 follow-up") and asked for the sidebar's Reflux name to go Home, as the website's does. On the Pad 7 the owner saw Search with no mark in the rail: the keyboard's inset was taken from the window the layout is chosen from, so a tablet in landscape (about 1164 × 777 dp) fell under 600 dp tall and was laid out as a phone on its side.
