@@ -2048,3 +2048,75 @@ On `open-source-gpl` at `556887b`, with three new on-device test files uncommitt
 - **Google TV emulator** (`Reflux_TV`, sdk_google_atv64, Android 16; an emulator result, not physical): the same debug and test APKs; `PhaseOneWalkOnDeviceTest` and `SurfaceHandoverOnDeviceTest`, 8 run, OK (the mini-player case skipped by its assumption: no mini-player on a television). B-005: the sign seen and clear on Home, Movies, and Search (the Movies screenshot was taken just after the sign went; the bounds check is the evidence); B-033's walk and B-001's server case passed. The Fire TV was not connected: B-005's Fire TV walk is outstanding.
 - **Full check**, forced, on this tree (`./gradlew check --continue --rerun-tasks`, Windows): **BUILD SUCCESSFUL** in 12 min; 1,496 tests, 0 failures, 0 errors, 24 skipped (the same assumptions as before). `AccessibilityTest.withoutAScreenReaderTheyStillGo` (B-044) passed this time. The on-device tests are not part of `check`; they ran above. Hosted CI has not run (nothing pushed).
 - **Phase 1 against its exit criteria:** planning/PHASE-1-PLAN.md, "Stage G"; each issue: planning/BETA-BUG-TRACKER.md.
+
+## Phase 2: controller, focus, interaction, input, haptics (2026-11-19)
+
+On `open-source-gpl` from `7dbade6`, with Phase 2's changes uncommitted at the time of these runs (committed afterwards as `77b994c`, code and tests, and the documentation commit after it). The owner accepted Phase 1 and authorised Phase 2 the same day. Plan, audit and contract: planning/PHASE-2-PLAN.md; each issue: planning/BETA-BUG-TRACKER.md.
+
+Nothing was pushed, merged, deployed, versioned, tagged, released or entered in a store console. The store installs on the devices were not touched (the debug build sits beside them).
+
+**Automated (Windows 11, JVM, offscreen Compose).**
+- `:ui:jvmTest :library:jvmTest :core:jvmTest`, run before the walks: ui 487 tests, 0 failures, 1 skipped; library 257, 0, 1; core 377, 0, 0. BUILD SUCCESSFUL.
+- New test classes:
+  - `InteractionContractTest` (8): Backspace in the deletion PIN, the unlock PIN, a profile name and Settings' rename; Escape first lets go of the field; a controller types through the Reflux keyboard; a PIN entered with a controller over the profile gate; a remote on a television; Search with a controller alone.
+  - `KeyboardSessionTest` (9).
+  - `HomeFocusTest` (5): B-008's routes, B-007's See all, B-013's hero.
+  - `CardLayoutTest` (4): B-009, B-015, B-032, B-010.
+  - `ProfileSecurityTest` (4): B-049, Forgot PIN.
+  - `PullToRefreshTest` (4).
+  - `HapticsTest` (7), with the source scan.
+- New library test: `ProfilesTest.aPinIsChangedOrRemovedOnlyWithItself`.
+- Tests changed to the new behaviour, each because the behaviour changed by design:
+  - `KeyboardTest`: OK opens Reflux's keyboard, never the system's.
+  - `TelevisionTest`: Up from a row's card is its See all first.
+  - `DirectionalInputTest`: the hints name Y Sources and never X.
+  - `ScreensTest` and `PointerTest`: no "Try"; the designed empty state.
+  - `ProfilesUiTest`: Forgot PIN's new choices; `removePin` needs the PIN.
+  - `WatchNextTest`: `removePin` needs the PIN.
+- **Found by the tests while working:**
+  - The B-008 race: a press while Home was still being read fell to the toolkit's search, which picked the rail. A `DEBUGFOCUS` trace showed `hasFocus=false`, `inChrome=false`.
+  - `focusRestorer` on Home's rows broke the rail's way back in, so it was replaced by explicit row targets.
+  - `setPin` inside a read-then-write transaction met `SQLITE_BUSY` under the app's concurrent writes, so it was made one conditional statement.
+- Forced full check: below.
+
+**Phone, Nothing Phone (2a), Android 16 (physical, USB).** The debug build, `PhaseTwoWalkOnDeviceTest`: **3/3 passed** (after two corrections to the test's own input: a finger's tool type on injected touches, and the query committed as an IME commits it rather than as hardware key presses). Screenshots looked at:
+- **Search:** "Search your library" short and grey; chips with no "Try", each at least 48 dp tall.
+- **Keyboard (B-036):** with the system keyboard up the bar stepped aside; put away with Back it came back while the field kept focus; the next Back went Home; the query "zzqx" was kept.
+- **Empty state:** "No matches for “zzqx”", with Clear search and Browse movies.
+- **Profiles:** no Profile button in its top row; Home and Settings have it.
+- **Pull (B-048):** a pull at the top of Home showed the turning sign and found a film added on disk meanwhile. Beside the Profile button was the new library-activity arc (B-047) rather than a dot.
+
+- **Forgot PIN with the device lock:** a scratch profile with a PIN, then Forgot PIN. "Use device lock" was offered (the phone has a screen lock) and the system's own prompt opened over Reflux; its screenshot is black, because the system keeps its prompt out of screen captures. Back cancelled it, Reflux said "Nothing was changed.", and the PIN was still there. The scratch profile was deleted with its PIN afterwards. 4/4 with this walk.
+
+The phone was unplugged during part of the phase and plugged in again by the owner for these walks.
+
+**Tablet: a tablet emulator (Emulator; `Reflux_Tablet`, created 2026-11-19, Android 36.1, 2560 × 1600 at 320 dpi, headless).**
+- `PhaseTwoWalkOnDeviceTest` **3/3 passed**. At 1280 × 800 dp Reflux lays it out with the desktop sidebar (its rule: 1200 dp wide or more).
+- **The physical Pad 7 was not walked.** Its debug build's Main profile asks for a PIN that was set during earlier testing and is not known to the agent. It was not guessed, cleared or removed. This is an owner check.
+
+**Google TV (Emulator; `Reflux_TV`, headless).** The debug build driven with remote keys through adb:
+- Left into the rail, Down three times to Search, OK. Then OK on the field opened the **Reflux keyboard** (the system keyboard never appeared).
+- Right and OK twice typed "ww" (the preview showed it).
+- Back put the keyboard away, with Search still shown and the query kept.
+- The screenshots were looked at.
+
+**Windows desktop (physical).**
+- The packaged app (`createDistributable`) was built. The owner's machine has two monitors at different scaling (DPI 120 and 144).
+- A B-002 reproduction script was run once and **stopped**: it found the owner using the machine (a game and a chat window), and its Tab/Enter keystrokes, meant to start playback, went to the foreground window. Its full-screen captures were deleted at once.
+- Measured, and still valid: moving the Reflux window with `SetWindowPos`, 1280 × 800 became 1536 × 960 on the 150% monitor and 1067 × 667 back on the 125% one.
+- No controls window was found, because playback had not started.
+- No further desktop automation was run without the owner's go-ahead. B-002 stays Investigating; the script is ready for a session the owner allows.
+
+**Not walked (gaps, by kind).**
+- Fire TV (physical): not connected; network adb at an address the agent does not have.
+- Physical controllers: no Xbox, PlayStation or other pad was used, so rumble (F-002) was not felt, and a disconnect during rumble was not tried.
+- Interface haptics (F-001): not felt on a device.
+- Linux VM: not run in Phase 2, because no Linux-specific code changed except the shared UI. Rumble is not offered there (no force feedback through the joystick interface).
+- B-002: see above.
+- The Pad 7: see above.
+
+**Forced full check.** `./gradlew check --continue`: 1,537 tests, 0 failures, 24 skipped. **BUILD FAILED on Android lint**, with 4 errors, all real:
+- `Vibrator.vibrate` and `cancel` need `VIBRATE`, and `BiometricManager.canAuthenticate` and `BiometricPrompt.authenticate` need `USE_BIOMETRIC`. Neither was declared.
+- On a device, rumble and the system prompt would have quietly failed, each caught as "unavailable".
+- Both were added to the manifest (normal permissions, no prompt; RELEASE.md says so). `:android:app:check` then passed (lint included).
+- The Phone 2a walk was re-run with the fixed build: 4/4, Forgot PIN's system prompt included.
