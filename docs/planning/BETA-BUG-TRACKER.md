@@ -55,22 +55,22 @@ As of 2026-11-19. Counts are reconciled against the code, the commits, and VERIF
 | Registered proposals outside the original findings (F-P1, F-P2) | 2 |
 | Newly discovered issues (B-043 to B-045) | 3 |
 | Findings added by the owner's Phase 2 brief (B-046 to B-049; the brief's B-043 to B-046, renumbered) | 4 |
-| Registered proposals for Phase 3 (F-P3 Media Quick View) | 1 |
+| Registered proposals for Phase 3 (F-P3 Media Quick View, F-P4 Adaptive Virtual Keyboard) | 2 |
 
 Status of the 47 original findings:
 
 | Status | Count | Issues |
 | --- | --- | --- |
 | Not Started | 12 | B-014, B-016, B-017, B-027 to B-030, B-038, B-040, B-042; F-003, F-005 |
-| Investigating | 4 | B-002, B-006, B-022, B-041 |
+| Investigating | 3 | B-006, B-022, B-041 |
 | In Progress | 1 | F-004 (Phase 1 foundation implemented; Phase 2 provider evaluation; Phase 3 validation to come) |
-| Fixed | 26 | Phase 1: B-003, B-005, B-018, B-024, B-031. Phase 2: B-004, B-007 to B-013, B-019 to B-021, B-023, B-025, B-032, B-034 to B-037, B-039; F-001, F-002 (each lacks a required check: see its entry) |
+| Fixed | 27 | Phase 1: B-003, B-005, B-018, B-024, B-031. Phase 2: B-002, B-004, B-007 to B-013, B-019 to B-021, B-023, B-025, B-032, B-034 to B-037, B-039; F-001, F-002 (each lacks a required check: see its entry) |
 | Verified | 2 | B-001, B-033 (owner acceptance still pending, as for every issue) |
 | Blocked | 0 | |
 | Deferred | 0 | |
 | Not Reproduced | 2 | B-015, B-026 |
 
-Newly discovered: B-043 Fixed; B-044 Investigating; B-045 Not Started. Added by the owner's Phase 2 brief: B-046, B-047, B-048, B-049 Fixed. F-P1, F-P2, F-P3: Not Started.
+Newly discovered: B-043 Fixed; B-044 Investigating; B-045 Not Started. Added by the owner's Phase 2 brief: B-046, B-047, B-048, B-049 Fixed. Found in Phase 2's verification: B-050 (controller reconnect crash), B-054 (Reflux keyboard cursor) Fixed. The owner's Phase 2 follow-up: B-051, B-052, B-053 Fixed; B-055 (hints) Fixed; B-056 (blank on closing the mini-player) Investigating. The owner's Search steer: B-057 Fixed. F-P2 (Y toggles the sidebar): Fixed, placed in Phase 2 by the owner on the Windows walk. F-P1, F-P3: Not Started. F-P4 (Adaptive Virtual Keyboard, Phase 3): Not Started, researched and planned (2026-11-20).
 
 | Phase | Items | Fixed | Investigating / In Progress | Not Reproduced | Not Started | Verified | Owner acceptance |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -121,7 +121,7 @@ Scope, order, dependencies, exit criteria, and the gate: [BETA-2.md](BETA-2.md#t
 | 14 | [B-037](#b-037) Search empty state | Fixed (Phone 2a and TV emulator) |
 | 15 | [B-010](#b-010) Search suggestion focus/clipping | Fixed |
 | 16 | [B-009](#b-009), [B-032](#b-032) Focus outlines and poster indicators | Fixed |
-| 17 | [B-002](#b-002) Multi-monitor playback controls | Investigating (reproduction stopped; owner session needed) |
+| 17 | [B-002](#b-002) Multi-monitor playback controls | Fixed (reproduced and walked on the owner's two monitors) |
 | 18 | [B-015](#b-015) Poster alignment | Not Reproduced |
 | 19 | [B-013](#b-013) Home hero restoration | Fixed |
 | + | [B-046](#b-046) Redundant Profile button on Profiles | Fixed (Phone 2a walked) |
@@ -129,6 +129,15 @@ Scope, order, dependencies, exit criteria, and the gate: [BETA-2.md](BETA-2.md#t
 | + | [B-048](#b-048) Pull-to-refresh | Fixed (Phone 2a walked; tablet emulator) |
 | + | [B-049](#b-049) Authorised PIN removal | Fixed |
 | + | Forgot PIN (owner's decision) | Implemented (Android system authentication; Keep/Reset elsewhere) |
+| + | [B-050](#b-050) Controller reconnect crash (Windows) | Fixed (walked; a DualSense hot-plug pending) |
+| + | [B-054](#b-054) Reflux keyboard cursor and held erase | Fixed (walked) |
+| + | [F-P2](#f-p1-and-f-p2) Y toggles the sidebar (owner's decision) | Fixed (walked) |
+| + | [B-051](#b-051) Mouse keyboard in Search (W, L) | Fixed (Windows walked; Linux VM pending) |
+| + | [B-052](#b-052) Close the mini-player: RT or hold B | Fixed (Windows walked) |
+| + | [B-053](#b-053) Details opens on Play | Fixed (Windows and Fire TV walked) |
+| + | [B-055](#b-055) Controller hints: LT, shapes, motion | Fixed (Windows walked) |
+| + | [B-056](#b-056) Blank on closing the mini-player | Investigating |
+| + | [B-057](#b-057) Search redesign | Fixed (automated; device walks in VERIFICATION.md) |
 | — | [B-042](#b-042) Controller focus and mouse hover conflict | **Pending owner approval** (recommended here, beside B-025); not in the phase until approved. Its cause is recorded in B-025's entry |
 
 **Phase 3: media experience, discovery, Trickplay, and final performance**
@@ -146,6 +155,7 @@ Scope, order, dependencies, exit criteria, and the gate: [BETA-2.md](BETA-2.md#t
 | 9 | [B-041](#b-041) Final performance optimisation and comparison | Not Started (final checkpoint) |
 | 10 | [F-004](#f-004) Final analytics validation | Not Started (final checkpoint) |
 | 11 | [F-P3](#f-p3) Media Quick View (X reserved) | Not Started (owner's Phase 3 requirement, 2026-11-19) |
+| 12 | [F-P4](#f-p4) Adaptive Virtual Keyboard and cross-modality morphing | Not Started; researched and planned ([F-P4-ADAPTIVE-KEYBOARD.md](F-P4-ADAPTIVE-KEYBOARD.md)) |
 
 **Unassigned or pending:** [B-016](#b-016), [B-017](#b-017), [B-022](#b-022), [B-042](#b-042), [F-005](#f-005), [F-P1 and F-P2](#f-p1-and-f-p2). See [owner decisions](#unassigned-issues-and-unresolved-owner-decisions).
 
@@ -191,7 +201,7 @@ Each entry: the header facts, the original report (the master tracker prompt's t
 
 - **Category:** Bug (desktop UI/playback) · **Priority:** Medium · **Platforms:** W
 - **Components (likely):** `desktop:app` window handling; `ui` (`PlayerControls`, `PlayerOverlay`, `MiniPlayer`, `VideoStage`); the libmpv video surface (`playback:mpv`)
-- **Phase:** 2, step 17 · **Status:** Investigating (a two-monitor reproduction was started and stopped: see below) · **Last updated:** 2026-11-19
+- **Phase:** 2, step 17 · **Status:** Fixed (reproduced, fixed and walked on the owner's two monitors, Windows, physical) · **Last updated:** 2026-11-19
 - **Related:** B-025 (shared layout and focus); B-041 (window sizes and densities)
 
 **Original description.** Playback controls become mispositioned, disappear, or render incorrectly when the application window is moved between monitors. Mini-player expansion can reproduce or contribute to the issue. *Investigate:* monitor DPI, display scaling, Compose layout sizing, window changes, player surface dimensions, overlays, and mini-player transitions. *Expected:* playback controls and player UI remain correctly positioned and functional across monitor changes and display scaling configurations.
@@ -218,8 +228,27 @@ Each entry: the header facts, the original report (the master tracker prompt's t
 - **Hypotheses, not yet confirmed:**
   - the owned dialog keeps the old monitor's `GraphicsConfiguration` and scale after the owner changes screens, so its user-space bounds map to the wrong device pixels;
   - its Compose layer keeps the old density.
-- **Candidate fix, not applied before a reproduction:** recreate the overlay dialog when the owner's `graphicsConfiguration` changes, and align it again once the move settles.
-- **Outstanding:** a reproduction with the owner's agreement that the machine is free (the script is ready: it moves the window four times and records both windows' physical bounds and DPI); then the fix and its walk. Owner acceptance.
+- **Reproduction (2026-11-19, the owner's go-ahead, the machine free).** A new driver replaced the first script:
+  - it sends input only after checking that the foreground window belongs to the Reflux test process, raising it without sending keys to anything else, and aborts otherwise (it refused once, correctly);
+  - it moves the pointer only where Reflux's own window is under it;
+  - it captures only Reflux's own windows (PrintWindow), never the screen;
+  - the test library holds only test films.
+  - **Found:** on the 150% monitor the controls window was 1010 × 1044 device pixels over a 1514 × 1566 picture: its size had not been scaled. The title, transport and close button fell outside it; only the minimise chevron showed. This held after a fresh start of playback on that monitor and after a real title-bar drag.
+- **Cause (narrowed, not fully root-caused inside the JDK).**
+  - Reflux's own record (and the toolkit's) of both windows was right (traced in place); only the native size was wrong.
+  - A plain Swing owned dialog on JDK 21 was sized right; Compose's own transparent `ComposeDialog` reproduced the fault outside Reflux, and an opaque one did not.
+  - Compose makes a transparent window on Windows with Direct3D a toolkit-translucent window, and with Java2D's own Direct3D pipeline off (`-Dsun.java2d.d3d=false`) it was sized right.
+  - Rejected on the way: reshaping the dialog after a screen change (cured plain Swing, not Compose), and snapping its native bounds to the surface (undone again about 150 ms later).
+- **Fix.** `prepareToolkit()` turns Java2D's Direct3D pipeline off on Windows before the toolkit starts (an explicit `-Dsun.java2d.d3d` is kept). `HiddenCursor` is made lazily, because making it started the toolkit before `main`. Compose draws through Skia's own Direct3D, so nothing Reflux shows is drawn differently.
+- **Tests:** `ToolkitPreparationTest` (3).
+- **Walk (Windows, physical, two monitors, 125% and 150%):**
+  - playing, then title-bar drags each way and back: controls window = picture each time (1515 × 906 over 1514 × 904 at 150%; 1264 × 755 over 1262 × 753 at 125%);
+  - programmatic moves: 1515 × 1566 over 1514 × 1566;
+  - paused; the mini-player on each monitor (its controls window over the docked picture); expanding it on the 150% monitor; maximised there (2562 × 1494 over 2560 × 1494);
+  - captures looked at: the full controls on each.
+  - **Control run:** the same build with `-Dsun.java2d.d3d=true` brought the fault back on a real drag (1010 × 604 over 1514 × 904).
+- **Noted, not a bug:** the main window's height grew on the *programmatic* moves (an artefact of `SetWindowPos` with a fixed size); on real drags it kept its size.
+- **Outstanding:** owner acceptance.
 <a id="b-003"></a>
 ### B-003: Multiple Jellyfin addresses overwrite each other
 
@@ -1294,7 +1323,8 @@ Each entry: the header facts, the original report (the master tracker prompt's t
 - **Decision:** INPUT_MODEL.md, "Controller mapping", with its conflict matrix (browsing, player, Reflux keyboard, gate and panels; text input, playback, Back, remotes, platform conventions, F-P2, Phase 3).
   - A, B, Start/Menu, View and LB/RB are unchanged while browsing.
   - **X is reserved** for Phase 3's Media Quick View (the owner's decision, 2026-11-19) and is unmapped while browsing and playing.
-  - **Y** keeps Sources: the owner's undecided F-P2 would give it the sidebar.
+  - **Y** ~~keeps Sources~~: the sidebar toggle (F-P2), the owner's decision on the Windows walk (2026-11-19). Start and a remote's Menu open Sources.
+  - **RT** closes the mini-player while it is up (B-052); it has no other browsing meaning.
   - **LT/RT** have no browsing meaning: none that is useful without a conflict.
   - **The right stick** is reserved for B-029's Trickplay.
   - The keyboard's buttons are B-023's.
@@ -1434,8 +1464,8 @@ Feature proposals, kept apart from bugs. The confirmed defaults are acceptance c
 
 - **Category:** Feature · **Platforms:** supported game controllers (W, TV, F, controller P/T)
 - **Components (likely):** controller input (`desktop:app` XInput, `android:app` `InputDevice` vibrator), a rumble service, Settings
-- **Phase:** 2, step 9 · **Status:** Fixed (automated; physical controller rumble not yet felt) · **Last updated:** 2026-11-19
-- **Confirmed default:** **ON**, with a user-disableable setting. Unsupported controllers must not produce errors or unusable behaviour.
+- **Phase:** 2, step 9 · **Status:** Fixed (felt on Windows with a physical controller; Linux implemented and tested against a faked kernel, physical pending) · **Last updated:** 2026-11-19
+- **Confirmed default:** **ON**, with a user-disableable setting. **Revised by the owner (2026-11-19, final verification brief):** controller UI haptics are required, on by default, on **Windows and Linux**; Android interface haptics stay off and opt-in, and are not the same thing. Unsupported controllers must not produce errors or unusable behaviour.
 - **Related:** F-001, F-003, B-025
 
 **Original description.** Add controller rumble feedback for suitable events. *Requirements:* detect controller rumble capability; gracefully handle unsupported devices; stop rumble immediately when controller disconnects; use appropriate intensity and duration; avoid continuous or annoying vibration; user can disable rumble; persist preference.
@@ -1453,11 +1483,18 @@ Feature proposals, kept apart from bugs. The confirmed defaults are acceptance c
     - capability checked on each request, an unsupported controller a quiet no-op, a failing platform never reaching the caller;
     - `stopRumble()` when it is turned off.
   - **Windows:** `XInputSetState` for XInput pads (`WindowsGamepads.rumble`). `GamepadInput` implements `ControllerRumble` for the controller last used, stops it after its duration from the polling thread, forgets it at once when it disconnects, and stops it on close. Joystick-API pads (DualSense, Switch Pro, generic) have no motors Reflux can drive and are not offered rumble.
-  - **Linux:** the joystick interface has no force feedback, so it is not offered.
+  - **Linux:** ~~the joystick interface has no force feedback, so it is not offered~~ (superseded). `LinuxRumble` uses the kernel's force-feedback interface:
+    - it finds the event node of the controller's joystick node in sysfs (`/sys/class/input/jsN/device/eventM`);
+    - it offers rumble only where that node has `FF_RUMBLE` in `capabilities/ff` and the session may write to it (systemd's `uaccess` grants game controllers' nodes to the seat's user);
+    - it uploads one `FF_RUMBLE` effect (`EVIOCSFF`), changes it in place, and plays or stops it with `EV_FF` events;
+    - it closes the node, which removes the effect, on unplug, on a rescan that no longer finds it, and on close.
+    - A node that cannot be opened is not asked again; no force-feedback interface at all is a quiet no-op.
   - **Android:** `AndroidControllerRumble`: the `InputDevice`'s vibrator (`VibratorManager` on 12+) for the controller last used; an input-device listener forgets one that is removed; stopped when the activity ends.
-  - **Events:** a direction with nowhere to go, and on the Reflux keyboard; a wrong PIN. Never moving between items.
+  - **Events:** a direction with nowhere to go, and on the Reflux keyboard; a wrong PIN. ~~Never moving between items.~~ Revised on the owner's walk: a light tick on each move (`NAVIGATE`, at most every 300 ms, so a held direction patters rather than buzzes), a confirmation when Select takes effect, the mini-player closed (B-052).
+  - **Stop:** also when Reflux stops being the application in use (`GamepadInput`).
   - **Settings:** "Controller rumble", offered where the platform can drive motors.
-- **Tests:** `HapticsTest` (on by default; off means none; repeats limited; unsupported a no-op; failures contained; stop reaches the controller); a source scan that fails if anything but the gateway's platform halves reaches a vibrator, `VibrationEffect`, `XInputSetState`, or `LocalHapticFeedback.current`.
+- **Tests:** `HapticsTest` (on by default; off means none; repeats limited; unsupported a no-op; failures contained; stop reaches the controller); a source scan that fails if anything but the gateway's platform halves reaches a vibrator, `VibrationEffect`, `XInputSetState`, `EVIOCSFF`, or `LocalHapticFeedback.current`. `ControllerFeelTest` (2: moves tick, choices confirm, all subtle; a keyboard feels nothing; rumble off is nothing). `LinuxRumbleTest` (4: the kernel's request number; the effect and play/stop events sent; no motors, no permission, no interface; unplug).
+- **Walk (Windows, physical GameSir G7 Pro, XInput, 2026-11-19), by the owner:** ticks on every move by D-pad and stick; X and Y and LT/RT give none of their own; Controller rumble off: nothing; on again: back.
 - **Found by lint (full check):** the manifest lacked `VIBRATE`, so `Vibrator.vibrate` would have failed, quietly caught, on every Android device; `USE_BIOMETRIC` likewise for Forgot PIN. Both added.
 - **Outstanding:** a physical Xbox controller on Windows, and a controller on the tablet and TV, to feel it and to pull the cable mid-rumble; owner acceptance.
 
@@ -1525,7 +1562,11 @@ Feature proposals, kept apart from bugs. The confirmed defaults are acceptance c
 Registered in BETA-2.md from the owner's master prompt of 2026-11-19, which numbered them F-005 and F-006; those numbers clash with the findings document's F-005, so they are held as F-P1 and F-P2 until the owner numbers them. Not counted in the 47 original findings.
 
 - **F-P1 Collapsible sidebar.** Expanded (icon and label) and collapsed (icons only); cross-platform and accessible; desktop, phone, tablet, Android TV, and Fire TV considered separately; preference persisted where appropriate; transitions tested; no one behaviour or size forced on every form factor. **Phase:** owner to confirm (Phase 3 in the master prompt; absent from the updated phase plan). **Status:** Not Started.
-- **F-P2 Sidebar focus toggle with Y.** With a controller, Y moves focus to the sidebar and Y again returns it to the exact previous item, selection and scroll kept, repeated toggles not resetting state, no shortcut conflicts, an unavailable previous item handled; developed and tested with F-P1, and to be reconciled with B-039 (whose proposed Y is the same). **Phase:** owner to confirm (with F-P1). **Status:** Not Started.
+- **F-P2 Sidebar focus toggle with Y.** With a controller, Y moves focus to the sidebar and Y again returns it to the exact previous item, selection and scroll kept, repeated toggles not resetting state, no shortcut conflicts, an unavailable previous item handled; developed and tested with F-P1, and to be reconciled with B-039 (whose proposed Y is the same). **Phase:** 2 (the owner's decision on the Windows controller walk, 2026-11-19, confirmed again on the follow-up: "Y was supposed to be for opening up the sidebar"). **Status:** Fixed (walked on Windows with a physical controller).
+  - **Implementation:** `SemanticAction.TOGGLE_NAVIGATION` for a controller's Y while browsing. `RefluxApp` remembers the item left (`RailFocus.leavingPage`) and returns to it (`enterPage`), falling back to the page's start when that item is gone. It applies where the navigation is beside the page; there is none to toggle with a phone's bottom bar.
+  - **Sources:** Start, and a remote's Menu, still open Sources. Hints say "Y Sidebar". A light tick is felt on the controller.
+  - **Tests:** `HomeFocusTest.yGoesToTheSidebarAndBackToExactlyWhereFocusWas` (three round trips to the same card and place; moving in the sidebar without choosing; another destination chosen); `DirectionalInputTest` hints.
+  - **Walk:** the owner on Windows: "works perfectly fine".
 
 <a id="f-p3"></a>
 ### F-P3: Media Quick View (the owner's Phase 3 requirement; X reserved)
@@ -1547,6 +1588,33 @@ Registered in BETA-2.md from the owner's master prompt of 2026-11-19, which numb
 - Recorded for Phase 3: Menu/Options currently opens Sources while browsing, and Quick View's Menu trigger on a focused item has to be reconciled with that (docs/INPUT_MODEL.md, "Controller mapping").
 
 **Outstanding work:** everything of the popup, in Phase 3.
+
+<a id="f-p4"></a>
+### F-P4: Adaptive Virtual Keyboard and Cross-Modality Layout Morphing (Phase 3)
+
+- **Category:** Feature (input and UX) · **Platforms:** controller layout everywhere a controller or remote types (W, L, Android phone and tablet with a controller, TV, Fire TV); mouse layout on Windows and Linux desktop only; touch on Android keeps the system keyboard
+- **How found:** the owner's steer (2026-11-20): research and plan now, implement in Phase 3
+- **Phase:** **3** (the owner's decision) · **Status:** Not Started (researched and planned) · **Last updated:** 2026-11-20
+- **Related:** B-023, B-051, B-054, B-004, B-011, B-025, B-057, F-P3
+- **Plan (full research, design, acceptance and tests):** [F-P4-ADAPTIVE-KEYBOARD.md](F-P4-ADAPTIVE-KEYBOARD.md)
+
+**Problem.** One controller grid serves every input. On a desk the mouse gets the same grid, which looks nothing like a keyboard. The controller grid itself was never designed against evidence, and nothing adapts when the hand changes while the keyboard is open.
+
+**Recommendation (from the plan).**
+- **Controller:** a column-aligned QWERTY with the digits on top, a right-hand action column (Erase, Space, Done), a short bottom row (Shift, &123, ←, →, Clear), horizontal wrap, and the existing button shortcuts (X erase, Y space, LB/RB cursor, LT Shift, RT symbols, Start done).
+  - An alphabetic layout is not the default: there is no controller evidence that it beats QWERTY, and the industry moved from ABC to QWERTY. It is a possible accessibility option (open question).
+- **Mouse (W, L):** a staggered ANSI-style keyboard with a number row, the physical proportions (wide Backspace, Tab, Caps, Enter as Done, both Shifts, a 6u Space), hover, transient press, and no persistent highlight.
+- **One system:** stable key identities, layouts as data, one session (text, cursor, Shift/Caps, page, chosen key), and only presentation adapting.
+- **Arbitration:** explicit acts (a click, a button) switch at once; pointer travel switches only after 48 dp within 400 ms over the keyboard; 500 ms of hysteresis against incidental signals.
+- **Morph:** a per-key animation of each key's rectangle, about 300 ms on a near-critically damped spring.
+  - Keys in both layouts slide and resize.
+  - Keys unique to one layout fade and scale out first (120 ms), and in as the others settle.
+  - The container follows; reduced motion is a 150 ms crossfade.
+- **State:** nothing is lost on a switch, and focus is mapped by key identity, then to the last controller key, then to the nearest key.
+
+**Milestones.** M1 data → M2 controller layout → M3 mouse layout → M4 arbiter → M5 morph → M6 focus and state → M7 verification (the plan, §14).
+
+**Acceptance criteria and test matrix:** the plan, §12. **Risks:** §15. **Open questions:** §16 (an alphabetic option; a title-completion row; locales; dictation; physical-keyboard behaviour).
 
 ## Unassigned issues and unresolved owner decisions
 
@@ -1761,6 +1829,282 @@ The project draws its own components on Compose Foundation and depends on no Mat
 - The only way to drop a PIN without it is `removePinConfirmedBySystem`, used only after the system's own confirmation of the device's owner in Forgot PIN (Android phones and tablets).
 
 **Tests / verification:** Library: `ProfilesTest.aPinIsChangedOrRemovedOnlyWithItself` (wrong, missing, or another profile's PIN refused and counted; the lockout applies; a first PIN cannot replace one; change and removal with the right PIN; history kept; the other profile untouched; kept after reopening; a PIN can be set again) and the existing PIN tests. UI: `ProfileSecurityTest` (4: removing needs the PIN, Keep PIN changes nothing, a wrong one is refused, the right one removes only the PIN, and it holds after a restart; changing needs the current PIN; Forgot PIN with the device lock, cancelled, failed, then confirmed; Keep profile and Back through each question), `ProfilesUiTest` updated. Owner acceptance pending.
+
+<a id="b-050"></a>
+### B-050: Reflux crashes when a controller is switched off and on (Windows)
+
+- **Category:** Bug (crash) · **Priority:** Critical · **Platforms:** W
+- **Components:** `desktop:app` (`gamepad/WindowsGamepads.kt`)
+- **How found:** the Windows controller walk (2026-11-19, GameSir G7 Pro on its 2.4 GHz receiver). Reflux disappeared twice when the owner switched the controller off; Windows logged `APPCRASH`, exception `0xc0000374` (heap corruption) in `ntdll.dll`, at the moments the press log showed a disconnect. One earlier crash with the same signature is logged for 2026-11-18.
+- **Phase:** 2 (found in its verification) · **Status:** Fixed (automated; walked on Windows with a physical controller) · **Last updated:** 2026-11-19
+- **Related:** F-002, B-039
+
+**Cause (isolated).** Four probe processes, each calling one of the reader's native paths the way Reflux does, ran while the owner switched the controller off and on three times:
+- the joystick API (`winmm` `joyGetNumDevs` / `joyGetPosEx` / `joyGetDevCapsW`) crashed with the same heap corruption when the controller came back;
+- so did the full reader;
+- XInput (with rumble pulses three times a second) and raw-input enumeration survived every cycle.
+
+The joystick API is asked for every HID game controller, XInput ones included, every 2 s.
+
+**Fix.** The joystick API is asked only when raw input lists a HID game controller (usage page 1, usage 4 or 5) that XInput does not read, and not while the set of controllers has changed in the last 4 s. An XInput pad (Xbox, GameSir, most PC pads) never reaches it.
+
+**Verification.**
+- **Windows, physical:** the same three off/on cycles with Reflux open and the full-reader probe running. No crash: the reader went pads 1→0→1 three times, Reflux stayed open, and the controller still navigated. No new Application Error events.
+- **Outstanding:** a non-XInput controller (the owner's DualSense) still goes through the joystick API, now only after a settled 4 s. Its hot-plug walk is pending. If it still crashes, the joystick API is to be replaced (raw HID through `hid.dll`).
+
+<a id="b-051"></a>
+### B-051: Mouse-accessible on-screen keyboard in Search (Windows and Linux)
+
+- **Category:** Feature (accessibility/input) · **Priority:** Medium · **Platforms:** W, L
+- **Components:** `ui` (`BrowseScreen` Search row, `RefluxKeyboard` `KeyCap`, `components/TextEntry.kt` `FieldKeyboard`, `Icons.kt` `KEYBOARD`); `Platform.pointerKeyboard` (true in `DesktopPlatform` only)
+- **How found:** the owner's Phase 2 follow-up (2026-11-19, issue 1)
+- **Phase:** 2 (approved follow-up) · **Status:** Fixed (automated) · **Last updated:** 2026-11-19
+- **Related:** B-023, B-025, B-042
+
+**Description.** On a desk with only a mouse, Search could not be typed into: the Reflux keyboard opened for a controller or a remote only. *Expected:* a keyboard button beside the clear button in Search, on Windows and Linux only. Keys are clicked with transient press feedback; a controller keeps its lit key.
+
+**Implementation.**
+- **The button:** Search shows a keyboard button where `Platform.pointerKeyboard` (the desktop's only) says so. It is always shown, beside the clear button when there is text, in the field's row.
+  - It focuses the field and opens the Reflux keyboard through the field's own `FieldKeyboard` opener, the same request a controller makes.
+  - Results update as typed, through the field's usual `onValueChange`.
+- **Visuals by modality:**
+  - The lit (white-filled) chosen key is shown only under directional input or on a television.
+  - A pointer or a finger gets no lit key. A pressed key sinks to 93% and brightens while down, and for 110 ms after a click too quick to see. A hovered key brightens a little.
+  - Picking up a controller lights its key again.
+- **Not touched:** Android phone, tablet and TV keep their keyboards as they were (`pointerKeyboard` false).
+
+**Tests.** `PointerKeyboardTest`:
+- a mouse alone types "heat" (results shown), then Erase, Space, Shift and a capital, with no key left lit after any click;
+- both buttons beside the field;
+- a controller lights a key again, and Start finishes;
+- the button is not offered on a phone, tablet or television platform;
+- a controller's lit key unchanged.
+
+**Walk (Windows, packaged app, by the owner):** the keyboard button, keys clicked with no key left lit, Erase, Space: "All worked".
+
+**Outstanding:** the Linux VM.
+
+<a id="b-052"></a>
+### B-052: Close playback directly from the mini-player with a controller or remote
+
+- **Category:** Bug (controller UX) · **Priority:** Medium · **Platforms:** W, L, A (phone, tablet); TV has no mini-player
+- **Components:** `ui` (`AppState.closeMiniPlayer`, `onGamepadHold`, `onBackHeld`, `backWaitsForRelease`, `BACK_HOLD_MS`; `browsePrompts`); `desktop:app` (`GamepadTranslator` `waitsForRelease`/`hold`); `android:app` (`MainActivity.heldBack`)
+- **How found:** the owner's Phase 2 follow-up (2026-11-19, issue 2)
+- **Phase:** 2 (approved follow-up) · **Status:** Fixed (automated) · **Last updated:** 2026-11-19
+- **Related:** B-039, F-002, M10 player spec
+
+**Description.** B in the full player minimises it into the mini-player, but closing playback then needed a walk to the mini-player's own close button.
+
+**Decision (owner, 2026-11-19):**
+- Two ways, each enough alone: **RT**, or **holding B** (a remote's Back).
+- View stays fullscreen. X stays reserved (F-P3).
+
+**Implementation.**
+- **RT:** with the mini-player up and nothing over it (no full player, keyboard, profile gate, panel), RT closes it. The session is closed and released, not hidden; the page and its focus stay. The triggers had no other browsing meaning; in the player RT is still faster.
+- **Holding B:** in the same state, B waits for its release. A short B is Back, as before. Held 700 ms (`BACK_HOLD_MS`), it closes the player instead, never both.
+  - The desktop's controller translator does this for the cancel button.
+  - Android does it for a controller's B, and for a remote's Back up to Android 12 (`MainActivity.heldBack`). From Android 13 Back is the back callbacks' (predictive back, which lint enforces), and they know no held key; there a remote closes it with Stop.
+- **Also:** a remote's Stop key already closed it (`STOP` is a docked action). A confirmation is felt on the controller.
+- **Hints:** "RT Close player", and B as "Back · hold to close player" (or "Hold to close player" at a root). B is marked as a button to hold: its circle fills as a ring while it is held, and a small ▼ sits above it (B-055).
+- **Unchanged:** B in the full player still minimises.
+
+**Tests.**
+- `MiniPlayerTest.withAControllerBMinimisesAndRtOrAHeldBClosesForGood`:
+  - B minimises;
+  - both hints offered;
+  - RT closes, the player released and the page unchanged;
+  - again by a held B;
+  - holding B with nothing playing does nothing;
+  - a remote's held Back closes it.
+- `GamepadTest.aButtonThatWaitsForItsReleaseIsAPressWhenTappedAndAHoldWhenHeldNeverBoth`.
+
+**Walk (Windows, physical GameSir G7 Pro, by the owner):** RT closes the mini-player, and holding B does too, with the ring filling; "All worked". The screen's brief blank on closing is B-056 (seen by mouse too, and with the B-002 change off).
+
+**Outstanding:** a remote's held Back on an Android handheld.
+
+<a id="b-053"></a>
+### B-053: Focus Play when a media details page opens from a card
+
+- **Category:** Bug (controller/remote UX) · **Priority:** Medium · **Platforms:** all with a controller or remote
+- **Components:** `ui` (`components/Focus.kt` `initialFocus(onArrival)`, `DetailsScreen`)
+- **How found:** the owner's Phase 2 follow-up (2026-11-19, issue 3)
+- **Phase:** 2 (approved follow-up) · **Status:** Fixed (automated) · **Last updated:** 2026-11-19
+- **Related:** B-008, B-013, B-025
+
+**Description.** A on a card opened its page with nothing focused, so playing took a D-pad press and a second A.
+
+**Cause.** `initialFocus` marked a page's main action only for the *first directional press*; nothing took focus when the page arrived.
+
+**Fix.**
+- `initialFocus(onArrival = true)` also focuses the control as the page is shown, but only where focus is shown (directional input, a television), not while focus is in the navigation, and once.
+- Details gives it to its main action: Play, Resume or Play episode, by `playLabel`. Where nothing can be played (offline, no playable copy), the first action beside it gets it.
+- A pointer or a finger is never handed focus. Nothing plays on arrival. Back's return to the card is the existing `rememberFocusReturn`.
+
+**Tests.**
+- `DetailsFocusTest`:
+  - A on a Home card opens on Play, nothing playing, and A again plays;
+  - Back returns to the card;
+  - the same from Movies and from Shows;
+  - a mouse click opens the page with nothing focused.
+- `DirectionalInputTest.aControllerBrowsesOpensAndGoesBack` updated, since arrival on Play is now by design.
+
+**Walks.**
+- **Windows, physical controller (the owner):** A on a poster lands on Play, and A again plays.
+- **Fire TV Stick 4K Plus, physical,** with the remote's key codes injected by the system's input service (`input keyevent`, as adb does), in `PhaseTwoWalkOnDeviceTest.onATelevisionOkOnACardOpensItsPageOnPlayAndOkAgainPlays`:
+  - OK on a card opens Details with the ring on Play (screenshot looked at);
+  - nothing plays on arrival, and OK again plays.
+
+<a id="b-054"></a>
+### B-054: Reflux keyboard: cursor jumps to the end; holding X does not keep erasing
+
+- **Category:** Bug (input) · **Priority:** High · **Platforms:** all with the Reflux keyboard
+- **Components:** `ui` (`state/Keyboard.kt` `KeyboardSession`, `components/TextEntry.kt` `rememberFieldValue`, `AppState.repeatsWhileHeld`); `desktop:app` (`GamepadTranslator` `repeats`)
+- **How found:** the Windows controller walk (2026-11-19).
+- **Phase:** 2 · **Status:** Fixed (automated; walked on Windows with a physical controller) · **Last updated:** 2026-11-19
+- **Related:** B-023, B-011
+
+**Description (owner).** Typing A, B, D, LB once, C, then E gave ABCDE rather than ABCED: after one letter the cursor went back to the end. The cursor was not drawn where it was, in either the keyboard's box or the search field, whose caret stayed at the start. Holding X erased only one character.
+
+**Cause.**
+- After each key the session read the field's text back at once. A field hands its new text back only when it is composed again, so the session took the old text as a refusal and put the cursor at the end.
+- The field (a `String` `BasicTextField`) kept its own selection, at 0.
+- The desktop controller translator repeated only directions.
+
+**Fix.**
+- The session keeps what it wrote as its record; the cursor stays where it was put while the field shows that text. It goes to the end only when the field shows something else (a refused character, a physical keyboard's edit).
+- Fields take their caret from the keyboard's cursor while it is open for them (`rememberFieldValue`).
+- Erase and the cursor buttons repeat while held on the keyboard (`repeatsWhileHeld`). Android already repeats held buttons.
+
+**Tests.**
+- `KeyboardSessionTest.theCursorStaysWhereItWasPutWhenTheFieldCatchesUpLate`, the reported sequence with a lagging field.
+- `InteractionContractTest.searchIsUsableWithAControllerAlone`: the field's caret follows, letters go in at the cursor, and X repeats only while the keyboard is open.
+- `GamepadTest.aButtonTheAppSaysRepeatsRepeatsLikeADirectionAndStopsWhenItNoLongerDoes`.
+
+**Verification:** Windows, physical controller, by the owner: "All correct" (ABCED, the cursor visible in both places, holding X keeps erasing).
+
+<a id="b-055"></a>
+### B-055: Controller hints: LT hides them; keys in their controller shapes; calm motion
+
+- **Category:** Feature (controller UX) · **Priority:** Medium · **Platforms:** all with a controller
+- **Components:** `ui` (`components/Focus.kt` `ButtonPrompts`, `KeyCap`, `HoldPrompt`; `RefluxApp.browsePrompts`, `rememberBackHold`; `AppState.hintsHidden`, `toggleHints`); `core` (`SemanticAction.TOGGLE_HINTS`, `InputMapping`)
+- **How found:** the owner, during the follow-up's Windows walk (2026-11-19)
+- **Phase:** 2 (the owner's request during the approved follow-up) · **Status:** Fixed (walked on Windows by the owner: "Looks right") · **Last updated:** 2026-11-19
+- **Related:** B-039, B-052, F-P2
+
+**Requests (owner, in order).**
+- LT hides the hints; hidden, only LT's own hint stays, to show them again.
+- The hints made elegant, shown only where they mean something, and the bar expanding and shrinking smoothly.
+- After a first attempt:
+  - the keys outlined as before, not filled;
+  - A, B, X and Y round, and the bumpers and triggers in their own shapes;
+  - more legible;
+  - calm motion: the first attempt's spring bounced, and LT moved as the bar resized;
+  - the hold hint not making the bar taller.
+
+**Implementation.**
+- **LT** (`TOGGLE_HINTS`) while browsing toggles `hintsHidden`, kept as the device setting `controller_hints`. Hidden, the bar shows only "LT Show hints"; shown, it ends with "LT Hide hints". In the player LT is still slower, and on the keyboard Shift.
+- **Keys:** drawn outlined in their controller shapes. Face buttons are circles (PlayStation's ✕ ○ □ △ as shapes), bumpers flat with rounded tops, triggers taller with rounder tops, and menu buttons small pills. Outline 42% and fill 16%; labels at 86% white.
+- **Motion:**
+  - Each hint keeps its place while the bar is up, opening or closing where it belongs, toward the bar's anchored end, on one 220 ms ease with no overshoot.
+  - The bar is exactly as wide as its hints at every moment; nothing animates its size separately, so LT at the end stays put.
+  - A changed label cross-fades in place.
+- **Hold (B-052):** B's own circle is the ring that fills over the 700 ms hold, and a small ▼ sits in the bar's margin above it. The bar's height never changes.
+
+**Tests.** `HintsTest`:
+- LT hides, leaving its own hint; the buttons still work while hidden; LT shows them again;
+- a PlayStation pad named in its own terms;
+- kept after a restart.
+
+`MiniPlayerTest` (the hold mark, the ring half full half way and full at the end, empty on release), `DirectionalInputTest`, `ControllerFeelTest`, `InteractionContractTest`. Rendered and looked at: Xbox, PlayStation, hidden, and the mini-player's hold.
+
+<a id="b-056"></a>
+### B-056: The screen blanks briefly when the mini-player is closed (Windows)
+
+- **Category:** Bug (rendering) · **Priority:** Medium · **Platforms:** W (seen); others not checked
+- **Components (likely):** `desktop:app` (`VideoSurface`, `VideoOverlay`, `SurfaceCorners`: the video surface and its controls window torn down together); `playback:mpv`
+- **How found:** the owner, closing the mini-player during the follow-up's Windows walk (2026-11-19). By controller (RT or a held B) and by mouse alike: "the screen blanks for a few 100 ms".
+- **Phase:** 2 (found in its verification) · **Status:** Investigating · **Last updated:** 2026-11-19
+- **Related:** B-002, B-052
+
+**Investigation so far.**
+- **Not today's B-002 change:** the owner saw the same blank in a build with Java2D's Direct3D pipeline forced back on.
+- **Not the new buttons:** a mouse click on the mini-player's own close does it too.
+- **Not in Reflux's drawing:** 20 PrintWindow captures of Reflux's window across 1.5 s after the click showed no blank frame. It is therefore likely at the composition level, as the native video surface and the controls window go: a heavyweight child removed from a Compose window, or DWM recomposing.
+- A capture of the window's area on screen was tried, but the driver's own setup of playback was unreliable, and it was stopped rather than kept trying.
+
+**Next:**
+- an on-screen capture of the close, done with the owner present;
+- comparing the full player's close (Back from it), which tears down the same surface;
+- if confirmed, hiding the surface and the controls window first and disposing them a frame later, or keeping the surface until the page under it has drawn.
+
+<a id="b-057"></a>
+### B-057: Search redesign: the idle page, a real filter, shortcuts from the library, results in sections
+
+- **Category:** Feature (UX) · **Priority:** Medium · **Platforms:** all
+- **Components:** `ui` (`screens/SearchScreen.kt`, new; `state/SearchModels.kt`, new: `SearchScope`, `QuickFind`, `GenreFind`, `SearchDiscovery`, `searchDiscovery`, `searchSections`, recent searches; `AppState.searchScope`; `BrowseScreen.kt` loses the old Search)
+- **How found:** the owner's Search steer (2026-11-19): "stale, under-designed, and visually empty; the filter chips and suggestions are the weakest part"
+- **Phase:** 2 (approved Search UX improvement) · **Status:** Fixed (automated; renders looked at; device walks below) · **Last updated:** 2026-11-19
+- **Related:** B-011, B-034 to B-037, B-010, B-051, B-054
+
+**Audit (before).**
+- **The page:** a field, a single row of five fixed text chips, and an empty page below.
+- **The chips** were not filters. They were smart-search queries ("4K movies I haven't watched", "unfinished shows", "90s movies", "favorites", "movies under 2 hours"), offered whether or not the library had anything for them.
+- **Interpretation:** the only "filters" were the read-only chips saying how a query was understood. There was no way to narrow a search.
+- **Results:** one grid, films and shows mixed. The no-results state was B-037's.
+- **Input:** controller and remote reach the field (B-011, B-023); a mouse has the Reflux keyboard on a desk (B-051).
+
+**Design decisions.**
+- **The field leads:** taller (64 dp; 56 on a phone; 60 on a TV), with a brighter rim and icon when focused. Clear and (on a desk) the keyboard button stay inside it. The placeholder stays B-034's.
+- **A filter, separate from suggestions:** All / Movies / Shows, a segmented switch that narrows typed queries, shortcuts, their counts and the empty state alike. It sits on the field's line where there is room, and under it on a phone.
+  - With results, Down from the field (and the keyboard's Done) goes straight to the first result, as before. The switch is one step up from the results.
+- **The idle page, from this library only:**
+  - **Recent:** the profile's own recent searches on this device, recorded when a search led somewhere (a result opened, or Done), six at most; Clear forgets them. They are never sent anywhere.
+  - **Quick finds:** compact tiles, each an emblem (New, 4K, HDR, 2h, ’10, a play or heart icon), a name and how many titles it finds here. They are offered only when the library has something for them: continue watching, not seen yet, favorites, 4K, HDR, under 2 hours, and the library's two biggest decades.
+  - **Genres:** the library's own genres by size (up to 12; 8 on a phone), as tiles with a muted hue of their own and a count.
+  - A library with nothing to suggest yet gets a short word on what Search does, not an empty page.
+  - No posters fill space; nothing is offered that finds nothing.
+- **Results:** a quiet line with the count and each thing understood ("12 results · Movies · 4K"); sections with headings and counts when films, shows and episodes are all found; the same poster cards, opening Details as before.
+- **Nothing found:** no "0 results" line. The query stays in the field, and the page says so. Clear search; Search everything when the switch narrowed it (else Browse movies); and up to three quick finds that do find something.
+- **Layout by screen:** tiles in as many equal columns as fit (four quick finds and five genres on a desktop window; two across a phone; three or four larger ones on a television). Plain rows, so a D-pad moves along and between them. Tiles light on focus without lifting, so a focus ring never meets a neighbour (B-010).
+
+**Tests.**
+- **`SearchDesignTest` (6):**
+  - only what the library has, with counts, and a quick find asks its query;
+  - the switch narrows results and the empty state, offers Search everything, and the idle counts follow it;
+  - sections by kind;
+  - a search that opened something is remembered, asked again, and cleared;
+  - a controller goes from the field to a tile and chooses it, without typing;
+  - renders at a phone, a tablet (1280 × 800), a desktop window and a television.
+- **Updated:**
+  - `CardLayoutTest` (tiles in rows, rings apart);
+  - `ScreensTest` (idle and no results);
+  - `PointerTest` (a genre tile by mouse);
+  - the Android walk (a quick find is a finger's target).
+- **Unchanged and passing:** `InteractionContractTest` (Search with a controller alone), `TelevisionTest` (Search from the remote), and `PointerKeyboardTest` (the desk keyboard button).
+
+**Second design (2026-11-19, after the owner's review of the first on Windows).** The owner found the first design out of place in Reflux:
+- the scope switch was a widget bolted to the field;
+- quick finds looked like dashboard metric tiles;
+- genres were a rainbow of gradient boxes;
+- too many modules, each in its own box.
+
+Asked for a rethink, not a tweak, the page was rebuilt as **one search line with an editorial index beneath it**:
+- **Scope as part of the search:** All / Movies / Shows are plain text tabs on the field's own line, the chosen one bright with a short rule under it, no container. It is the same on every screen. With a query, the count and what was understood sit at the far end of that line ("Unwatched · 12 results").
+- **No helper line, no boxes, no badges, no colours.** Hierarchy is the field first, then type: small letter-spaced labels ("Recent", "Start with", "Genres"), body-sized lines, and display-sized genre words.
+- **"Start with"** replaces the quick-find tiles: a list of lines, each a name with its count quietly at the right edge, lit softly when pointed at or focused. Recent searches sit above it in the same column, with Clear.
+- **Genres as an index:** the library's genres set as words in the section-title size, flowing and wrapping, each with a small superscript-like count, underlined and lit when pointed at or focused. Counts are secondary.
+- **Layout:** wide screens put "Start with" in a narrow left column and the genre index in the wide right one; a phone stacks them; a television sets the same at its larger type with wider gaps.
+- **Focus path:** Down from the field goes straight to the results; Up walks back over what is on screen (results, then the tabs, then the field). Idle, Down goes from the field to the tabs, then into the index.
+- **Nothing found:** the title-sized message, its actions, and "Or start with" as lines of the same index.
+- **Kept:** every useful shortcut, genre filtering, the scope filter, results in sections, clear, the desk keyboard button, IME, controller and remote, and focus rules.
+
+**Tests (second design).**
+- `SearchDesignTest` 6/6 (counts shown, none zero); `CardLayoutTest` (lines and words keep their rings apart);
+- `ScreensTest`, `PointerTest`, `InteractionContractTest`, `PointerKeyboardTest`;
+- `TelevisionTest` (Up from a result reaches the tabs, then the field);
+- renders looked at: desktop idle with Recent, phone, television, results, no results.
+
+**Outstanding:** the owner's review.
 
 ## Regression tracking
 

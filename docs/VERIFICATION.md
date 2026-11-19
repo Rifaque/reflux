@@ -2120,3 +2120,113 @@ The phone was unplugged during part of the phase and plugged in again by the own
 - On a device, rumble and the system prompt would have quietly failed, each caught as "unavailable".
 - Both were added to the manifest (normal permissions, no prompt; RELEASE.md says so). `:android:app:check` then passed (lint included).
 - The Phone 2a walk was re-run with the fixed build: 4/4, Forgot PIN's system prompt included.
+
+## Phase 2: final verification (2026-11-19)
+
+On `open-source-gpl`, the owner's final Phase 2 verification brief and the follow-up brief. Each run's environment is named. Nothing was pushed, merged, deployed, versioned, tagged, released, or entered in a store console. No screenshot, address, serial or credential is in the repository. The Pad 7's profile PIN was given by the owner for the session and passed only on the command line.
+
+**Windows 11 desktop (physical; two monitors at 125% and 150%).**
+- **A guarded driver** replaced the B-002 script:
+  - input is sent only when the foreground window is the Reflux test process, raised without sending keys anywhere (`AttachThreadInput`);
+  - the pointer is moved only where Reflux's window is under it;
+  - captures are of Reflux's own windows (PrintWindow);
+  - the test library holds only test films.
+  - It refused once when Reflux was not in front, and sent nothing.
+- **B-002:**
+  - **Reproduced:** on the 150% monitor the controls window was 1010 × 1044 over a 1514 × 1566 picture.
+  - **Fixed** (Java2D's Direct3D pipeline off). Walked with title-bar drags each way: the controls window equalled the picture (1515 × 906 over 1514 × 904; 1264 × 755 over 1262 × 753). It held paused, in the mini-player, on expanding it, and maximised (2562 × 1494 over 2560 × 1494).
+  - **Control run:** the pipeline forced on brought the fault back (1010 × 604 over 1514 × 904).
+  - Captures looked at.
+- **Physical controller: a GameSir G7 Pro on its 2.4 GHz receiver (XInput slot 0, both motors), used by the owner.** Its presses were logged through XInput, and Reflux's window was captured half a second after each.
+  - **Round one:** moves and the left stick navigate; ticks felt on every move; X does nothing (reserved); LT/RT did nothing; LB/RB step destinations; the right stick does nothing (Trickplay, Phase 3).
+    - Y opened Sources; the owner said it should toggle the sidebar (F-P2, done).
+    - Two crashes (`0xc0000374`) at the moments the controller was switched off: B-050.
+  - **B-050:** four probe processes, one per native path. The joystick API crashed on reconnect; XInput (with rumble) and raw input did not.
+    - After the fix, the full reader and Reflux ran through three off/on cycles with no crash and no new Application Error.
+  - **Round two:**
+    - Y to the sidebar and back to the same poster: "works perfectly fine".
+    - X erases, Y gives a space, B closes the keyboard.
+    - Controller rumble off: nothing felt; on: back.
+    - The keyboard's cursor jumped to the end after one letter (B-054).
+  - **After the B-054 fix:** ABD, LB, C, E gave ABCED, the cursor shown in both places, holding X erases on: "All correct".
+  - **Follow-up:**
+    - Details lands on Play, and A again plays.
+    - RT closes the mini-player, and so does holding B, with the ring filling.
+    - The mouse keyboard: the button, keys clicked with none left lit, Erase, Space.
+    - "All worked", except the screen's brief blank on closing the mini-player: B-056. It is the same with the B-002 change off, and the same by mouse.
+  - **The hint bar (B-055):** three rounds with the owner, ending "Looks right".
+- **Not walked:** a DualSense (non-XInput) hot-plug (B-050's remaining case).
+
+**Xiaomi Pad 7 (physical, USB).** The debug build of this branch, unlocked with the owner's PIN passed as an instrumentation argument. `PhaseTwoWalkOnDeviceTest`: **5/5 passed**:
+- Search with the system keyboard: the bar steps aside, Back puts the keyboard away, and the next Back goes Home;
+- Profiles has no Profile button; Home does;
+- a pull finds a film added meanwhile;
+- Forgot PIN offers the device lock, and cancelling changes nothing;
+- interface haptics: the Pad 7 has **no vibrator** (`cmd vibrator_manager list`: none), so Settings rightly offers no switch.
+
+Screenshots looked at; on touch, Search shows no mouse-keyboard button.
+
+**Fire TV Stick 4K Plus (physical, network adb at an address the owner gave for the session, not recorded).** The debug build of this branch. Remote key codes injected by the system's input service (`input keyevent`, as adb does); no physical remote press. `PhaseTwoWalkOnDeviceTest`, the two television walks: **2/2 passed**.
+- OK on a card opens Details with the ring on Play, nothing playing, and OK again plays.
+- In Search, OK opens the Reflux keyboard; the system keyboard stays hidden (Fire OS reports it hidden).
+- "jun" is typed by the remote, with the caret after it in the field, and found.
+- Back puts the keyboard away with the query kept.
+- Screenshots fetched with `run-as` and looked at.
+- On the way, the instrumentation's own key sending was seen not to reach the field as a remote does, so the walk uses the input service.
+
+**The GameSir moved to the Fire TV (Bluetooth; the owner paired it).**
+- A walk by hand was set up as an instrumentation (the test film, Reflux open, five minutes for the owner). It could not start Reflux within 45 s ("the main thread has not gone idle"), and at its end the system stopped Reflux ("Killing … due to finished inst"; at its start, "due to start instr").
+- **The owner saw that as a crash; it was not one.** The crash buffer was empty. The squircle keys the owner saw were from a stale app build: only the test package had been reinstalled.
+- Walks by hand are not run as instrumentations again. The controller on the television is driven by an automated walk with gamepad events from the system's input service (below).
+
+**Not done:** the controller on the phone, the tablet and the Google TV emulator; the Phone 2a (not attached).
+
+**Linux.** WSL2 Ubuntu 24.04 (**a VM**, no `/dev/input`, no controller). On its JDK 21, all passed:
+- `:desktop:app:test` gamepad suites, including `LinuxRumbleTest` 5/5 (with the Linux-only check that libc's `open`/`ioctl`/`write` load and that a missing node is refused quietly), and `ToolkitPreparationTest` 3/3;
+- `HapticsTest` 7/7 and `KeyboardSessionTest` 10/10;
+- core 377/377.
+
+**Not done:** physical Linux rumble (no Linux desktop with a controller), and the Ubuntu QA VM (not started this pass).
+
+**Automated (Windows, JVM).** After the follow-up: core 377, library 257 (1 skipped), ui 499 (1 skipped), desktop 61 (13 skipped, the window and physical tests), 0 failures. New suites:
+- `ToolkitPreparationTest`, `ControllerFeelTest`, `DetailsFocusTest`, `PointerKeyboardTest`, `HintsTest`, `LinuxRumbleTest`;
+- new cases in `HomeFocusTest`, `MiniPlayerTest`, `GamepadTest`, `KeyboardSessionTest` and `InteractionContractTest`;
+- `DirectionalInputTest` updated (hints; arrival on Play).
+
+**Forced full check.** `./gradlew check --continue --rerun-tasks`: @@CHECK@@
+
+### Search redesign (B-057), 2026-11-19
+
+- **Automated (Windows, JVM):** `SearchDesignTest` 6/6, plus the updated `CardLayoutTest`, `ScreensTest` and `PointerTest`. The whole suites after it: core 377, ui 506 (1 skipped), desktop 66 (14 skipped), 0 failures.
+- **Rendered and looked at (offscreen Compose, the same renderer as the desktop app):**
+  - a desktop window: idle, with Recent; Movies scope; no results;
+  - a phone (412 × 900);
+  - a tablet (1280 × 800);
+  - a television (960 × 540 at 2×).
+- **Xiaomi Pad 7 (physical):** `PhaseTwoWalkOnDeviceTest` all passed.
+  - Search on touch: the switch on the field's line, the quick finds counted from the walk's library ("Not seen yet", "Under 2 hours", "The 2010s", 1 title each), each at least 48 dp tall.
+  - The system keyboard for a finger, with no desk keyboard button.
+  - Screenshot looked at.
+- **Fire TV Stick 4K Plus (physical; the current app build):** 3/3. The remote walks, and a controller walk with gamepad events from the system's input service (`input gamepad keyevent`):
+  - A on a card lands on Play, and B goes back;
+  - X does nothing, and Y opens the sidebar on Home and returns;
+  - RB and LB move between destinations;
+  - LT hides the hints, leaving "LT Show hints", and shows them again;
+  - in Search, A opens the Reflux keyboard, A types, X erases, and B closes it with the query kept.
+  - Screenshots fetched with `run-as` and looked at. These are gamepad events from the system, not presses of the owner's GameSir.
+- **Nothing Phone (2a) (physical, attached later in the pass):** `PhaseTwoWalkOnDeviceTest` all passed.
+  - Search on a phone: the switch under the field; quick finds two across, each a finger's target.
+  - The system keyboard and the bar stepping aside; Profiles; a pull; Forgot PIN's system prompt.
+  - Interface haptics: switched on and kept, then put back.
+  - Its screenshots were looked at and deleted, because a personal notification was over one of them.
+- **Windows:** the packaged app was opened on the owner's PC with their own library, for the owner to look at Search; the agent did not drive or capture it.
+- **Not done this pass:** the Google TV emulator; the Linux VM.
+
+### Search, second design (B-057), 2026-11-19/20
+
+- **Automated (Windows, JVM):** the whole ui suite, 506 tests, 0 failures, 1 skipped. `SearchDesignTest` 6/6; `TelevisionTest` updated (Up from a result reaches the tabs, then the field). Renders looked at: desktop idle with Recent, phone, television, results in sections, no results.
+- **Xiaomi Pad 7 (physical):** `PhaseTwoWalkOnDeviceTest` all passed (9 reported; the television walks skip).
+- **Fire TV Stick 4K Plus (physical):** the whole class, OK (9); the handheld walks now skip a television.
+  - The controller walk failed once on this build. Fire OS leaves a focused card's node without words, so the walk pressed past the card. It now finds the card by its box; three runs since, three passes.
+- **Nothing Phone (2a):** not driven this time; another app was open on it (the owner's).
+- **Windows:** the packaged app reopened on the owner's PC with their own library for review; not driven or captured by the agent.

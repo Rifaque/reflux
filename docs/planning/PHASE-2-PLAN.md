@@ -167,3 +167,23 @@ Phase 1's groundwork (a closed schema, consent off by default, `TelemetryTranspo
 - approve the retention.
 
 Then PRIVACY.md, the website, Play's Data safety and Amazon's questionnaire are updated before anything is sent. Nothing is sent from any build.
+
+**Owner's decision (2026-11-19, final verification brief): Aptabase is not selected.** Its daily-salted IP-address hash is a privacy trade-off not acceptable for this beta. Statistics stay off; nothing is transmitted from any build; no other provider is added in this pass. The opt-in groundwork (closed schema, consent off by default, the disabled transport) is kept for a later choice (DECISIONS.md, 2026-11-19, "Phase 2 final verification").
+
+## Final verification and the follow-up (2026-11-19)
+
+The owner's final verification brief made the Windows PC, the GameSir G7 Pro, the Pad 7 (its PIN given for the session) and the Linux VM available. The follow-up brief approved three more issues. What changed, in order (each issue's entry in the tracker has the detail and the evidence; the runs are in VERIFICATION.md, "Phase 2: final verification"):
+
+| Issue | What | State |
+| --- | --- | --- |
+| [B-002](BETA-BUG-TRACKER.md#b-002) | Controls window sized in the wrong scale on the 150% monitor. Java2D's Direct3D pipeline is now off on Windows | Fixed, walked on the owner's two monitors |
+| [B-050](BETA-BUG-TRACKER.md#b-050) | Reflux crashed when the controller reconnected (the joystick API corrupting the heap). Now asked only for non-XInput controllers, once devices have settled | Fixed, walked; a DualSense hot-plug is pending |
+| [B-054](BETA-BUG-TRACKER.md#b-054) | Reflux keyboard cursor jumping to the end; the field's caret not following; held X | Fixed, walked |
+| [F-P2](BETA-BUG-TRACKER.md#f-p1-and-f-p2) | Y toggles the sidebar (the owner's decision on the walk) | Fixed, walked |
+| [F-002](BETA-BUG-TRACKER.md#f-002) revised | Controller feedback on by default on Windows **and Linux** (kernel force feedback); a light tick on moves, a confirmation on choices | Windows felt; Linux tested against a faked kernel and its libc path in a VM; physical Linux pending |
+| [B-051](BETA-BUG-TRACKER.md#b-051) | A mouse can open and use the Reflux keyboard from Search on Windows and Linux | Fixed, walked on Windows |
+| [B-052](BETA-BUG-TRACKER.md#b-052) | RT, or B held, closes the mini-player | Fixed, walked on Windows |
+| [B-053](BETA-BUG-TRACKER.md#b-053) | Details opens on Play for a controller or a remote | Fixed, walked (Windows controller; Fire TV remote) |
+| [B-055](BETA-BUG-TRACKER.md#b-055) | Controller hints: LT hides them; keys in their controller shapes, outlined; calm motion; the hold ring | Fixed, walked ("Looks right") |
+| [B-056](BETA-BUG-TRACKER.md#b-056) | The screen blanks briefly when the mini-player closes (also by mouse, also with the B-002 change off) | Investigating |
+| [B-057](BETA-BUG-TRACKER.md#b-057) | Search redesign: the field leads; All / Movies / Shows as a real filter; the idle page from the library (recent, quick finds with counts, genres); results in sections; a no-results page with ways on | Fixed; walked on the Pad 7 and the Fire TV |
