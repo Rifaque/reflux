@@ -72,7 +72,7 @@ Research: the tarball has no libmpv and needs the distribution's; Windows ships 
 
 ## Stage F: closeout (2026-11-19)
 
-**Phase 1 is closed as implemented, with named checks outstanding; it is not a 100% pass.** The work is in the working tree and **uncommitted** (no commit reference exists yet; the owner reviews and commits it), and hosted CI has not run on it. Each workstream against the original brief's required behaviour and tests (the owner's Phase 1 brief, sections 4 to 14 and 17), with evidence in VERIFICATION.md, "Phase 1", and the open-source transition's section after it:
+**Phase 1 is closed as implemented, with named checks outstanding; it is not a 100% pass.** The work was reviewed in the working tree and is now committed locally as `c1ca1d1` on `open-source-gpl` (2026-11-19; not pushed or merged), and hosted CI has not run on it. Each workstream against the original brief's required behaviour and tests (the owner's Phase 1 brief, sections 4 to 14 and 17), with evidence in VERIFICATION.md, "Phase 1", and the open-source transition's section after it:
 
 | # | Criterion (brief) | State | Evidence | Outstanding |
 | --- | --- | --- | --- | --- |
@@ -90,7 +90,7 @@ Research: the tarball has no libmpv and needs the distribution's; Windows ships 
 | 12 | Linux libmpv bundled | **Not done in Phase 1; superseded** | The GPL-only X11 finding; the per-distribution hint verified in four containers | Moved out of Phase 1: with Reflux GPL-3.0-or-later (DECISIONS.md, 2026-11-19), a GPL-enabled Linux libmpv keeping the native window is future Linux packaging work, with the owner's codec exclusion |
 | Gates (brief, section 17) | Tests, full check, hosted CI | **Local full check passed; hosted CI not run** | `./gradlew check`: 1,496 tests, 0 failures (Phase 1 tree, before the license change) | Hosted CI once the owner pushes |
 
-**Added at closeout (2026-11-19):** Reflux's Linux hint gave Linux Mint 21 (an Ubuntu 22.04 base) a package its base does not have; it now reads the base release (`LinuxPlaybackSetupTest` 2/2). Arch Linux: the packaged app's engine started with `mpv` from pacman, in a container. B-031's description corrected: `en_US.UTF-8` is refused as much as `de_DE.UTF-8`. Statuses use the register's words (planning/BETA-2.md, "Status words"); the register is the authoritative list from here on.
+**Added at closeout (2026-11-19):** Reflux's Linux hint gave Linux Mint 21 (an Ubuntu 22.04 base) a package its base does not have; it now reads the base release (`LinuxPlaybackSetupTest` 2/2). Arch Linux: the packaged app's engine started with `mpv` from pacman, in a container. B-031's description corrected: `en_US.UTF-8` is refused as much as `de_DE.UTF-8`. Statuses here are as written at closeout; each issue's current status, in the tracker's eight words, and its full record are in planning/BETA-BUG-TRACKER.md, the authoritative per-issue record from here on (B-001 is Fixed there, not Verified: its "different source types" criterion is unmet; the Mint hint is B-043).
 
 **Handover.** To the owner: review and commit Phase 1 (and, separately, the open-source transition on `open-source-gpl`), push for hosted CI, the physical checks named above, the decisions named in DECISIONS.md (Forgot PIN, the statistics provider). To M12: the deferred measurements, the device walks, and closing-during-playback on Windows. To future Linux packaging: the GPL-enabled libmpv build.
 
