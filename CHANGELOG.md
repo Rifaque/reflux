@@ -4,6 +4,8 @@ What changes for people using Reflux, version by version. The rules for versions
 
 ## Unreleased
 
+- Reflux is now free and open-source software under the GNU GPL, version 3 or later. About Reflux says so under "Copyright and license" and shows Reflux's notice and the full license; the source is at github.com/Rifaque/reflux. The software Reflux is built with keeps its own licenses, and the license gives no right to the Reflux name or logo.
+
 - Deleting a profile that has a PIN now asks for that profile's PIN; confirming is no longer enough, and wrong PINs count towards the same wait as opening it. Profiles without a PIN are deleted as before.
 - On Android, starting another film right after one (from the mini-player, after closing, or after one ended) no longer leaves the last film's picture frozen on screen while the new one's sound plays.
 - On Linux, playback works whatever the system's numeric format: libmpv used to refuse to start under any format other than plain C, which most desktops (en_US.UTF-8 included) are not set to. The language and formats Reflux shows are unchanged.

@@ -20,6 +20,10 @@ export default function Support() {
           <h2 id="security">Security problems</h2>
           <p>Please report them privately, never in a public issue: through GitHub’s private vulnerability reporting, as <Link to="/security">Security</Link> explains.</p>
         </section>
+        <section aria-labelledby="contribute">
+          <h2 id="contribute">Contribute</h2>
+          <p>Reflux is open source under the GNU GPL, version 3 or later. Its source, issues, and how to contribute are on GitHub: <Out href="https://github.com/Rifaque/reflux">the repository</Out> and its <Out href="https://github.com/Rifaque/reflux/blob/main/CONTRIBUTING.md">contribution guide</Out>.</p>
+        </section>
         <section aria-labelledby="contact">
           <h2 id="contact">Contact address</h2>
           <p><a href="mailto:support@rsxdevelops.dev">support@rsxdevelops.dev</a> reaches RSX Develops, who make Reflux, for questions, problems, and feedback. Store listings name the same address.</p>

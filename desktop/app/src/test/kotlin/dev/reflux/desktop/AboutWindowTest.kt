@@ -51,13 +51,14 @@ class AboutWindowTest {
                 shell.await("focus on the build", state = { "focused: ${shell.focused()}" }) { arrowUntilFocused(shell, "Reflux") }
                 shell.key(KeyEvent.VK_DOWN)
                 shell.key(KeyEvent.VK_DOWN)
-                shell.await("focus on Reflux's own terms", state = { "focused: ${shell.focused()}" }) { shell.focused() == "Copyright and ownership" }
-                shell.awaitShown("Copyright © 2026 RSX Develops. All rights reserved.")
+                shell.await("focus on Reflux's own terms", state = { "focused: ${shell.focused()}" }) { shell.focused() == "Copyright and license" }
+                shell.awaitShown("Copyright © 2026 RSX Develops")
+                shell.awaitShown("Free software · GPL-3.0-or-later")
                 // Reflux's own notice, read and left with the keyboard, which comes back to the row it left.
                 shell.key(KeyEvent.VK_ENTER)
-                shell.awaitShown("Reflux is proprietary software. It is not open source", exact = false)
+                shell.awaitShown("Reflux is free software: you can redistribute it and/or modify it", exact = false)
                 shell.key(KeyEvent.VK_ESCAPE)
-                shell.await("focus back on Reflux's own terms", state = { "focused: ${shell.focused()}" }) { shell.focused() == "Copyright and ownership" }
+                shell.await("focus back on Reflux's own terms", state = { "focused: ${shell.focused()}" }) { shell.focused() == "Copyright and license" }
                 shell.key(KeyEvent.VK_DOWN)
                 shell.await("focus on the notices", state = { "focused: ${shell.focused()}" }) { shell.focused() == "Third-party software" }
                 shell.key(KeyEvent.VK_ENTER)

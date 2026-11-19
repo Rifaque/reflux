@@ -15,8 +15,10 @@ const application = {
   url: `${SITE}/`,
   applicationCategory: 'MultimediaApplication',
   operatingSystem: 'Android, Android TV, Fire OS, Windows, Linux',
-  description: 'A media player for your own films and shows: local folders, Jellyfin, Plex, and network shares. No Reflux account, no ads, no tracking.',
+  description: 'A free and open-source media player for your own films and shows: local folders, Jellyfin, Plex, and network shares. No Reflux account, no ads, no tracking.',
   offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+  isAccessibleForFree: true,
+  license: 'https://www.gnu.org/licenses/gpl-3.0.html',
   publisher: { '@id': publisher['@id'] },
 }
 

@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { Shot, Status, Timeline } from '../components.jsx'
+import { Out, Shot, Status, Timeline } from '../components.jsx'
 import { V1_WINDOW } from '../beta.js'
 import { MarkMotion, useDepth } from '../motion.jsx'
 
@@ -191,8 +191,8 @@ export default function Home() {
 
       <section className="closing" data-reveal>
         <MarkMotion className="mark-motion closing-mark" />
-        <h2>Reflux is free.</h2>
-        <p className="lead">No subscription, no paid tier, no ads. Try the beta on any of the platforms above.</p>
+        <h2>Reflux is free and open source.</h2>
+        <p className="lead">No subscription, no paid tier, no ads, and nothing to unlock. Its source is open under the GNU GPL, version 3 or later: <Out href="https://github.com/Rifaque/reflux">read it, change it, share it</Out>. Try the beta on any of the platforms above.</p>
         <div className="actions center">
           <Link to="/testing" className="button">Join the beta</Link>
           <Link to="/download" className="button ghost">Download for Windows or Linux</Link>
