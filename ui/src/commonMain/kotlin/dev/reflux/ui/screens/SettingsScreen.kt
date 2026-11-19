@@ -145,7 +145,7 @@ internal fun SettingsScreen(app: AppState) {
             item(key = "controller-rumble") {
                 SwitchRow(
                     "Controller rumble",
-                    "A short rumble from a controller that has motors, at the end of a row and when something is refused. Never while moving between items.",
+                    "A light tick from a controller that has motors as you move and choose, a firmer one at the end of a row, and one when something is refused. On until you turn it off.",
                     app.haptics.rumbleOn,
                 ) { app.setControllerRumble(!app.haptics.rumbleOn) }
             }

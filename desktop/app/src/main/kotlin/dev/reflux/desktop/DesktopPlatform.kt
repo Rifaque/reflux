@@ -76,6 +76,9 @@ internal class DesktopPlatform(private val environment: DesktopEnvironment) : Pl
      */
     override val docksVideo: Boolean get() = true
 
+    /** A desk may have only a mouse: Search offers the Reflux keyboard with a button (B-051). */
+    override val pointerKeyboard: Boolean get() = true
+
     override val build: BuildIdentity = readBuildIdentity()
 
     override val notices: NoticeTarget = NoticeTarget.DESKTOP

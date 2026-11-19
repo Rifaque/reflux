@@ -1160,8 +1160,16 @@ internal fun showsProfileButton(destination: Destination): Boolean =
  */
 internal fun browsePrompts(app: AppState, family: ControllerFamily): List<Pair<GamepadButton, String>> = listOfNotNull(
     InputMapping.confirmButton(family) to "Select",
-    (InputMapping.cancelButton(family) to if (app.offlineOpen) "Close" else "Back").takeIf { app.offlineOpen || app.navigator.canGoBack },
+    when {
+        app.offlineOpen -> InputMapping.cancelButton(family) to "Close"
+        // B-052: with the mini-player up, holding B is one of the two ways to close it (RT, below, is the other).
+        app.backWaitsForRelease -> InputMapping.cancelButton(family) to if (app.navigator.canGoBack) "Back · hold to close player" else "Hold to close player"
+        app.navigator.canGoBack -> InputMapping.cancelButton(family) to "Back"
+        else -> null
+    },
     (GamepadButton.FACE_NORTH to "Sidebar").takeIf { app.toggleNavigation != null && app.folderPicker == null && !app.offlineOpen },
+    // B-052: with the mini-player up, RT closes it (so does holding Back).
+    (GamepadButton.TRIGGER_RIGHT to "Close player").takeIf { app.docked != null && app.watching == null },
 )
 
 /** Where the user is shows as white against grey: the navigation never takes a color. */

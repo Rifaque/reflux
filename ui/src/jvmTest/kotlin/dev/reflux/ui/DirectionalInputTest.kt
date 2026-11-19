@@ -85,9 +85,8 @@ class DirectionalInputTest {
         assertTrue(press(app, GamepadButton.FACE_SOUTH), "confirm activates the focused card")
         await("details to open") { app.navigator.current is Destination.Details }
         awaitText("Cast")
-        // A new screen has no focus yet: the next press lands on its main action.
-        press(app, GamepadButton.DPAD_DOWN)
-        onNode(isFocused()).assert(hasText("Play", substring = true))
+        // A page opened from an item arrives on its main action, so Select again plays (B-053).
+        await("Play focused") { runCatching { onNode(isFocused()).assert(hasText("Play", substring = true)) }.isSuccess }
 
         assertTrue(press(app, GamepadButton.FACE_EAST))
         awaitText("Recently Added")

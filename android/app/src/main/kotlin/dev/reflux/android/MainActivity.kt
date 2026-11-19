@@ -96,6 +96,7 @@ import dev.reflux.android.engine.AndroidEnvironment
 import dev.reflux.android.launcher.WatchNextLink
 import dev.reflux.android.launcher.WatchNextPublisher
 import dev.reflux.android.playback.Media3Player
+import dev.reflux.core.input.GamepadButton
 import dev.reflux.core.input.InputMapping
 import dev.reflux.core.input.SemanticAction
 import dev.reflux.core.playback.PlayerStatus
@@ -370,6 +371,7 @@ class MainActivity : ComponentActivity() {
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         val button = Input.gamepadButton(event)
         if (button != null) platform.rumble?.used(event.deviceId)
+        if (heldBack(event, button)) return true
         if (event.action == KeyEvent.ACTION_DOWN) {
             val handled = when {
                 button != null -> app.onGamepadButton(button, Input.family(event.device))
@@ -389,6 +391,50 @@ class MainActivity : ComponentActivity() {
         // A controller's buttons are Reflux's; the system's fallbacks for them (B as Back) would act twice.
         if (button != null && (event.isFromSource(InputDevice.SOURCE_GAMEPAD) || event.keyCode in KeyEvent.KEYCODE_BUTTON_A..KeyEvent.KEYCODE_BUTTON_MODE)) return true
         return super.dispatchKeyEvent(event)
+    }
+
+    /** A Back (a controller's cancel button, or a remote's Back) waiting for its release while the mini-player is up (B-052). */
+    private var backDown: Int? = null
+    private var backHeldDone = false
+    private val backHold = Runnable {
+        if (backDown != null && !backHeldDone) {
+            backHeldDone = true
+            app.onBackHeld()
+        }
+    }
+
+    /**
+     * B-052: with the mini-player up, a short Back is Back, and a held one closes what plays. Back then acts when it is let
+     * go, or after [dev.reflux.ui.state.BACK_HOLD_MS] held; never both. Elsewhere this does nothing and Back is as it always was.
+     */
+    private fun heldBack(event: KeyEvent, button: GamepadButton?): Boolean {
+        val family = Input.family(event.device)
+        val isBack = if (button != null) button == InputMapping.cancelButton(family) else event.keyCode == KeyEvent.KEYCODE_BACK
+        if (!isBack) return false
+        val main = window?.decorView ?: return false
+        when (event.action) {
+            KeyEvent.ACTION_DOWN -> {
+                if (event.repeatCount > 0) return backDown == event.keyCode
+                if (!app.backWaitsForRelease) return false
+                backDown = event.keyCode
+                backHeldDone = false
+                main.removeCallbacks(backHold)
+                main.postDelayed(backHold, dev.reflux.ui.state.BACK_HOLD_MS)
+                return true
+            }
+            KeyEvent.ACTION_UP -> {
+                if (backDown != event.keyCode) return false
+                backDown = null
+                main.removeCallbacks(backHold)
+                if (!backHeldDone) {
+                    // Let go in time: the Back it was.
+                    val handled = if (button != null) app.onGamepadButton(button, family) else app.onKey(dev.reflux.core.input.Key.BACK)
+                    if (!handled && app.backRoute == BackRoute.SYSTEM) onBackPressedDispatcher.onBackPressed()
+                }
+                return true
+            }
+        }
+        return false
     }
 
     override fun dispatchGenericMotionEvent(event: MotionEvent): Boolean {

@@ -212,6 +212,7 @@ internal fun SearchScreen(app: AppState) {
             ) {
                 Icon(Icon.SEARCH, tint = RefluxColors.contentSecondary)
                 val self = remember { Any() }
+                val opener = remember { dev.reflux.ui.components.FieldKeyboard() }
                 val (shown, change) = dev.reflux.ui.components.rememberFieldValue(self, query) { app.searchQuery = it }
                 BasicTextField(
                     value = shown,
@@ -219,7 +220,7 @@ internal fun SearchScreen(app: AppState) {
                     // Searching starts in the field, with a remote as with a keyboard.
                     modifier = Modifier.weight(1f).focusRequester(field).initialFocus()
                         // Done on the Reflux keyboard goes on to what was found (B-011).
-                        .textEntry(query, { app.searchQuery = it }, "Search", InputKind.SEARCH, onDone = { focus.moveFocus(FocusDirection.Down) }, field = self)
+                        .textEntry(query, { app.searchQuery = it }, "Search", InputKind.SEARCH, onDone = { focus.moveFocus(FocusDirection.Down) }, field = self, opener = opener)
                         .semantics { contentDescription = "Search your library" },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(showKeyboardOnFocus = showsKeyboardOnFocus()),
@@ -240,6 +241,14 @@ internal fun SearchScreen(app: AppState) {
                     IconButton(Icon.CLOSE, "Clear search", {
                         app.searchQuery = ""
                         field.requestFocus()
+                    }, tint = RefluxColors.contentSecondary)
+                }
+                // B-051: on a Windows or Linux desk, the Reflux keyboard for someone with only a mouse; always there, beside the
+                // clear button when there is something to clear.
+                if (app.platform.pointerKeyboard) {
+                    IconButton(Icon.KEYBOARD, "On-screen keyboard", {
+                        runCatching { field.requestFocus() }
+                        opener.open()
                     }, tint = RefluxColors.contentSecondary)
                 }
             }

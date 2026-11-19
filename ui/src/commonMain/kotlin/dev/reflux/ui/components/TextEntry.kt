@@ -42,6 +42,14 @@ interface TextEntry {
     fun cursorOf(field: Any): Int? = null
 }
 
+/** What a button beside a field calls to open the Reflux keyboard for it (B-051); set by [textEntry] while the field is shown. */
+class FieldKeyboard {
+    internal var open: (() -> Unit)? = null
+
+    /** Opens the Reflux keyboard for the field; false when the field is not shown. */
+    fun open(): Boolean = open?.let { it(); true } ?: false
+}
+
 /**
  * A field's value for the toolkit, with its caret where the Reflux keyboard's cursor is while the keyboard types into it
  * (the walk on Windows, 2026-11-19: the caret stayed at the start while the bumpers moved the keyboard's cursor). Otherwise
@@ -99,6 +107,8 @@ internal fun Modifier.textEntry(
     onDone: () -> Unit,
     /** Who the field is, for [rememberFieldValue] to find the keyboard's cursor in it. */
     field: Any = remember { Any() },
+    /** For a button beside the field that opens the Reflux keyboard (B-051). */
+    opener: FieldKeyboard? = null,
 ): Modifier {
     val entry = LocalTextEntry.current
     val control = LocalFocusedControl.current
@@ -121,6 +131,12 @@ internal fun Modifier.textEntry(
         onDispose {
             entry?.focused(self, false)
             entry?.close(self)
+        }
+    }
+    if (opener != null) {
+        DisposableEffect(opener, open) {
+            opener.open = open
+            onDispose { if (opener.open === open) opener.open = null }
         }
     }
     if (focused && control != null) {

@@ -1035,9 +1035,51 @@ class AppState(
     fun repeatsWhileHeld(button: GamepadButton, family: ControllerFamily): Boolean =
         keyboard != null && InputMapping.map(button, family, InputContext.TEXT_ENTRY) in HELD_TYPING
 
+    /**
+     * Whether Back waits for its release, because holding it means something else (B-052): while the mini-player is up and
+     * nothing is over it, a short Back is Back, and a held one closes what plays. Read on the controller thread too.
+     */
+    val backWaitsForRelease: Boolean
+        get() = docked != null && watching == null && keyboard == null && profileGate == null && folderPicker == null && !offlineOpen
+
+    /**
+     * Closes what plays in the mini-player, for good (B-052): playback stops and the mini-player goes; focus stays where it
+     * was on the page. False when there is no mini-player.
+     */
+    fun closeMiniPlayer(): Boolean {
+        val session = docked ?: return false
+        session.close()
+        if (fromController) haptics.controller(HapticEvent.CONFIRM)
+        return true
+    }
+
+    /** A controller's button held down past [BACK_HOLD_MS] where holding means something (B-052). True when it did something. */
+    fun onGamepadHold(button: GamepadButton, family: ControllerFamily): Boolean {
+        if (button != InputMapping.cancelButton(family) || !backWaitsForRelease) return false
+        fromController = true
+        return try {
+            closeMiniPlayer()
+        } finally {
+            fromController = false
+        }
+    }
+
+    /** A remote's Back (or a keyboard's Escape) held down past [BACK_HOLD_MS]: the same as a controller's (B-052). */
+    fun onBackHeld(): Boolean = backWaitsForRelease && closeMiniPlayer()
+
     /** Handles a controller button, named by its position so every controller family works alike. */
     fun onGamepadButton(button: GamepadButton, family: ControllerFamily): Boolean {
         onSignal(InputSignal.GamepadButtonPress(button, family))
+        // RT closes the mini-player while it is up and nothing is over it (B-052, the owner's choice: View stays fullscreen). The
+        // triggers have no other browsing meaning, so nothing else is taken from them; in the player RT is still faster.
+        if (button == GamepadButton.TRIGGER_RIGHT && docked != null && watching == null && keyboard == null && profileGate == null) {
+            fromController = true
+            return try {
+                closeMiniPlayer()
+            } finally {
+                fromController = false
+            }
+        }
         val action = InputMapping.map(button, family, context) ?: return false
         fromController = true
         return try {
@@ -1595,3 +1637,6 @@ data class PinRefusal(val problem: String, val attempt: Int)
 
 /** The PIN given to delete [profile] was not accepted: [problem] says why, and [attempt] counts tries so it is said again. */
 data class DeletionRefusal(val profile: ProfileId, val problem: String, val attempt: Int)
+
+/** How long Back is held to close the mini-player (B-052): longer than any tap, short enough not to feel stuck. */
+const val BACK_HOLD_MS = 700L

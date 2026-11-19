@@ -125,9 +125,9 @@ class HapticsTest {
         val root = generateSequence(File("").absoluteFile) { it.parentFile }.first { File(it, "settings.gradle.kts").exists() }
         val forbidden = listOf(
             Regex("""performHapticFeedback\("""), Regex("""\bVibrator\b"""), Regex("""VibratorManager"""), Regex("""\.vibrate\("""),
-            Regex("""VibrationEffect"""), Regex("""XInputSetState"""), Regex("""LocalHapticFeedback\.current"""),
+            Regex("""VibrationEffect"""), Regex("""XInputSetState"""), Regex("""EVIOCSFF"""), Regex("""LocalHapticFeedback\.current"""),
         )
-        val allowed = setOf("AndroidHaptics.kt", "WindowsGamepads.kt", "HapticsTest.kt")
+        val allowed = setOf("AndroidHaptics.kt", "WindowsGamepads.kt", "LinuxRumble.kt", "HapticsTest.kt")
         // The toolkit's own haptics, routed into the gateway: a declaration of the hook, not a use of a vibrator.
         val routed = Regex("override fun performHapticFeedback\\(hapticFeedbackType")
         val sources = listOf("ui/src", "android/app/src/main", "desktop/app/src/main", "core/src", "library/src", "playback")

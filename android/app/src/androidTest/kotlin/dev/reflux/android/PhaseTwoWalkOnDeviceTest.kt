@@ -51,7 +51,8 @@ class PhaseTwoWalkOnDeviceTest {
     private lateinit var folder: DocumentTreeSource
     private var activity: Activity? = null
     private lateinit var app: AppState
-    private val shots = File(context.getExternalFilesDir(null), "walks").also { it.mkdirs() }
+    // A television's shared storage is out of adb's reach (Fire OS): its shots go where `run-as` can fetch them.
+    private val shots get() = File(if (television) context.filesDir else context.getExternalFilesDir(null), "walks").also { it.mkdirs() }
     private val model = android.os.Build.MODEL.replace(' ', '_')
 
     @Before
@@ -76,7 +77,29 @@ class PhaseTwoWalkOnDeviceTest {
         val started = instrumentation.startActivitySync(Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         activity = started
         app = MainActivity::class.java.getDeclaredField("app").apply { isAccessible = true }.get(started) as AppState
-        instrumentation.runOnMainSync { app.onSignal(dev.reflux.core.input.InputSignal.Touch) }
+        // A handheld's walks are a finger's; a television's are its remote's, which the keys themselves say.
+        if (!television) instrumentation.runOnMainSync { app.onSignal(dev.reflux.core.input.InputSignal.Touch) }
+        unlockIfAsked()
+    }
+
+    /**
+     * A device whose debug build's profile has a PIN asks for it at start. The owner may hand that PIN to a run as an
+     * argument (`am instrument -e unlockPin …`); it is never written into the test or the repository. Without it, a walk
+     * on such a device stops at the question, as it should.
+     */
+    private fun unlockIfAsked() {
+        val pin = InstrumentationRegistry.getArguments().getString("unlockPin") ?: return
+        val end = System.currentTimeMillis() + 8_000
+        while (System.currentTimeMillis() < end) {
+            val gate = app.profileGate
+            if (gate is dev.reflux.ui.state.ProfileGate.Unlock && gate.profile.active) {
+                instrumentation.runOnMainSync { app.enterPin(pin) }
+                until("unlocked") { app.profileGate == null }
+                return
+            }
+            if (gate == null && app.navigator.current == Destination.Home) return
+            Thread.sleep(100)
+        }
     }
 
     private fun until(what: String, timeoutMs: Long = 20_000, condition: () -> Boolean) {
@@ -255,5 +278,134 @@ class PhaseTwoWalkOnDeviceTest {
             runCatching { instrumentation.runOnMainSync { app.forgotPin(false) } }
             runCatching { environment.library.deleteProfile(sam, "2580", key) }
         }
+    }
+
+    @Test
+    fun interfaceHapticsAreOffUntilTurnedOnInSettings() {
+        // F-001: off by default (an acceptance criterion); Settings offers the switch where the device can vibrate; on, it is
+        // kept. The walk turns it back to what it was. What it feels like is for a hand to say (VERIFICATION.md).
+        start()
+        until("Home") { app.navigator.current == Destination.Home }
+        val before = app.haptics.interfaceOn
+        println("Interface haptics on $model before the walk: ${if (before) "on" else "off"}")
+        try {
+            instrumentation.runOnMainSync { app.go(Destination.Settings) }
+            until("Settings") { app.navigator.current == Destination.Settings }
+            Thread.sleep(800)
+            if (!app.haptics.interfaceAvailable) {
+                // A device without a vibrator (the Pad 7 has none): the switch is not offered, and nothing can turn it on.
+                println("Interface haptics on $model: no vibrator, so no switch")
+                shot("p2-haptics-none-$model")
+                kotlin.test.assertFalse(says("Interface haptics"), "no switch where nothing can vibrate")
+                return
+            }
+            // The switch is further down the page: a finger's swipe up until it shows.
+            val screen = context.resources.displayMetrics
+            repeat(8) {
+                if (says("Interface haptics")) return@repeat
+                touch(screen.widthPixels * 0.6f, screen.heightPixels * 0.75f, screen.widthPixels * 0.6f, screen.heightPixels * 0.35f, 300, steps = 10)
+                Thread.sleep(500)
+            }
+            until("the switch", 5_000) { says("Interface haptics") }
+            Thread.sleep(300)
+            shot("p2-haptics-setting-$model")
+            instrumentation.runOnMainSync { app.setInterfaceHaptics(true) }
+            until("on") { app.haptics.interfaceOn }
+            Thread.sleep(500)
+            shot("p2-haptics-on-$model")
+            until("the choice kept") { environment.library.setting(dev.reflux.ui.state.Haptics.INTERFACE_HAPTICS) == "on" }
+        } finally {
+            instrumentation.runOnMainSync { app.setInterfaceHaptics(before) }
+        }
+    }
+
+    private val television get() = context.packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_LEANBACK)
+
+    /**
+     * A remote's key, injected by the system's input service as adb's `input keyevent` does: a device event through the
+     * window manager to the focused window, like a remote's. (The instrumentation's own key sending was seen to differ.)
+     */
+    private fun remote(keyCode: Int) {
+        instrumentation.uiAutomation.executeShellCommand("input keyevent $keyCode").close()
+        Thread.sleep(700)
+    }
+
+    private fun focusedWords(): String? = nodes().firstOrNull { it.isFocused }?.let { node ->
+        node.words().ifEmpty { (0 until node.childCount).mapNotNull { node.getChild(it)?.words() }.firstOrNull { it.isNotEmpty() }.orEmpty() }
+    }
+
+    @Test
+    fun onATelevisionOkOnACardOpensItsPageOnPlayAndOkAgainPlays() {
+        // B-053 with a remote (a television only).
+        org.junit.Assume.assumeTrue(television)
+        start()
+        until("Home with the film") { app.navigator.current == Destination.Home && says("Jungle Walk") }
+        // Down from the hero to the row's first card, then OK.
+        remote(KeyEvent.KEYCODE_DPAD_DOWN)
+        repeat(4) { if (app.navigator.current == Destination.Home && focusedWords()?.contains("Jungle Walk") != true) remote(KeyEvent.KEYCODE_DPAD_DOWN) }
+        shot("p2-tv-card-$model")
+        remote(KeyEvent.KEYCODE_DPAD_CENTER)
+        until("details") { app.navigator.current is Destination.Details }
+        Thread.sleep(1200)
+        shot("p2-tv-details-arrived-$model")
+        try {
+            // The focused node is Play: by its words, or (where the system leaves a merged button's words on its text alone, as
+            // Fire OS does) by being the box Play's words are in.
+            until("Play focused", 8_000) {
+                val focused = nodes().firstOrNull { it.isFocused } ?: return@until false
+                val play = nodes().firstOrNull { it.isVisibleToUser && (it.words() == "Play" || it.words().startsWith("Resume")) }
+                focusedWords()?.let { it.startsWith("Play") || it.startsWith("Resume") } == true ||
+                    (play != null && focused.bounds().contains(play.bounds().centerX(), play.bounds().centerY()))
+            }
+            Thread.sleep(1500)
+            shot("p2-tv-details-play-$model")
+        } catch (e: AssertionError) {
+            val node = nodes().firstOrNull { it.isFocused }
+            throw AssertionError("Play not focused: focus on '${focusedWords()}' (${node?.className} at ${node?.bounds()}), modality ${app.input.modality}", e)
+        }
+        kotlin.test.assertNull(app.playback, "nothing plays on arrival")
+        remote(KeyEvent.KEYCODE_DPAD_CENTER)
+        until("playing") { app.playback != null }
+        Thread.sleep(1500)
+        shot("p2-tv-playing-$model")
+        remote(KeyEvent.KEYCODE_BACK)
+        until("left the player") { app.playback == null || app.watching == null }
+        runCatching { instrumentation.runOnMainSync { app.playback?.close() } }
+        until("details again") { app.navigator.current is Destination.Details }
+        remote(KeyEvent.KEYCODE_BACK)
+        until("home") { app.navigator.current == Destination.Home }
+    }
+
+    @Test
+    fun onATelevisionTheRemoteTypesInSearchWithTheRefluxKeyboard() {
+        // B-004, B-023, B-054 with a remote: OK opens the Reflux keyboard, OK types, Back puts it away with the text kept.
+        org.junit.Assume.assumeTrue(television)
+        start()
+        until("Home") { app.navigator.current == Destination.Home }
+        instrumentation.runOnMainSync { app.go(Destination.Search) }
+        until("the field") { app.navigator.current == Destination.Search && app.textInputActive }
+        remote(KeyEvent.KEYCODE_DPAD_CENTER)
+        try {
+            until("the Reflux keyboard", 6_000) { app.keyboard != null }
+        } catch (e: AssertionError) {
+            throw AssertionError("no keyboard: focus on '${focusedWords()}', typing ${app.textInputActive}, modality ${app.input.modality}", e)
+        }
+        // The system keyboard is kept away (the field asks for it as it takes focus, and Reflux hides it within frames).
+        until("the system keyboard kept away", 4_000) { !app.systemKeyboardShown }
+        val session = app.keyboard!!
+        for (letter in "jun") {
+            val (row, column) = session.rows.withIndex().firstNotNullOf { (r, keys) -> keys.indexOf(dev.reflux.ui.state.KeyboardKey.Type(letter.toString())).takeIf { it >= 0 }?.let { r to it } }
+            while (session.row != row) remote(if (session.row < row) KeyEvent.KEYCODE_DPAD_DOWN else KeyEvent.KEYCODE_DPAD_UP)
+            while (session.column != column) remote(if (session.column < column) KeyEvent.KEYCODE_DPAD_RIGHT else KeyEvent.KEYCODE_DPAD_LEFT)
+            remote(KeyEvent.KEYCODE_DPAD_CENTER)
+        }
+        until("typed") { app.searchQuery == "jun" }
+        until("found") { says("Jungle Walk") }
+        shot("p2-tv-keyboard-$model")
+        remote(KeyEvent.KEYCODE_BACK)
+        until("put away") { app.keyboard == null }
+        kotlin.test.assertEquals("jun", app.searchQuery, "the query is kept")
+        kotlin.test.assertEquals(Destination.Search, app.navigator.current)
+        shot("p2-tv-keyboard-gone-$model")
     }
 }

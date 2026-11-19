@@ -338,7 +338,10 @@ private fun Header(
                     val gap = if (LocalLayout.current.formFactor == FormFactor.TV) 22.dp else 10.dp
                     FlowRow(Modifier.padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(gap), verticalArrangement = Arrangement.spacedBy(10.dp), itemVerticalAlignment = Alignment.CenterVertically) {
                         val playId = details.playId
-                        Button(details.playLabel, { playId?.let { app.play(it, scope = libraryScope) } }, Modifier.initialFocus(), icon = Icon.PLAY, style = ButtonStyle.PRIMARY, enabled = playId != null && !card.offline)
+                        // With a controller or a remote, the page arrives on its main action, Play (or Resume, Play episode),
+                        // so Select again plays (B-053). If there is nothing to play here, on the first action beside it.
+                        val playable = playId != null && !card.offline
+                        Button(details.playLabel, { playId?.let { app.play(it, scope = libraryScope) } }, if (playable) Modifier.initialFocus(onArrival = true) else Modifier, icon = Icon.PLAY, style = ButtonStyle.PRIMARY, enabled = playable)
                         if (details.resumes && playId != null) Button("From the start", { app.play(playId, resume = false, scope = libraryScope) }, style = ButtonStyle.QUIET)
                         // The compact actions are one group, and wrap together: four actions must never leave one icon alone on a line, and
                         // the group's own gap is tighter than the line's (a television's stays wide: its focus ring needs the room).
@@ -350,6 +353,7 @@ private fun Header(
                                 Icon.CHECK,
                                 if (card.watched) "Mark as unwatched" else "Mark as watched",
                                 { app.setWatched(card.id, !card.watched) },
+                                if (playable) Modifier else Modifier.initialFocus(onArrival = true),
                                 glass = true,
                                 selected = card.watched,
                             )

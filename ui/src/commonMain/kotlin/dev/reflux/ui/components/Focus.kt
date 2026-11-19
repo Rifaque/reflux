@@ -162,15 +162,26 @@ fun Modifier.focusPanel(): Modifier {
 /** The page a control belongs to, for [FocusEntry]; null outside the paged part of the application. */
 val LocalFocusScreen = staticCompositionLocalOf<Any?> { null }
 
-/** Marks the control the first directional input on this screen focuses: its main action or first item. */
+/**
+ * Marks the control the first directional input on this screen focuses: its main action or first item.
+ *
+ * @param onArrival also focus it as soon as the page is shown, for a controller or a remote (B-053): a page opened from an
+ * item (Details) has its main action ready, so Select again plays. Never for a pointer or a finger, which see no focus; never
+ * while focus is in the navigation; and only once, as the page arrives, so it never takes focus back from where the
+ * viewer has moved it.
+ */
 @Composable
-fun Modifier.initialFocus(): Modifier {
+fun Modifier.initialFocus(onArrival: Boolean = false): Modifier {
     val entry = LocalFocusEntry.current ?: return this
     val screen = LocalFocusScreen.current
     val requester = remember { FocusRequester() }
     DisposableEffect(entry, screen) {
         entry.offer(requester, screen)
         onDispose { entry.withdraw(requester) }
+    }
+    if (onArrival) {
+        val showsFocus = LocalLayout.current.showsFocus
+        LaunchedEffect(Unit) { if (showsFocus && entry.screen == screen && !entry.inChrome) runCatching { requester.requestFocus() } }
     }
     return focusRequester(requester)
 }

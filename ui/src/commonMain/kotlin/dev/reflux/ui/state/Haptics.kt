@@ -34,7 +34,7 @@ interface DeviceHaptics {
     fun perform(event: HapticEvent)
 }
 
-/** The motors of the controller in use (F-002). Implemented where the platform can drive them (Windows XInput, Android). */
+/** The motors of the controller in use (F-002). Implemented where the platform can drive them (Windows XInput, Linux force feedback, Android). */
 interface ControllerRumble {
     /** Whether the controller in use now has motors Reflux can drive. */
     fun available(): Boolean
