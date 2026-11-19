@@ -41,6 +41,9 @@ enum class SemanticAction {
      */
     TOGGLE_NAVIGATION,
 
+    /** Hides the controller's button hints while browsing, or shows them again (B-055; the owner's choice: LT). */
+    TOGGLE_HINTS,
+
     /** The next or previous global destination, in the navigation's order. */
     NEXT_SECTION,
     PREVIOUS_SECTION,

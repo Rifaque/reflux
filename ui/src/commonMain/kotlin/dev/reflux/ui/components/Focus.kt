@@ -1,5 +1,14 @@
 package dev.reflux.ui.components
 
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.runtime.key
+import androidx.compose.foundation.layout.height
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.togetherWith
+import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.offset
+import androidx.compose.ui.draw.drawBehind
 import dev.reflux.ui.theme.States
 import dev.reflux.ui.theme.Shapes
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -265,29 +274,135 @@ private class InsetBringIntoViewSpec(private val start: Float, private val end: 
  * What the buttons of the controller in the user's hands do right now. Buttons are named by position and
  * labelled for the controller's family, so a DualSense shows Cross and Circle where an Xbox pad shows A and B.
  */
+/**
+ * A button that means something when held (B-052): its prompt wears a small down-pointing triangle above it, as games mark a
+ * hold, and a ring around it that fills while it is held ([progress], 0 to 1), complete at the moment the hold acts.
+ */
+data class HoldPrompt(val button: GamepadButton, val progress: Float)
+
 @Composable
-fun ButtonPrompts(prompts: List<Pair<GamepadButton, String>>, family: ControllerFamily, modifier: Modifier = Modifier, floating: Boolean = true) {
+fun ButtonPrompts(prompts: List<Pair<GamepadButton, String>>, family: ControllerFamily, modifier: Modifier = Modifier, floating: Boolean = true, hold: HoldPrompt? = null) {
+    // Calm (B-055): every hint keeps its place while the bar is up, so one that comes or goes opens or closes where it
+    // belongs, on one short ease with no overshoot; the bar is exactly as wide as its hints at every moment, so a hint at
+    // its anchored end stays where it is. A changed label cross-fades in place.
+    val order = remember { ArrayList<GamepadButton>() }
+    val labels = remember { HashMap<GamepadButton, String>() }
+    var previous: GamepadButton? = null
+    for ((button, action) in prompts) {
+        labels[button] = action
+        if (button !in order) order.add(previous?.let { order.indexOf(it) + 1 } ?: 0, button)
+        previous = button
+    }
+    val current = prompts.toMap()
+    val ease = tween<androidx.compose.ui.unit.IntSize>(220, easing = androidx.compose.animation.core.FastOutSlowInEasing)
     Row(
         // On its own over video it needs a surface; inside other chrome it borrows that one.
         // A hint for the eye about the buttons in the hand, not something on the screen to reach or read.
         // Tagged so tests can see it is there.
-        (if (floating) modifier.glass(MaterialRole.FLOATING, CircleShape).padding(horizontal = 16.dp, vertical = 9.dp) else modifier)
-            .clearAndSetSemantics { testTag = "prompts:" + prompts.joinToString(",") { (button, action) -> InputMapping.glyph(button, family) + " " + action } },
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        (if (floating) modifier.glass(MaterialRole.FLOATING, CircleShape).padding(horizontal = 8.dp, vertical = 7.dp) else modifier)
+            .clearAndSetSemantics {
+                testTag = "prompts:" + prompts.joinToString(",") { (button, action) -> InputMapping.glyph(button, family) + " " + action } +
+                    (hold?.let { "|hold:" + InputMapping.glyph(it.button, family) + ":" + (it.progress * 100).toInt() } ?: "")
+            },
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        prompts.forEach { (button, action) ->
-            Row(horizontalArrangement = Arrangement.spacedBy(7.dp), verticalAlignment = Alignment.CenterVertically) {
-                val shape = Shapes.small
-                Box(
-                    Modifier.defaultMinSize(minWidth = 26.dp).background(States.layer(0.12f), shape)
-                        .border(1.dp, States.layer(0.22f), shape).padding(horizontal = 7.dp, vertical = 3.dp),
-                    contentAlignment = Alignment.Center,
+        for (button in order.toList()) {
+            key(button) {
+                androidx.compose.animation.AnimatedVisibility(
+                    visible = button in current,
+                    enter = androidx.compose.animation.fadeIn(tween(160, delayMillis = 80)) +
+                        androidx.compose.animation.expandHorizontally(ease, expandFrom = Alignment.End),
+                    exit = androidx.compose.animation.fadeOut(tween(110)) +
+                        androidx.compose.animation.shrinkHorizontally(ease, shrinkTowards = Alignment.End),
                 ) {
-                    Text(InputMapping.glyph(button, family), style = LocalTypography.current.label, maxLines = 1)
+                    Prompt(button, family, labels[button].orEmpty(), hold?.takeIf { it.button == button })
                 }
-                Text(action, style = LocalTypography.current.captionStrong, color = RefluxColors.contentSecondary, maxLines = 1)
             }
         }
     }
 }
+
+/** One hint: the button as a key cap, and what it does. */
+@Composable
+private fun Prompt(button: GamepadButton, family: ControllerFamily, action: String, held: HoldPrompt?) {
+    Row(Modifier.padding(horizontal = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+        KeyCap(button, family, held)
+        androidx.compose.animation.Crossfade(targetState = action, animationSpec = tween(160), label = "hint") { label ->
+            Text(label, style = LocalTypography.current.captionStrong, color = RefluxColors.contentPrimary.copy(alpha = 0.86f), maxLines = 1)
+        }
+    }
+}
+
+/**
+ * A controller's button drawn in the shape it has on the controller, outlined (B-055): A, B, X and Y round; the bumpers
+ * flat and wide; the triggers taller, rounded at the top; the menu buttons small pills. The controller's own marking is
+ * inside (PlayStation's shapes drawn as shapes).
+ *
+ * A button to hold ([HoldPrompt]) keeps exactly its size, so the bar never grows: its own outline is the ring that fills as
+ * it is held, from the top, and a small triangle above it, in the bar's margin, says "hold".
+ */
+@Composable
+private fun KeyCap(button: GamepadButton, family: ControllerFamily, held: HoldPrompt?) {
+    val glyph = capGlyph(button, family)
+    val form = capForm(button)
+    val ink = RefluxColors.contentPrimary
+    val outline = States.layer(0.42f)
+    val shape = form.shape
+    Box(
+        Modifier.height(form.height).defaultMinSize(minWidth = form.minWidth)
+            .background(States.layer(0.16f), shape)
+            .then(
+                if (held == null) Modifier.border(1.25.dp, outline, shape) else Modifier.drawWithContent {
+                    drawContent()
+                    val stroke = 2.dp.toPx()
+                    val inset = stroke / 2f
+                    val arc = androidx.compose.ui.geometry.Size(size.width - stroke, size.height - stroke)
+                    val topLeft = androidx.compose.ui.geometry.Offset(inset, inset)
+                    val style = androidx.compose.ui.graphics.drawscope.Stroke(stroke, cap = androidx.compose.ui.graphics.StrokeCap.Round)
+                    // The outline is the ring: its track always, its fill as the button is held.
+                    drawArc(outline, 0f, 360f, false, topLeft, arc, style = style)
+                    if (held.progress > 0f) drawArc(ink, -90f, 360f * held.progress.coerceIn(0f, 1f), false, topLeft, arc, style = style)
+                    // "Hold": a small triangle pointing down at the button, just above it, in the bar's own margin.
+                    val w = 7.dp.toPx()
+                    val h = 4.dp.toPx()
+                    val top = -h - 2.dp.toPx()
+                    val path = androidx.compose.ui.graphics.Path().apply {
+                        moveTo(size.width / 2f - w / 2f, top)
+                        lineTo(size.width / 2f + w / 2f, top)
+                        lineTo(size.width / 2f, top + h)
+                        close()
+                    }
+                    drawPath(path, ink)
+                },
+            )
+            .padding(horizontal = form.padding),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(glyph, style = LocalTypography.current.label, color = ink, maxLines = 1)
+    }
+}
+
+/** How a kind of button is drawn. */
+private class CapForm(val shape: androidx.compose.ui.graphics.Shape, val height: androidx.compose.ui.unit.Dp, val minWidth: androidx.compose.ui.unit.Dp, val padding: androidx.compose.ui.unit.Dp)
+
+private val FaceForm = CapForm(CircleShape, 24.dp, 24.dp, 0.dp)
+private val BumperForm = CapForm(RoundedCornerShape(topStart = 9.dp, topEnd = 9.dp, bottomStart = 4.dp, bottomEnd = 4.dp), 20.dp, 34.dp, 7.dp)
+private val TriggerForm = CapForm(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp, bottomStart = 5.dp, bottomEnd = 5.dp), 24.dp, 30.dp, 7.dp)
+private val MenuForm = CapForm(RoundedCornerShape(50), 20.dp, 30.dp, 8.dp)
+
+private fun capForm(button: GamepadButton): CapForm = when (button) {
+    GamepadButton.FACE_SOUTH, GamepadButton.FACE_EAST, GamepadButton.FACE_WEST, GamepadButton.FACE_NORTH -> FaceForm
+    GamepadButton.SHOULDER_LEFT, GamepadButton.SHOULDER_RIGHT -> BumperForm
+    GamepadButton.TRIGGER_LEFT, GamepadButton.TRIGGER_RIGHT -> TriggerForm
+    else -> MenuForm
+}
+
+/** What a cap shows: the controller's own marking, with PlayStation's shapes drawn as shapes rather than spelt out. */
+private fun capGlyph(button: GamepadButton, family: ControllerFamily): String =
+    if (family == ControllerFamily.PLAYSTATION) when (button) {
+        GamepadButton.FACE_SOUTH -> "\u2715"
+        GamepadButton.FACE_EAST -> "\u25CB"
+        GamepadButton.FACE_WEST -> "\u25A1"
+        GamepadButton.FACE_NORTH -> "\u25B3"
+        else -> InputMapping.glyph(button, family)
+    } else InputMapping.glyph(button, family)

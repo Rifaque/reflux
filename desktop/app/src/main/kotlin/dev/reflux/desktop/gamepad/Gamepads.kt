@@ -94,6 +94,8 @@ internal class GamepadTranslator(
     private val waitsForRelease: (GamepadButton, ControllerFamily) -> Boolean = { _, _ -> false },
     private val hold: (GamepadButton, ControllerFamily) -> Unit = { _, _ -> },
     private val holdMs: Long = 700L,
+    /** A button began waiting for its release (true), or stopped waiting: let go, or held long enough (false). */
+    private val holding: (GamepadButton, ControllerFamily, Boolean) -> Unit = { _, _, _ -> },
     private val press: (GamepadButton, ControllerFamily) -> Unit,
 ) {
     /** The controller whose buttons were pressed last: the one in the viewer's hands, whose motors rumble. */
@@ -134,12 +136,18 @@ internal class GamepadTranslator(
                     button !in previous.buttons -> {
                         if (active) {
                             lastUsed = state.id
-                            if (waitsForRelease(button, state.family)) previous.waiting[button] = nowMs else press(button, state.family)
+                            if (waitsForRelease(button, state.family)) {
+                                previous.waiting[button] = nowMs
+                                holding(button, state.family, true)
+                            } else {
+                                press(button, state.family)
+                            }
                         }
                         if (button in DIRECTIONS || repeats(button, state.family)) previous.repeatAt[button] = nowMs + REPEAT_DELAY_MS
                     }
                     previous.waiting[button]?.let { since -> nowMs - since >= holdMs } == true -> {
                         previous.waiting.remove(button)
+                        holding(button, state.family, false)
                         if (active) hold(button, state.family)
                     }
                     repeatAt != null && nowMs >= repeatAt -> {
@@ -155,7 +163,10 @@ internal class GamepadTranslator(
             }
             previous.repeatAt.keys.retainAll(down)
             // Let go before it was held long enough: it was a press after all.
-            for (button in previous.waiting.keys - down) if (active) press(button, state.family)
+            for (button in previous.waiting.keys - down) {
+                holding(button, state.family, false)
+                if (active) press(button, state.family)
+            }
             previous.waiting.keys.retainAll(down)
             previous.buttons = down
         }
@@ -194,9 +205,10 @@ internal class GamepadInput(
     repeats: (GamepadButton, ControllerFamily) -> Boolean = { _, _ -> false },
     waitsForRelease: (GamepadButton, ControllerFamily) -> Boolean = { _, _ -> false },
     hold: (GamepadButton, ControllerFamily) -> Unit = { _, _ -> },
+    holding: (GamepadButton, ControllerFamily, Boolean) -> Unit = { _, _, _ -> },
     press: (GamepadButton, ControllerFamily) -> Unit,
 ) : AutoCloseable, dev.reflux.ui.state.ControllerRumble {
-    private val translator = GamepadTranslator(repeats, waitsForRelease, hold, dev.reflux.ui.state.BACK_HOLD_MS, press)
+    private val translator = GamepadTranslator(repeats, waitsForRelease, hold, dev.reflux.ui.state.BACK_HOLD_MS, holding, press)
 
     @Volatile private var running = true
 

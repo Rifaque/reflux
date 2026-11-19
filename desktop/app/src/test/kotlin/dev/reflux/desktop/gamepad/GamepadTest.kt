@@ -78,7 +78,8 @@ class GamepadTest {
         // B-052: B with the mini-player up.
         val tapped = mutableListOf<GamepadButton>()
         val held = mutableListOf<GamepadButton>()
-        val keys = GamepadTranslator(waitsForRelease = { button, _ -> button == GamepadButton.FACE_EAST }, hold = { button, _ -> held += button }, holdMs = 700) { button, _ -> tapped += button }
+        val holding = mutableListOf<Boolean>()
+        val keys = GamepadTranslator(waitsForRelease = { button, _ -> button == GamepadButton.FACE_EAST }, hold = { button, _ -> held += button }, holdMs = 700, holding = { _, _, down -> holding += down }) { button, _ -> tapped += button }
         keys.update(pad(), -1_000)
         keys.update(pad(GamepadButton.FACE_EAST), 0)
         keys.update(pad(GamepadButton.FACE_EAST), 300)
@@ -94,6 +95,7 @@ class GamepadTest {
         keys.update(pad(), 2_600)
         assertEquals(1, tapped.size, "and not a press as well when let go")
         assertEquals(1, held.size, "once")
+        assertEquals(listOf(true, false, true, false), holding, "the hold's start and end are said each time, for its ring")
         // Any other button is as it always was.
         keys.update(pad(GamepadButton.FACE_SOUTH), 3_000)
         assertEquals(GamepadButton.FACE_SOUTH, tapped.last())

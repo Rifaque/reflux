@@ -418,6 +418,7 @@ class MainActivity : ComponentActivity() {
                 if (!app.backWaitsForRelease) return false
                 backDown = event.keyCode
                 backHeldDone = false
+                app.backHold(true)
                 main.removeCallbacks(backHold)
                 main.postDelayed(backHold, dev.reflux.ui.state.BACK_HOLD_MS)
                 return true
@@ -426,6 +427,7 @@ class MainActivity : ComponentActivity() {
                 if (backDown != event.keyCode) return false
                 backDown = null
                 main.removeCallbacks(backHold)
+                app.backHold(false)
                 if (!backHeldDone) {
                     // Let go in time: the Back it was.
                     val handled = if (button != null) app.onGamepadButton(button, family) else app.onKey(dev.reflux.core.input.Key.BACK)
