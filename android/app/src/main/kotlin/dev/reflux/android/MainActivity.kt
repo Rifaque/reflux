@@ -407,9 +407,13 @@ class MainActivity : ComponentActivity() {
      * B-052: with the mini-player up, a short Back is Back, and a held one closes what plays. Back then acts when it is let
      * go, or after [dev.reflux.ui.state.BACK_HOLD_MS] held; never both. Elsewhere this does nothing and Back is as it always was.
      */
+    // A remote's Back is read as a key only before Android 13, where the system still delivers it as one (a television such as
+    // Fire OS 7 among them). From 13 Back belongs to the back callbacks (predictive back), which have no notion of a held key, so
+    // there the mini-player is closed with Stop or by a controller's B, a gamepad button rather than Back.
+    @SuppressLint("GestureBackNavigation")
     private fun heldBack(event: KeyEvent, button: GamepadButton?): Boolean {
         val family = Input.family(event.device)
-        val isBack = if (button != null) button == InputMapping.cancelButton(family) else event.keyCode == KeyEvent.KEYCODE_BACK
+        val isBack = if (button != null) button == InputMapping.cancelButton(family) else event.keyCode == KeyEvent.KEYCODE_BACK && Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU
         if (!isBack) return false
         val main = window?.decorView ?: return false
         when (event.action) {

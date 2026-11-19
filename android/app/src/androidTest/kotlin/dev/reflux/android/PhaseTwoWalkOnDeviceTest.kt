@@ -176,8 +176,10 @@ class PhaseTwoWalkOnDeviceTest {
         assertTrue(says("Search your library"), "the short placeholder")
         // B-035: no "Try"; chips with a finger's target.
         assertFalse(nodes().any { it.isVisibleToUser && it.words() == "Try" }, "no Try label")
-        val chip = assertNotNull(withWords("unfinished shows")?.let { var n: AccessibilityNodeInfo? = it; while (n != null && !n.isClickable) n = n.parent; n })
-        assertTrue(chip.bounds().height() >= (48 * density).toInt() - 1, "a chip is at least 48 dp tall: ${chip.bounds().height() / density} dp")
+        // B-057: the idle page's quick finds, each a finger's target, offered because this library has something for them.
+        until("the quick finds") { says("Quick finds") }
+        val chip = assertNotNull(withWords("Not seen yet")?.let { var n: AccessibilityNodeInfo? = it; while (n != null && !n.isClickable) n = n.parent; n })
+        assertTrue(chip.bounds().height() >= (48 * density).toInt() - 1, "a quick find is at least 48 dp tall: ${chip.bounds().height() / density} dp")
         shot("p2-search-$model")
 
         // B-036: the system keyboard up; on a phone the bar steps aside while it is.
@@ -407,5 +409,110 @@ class PhaseTwoWalkOnDeviceTest {
         kotlin.test.assertEquals("jun", app.searchQuery, "the query is kept")
         kotlin.test.assertEquals(Destination.Search, app.navigator.current)
         shot("p2-tv-keyboard-gone-$model")
+    }
+
+    /**
+     * A walk by hand: the test film in the library, Reflux open, and then the owner's controller for `manualMinutes`
+     * (an instrumentation argument; without it, nothing). What the device says of the controllers is printed.
+     */
+    @Test
+    fun aWalkByHandWithAController() {
+        val minutes = InstrumentationRegistry.getArguments().getString("manualMinutes")?.toIntOrNull() ?: return
+        start()
+        until("Home") { app.navigator.current == Destination.Home }
+        val input = context.getSystemService(android.hardware.input.InputManager::class.java)
+        for (id in input.inputDeviceIds) {
+            val device = input.getInputDevice(id) ?: continue
+            if (device.sources and android.view.InputDevice.SOURCE_GAMEPAD != android.view.InputDevice.SOURCE_GAMEPAD) continue
+            val motors = if (android.os.Build.VERSION.SDK_INT >= 31) device.vibratorManager.vibratorIds.size else if (@Suppress("DEPRECATION") device.vibrator.hasVibrator()) 1 else 0
+            println("Controller on $model: ${device.name}, motors: $motors")
+        }
+        val end = System.currentTimeMillis() + minutes * 60_000L
+        var shotAt = 0L
+        while (System.currentTimeMillis() < end) {
+            if (System.currentTimeMillis() > shotAt) {
+                shot("p2-byhand-${(end - System.currentTimeMillis()) / 1000}-$model")
+                shotAt = System.currentTimeMillis() + 20_000
+            }
+            Thread.sleep(500)
+        }
+        println("Rumble available for the last controller used on $model: ${runCatching { app.platform.controllerRumble?.available() }.getOrNull()}")
+    }
+
+    /** A controller's button, sent by the system's input service as a gamepad's (`input gamepad keyevent`), as a paired pad's arrive. */
+    private fun pad(keyCode: Int) {
+        instrumentation.uiAutomation.executeShellCommand("input gamepad keyevent $keyCode").close()
+        Thread.sleep(700)
+    }
+
+    private fun prompts(): String = nodes().firstNotNullOfOrNull { node -> node.viewIdResourceName?.takeIf { it.startsWith("prompts:") } }.orEmpty()
+
+    @Test
+    fun onATelevisionAControllerBrowsesChoosesTypesAndHidesItsHints() {
+        // Phase 2 with a controller on a television (B-039, F-P2, B-053, B-023/B-054, B-055): gamepad buttons from the system.
+        org.junit.Assume.assumeTrue(television)
+        start()
+        until("Home with the film") { app.navigator.current == Destination.Home && says("Jungle Walk") }
+        pad(KeyEvent.KEYCODE_DPAD_DOWN)
+        until("a controller in hand") { app.input.controllerFamily != null && app.input.modality == dev.reflux.core.input.InputModality.DIRECTIONAL }
+        // Down to the film's card, A: its page, on Play; nothing plays; B back.
+        repeat(4) { if (focusedWords()?.contains("Jungle Walk") != true) pad(KeyEvent.KEYCODE_DPAD_DOWN) }
+        pad(KeyEvent.KEYCODE_BUTTON_A)
+        until("details") { app.navigator.current is Destination.Details }
+        until("Play focused", 8_000) {
+            val focused = nodes().firstOrNull { it.isFocused } ?: return@until false
+            val play = nodes().firstOrNull { it.isVisibleToUser && it.words() == "Play" }
+            play != null && focused.bounds().contains(play.bounds().centerX(), play.bounds().centerY())
+        }
+        kotlin.test.assertNull(app.playback)
+        shot("p2-pad-details-$model")
+        pad(KeyEvent.KEYCODE_BUTTON_B)
+        until("home") { app.navigator.current == Destination.Home }
+        // X does nothing while browsing (reserved); Y to the sidebar and back.
+        val before = app.navigator.current
+        pad(KeyEvent.KEYCODE_BUTTON_X)
+        kotlin.test.assertEquals(before, app.navigator.current, "X does nothing")
+        pad(KeyEvent.KEYCODE_BUTTON_Y)
+        Thread.sleep(500)
+        shot("p2-pad-sidebar-$model")
+        pad(KeyEvent.KEYCODE_BUTTON_Y)
+        Thread.sleep(500)
+        // The bumpers between destinations.
+        pad(KeyEvent.KEYCODE_BUTTON_R1)
+        until("Movies by RB") { app.navigator.current == Destination.Movies }
+        pad(KeyEvent.KEYCODE_BUTTON_L1)
+        until("Home by LB") { app.navigator.current == Destination.Home }
+        // LT hides the hints and shows them again.
+        pad(KeyEvent.KEYCODE_BUTTON_L2)
+        until("hints hidden") { app.hintsHidden }
+        shot("p2-pad-hints-hidden-$model")
+        pad(KeyEvent.KEYCODE_BUTTON_L2)
+        until("hints shown") { !app.hintsHidden }
+        // Search: A on the field opens the Reflux keyboard; A types, X erases, B closes it with the text kept.
+        instrumentation.runOnMainSync { app.go(Destination.Search) }
+        until("the field") { app.navigator.current == Destination.Search && app.textInputActive }
+        pad(KeyEvent.KEYCODE_BUTTON_A)
+        until("the Reflux keyboard") { app.keyboard != null }
+        val session = app.keyboard!!
+        for (letter in "jux") {
+            val (row, column) = session.rows.withIndex().firstNotNullOf { (r, keys) -> keys.indexOf(dev.reflux.ui.state.KeyboardKey.Type(letter.toString())).takeIf { it >= 0 }?.let { r to it } }
+            while (session.row != row) pad(if (session.row < row) KeyEvent.KEYCODE_DPAD_DOWN else KeyEvent.KEYCODE_DPAD_UP)
+            while (session.column != column) pad(if (session.column < column) KeyEvent.KEYCODE_DPAD_RIGHT else KeyEvent.KEYCODE_DPAD_LEFT)
+            pad(KeyEvent.KEYCODE_BUTTON_A)
+        }
+        until("typed") { app.searchQuery == "jux" }
+        pad(KeyEvent.KEYCODE_BUTTON_X)
+        until("erased") { app.searchQuery == "ju" }
+        shot("p2-pad-keyboard-$model")
+        until("found") { says("Jungle Walk") }
+        pad(KeyEvent.KEYCODE_BUTTON_B)
+        until("closed") { app.keyboard == null }
+        kotlin.test.assertEquals("ju", app.searchQuery)
+        val input = context.getSystemService(android.hardware.input.InputManager::class.java)
+        for (id in input.inputDeviceIds) {
+            val device = input.getInputDevice(id) ?: continue
+            if (device.sources and android.view.InputDevice.SOURCE_GAMEPAD != android.view.InputDevice.SOURCE_GAMEPAD) continue
+            @Suppress("DEPRECATION") println("Controller on $model: ${device.name}, vibrator: ${device.vibrator.hasVibrator()}")
+        }
     }
 }

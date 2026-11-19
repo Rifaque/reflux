@@ -161,7 +161,7 @@ class ScreensTest {
     @Test
     fun searchShowsHowTheQueryWasUnderstood() = screen(populated()) { app ->
         app.navigator.show(Destination.Search)
-        awaitText("90s movies")
+        awaitText("Quick finds")
         onNode(hasSetTextAction()).performTextInput("4k science fiction")
         awaitText("Science Fiction")
         awaitText("Blade Runner 2049")
@@ -262,7 +262,7 @@ class ScreensTest {
     @Test
     fun searchSuggestsAndAdmitsWhenNothingMatches() = screen(populated()) { app ->
         app.navigator.show(Destination.Search)
-        awaitText("90s movies")
+        awaitText("Quick finds")
         save("search-empty")
         onNode(hasSetTextAction()).performTextInput("zzzz")
         // B-037: a designed empty state, with what to do next.

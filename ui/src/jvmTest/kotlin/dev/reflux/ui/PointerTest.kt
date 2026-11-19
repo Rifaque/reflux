@@ -126,14 +126,15 @@ class PointerTest {
     @Test
     fun searchIsUsableWithAPointer() = screen(populated()) { app ->
         onNode(destination("Search")).mouseClick()
-        awaitText("90s movies")
-        onNodeWithText("90s movies").mouseClick()
+        // A genre of this library, by its tile (B-057).
+        awaitText("Crime")
+        onNodeWithText("Crime").mouseClick()
         awaitText("Heat")
-        assertEquals("90s movies", app.searchQuery)
+        assertEquals("crime", app.searchQuery)
         assertEquals(0, onAllNodesWithText("Dune").fetchSemanticsNodes().size)
 
         onNodeWithContentDescription("Clear search").mouseClick()
-        awaitText("90s movies")
+        awaitText("Quick finds")
         assertEquals("", app.searchQuery)
         onNode(hasSetTextAction()).performTextInput("villeneuve movies")
         awaitText("Arrival")
