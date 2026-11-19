@@ -99,15 +99,37 @@ fun Library.switchProfile(id: ProfileId) = database.transaction {
 /** The sources that are [id]'s own accounts: removed (and signed out of) with the profile. */
 fun Library.accountSourcesOf(id: ProfileId): List<SourceRecord> = queries.sourcesOfProfile(id.value).executeAsList().map { it.toModel() }
 
+/** What came of asking to delete a profile. */
+sealed interface ProfileDeletion {
+    /** It is gone, with everything that was its own. */
+    data object Deleted : ProfileDeletion
+
+    /** Nothing was deleted: it is the last profile, or there is no such profile. */
+    data object Kept : ProfileDeletion
+
+    /**
+     * Nothing was deleted: the profile has a PIN and [check] is what became of the one given (wrong, or the profile is
+     * waiting after too many wrong ones). A wrong PIN counts towards the wait exactly as it does when opening it.
+     */
+    data class Refused(val check: PinCheck) : ProfileDeletion
+}
+
 /**
  * Deletes a profile and everything that was its own: watch history, favorites, collections, pinned versions,
  * preferences, what its accounts' servers last said. Its accounts must have been removed first ([accountSourcesOf],
  * `SourceConnections.remove`), and its downloads ([downloadsOf a profile][profileDownloadIds]), so that the servers
  * are signed out of and the files are gone. The last profile cannot be deleted. Nothing of another profile changes.
+ *
+ * A profile with a PIN is deleted only with that profile's own PIN ([pin], checked with [key]): the check is made in
+ * the same transaction as the deletion, against the profile being deleted, with the counting and waiting of
+ * [checkPin]; there is no other way in. Being the open profile, or having confirmed, authorises nothing. (Forgetting
+ * a PIN is [resetProfile]'s, which erases what the PIN protected instead of revealing it.)
  */
-fun Library.deleteProfile(id: ProfileId) = database.transaction {
+fun Library.deleteProfile(id: ProfileId, pin: String?, key: PinKey?): ProfileDeletion = database.transactionWithResult {
     val all = queries.profiles().executeAsList()
-    if (all.size <= 1 || all.none { it.id == id.value }) return@transaction
+    if (all.size <= 1 || all.none { it.id == id.value }) return@transactionWithResult ProfileDeletion.Kept
+    val verdict = verifyPin(id, pin, key)
+    if (verdict != PinCheck.Accepted) return@transactionWithResult ProfileDeletion.Refused(verdict)
     check(queries.sourcesOfProfile(id.value).executeAsList().isEmpty()) { "a profile's accounts are removed before the profile" }
     if (all.single { it.id == id.value }.active != 0L) {
         val next = all.first { it.id != id.value }.id
@@ -126,6 +148,7 @@ fun Library.deleteProfile(id: ProfileId) = database.transaction {
     queries.clearSyncProfile(id.value)
     queries.deleteProfile(id.value)
     writer.recomputeLibraries()
+    ProfileDeletion.Deleted
 }
 
 /**
@@ -203,21 +226,29 @@ fun Library.removePin(id: ProfileId) = queries.setProfilePin(null, null, id.valu
  * [PinPolicy.FREE_ATTEMPTS] the profile waits ([PinPolicy.lockAfter]) and nothing is checked until it has.
  * A profile without a PIN accepts anything.
  */
-fun Library.checkPin(id: ProfileId, pin: String, key: PinKey): PinCheck = database.transactionWithResult {
-    val row = queries.profileById(id.value).executeAsOneOrNull() ?: return@transactionWithResult PinCheck.Rejected(null)
+fun Library.checkPin(id: ProfileId, pin: String, key: PinKey): PinCheck = database.transactionWithResult { verifyPin(id, pin, key) }
+
+/**
+ * [checkPin]'s rule, inside a transaction the caller holds: wrong entries counted and kept, a waiting profile not
+ * checked at all, a right one resetting the count. A profile without a PIN accepts anything; one with a PIN refuses a
+ * missing [pin] or a missing [key] (it cannot be checked, so it is not right), without counting that as a try.
+ */
+private fun Library.verifyPin(id: ProfileId, pin: String?, key: PinKey?): PinCheck {
+    val row = queries.profileById(id.value).executeAsOneOrNull() ?: return PinCheck.Rejected(null)
     val salt = row.pin_salt
     val expected = row.pin_verifier
-    if (salt == null || expected == null) return@transactionWithResult PinCheck.Accepted
+    if (salt == null || expected == null) return PinCheck.Accepted
     val now = now()
-    row.pin_locked_until?.takeIf { it > now }?.let { return@transactionWithResult PinCheck.Locked(it) }
+    row.pin_locked_until?.takeIf { it > now }?.let { return PinCheck.Locked(it) }
+    if (pin == null || key == null) return PinCheck.Rejected(null)
     if (PinPolicy.valid(pin) && PinPolicy.same(verifier(key, salt.fromHex(), pin), expected)) {
         queries.recordPinFailure(0, null, id.value)
-        return@transactionWithResult PinCheck.Accepted
+        return PinCheck.Accepted
     }
     val failures = row.pin_failures.toInt() + 1
     val lockedUntil = PinPolicy.lockAfter(failures)?.let { now + it }
     queries.recordPinFailure(failures.toLong(), lockedUntil, id.value)
-    PinCheck.Rejected(lockedUntil)
+    return PinCheck.Rejected(lockedUntil)
 }
 
 private fun verifier(key: PinKey, salt: ByteArray, pin: String): String = key.mac(salt + pin.encodeToByteArray()).toHex()

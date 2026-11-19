@@ -40,6 +40,8 @@ data class SourceRow(
     /** Where it is, as it would be typed, without any password. */
     val address: String?,
     val account: String?,
+    /** Every address of its server when it has more than one (B-003), most preferred first: the one in use is marked. */
+    val addresses: List<SourceAddress> = emptyList(),
     /** Made of libraries (a server's), whether or not they have been read yet. */
     val sectioned: Boolean = false,
     /** It answered, and no longer accepts Reflux's sign-in. */
@@ -72,7 +74,15 @@ data class SourceRow(
 @Immutable
 data class SourcesModel(val rows: List<SourceRow>, val canConnect: Boolean)
 
-internal fun Library.sourcesModel(connections: SourceConnections?): SourcesModel {
+/** One of a server's addresses, and whether Reflux reaches it there now. */
+@Immutable
+data class SourceAddress(val address: String, val inUse: Boolean)
+
+internal fun Library.sourcesModel(
+    connections: SourceConnections?,
+    /** The live adapter of a source, for which of its addresses is in use. */
+    adapters: (SourceId) -> dev.reflux.core.source.MediaSource? = { null },
+): SourcesModel {
     val now = currentTime()
     return SourcesModel(
         rows = userSources().map { record ->
@@ -97,6 +107,10 @@ internal fun Library.sourcesModel(connections: SourceConnections?): SourcesModel
                 },
                 address = info?.request?.address,
                 account = info?.request?.username,
+                addresses = connections?.addresses(record.id)?.takeIf { it.size > 1 }?.let { all ->
+                    val inUse = (adapters(record.id) as? dev.reflux.core.source.MultiAddressSource)?.addressHealth()?.firstOrNull { it.inUse }?.address
+                    all.map { SourceAddress(it, it == inUse) }
+                }.orEmpty(),
                 sectioned = connections?.sectioned(record.id) == true || inclusion?.libraries?.isNotEmpty() == true,
                 signInRequired = record.signInRequired,
                 included = record.included,

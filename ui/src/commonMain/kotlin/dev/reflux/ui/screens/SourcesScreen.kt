@@ -132,7 +132,7 @@ internal fun Heading(title: String, body: String?) {
 @Composable
 internal fun SourcesScreen(app: AppState) {
     val connections = app.platform.connections
-    val loaded by app.libraryState { sourcesModel(connections) }
+    val loaded by app.libraryState { sourcesModel(connections, app.sources) }
     val model = loaded ?: return
     val activity by app.activity.collectAsState()
     val metadataUnreachable by app.metadataUnreachable.collectAsState()
@@ -259,10 +259,28 @@ private fun SourceItem(app: AppState, row: SourceRow, expanded: Boolean, scannin
         }
         AnimatedVisibility(expanded, enter = fadeIn(Motion.controlsShow.tween()) + expandVertically(Motion.controlsShow.tween()), exit = fadeOut(Motion.controlsHide.tween()) + shrinkVertically(Motion.controlsHide.tween())) {
             Column(Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                val facts = listOfNotNull(row.address, row.account?.let { "Signed in as $it" }, row.updated)
+                val facts = listOfNotNull(row.address.takeIf { row.addresses.isEmpty() }, row.account?.let { "Signed in as $it" }, row.updated)
                 if (facts.isNotEmpty()) {
                     Column(Modifier.padding(start = 54.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                         facts.forEach { Text(it, style = LocalTypography.current.caption, color = RefluxColors.contentTertiary, maxLines = 1) }
+                    }
+                }
+                // One server reached at several addresses (B-003): each, the one in use said, and any but the last removable.
+                if (row.addresses.isNotEmpty() && !removing) {
+                    Column(Modifier.padding(start = 54.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text("Addresses", Modifier.heading(), style = LocalTypography.current.captionStrong, color = RefluxColors.contentSecondary)
+                        row.addresses.forEach { address ->
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    address.address + if (address.inUse) " · in use" else "",
+                                    Modifier.weight(1f, fill = false),
+                                    style = LocalTypography.current.caption,
+                                    color = RefluxColors.contentTertiary,
+                                    maxLines = 1,
+                                )
+                                Button("Remove", { app.removeSourceAddress(row.id, address.address) }, style = ButtonStyle.QUIET, name = "Remove the address ${address.address}")
+                            }
+                        }
                     }
                 }
                 val note = when {

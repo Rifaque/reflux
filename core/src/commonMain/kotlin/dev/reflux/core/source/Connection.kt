@@ -106,6 +106,25 @@ interface SourceConnector {
      * Throws when it could not be confirmed (unreachable, refused, an unexpected answer).
      */
     suspend fun signOut(config: String, keeping: String? = null): Boolean = false
+
+    /** Every address [config] reaches its server at, most preferred first: one, for most connections. */
+    fun addresses(config: String): List<String> = listOfNotNull(describe(config)?.address)
+
+    /**
+     * The one connection to keep when [established], a new sign-in, is to the account [existing] already connects
+     * to: by default the new one, replacing the old. A connector whose servers can be reached at several addresses
+     * keeps [existing]'s addresses with it, so that signing in at a second address adds it rather than losing the
+     * first (B-003). Never a second source: the account is one.
+     */
+    fun combine(existing: String, established: String): String = established
+
+    /** [config] reaching its server at every address but [address]; null when that would leave none, or it has one. */
+    fun withoutAddress(config: String, address: String): String? = null
+}
+
+/** A source reached at several addresses of one server (B-003): what is known of each, most preferred first. */
+interface MultiAddressSource {
+    fun addressHealth(): List<dev.reflux.core.net.EndpointHealth>
 }
 
 /** What a part of a source holds, in the user's terms. */

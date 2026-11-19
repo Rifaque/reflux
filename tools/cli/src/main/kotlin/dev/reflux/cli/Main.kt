@@ -47,6 +47,8 @@ Data lives in the platform data directory (override with REFLUX_HOME).
 Metadata needs a Trakt Client ID in REFLUX_TRAKT_CLIENT_ID."""
 
 fun main(args: Array<String>) {
+    // libmpv needs the numeric locale to be C (B-031; NumericLocale).
+    dev.reflux.playback.mpv.NumericLocale.prepareProcess()
     val command = args.firstOrNull() ?: run {
         println(USAGE)
         return

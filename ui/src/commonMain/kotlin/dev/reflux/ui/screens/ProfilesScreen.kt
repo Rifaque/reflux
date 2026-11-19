@@ -90,6 +90,14 @@ internal fun ProfilesScreen(app: AppState) {
     val phone = LocalLayout.current.navigation.let { it == dev.reflux.design.NavigationStyle.BOTTOM_BAR || it == dev.reflux.design.NavigationStyle.COMPACT_RAIL }
     var adding by remember { mutableStateOf(false) }
     var deleting by remember { mutableStateOf<Profile?>(null) }
+    var askingPin by remember { mutableStateOf(false) }
+    // Once the profile is gone, the question about it is too.
+    LaunchedEffect(app.profiles) {
+        if (deleting?.let { gone -> app.profiles.none { it.id == gone.id } } == true) {
+            deleting = null
+            askingPin = false
+        }
+    }
     Page {
         item(key = "heading") {
             Heading(
@@ -114,17 +122,21 @@ internal fun ProfilesScreen(app: AppState) {
         if (others.isNotEmpty()) {
             item(key = "delete") {
                 val confirming = deleting
+                val cancel = { deleting = null; askingPin = false; app.deletionRefused = null }
                 if (confirming == null) {
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         others.forEach { profile -> Button("Delete ${profile.name}…", { deleting = profile }, style = ButtonStyle.QUIET) }
                     }
+                } else if (askingPin) {
+                    // A profile with a PIN is deleted only with that PIN: confirming is not enough (docs/WATCH_STATE.md, "Profiles").
+                    DeletionPin(app, confirming, onCancel = cancel)
                 } else {
                     Confirm(
                         "Delete ${confirming.name}?",
                         "Its watch history, favorites, collections, and downloads go, and its server accounts are signed out of on this device. Your servers keep their own history.",
                         confirm = "Delete",
-                        onConfirm = { deleting = null; app.deleteProfile(confirming) },
-                        onCancel = { deleting = null },
+                        onConfirm = { if (confirming.hasPin) askingPin = true else { deleting = null; app.deleteProfile(confirming) } },
+                        onCancel = cancel,
                     )
                 }
             }
@@ -221,6 +233,28 @@ internal fun ProfileGateOverlay(app: AppState, gate: ProfileGate) {
                 is ProfileGate.Unlock -> if (gate.forgetting) ForgotPin(app, gate) else PinEntry(app, gate)
             }
         }
+    }
+}
+
+/** Asks for [profile]'s own PIN before it is deleted; a wrong one deletes nothing and counts as a try. */
+@Composable
+private fun DeletionPin(app: AppState, profile: Profile, onCancel: () -> Unit) {
+    val refused = app.deletionRefused?.takeIf { it.profile == profile.id }
+    var pin by remember(profile.id, refused?.attempt) { mutableStateOf("") }
+    Column(Modifier.fillMaxWidth().glass(MaterialRole.ELEVATED, Shapes.large).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text("Enter ${profile.name}'s PIN to delete it.", Modifier.heading(), style = LocalTypography.current.bodyStrong)
+        TextInput(
+            pin,
+            { typed -> pin = typed.filter(Char::isDigit).take(PinPolicy.LENGTH); if (pin.length == PinPolicy.LENGTH) app.deleteProfile(profile, pin) },
+            "PIN",
+            Modifier.widthIn(max = 260.dp).initialFocus(),
+            kind = InputKind.PIN,
+            last = true,
+            error = refused != null,
+            onDone = { if (pin.length == PinPolicy.LENGTH) app.deleteProfile(profile, pin) },
+        )
+        refused?.problem?.let { Text(it, Modifier.announces(it), color = RefluxColors.contentSecondary) }
+        Button("Cancel", onCancel, style = ButtonStyle.QUIET)
     }
 }
 

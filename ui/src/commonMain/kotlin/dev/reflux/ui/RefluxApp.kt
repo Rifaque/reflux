@@ -711,7 +711,9 @@ private fun BoxScope.CompactNavigation(app: AppState) {
     Row(Modifier.align(Alignment.TopStart).fillMaxWidth().padding(top = 12.dp).traversal(Traversal.BEFORE_PAGE), verticalAlignment = Alignment.CenterVertically) {
         if (navigator.current !is Destination.Section) IconButton(Icon.BACK, "Back", { navigator.back() }, size = 44.dp, glass = true)
         Spacer(Modifier.weight(1f))
-        ActivityIndicator(activity)
+        // The page's heading starts beside this row: the sign is the dot alone here, and on Search, whose field runs
+        // across this row, it steps aside as the profile entry does (B-005); Sources says it in full.
+        if (navigator.current != Destination.Search) ActivityIndicator(activity, compact = true)
         // Search has its field across the top; the utility area is a tap away from every other destination.
         if (navigator.current is Destination.Section && navigator.current != Destination.Search) ProfileButton(app)
     }
@@ -1044,7 +1046,8 @@ private fun PageBar(app: AppState, modifier: Modifier = Modifier) {
                 Modifier.padding(end = 14.dp),
             )
         }
-        ActivityIndicator(activity)
+        // A television's pages start inside this bar, under it: there the sign is the dot alone (B-005).
+        ActivityIndicator(activity, compact = layout.formFactor == FormFactor.TV)
     }
 }
 
@@ -1084,21 +1087,36 @@ private fun ProfileButton(app: AppState) {
 /** Where the user is shows as white against grey: the navigation never takes a color. */
 private fun tabColor(selected: Boolean): Color = if (selected) RefluxColors.contentPrimary else RefluxColors.contentSecondary
 
-/** A quiet sign that the library is being updated; it never blocks anything. */
+/**
+ * A quiet sign that the library is being updated; it never blocks anything, and never covers anything (B-005). Where
+ * the top of the page has a bar of its own for it (beside a rail or a sidebar) it says what is happening, in at most
+ * [ActivityLabelWidth]; where the page's own heading or search field starts beside it (a phone's top row, a
+ * television), it is the dot alone, in its fixed place, and says it to a screen reader. What each source is doing is
+ * said in full on Sources.
+ */
 @Composable
-private fun ActivityIndicator(activity: PipelineActivity) {
+private fun ActivityIndicator(activity: PipelineActivity, compact: Boolean = false) {
     AnimatedContent(
         targetState = activityLabel(activity),
         transitionSpec = { fadeIn(Motion.controlsShow.tween()) togetherWith fadeOut(Motion.controlsHide.tween()) },
     ) { label ->
         if (label != null) {
-            Row(Modifier.padding(end = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.size(6.dp).background(RefluxColors.contentSecondary, CircleShape))
-                Text(label, style = LocalTypography.current.caption, color = RefluxColors.contentSecondary, maxLines = 1)
+            if (compact) {
+                Box(Modifier.size(24.dp).semantics { contentDescription = label }, contentAlignment = Alignment.Center) {
+                    Box(Modifier.size(6.dp).background(RefluxColors.contentSecondary, CircleShape))
+                }
+            } else {
+                Row(Modifier.padding(end = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.size(6.dp).background(RefluxColors.contentSecondary, CircleShape))
+                    Text(label, Modifier.widthIn(max = ActivityLabelWidth), style = LocalTypography.current.caption, color = RefluxColors.contentSecondary, maxLines = 1)
+                }
             }
         }
     }
 }
+
+/** The most room the library's sign takes in a page's top bar: a long source name is cut short, never spread over the bar. */
+internal val ActivityLabelWidth = 260.dp
 
 /** What a page is called when it arrives, for a screen reader; a work's or a source's page says its own name. */
 private fun accessibleTitle(destination: Destination): String? = when (destination) {

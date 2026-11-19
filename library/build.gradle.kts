@@ -32,3 +32,8 @@ sqldelight {
         }
     }
 }
+
+// -Preflux.perf=true runs the performance fixtures (B-006; docs/VERIFICATION.md, "Phase 1"), which are skipped otherwise.
+tasks.withType<Test>().configureEach {
+    providers.gradleProperty("reflux.perf").orNull?.let { systemProperty("reflux.perf", it) }
+}

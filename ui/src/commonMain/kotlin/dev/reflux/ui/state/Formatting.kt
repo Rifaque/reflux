@@ -187,11 +187,20 @@ object Formatting {
     fun otherCut(version: MediaVersion): String =
         version.stream.durationMs?.takeIf { it >= 60_000 }?.let { "Another cut, ${runtime((it / 60_000).toInt())}" } ?: "Another cut"
 
-    /** What explains a copy's quality without being the reason to pick it: `HEVC · TrueHD 7.1 Atmos`. */
+    /**
+     * What explains a copy's quality without being the reason to pick it: `HEVC · 3840 × 1600 · TrueHD 7.1 Atmos`. The
+     * picture's exact size is the stream's (B-024), shown only when a probe or the source read it: a size guessed from a
+     * file name (`2160p`) is never presented as a measurement.
+     */
     fun versionTechnical(version: MediaVersion): List<String> {
         val quality = versionQuality(version)
-        return listOfNotNull(version.stream.video?.codec?.let(::videoCodec), version.stream.audio.firstOrNull()?.let(::audio)).filter { it !in quality }
+        val video = version.stream.video
+        val size = video?.takeIf { version.streamOrigin != dev.reflux.core.model.StreamInfoOrigin.FILENAME_HINTS }?.let { dimensions(it.width, it.height) }
+        return listOfNotNull(video?.codec?.let(::videoCodec), size, version.stream.audio.firstOrNull()?.let(::audio)).filter { it !in quality }
     }
+
+    /** `3840 × 2160`, when both are known. */
+    fun dimensions(width: Int?, height: Int?): String? = if (width != null && height != null && width > 0 && height > 0) "$width × $height" else null
 
     /** The quality badges shown on a details page: the best the library has, e.g. `4K`, `Dolby Vision`. */
     fun qualityBadges(versions: List<MediaVersion>): List<String> {

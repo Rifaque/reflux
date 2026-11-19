@@ -650,6 +650,19 @@ SELECT version.item_id, source.availability
 FROM version JOIN source ON source.id = version.source_id
 WHERE ((:source IS NULL AND version.included = 1) OR (version.visible = 1 AND version.library_source_id = :source AND (:section IS NULL OR version.library_section = :section)));
 
+-- As itemAvailability, for the works being shown only (B-006): every listing asked it for the whole library.
+itemAvailabilityOf:
+SELECT version.item_id, source.availability
+FROM version JOIN source ON source.id = version.source_id
+WHERE version.item_id IN :ids AND ((:source IS NULL AND version.included = 1) OR (version.visible = 1 AND version.library_source_id = :source AND (:section IS NULL OR version.library_section = :section)));
+
+-- The episodes of the shows being shown (a season's, through its show) that are in the scope, as presentPlayables
+-- finds them, for those shows only.
+presentEpisodesOfShows:
+SELECT item.id, item.show_id, item.season_id FROM item
+WHERE kind = 'EPISODE' AND show_id IN :shows
+  AND EXISTS (SELECT 1 FROM version WHERE version.item_id = item.id AND ((:source IS NULL AND version.included = 1) OR (version.visible = 1 AND version.library_source_id = :source AND (:section IS NULL OR version.library_section = :section))));
+
 lowConfidenceVersions:
 SELECT * FROM version WHERE confidence < ? AND visible = 1 ORDER BY source_id, path;
 

@@ -315,7 +315,10 @@ class SourceConnections(
         // A source the user already knows keeps the name it has; only how to reach it changes.
         val name = existing?.displayName ?: previous?.takeIf { it.type == source.descriptor.type }?.displayName ?: source.descriptor.displayName
         // Signing in again keeps the source's identity, and with it what the viewer included (the library's own state).
-        val config = established.config
+        // The same account signed in to at another of its server's addresses (at home, then through Tailscale) is the
+        // one connection reaching both: the connector combines them, and nothing of the first address is lost (B-003).
+        val kept = existing?.takeIf { replacing == null || replacing == id }?.let { runCatching { seal.open(it.id, it.config) }.getOrNull() }?.takeIf { it.isNotEmpty() }
+        val config = kept?.let { connector.combine(it, established.config) } ?: established.config
         // Kept securely or not at all: a connection is never written down in the open because the seal failed.
         val stored = try {
             seal.seal(id, config)
@@ -337,7 +340,9 @@ class SourceConnections(
         // shared. A server's own records are compared with its account's profile, or for a shared server the profile
         // that added it; a share keeps none.
         val endpoint = if (connector.kind == ConnectionKind.SERVER) {
-            runCatching { connector.describe(established.config) }.getOrNull()?.let { library.endpointFor(connector.type, it.address, name) }
+            // Every address is one another profile can sign in at without typing it; the source names its most preferred.
+            runCatching { connector.addresses(config) }.getOrDefault(emptyList()).drop(1).forEach { library.endpointFor(connector.type, it, name) }
+            runCatching { connector.describe(config) }.getOrNull()?.let { library.endpointFor(connector.type, it.address, name) }
         } else null
         val sync = when {
             source !is CatalogSource && source !is WatchStateSyncSource -> null
@@ -348,12 +353,49 @@ class SourceConnections(
             library.queries.setSourceOwnership(endpoint, profile.value.takeIf { account != null }, sync?.value, id.value)
             library.writer.recomputeLibraries()
         }
+        // A combined connection reaches more than the adapter just made knows of: it is made again from what is kept.
+        if (config != established.config) {
+            library.source(id)?.let(registry::reload)
+            // Where it is, by its most preferred address, not the one just signed in at.
+            registry.resolve(id)?.descriptor?.locality?.let { library.queries.updateSourceConnection(name, it.name, stored, id.value) }
+        }
         if (replacing != null && replacing != id) {
             library.removeSource(replacing)
             registry.unregister(replacing)
             forget(replacing)
         }
         return ConnectResult.Connected(id, name, updated = existing != null || previous != null) to signOut(replaced, keeping = config)
+    }
+
+    /** Every address [id] reaches its server at, most preferred first (B-003). */
+    fun addresses(id: SourceId): List<String> {
+        val record = library.source(id) ?: return emptyList()
+        val connector = connector(record.type) ?: return emptyList()
+        return runCatching { connector.addresses(seal.open(id, record.config)) }.getOrDefault(emptyList())
+    }
+
+    /**
+     * Stops reaching [id] at [address], keeping the source, its account, its library, and its other addresses
+     * (B-003). False when it has no other address to keep, or the connection could not be kept securely.
+     */
+    fun removeAddress(id: SourceId, address: String): Boolean {
+        val record = library.source(id) ?: return false
+        val connector = connector(record.type) ?: return false
+        val config = runCatching { seal.open(id, record.config) }.getOrNull() ?: return false
+        val fewer = connector.withoutAddress(config, address) ?: return false
+        val stored = try {
+            seal.seal(id, fewer)
+        } catch (e: Exception) {
+            report("Secure storage refused a ${record.type} source's connection with an address fewer", e)
+            return false
+        }
+        val primary = runCatching { connector.describe(fewer) }.getOrNull()?.let { library.endpointFor(connector.type, it.address, record.displayName) }
+        library.database.transaction {
+            library.queries.updateSourceConnection(record.displayName, record.locality.name, stored, id.value)
+            library.queries.setSourceOwnership(primary ?: record.endpointId, record.profileId?.value, library.syncProfileOf(id)?.value, id.value)
+        }
+        library.source(id)?.let(registry::reload)
+        return true
     }
 
     companion object {

@@ -61,6 +61,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -284,7 +285,12 @@ class MainActivity : ComponentActivity() {
             if (player != null) {
                 VideoStage(placement, Modifier.fillMaxSize()) {
                     Box(Modifier.fillMaxSize()) {
-                        VideoLayer(player, subtitles = presentation != PlayerPresentation.MINI, radius = placement.pictureRadius, onPicture = { pictureBounds = it })
+                        // A surface per engine: a new playback's picture starts on a surface of its own, never on the last
+                        // frame another engine left in a buffer (B-001). The same engine keeps its one surface across the full
+                        // player, the dock, and the system's window, as before.
+                        key(player) {
+                            VideoLayer(player, subtitles = presentation != PlayerPresentation.MINI, radius = placement.pictureRadius, onPicture = { pictureBounds = it })
+                        }
                         // In the dock, and on the way there and back, the picture is only the way back to the player.
                         if (session != null && presentation != PlayerPresentation.SYSTEM && !(presentation == PlayerPresentation.FULL && placement.full)) {
                             MiniPlayerSurface(app, session, silent = false)
@@ -497,6 +503,14 @@ private fun VideoLayer(player: Media3Player, subtitles: Boolean, radius: android
     // A buffer of the picture's own size, so that putting the surface in the dock and back is the compositor scaling it, not a
     // buffer made again (VERIFICATION.md, M10 probe P1: no jank counted under it, 95% of frames legacy-janky without).
     LaunchedEffect(view, size) { size?.let { (width, height) -> view?.holder?.setFixedSize(width, height) } }
+    // The engine is given the surface by what is shown, not by when the view happened to be made: this engine and this
+    // view, attached while both are here and let go when either leaves. Made in the view's factory alone, an engine that
+    // replaced another without a frame between them was never attached: its sound played over the last one's picture (B-001).
+    DisposableEffect(player, view) {
+        val surface = view
+        if (surface != null) player.attach(surface)
+        onDispose { if (surface != null) player.attach(null) }
+    }
     val radiusPx = with(androidx.compose.ui.platform.LocalDensity.current) { radius.toPx() }
     BoxWithConstraints(Modifier.fillMaxSize().clip(androidx.compose.foundation.shape.RoundedCornerShape(radius)).background(Color.Black), contentAlignment = Alignment.Center) {
         val container = maxWidth / maxHeight
@@ -508,7 +522,7 @@ private fun VideoLayer(player: Media3Player, subtitles: Boolean, radius: android
         val lift = maxHeight * clearance - (maxHeight - picture) / 2
         Box(Modifier.aspectRatio(shape, matchHeightConstraintsFirst = shape < container).onGloballyPositioned { onPicture(it.boundsInWindow()) }) {
             AndroidView(
-                factory = { context -> SurfaceView(context).also { surface -> view = surface; player.attach(surface) } },
+                factory = { context -> SurfaceView(context).also { surface -> view = surface } },
                 modifier = Modifier.fillMaxSize(),
                 // The picture says nothing to a screen reader, and the view holding it must not count as something over the
                 // dock's picture box, which is the stop that speaks and acts: a node covered by another is left out of what
@@ -518,10 +532,7 @@ private fun VideoLayer(player: Media3Player, subtitles: Boolean, radius: android
                     surface.importantForAccessibility = android.view.View.IMPORTANT_FOR_ACCESSIBILITY_NO
                     (surface.parent as? android.view.View)?.importantForAccessibility = android.view.View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS
                 },
-                onRelease = {
-                    view = null
-                    player.attach(null)
-                },
+                onRelease = { view = null },
             )
             // The dock's picture is too small to read lines on; they are on in the full player and in the system's window.
             if (subtitles) Subtitles(cues, textSize, lift)

@@ -4,6 +4,17 @@ What changes for people using Reflux, version by version. The rules for versions
 
 ## Unreleased
 
+- Deleting a profile that has a PIN now asks for that profile's PIN; confirming is no longer enough, and wrong PINs count towards the same wait as opening it. Profiles without a PIN are deleted as before.
+- On Android, starting another film right after one (from the mini-player, after closing, or after one ended) no longer leaves the last film's picture frozen on screen while the new one's sound plays.
+- On Linux, playback works whatever the system's numeric format: libmpv used to refuse to start under any format other than plain C, which most desktops (en_US.UTF-8 included) are not set to. The language and formats Reflux shows are unchanged.
+- On Linux without libmpv, Reflux tells you the exact command to install it for your distribution, including distributions built on an older Ubuntu or Debian (Linux Mint 21, Pop!_OS 22.04), which get the older package their base has.
+- Adding the same Jellyfin server again at another address (at home, then through Tailscale) keeps both: Reflux uses the home address when it answers, switches to the other when you are away, and comes back by itself. Your library, history, and sign-in stay as they are. Sources lists the addresses and lets you remove one. Signing in again at a new address for a server that moved adds that address too; remove the old one in Sources.
+- A favourite whose source was removed can be removed from Favorites on its page, without bringing the source back; a favourite you keep comes back with everything you watched if the film does.
+- A version's page no longer shows a resolution or HDR from its file name beside the one Reflux measured (as in "1440p · Dolby Vision · 2160p HDR"); a version's technical details give its exact picture size when it was measured.
+- The sign that Reflux is finding titles and details no longer covers a page's heading or the search field on phones and TVs; there it is a small dot, and its words are on Sources.
+- Search answers much faster in large libraries (about 18 times faster on 11,000 episodes and films on a desktop), and listings across Reflux read less of the library to show what is available.
+- On the desktop, a problem that repeats (an engine that will not start, asked for again and again) is written to the diagnostics log once and counted, instead of filling it.
+
 ## 0.9.0-beta.1 — 2026-11-16
 
 - On a tablet or a computer, each source in Sources has In your library and Refresh on its card, with a clearer arrow for opening it; opening it shows its libraries, Open, Sign in again or Change, and Remove. Phones and TVs work as before.

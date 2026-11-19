@@ -69,6 +69,8 @@ import java.awt.image.BufferedImage
 import javax.swing.SwingUtilities
 
 fun main() {
+    // Before any window, thread, or engine: libmpv needs the numeric locale to be C (B-031; NumericLocale).
+    dev.reflux.playback.mpv.NumericLocale.prepareProcess()
     val environment = try {
         DesktopEnvironment()
     } catch (e: dev.reflux.library.NewerLibraryException) {
@@ -113,6 +115,7 @@ internal fun runReflux(
     val platform = DesktopPlatform(environment)
     // Which build wrote what follows (docs/VERSIONING.md).
     environment.diagnostics.record("Reflux ${platform.build.label} started")
+    dev.reflux.playback.mpv.NumericLocale.adjustedFrom?.let { environment.diagnostics.record("The numeric locale was $it; it is C for libmpv (language and formats are unchanged)") }
     application(exitProcessOnExit = exitProcess) {
         // The last line of defence: a failure nobody handled is written down instead of ending the app.
         val scope = rememberCoroutineScope { CoroutineExceptionHandler { _, error -> platform.report("An unexpected error was not handled", error) } }
