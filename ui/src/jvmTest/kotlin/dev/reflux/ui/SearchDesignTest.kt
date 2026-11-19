@@ -22,7 +22,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /**
- * The redesigned Search (B-057): the idle page offers only what this library has; the scope switch is a filter that
+ * The redesigned Search (B-057, second design): the idle page offers only what this library has; the scope tabs are a filter that
  * narrows results, counts and the empty state alike; results come in sections by kind; recent searches are this
  * profile's and can be cleared; and the page is laid out for each kind of screen.
  */
@@ -34,7 +34,7 @@ class SearchDesignTest {
         awaitText("Recently Added")
         runOnIdle { app.go(Destination.Search) }
         await("search") { app.navigator.current == Destination.Search }
-        awaitText("Quick finds")
+        awaitText("Start with")
     }
 
     @Test
@@ -43,11 +43,11 @@ class SearchDesignTest {
         // Every quick find says how many titles it finds, and none finds nothing.
         val tiles = onAllNodes(hasTestTag("suggestion")).fetchSemanticsNodes()
         assertTrue(tiles.size >= 3, "quick finds shown: ${tiles.size}")
-        assertTrue(saysAnywhere("titles") || saysAnywhere("1 title"))
-        assertEquals(0, onAllNodesWithText("0 titles").fetchSemanticsNodes().size, "nothing offered that finds nothing")
+        // Each says how many it finds, quietly, and none finds nothing (B-057).
+        assertEquals(0, onAllNodesWithText("0").fetchSemanticsNodes().size, "nothing offered that finds nothing")
         // Nothing is anyone's favorite yet: no Favorites shortcut.
         assertEquals(0, onAllNodesWithText("Favorites").fetchSemanticsNodes().size)
-        // The library's own genres.
+        // The library's own genres, as an index of words.
         awaitText("Genres")
         assertTrue(onAllNodes(hasTestTag("genre")).fetchSemanticsNodes().isNotEmpty())
         // Choosing a quick find asks it.
@@ -75,7 +75,7 @@ class SearchDesignTest {
         await("movies") { app.searchScope == SearchScope.MOVIES }
         // The idle counts follow the scope too.
         onNode(hasSetTextAction()).performTextReplacement("")
-        awaitText("Quick finds")
+        awaitText("Start with")
         save("search-idle-movies")
     }
 
@@ -116,7 +116,7 @@ class SearchDesignTest {
         runOnIdle { app.onGamepadButton(GamepadButton.DPAD_DOWN, ControllerFamily.XBOX) }
         repeat(3) { runOnIdle { app.onGamepadButton(GamepadButton.SHOULDER_RIGHT, ControllerFamily.XBOX) } }
         await("the field") { app.navigator.current == Destination.Search && app.textInputActive }
-        awaitText("Quick finds")
+        awaitText("Start with")
         runOnIdle { app.onGamepadButton(GamepadButton.DPAD_DOWN, ControllerFamily.XBOX) }
         await("off the field") { !app.textInputActive }
         repeat(2) { runOnIdle { app.onGamepadButton(GamepadButton.DPAD_DOWN, ControllerFamily.XBOX) } }
@@ -142,7 +142,7 @@ class SearchDesignTest {
         screen(populated(), FakePlatform(television = true), width = 960, height = 540, density = 2f) { app ->
             awaitText("Recently Added")
             runOnIdle { app.go(Destination.Search) }
-            awaitText("Quick finds")
+            awaitText("Start with")
             save("search-idle-tv")
         }
     }
