@@ -1395,6 +1395,14 @@ M11 decided the open items of its plan (planning/M11-DISTRIBUTION-PLAN.md, secti
 - **1.0 communication.** "Planned for December 2026", depending on feedback, qualification, and store approval; 10 December is an internal readiness checkpoint and 15 December the release decision, never a promised release date. Each platform publishes through its own path.
 - **No Windows installer in the beta**: none exists or is tested, and building one would change the release; reconsidered for 1.0.
 
+## 2026-11-19 — A permanent bug tracker beside the phase plan
+
+**Decided by the owner (2026-11-19, the master tracker prompt).** [planning/BETA-BUG-TRACKER.md](planning/BETA-BUG-TRACKER.md) is the permanent, per-issue record of every Beta finding and every issue found since: the original report, reproduction, status, investigation, cause, implementation, tests, verification by kind, evidence, and what is left. [planning/BETA-2.md](planning/BETA-2.md) stays the authority for scope, phase and work order, dependencies, exit criteria, and the gate; the two link to each other and do not repeat each other.
+
+- **Eight status words** (Not Started, Investigating, In Progress, Fixed, Verified, Blocked, Deferred, Not Reproduced) replace the register's earlier list. Verification is reported by kind (automated, emulator, physical device, VM or container, regression, owner acceptance); an issue is Verified only when its acceptance criteria and the matrix's checks are met. B-001 therefore reads Fixed, not "Verified on physical device": its server-source case is untested.
+- **Maintained as the work happens:** code changed without its tracker entry updated is incomplete work. IDs are stable; new issues continue from B-043.
+- **Not decided by the tracker:** B-042's phase is pending the owner's approval (BETA-2.md had listed it in Phase 2; it no longer does); B-027's move from V1.1 into Phase 3 is to be confirmed before implementation; B-016, B-017, B-022, F-005, F-P1 and F-P2 stay unallocated. The tracker's owner-decision table holds each one's options and recommendation.
+
 ## 2026-11-19 — Beta 2: three phases, cut only after the last; the owner's defaults for haptics and statistics
 
 **Decided by the owner (2026-11-19).** The register, the phase plan, and the gate: [planning/BETA-2.md](planning/BETA-2.md).
