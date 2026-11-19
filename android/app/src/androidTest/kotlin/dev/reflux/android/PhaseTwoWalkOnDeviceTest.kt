@@ -167,6 +167,8 @@ class PhaseTwoWalkOnDeviceTest {
 
     @Test
     fun searchKeepsItsNavigationAndBackTellsTheKeyboardFromLeaving() {
+        // A handheld's walk (touch, the system keyboard, the device lock): a television has none of them.
+        org.junit.Assume.assumeFalse(television)
         start()
         until("Home") { app.navigator.current == Destination.Home && (says("Recently Added") || says("Continue Watching")) }
         instrumentation.runOnMainSync { app.go(Destination.Search) }
@@ -229,6 +231,8 @@ class PhaseTwoWalkOnDeviceTest {
 
     @Test
     fun aPullAtTheTopOfHomeFindsWhatWasAdded() {
+        // A handheld's walk (touch, the system keyboard, the device lock): a television has none of them.
+        org.junit.Assume.assumeFalse(television)
         start()
         until("Home") { app.navigator.current == Destination.Home && (says("Recently Added") || says("Continue Watching")) }
         File(directory, "Paterson Walk (2016)/Paterson.Walk.2016.mkv").also { it.parentFile.mkdirs() }
@@ -248,6 +252,8 @@ class PhaseTwoWalkOnDeviceTest {
 
     @Test
     fun forgotPinOffersTheDeviceLockAndCancellingChangesNothing() {
+        // A handheld's walk (touch, the system keyboard, the device lock): a television has none of them.
+        org.junit.Assume.assumeFalse(television)
         // Forgot PIN (DECISIONS.md, 2026-11-19): on a handheld with a screen lock, "Use device lock" opens the system's
         // own prompt; cancelled, nothing changes. A scratch profile, deleted afterwards with its PIN.
         val key = environment.pinKey
@@ -445,6 +451,14 @@ class PhaseTwoWalkOnDeviceTest {
         Thread.sleep(700)
     }
 
+    /** Whether what has focus is (or holds) the visible words [words]: by its words, or by its box holding theirs. */
+    private fun focusIsOn(words: String): Boolean {
+        val focused = nodes().firstOrNull { it.isFocused } ?: return false
+        if (focusedWords()?.contains(words) == true) return true
+        val target = nodes().filter { it.isVisibleToUser && it.words().contains(words) }
+        return target.any { focused.bounds().contains(it.bounds().centerX(), it.bounds().centerY()) }
+    }
+
     private fun prompts(): String = nodes().firstNotNullOfOrNull { node -> node.viewIdResourceName?.takeIf { it.startsWith("prompts:") } }.orEmpty()
 
     @Test
@@ -455,8 +469,10 @@ class PhaseTwoWalkOnDeviceTest {
         until("Home with the film") { app.navigator.current == Destination.Home && says("Jungle Walk") }
         pad(KeyEvent.KEYCODE_DPAD_DOWN)
         until("a controller in hand") { app.input.controllerFamily != null && app.input.modality == dev.reflux.core.input.InputModality.DIRECTIONAL }
-        // Down to the film's card, A: its page, on Play; nothing plays; B back.
-        repeat(4) { if (focusedWords()?.contains("Jungle Walk") != true) pad(KeyEvent.KEYCODE_DPAD_DOWN) }
+        // Down to the film's card (found by where it is: Fire OS leaves a focused card's node without words), A: its page, on
+        // Play; nothing plays; B back.
+        repeat(6) { if (!focusIsOn("Jungle Walk")) pad(KeyEvent.KEYCODE_DPAD_DOWN) }
+        assertTrue(focusIsOn("Jungle Walk"), "on the film's card")
         pad(KeyEvent.KEYCODE_BUTTON_A)
         until("details") { app.navigator.current is Destination.Details }
         until("Play focused", 8_000) {
