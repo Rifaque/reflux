@@ -50,7 +50,7 @@ Phases are implemented, tested, documented, and reviewed **in order**; none is s
 - Relevant documentation and decision records are updated.
 - The Phase 1 review is presented to the owner for acceptance before Phase 2 is considered complete.
 
-*State (2026-11-19):* exit criteria met, with the owner's own checks named (planning/PHASE-1-PLAN.md, "Stage G"); **awaiting the owner's acceptance**. Phase 2 does not start before it.
+*State (2026-11-19):* **accepted by the owner**, with the owner's own checks named (planning/PHASE-1-PLAN.md, "Stage G").
 
 ### Phase 2: controller, focus, interaction, input, and haptics
 
@@ -75,6 +75,14 @@ Phases are implemented, tested, documented, and reviewed **in order**; none is s
 18. **B-015** poster alignment: vertical alignment and clipping.
 19. **B-013** Home hero restoration: scroll and position restoration.
 
+**Added by the owner's Phase 2 brief (2026-11-19)**, numbered in the brief B-043 to B-046 and renumbered in the tracker because those IDs were taken (DECISIONS.md, 2026-11-19):
+- **B-046** redundant Profile button on Profiles;
+- **B-047** the unexplained dot beside the Profile button;
+- **B-048** pull-to-refresh on Home, Movies and Shows;
+- **B-049** authorised PIN removal.
+
+Also in Phase 2: **Forgot PIN** as the owner decided (Keep profile, Reset profile, and system authentication where available), and the **F-004** provider evaluation (no integration). Plan, audit and interaction contract: [PHASE-2-PLAN.md](PHASE-2-PLAN.md).
+
 **Exit criteria.**
 - Controller navigation is consistent across all applicable screens.
 - No controller focus traps or inaccessible primary actions remain in the audited flows.
@@ -87,6 +95,18 @@ Phases are implemented, tested, documented, and reviewed **in order**; none is s
 - B-042 is either assigned to Phase 2 with the owner's approval or stays explicitly unassigned; it is not quietly added.
 - Every assigned issue has tracker evidence and relevant regression coverage.
 - The Phase 2 review is presented to the owner for acceptance before Phase 3 is considered complete.
+
+*State (2026-11-19):* **implemented, awaiting the owner's review** (PHASE-2-PLAN.md; VERIFICATION.md, "Phase 2"). The exit criteria against the evidence:
+- **Controller navigation, focus traps, primary actions:** the shared contract is implemented and the audited flows are covered by tests. Physical-controller and Fire TV walks are still owed.
+- **Text input, and shortcuts kept out of it:** B-019 to B-021, B-023, B-011.
+- **Mapping:** documented and conflict-checked, with X reserved (INPUT_MODEL.md).
+- **Haptics defaults and safety:** F-001 and F-002, through one gateway, with a source scan.
+- **Mobile Search and the IME:** verified on the Phone 2a, physical.
+- **UI regressions:** tested across phone, tablet (emulator), desktop and TV (emulator).
+- **B-042:** still unassigned.
+- **Tracker evidence:** every assigned issue has it.
+
+Open: B-002's reproduction (needs the owner's machine free), physical controllers, Fire TV, the Pad 7 (its debug build's PIN), and the owner's acceptance.
 
 ### Phase 3: media experience, discovery, Trickplay, and final performance
 
@@ -101,6 +121,11 @@ Phases are implemented, tested, documented, and reviewed **in order**; none is s
 8. **B-014** featured hero: an intentional selection; alphabetical not kept as a default merely because it happens now.
 9. **B-041** final performance optimisation and comparison: repeated against Phase 1's baseline; evidence-based optimisation; regression thresholds; one issue with two checkpoints.
 10. **F-004** final analytics validation: architecture, schema, privacy, consent, transmission, withdrawal, retention, policy declarations; actual network behaviour validated and opt-out shown to prevent transmission.
+11. **F-P3** Media Quick View (owner's decision, 2026-11-19): a contextual popup for a focused movie or TV show.
+    - Opened by: the controller's **X** (reserved for it since Phase 2), a mouse's right-click, a touch long-press, a remote's Options/Menu, and a long press of OK/Select.
+    - With no media item focused, X has no media-context action.
+    - To reconcile here: Menu currently opens Sources while browsing.
+    - Not implemented in Phase 2.
 
 **Exit criteria.**
 - Every assigned media-experience feature is implemented and reviewed.
@@ -129,6 +154,7 @@ The tracker's [owner-decision table](BETA-BUG-TRACKER.md#unassigned-issues-and-u
 | **B-027** | "V1.1 candidate" in the findings document | **In Beta 2 Phase 3 by the owner's plan** ("Separate Jellyfin libraries: Included"; DECISIONS.md). The master tracker prompt asks that the change be confirmed before implementation: owner to confirm |
 | **F-005** | The findings document's F-005 is "Controller mapping customisation"; the master prompt used F-005 and F-006 for a collapsible sidebar and a Y-button sidebar toggle | IDs kept as the findings document has them; the sidebar items are registered as **F-P1** and **F-P2** until the owner numbers them. F-005 itself is in no phase (it overlaps B-039's "consider configurable mappings") |
 | **F-P1, F-P2** | Allocated to Phase 3 in the master prompt; absent from the updated phase list | Owner to confirm the phase |
+| **F-P3** | Media Quick View; the owner placed it in Phase 3 on 2026-11-19 | **Phase 3 (owner's decision).** Numbered F-P3 beside F-P1 and F-P2 until the owner numbers the proposals |
 
 ## Status words
 

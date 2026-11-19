@@ -4,7 +4,7 @@
 
 **Scope.** B-001 to B-042 and F-001 to F-005 (the owner's original findings), two registered sidebar proposals (F-P1, F-P2), and every issue found since (B-043 onward). Release gates, phase scope, phase order, and exit criteria are **not** here: they are in [BETA-2.md](BETA-2.md), which links back to this file. What each test run was, in full, is in [VERIFICATION.md](../VERIFICATION.md); decisions and their reasons are in [DECISIONS.md](../DECISIONS.md).
 
-**Last updated:** 2026-11-19, Phase 1 closeout walks (branch `open-source-gpl`, after commit `556887b`).
+**Last updated:** 2026-11-19, Phase 2 implementation (branch `open-source-gpl`, after commit `7dbade6`).
 
 ## Contents
 
@@ -54,30 +54,32 @@ As of 2026-11-19. Counts are reconciled against the code, the commits, and VERIF
 | Original feature findings (F-001 to F-005) | **5** |
 | Registered proposals outside the original findings (F-P1, F-P2) | 2 |
 | Newly discovered issues (B-043 to B-045) | 3 |
+| Findings added by the owner's Phase 2 brief (B-046 to B-049; the brief's B-043 to B-046, renumbered) | 4 |
+| Registered proposals for Phase 3 (F-P3 Media Quick View) | 1 |
 
 Status of the 47 original findings:
 
 | Status | Count | Issues |
 | --- | --- | --- |
-| Not Started | 35 | B-002, B-004, B-007 to B-017, B-019 to B-021, B-023, B-025, B-027 to B-030, B-032, B-034 to B-040, B-042; F-001, F-002, F-003, F-005 |
-| Investigating | 3 | B-006, B-022, B-041 |
-| In Progress | 1 | F-004 (Phase 1 foundation implemented; Phase 3 validation to come) |
-| Fixed | 5 | B-003, B-005, B-018, B-024, B-031 (each lacks a required check: see its entry) |
+| Not Started | 12 | B-014, B-016, B-017, B-027 to B-030, B-038, B-040, B-042; F-003, F-005 |
+| Investigating | 4 | B-002, B-006, B-022, B-041 |
+| In Progress | 1 | F-004 (Phase 1 foundation implemented; Phase 2 provider evaluation; Phase 3 validation to come) |
+| Fixed | 26 | Phase 1: B-003, B-005, B-018, B-024, B-031. Phase 2: B-004, B-007 to B-013, B-019 to B-021, B-023, B-025, B-032, B-034 to B-037, B-039; F-001, F-002 (each lacks a required check: see its entry) |
 | Verified | 2 | B-001, B-033 (owner acceptance still pending, as for every issue) |
 | Blocked | 0 | |
 | Deferred | 0 | |
-| Not Reproduced | 1 | B-026 |
+| Not Reproduced | 2 | B-015, B-026 |
 
-Newly discovered: B-043 Fixed; B-044 Investigating; B-045 Not Started. F-P1 and F-P2: Not Started.
+Newly discovered: B-043 Fixed; B-044 Investigating; B-045 Not Started. Added by the owner's Phase 2 brief: B-046, B-047, B-048, B-049 Fixed. F-P1, F-P2, F-P3: Not Started.
 
 | Phase | Items | Fixed | Investigating / In Progress | Not Reproduced | Not Started | Verified | Owner acceptance |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | **1** | 11 (9 bugs, F-004 foundation, B-041 baseline) | 5 | 3 (B-006, B-041, F-004) | 1 (B-026) | 0 | 2 | **Pending**: exit criteria met (BETA-2.md); the owner's own checks and acceptance remain |
-| **2** | 23 issues in 19 work-order steps | 0 | 0 | 0 | 23 | 0 | Not started |
+| **2** | 23 issues in 19 steps, and B-046 to B-049 | 25 (incl. B-046 to B-049; B-002 aside) | 1 (B-002) | 1 (B-015) | 0 | 0 | **Pending**: implemented and tested; device, controller and owner checks named in each entry |
 | **3** | 8 issues + 2 checkpoints (B-041 final, F-004 final) | 0 | 0 | 0 | 8 | 0 | Not started |
 | Unassigned / pending | B-016, B-017, B-022, B-042, F-005 (and F-P1, F-P2) | 0 | 1 (B-022, measured under B-041) | 0 | 6 | 0 | Owner decisions needed |
 
-**Phase 1 meets its exit criteria (BETA-2.md, Phase 1) and awaits the owner's acceptance** (2026-11-19 closeout walks: VERIFICATION.md, "Phase 1 closeout walks"; PHASE-1-PLAN.md, "Stage G"). What only the owner can do is listed there: a physical Linux desktop (B-031), a live Jellyfin server at two addresses (B-003), a real Jellyfin version list (B-024), a Fire TV walk (B-005), and the decisions on Forgot PIN and the statistics provider. Phase 2 has not started. Beta 2 is not cut.
+**Phase 1 was accepted by the owner (2026-11-19). Phase 2 is implemented and awaits the owner's review** (PHASE-2-PLAN.md; VERIFICATION.md, "Phase 2"). Its open items are named in each entry: B-002's reproduction, physical controllers, Fire TV, the Pad 7 and the owner's acceptance. Phase 3 has not started. Beta 2 is not cut.
 
 ## Phase overview
 
@@ -103,26 +105,31 @@ Scope, order, dependencies, exit criteria, and the gate: [BETA-2.md](BETA-2.md#t
 
 | # | Issue | Status |
 | --- | --- | --- |
-| 1 | [B-025](#b-025) Shared whole-app controller/focus architecture | Not Started |
-| 2 | [B-008](#b-008) Focus recovery after Home | Not Started |
-| 3 | [B-007](#b-007) See All and row navigation | Not Started |
-| 4 | [B-004](#b-004) Source configuration input | Not Started |
-| 5 | [B-019](#b-019), [B-020](#b-020), [B-021](#b-021) Backspace and shortcut handling | Not Started |
-| 6 | [B-023](#b-023) Reflux on-screen keyboard | Not Started |
-| 7 | [B-011](#b-011) Controller-only search | Not Started |
-| 8 | [B-039](#b-039), [B-012](#b-012) Controller mapping review | Not Started |
-| 9 | [F-002](#f-002) Controller rumble | Not Started |
-| 10 | [F-001](#f-001) Interface haptics | Not Started |
-| 11 | [B-036](#b-036) Mobile search/keyboard navigation | Not Started |
-| 12 | [B-034](#b-034) Mobile search placeholder | Not Started |
-| 13 | [B-035](#b-035) Mobile search chips | Not Started |
-| 14 | [B-037](#b-037) Search empty state | Not Started |
-| 15 | [B-010](#b-010) Search suggestion focus/clipping | Not Started |
-| 16 | [B-009](#b-009), [B-032](#b-032) Focus outlines and poster indicators | Not Started |
-| 17 | [B-002](#b-002) Multi-monitor playback controls | Not Started |
-| 18 | [B-015](#b-015) Poster alignment | Not Started |
-| 19 | [B-013](#b-013) Home hero restoration | Not Started |
-| — | [B-042](#b-042) Controller focus and mouse hover conflict | **Pending owner approval** (recommended here, beside B-025); not in the phase until approved |
+| 1 | [B-025](#b-025) Shared whole-app controller/focus architecture | Fixed |
+| 2 | [B-008](#b-008) Focus recovery after Home | Fixed |
+| 3 | [B-007](#b-007) See All and row navigation | Fixed |
+| 4 | [B-004](#b-004) Source configuration input | Fixed (TV emulator walked; Fire TV pending) |
+| 5 | [B-019](#b-019), [B-020](#b-020), [B-021](#b-021) Backspace and shortcut handling | Fixed |
+| 6 | [B-023](#b-023) Reflux on-screen keyboard | Fixed (TV emulator walked) |
+| 7 | [B-011](#b-011) Controller-only search | Fixed |
+| 8 | [B-039](#b-039), [B-012](#b-012) Controller mapping review | Fixed (X reserved for Phase 3's Quick View) |
+| 9 | [F-002](#f-002) Controller rumble | Fixed (physical controller pending) |
+| 10 | [F-001](#f-001) Interface haptics | Fixed (felt on a device pending) |
+| 11 | [B-036](#b-036) Mobile search/keyboard navigation | Fixed (Phone 2a walked; tablet emulator) |
+| 12 | [B-034](#b-034) Mobile search placeholder | Fixed (Phone 2a walked) |
+| 13 | [B-035](#b-035) Mobile search chips | Fixed (Phone 2a walked) |
+| 14 | [B-037](#b-037) Search empty state | Fixed (Phone 2a and TV emulator) |
+| 15 | [B-010](#b-010) Search suggestion focus/clipping | Fixed |
+| 16 | [B-009](#b-009), [B-032](#b-032) Focus outlines and poster indicators | Fixed |
+| 17 | [B-002](#b-002) Multi-monitor playback controls | Investigating (reproduction stopped; owner session needed) |
+| 18 | [B-015](#b-015) Poster alignment | Not Reproduced |
+| 19 | [B-013](#b-013) Home hero restoration | Fixed |
+| + | [B-046](#b-046) Redundant Profile button on Profiles | Fixed (Phone 2a walked) |
+| + | [B-047](#b-047) Unexplained dot beside the Profile button | Fixed (marks made meaningful; owner to confirm which dot) |
+| + | [B-048](#b-048) Pull-to-refresh | Fixed (Phone 2a walked; tablet emulator) |
+| + | [B-049](#b-049) Authorised PIN removal | Fixed |
+| + | Forgot PIN (owner's decision) | Implemented (Android system authentication; Keep/Reset elsewhere) |
+| — | [B-042](#b-042) Controller focus and mouse hover conflict | **Pending owner approval** (recommended here, beside B-025); not in the phase until approved. Its cause is recorded in B-025's entry |
 
 **Phase 3: media experience, discovery, Trickplay, and final performance**
 
@@ -138,6 +145,7 @@ Scope, order, dependencies, exit criteria, and the gate: [BETA-2.md](BETA-2.md#t
 | 8 | [B-014](#b-014) Featured hero | Not Started |
 | 9 | [B-041](#b-041) Final performance optimisation and comparison | Not Started (final checkpoint) |
 | 10 | [F-004](#f-004) Final analytics validation | Not Started (final checkpoint) |
+| 11 | [F-P3](#f-p3) Media Quick View (X reserved) | Not Started (owner's Phase 3 requirement, 2026-11-19) |
 
 **Unassigned or pending:** [B-016](#b-016), [B-017](#b-017), [B-022](#b-022), [B-042](#b-042), [F-005](#f-005), [F-P1 and F-P2](#f-p1-and-f-p2). See [owner decisions](#unassigned-issues-and-unresolved-owner-decisions).
 
@@ -183,7 +191,7 @@ Each entry: the header facts, the original report (the master tracker prompt's t
 
 - **Category:** Bug (desktop UI/playback) · **Priority:** Medium · **Platforms:** W
 - **Components (likely):** `desktop:app` window handling; `ui` (`PlayerControls`, `PlayerOverlay`, `MiniPlayer`, `VideoStage`); the libmpv video surface (`playback:mpv`)
-- **Phase:** 2, step 17 · **Status:** Not Started · **Last updated:** 2026-11-19
+- **Phase:** 2, step 17 · **Status:** Investigating (a two-monitor reproduction was started and stopped: see below) · **Last updated:** 2026-11-19
 - **Related:** B-025 (shared layout and focus); B-041 (window sizes and densities)
 
 **Original description.** Playback controls become mispositioned, disappear, or render incorrectly when the application window is moved between monitors. Mini-player expansion can reproduce or contribute to the issue. *Investigate:* monitor DPI, display scaling, Compose layout sizing, window changes, player surface dimensions, overlays, and mini-player transitions. *Expected:* playback controls and player UI remain correctly positioned and functional across monitor changes and display scaling configurations.
@@ -200,12 +208,18 @@ Each entry: the header facts, the original report (the master tracker prompt's t
 
 **Work record**
 
-- **Investigation findings / root cause:** none yet; not established.
-- **Implementation / tests:** none.
-- **Automated / physical / regression verification:** none.
-- **Evidence:** the tester's report only.
-- **Outstanding work:** everything. Reproducing it needs a two-monitor Windows setup, ideally with different scaling (to arrange with the owner).
-
+- **Environment found:** the owner's Windows machine has two monitors at different scaling (125% and 150%: `GetDpiForWindow` 120 and 144).
+- **Code:** the player's controls are a separate transparent `ComposeDialog` owned by the main window (`VideoOverlay`), placed over the video's `Canvas` by `setBounds` from the anchor's `locationOnScreen` on every move, resize, show and hide of the window or its ancestors.
+- **Reproduction attempt (2026-11-19):** a script played a film in the packaged app and moved the window between the monitors with `SetWindowPos`.
+  - **Stopped** after one run: it found the owner was using the machine, and its keystrokes to start playback went to the foreground window instead.
+  - Its window measurements stand: the main window went 1280 × 800 → 1536 × 960 on the 150% monitor → 1067 × 667 back on the 125% one. The window does not come back to its size, so per-monitor DPI handling is in play.
+  - The controls window was not visible in any reading, because playback had not started.
+  - The screenshots were deleted (they showed the owner's screens).
+- **Hypotheses, not yet confirmed:**
+  - the owned dialog keeps the old monitor's `GraphicsConfiguration` and scale after the owner changes screens, so its user-space bounds map to the wrong device pixels;
+  - its Compose layer keeps the old density.
+- **Candidate fix, not applied before a reproduction:** recreate the overlay dialog when the owner's `graphicsConfiguration` changes, and align it again once the move settles.
+- **Outstanding:** a reproduction with the owner's agreement that the machine is free (the script is ready: it moves the window four times and records both windows' physical bounds and DPI); then the fix and its walk. Owner acceptance.
 <a id="b-003"></a>
 ### B-003: Multiple Jellyfin addresses overwrite each other
 
@@ -243,7 +257,7 @@ Each entry: the header facts, the original report (the master tracker prompt's t
 
 - **Category:** Bug (controller/input UX) · **Priority:** Medium · **Platforms:** TV (controller)
 - **Components (likely):** `ui` (`SourcesScreen`, `TextInput`, `Focus`); `android:app` (input method)
-- **Phase:** 2, step 4 · **Status:** Not Started · **Last updated:** 2026-11-19
+- **Phase:** 2, step 4 · **Status:** Fixed (automated; TV emulator walk below) · **Last updated:** 2026-11-19
 - **Related:** B-023, B-025, B-011, B-019 to B-021
 
 **Original description.** Address entry and source configuration using a controller is unreliable. The address field can lose its keyboard, and pressing A may not reliably reopen it. Navigation behaviour is inconsistent. *Expected:* all source configuration actions must be accessible and predictable with a controller, including focusing fields, opening text input, entering/editing an address, and completing configuration. *Investigate:* focus management, text input lifecycle, controller action dispatch, and keyboard interactions.
@@ -260,10 +274,14 @@ Each entry: the header facts, the original report (the master tracker prompt's t
 
 **Work record**
 
-- **Investigation findings / root cause / implementation / tests / verification:** none yet.
-- **Evidence:** the tester's report only.
-- **Outstanding work:** everything; builds on B-025's shared architecture and uses B-023's keyboard where that is the chosen input.
-
+- **Cause:**
+  - On a television, `keyboardByRemote` hid the system keyboard while focus arrived and asked for it on OK's release. A keyboard that dismissed itself (its own Next, Back, Fire TV's quirks) left OK depending on the field still having focus and the IME answering `show()`.
+  - On a desktop or a tablet with a controller, confirm on a field did nothing: a field was not a focused control.
+- **Fix:**
+  - With a controller or a remote, every field uses the Reflux keyboard (B-023) on every form factor, television included, and the system keyboard is kept away under directional input.
+  - OK (on release) or confirm opens it; B or Back closes it with the text kept; Done goes on to the next field, or connects from the last (`SourcesScreen`'s `onDone`).
+- **Tests:** `KeyboardTest.aRemoteOpensTheRefluxKeyboardWhenOkIsLetGoAndNeverTheSystems`; `InteractionContractTest.aRemoteOpensTheRefluxKeyboardOnATelevisionAndBackPutsItAway`.
+- **Outstanding:** Fire TV (physical; not connected); owner acceptance.
 <a id="b-005"></a>
 ### B-005: Scan status toast overlaps interface
 
@@ -334,7 +352,7 @@ Each entry: the header facts, the original report (the master tracker prompt's t
 
 - **Category:** Bug (controller navigation) · **Priority:** Medium · **Platforms:** W (controller); TV relevance to assess
 - **Components (likely):** `ui` (`HomeScreen`, `Focus`)
-- **Phase:** 2, step 3 · **Status:** Not Started · **Last updated:** 2026-11-19
+- **Phase:** 2, step 3 · **Status:** Fixed (automated) · **Last updated:** 2026-11-19
 - **Related:** B-025, B-008, B-013
 
 **Original description.** Home navigation can skip or mishandle "See All" controls. Focus and row-boundary navigation can be inconsistent. *Expected:* predictable focus order across cards, rows, section actions, and adjacent content using D-pad navigation.
@@ -351,16 +369,21 @@ Each entry: the header facts, the original report (the master tracker prompt's t
 
 **Work record**
 
-- **Investigation findings / root cause / implementation / tests / verification:** none yet.
-- **Evidence:** the tester's report only.
-- **Outstanding work:** everything, on B-025's architecture.
-
+- **Cause:** See all sat at the right of each row's title, and Compose's beam search governs vertical movement. Moving down card to card never stops on it ("skipped"). Down from See all finds the next row's See all, straight below and nearer than any card.
+- **Decision (documented in INPUT_MODEL.md):** See all belongs to its row.
+  - Up from any of a row's cards is its See all.
+  - Down from See all is back into that row, to the card focus was last on, or the first in view (decided when Down is pressed).
+  - Moving down card by card is unchanged.
+  - Rows without See all are unchanged.
+- **Implementation:** `HomeScreen.RowSection` (`focusProperties` on each card's `up` and on See all's `down`; per-card requesters; no `focusRestorer`, which broke the rail's way back in).
+- **Tests:** `HomeFocusTest.seeAllBelongsToItsRow`; `TelevisionTest.theRemoteMovesARowAtATimeAndComesBackToWhereItWas`, updated to the new order (Up from a row's card stops at its See all first).
+- **Outstanding:** controller walks on Windows and TV; owner acceptance.
 <a id="b-008"></a>
 ### B-008: Returning Home leaves controller navigation stuck
 
 - **Category:** Bug (controller navigation) · **Priority:** Medium · **Platforms:** W (controller)
 - **Components (likely):** `ui` (`HomeScreen`, `Navigator`, `Focus`, lazy-list state)
-- **Phase:** 2, step 2 · **Status:** Not Started · **Last updated:** 2026-11-19
+- **Phase:** 2, step 2 · **Status:** Fixed (automated; root causes reproduced) · **Last updated:** 2026-11-19
 - **Related:** B-025, B-007, B-013
 
 **Original description.** Navigating Home → Movies → Home can leave focus, navigation, or scroll restoration in an unusable state. *Expected:* returning Home restores a valid, usable focus target and appropriate scroll state; navigation must not become stuck or lose focus.
@@ -377,16 +400,20 @@ Each entry: the header facts, the original report (the master tracker prompt's t
 
 **Work record**
 
-- **Investigation findings / root cause / implementation / tests / verification:** none yet.
-- **Evidence:** the tester's report only.
-- **Outstanding work:** everything, on B-025's architecture.
-
+- **Reproduced (`HomeFocusTest`):** two causes, both found by the tests before the fix.
+  1. Home → Movies → Home by the rail, then Right, landed on the hero's Play rather than the card that was left. The page remembered only an item that had been *opened* (`rememberFocusReturn`), and `RailFocus.enterPage` held a requester of the page that had gone.
+  2. After a quick round trip by the bumpers, Right arrived before Home had been read again and had anything to focus. Nothing had focus, so the toolkit's search took the nearest control, the rail's Home. This is the reported "sometimes" (`DEBUGFOCUS` trace: `hasFocus=false`, `inChrome=false`).
+- **Fix:**
+  1. The item with focus is remembered as the one to come back to, whatever way the page is left, and is not pulled into focus while focus is on the navigation.
+  2. A press while nothing has focus and the page has nothing yet waits up to 30 frames for the page's start, then falls back to the toolkit.
+- **Tests:** `HomeFocusTest.homeToMoviesToHomeByTheRailLeavesRightIntoTheContent`, `everyRoundTripFromHomeComesBackUsable` (Movies, Shows, Search, Settings, Profiles, repeated; four bumper round trips), `aDetailsPageAndBackReturnsToTheCardItWasOpenedFrom`.
+- **Outstanding:** controller walks on Windows and TV; owner acceptance.
 <a id="b-009"></a>
 ### B-009: Focus outline obscures titles
 
 - **Category:** Bug (UI/accessibility) · **Priority:** Medium · **Platforms:** W, F, TV (findings: more severe on Windows, smaller on Fire TV)
 - **Components (likely):** `ui` (`Artwork` cards, `Focus`); `design` (scale)
-- **Phase:** 2, step 16 (with B-032) · **Status:** Not Started · **Last updated:** 2026-11-19
+- **Phase:** 2, step 16 (with B-032) · **Status:** Fixed (automated) · **Last updated:** 2026-11-19
 - **Related:** B-032, B-042, B-015
 
 **Original description.** Controller focus outlines can obscure poster/title text or other content. *Expected:* focus indicators must remain visually clear without obstructing important information, appropriate across layouts, screen densities, and TV distances.
@@ -403,16 +430,19 @@ Each entry: the header facts, the original report (the master tracker prompt's t
 
 **Work record**
 
-- **Investigation findings / root cause / implementation / tests / verification:** none yet.
-- **Evidence:** the tester's screenshots (not in the repository).
-- **Outstanding work:** everything.
-
+- **Cause (measured from the code):** a controller's poster is 193 × 290 dp and lifts by 8%, about 11.6 dp on every side. Its ring reaches 6 dp more and its glow 12 dp more. The title started 8 dp below the unscaled poster, and the row's top padding was 14 dp under the section's title.
+- **Fix:**
+  - While a poster is lifted its words step down with it, by exactly the lift's reach plus the ring's (`liftReach`, animated with the lift), so they never pass under the ring.
+  - A row leaves room above its cards for the same reach.
+  - Nothing else in the row moves.
+- **Tests:** `CardLayoutTest.aFocusedCardsRingNeverCrossesItsTitleOrTheRowsTitle` (1440 × 900, 1024 × 768, 960 × 540 television: three focused cards each, the ring against the card's own words and the row's title).
+- **Outstanding:** looking at it on Windows, Fire TV and TV with the owner's library; owner acceptance.
 <a id="b-010"></a>
 ### B-010: Search suggestion focus spacing/clipping
 
 - **Category:** Bug (controller UI) · **Priority:** Medium · **Platforms:** W (controller)
 - **Components (likely):** `ui` (Search's suggestion chips)
-- **Phase:** 2, step 15 · **Status:** Not Started · **Last updated:** 2026-11-19
+- **Phase:** 2, step 15 · **Status:** Fixed (automated) · **Last updated:** 2026-11-19
 - **Related:** B-011, B-035, B-025
 
 **Original description.** Search suggestion focus behaviour and spacing are inconsistent; suggestions can be clipped or poorly positioned. *Expected:* search suggestions should be visible, correctly spaced, unclipped, and navigable through controller focus.
@@ -429,16 +459,18 @@ Each entry: the header facts, the original report (the master tracker prompt's t
 
 **Work record**
 
-- **Investigation findings / root cause / implementation / tests / verification:** none yet.
-- **Evidence:** the tester's report only.
-- **Outstanding work:** everything; coordinate with B-035 (the mobile chips).
-
+- **Cause:**
+  - Chips were 8 dp apart while a ring reaches 6 dp beyond its control, so a focused chip's ring met its neighbour.
+  - The chips were inside the grid's padded header, so the last one ended at the page's margin, cut off.
+- **Fix:** 12 dp apart, no lift, and a `LazyRow` with focus scrolling inside the window's edges (`FocusScrollInsets`) and room for the ring above and below.
+- **Tests:** `CardLayoutTest.suggestionChipsKeepTheirRingsApartAndScrollWholeIntoView` (1440 and 412 wide: every chip focused in turn is whole on screen, and every pair is at least 12 dp apart).
+- **Outstanding:** a controller walk on Windows; owner acceptance.
 <a id="b-011"></a>
 ### B-011: Controller-only search lacks usable keyboard
 
 - **Category:** Bug (input/UX) · **Priority:** Medium · **Platforms:** W (controller), TV relevance
 - **Components (likely):** `ui` (Search, `TextInput`, `Focus`)
-- **Phase:** 2, step 7 · **Status:** Not Started · **Last updated:** 2026-11-19
+- **Phase:** 2, step 7 · **Status:** Fixed (automated) · **Last updated:** 2026-11-19
 - **Related:** B-023, B-025, B-004, B-010
 
 **Original description.** Search is not reliably usable when operated exclusively by a controller. *Expected:* a controller user must be able to open search, focus the field, enter text, navigate suggestions/results, and finish the interaction without requiring a mouse or touch.
@@ -455,16 +487,16 @@ Each entry: the header facts, the original report (the master tracker prompt's t
 
 **Work record**
 
-- **Investigation findings / root cause / implementation / tests / verification:** none yet.
-- **Evidence:** the tester's report only.
-- **Outstanding work:** everything; depends on B-023 (keyboard) and B-025.
-
+- **Cause:** as B-023. On Windows with a controller alone there was no way to type: confirm on the field did nothing, and no keyboard was offered.
+- **Fix:** the Reflux keyboard. Done (Start) goes on to the results (Search's `onDone` moves focus down). The query lives in `AppState`, so it survives opening a result and coming back.
+- **Tests:** `InteractionContractTest.searchIsUsableWithAControllerAlone`: Search reached by the bumpers, the field, the keyboard, "heat" typed by moving to each key, Start into the results, a result opened, Back to Search, the query kept.
+- **Outstanding:** walks on Windows (physical controller), the Google TV emulator, Fire TV; owner acceptance.
 <a id="b-012"></a>
 ### B-012: Controller shortcuts incomplete or unclear
 
 - **Category:** Product decision / UX investigation · **Priority:** Low · **Platforms:** W (controller)
 - **Components (likely):** `ui` (input handling, `Controls`); docs/INPUT_MODEL.md
-- **Phase:** 2, step 8 (with B-039) · **Status:** Not Started · **Last updated:** 2026-11-19
+- **Phase:** 2, step 8 (with B-039) · **Status:** Fixed (with B-039) · **Last updated:** 2026-11-19
 - **Related:** B-039 (the mapping design), F-005 (customisation), F-P2 (Y and the sidebar)
 
 **Original description.** Existing controller shortcuts are incomplete or not clearly assigned. Y currently opens Sources, X has no useful action, and other buttons/triggers appear unused. *Expected:* establish a consistent, intentional controller mapping; document it and expose useful hints where appropriate; do not assign controls without checking for conflicts with existing behaviour.
@@ -481,16 +513,18 @@ Each entry: the header facts, the original report (the master tracker prompt's t
 
 **Work record**
 
-- **Investigation findings / root cause / implementation / tests / verification:** none yet.
-- **Evidence:** the tester's report only.
-- **Outstanding work:** everything, together with B-039.
-
+- **Resolved with B-039:**
+  - Y opens Sources and is now named in the hints.
+  - X is deliberately reserved (Phase 3's Quick View), not forgotten.
+  - The triggers have no browsing meaning, by decision.
+  - The mapping is documented in INPUT_MODEL.md.
+- **Outstanding:** as B-039.
 <a id="b-013"></a>
 ### B-013: Home hero position is not restored after scrolling
 
 - **Category:** Bug (navigation UX) · **Priority:** Medium · **Platforms:** W (controller)
 - **Components (likely):** `ui` (`HomeScreen` hero and scroll state)
-- **Phase:** 2, step 19 · **Status:** Not Started · **Last updated:** 2026-11-19
+- **Phase:** 2, step 19 · **Status:** Fixed (automated) · **Last updated:** 2026-11-19
 - **Related:** B-008, B-007, B-014
 
 **Original description.** Home hero content is not restored to its expected full position after navigating or scrolling. *Expected:* hero and Home layout restoration should be consistent and predictable.
@@ -507,10 +541,10 @@ Each entry: the header facts, the original report (the master tracker prompt's t
 
 **Work record**
 
-- **Investigation findings / root cause / implementation / tests / verification:** none yet.
-- **Evidence:** the tester's report only.
-- **Outstanding work:** everything.
-
+- **Cause:** on a desktop, a phone and a tablet, focus moving back up to the hero brought only its focused button into view (`BringIntoViewSpec`), leaving the page scrolled to just above it: only Play and Details showed. A television already moved a row at a time to the hero's top.
+- **Fix:** when focus comes back into the hero, Home scrolls to its very top (`moveToItem(0, 0)`, at once with motion reduced).
+- **Tests:** `HomeFocusTest.comingBackUpToTheHeroShowsAllOfIt` (scrolled five rows down; back up, the hero's heading is where it was at the start).
+- **Outstanding:** walks on Windows and TV; owner acceptance.
 <a id="b-014"></a>
 ### B-014: Featured hero appears alphabetically selected
 
@@ -544,7 +578,7 @@ Each entry: the header facts, the original report (the master tracker prompt's t
 
 - **Category:** Bug (UI) · **Priority:** Low · **Platforms:** W (desktop)
 - **Components (likely):** `ui` (`Artwork` cards, rows)
-- **Phase:** 2, step 18 · **Status:** Not Started · **Last updated:** 2026-11-19
+- **Phase:** 2, step 18 · **Status:** Not Reproduced (layout test green; a likely cause recorded) · **Last updated:** 2026-11-19
 - **Related:** B-009, B-042
 
 **Original description.** Posters can appear vertically misaligned or clipped. *Expected:* poster cards and artwork should align consistently within their rows and containers.
@@ -561,10 +595,11 @@ Each entry: the header facts, the original report (the master tracker prompt's t
 
 **Work record**
 
-- **Investigation findings / root cause / implementation / tests / verification:** none yet.
-- **Evidence:** the tester's screenshots (not in the repository).
-- **Outstanding work:** everything.
-
+- **Investigation:** `CardLayoutTest.cardsInARowShareTheirTopAndBottom`: on Home, every row's cards share their top and bottom to within a pixel, with and without artwork, under a pointer and a controller.
+  - Grids already use equal columns (`EqualColumns`, introduced so that captions line up).
+  - What can make one poster look offset is the lift of a card that is hovered or focused: under a pointer, hover lifts a card by 4% about its centre. That is B-042's shared hover/focus state, unassigned.
+- **Not reproduced** without the tester's screenshots, which are not in the repository.
+- **Outstanding:** the owner's screenshots, or a walk with the owner on Windows.
 <a id="b-016"></a>
 ### B-016: App opens last-used profile instead of profile selection
 
@@ -648,14 +683,15 @@ Each entry: the header facts, the original report (the master tracker prompt's t
 - **Physical/device verification:** none (a Windows walk of the reported Guest/Main case is outstanding).
 - **Regression testing:** full `./gradlew check` passed.
 - **Evidence:** VERIFICATION.md, "Phase 1", B-018.
-- **Outstanding work:** the owner's decision on "Forgot PIN" (DECISIONS.md, 2026-11-18); a walk of the reported case; owner acceptance.
+- **Forgot PIN (decided 2026-11-19, implemented in Phase 2):** Keep profile, or Reset profile (after a warning and a second confirmation; the reset now needs that confirmation step in the state itself). On Android phones and tablets the system's own prompt can remove the PIN and keep everything. `ProfileSecurityTest`, `ProfilesUiTest`; PHASE-2-PLAN.md, "Forgot PIN".
+- **Outstanding work:** a walk of the reported case; confirming with a fingerprint on a handheld (cancelling was walked on the Phone 2a); owner acceptance.
 
 <a id="b-019"></a>
 ### B-019: Backspace in PIN input triggers Home
 
 - **Category:** Bug (input/navigation) · **Priority:** Medium (findings document) · **Platforms:** controller and keyboard inputs (W L)
 - **Components (likely):** `ui` (PIN pad, global shortcut handling in `RefluxApp` / `Controls`)
-- **Phase:** 2, step 5 (with B-020, B-021) · **Status:** Not Started · **Last updated:** 2026-11-19
+- **Phase:** 2, step 5 (with B-020, B-021) · **Status:** Fixed (automated; root cause confirmed) · **Last updated:** 2026-11-19
 - **Related:** B-020, B-021, B-023, B-025
 
 **Original description.** Pressing Backspace while entering a PIN can trigger Home navigation instead of deleting the input character. *Expected:* input editing must take precedence while a text/PIN field is actively receiving input; Backspace must edit the field instead of propagating to global navigation.
@@ -672,16 +708,16 @@ Each entry: the header facts, the original report (the master tracker prompt's t
 
 **Work record**
 
-- **Investigation findings / root cause / implementation / tests / verification:** none yet.
-- **Evidence:** the tester's report only.
-- **Outstanding work:** everything, with B-020 and B-021.
-
+- **Root cause (confirmed in code and reproduced):** `InputMapping.map(Key.BACKSPACE) = BACK`. Keys go to Reflux before the toolkit, and Reflux leaves them alone only while `AppState.textInputActive`. Only Search, Identify and the Sources forms set that. No PIN field did (unlock, deletion, PIN setup), so Backspace was Back: from a section, Home; on the gate, the gate's Back.
+- **Fix:** B-025's `Modifier.textEntry`, through which every field reports its own focus.
+- **Tests:** `InteractionContractTest.backspaceInADeletionPinErasesADigitAndNeverGoesHome`, `backspaceInTheUnlockPinErasesAndTheGateStays`.
+- **Outstanding:** a physical keyboard walk on Windows and Linux; owner acceptance.
 <a id="b-020"></a>
 ### B-020: Backspace in profile-name input triggers Home
 
 - **Category:** Bug (input/navigation) · **Priority:** Medium (findings document) · **Platforms:** controller and keyboard inputs (W L)
 - **Components (likely):** `ui` (profile name field, global shortcut handling)
-- **Phase:** 2, step 5 (with B-019, B-021) · **Status:** Not Started · **Last updated:** 2026-11-19
+- **Phase:** 2, step 5 (with B-019, B-021) · **Status:** Fixed (automated; root cause confirmed) · **Last updated:** 2026-11-19
 - **Related:** B-019, B-021, B-023
 
 **Original description.** Backspace in profile-name input can trigger Home navigation. *Expected:* Backspace correctly edits text without triggering unrelated navigation.
@@ -698,16 +734,16 @@ Each entry: the header facts, the original report (the master tracker prompt's t
 
 **Work record**
 
-- **Investigation findings / root cause / implementation / tests / verification:** none yet.
-- **Evidence:** the tester's report only.
-- **Outstanding work:** everything, with B-019 and B-021.
-
+- **Root cause:** as B-019. Neither the profile-name field (Profiles' Add) nor Settings' rename set `textInputActive`.
+- **Fix:** as B-019.
+- **Tests:** `InteractionContractTest.backspaceInAProfileNameErasesAndEscapeLetsGoFirst` (Profiles' Add and Settings' rename; Escape lets go of the field first, then the next Escape is Back).
+- **Outstanding:** as B-019.
 <a id="b-021"></a>
 ### B-021: Backspace behaviour inconsistent across inputs
 
 - **Category:** Bug (input/navigation) · **Priority:** Medium (findings document) · **Platforms:** cross-platform input (reported W L)
 - **Components (likely):** `ui` (`TextInput`, global shortcut propagation)
-- **Phase:** 2, step 5 (with B-019, B-020) · **Status:** Not Started · **Last updated:** 2026-11-19
+- **Phase:** 2, step 5 (with B-019, B-020) · **Status:** Fixed (automated) · **Last updated:** 2026-11-19
 - **Related:** B-019, B-020, B-023, B-025
 
 **Original description.** Backspace handling is inconsistent across text inputs and can leak into global shortcut handling. *Expected:* establish a consistent input event/shortcut priority model; active text inputs must handle editing keys before global navigation shortcuts.
@@ -724,10 +760,10 @@ Each entry: the header facts, the original report (the master tracker prompt's t
 
 **Work record**
 
-- **Investigation findings / root cause / implementation / tests / verification:** none yet.
-- **Evidence:** the tester's report only.
-- **Outstanding work:** everything.
-
+- **Cause:** the fields that worked (Search, some Sources fields) set `textInputActive` by hand; the others did not. That is the inconsistency reported.
+- **Fix:** one priority model, written in INPUT_MODEL.md, "Event priority": the active text editor, the active modal, the focused control, the destination, then global shortcuts, with stated exceptions (Escape, Up/Down, Ctrl+1–6, media keys, a touchscreen's Back). One mechanism carries it (`Modifier.textEntry`), and no screen sets the flag.
+- **Tests:** the B-019 and B-020 tests; `KeyboardSessionTest.whileTypingTheButtonsAreTheKeyboardsAndNothingIsAShortcut`; `NavigationTest` (Ctrl+number still works from inside a field).
+- **Outstanding:** as B-019.
 <a id="b-022"></a>
 ### B-022: Windows startup slower than Android
 
@@ -762,7 +798,7 @@ Each entry: the header facts, the original report (the master tracker prompt's t
 
 - **Category:** Feature / UX improvement · **Priority:** High (UX requirement) · **Platforms:** W, T; TV relevance to assess
 - **Components (likely):** `ui` (new keyboard component, `TextInput`, `Focus`); `design`
-- **Phase:** 2, step 6 · **Status:** Not Started · **Last updated:** 2026-11-19
+- **Phase:** 2, step 6 · **Status:** Fixed (automated; device and TV emulator walks below) · **Last updated:** 2026-11-19
 - **Related:** B-004, B-011, B-019, B-020, B-021, B-025
 
 **Original description.** Provide a Reflux-designed on-screen keyboard suitable for controller and touch input. *Expected capabilities:* letters; numbers; symbols; space; backspace; confirm/submit; clear and predictable focus behaviour; reliable insertion and dismissal; ability to reopen; suitable layouts for search, profile names, PINs, and source addresses; appropriate touch and controller operation. Investigate whether platform-native keyboards or custom keyboard layouts are more suitable per platform, but keep cross-platform UX consistent.
@@ -779,9 +815,20 @@ Each entry: the header facts, the original report (the master tracker prompt's t
 
 **Work record**
 
-- **Investigation findings / root cause / implementation / tests / verification:** none yet.
-- **Outstanding work:** everything.
-
+- **Decision (per platform; DECISIONS.md and INPUT_MODEL.md):**
+  - Touch keeps the system keyboard.
+  - A physical keyboard types directly.
+  - A controller or any remote uses the Reflux keyboard on every form factor: Windows and Linux have no controller-friendly system keyboard, a tablet's cannot be driven with a D-pad, and a television's lifecycle caused B-004.
+- **Implementation:**
+  - `KeyboardSession` (`ui/state/Keyboard.kt`): pure state.
+    - Layouts per `InputKind`: text, search, name (first letter capitalised), address (`:` `/` `.` `-` and `http://` on its first page), secret, and a PIN number pad.
+    - Keys are chosen by where they are (nearest above or below).
+    - Typing goes at the cursor, and the field's own filter is read back.
+    - Shift is once, locked or off; there is a symbols page; erase, clear, done, and the cursor.
+  - `RefluxKeyboard`: the panel, at the foot of the window and above everything, the profile gate included. It shows a preview with the cursor (masked for secrets), the chosen key lit, touch and pointer presses, and controller hints.
+  - A `TEXT_ENTRY` input context: A types, B closes, X erases, Y types a space, LB/RB move the cursor, LT is Shift, RT is symbols, Start is Done. Nothing global acts while it is open. A physical keyboard still types into the field underneath.
+- **Tests:** `KeyboardSessionTest` (9), `InteractionContractTest` (typing with a controller; a PIN over the gate; a remote on a television), `KeyboardTest`.
+- **Outstanding:** walks with a physical controller on Windows and the tablet; Fire TV; owner acceptance.
 <a id="b-024"></a>
 ### B-024: Conflicting resolution values in media descriptions
 
@@ -819,7 +866,7 @@ Each entry: the header facts, the original report (the master tracker prompt's t
 
 - **Category:** Product requirement (cross-platform UX) · **Priority:** High · **Platforms:** W, TV (Android TV, Google TV), F, and controller-capable P/T
 - **Components (likely):** `ui` (`Focus`, `Navigator`, `Controls`, every screen); `android:app` and `desktop:app` input; docs/INPUT_MODEL.md, docs/NAVIGATION.md
-- **Phase:** 2, step 1 · **Status:** Not Started · **Last updated:** 2026-11-19
+- **Phase:** 2, step 1 · **Status:** Fixed (shared architecture and contract implemented and tested; device and controller walks partly done: see below) · **Last updated:** 2026-11-19
 - **Related:** B-007 to B-013, B-004, B-019 to B-021, B-023, B-039, B-042, F-002, F-P2
 
 **Original description.** Controller support needs to be robust throughout the entire application, not just Home or playback. *Expected coverage:* D-pad navigation; analog sticks; face buttons; bumpers; triggers; Start/Select; platform remotes where relevant; focus and focus restoration; scroll navigation; dialogs and overlays; search and text entry; profile management; source management; playback controls; mini-player; settings; downloads and other screens. *Expected:* no trapped focus, inaccessible controls, unexpected focus loss, mouse-only actions, or navigation dead ends. Establish a shared controller/focus architecture and regression test strategy.
@@ -836,9 +883,28 @@ Each entry: the header facts, the original report (the master tracker prompt's t
 
 **Work record**
 
-- **Investigation findings / root cause / implementation / tests / verification:** none yet.
-- **Outstanding work:** everything; the foundation for the rest of Phase 2.
+- **Investigation (audit):** PHASE-2-PLAN.md, Stage A. Reflux already had a shared input architecture: `core/input`'s semantic actions and modality; `AppState.dispatch` as the one router; `FocusEntry`, `RailFocus`, `FocusedControl`. The defects were gaps in it, not its absence:
+  - "typing is active" was opt-in per screen;
+  - a text field could not be activated by a controller;
+  - a television relied on the system keyboard's lifecycle;
+  - the focus lift crossed titles;
+  - a page left by anything but opening an item forgot where focus was;
+  - a press that arrived before a page had anything to focus fell to the toolkit's search.
 
+  Every screen and dialog is listed in the audit table.
+- **Decision:** extend the architecture rather than rewrite it. The interaction contract (event priority, one way to report typing, text entry by input, focus movement, restoration, Back, pointer/touch/controller together, hints) is PHASE-2-PLAN.md Stage B and INPUT_MODEL.md, "Event priority".
+- **Implementation:**
+  - `Modifier.textEntry` and `TextEditing` (`LocalTextEntry`): every field reports its own focus, is the focused control for a controller's confirm, and opens the Reflux keyboard. The per-screen `textInputActive` wiring (Search, Identify, Sources) was removed.
+  - A `TEXT_ENTRY` input context with its own actions.
+  - The Reflux keyboard (B-023).
+  - `rememberFocusReturn` remembers the last focused item, not only the one opened (B-008).
+  - A press before the page can take focus waits for its start (B-008).
+  - See all belongs to its row (B-007).
+  - The card lift is clear of titles and of the row above (B-009).
+  - The hero is restored whole (B-013).
+- **Validation slice (Home rows and cards; a nested page and its return; a dialog; a text field; Search suggestions and results; controller → pointer → controller):** `InteractionContractTest` (8), `HomeFocusTest` (5), `KeyboardSessionTest` (9), `CardLayoutTest` (4); with the existing `DirectionalInputTest`, `PointerTest`, `TelevisionTest`, `NavigationTest`, `FocusEntryTest` and `AccessibilityTest` re-run green.
+- **B-042 (unassigned, not changed):** `Pressable` treats hover and focus as one active state (`active = hovered || ring`), so a pointer resting on one card lifts it while a controller focuses another. Recorded for the owner's decision.
+- **Outstanding:** a physical controller walk on Windows (owner's PC; see B-002's note), Fire TV (not connected), owner acceptance.
 <a id="b-026"></a>
 ### B-026: Windows process persists after close
 
@@ -1009,7 +1075,7 @@ Each entry: the header facts, the original report (the master tracker prompt's t
 
 - **Category:** Bug (UI) · **Priority:** Medium · **Platforms:** P T (potentially others)
 - **Components (likely):** `ui` (`Artwork` card badges)
-- **Phase:** 2, step 16 (with B-009) · **Status:** Not Started · **Last updated:** 2026-11-19
+- **Phase:** 2, step 16 (with B-009) · **Status:** Fixed (automated; device walk below) · **Last updated:** 2026-11-19
 - **Related:** B-009, B-005, B-033
 
 **Original description.** The disconnected-source indicator text (e.g., "Not connected…") is truncated or overlaps the watched/checkmark indicator. *Expected:* a compact, responsive, accessible treatment; avoid collision between source connectivity state and watched state; ensure both remain understandable on narrow layouts.
@@ -1026,10 +1092,14 @@ Each entry: the header facts, the original report (the master tracker prompt's t
 
 **Work record**
 
-- **Investigation findings / root cause / implementation / tests / verification:** none yet.
-- **Evidence:** the tester's screenshots (not in the repository).
-- **Outstanding work:** everything.
-
+- **Fix:**
+  - "Not connected" is a small round mark (the offline icon) at the card's top start, and watched the same mark with a check at its top end.
+  - Both are 22 dp with an 8 dp inset, so they need 60 dp, and the narrowest poster is 112 dp: they cannot meet or be cut short.
+  - Not connected also dims the artwork.
+  - The words are in the card's description ("…, not connected, watched") for a screen reader, and in full on the work's page.
+- **Tests:** `CardLayoutTest.aCardsStateMarksNeverMeetOnTheNarrowestCard`.
+- **Device evidence before the fix:** the store build on the Phone 2a showed "Not connec…" truncated on every poster (screenshot, 2026-11-19).
+- **Outstanding:** a device walk with a disconnected source; owner acceptance.
 <a id="b-033"></a>
 ### B-033: Orphan favourites after source removal
 
@@ -1068,7 +1138,7 @@ Each entry: the header facts, the original report (the master tracker prompt's t
 
 - **Category:** UX (polish) · **Priority:** Low to Medium · **Platforms:** P T
 - **Components (likely):** `ui` (Search field)
-- **Phase:** 2, step 12 · **Status:** Not Started · **Last updated:** 2026-11-19
+- **Phase:** 2, step 12 · **Status:** Fixed (automated; device walks below) · **Last updated:** 2026-11-19
 - **Related:** B-035, B-036, B-037
 
 **Original description.** The search placeholder is too long, large, and bold. *Expected:* a shorter, understated placeholder with lighter visual weight and colour; entered text must be visually distinct; prefer a short placeholder rather than marquee behaviour.
@@ -1083,15 +1153,15 @@ Each entry: the header facts, the original report (the master tracker prompt's t
 
 **Work record**
 
-- **Investigation findings / root cause / implementation / tests / verification:** none yet.
-- **Outstanding work:** everything.
-
+- **Fix:** the placeholder is "Search your library", in the body style and the tertiary colour, smaller and lighter than typed text, which keeps the field's larger, brighter title style.
+- **Tests:** `ScreensTest` (Search screenshots); on device, `PhaseTwoWalkOnDeviceTest` (the short placeholder shown).
+- **Outstanding:** owner acceptance.
 <a id="b-035"></a>
 ### B-035: Mobile search chips are oversized and contain unnecessary "Try" label
 
 - **Category:** UX (polish) · **Priority:** Low to Medium · **Platforms:** P T
 - **Components (likely):** `ui` (Search suggestion chips)
-- **Phase:** 2, step 13 · **Status:** Not Started · **Last updated:** 2026-11-19
+- **Phase:** 2, step 13 · **Status:** Fixed (automated; device walks below) · **Last updated:** 2026-11-19
 - **Related:** B-010, B-034
 
 **Original description.** Search chips are too large, and "Try" is unnecessary. *Expected:* remove "Try", reduce chip dimensions/padding, and use an edge-to-edge scrollable row on mobile while retaining accessibility and touch usability.
@@ -1106,15 +1176,18 @@ Each entry: the header facts, the original report (the master tracker prompt's t
 
 **Work record**
 
-- **Investigation findings / root cause / implementation / tests / verification:** none yet.
-- **Outstanding work:** everything.
-
+- **Fix:**
+  - No "Try".
+  - Suggestions are compact chips: caption-strong text, 14 dp padding, a hairline edge. Each is at least the layout's minimum target tall, so 48 dp on touch.
+  - The chips are on a `LazyRow` that runs edge to edge (it bleeds through the page's margins and starts in line with them), 12 dp apart.
+- **Tests:** `ScreensTest.searchSuggestsAndAdmitsWhenNothingMatches` (no "Try"); `CardLayoutTest.suggestionChipsKeepTheirRingsApartAndScrollWholeIntoView`; on device, chip height ≥ 48 dp.
+- **Outstanding:** owner acceptance.
 <a id="b-036"></a>
 ### B-036: Mobile search/IME lifecycle breaks navigation
 
 - **Category:** Bug (mobile UI/navigation) · **Priority:** Medium · **Platforms:** P T
 - **Components (likely):** `ui` (Search, navigation scaffold, `CompactNavigation`); `android:app` (window insets, `adjustResize`)
-- **Phase:** 2, step 11 · **Status:** Not Started · **Last updated:** 2026-11-19
+- **Phase:** 2, step 11 · **Status:** Fixed (automated; device and emulator walks below) · **Last updated:** 2026-11-19
 - **Related:** B-034, B-035, B-037, B-025
 
 **Original description.** Search interaction can cause vertical shifts, missing back controls, and disappearing bottom navigation after the keyboard is dismissed. *Expected:* stable search layout; predictable keyboard resize/insets; clear back-button behaviour; correct distinction between dismissing the IME and leaving Search; bottom navigation remains correct after keyboard dismissal; query is preserved where appropriate.
@@ -1131,15 +1204,23 @@ Each entry: the header facts, the original report (the master tracker prompt's t
 
 **Work record**
 
-- **Investigation findings / root cause / implementation / tests / verification:** none yet.
-- **Outstanding work:** everything.
-
+- **Cause:**
+  - `CompactNavigation` hid the bottom bar for as long as a field had focus (`!textInputActive`), not for as long as the keyboard was up. Putting the keyboard away with the system's Back left the field focused and the bar gone, so only the system's Back gesture recovered.
+  - The next Back then only let go of the field (the desktop rule), which looked like nothing to the viewer.
+  - Search is a section, so it has no Back arrow of its own.
+- **Fix:**
+  - The Android shell reports whether the system keyboard is up (`WindowInsets.isImeVisible` → `AppState.systemKeyboardShown`). The bar, and the mini-player's row, step aside only while it is up.
+  - On a touchscreen the system keyboard takes the first Back, so the next Back navigates (and lets go of the field) instead of only letting go.
+  - The query lives in `AppState` and is kept.
+  - Layout: the page keeps the window's layout, and only the keyboard's inset is given to pages (unchanged since 2026-11-16).
+- **Tests:** on device, `PhaseTwoWalkOnDeviceTest.searchKeepsItsNavigationAndBackTellsTheKeyboardFromLeaving`; JVM `HandheldLayoutTest` (unchanged, green).
+- **Outstanding:** the Phone 2a walk (it was unplugged during this phase's walks); owner acceptance.
 <a id="b-037"></a>
 ### B-037: Search has no designed empty state
 
 - **Category:** UX · **Priority:** Low to Medium · **Platforms:** all, especially mobile
 - **Components (likely):** `ui` (Search, and the Movies/Shows/filter empty states)
-- **Phase:** 2, step 14 · **Status:** Not Started · **Last updated:** 2026-11-19
+- **Phase:** 2, step 14 · **Status:** Fixed (automated; device walks below) · **Last updated:** 2026-11-19
 - **Related:** B-034 to B-036, B-038
 
 **Original description.** Search returns a plain text empty state without a designed experience. *Expected:* a deliberate, lightweight empty state with appropriate messaging and a useful next action without cluttering the interface.
@@ -1154,9 +1235,15 @@ Each entry: the header facts, the original report (the master tracker prompt's t
 
 **Work record**
 
-- **Investigation findings / root cause / implementation / tests / verification:** none yet.
-- **Outstanding work:** everything.
+- **Fix:** `NoResults`, a light, deliberate empty state:
+  - a search mark in a soft circle;
+  - "No matches for “…”";
+  - "Try fewer or different words, or ask for something like “unfinished shows”.";
+  - two quiet actions: Clear search (back to the field) and Browse movies.
 
+  Movies, Shows and filters have their own empty states, which B-038 (Phase 3) revisits.
+- **Tests:** `ScreensTest.searchSuggestsAndAdmitsWhenNothingMatches`; on device, `PhaseTwoWalkOnDeviceTest`.
+- **Outstanding:** owner acceptance.
 <a id="b-038"></a>
 ### B-038: Movies and Shows sorting/filtering
 
@@ -1187,7 +1274,7 @@ Each entry: the header facts, the original report (the master tracker prompt's t
 
 - **Category:** Product decision / UX investigation · **Priority:** Medium (UX requirement) · **Platforms:** controller-capable
 - **Components (likely):** `ui` (input handling, hints); docs/INPUT_MODEL.md
-- **Phase:** 2, step 8 (with B-012) · **Status:** Not Started · **Last updated:** 2026-11-19
+- **Phase:** 2, step 8 (with B-012) · **Status:** Fixed (mapping decided, documented, conflict-checked; hints) · **Last updated:** 2026-11-19
 - **Related:** B-012, F-005, F-P2 (Y toggles the sidebar), B-029 (right stick), B-025
 
 **Original description.** Review the current mapping. A selects, B backs, Y opens Sources, X is unused, and LB/RB/LT/RT are largely unused. *Expected investigation:* evaluate Y opening the sidebar from anywhere in the application; find a useful, distinct action for X; consider LB/RB for section/page navigation; consider LT/RT for contextual actions or playback; avoid conflicts with player controls, dialogs, text input, and platform conventions; provide controller hints; consider custom mapping as a future feature. Do not implement arbitrary mapping changes without evaluating conflicts and documenting the decision.
@@ -1204,9 +1291,16 @@ Each entry: the header facts, the original report (the master tracker prompt's t
 
 **Work record**
 
-- **Investigation findings / root cause / implementation / tests / verification:** none yet.
-- **Outstanding work:** everything, with B-012.
-
+- **Decision:** INPUT_MODEL.md, "Controller mapping", with its conflict matrix (browsing, player, Reflux keyboard, gate and panels; text input, playback, Back, remotes, platform conventions, F-P2, Phase 3).
+  - A, B, Start/Menu, View and LB/RB are unchanged while browsing.
+  - **X is reserved** for Phase 3's Media Quick View (the owner's decision, 2026-11-19) and is unmapped while browsing and playing.
+  - **Y** keeps Sources: the owner's undecided F-P2 would give it the sidebar.
+  - **LT/RT** have no browsing meaning: none that is useful without a conflict.
+  - **The right stick** is reserved for B-029's Trickplay.
+  - The keyboard's buttons are B-023's.
+- **Hints:** `browsePrompts`, shared by the phone's bar and the page bar: Select; Back (where there is somewhere to go back to); Y Sources (where Sources is not already shown and no panel is open). X is never offered.
+- **Tests:** `DirectionalInputTest.theFirstPressMorphsTheLayoutAndFocusesTheMainAction` (Triangle/Y named for Sources, Square never); `KeyboardSessionTest` (the keyboard context's buttons).
+- **Outstanding:** walks with physical controllers; owner acceptance.
 <a id="b-040"></a>
 ### B-040: Home recommendations/discovery lack variety
 
@@ -1314,7 +1408,7 @@ Feature proposals, kept apart from bugs. The confirmed defaults are acceptance c
 
 - **Category:** Feature · **Platforms:** Android phone and tablet with haptic capability
 - **Components (likely):** a new central haptics service (`ui` / `android:app`), Settings
-- **Phase:** 2, step 10 · **Status:** Not Started · **Last updated:** 2026-11-19
+- **Phase:** 2, step 10 · **Status:** Fixed (automated; device walk below) · **Last updated:** 2026-11-19
 - **Confirmed default:** **OFF**: the user must explicitly enable it in Settings.
 - **Related:** F-002, F-003 (independent of it)
 
@@ -1324,14 +1418,23 @@ Feature proposals, kept apart from bugs. The confirmed defaults are acceptance c
 
 **Acceptance criteria.** Off by default; explicit opt-in in Settings; absolutely no device vibration before opt-in; one central service enforces the preference on every request and no feature can bypass it (a test that fails if code reaches the platform vibrator outside the service); capability-aware; subtle; never repeated per animation frame; controller input never triggers device vibration; settings persist and behave the same on every platform; unsupported hardware disables the option or explains why. Physical phone and tablet checks.
 
-**Work record:** none yet. **Outstanding work:** everything.
+**Work record**
+
+- **Implementation:**
+  - **Through the same gateway:** interface haptics **off by default** (kept as `interface_haptics=on` only once turned on), for touch only. A controller never makes the device vibrate.
+  - **Android:** `AndroidDeviceHaptics`, the platform's own effect on the window (`CONFIRM`, `REJECT`, `CLOCK_TICK`), so the system's touch-feedback setting applies too. Television: none.
+  - **The toolkit's own haptics** (`LocalHapticFeedback`, which Compose's text selection uses) are routed into the gateway, so nothing vibrates before opt-in, even selecting text.
+  - **Events:** a pull that refreshes (B-048); turning interface haptics on; a wrong PIN.
+  - **Settings:** "Interface haptics", offered only where the device has a vibrator.
+- **Tests:** `HapticsTest` (off by default: no vibration of any kind before opting in; only touch events; repeats limited; the source scan above).
+- **Outstanding:** feeling it on the Phone 2a and the Pad 7 (physical); owner acceptance.
 
 <a id="f-002"></a>
 ### F-002: Controller rumble
 
 - **Category:** Feature · **Platforms:** supported game controllers (W, TV, F, controller P/T)
 - **Components (likely):** controller input (`desktop:app` XInput, `android:app` `InputDevice` vibrator), a rumble service, Settings
-- **Phase:** 2, step 9 · **Status:** Not Started · **Last updated:** 2026-11-19
+- **Phase:** 2, step 9 · **Status:** Fixed (automated; physical controller rumble not yet felt) · **Last updated:** 2026-11-19
 - **Confirmed default:** **ON**, with a user-disableable setting. Unsupported controllers must not produce errors or unusable behaviour.
 - **Related:** F-001, F-003, B-025
 
@@ -1341,7 +1444,22 @@ Feature proposals, kept apart from bugs. The confirmed defaults are acceptance c
 
 **Acceptance criteria.** On by default; disableable globally; only on compatible controllers; capability detected; unsupported devices handled without error; stops at once on disconnect; no excessive intensity or duration; preference persisted. Physical controller checks on Windows, tablet, TV and Fire TV.
 
-**Work record:** none yet. **Outstanding work:** everything.
+**Work record**
+
+- **Implementation:**
+  - **The gateway** (`ui/state/Haptics.kt`):
+    - events `CONFIRM`, `TOGGLE`, `BOUNDARY`, `ERROR`, each with a short, light pattern and a minimum interval (a boundary at most every 450 ms);
+    - rumble **on by default**, kept as `controller_rumble=off` only once it is turned off, so it persists;
+    - capability checked on each request, an unsupported controller a quiet no-op, a failing platform never reaching the caller;
+    - `stopRumble()` when it is turned off.
+  - **Windows:** `XInputSetState` for XInput pads (`WindowsGamepads.rumble`). `GamepadInput` implements `ControllerRumble` for the controller last used, stops it after its duration from the polling thread, forgets it at once when it disconnects, and stops it on close. Joystick-API pads (DualSense, Switch Pro, generic) have no motors Reflux can drive and are not offered rumble.
+  - **Linux:** the joystick interface has no force feedback, so it is not offered.
+  - **Android:** `AndroidControllerRumble`: the `InputDevice`'s vibrator (`VibratorManager` on 12+) for the controller last used; an input-device listener forgets one that is removed; stopped when the activity ends.
+  - **Events:** a direction with nowhere to go, and on the Reflux keyboard; a wrong PIN. Never moving between items.
+  - **Settings:** "Controller rumble", offered where the platform can drive motors.
+- **Tests:** `HapticsTest` (on by default; off means none; repeats limited; unsupported a no-op; failures contained; stop reaches the controller); a source scan that fails if anything but the gateway's platform halves reaches a vibrator, `VibrationEffect`, `XInputSetState`, or `LocalHapticFeedback.current`.
+- **Found by lint (full check):** the manifest lacked `VIBRATE`, so `Vibrator.vibrate` would have failed, quietly caught, on every Android device; `USE_BIOMETRIC` likewise for Forgot PIN. Both added.
+- **Outstanding:** a physical Xbox controller on Windows, and a controller on the tablet and TV, to feel it and to pull the cable mid-rumble; owner acceptance.
 
 <a id="f-003"></a>
 ### F-003: Video-synchronised haptics
@@ -1409,6 +1527,27 @@ Registered in BETA-2.md from the owner's master prompt of 2026-11-19, which numb
 - **F-P1 Collapsible sidebar.** Expanded (icon and label) and collapsed (icons only); cross-platform and accessible; desktop, phone, tablet, Android TV, and Fire TV considered separately; preference persisted where appropriate; transitions tested; no one behaviour or size forced on every form factor. **Phase:** owner to confirm (Phase 3 in the master prompt; absent from the updated phase plan). **Status:** Not Started.
 - **F-P2 Sidebar focus toggle with Y.** With a controller, Y moves focus to the sidebar and Y again returns it to the exact previous item, selection and scroll kept, repeated toggles not resetting state, no shortcut conflicts, an unavailable previous item handled; developed and tested with F-P1, and to be reconciled with B-039 (whose proposed Y is the same). **Phase:** owner to confirm (with F-P1). **Status:** Not Started.
 
+<a id="f-p3"></a>
+### F-P3: Media Quick View (the owner's Phase 3 requirement; X reserved)
+
+- **Category:** Feature (future UX) · **Platforms:** all (controller, mouse, touch, remote)
+- **How found:** the owner's Phase 3 feature planning notice, given during Phase 2 (2026-11-19; DECISIONS.md, same date, "Controller X is reserved for Media Quick View")
+- **Phase:** **3** (owner's decision) · **Status:** Not Started · **Last updated:** 2026-11-19
+- **Related:** B-039, B-012 (X kept free in Phase 2's mapping), F-005, F-P2
+
+**Original description (the owner's).** A controller's X is reserved as the universal contextual action for movies and TV shows, opening a new Media Quick View popup.
+- It opens when a media item is focused. Otherwise X has no media-context action.
+- The popup is Phase 3 scope and must not be implemented in Phase 2.
+- Phase 2's mapping must not give X a conflicting global action.
+- The Phase 3 feature will also open from a mouse's right-click, a touch long-press, a remote's Options/Menu, and a long press of OK/Select.
+
+**Phase 2's part (done).**
+- X is unmapped while browsing and in the player. Its only meaning is Erase on the Reflux keyboard, a text-entry context with no media item focused.
+- Long press of OK, right-click and touch long-press on a card are given no other meaning.
+- Recorded for Phase 3: Menu/Options currently opens Sources while browsing, and Quick View's Menu trigger on a focused item has to be reconciled with that (docs/INPUT_MODEL.md, "Controller mapping").
+
+**Outstanding work:** everything of the popup, in Phase 3.
+
 ## Unassigned issues and unresolved owner decisions
 
 Nothing here is assigned to a phase until the owner decides; each decision, when made, goes into DECISIONS.md and this tracker's change history.
@@ -1422,8 +1561,8 @@ Nothing here is assigned to a phase until the owner decides; each decision, when
 | [F-005](#f-005) | Whether to schedule controller remapping | V1.1 | B-039 should first settle the default mapping; customisation depends on it | Phase 2 (after B-039) · Phase 3 · V1.1 · not planned | Unassigned · Not Started |
 | [B-027](#b-027) | Confirm the scope change from "V1.1 candidate" (findings document) to Beta 2 Phase 3 | Confirm Phase 3 as the owner's plan of 2026-11-19 states | The owner's phase plan listed "Separate Jellyfin libraries: Included" and DECISIONS.md records it; the tracker prompt asks for confirmation before implementation | Confirm Phase 3 · return to V1.1 | Phase 3 (owner's plan) · Not Started; **not to be implemented until confirmed** |
 | [F-P1, F-P2](#f-p1-and-f-p2) | Number them and place them | Number F-006, F-007; Phase 3 with B-027 (sidebar entries for libraries) or Phase 2 with B-039 for F-P2 | The sidebar's library entries (B-027) and Y's role (B-039) both touch them | Phase 2 · Phase 3 · V1.1 | Unallocated · Not Started |
-| [B-018](#b-018) | "Forgot PIN" still erases a protected profile's private data without its PIN | Keep (recovery), and say so in the PIN prompt | Removing it makes a forgotten PIN unrecoverable; keeping it means a PIN protects privacy, not against deletion at the device | Keep · require something else to reset · remove | Phase 1 · Fixed; decision open (DECISIONS.md, 2026-11-18) |
-| [F-004](#f-004) | Statistics provider and data contract | Evaluate Aptabase (EU or self-hosted) behind Reflux's transport | DECISIONS.md, 2026-11-18, provider evaluation | Aptabase · own endpoint · none | Phase 1 foundation done; nothing sent |
+| [B-018](#b-018) | "Forgot PIN" still erases a protected profile's private data without its PIN | **Decided by the owner (2026-11-19):** Keep profile / Reset profile, plus system authentication where it is secure | Implemented in Phase 2: Android phones and tablets through the system's prompt; TV, Windows, Linux keep the two choices (PHASE-2-PLAN.md) | — | Phase 1 · Fixed; decision **resolved** (DECISIONS.md, 2026-11-19) |
+| [F-004](#f-004) | Statistics provider, region, data contract, retention | Aptabase through its HTTP API behind Reflux's transport (EU-hosted or self-hosted), not its SDKs | Evaluated in Phase 2 (PHASE-2-PLAN.md, "F-004"): fits; its daily IP-derived count is still processing of the address, to be disclosed | Aptabase · own endpoint · none | Foundation done; evaluated; nothing sent |
 | [B-006](#b-006) | Which provider the original report meant | — | Needed to measure the right path | Ask the tester | Investigating |
 
 **Differences between sources, recorded and not resolved by the tracker:** B-042's severity (above); B-042's phase (BETA-2.md listed it in Phase 2; the tracker prompt says pending approval, so BETA-2.md now shows it as pending); B-027's scope (above); the F-005 numbering (above); titles differ slightly between the tracker prompt and the findings document for most issues (both kept in each entry; meanings identical); the tracker prompt gives no priority for B-019 to B-021 (the findings document's "Medium" is kept).
@@ -1487,6 +1626,142 @@ Found during Beta 2 work, not in the original findings. Each was allocated by ex
 
 **Work record:** recorded in VERIFICATION.md, "Open-source transition"; not fixed. **Outstanding work:** update the test's expected focus order to the current About page.
 
+<a id="b-046"></a>
+### B-046: Redundant Profile navigation button on the Profile destination
+
+- **Category:** Bug (navigation UX) · **Priority:** Low · **Platforms:** P (phone, upright; the bottom-bar layout)
+- **Components:** `ui` (`RefluxApp.CompactNavigation`, `ProfileButton`)
+- **How found:** the owner's Phase 2 brief (2026-11-19), where it was numbered B-043. Renumbered because B-043 was taken (DECISIONS.md, 2026-11-19, "Phase 2 authorised").
+- **Phase:** 2 (owner's brief, section 7) · **Status:** Fixed (automated; device and emulator walks below) · **Last updated:** 2026-11-19
+- **Related:** B-047, B-017
+
+**Original description.** On mobile, the top-right Profile icon opens the Profile page, which holds profile management, Downloads, Sources and Settings. On the Profile destination itself, the same icon stays visible in the top right and still navigates to the current destination, which is redundant.
+- *Investigate:* the shared header and scaffold; destination awareness; navigation state; selected destination; Back; whether similar self-navigation controls exist elsewhere; phone and tablet differences; controller focus and accessibility.
+- *Fix:* hide, remove or transform the control on its own destination, without awkward alignment or layout jumps, in the shared navigation model, without redesigning unrelated navigation.
+- *Tests:* the icon opens Profile; on Profile it is not shown, or acts appropriately; navigation from Profile into nested screens and back works; header alignment holds; other destinations are unaffected; phone and tablet tested.
+
+**Investigation.** `CompactNavigation` drew `ProfileButton` on every section's page except Search, Profiles included.
+- **Phone, upright** (`BOTTOM_BAR`): the profile entry is that button.
+- **Phone on its side** (`COMPACT_RAIL`), **tablet**, **desktop** and **television**: the profile entry is the last item of the rail or sidebar, marked as the current destination, not a self-link in a header. No other header control navigates to its own page; Search already hid it.
+- **Downloads, Sources and Settings** are sections reached from Profiles on a phone. There the button is the way back to Profiles, lit as where the viewer is, so it is kept.
+- **Focus:** it is reachable only on a phone (touch, or a controller on a phone). Without it on Profiles, focus starts on the first profile as before.
+
+**Implementation.** `showsProfileButton(destination)` is one rule for the top row: a section, not Search, not Profiles. The button floats in a row of its own, so hiding it moves nothing else.
+
+**Tests / verification:** `PhaseTwoWalkOnDeviceTest.profilesHasNoButtonToItselfAndHomeHasOne` (Home has it; Profiles does not; Settings has it as the way back); the JVM suites green. Phone and tablet walks: VERIFICATION.md, "Phase 2". Owner acceptance pending.
+
+<a id="b-047"></a>
+### B-047: Unexplained dot beside the Profile icon
+
+- **Category:** Bug (UI clarity) · **Priority:** Low · **Platforms:** P (reported); every layout with the marks
+- **Components:** `ui` (`RefluxApp.ActivityIndicator` compact form; `ProfileButton` and the navigation's downloading mark)
+- **How found:** the owner's Phase 2 brief (2026-11-19), where it was numbered B-044. Renumbered because B-044 was taken.
+- **Phase:** 2 (owner's brief, section 7) · **Status:** Fixed (both of Reflux's marks now say what they are; which dot the owner saw to be confirmed) · **Last updated:** 2026-11-19
+- **Related:** B-005 (the compact activity sign), B-046
+
+**Original description.** A small, persistent dot sits next to the Profile button, on Home and seemingly every screen.
+- *Investigate:* identify exactly what it is, through the shared header, state, notification and status systems, profile state, debugging UI, placeholders, theme and decorative code. Do not assume.
+- *Fix:* if intentional, make it meaningful and show it only when its state warrants; if obsolete or meaningless, remove it; never remove it before its source is understood.
+- *Tests:* every relevant screen; phone, tablet, desktop and TV; light and dark themes where they apply; no accidental indicator left.
+
+**Investigation (code and device).** Two things in Reflux draw a dot there, and a third dot sits just above it on the owner's phone.
+
+1. **The library-activity sign, compact.** A 6 dp grey dot to the left of the Profile button on a phone's top row (and on a television's bar). It shows only while the library pipeline is busy (`PipelineActivity` not `Idle`: scanning, reading media details, finding titles and details, fetching artwork). It came from Phase 1's B-005 fix, which cut the sign's words where the page's heading starts beside it. So it is **not in 0.9.0-beta.1**. It appears in the Phase 1 debug build installed beside the store build for the closeout walks, whose 400-file walk library kept it busy for a while.
+2. **The downloading mark.** A 7 dp white dot at the top-right corner of the Profile button (and of the rail's Downloads and Profile items). It shows while any visible download is queued, preparing or downloading. It **is in beta.1**.
+   - A download waiting for its source is `FAILED` with `SOURCE_UNAVAILABLE`, not queued, so a disconnected source does not keep it lit.
+   - It is lit only while there is real work.
+3. **Android's status bar.** On the owner's Phone 2a it shows its own "more notifications" dot at the far right, directly above Reflux's Profile button, on every screen of every app. Reflux does not draw it.
+
+**Device evidence, 2026-11-19.** A read-only screenshot of the store build (0.9.0-beta.1) on Home, every source "Not connected". It showed neither Reflux dot at that moment (no downloads, no activity), and the status bar's dot above the button.
+
+**Which dot the owner saw is not established.** "Persistent… on every screen" fits the status bar's dot best. In a Reflux build, it fits the activity sign during a long refresh.
+
+**Fix (both of Reflux's marks are intentional; each now says what it is).**
+- **The compact activity sign** is a small turning arc, the common "work in progress" sign. It still has its full words for a screen reader, says them on Sources, and is shown only while there is activity.
+- **The downloading mark** is a download arrow in a small lit badge, named "…, downloading" to a screen reader, and shown only while a download is active.
+- Nothing is removed.
+- **Owner check:** a screenshot of the dot, if it is still seen, would settle which one it is.
+
+**Tests / verification:** JVM suites green (`ActivityIndicatorLayoutTest`, B-005's, still holds with the arc). The arc, and the badge on a download, are looked at in the walks' screenshots (VERIFICATION.md, "Phase 2"). Owner check: a screenshot if a dot is still seen.
+
+<a id="b-048"></a>
+### B-048: Touchscreen pull-to-refresh for library changes
+
+- **Category:** Feature (touch UX) · **Priority:** Medium · **Platforms:** P T (touch)
+- **Components:** `ui` (`components/PullToRefresh`, `HomeScreen`, `BrowseScreen.PosterGrid`, `AppState.pullToRefresh`); `library` (`LibraryPipeline.refresh`, unchanged)
+- **How found:** the owner's Phase 2 brief (2026-11-19), where it was numbered B-045. Renumbered because B-045 was taken.
+- **Phase:** 2 (owner's brief, section 7) · **Status:** Fixed (automated; device and emulator walks below) · **Last updated:** 2026-11-19
+- **Related:** B-005 (the activity sign), B-041
+
+**Original description.** A pull-down refresh gesture at the top of the scrollable content on Home, Movies and TV Shows, to check for library changes and refresh what is shown.
+- *Expected:* it triggers the existing refresh/synchronisation pipeline, and:
+  - detects added and removed media, and reconciles changes;
+  - updates the listings and Home's sections;
+  - handles connected, disconnected and multiple sources;
+  - keeps cached content during errors;
+  - does not redownload metadata or artwork unnecessarily;
+  - avoids concurrent refreshes;
+  - keeps the indicator's lifecycle correct and reports failure gracefully;
+  - does not disrupt ordinary scrolling, and works on touch.
+
+  It is a library change check, not an indiscriminate metadata refresh.
+- *Implementation:* reuse the existing pipeline; the Compose approach that fits the project's Material/Compose versions.
+- *Tests:* Home, Movies and Shows; added and removed media; multiple and disconnected sources; cache kept on failure; no storms; ordinary scrolling unaffected; only at the top, not mid-scroll; the indicator resets after success and after failure.
+
+**Investigation.** `AppState.refresh()` runs `LibraryPipeline.refresh(null)`, the same path as Sources' refresh, the automatic availability checks and a watched folder's changes:
+- every source is scanned, then probing, metadata and artwork run only for what is new or due;
+- an unreachable source keeps its works (its availability is recorded, nothing deleted);
+- calls are serialised, and one already waiting its turn is joined.
+
+The project draws its own components on Compose Foundation and depends on no Material library, whose pull-to-refresh lives there. A Material dependency for one gesture was judged not worth it.
+
+**Implementation.**
+- **The gesture.** `PullToRefresh`, built on nested scrolling:
+  - only a finger's drag that the list leaves over at its top pulls;
+  - a fling reaching the top does not pull, a pointer's wheel never does, and pushing back retracts it;
+  - the pull is resisted, its threshold is 72 dp, and the sign turns while refreshing and goes when the work is done, success or failure.
+- **The refresh.** `AppState.pullToRefresh()`: one at a time (a pull while one runs starts nothing), through `refresh()`, which already reports a failure ("The library couldn't be updated") and leaves everything shown as it was.
+- **Where.** Home and the Movies and Shows pages; not Search, listings or a source's own page.
+- **Feedback.** A light confirmation tap through the haptics gateway, only if interface haptics are on (F-001).
+
+**Tests / verification:** `PullToRefreshTest` (4: Home finds an added film and loses a removed one, every page reads the library again; Movies and Shows pull too; one refresh at a time, a short pull is nothing; a drag in the middle of the page only scrolls). On device: `PhaseTwoWalkOnDeviceTest.aPullAtTheTopOfHomeFindsWhatWasAdded`. A disconnected source keeps its works (the pipeline's existing behaviour, `SourceSilenceTest`). Owner acceptance pending.
+
+<a id="b-049"></a>
+### B-049: Allow PIN removal from a profile (authorised)
+
+- **Category:** Bug (security/usability) · **Priority:** High · **Platforms:** all
+- **Components:** `library` (`Profiles.kt`: `setPin`, `changePin`, `removePin`, `removePinConfirmedBySystem`; `Library.sq` `setFirstProfilePin`); `ui` (`SettingsScreen`, `AppState.setPin`, `removePin`, `pinRefused`)
+- **How found:** the owner's Phase 2 brief (2026-11-19), where it was numbered B-046. Renumbered because B-046 was taken by the brief's B-043.
+- **Phase:** 2 (owner's brief, section 7) · **Status:** Fixed (automated) · **Last updated:** 2026-11-19
+- **Related:** B-018, Forgot PIN (DECISIONS.md, 2026-11-19)
+
+**Original description.** Once a profile has a PIN there is no proper way to remove it. Users need a legitimate way to disable PIN protection without deleting the profile.
+- *Expected:* a clear, discoverable security option to remove the PIN that:
+  - requires authorisation (the current PIN or an explicitly authorised recovery mechanism) and never creates a bypass;
+  - explains that the profile will no longer be protected, and confirms first;
+  - removes the requirement properly;
+  - keeps the profile's data, and other profiles and their security;
+  - persists across restarts and works across profile switching;
+  - is distinct from resetting or deleting a profile.
+
+  It is not to be an unprotected toggle.
+- *Security tests:* authorised removal succeeds; a wrong PIN cannot remove it; cancel keeps it; data intact; other profiles unaffected; persists after restart; no longer required afterwards; a PIN can be set again; no alternate route around profile security.
+
+**Investigation.** The defect was worse than "no proper way": the way that existed was **unprotected**.
+- Settings showed "Remove PIN" (a quiet button) and "Change PIN", calling `Library.removePin(id)` and `setPin(id, pin)` with no check.
+- Anyone at an unlocked device could strip, or silently replace, the open profile's PIN in two taps.
+
+**Implementation.** Authorisation is in the operation, as for deletion (B-018):
+- `Library.removePin(id, current, key)` and `changePin(id, current, next, key)` verify the current PIN in the same transaction, with `checkPin`'s counting and lockout. A wrong PIN changes nothing and counts as a try.
+- `setPin` only gives a first PIN: one SQL statement that refuses a profile which already has one, so it cannot be used to go around the PIN.
+- **Settings:**
+  - "Remove PIN" opens a panel that says what it means ("…will open without a PIN. Anyone using this device can then see its watch history…"), asks for the current PIN, and has the safe "Keep PIN" first.
+  - "Change PIN" asks for the current PIN before the new one, twice.
+  - A refused PIN is said, announced, and felt (haptics gateway).
+- The only way to drop a PIN without it is `removePinConfirmedBySystem`, used only after the system's own confirmation of the device's owner in Forgot PIN (Android phones and tablets).
+
+**Tests / verification:** Library: `ProfilesTest.aPinIsChangedOrRemovedOnlyWithItself` (wrong, missing, or another profile's PIN refused and counted; the lockout applies; a first PIN cannot replace one; change and removal with the right PIN; history kept; the other profile untouched; kept after reopening; a PIN can be set again) and the existing PIN tests. UI: `ProfileSecurityTest` (4: removing needs the PIN, Keep PIN changes nothing, a wrong one is refused, the right one removes only the PIN, and it holds after a restart; changing needs the current PIN; Forgot PIN with the device lock, cancelled, failed, then confirmed; Keep profile and Back through each question), `ProfilesUiTest` updated. Owner acceptance pending.
+
 ## Regression tracking
 
 Every regression found, and every recurring failure watched, with the run that found it. A regression introduced by a Beta 2 change gets a new B-number in the section above and a row here.
@@ -1521,6 +1796,16 @@ Per fixed or investigated issue, by kind of verification. ✓ done · ✗ requir
 | B-041 | measurement | ✓ Google TV cold start | ◐ Windows; Phone 2a, Pad 7 (cold start, memory, Home frames); Fire TV cold start | ◐ Linux in a VM (start, memory, close) | — | Pending |
 | B-043 | ✓ | — | — | ◐ base packages in containers; Mint not run | ✓ | Pending |
 | F-004 | ✓ 6 | — | — (nothing sent) | — | ✓ | Pending |
+| B-025, B-008, B-007, B-013 | ✓ HomeFocusTest, InteractionContractTest, existing suites | ◐ Google TV (Search, keyboard) | ✗ controller walks (Windows, Fire TV) | — | ✓ full check, 1,537 tests, 0 failures (after a lint fix) | Pending |
+| B-019 to B-021, B-023, B-011, B-004 | ✓ | ✓ Google TV (remote, Reflux keyboard) | ✗ physical controller; Fire TV | — | ✓ full check, 1,537 tests, 0 failures (after a lint fix) | Pending |
+| B-039, B-012 | ✓ | — | ✗ physical controllers | — | ✓ full check, 1,537 tests, 0 failures (after a lint fix) | Pending |
+| F-001, F-002 | ✓ HapticsTest + source scan | — | ✗ felt on device / controller | — | ✓ full check, 1,537 tests, 0 failures (after a lint fix) | Pending |
+| B-034 to B-037, B-010 | ✓ | ✓ tablet emulator; Google TV (empty state) | ✓ Phone 2a; ✗ Pad 7 (PIN) | — | ✓ full check, 1,537 tests, 0 failures (after a lint fix) | Pending |
+| B-009, B-032, B-015 | ✓ CardLayoutTest | — | ✗ Windows look with the owner's library | — | ✓ full check, 1,537 tests, 0 failures (after a lint fix) | Pending |
+| B-002 | — | — | ✗ (stopped; owner session) | — | — | Pending |
+| B-046, B-048 | ✓ | ✓ tablet emulator | ✓ Phone 2a | — | ✓ full check, 1,537 tests, 0 failures (after a lint fix) | Pending |
+| B-047 | ✓ | — | ✓ Phone 2a (arc seen); owner to confirm | — | ✓ full check, 1,537 tests, 0 failures (after a lint fix) | Pending |
+| B-049, Forgot PIN | ✓ ProfilesTest, ProfileSecurityTest | — | ✓ Phone 2a (system prompt opened, cancelled, nothing changed) | — | ✓ full check, 1,537 tests, 0 failures (after a lint fix) | Pending |
 
 Machines (CLAUDE.md, "Testing environment"): Windows 11 development machine (physical); Xiaomi Pad 7, Nothing Phone (2a), Fire TV Stick 4K Plus (physical); Google TV emulator; WSL2 Ubuntu 24.04 (VM); Docker containers; the **Ubuntu 26.04 VirtualBox VM** (`Reflux-QA-Ubuntu-26.04`, created 2026-11-19: 4 vCPU, 8 GB, 60 GB, VMSVGA with 3D, 128 MB video memory; GNOME on Wayland; used for B-031's desktop walk and B-041's Linux baseline). Full runs: VERIFICATION.md, "Phase 1", "Open-source transition", "Website documentation portal…", and "Beta bug tracker and register reconciliation".
 
@@ -1530,4 +1815,11 @@ Machines (CLAUDE.md, "Testing environment"): Windows 11 development machine (phy
 | --- | --- | --- |
 | 2026-11-19 | Tracker created from the owner's master tracker prompt, BETA-2.md's register, PHASE-1-PLAN.md, VERIFICATION.md, DECISIONS.md and the code at `0a0396f`. All of B-001 to B-042 and F-001 to F-005 entered once, with both source texts. Statuses moved to the tracker's eight words. **B-001** recorded as Fixed (BETA-2.md had "Verified on physical device"; its "different source types" criterion is not met). **B-042** shown as pending owner approval (BETA-2.md had listed it in Phase 2). **B-026** Not Reproduced. New issues **B-043** (Linux hint), **B-044** (`AccessibilityTest` timeout), **B-045** (`AboutWindowTest`). F-P1 and F-P2 kept. The per-issue text in BETA-2.md moved here; BETA-2.md keeps phases, order, exit criteria and the gate. | Claude (agent), for the owner's review |
 | 2026-11-19 | **Phase 1 closeout walks.** B-001 → Verified (server-source case on Phone 2a and Pad 7, and on the Google TV emulator); B-033 → Verified (reported case walked on Phone 2a and Pad 7, and the emulator); B-005 walked on phone, tablet and TV emulator (Fire TV pending, stays Fixed); B-031 walked in the Ubuntu 26.04 VM's desktop session, before (beta.1 reproduces) and after, under `en_US` and `de_DE` (physical pending, stays Fixed); B-026 closed during playback 5 times, clean (Not Reproduced); B-041 baseline recorded on all six platforms (Linux VM; Android memory and Home frame pacing); B-044 passed in the next full check. Counts: 35 Not Started, 3 Investigating, 1 In Progress, 5 Fixed, 2 Verified, 1 Not Reproduced. | Claude (agent) |
+| 2026-11-19 | **Phase 2 implemented** (the owner's Phase 2 brief; PHASE-2-PLAN.md; code commit `77b994c`).
+- **New entries:** B-046 to B-049 (the brief's B-043 to B-046, renumbered because those IDs were taken) and F-P3 (Media Quick View, Phase 3, with X reserved).
+- **Fixed:** B-004, B-007 to B-013, B-019 to B-021, B-023, B-025, B-032, B-034 to B-037, B-039, B-046 to B-049, F-001, F-002.
+- **Not Reproduced:** B-015.
+- **Investigating:** B-002 (reproduction stopped; the owner was using the machine).
+- **Forgot PIN** decided and implemented. **F-004** provider evaluated (Aptabase, not integrated).
+- **Counts:** 12 Not Started, 4 Investigating, 1 In Progress, 26 Fixed, 2 Verified, 2 Not Reproduced (47 original). | Claude (agent) |
 | 2026-11-19 | Consistency check (throwaway script): 51 entries, one anchor each, no duplicates; every link and anchor in the tracker, BETA-2.md, CLAUDE.md, ROADMAP.md, DECISIONS.md, PHASE-1-PLAN.md and VERIFICATION.md resolves; every entry's status is one of the eight; the phase overview matches the entries; counts 35 Not Started, 3 Investigating, 1 In Progress, 7 Fixed, 1 Not Reproduced (47). 0 problems. | Claude (agent) |

@@ -1395,6 +1395,44 @@ M11 decided the open items of its plan (planning/M11-DISTRIBUTION-PLAN.md, secti
 - **1.0 communication.** "Planned for December 2026", depending on feedback, qualification, and store approval; 10 December is an internal readiness checkpoint and 15 December the release decision, never a promised release date. Each platform publishes through its own path.
 - **No Windows installer in the beta**: none exists or is tested, and building one would change the release; reconsidered for 1.0.
 
+## 2026-11-19 — Controller X is reserved for Media Quick View (a Phase 3 feature)
+
+**Owner's decision (Phase 3 feature planning notice, during Phase 2).** A controller's **X** (the west face button: Square on PlayStation, Y on Nintendo) is reserved as the universal **contextual action for movies and TV shows**. It opens a new **Media Quick View** popup when a media item has focus, and does nothing media-related anywhere else. The popup is **Phase 3 scope** and is not built in Phase 2. In Phase 3 it will also open from a mouse's right-click, a touch long-press, a remote's Options/Menu key, and a long press of OK/Select.
+
+**What it means for Phase 2.**
+- B-039/B-012's mapping gives X **no global browsing action**: while browsing it stays unmapped.
+- X's only Phase 2 meaning is **Erase** on the Reflux keyboard (B-023). That is a text-entry context, opened from a text field, with no media item focused, so it cannot conflict.
+- Nothing in Phase 2 may give a long press of OK/Select, right-click, or a touch long-press on a media card another meaning.
+
+**Recorded for Phase 3, not resolved now.**
+- A remote's Menu key, and a controller's Start and Y, open Sources while browsing (`SemanticAction.MENU`).
+- Quick View's Menu/Options trigger on a focused media item will have to be reconciled with that. Phase 3 decides it, and Phase 2 does not move it.
+
+The requirement is registered as **F-P3** in [planning/BETA-BUG-TRACKER.md](planning/BETA-BUG-TRACKER.md) and in Phase 3 of [planning/BETA-2.md](planning/BETA-2.md).
+
+## 2026-11-19 — Beta 2, Phase 2 authorised: the IDs of the new findings, Forgot PIN, and the statistics provider
+
+**Context.** The owner accepted Phase 1 and authorised Phase 2 with a brief (Controller, Focus, Interaction, Input, Haptics & UX Reliability). The brief added four findings, numbered B-043 to B-046 in the brief. Those numbers were already in use in the tracker, given to issues found during Phase 1.
+
+**Decisions.**
+- **IDs.** Tracker IDs are stable and never reused, so the brief's findings take the next free IDs:
+
+  | Brief's ID | Tracker ID | Finding |
+  | --- | --- | --- |
+  | B-043 | **B-046** | Redundant Profile button on Profiles |
+  | B-044 | **B-047** | Unexplained dot beside the Profile button |
+  | B-045 | **B-048** | Pull-to-refresh |
+  | B-046 | **B-049** | Authorised PIN removal |
+
+  All four are Phase 2 scope by the owner's brief.
+- **Forgot PIN** (resolving the open decision of 2026-11-18). The choices are **Keep profile** (nothing changes) and **Reset profile**. Reset profile erases the profile's protected data and its PIN, after a warning and a second confirmation; only that profile is touched.
+  - **System authentication.** Where the system can confirm the device's owner, a third choice removes the PIN and keeps the profile's data. Reflux never collects or sees what is entered, and the old PIN is never revealed. A cancelled, failed or unavailable confirmation authorises nothing.
+  - **Android phones and tablets (Android 10 and later):** the platform `BiometricPrompt`, with strong biometrics or the screen lock.
+  - **Television, Windows and Linux:** Keep profile and Reset profile only (planning/PHASE-2-PLAN.md, "Forgot PIN: system authentication by platform").
+- **Changing or removing a PIN needs that PIN**, checked in the library in the same transaction as the change (B-049). A first PIN cannot replace an existing one.
+- **Statistics (F-004).** Aptabase is evaluated, not integrated, in Phase 2. Nothing is sent, and the groundwork stays as it is.
+- B-042 stays unassigned. B-016, B-017, B-022 and F-005 are unchanged.
+
 ## 2026-11-19 — A permanent bug tracker beside the phase plan
 
 **Decided by the owner (2026-11-19, the master tracker prompt).** [planning/BETA-BUG-TRACKER.md](planning/BETA-BUG-TRACKER.md) is the permanent, per-issue record of every Beta finding and every issue found since: the original report, reproduction, status, investigation, cause, implementation, tests, verification by kind, evidence, and what is left. [planning/BETA-2.md](planning/BETA-2.md) stays the authority for scope, phase and work order, dependencies, exit criteria, and the gate; the two link to each other and do not repeat each other.
