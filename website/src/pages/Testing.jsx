@@ -101,7 +101,7 @@ export default function Testing() {
 
           <Platform id="linux" name="Linux" status="A public beta download. 64-bit x86 (x86-64), X11 or XWayland.">
             <ol className="plain numbered small">
-              <li>Install libmpv: <code>libmpv2</code> on Debian 12+ and Ubuntu 24.04+, <code>mpv-libs</code> on Fedora.</li>
+              <li>Install libmpv with your distribution's command, from the <Link to="/docs/install/linux">Linux guide</Link>.</li>
               <li>Download the tar.gz from <Link to="/download#linux">Download</Link> and check its SHA-256.</li>
               <li>Extract it (<code>tar -xzf</code>) and run <code>bin/Reflux</code> inside it. No root access is needed.</li>
               <li>To update, extract the newer archive to a new folder and delete the old one. Your library is kept.</li>

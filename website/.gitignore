@@ -2,6 +2,7 @@ node_modules/
 dist/
 src/generated/
 public/third-party-licenses.txt
+public/license.txt
 .vercel/
 dist-server/
 test-results/

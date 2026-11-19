@@ -15,6 +15,7 @@ What changes for people using Reflux, version by version. The rules for versions
 - A version's page no longer shows a resolution or HDR from its file name beside the one Reflux measured (as in "1440p · Dolby Vision · 2160p HDR"); a version's technical details give its exact picture size when it was measured.
 - The sign that Reflux is finding titles and details no longer covers a page's heading or the search field on phones and TVs; there it is a small dot, and its words are on Sources.
 - Search answers much faster in large libraries (about 18 times faster on 11,000 episodes and films on a desktop), and listings across Reflux read less of the library to show what is available.
+- Reflux's website has documentation of its own: install guides for Windows, Linux (a tab per distribution, each command saying where it was checked), Android, Android TV, and Fire TV, how to check a download, and guides to sources, the library, playback, and profiles, with search, a contents list on each page, and commands you can copy. Download shows a card per platform with what it needs and how to get it. The license is at /license.
 - On the desktop, a problem that repeats (an engine that will not start, asked for again and again) is written to the diagnostics log once and counted, instead of filling it.
 
 ## 0.9.0-beta.1 — 2026-11-16

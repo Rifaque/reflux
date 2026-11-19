@@ -6,7 +6,7 @@
 //   release/published/*.json   manifests of published versions (tools/release/release.py), newest first
 //   release/stores.json        store listings and their state (schema: release-lib.mjs)
 //   legal/components.txt       third-party components, for the notices page
-//   LICENSE                    Reflux's ownership notice, for the terms page
+//   NOTICE, LICENSE            Reflux's notice (copyright, GPL-3.0-or-later, source) and the GNU GPL text, for the license page
 //
 // Writes src/generated/release.json. Fails the build if a source is missing or malformed, rather than publishing a
 // page that says something untrue.
@@ -73,7 +73,10 @@ const components = read('legal/components.txt').split(/\r?\n/)
   .map((l) => l.split('|').map((s) => s.trim()))
   .map(([name, license, , targets]) => ({ name, license, targets }))
 
-const license = read('LICENSE').trim()
+const notice = read('NOTICE').trim()
+// The license itself is served whole as /license.txt, the repository's LICENSE byte for byte, rather than carried in
+// every page's script: it is 36 KB that only the license page links to.
+writeFileSync(join(here, '..', 'public', 'license.txt'), read('LICENSE'))
 
 // What this website itself ships to browsers: its production dependencies, with the license each declares.
 const lock = JSON.parse(readFileSync(join(here, '..', 'package-lock.json'), 'utf8'))
@@ -94,7 +97,7 @@ ${readFileSync(join(dir, file), 'utf8').trim()}
 })
 mkdirSync(join(here, '..', 'public'), { recursive: true })
 writeFileSync(join(here, '..', 'public', 'third-party-licenses.txt'), texts.join('\n'))
-const data = { version, androidPackage, changelog, published, latest: published[0] ?? null, stores, components, license, site, brand }
+const data = { version, androidPackage, changelog, published, latest: published[0] ?? null, stores, components, notice, site, brand }
 // RELEASE_DATA_OUT, like RELEASE_PUBLISHED_DIR, is for the website's own tests.
 const out = process.env.RELEASE_DATA_OUT ?? join(here, '..', 'src', 'generated', 'release.json')
 mkdirSync(dirname(out), { recursive: true })

@@ -55,14 +55,22 @@ export function Privacy() {
   )
 }
 
-export function Terms() {
+export function License() {
   return (
     <article className="page legal">
-      <h1>Terms</h1>
-      <p className="lead">Reflux is free, made and published by RSX Develops, and proprietary. Its ownership notice:</p>
+      <h1>License</h1>
+      <p className="lead">Reflux is free and open-source software, made and published by RSX Develops, under the GNU General Public License, version 3 or later (GPL-3.0-or-later).</p>
       <Publisher className="publisher publisher-terms" />
-      <pre className="notice-text">{release.license}</pre>
-      <p className="quiet review">Whether Reflux needs end-user terms beyond this notice and the stores' own terms is a question for its legal review, due before release. Until then, these are its terms.</p>
+      <h2>What you may do</h2>
+      <p>You may use Reflux for any purpose, read its source, change it, and share it, changed or not, under the terms of the GPL. If you distribute Reflux or a version of it, the GPL asks you to pass on the same freedoms: the license, its notices, and the corresponding source. The source is at <a href="https://github.com/Rifaque/reflux" rel="noopener noreferrer">github.com/Rifaque/reflux</a>, and how to contribute is in its <a href="https://github.com/Rifaque/reflux/blob/main/CONTRIBUTING.md" rel="noopener noreferrer">contribution guide</a>.</p>
+      <p>Reflux costs nothing and has no paid tier: no payment, subscription, or donation unlocks anything. Should RSX Develops ever accept donations, they will be voluntary support for its development, never a condition of using Reflux.</p>
+      <h2>What the license does not cover</h2>
+      <p>The software Reflux is built with keeps its own licenses (<Link to="/legal/third-party">Third-party notices</Link>); so do the services it connects to, such as Trakt, Jellyfin, and Plex, and their names. The GPL gives no right to the name Reflux or its logo: under the notice's section 7 terms, a modified version must say it is changed, and must not present itself as an official Reflux release. Reflux comes with no warranty, as the license says.</p>
+      <h2>Reflux's notice</h2>
+      <pre className="notice-text">{release.notice}</pre>
+      <p><a href="/license.txt" className="more">The full text of the GNU General Public License, version 3</a></p>
+      <p className="quiet small">The same text is in the repository's <a href="https://github.com/Rifaque/reflux/blob/main/LICENSE" rel="noopener noreferrer">LICENSE</a> and at <a href="https://www.gnu.org/licenses/gpl-3.0.html" rel="noopener noreferrer">gnu.org</a>. Downloads from Google Play and the Amazon Appstore are also subject to those stores' own terms.</p>
+      <p className="quiet review">Whether Reflux needs end-user terms beyond its license and the stores' own terms is a question for its legal review, due before release.</p>
     </article>
   )
 }

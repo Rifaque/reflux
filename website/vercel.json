@@ -75,6 +75,11 @@
       "source": "/beta",
       "destination": "/testing",
       "permanent": false
+    },
+    {
+      "source": "/terms",
+      "destination": "/license",
+      "permanent": true
     }
   ]
 }

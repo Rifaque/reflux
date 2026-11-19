@@ -115,17 +115,19 @@ export function Footer() {
           <Link to="/docs/troubleshooting" viewTransition>FAQ</Link>
           <Link to="/support" viewTransition>Support</Link>
           <Link to="/security" viewTransition>Security</Link>
+          <Out href="https://github.com/Rifaque/reflux">Source code</Out>
         </nav>
         <nav aria-label="Legal">
           <h2>Legal</h2>
           <Link to="/privacy" viewTransition>Privacy</Link>
-          <Link to="/terms" viewTransition>Terms</Link>
+          <Link to="/license" viewTransition>License</Link>
           <Link to="/legal/third-party" viewTransition>Third-party notices</Link>
         </nav>
       </div>
       <p className="footer-fine quiet small">
-        Copyright © 2026 RSX Develops. Reflux is proprietary software, free to use. Film artwork shown on this site is from the
-        Blender Foundation's open films, used under Creative Commons licenses (<Link to="/legal/third-party#artwork">credits</Link>).
+        Copyright © 2026 RSX Develops. Reflux is free and open-source software under the <Link to="/license">GNU GPL, version 3 or later</Link>; the
+        components it is built with keep their own licenses. Film artwork shown on this site is from the Blender Foundation's open films, used
+        under Creative Commons licenses (<Link to="/legal/third-party#artwork">credits</Link>).
       </p>
     </footer>
   )

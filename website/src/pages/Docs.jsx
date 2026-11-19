@@ -1,126 +1,152 @@
+// The documentation portal (docs/WEBSITE.md, "Documentation"): a sidebar of every page in groups, search over every
+// page's words, breadcrumbs, the page's own contents, and the pages before and after it. Everything is rendered on the
+// server: the sidebar is a list of links, the narrow screen's menu a native disclosure, so the documentation reads and
+// navigates without JavaScript; search and the copy buttons are what JavaScript adds.
+import { Children, Fragment, cloneElement, isValidElement, useId, useMemo, useState } from 'react'
 import { Link, NavLink } from 'react-router-dom'
 import { PageHead } from '../components.jsx'
+import { DOC_GROUPS, DOC_PAGES, DOC_REFERENCE } from '../docs/pages.js'
+import { DOC_BODIES } from '../docs/content.jsx'
+import { anchorOf, headingsOf, textOf } from '../docs/blocks.jsx'
 
-const articles = [
-  {
-    slug: 'getting-started', title: 'Getting started', summary: 'Install Reflux and point it at your first folder or server.',
-    body: (
-      <>
-        <h2>Install</h2>
-        <p>Get Reflux for your platform from <Link to="/download">Download</Link>: Google Play on Android phones, tablets, and Google TV; the Amazon Appstore on Fire TV; a zip for Windows and a tar.gz for Linux. During the beta, Android and Fire TV builds reach invited testers only (<Link to="/testing">the beta</Link> says how to join). Reflux has no account of its own: you sign in only to your own servers, if you add any.</p>
-        <h2>Your first library</h2>
-        <ol className="plain numbered">
-          <li>Open Reflux. It offers two ways in: <strong>Choose a folder</strong>, or <strong>Connect a server or share</strong>.</li>
-          <li>Choose the folder your films and shows are in. Sub-folders are fine, and so are your existing names: <code>Heat (1995)/Heat.1995.1080p.mkv</code>, <code>Show/Season 1/Show.S01E01.mkv</code>, or plainer.</li>
-          <li>Reflux scans it and builds your library in the background. Home fills as it goes.</li>
-          <li>Press Play. Reflux remembers where you stop, on every copy of that title.</li>
-        </ol>
-        <p>Add more folders, servers, and shares under <strong>Sources</strong> at any time.</p>
-        <h2>Moving around</h2>
-        <p>Home, Movies, Shows, and Search are always one step away, and so are Downloads, Sources, and Settings: a rail on a tablet or TV (press Left on the remote), a sidebar on a desktop, and on a phone a bar at the bottom with your profile button leading to Downloads, Sources, and Settings. On a desktop, Ctrl+1 to Ctrl+6 go straight to Home through Sources; with a controller, the bumpers step through them.</p>
-      </>
-    ),
-  },
-  {
-    slug: 'sources', title: 'Adding sources', summary: 'Folders, Jellyfin, Plex, SMB, and WebDAV, and choosing what is in your library.',
-    body: (
-      <>
-        <h2>Add a source</h2>
-        <p>Open <strong>Sources</strong> and choose <strong>Add media</strong>. Pick a folder, or enter a server's or share's address. For Jellyfin, sign in with your user name and password; for Plex, your Plex account, a token, or nothing where your server allows your network. Passwords are used to sign in and are not kept.</p>
-        <h2>Each source's own page</h2>
-        <p>Every source, and every library of a server, has its own page under Sources with everything on it, whether or not it is in your library.</p>
-        <h2>Leaving something out</h2>
-        <p>Switch a source, or one of its libraries, out of your library without disconnecting it. It stays under Sources, playable from its page, and what you watched is kept. Switch it back and everything returns at once, with nothing to scan.</p>
-        <h2>Removing a source</h2>
-        <p>Removing a source takes its titles out of Reflux and forgets its sign-in; removing a Jellyfin server also signs this device out of it. Your files are never touched.</p>
-        <p><Link to="/sources" className="more">What each source supports</Link></p>
-      </>
-    ),
-  },
-  {
-    slug: 'playback', title: 'How playback works', summary: 'Which copy plays, what a server converts and why, and the Info list.',
-    body: (
-      <>
-        <h2>Which copy plays</h2>
-        <p>When a title has more than one copy (a 4K and a 1080p, a local file and a server's), Play chooses the one this device plays best: the picture it can decode and show, the sound it can play, the language you speak. A title's page lists every version with the recommended one marked and why. <strong>Always play this</strong> pins a version; <strong>Let Reflux choose</strong> gives the choice back.</p>
-        <h2>The original, whenever it can be</h2>
-        <p>Reflux plays your file as it is whenever the device can. When it cannot and the file is on a Jellyfin server, Reflux asks the server to change only what it must: the sound alone if only the sound is the problem, the picture only when the device cannot decode it. Local files and shares are played by the device alone; what it cannot play is said, not hidden.</p>
-        <h2>Info</h2>
-        <p>While something plays, the player's <strong>Info</strong> list says how it is playing: the original file or a conversion, the decoder in hardware or software, the sound, the subtitles, and whether that is what was planned.</p>
-        <h2>Resuming</h2>
-        <p>Progress belongs to the title, not the file: resume on any copy of the same cut, on any device that shares the source. A different cut (an extended edition) starts at the right place for it, and Reflux says so. <strong>From the start</strong> keeps your place until the new playback is under way.</p>
-        <h2>Offline</h2>
-        <p>Keep a film, an episode, or a season for watching without its source from its page. <strong>Downloads</strong> lists everything kept, on its way, or unfinished. Downloads continue while Reflux is open.</p>
-      </>
-    ),
-  },
-  {
-    slug: 'library', title: 'Your library', summary: 'How titles are recognised, where details come from, and Identify.',
-    body: (
-      <>
-        <h2>How Reflux recognises titles</h2>
-        <p>From ordinary file and folder names: title, year, season and episode numbers, and the edition or quality where the name says. Episodes in a folder with no show name become a show named after the folder. Disc folders (BDMV, VIDEO_TS) are not played yet.</p>
-        <h2>Where details and artwork come from</h2>
-        <p>Your servers describe their titles: summaries, genres, ratings, runtimes, dates, cast, posters, and episode stills. Files bring their own artwork where it sits beside them, and Trakt, an online film and TV database, fills in what neither has. A title with no artwork gets a designed look of its own rather than a blank.</p>
-        <h2>Online metadata &amp; artwork</h2>
-        <p>To recognise a title, your device asks Trakt directly with the title Reflux read (or an ID such as an IMDb number, when it already has one), and your language when it is not English. The year is used on your device to pick the right match and is not sent; nothing about you, your files' locations, or your servers is sent, and no Trakt account is used. Reflux then downloads the pictures Trakt names and keeps them on your device.</p>
-        <p>Turn <strong>Online metadata &amp; artwork</strong> off in Settings and Reflux sends Trakt nothing and fetches no new pictures from it. What it already found stays, your servers and files still describe your titles, and Identify waits until you turn it back on. See <Link to="/privacy">Privacy</Link>.</p>
-        <h2>Identify</h2>
-        <p>When Reflux has a title wrong, open its page and choose <strong>Identify</strong>: search, pick the right one, and Reflux remembers it through rescans, keeping your progress, favourites, and chosen version. <strong>Let Reflux identify it</strong> undoes it.</p>
-        <h2>Nothing changes on your disk</h2>
-        <p>Your library, corrections, and choices are Reflux's own. It never renames, moves, tags, or deletes your files.</p>
-      </>
-    ),
-  },
-  {
-    slug: 'troubleshooting', title: 'Troubleshooting and FAQ', summary: 'Common questions, and how to send a support report.',
-    body: (
-      <>
-        <h2>Is Reflux free? Does it need an account?</h2>
-        <p>Reflux is free of charge, with no subscription, paid tier, or ads. It is proprietary software, not open source. It has no account of its own; you sign in only to your own Jellyfin or Plex server, if you use one.</p>
-        <h2>A title plays without sound</h2>
-        <p>The device cannot decode its audio (DTS or TrueHD on most phones and TVs). Reflux says so on screen. If the file is on a Jellyfin server, Reflux asks the server to convert the sound; from a folder or a share, choose another audio track or another version.</p>
-        <h2>A server says it cannot be reached</h2>
-        <p>Check that the device is on the same network and the server is awake. Reflux keeps the server's titles in your library while it is away and picks them up when it answers again. If the server stopped accepting Reflux's sign-in, its row under Sources asks you to sign in again.</p>
-        <h2>Windows says “Windows protected your PC”</h2>
-        <p>Reflux for Windows is not yet signed by a publisher. Check the download's SHA-256 first; <Link to="/download">Download</Link> explains, and never asks you to turn off Windows' protections.</p>
-        <h2>On a TV, a folder's posters do not show</h2>
-        <p>On Android 13 and later TVs, Reflux is allowed to read your videos but not the images beside them. Titles from a server show the server's artwork; others get Reflux's designed look.</p>
-        <h2>Sending a support report</h2>
-        <p>In Reflux, open <strong>Settings → About Reflux → Save a support report</strong>. It lists your version, device, what it plays, your sources' kinds, how the last playback went, and recent problems, with passwords, addresses, file paths, and titles removed. On a computer it lands in Downloads; on a phone or tablet you choose where to share it; on a TV it is saved in the TV's Download folder, under Reflux. Reflux never sends it itself. Attach it when you contact <Link to="/support">Support</Link>.</p>
-      </>
-    ),
-  },
-]
+export const docSlugs = DOC_PAGES.map((p) => p.slug)
 
-export const docSlugs = articles.map((a) => a.slug)
+/** The words of every page, made the first time someone searches. */
+let index = null
+const searchIndex = () => (index ??= DOC_PAGES.map((page) => ({ ...page, text: `${page.title} ${page.summary} ${textOf(DOC_BODIES[page.slug])}`.replace(/\s+/g, ' ') })))
+
+/** Pages whose words contain every word of [query], best first: a title match before a match in the text. */
+export function searchDocs(query) {
+  const words = query.toLowerCase().split(/\s+/).filter((w) => w.length > 1)
+  if (!words.length) return []
+  return searchIndex()
+    .filter((page) => words.every((w) => page.text.toLowerCase().includes(w)))
+    .map((page) => {
+      const lower = page.text.toLowerCase()
+      const at = lower.indexOf(words[0], page.title.length + page.summary.length)
+      const snippet = at < 0 ? page.summary : '…' + page.text.slice(Math.max(0, at - 60), at + 110).trim() + '…'
+      const score = words.filter((w) => page.title.toLowerCase().includes(w)).length
+      return { ...page, snippet, score }
+    })
+    .sort((a, b) => b.score - a.score)
+}
+
+function Search() {
+  const [query, setQuery] = useState('')
+  const results = useMemo(() => searchDocs(query), [query])
+  const id = useId()
+  return (
+    <div className="doc-search" role="search">
+      <label htmlFor={id} className="visually-hidden">Search the documentation</label>
+      <input id={id} type="search" placeholder="Search the documentation" value={query} onChange={(e) => setQuery(e.target.value)} autoComplete="off" />
+      {query.trim().length > 1 && (
+        <div className="doc-results" aria-live="polite">
+          {results.length
+            ? <ul>{results.slice(0, 8).map((r) => <li key={r.slug}><Link to={r.path} onClick={() => setQuery('')}><strong>{r.title}</strong> <span className="quiet small">{r.group}</span><span className="small">{r.snippet}</span></Link></li>)}</ul>
+            : <p className="small quiet">Nothing in the documentation matches “{query.trim()}”. <Link to="/support">Support</Link> can help.</p>}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/** Every page, in groups that open and close; the group of the page being read starts open, and so do all on the index. */
+function DocNav({ current }) {
+  return (
+    <>
+      {DOC_GROUPS.map((group) => (
+        <details key={group.title} className="doc-group" open={!current || group.pages.some((p) => p.slug === current)}>
+          <summary>{group.title}</summary>
+          <ul>{group.pages.map((p) => <li key={p.slug}><NavLink to={`/docs/${p.slug}`} end viewTransition>{p.title}</NavLink></li>)}</ul>
+        </details>
+      ))}
+      <details className="doc-group" open={!current}>
+        <summary>Reference</summary>
+        <ul>{DOC_REFERENCE.map(([to, label]) => <li key={to}><Link to={to} viewTransition>{label}</Link></li>)}</ul>
+      </details>
+    </>
+  )
+}
+
+/** The sidebar beside the page on a wide screen, and a menu that opens above it on a narrow one. */
+function Sidebar({ current }) {
+  return (
+    <>
+      <nav className="doc-sidebar" aria-label="Documentation">
+        <Link to="/docs" className="doc-home" viewTransition>Documentation</Link>
+        <Search />
+        <DocNav current={current} />
+      </nav>
+      <details className="doc-menu">
+        <summary>Documentation menu</summary>
+        <nav aria-label="Documentation">
+          <Link to="/docs" className="doc-home" viewTransition>Documentation</Link>
+          <Search />
+          <DocNav current={current} />
+        </nav>
+      </details>
+    </>
+  )
+}
+
+/** [body] with an anchor on each section heading, so the contents and a link can reach it. */
+function withAnchors(body) {
+  const anchor = (node) => (isValidElement(node) && node.type === 'h2' ? cloneElement(node, { id: anchorOf(textOf(node.props.children)) }) : node)
+  if (isValidElement(body) && body.type === Fragment) return <>{Children.map(body.props.children, anchor)}</>
+  return body
+}
 
 export function DocsIndex() {
   return (
-    <article className="page">
-      <PageHead eyebrow="Documentation" title="Using Reflux.">
-        <p>Everything you need to get from a folder to Play, and what to do when something does not.</p>
-      </PageHead>
-      <ul className="doc-index">
-        {articles.map((a) => (
-          <li key={a.slug} data-reveal><Link to={`/docs/${a.slug}`} viewTransition><h2>{a.title}</h2><p>{a.summary}</p></Link></li>
+    <div className="doc-layout">
+      <Sidebar current={null} />
+      <article className="page doc-page">
+        <PageHead eyebrow="Documentation" title="Using Reflux.">
+          <p>From installing Reflux to playing your first film, every platform's install guide, and what to do when something does not work.</p>
+        </PageHead>
+        {DOC_GROUPS.map((group) => (
+          <section key={group.title} aria-labelledby={anchorOf(group.title)}>
+            <h2 id={anchorOf(group.title)}>{group.title}</h2>
+            <ul className="doc-index">
+              {group.pages.map((p) => <li key={p.slug}><Link to={`/docs/${p.slug}`} viewTransition><h3>{p.title}</h3><p>{p.summary}</p></Link></li>)}
+            </ul>
+          </section>
         ))}
-      </ul>
-    </article>
+      </article>
+    </div>
   )
 }
 
 export function DocArticle({ slug }) {
-  const article = articles.find((a) => a.slug === slug)
+  const position = DOC_PAGES.findIndex((p) => p.slug === slug)
+  const page = DOC_PAGES[position]
+  const previous = DOC_PAGES[position - 1]
+  const next = DOC_PAGES[position + 1]
+  const body = DOC_BODIES[slug]
+  const headings = headingsOf(body)
   return (
     <div className="doc-layout">
-      <nav className="doc-nav" aria-label="Documentation">
-        <Link to="/docs" className="quiet small" viewTransition>Documentation</Link>
-        {articles.map((a) => <NavLink key={a.slug} to={`/docs/${a.slug}`} viewTransition>{a.title}</NavLink>)}
-      </nav>
-      <article className="page prose">
-        <PageHead eyebrow="Documentation" title={article.title}><p>{article.summary}</p></PageHead>
-        {article.body}
+      <Sidebar current={slug} />
+      <article className="page doc-page prose">
+        <nav aria-label="Breadcrumb" className="breadcrumb">
+          <ol>
+            <li><Link to="/docs" viewTransition>Documentation</Link></li>
+            <li>{page.group}</li>
+            <li aria-current="page">{page.title}</li>
+          </ol>
+        </nav>
+        <PageHead eyebrow={page.group} title={page.title}><p>{page.summary}</p></PageHead>
+        {headings.length > 2 && (
+          <nav className="doc-toc" aria-label="On this page">
+            <p className="doc-toc-title">On this page</p>
+            <ul>{headings.map((h) => <li key={h}><a href={`#${anchorOf(h)}`}>{h}</a></li>)}</ul>
+          </nav>
+        )}
+        {withAnchors(body)}
+        <nav className="doc-pager" aria-label="More documentation">
+          {previous ? <Link to={previous.path} rel="prev" viewTransition><span className="quiet small">Previous</span>{previous.title}</Link> : <span />}
+          {next ? <Link to={next.path} rel="next" viewTransition className="next"><span className="quiet small">Next</span>{next.title}</Link> : <Link to="/download" className="next" viewTransition><span className="quiet small">Next</span>Download Reflux</Link>}
+        </nav>
       </article>
     </div>
   )
