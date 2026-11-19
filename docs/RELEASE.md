@@ -5,7 +5,7 @@ What stands between the source tree and builds that can be handed to testers and
 ## Beta entry checklist (`0.9.0-beta.1`)
 
 - [ ] Every V1 item in ROADMAP.md (the product-completeness record and M3 to M7) is Done, or decided out of V1 in DECISIONS.md.
-- [x] Reflux's own terms are in the repository: `LICENSE`, proprietary, all rights reserved (DECISIONS.md, 2026-10-19); third-party notices are done (`legal/`, checked by the build, below).
+- [x] Reflux's own terms are in the repository: `LICENSE` (the GNU GPL, version 3, unmodified) and `NOTICE` (copyright, GPL-3.0-or-later, section 7 terms), since 2026-11-19 (DECISIONS.md; before then, a proprietary notice, 2026-10-19); third-party notices are done (`legal/`, checked by the build, below).
 - [ ] The legal review below is done, or each item decided as not needed for the beta.
 - [ ] About page with version and build, Reflux's copyright, third-party licenses, the metadata provider's attribution (Trakt's notice since 2026-11-15), privacy and support links (done 2026-10-19 apart from the privacy policy and support links, which wait for the website to have them).
 - [ ] Android: signed release build from CI; R8 on, keep rules validated by a release build on a device; upgrade from the last alpha keeps library, watch state, sources, and downloads.
@@ -179,8 +179,8 @@ Desktop playback and probing use libmpv through its stable client API (decision 
 **What a release needs**
 
 - A libmpv build to ship on Windows, with a known provenance and configuration: built LGPL (no GPL-only components), with the decoders and hardware paths Reflux relies on. Done in M7: Reflux's own reproducible build ("libmpv on Windows" above). The development DLL in `.reflux/native/` is any libmpv a developer puts there and is never packaged.
-- On Linux, either a dependency on the distribution's libmpv (deb/rpm) or a bundled copy (Flatpak/AppImage). The versions differ between distributions; the binding only uses API that every libmpv 2.x has.
-- LGPL obligations for the bundled library and its dependencies (FFmpeg, libass, libplacebo): license texts, source offer, and dynamic linking, which is already how it is loaded. Reflux is proprietary, so the bundled build must be an LGPL one, with no GPL parts in mpv or FFmpeg (DECISIONS.md, 2026-10-19). The About page lists libmpv today as the copy on the user's computer, not included; a bundled build changes its line in `legal/components.txt` (its license as built, the LGPL text, where its source is offered).
+- On Linux, either a dependency on the distribution's libmpv (deb/rpm) or a bundled copy (Flatpak/AppImage). The versions differ between distributions; the binding only uses API that every libmpv 2.x has (and Ubuntu 22.04's libmpv 1.109, checked 2026-11-18). mpv's X11 output is GPL-only (`meson.build`, mpv 0.42.0); with Reflux under the GPL since 2026-11-19, a bundled Linux copy may be a GPL-enabled build and the X11 window kept, rather than a render API rewrite (DECISIONS.md, 2026-11-19).
+- License obligations for a bundled library and its dependencies (FFmpeg, libass, libplacebo): license texts, the corresponding source, and dynamic loading, which is already how it is loaded. Windows' build stays LGPL (no GPL parts in mpv or FFmpeg). Since Reflux is GPL-3.0-or-later (DECISIONS.md, 2026-11-19), a Linux build may be GPL-enabled, never with `--enable-nonfree`, and without the software decoders the owner excludes (H.264, HEVC, AAC, AC-3/E-AC-3, DTS, TrueHD). The About page lists libmpv today as the copy on the user's computer, not included; a bundled build changes its line in `legal/components.txt` (its license as built, the LGPL text, where its source is offered).
 - A packaged desktop build that carries its own Java runtime adds that runtime to the notices (OpenJDK is GPL-2.0 with the Classpath Exception); the notice check only sees Maven modules.
 - An installer or package per platform, and code signing on Windows. Done as archives in M6 ("Desktop artifacts"); Windows is unsigned by decision.
 - On X11 the engine changes process-wide state (decision log, 2026-10-12); a bundled build is a chance to patch that at the source.
@@ -256,8 +256,12 @@ The About page lists the third-party software in each build, with its license te
 
 ## Project
 
-- Reflux is proprietary, all rights reserved, and not open source; its public source is for viewing (DECISIONS.md, 2026-10-19). `LICENSE` is the ownership notice, and the About page shows it from there. Third-party components keep their own licenses.
-- Reflux is free at launch: no price, subscription, Pro tier, feature gating, or in-app purchase, so store listings declare none (DECISIONS.md, 2026-10-19). Donations are taken on the website once it has a destination for them (LAUNCH.md).
+- Reflux is free and open-source software under GPL-3.0-or-later (DECISIONS.md, 2026-11-19, superseding the proprietary notice of 2026-10-19). `LICENSE` is the GPL's text, unmodified; `NOTICE` is Reflux's notice and section 7 terms (no right to the name or the logo; modified versions marked as changed). The About page shows `NOTICE` then the license; the desktop archives carry both. Third-party components keep their own licenses.
+- Reflux is free: no price, subscription, Pro tier, feature gating, or in-app purchase, so store listings declare none (DECISIONS.md, 2026-10-19). Donations, once the website has a destination for them (LAUNCH.md), are voluntary and unlock nothing.
+
+## Store and listing actions for the license (2026-11-19; owner's, none done)
+
+Neither Google Play nor the Amazon Appstore has an open-source setting; the license changes no declaration, package, signing key, track, or test. When the license is public: optionally add the prepared open-source line to both listings (release/store-listing.md); nothing else in the listings, the privacy answers (the data flow is unchanged), the support contact, or Amazon's intellectual-property row needs changing. The builds now in testing carry the old proprietary notice on their About page until the next build is cut; that build should be the first one distributed after the license is public.
 
 ## Legal review
 
@@ -265,9 +269,8 @@ Questions for legal advice before builds go to people outside the project. None 
 
 - End-user terms (an EULA) for the Android, Fire TV, and desktop builds, beyond what Google Play and the Amazon Appstore apply by default.
 - The copyright holder's legal name: whether "RSX Develops" is a registered name or the trading name of its owner, and so how the notice names it.
-- How the ownership notice reads beside the hosting service's own terms for public repositories (GitHub lets its users view and fork public repositories on GitHub).
-- An agreement for outside contributions (ownership, or a license to Reflux), without which none is accepted.
-- The bundled libmpv's obligations for a proprietary application: an LGPL build only, with its texts and a source offer (above).
+- The GPL transition (DECISIONS.md, 2026-11-19): the copyright status of AI-assisted portions; the GPLv3's "Installation Information" (section 6) for Android builds the stores distribute; the wording of `NOTICE`'s section 7 terms. Outside contributions are taken under the project's license (CONTRIBUTING.md); no separate agreement is planned.
+- A libmpv Reflux bundles: Windows' stays LGPL with its texts and source offer (above); a Linux one may be GPL-enabled now that Reflux is GPL, with its configuration, every linked library's license, and its corresponding source verified before it ships, and the owner's codec exclusion applied (DECISIONS.md, 2026-11-19).
 - The CI workflow (`.github/workflows/ci.yml`) runs the full check on Linux and Windows and the window tests on Linux. It has been run in its container locally but never on GitHub, because nothing has been pushed since it was written. Android is not deliberately part of it: the workflow sets up no Android SDK, so whether the Android modules build there depends on the hosted runner image happening to provide `ANDROID_HOME`; no instrumented test, emulator, or release build is run, and the Linux container has no SDK at all.
 - The developer CLI is a diagnostic tool and is not distributed.
 - Trakt (METADATA.md, "Provider and licensing"): the API use policy's terms for a free, donation-supported application on the Standard API, its attribution sentence, and its image-caching rule, read in full against the final build. (The TMDB questions recorded here before 2026-11-15 no longer apply: TMDB is not used.)

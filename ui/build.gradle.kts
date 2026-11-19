@@ -9,13 +9,19 @@ val refluxAndroid: Boolean by extra
 if (refluxAndroid) apply(plugin = "com.android.kotlin.multiplatform.library")
 
 /**
- * The About page's notices, generated from `legal/` (components.txt and the license texts beside it; and the
- * repository's own LICENSE once there is one), so the application shows exactly what is checked in.
+ * The About page's notices, generated from `legal/` (components.txt and the license texts beside it) and from
+ * Reflux's own NOTICE and LICENSE (GPL-3.0-or-later), so the application shows exactly what is checked in.
  */
 abstract class GenerateNotices : DefaultTask() {
     @get:InputDirectory
     abstract val legal: DirectoryProperty
 
+    /** Reflux's notice: its copyright line first, then that it is GPL-3.0-or-later and where its source is. */
+    @get:InputFiles
+    @get:Optional
+    abstract val notice: RegularFileProperty
+
+    /** The license itself, the GNU GPL version 3, shown whole after the notice. */
     @get:InputFiles
     @get:Optional
     abstract val license: RegularFileProperty
@@ -42,7 +48,8 @@ abstract class GenerateNotices : DefaultTask() {
                 val platforms = fields[2].split(" ").filter(String::isNotEmpty).joinToString(", ") { "NoticeTarget.${it.uppercase()}" }
                 "        TechnologyCredit(${literal(fields[0])}, ${literal(fields[1])}, setOf($platforms), ${fields[3].takeIf(String::isNotEmpty)?.let(::literal) ?: "null"}),"
             }
-        val own = license.orNull?.asFile?.takeIf { it.exists() }?.readText()
+        val own = listOfNotNull(notice, license).mapNotNull { it.orNull?.asFile?.takeIf { file -> file.exists() }?.readText()?.trim() }
+            .takeIf { it.isNotEmpty() }?.joinToString("\n\n")
         val file = output.get().file("dev/reflux/ui/legal/NoticeData.kt").asFile
         file.parentFile.mkdirs()
         file.writeText(
@@ -76,6 +83,7 @@ abstract class GenerateNotices : DefaultTask() {
 
 val generateNotices by tasks.registering(GenerateNotices::class) {
     legal.set(rootProject.layout.projectDirectory.dir("legal"))
+    notice.set(rootProject.layout.projectDirectory.file("NOTICE"))
     license.set(rootProject.layout.projectDirectory.file("LICENSE"))
     output.set(layout.buildDirectory.dir("generated/notices"))
 }

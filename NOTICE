@@ -1,0 +1,17 @@
+Copyright © 2026 RSX Develops
+
+Reflux is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+
+Reflux is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along with Reflux, in the file LICENSE. If not, see <https://www.gnu.org/licenses/>.
+
+Source code: https://github.com/Rifaque/reflux
+
+SPDX-License-Identifier: GPL-3.0-or-later
+
+Additional terms under section 7 of the GNU General Public License version 3:
+- Under section 7, item e, this license does not grant any right to use the name "Reflux", the Reflux logo, or other trade names, trademarks, or service marks of RSX Develops.
+- Under section 7, item c, modified versions must be marked in reasonable ways as different from the original version, and must not misrepresent their origin as official Reflux releases by RSX Develops.
+
+Reflux is built with third-party software, each component under its own license. Those licenses, with their full texts, are listed on Reflux's About page and in the legal folder of the source repository; nothing in this notice changes or restricts them.

@@ -57,6 +57,9 @@ import kotlinx.coroutines.withContext
 /** The name Reflux's own license is listed under, beside the third-party software. */
 internal const val REFLUX_NOTICE = "Reflux"
 
+/** Reflux's own license, as its NOTICE states it (SPDX). */
+internal const val REFLUX_LICENSE = "GPL-3.0-or-later"
+
 /**
  * Reflux itself: which build this is, what it keeps and sends, who it credits, and the way to the licenses.
  * A short page; the legal texts are a step further in, never on it.
@@ -113,7 +116,7 @@ internal fun AboutScreen(app: AppState) {
         if (Notices.refluxLicense != null) {
             item(key = "license") {
                 val back = rememberFocusReturn("about/license")
-                Link("Copyright and ownership", "Reflux is proprietary software, not open source", back.modifier) {
+                Link("Copyright and license", "Free software · GPL-3.0-or-later", back.modifier) {
                     back.leaving()
                     app.navigator.open(Destination.Notice(REFLUX_NOTICE))
                 }
@@ -299,7 +302,7 @@ internal fun NoticeScreen(app: AppState, name: String) {
         item(key = "heading") {
             Column(Modifier.padding(bottom = 10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(component?.name ?: "Reflux", Modifier.semantics { heading() }, style = LocalTypography.current.headline)
-                component?.let { Text(it.license, color = RefluxColors.contentSecondary) }
+                (component?.license ?: REFLUX_LICENSE.takeIf { own })?.let { Text(it, color = RefluxColors.contentSecondary) }
                 component?.note?.let { Text(it, style = LocalTypography.current.caption, color = RefluxColors.contentTertiary) }
             }
         }

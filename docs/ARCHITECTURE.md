@@ -224,6 +224,8 @@ There are two shells, `desktop:app` and `android:app`. Each supplies what only i
 | Sound output | What libmpv opens | Stereo unless an HDMI output reports more channels or formats it decodes itself, which become `maxOutputChannels` and `audioPassthrough` |
 | Language names for track labels | `Formatting.jvm.kt` | `Formatting.android.kt` |
 
+Where libmpv comes from: on Windows, Reflux's own reproducible LGPL build (tools/libmpv), bundled; on Linux, the distribution's libmpv, the user's own install. A bundled, GPL-enabled Linux libmpv that keeps the native-window player is the planned direction now that Reflux is GPL-3.0-or-later; it is not built yet (DECISIONS.md, 2026-11-19).
+
 How the shared code reaches each platform:
 
 - The engine (`core`, `library`, `design`, the platform-free adapters, the metadata provider) is compiled once, to JVM bytecode, and both shells use it as it is. Android brings its own database driver and leaves the desktop one out of the application.

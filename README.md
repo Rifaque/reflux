@@ -2,6 +2,8 @@
 
 > A universal, local-first media player built around your media, not your media server.
 
+Free and open-source software under the GNU GPL, version 3 or later ([License](#license)).
+
 Reflux is a media player on steroids: a cross-platform media experience that automatically understands, organizes, and plays media from local storage and remote sources without making the underlying filesystem conform to the application.
 
 ## Product principles
@@ -52,7 +54,7 @@ UI and playback features should consume normalized media entities and source cap
 
 ## Project status
 
-Pre-release; nothing has been published. The engine (Media Core, sources, identification, metadata, watch state, Best Version, playback, Smart Offline) is implemented and heavily tested, and one experience layer runs on desktop (Windows, Linux), Android phones and tablets, Android TV / Google TV, and Fire TV: point it at a folder or connect a Jellyfin or Plex server or a network share, browse, search, play, and resume on any copy, with a profile of their own for each person who watches. Release builds have been verified on a physical Nothing Phone 2a, Xiaomi Pad 7, and Fire TV Stick 4K Plus, on Windows, and on Linux in a container (docs/VERIFICATION.md). V1 targets Android phones and tablets, Android TV / Google TV, Fire TV (Fire OS), Windows, and Linux, through a public beta first. The Android application ID is `dev.rsxdevelops.reflux`. The plan and what is left are in [docs/ROADMAP.md](docs/ROADMAP.md); the current version and how versions work are in [docs/VERSIONING.md](docs/VERSIONING.md); the brand is in [design/brand](design/brand/README.md); the website is [docs/WEBSITE.md](docs/WEBSITE.md).
+Pre-release, in a beta since 17 November 2026 (`0.9.0-beta.1`: Play closed testing, Amazon Live App Testing, and a public GitHub pre-release for Windows and Linux). The engine (Media Core, sources, identification, metadata, watch state, Best Version, playback, Smart Offline) is implemented and heavily tested, and one experience layer runs on desktop (Windows, Linux), Android phones and tablets, Android TV / Google TV, and Fire TV: point it at a folder or connect a Jellyfin or Plex server or a network share, browse, search, play, and resume on any copy, with a profile of their own for each person who watches. Release builds have been verified on a physical Nothing Phone 2a, Xiaomi Pad 7, and Fire TV Stick 4K Plus, on Windows, and on Linux in a container (docs/VERIFICATION.md). V1 targets Android phones and tablets, Android TV / Google TV, Fire TV (Fire OS), Windows, and Linux, through a public beta first. The Android application ID is `dev.rsxdevelops.reflux`. The plan and what is left are in [docs/ROADMAP.md](docs/ROADMAP.md); the current version and how versions work are in [docs/VERSIONING.md](docs/VERSIONING.md); the brand is in [design/brand](design/brand/README.md); the website is [docs/WEBSITE.md](docs/WEBSITE.md).
 
 ## Documentation
 
@@ -106,6 +108,12 @@ Playback and probing need libmpv (`libmpv2` on Debian/Ubuntu, `mpv-libs` on Fedo
 
 ## License
 
-Reflux is proprietary software: Copyright © 2026 RSX Develops, all rights reserved ([LICENSE](LICENSE)). It is not open source. The source is public so that the work can be seen; that gives no permission to redistribute it, use it commercially, publish modified versions, or build it into another product.
+Reflux is free and open-source software: Copyright © 2026 RSX Develops, licensed under the **GNU General Public License, version 3 or later** (`GPL-3.0-or-later`). The license is [LICENSE](LICENSE), unmodified; Reflux's notice, with its additional terms under section 7 (no right to the Reflux name or logo; modified versions marked as changed), is [NOTICE](NOTICE). You may use, study, change, and share Reflux under those terms. Reflux costs nothing, and no payment or donation unlocks anything.
 
-The third-party software Reflux is built with keeps its own licenses, listed with their texts in [legal/](legal/) and on Reflux's About page.
+The third-party software Reflux is built with keeps its own licenses, listed with their texts in [legal/](legal/) and on Reflux's About page; the services it works with (Trakt, Jellyfin, Plex) and their names are their owners'.
+
+## Contributing, problems, and security
+
+- Contributing: [CONTRIBUTING.md](CONTRIBUTING.md).
+- Problems and feedback: [an issue](https://github.com/Rifaque/reflux/issues), or support@rsxdevelops.dev ([support](https://reflux.rsxdevelops.dev/support)).
+- Security problems: privately, as [SECURITY.md](SECURITY.md) explains, never in a public issue.

@@ -2,7 +2,13 @@
 
 Reflux is a pre-release working towards a public beta (docs/ROADMAP.md). Contributions should preserve the project's core principles rather than optimize for feature count.
 
-Reflux is proprietary, not open source ([LICENSE](LICENSE)). An outside contribution would first need an agreement about who owns it, and there is none yet (docs/RELEASE.md, "Legal review").
+Reflux is free and open-source software under the GNU General Public License, version 3 or later ([LICENSE](LICENSE), [NOTICE](NOTICE)). Contributions are welcome through [issues](https://github.com/Rifaque/reflux/issues) and pull requests.
+
+- **Your contribution's license.** By submitting a contribution you agree that it is licensed under GPL-3.0-or-later, the project's own license, and you confirm that you have the right to submit it under that license (it is your own work, or you may share it under those terms). No contributor license agreement or copyright assignment is asked: you keep your copyright.
+- **Third-party code.** Code or assets from elsewhere must carry a license compatible with GPL-3.0-or-later and be named in the pull request; components shipped in builds are listed in `legal/components.txt`, which the build checks.
+- **Security problems** go through [SECURITY.md](SECURITY.md), never a public issue. Other problems: an issue, or support@rsxdevelops.dev.
+- **The name and the logo.** The GPL does not grant the right to use the name Reflux or its logo ([NOTICE](NOTICE)); a modified version must be marked as changed.
+- **During the Beta Season** (docs/ROADMAP.md) only fixes are taken.
 
 ## Before contributing
 

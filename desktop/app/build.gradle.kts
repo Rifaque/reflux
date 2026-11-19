@@ -109,7 +109,7 @@ compose.desktop {
             packageName = "Reflux"
             vendor = "RSX Develops"
             description = "Reflux, a media player for your own media"
-            copyright = "Copyright (c) RSX Develops. All rights reserved."
+            copyright = "Copyright (c) 2026 RSX Develops. Free software under the GNU GPL, version 3 or later."
             // The JDK modules the application reaches (suggestRuntimeModules), in the runtime packed with it.
             modules("java.instrument", "java.naming", "java.net.http", "java.security.jgss", "java.sql", "jdk.unsupported")
             appResourcesRootDir.set(layout.buildDirectory.dir("packaging/resources"))
@@ -146,8 +146,9 @@ val packageDesktopArchive = tasks.register("packageDesktopArchive") {
     val output = layout.buildDirectory.file("release/$name" + if (windows) ".zip" else ".tar.gz")
     val legal = rootProject.layout.projectDirectory.dir("legal")
     val notice = rootProject.layout.projectDirectory.file("LICENSE")
+    val ownNotice = rootProject.layout.projectDirectory.file("NOTICE")
     val offer = layout.projectDirectory.file("packaging/libmpv-SOURCE-OFFER.txt")
-    inputs.dir(image); inputs.dir(legal); inputs.file(notice); inputs.file(offer)
+    inputs.dir(image); inputs.dir(legal); inputs.file(notice); inputs.file(ownNotice); inputs.file(offer)
     outputs.file(output)
     doLast {
         val staging = temporaryDir.resolve(name).apply { deleteRecursively(); mkdirs() }
@@ -158,6 +159,7 @@ val packageDesktopArchive = tasks.register("packageDesktopArchive") {
         }
         if (!windows && !staging.resolve("bin/Reflux").canExecute()) throw GradleException("bin/Reflux is not executable in the archive")
         notice.asFile.copyTo(staging.resolve("LICENSE.txt"))
+        ownNotice.asFile.copyTo(staging.resolve("NOTICE.txt"))
         legal.asFile.copyRecursively(staging.resolve("third-party"))
         if (windows) offer.asFile.copyTo(staging.resolve("third-party/libmpv-SOURCE-OFFER.txt"))
         val archive = output.get().asFile.apply { parentFile.mkdirs(); delete() }
