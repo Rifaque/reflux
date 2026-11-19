@@ -1395,6 +1395,18 @@ M11 decided the open items of its plan (planning/M11-DISTRIBUTION-PLAN.md, secti
 - **1.0 communication.** "Planned for December 2026", depending on feedback, qualification, and store approval; 10 December is an internal readiness checkpoint and 15 December the release decision, never a promised release date. Each platform publishes through its own path.
 - **No Windows installer in the beta**: none exists or is tested, and building one would change the release; reconsidered for 1.0.
 
+## 2026-11-19 — Beta 2: three phases, cut only after the last; the owner's defaults for haptics and statistics
+
+**Decided by the owner (2026-11-19).** The register, the phase plan, and the gate: [planning/BETA-2.md](planning/BETA-2.md).
+
+- **Beta 2 is cut only after Phases 2 and 3** are implemented, verified, and accepted, and the gate in BETA-2.md holds. Phase 1 alone does not make a build. `0.9.0-beta.1` stays in testing, unchanged, until then.
+- **The phases are outcome groups, in the owner's order:** 1 reliability, security, data integrity, the statistics foundation, and performance baselines; 2 controller and input, focus, text entry, button mapping, interface haptics, and controller rumble; 3 the media experience (separate libraries, sorting and filtering, Trickplay and right-stick Trickplay, video haptics, atmosphere, recommendations, the featured hero), the final performance work, and the statistics' end-to-end verification. One follow-up per phase at most.
+- **The source of the IDs** is the owner's findings document ("Reflux Beta Testing Findings", 18 November 2026) for B-001 to B-041 and F-001 to F-005, and the master prompt for B-042; meanings are kept as written. Where the allocations do not settle an item (B-016, B-017, B-022, F-005, and the two sidebar features), BETA-2.md says so and recommends; nothing was moved.
+- **Separate Jellyfin libraries (B-027) move into Beta 2**, Phase 3; the findings document had them as a V1.1 candidate.
+- **B-029 depends on B-030** and follows it in Phase 3. **B-041 is one issue**: Phase 1 measures the baseline, Phase 3 optimises and compares.
+- **Defaults are acceptance criteria, not preferences.** Phone and tablet interface haptics: off, explicit opt-in, and every device haptic goes through one service that checks the preference. Controller rumble: on where the controller supports it, disableable, never an error where it does not, stopped on disconnect. Video haptics: off, enabled separately from interface haptics (and on controllers separately again), never switched on by a device or profile change, with an intensity ceiling and a rate limit, designed from audio energy and transients, never volume alone. Statistics: off; informed opt-in; nothing from the library, watch history, credentials, paths, or server addresses; no advertising tracker; no third-party SDK or service before a privacy, dependency, and legal review and updated disclosures (this keeps the 2026-11-18 statistics decision).
+- **Rejected:** cutting Beta 2 after Phase 1 (testers would get a build whose largest reported problems, controller and text entry, are untouched); enabling haptics or statistics by default.
+
 ## 2026-11-19 — The website gets a documentation portal, platform install guides, and a license page
 
 **Decided by the owner (2026-11-19, the consolidated master prompt).** Prepared locally; deploying it is the owner's.
