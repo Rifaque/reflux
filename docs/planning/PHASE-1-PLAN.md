@@ -110,3 +110,25 @@ Research: the tarball has no libmpv and needs the distribution's; Windows ships 
 | 10 | Baselines | **Partial** | Desktop before/after (packaged, 7 runs); Android release cold starts on four devices (Phone 2a, Pad 7, Fire TV, Google TV emulator); no Android after-build of the same type, no Linux desktop |
 | 11 | B-026 | **Not reproduced; not explained** | 19 packaged runs, the launcher and its child both gone in under a second |
 | 12 | Linux libmpv | **Not bundled, by finding; friction reduced** (superseded by the license decision, Stage F) | Four clean distribution containers |
+
+## Stage G: completion against the exit criteria (2026-11-19)
+
+The owner asked for Phase 1's remaining work to be carried out. Done the same day, on the machines named in CLAUDE.md (VERIFICATION.md, "Phase 1 closeout walks"; each issue's record in planning/BETA-BUG-TRACKER.md): B-031 walked in a Linux desktop session (the new Ubuntu 26.04 VM; released beta.1 reproduces the report there, the fixed build plays under `en_US.UTF-8` and `de_DE.UTF-8`); B-001's missing server-source case (a film streamed over HTTP from a WebDAV share) on the Phone 2a, Pad 7, and Google TV emulator; B-033's reported case walked on the phone, tablet, and emulator; B-005's sign checked on screen on the phone, tablet, and emulator; B-026 closed during playback five times, clean; B-041's baseline completed to every platform (Linux in the VM; Android memory and frame pacing); a forced full check green.
+
+| Exit criterion (BETA-2.md, Phase 1) | Met? | Where |
+| --- | --- | --- |
+| Every Phase 1 issue has its implementation or investigation results documented | Yes | The tracker's eleven Phase 1 entries |
+| B-018 addressed and regression-tested | Yes | 9 tests; full check |
+| Playback lifecycle and locale concerns have appropriate tests | Yes | `SurfaceHandoverOnDeviceTest` (6 cases, server source included); `NumericLocaleTest`, `MpvEngineTest` under `de_DE` |
+| Data integrity and connectivity issues addressed | Yes, with one owner check | B-033 Verified; B-003 Fixed (fake servers and the real library; a live two-address server is the owner's) |
+| Every fix has corresponding tests where feasible | Yes | Each entry's "Tests" |
+| Unreproduced issues transparently marked, not falsely closed | Yes | B-026 Not Reproduced, "not explained" |
+| Performance baseline measurements recorded | Yes, with gaps named | B-041 checkpoint 1: all six platforms; gaps (Android release of Phase 1 code, Linux hardware, GPU, battery, long sessions, thresholds) carried to Phase 3 |
+| Analytics privacy and consent groundwork implemented and verified | Yes | F-004 checkpoint 1: 6 tests; nothing sent; no SDK |
+| The tracker's Phase 1 entries current | Yes | Consistency check, 0 problems |
+| Documentation and decision records updated | Yes | DECISIONS, ROADMAP, VERIFICATION, CLAUDE.md, this file |
+| The Phase 1 review presented to the owner for acceptance | **Presented 2026-11-19; acceptance is the owner's** | |
+
+**Status at completion:** Verified: B-001, B-033. Fixed: B-018, B-003, B-024, B-005, B-031. Not Reproduced: B-026. Investigating: B-006 (local search fixed; the report's provider unknown), B-041 (baseline recorded; Phase 3 finishes it). In Progress: F-004 (foundation done; Phase 3 validates).
+
+**Only the owner can do:** a physical Linux desktop for B-031 (`en_US.UTF-8` and `de_DE.UTF-8`, local and Jellyfin playback); a Jellyfin server at a LAN and a Tailscale address for B-003; a real Jellyfin item with two versions for B-024's Windows walk; a Fire TV walk for B-005 (the stick was not connected); the decisions on "Forgot PIN" (B-018) and the statistics provider (F-004); naming the provider meant in B-006's report; and accepting Phase 1. Hosted CI runs when the owner pushes.

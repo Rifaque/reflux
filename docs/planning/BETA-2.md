@@ -50,7 +50,7 @@ Phases are implemented, tested, documented, and reviewed **in order**; none is s
 - Relevant documentation and decision records are updated.
 - The Phase 1 review is presented to the owner for acceptance before Phase 2 is considered complete.
 
-*State (2026-11-19):* implemented, with named checks outstanding (planning/PHASE-1-PLAN.md, "Stage F: closeout"); B-041's baseline is partial; **not yet accepted by the owner**.
+*State (2026-11-19):* exit criteria met, with the owner's own checks named (planning/PHASE-1-PLAN.md, "Stage G"); **awaiting the owner's acceptance**. Phase 2 does not start before it.
 
 ### Phase 2: controller, focus, interaction, input, and haptics
 
