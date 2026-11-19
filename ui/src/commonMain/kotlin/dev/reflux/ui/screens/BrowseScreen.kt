@@ -146,14 +146,14 @@ private fun PosterGridContent(
  * As many columns of at least [minimum] as fit, every one exactly the same width. Columns that differ by a
  * pixel make posters of different heights, and the captions under a row no longer line up.
  */
-private data class EqualColumns(private val minimum: Dp) : GridCells {
+internal data class EqualColumns(private val minimum: Dp) : GridCells {
     override fun Density.calculateCrossAxisCellSizes(availableSize: Int, spacing: Int): List<Int> {
         val count = ((availableSize + spacing) / (minimum.roundToPx() + spacing)).coerceAtLeast(1)
         return List(count) { (availableSize - spacing * (count - 1)) / count }
     }
 }
 
-private fun LazyGridScope.fullWidth(key: String, content: @Composable () -> Unit) =
+internal fun LazyGridScope.fullWidth(key: String, content: @Composable () -> Unit) =
     item(key = key, span = { GridItemSpan(maxLineSpan) }) { content() }
 
 /** All movies, all shows, or the complete contents of a Home row ([query] is its smart search). */
@@ -184,118 +184,6 @@ internal fun BrowseScreen(app: AppState, title: String, query: String?, shows: B
     }
 }
 
-/** Queries the smart search understands without any metadata, offered while the field is empty. */
-private val SUGGESTIONS = listOf("4K movies I haven't watched", "unfinished shows", "90s movies", "favorites", "movies under 2 hours")
-
-@Composable
-internal fun SearchScreen(app: AppState) {
-    val focus = LocalFocusManager.current
-    val query = app.searchQuery
-    var model by remember { mutableStateOf<SearchModel?>(null) }
-    val field = remember { FocusRequester() }
-    LaunchedEffect(query, app.revision) {
-        if (query.isBlank()) {
-            model = null
-        } else {
-            delay(TYPING_PAUSE_MS)
-            model = app.read { searchModel(query) }
-        }
-    }
-    LaunchedEffect(Unit) { field.requestFocus() }
-
-    PosterGrid(app, model?.cards.orEmpty(), startsOnFirst = false) {
-        Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-            Row(
-                Modifier.fillMaxWidth().heightIn(min = 56.dp).glass(MaterialRole.ELEVATED, CircleShape).padding(start = 20.dp, end = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Icon(Icon.SEARCH, tint = RefluxColors.contentSecondary)
-                val self = remember { Any() }
-                val opener = remember { dev.reflux.ui.components.FieldKeyboard() }
-                val (shown, change) = dev.reflux.ui.components.rememberFieldValue(self, query) { app.searchQuery = it }
-                BasicTextField(
-                    value = shown,
-                    onValueChange = change,
-                    // Searching starts in the field, with a remote as with a keyboard.
-                    modifier = Modifier.weight(1f).focusRequester(field).initialFocus()
-                        // Done on the Reflux keyboard goes on to what was found (B-011).
-                        .textEntry(query, { app.searchQuery = it }, "Search", InputKind.SEARCH, onDone = { focus.moveFocus(FocusDirection.Down) }, field = self, opener = opener)
-                        .semantics { contentDescription = "Search your library" },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(showKeyboardOnFocus = showsKeyboardOnFocus()),
-                    textStyle = LocalTypography.current.title.copy(color = RefluxColors.contentPrimary),
-                    cursorBrush = SolidColor(RefluxColors.contentPrimary),
-                    decorationBox = { inner ->
-                        Box(contentAlignment = Alignment.CenterStart) {
-                            // Short and quiet (B-034): lighter and smaller than what is typed, which is the field's own
-                            // larger, brighter text; the suggestions below show what else can be asked.
-                            if (query.isEmpty()) {
-                                Text(SEARCH_PLACEHOLDER, style = LocalTypography.current.body, color = RefluxColors.contentTertiary, maxLines = 1)
-                            }
-                            inner()
-                        }
-                    },
-                )
-                if (query.isNotEmpty()) {
-                    IconButton(Icon.CLOSE, "Clear search", {
-                        app.searchQuery = ""
-                        field.requestFocus()
-                    }, tint = RefluxColors.contentSecondary)
-                }
-                // B-051: on a Windows or Linux desk, the Reflux keyboard for someone with only a mouse; always there, beside the
-                // clear button when there is something to clear.
-                if (app.platform.pointerKeyboard) {
-                    IconButton(Icon.KEYBOARD, "On-screen keyboard", {
-                        runCatching { field.requestFocus() }
-                        opener.open()
-                    }, tint = RefluxColors.contentSecondary)
-                }
-            }
-            val current = model
-            // Results fill the page by themselves; someone not looking at it is told how many there are.
-            Box(
-                Modifier.announces(
-                    when {
-                        query.isBlank() || current == null -> null
-                        current.cards.size == 1 -> "1 result"
-                        else -> "${current.cards.size} results"
-                    },
-                ),
-            )
-            when {
-                // Suggestions (B-035, B-010): small chips with no label before them, on a row that runs to the
-                // window's edges and scrolls; far enough apart that a focused chip's ring never meets its neighbour,
-                // and the one focused always scrolled whole into view.
-                query.isBlank() -> SuggestionRow(SUGGESTIONS) { suggestion ->
-                    app.searchQuery = suggestion
-                    field.requestFocus()
-                }
-                current == null -> Unit
-                else -> {
-                    if (current.interpretation.isNotEmpty()) {
-                        Row(
-                            Modifier.horizontalScroll(rememberScrollState()),
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Text("Showing", style = LocalTypography.current.caption, color = RefluxColors.contentTertiary)
-                            current.interpretation.forEach { Chip(it) }
-                        }
-                    }
-                    if (current.cards.isEmpty()) {
-                        NoResults(query, onClear = {
-                            app.searchQuery = ""
-                            field.requestFocus()
-                        }, onBrowse = { app.go(Destination.Movies) })
-                    }
-                }
-            }
-        }
-    }
-}
-
-private const val TYPING_PAUSE_MS = 140L
 
 /** Search's placeholder (B-034): a few words, never truncated at a phone's width. */
 internal const val SEARCH_PLACEHOLDER = "Search your library"
@@ -303,69 +191,3 @@ internal const val SEARCH_PLACEHOLDER = "Search your library"
 /** Room between suggestion chips: more than a focus ring's reach, so a focused chip's ring never touches the next. */
 internal val SuggestionGap = 12.dp
 
-/**
- * The suggestions, as a row that runs edge to edge (B-035): it starts in line with the page and scrolls to the
- * window's edges rather than being cut at the page's margin, and focus moving along it keeps the chip whole in view
- * (B-010).
- */
-@Composable
-private fun SuggestionRow(suggestions: List<String>, onChoose: (String) -> Unit) {
-    val margin = LocalLayout.current.safeMarginDp.dp
-    FocusScrollInsets(start = margin, end = margin) {
-        LazyRow(
-            Modifier.bleedHorizontally(margin).semantics { contentDescription = "Suggestions" },
-            contentPadding = PaddingValues(horizontal = margin, vertical = FocusRingReach),
-            horizontalArrangement = Arrangement.spacedBy(SuggestionGap),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            items(suggestions) { suggestion -> SuggestionChip(suggestion) { onChoose(suggestion) } }
-        }
-    }
-}
-
-/** A suggestion: smaller than a button, its touch target still the layout's minimum. It does not lift, only lights. */
-@Composable
-private fun SuggestionChip(text: String, onClick: () -> Unit) {
-    val layout = LocalLayout.current
-    Pressable(onClick, Modifier.testTag("suggestion"), CircleShape, lift = 0f) { active ->
-        Box(
-            Modifier.heightIn(min = maxOf(36f, layout.minTargetDp).dp)
-                .background(States.layer(if (active) StateLayers.ACTIVE_ON_GLASS else StateLayers.REST), CircleShape)
-                .border(1.dp, RefluxColors.divider, CircleShape)
-                .padding(horizontal = 14.dp),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(text, style = LocalTypography.current.captionStrong, maxLines = 1)
-        }
-    }
-}
-
-/** Lets a row run [bleed] past its place on both sides, to the window's edges, while taking only its place in the layout. */
-private fun Modifier.bleedHorizontally(bleed: Dp): Modifier = layout { measurable, constraints ->
-    val extra = bleed.roundToPx() * 2
-    val wider = constraints.copy(
-        minWidth = constraints.minWidth + extra,
-        maxWidth = if (constraints.hasBoundedWidth) constraints.maxWidth + extra else constraints.maxWidth,
-    )
-    val placeable = measurable.measure(wider)
-    layout((placeable.width - extra).coerceAtLeast(0), placeable.height) { placeable.place(-extra / 2, 0) }
-}
-
-/**
- * Nothing found (B-037): said plainly, with what to do next: change the words, or go and browse. Light, in the page's
- * own type, never a picture taking the page.
- */
-@Composable
-private fun NoResults(query: String, onClear: () -> Unit, onBrowse: () -> Unit) {
-    Column(Modifier.fillMaxWidth().padding(top = 28.dp, bottom = 12.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Box(Modifier.size(52.dp).background(States.layer(0.06f), CircleShape), contentAlignment = Alignment.Center) {
-            Icon(Icon.SEARCH, size = 24.dp, tint = RefluxColors.contentSecondary)
-        }
-        Text("No matches for “$query”", Modifier.heading(), style = LocalTypography.current.bodyStrong, align = TextAlign.Center, maxLines = 2)
-        Text("Try fewer or different words, or ask for something like “unfinished shows”.", style = LocalTypography.current.caption, color = RefluxColors.contentSecondary, align = TextAlign.Center)
-        Row(Modifier.padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            Button("Clear search", onClear, style = ButtonStyle.QUIET)
-            Button("Browse movies", onBrowse, style = ButtonStyle.QUIET)
-        }
-    }
-}

@@ -126,7 +126,11 @@ class CardLayoutTest {
                     val chip = focused()
                     assertTrue(chip.left >= 0f && chip.right <= width.toFloat(), "$width: the focused chip is whole on screen ($chip)")
                     val row = onAllNodes(hasTestTag("suggestion")).fetchSemanticsNodes().map { it.boundsInRoot }.sortedBy { it.left }
-                    row.zipWithNext().forEach { (a, b) -> assertTrue(b.left - a.right >= SuggestionGap.value - 0.5f, "$width: chips $a and $b are apart") }
+                    // Tiles in rows (B-057): neighbours in a row are apart by the gap, and so are the rows.
+                    // A focused tile lifts a little; it is told by its centre, which the lift does not move.
+                    val lines = row.groupBy { (it.center.y / 8f).toInt() }.toSortedMap().values.toList()
+                    lines.forEach { line -> line.sortedBy { it.left }.zipWithNext().forEach { (a, b) -> assertTrue(b.left - a.right >= SuggestionGap.value - 4f, "$width: tiles $a and $b are apart") } }
+                    lines.zipWithNext().forEach { (a, b) -> assertTrue(b.minOf { it.top } - a.maxOf { it.bottom } >= SuggestionGap.value - 4f, "$width: rows are apart") }
                     last = chip
                     press(app, GamepadButton.DPAD_RIGHT)
                 }

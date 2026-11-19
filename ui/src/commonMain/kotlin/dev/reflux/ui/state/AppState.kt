@@ -197,6 +197,9 @@ class AppState(
 
     var searchQuery by mutableStateOf("")
 
+    /** What Search looks in: everything, or movies or shows alone (B-057). Kept for the session. */
+    var searchScope by mutableStateOf(SearchScope.ALL)
+
     /** A short, transient message ("Its source isn't connected"). */
     var notice: String? by mutableStateOf(null)
         private set
