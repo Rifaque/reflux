@@ -212,7 +212,7 @@ internal fun runReflux(
                 Toolkit.getDefaultToolkit().addAWTEventListener(mouse, AWTEvent.MOUSE_EVENT_MASK)
                 // Controllers are read system-wide, so they only act while a Reflux window is the active one.
                 val controllers = gamepads?.let { reader ->
-                    GamepadInput(reader, active = { focus.activeWindow != null }) { button, family ->
+                    GamepadInput(reader, active = { focus.activeWindow != null }, repeats = app::repeatsWhileHeld) { button, family ->
                         SwingUtilities.invokeLater { app.onGamepadButton(button, family) }
                     }
                 }

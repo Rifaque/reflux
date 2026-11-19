@@ -35,6 +35,12 @@ enum class SemanticAction {
     GO_DOWNLOADS,
     GO_SOURCES,
 
+    /**
+     * Focus to the navigation beside the page, and back again to exactly where it was in the page (F-P2; the owner's
+     * decision of 2026-11-19, made on the Windows controller walk): a controller's Y while browsing.
+     */
+    TOGGLE_NAVIGATION,
+
     /** The next or previous global destination, in the navigation's order. */
     NEXT_SECTION,
     PREVIOUS_SECTION,

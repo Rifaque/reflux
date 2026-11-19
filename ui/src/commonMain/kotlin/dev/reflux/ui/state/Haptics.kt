@@ -18,6 +18,9 @@ enum class HapticEvent {
     /** A direction had nowhere to go: the end of a row, the edge of the keyboard. */
     BOUNDARY,
 
+    /** Focus moved to the next item with a controller: the lightest tick, and never on every repeat of a held direction. */
+    NAVIGATE,
+
     /** Something was refused: a wrong PIN. */
     ERROR,
 }
@@ -111,6 +114,7 @@ class Haptics(
             HapticEvent.CONFIRM to (0.30f to 40L),
             HapticEvent.TOGGLE to (0.25f to 30L),
             HapticEvent.BOUNDARY to (0.35f to 45L),
+            HapticEvent.NAVIGATE to (0.18f to 22L),
             HapticEvent.ERROR to (0.55f to 140L),
         )
 
@@ -119,6 +123,8 @@ class Haptics(
             HapticEvent.CONFIRM to 150L,
             HapticEvent.TOGGLE to 120L,
             HapticEvent.BOUNDARY to 450L,
+            // A held direction repeats about every 110 ms: it is felt about once in three repeats, a light patter, not a buzz.
+            HapticEvent.NAVIGATE to 300L,
             HapticEvent.ERROR to 400L,
         )
 

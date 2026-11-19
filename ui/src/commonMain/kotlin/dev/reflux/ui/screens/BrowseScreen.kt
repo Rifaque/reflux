@@ -211,13 +211,15 @@ internal fun SearchScreen(app: AppState) {
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Icon(Icon.SEARCH, tint = RefluxColors.contentSecondary)
+                val self = remember { Any() }
+                val (shown, change) = dev.reflux.ui.components.rememberFieldValue(self, query) { app.searchQuery = it }
                 BasicTextField(
-                    value = query,
-                    onValueChange = { app.searchQuery = it },
+                    value = shown,
+                    onValueChange = change,
                     // Searching starts in the field, with a remote as with a keyboard.
                     modifier = Modifier.weight(1f).focusRequester(field).initialFocus()
                         // Done on the Reflux keyboard goes on to what was found (B-011).
-                        .textEntry(query, { app.searchQuery = it }, "Search", InputKind.SEARCH, onDone = { focus.moveFocus(FocusDirection.Down) })
+                        .textEntry(query, { app.searchQuery = it }, "Search", InputKind.SEARCH, onDone = { focus.moveFocus(FocusDirection.Down) }, field = self)
                         .semantics { contentDescription = "Search your library" },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(showKeyboardOnFocus = showsKeyboardOnFocus()),

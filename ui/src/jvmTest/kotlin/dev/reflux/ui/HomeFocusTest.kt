@@ -166,4 +166,49 @@ class HomeFocusTest {
             assertTrue(checked > 0, "a row with See all was walked")
         }
     }
+
+    @Test
+    fun yGoesToTheSidebarAndBackToExactlyWhereFocusWas() {
+        // F-P2, the owner's decision on the Windows controller walk (2026-11-19): Y to the sidebar, Y again back to the item,
+        // its row's scroll kept, as often as the viewer likes; moving in the sidebar without choosing changes nothing.
+        screen(populated()) { app ->
+            awaitText("Recently Added")
+            repeat(3) { press(app, GamepadButton.DPAD_DOWN) }
+            repeat(2) { press(app, GamepadButton.DPAD_RIGHT) }
+            val card = focusedName()
+            val where = focused()
+            assertTrue(inPage(), "on a card to begin with")
+            repeat(3) { round ->
+                assertTrue(press(app, GamepadButton.FACE_NORTH), "Y is handled (round $round)")
+                await("the sidebar (round $round)") { !inPage() }
+                assertEquals("Home", focusedName(), "the sidebar on where the viewer is")
+                assertTrue(press(app, GamepadButton.FACE_NORTH))
+                await("back (round $round)") { inPage() }
+                assertEquals(card, focusedName(), "the same card (round $round)")
+                // Where it was, with its row scrolled as it was; the focus lift may still be settling by a pixel.
+                val now = focused()
+                assertTrue(now != null && where != null && kotlin.math.abs(now.left - where.left) < 2f && kotlin.math.abs(now.top - where.top) < 3f,
+                    "where it was, with the row as it was (round $round): $where, now $now")
+            }
+            // Down the sidebar and back up without choosing: Y still returns to the card.
+            press(app, GamepadButton.FACE_NORTH)
+            await("the sidebar") { !inPage() }
+            press(app, GamepadButton.DPAD_DOWN)
+            press(app, GamepadButton.DPAD_DOWN)
+            press(app, GamepadButton.FACE_NORTH)
+            await("back") { inPage() }
+            assertEquals(card, focusedName())
+            assertEquals(Destination.Home, app.navigator.current, "nothing was chosen")
+            // Another destination chosen from the sidebar: Y from there goes into that page's own start.
+            press(app, GamepadButton.FACE_NORTH)
+            await("the sidebar") { !inPage() }
+            press(app, GamepadButton.DPAD_DOWN)
+            press(app, GamepadButton.FACE_SOUTH)
+            await("movies") { app.navigator.current == Destination.Movies }
+            press(app, GamepadButton.DPAD_LEFT)
+            await("the sidebar") { !inPage() }
+            press(app, GamepadButton.FACE_NORTH)
+            await("into Movies") { inPage() }
+        }
+    }
 }

@@ -303,6 +303,19 @@ val testDevice = DeviceCapabilities(
     subtitleFormats = SubtitleFormat.entries.toSet(),
 )
 
+/** A controller with motors that records each rumble the haptics gateway asks for (F-002). */
+class RecordingRumble : dev.reflux.ui.state.ControllerRumble {
+    val pulses = mutableListOf<Pair<Float, Long>>()
+    var stops = 0
+    override fun available() = true
+    override fun rumble(strength: Float, durationMs: Long) {
+        pulses += strength to durationMs
+    }
+    override fun stop() {
+        stops++
+    }
+}
+
 class FakePlatform(
     artwork: Boolean = true,
     backdrops: Boolean = true,
@@ -327,6 +340,10 @@ class FakePlatform(
     /** How many times the experience layer asked the system for its window, and whether the system said yes. */
     var systemRequests = 0
     var systemAccepts = true
+
+    /** The controller's motors, recording what the experience layer asks of them; null: no controller that can rumble. */
+    var rumble: RecordingRumble? = null
+    override val controllerRumble: dev.reflux.ui.state.ControllerRumble? get() = rumble
 
     /** What the device's lock says when Forgot PIN asks it; null: this device has none to ask. */
     var systemLockAnswer: dev.reflux.ui.state.SystemConfirmation? = null

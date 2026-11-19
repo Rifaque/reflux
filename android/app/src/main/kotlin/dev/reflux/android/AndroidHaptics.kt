@@ -28,7 +28,7 @@ internal class AndroidDeviceHaptics(private val activity: Activity) : DeviceHapt
         val constant = when (event) {
             HapticEvent.CONFIRM -> if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) HapticFeedbackConstants.CONFIRM else HapticFeedbackConstants.VIRTUAL_KEY
             HapticEvent.ERROR -> if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) HapticFeedbackConstants.REJECT else HapticFeedbackConstants.LONG_PRESS
-            HapticEvent.TOGGLE, HapticEvent.BOUNDARY -> HapticFeedbackConstants.CLOCK_TICK
+            HapticEvent.TOGGLE, HapticEvent.BOUNDARY, HapticEvent.NAVIGATE -> HapticFeedbackConstants.CLOCK_TICK
         }
         activity.window?.decorView?.performHapticFeedback(constant)
     }

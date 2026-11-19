@@ -291,6 +291,21 @@ class AppState(
         }
     }
 
+    /**
+     * A move asked of a controller, felt on it (F-002): a light tick where focus went, a firmer one at the end of a row or a
+     * page. Never for a keyboard, a remote, or a pointer, and nothing while a picture is playing (that is not here: playback
+     * keeps its own keys).
+     */
+    private fun feelMove(moved: Boolean) {
+        if (!fromController || moveFocus == null) return
+        haptics.controller(if (moved) HapticEvent.NAVIGATE else HapticEvent.BOUNDARY)
+    }
+
+    /** A controller's Select that took effect, felt on it as a confirmation (F-002). */
+    private fun feelChoice(activated: Boolean) {
+        if (activated && fromController) haptics.controller(HapticEvent.CONFIRM)
+    }
+
     fun setInterfaceHaptics(on: Boolean): Job {
         haptics.interfaceOn = on
         if (on) haptics.touch(HapticEvent.TOGGLE)
@@ -492,6 +507,12 @@ class AppState(
      * section 2). Installed by the root composable; returns false when focus is already there or cannot move.
      */
     internal var focusNavigation: (() -> Boolean)? = null
+
+    /**
+     * Y's way to the navigation and back (F-P2), where the navigation is beside the page; null where it is not (a phone's
+     * bottom bar) or nothing is shown. State, so the button prompts offer Y only where it does something.
+     */
+    internal var toggleNavigation: (() -> Boolean)? by mutableStateOf(null)
 
     // Sources ------------------------------------------------------------------------------------
 
@@ -1006,6 +1027,14 @@ class AppState(
         if (action == SemanticAction.SEEK_FORWARD || action == SemanticAction.SEEK_BACKWARD) watching?.seekKeyReleased()
     }
 
+    /**
+     * Whether a controller button held down repeats, beyond the directions (which always do): on the Reflux keyboard, erase
+     * and the cursor buttons, as a held Backspace or arrow does (the walk on Windows, 2026-11-19). Read on the controller
+     * thread, so only a glance at state.
+     */
+    fun repeatsWhileHeld(button: GamepadButton, family: ControllerFamily): Boolean =
+        keyboard != null && InputMapping.map(button, family, InputContext.TEXT_ENTRY) in HELD_TYPING
+
     /** Handles a controller button, named by its position so every controller family works alike. */
     fun onGamepadButton(button: GamepadButton, family: ControllerFamily): Boolean {
         onSignal(InputSignal.GamepadButtonPress(button, family))
@@ -1026,8 +1055,9 @@ class AppState(
         profileGate?.let { gate ->
             return when (action) {
                 SemanticAction.BACK -> profileGateBack(gate)
-                SemanticAction.NAVIGATE_UP, SemanticAction.NAVIGATE_DOWN, SemanticAction.NAVIGATE_LEFT, SemanticAction.NAVIGATE_RIGHT -> moveFocus?.invoke(action) ?: false
-                SemanticAction.SELECT -> activateFocused?.invoke() ?: false
+                SemanticAction.NAVIGATE_UP, SemanticAction.NAVIGATE_DOWN, SemanticAction.NAVIGATE_LEFT, SemanticAction.NAVIGATE_RIGHT ->
+                    (moveFocus?.invoke(action) ?: false).also { moved -> feelMove(moved) }
+                SemanticAction.SELECT -> (activateFocused?.invoke() ?: false).also(::feelChoice)
                 else -> true
             }
         }
@@ -1036,11 +1066,8 @@ class AppState(
         watching?.let { return it.handle(action) }
         return when (action) {
             SemanticAction.NAVIGATE_UP, SemanticAction.NAVIGATE_DOWN, SemanticAction.NAVIGATE_LEFT, SemanticAction.NAVIGATE_RIGHT ->
-                (moveFocus?.invoke(action) ?: false).also { moved ->
-                    // The end of a row or a page, felt on a controller (F-002); never for a keyboard, a remote, or a pointer.
-                    if (!moved && fromController && moveFocus != null) haptics.controller(HapticEvent.BOUNDARY)
-                }
-            SemanticAction.SELECT -> activateFocused?.invoke() ?: false
+                (moveFocus?.invoke(action) ?: false).also { moved -> feelMove(moved) }
+            SemanticAction.SELECT -> (activateFocused?.invoke() ?: false).also(::feelChoice)
             SemanticAction.BACK -> if (backRoute == BackRoute.SYSTEM_PRESENTATION) platform.enterSystemPresentation() else when {
                 // With a keyboard, Escape first lets go of the field. A remote's Back has already put the
                 // on-screen keyboard away by the time it gets here, and goes back. So has a touchscreen's: the system
@@ -1067,6 +1094,8 @@ class AppState(
                 if (folderPicker == null && !offlineOpen) toggleSources()
                 true
             }
+            SemanticAction.TOGGLE_NAVIGATION ->
+                (folderPicker == null && !offlineOpen && toggleNavigation?.invoke() == true).also { moved -> if (moved && fromController) haptics.controller(HapticEvent.NAVIGATE) }
             SemanticAction.GO_HOME, SemanticAction.GO_MOVIES, SemanticAction.GO_SHOWS, SemanticAction.GO_SEARCH,
             SemanticAction.GO_DOWNLOADS, SemanticAction.GO_SOURCES -> {
                 if (folderPicker != null || offlineOpen) return false
@@ -1493,6 +1522,9 @@ class AppState(
 
     private companion object {
         /** What a session in the mini-player still answers to while the viewer browses. */
+        /** What a held controller button keeps doing on the Reflux keyboard: erasing, and moving the cursor. */
+        val HELD_TYPING = setOf(SemanticAction.TEXT_ERASE, SemanticAction.CURSOR_BACK, SemanticAction.CURSOR_FORWARD)
+
         val DOCKED_ACTIONS = setOf(
             SemanticAction.PLAY_PAUSE, SemanticAction.STOP, SemanticAction.NEXT, SemanticAction.PREVIOUS, SemanticAction.SEEK_FORWARD,
             SemanticAction.SEEK_BACKWARD, SemanticAction.MUTE, SemanticAction.VOLUME_UP, SemanticAction.VOLUME_DOWN, SemanticAction.MINI_PLAYER,
