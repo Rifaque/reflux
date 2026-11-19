@@ -106,7 +106,13 @@ Also in Phase 2: **Forgot PIN** as the owner decided (Keep profile, Reset profil
 - **B-042:** still unassigned.
 - **Tracker evidence:** every assigned issue has it.
 
-Open: B-002's reproduction (needs the owner's machine free), physical controllers, Fire TV, the Pad 7 (its debug build's PIN), and the owner's acceptance.
+*Final verification (2026-11-19):* on the owner's hardware (VERIFICATION.md, "Phase 2: final verification"; PHASE-2-PLAN.md, "Final verification and the follow-up").
+- **Fixed and walked:** B-002 (two monitors); B-050 (the controller-reconnect crash); B-054 (the keyboard cursor); F-P2 (Y toggles the sidebar); controller feedback on Windows. Also the follow-up's B-051, B-052, B-053 and B-055.
+- **Walked on the Pad 7 and the Fire TV (remote).**
+- **Linux rumble:** implemented and tested in a VM.
+- **Aptabase:** not selected.
+
+Open: B-056 (the blank on closing the mini-player, Investigating); a DualSense hot-plug (B-050); the controller on the Fire TV and Android; physical Linux; the Phone 2a; and the owner's acceptance.
 
 ### Phase 3: media experience, discovery, Trickplay, and final performance
 
@@ -126,6 +132,12 @@ Open: B-002's reproduction (needs the owner's machine free), physical controller
     - With no media item focused, X has no media-context action.
     - To reconcile here: Menu currently opens Sources while browsing.
     - Not implemented in Phase 2.
+12. **F-P4** Adaptive Virtual Keyboard and Cross-Modality Layout Morphing (owner's steer, 2026-11-20). One keyboard system, researched and planned in [F-P4-ADAPTIVE-KEYBOARD.md](F-P4-ADAPTIVE-KEYBOARD.md):
+    - a column-aligned QWERTY controller layout with an action column;
+    - a conventional staggered mouse layout on Windows and Linux;
+    - live, hysteresis-guarded switching while open, the keys morphing between layouts (about 300 ms; a crossfade under reduced motion);
+    - nothing typed is lost, and focus is mapped by key.
+    - Android touch keeps the system keyboard. Milestones M1–M7; acceptance and test matrix in the plan.
 
 **Exit criteria.**
 - Every assigned media-experience feature is implemented and reviewed.

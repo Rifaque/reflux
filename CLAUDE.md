@@ -30,11 +30,12 @@ No physical Linux desktop and no live Jellyfin server at two addresses are avail
 
 **Android instrumented tests** run with `am instrument` against the debug build (`dev.rsxdevelops.reflux.debug`), installed beside the store build, never over it. **Website checks** (`website/`): `npm test`, `npm run build`, `npm run check-dist`, `npm run check-links`, `node scripts/check-layout.mjs --screenshots` (screenshots in `website/test-results/layout/`, to be looked at, not only counted).
 
-**Never drive the owner's desktop or devices while they are in use.** Before any SendKeys, window move, or screen capture on Windows, or an instrumented run on the phone or tablet, check what is in front, and ask if unsure. On 2026-11-19 a script's keystrokes reached the owner's game. The Pad 7's debug build has a PIN on Main that the agent does not know: never guess it, clear the app, or remove it.
+**Never drive the owner's desktop or devices while they are in use.** Before any SendKeys, window move, or screen capture on Windows, or an instrumented run on the phone or tablet, check what is in front, and ask if unsure. On 2026-11-19 a script's keystrokes reached the owner's game. The Pad 7's debug build has a PIN on Main: never guess it, clear the app, change it, or remove it. When the owner gives it for a session, pass it only on the command line (`am instrument -e unlockPin …`, read by `PhaseTwoWalkOnDeviceTest`), never into a file. The Pad 7 has no vibrator, so it shows no Interface haptics switch.
 
 **Input and haptics rules (Phase 2):**
 - Every text field goes through `Modifier.textEntry`; no screen sets `textInputActive`.
 - Everything felt goes through `Haptics`; `HapticsTest` fails otherwise.
-- X stays free of any browsing meaning (Phase 3's Quick View); see INPUT_MODEL.md, "Controller mapping".
+- X stays free of any browsing meaning (Phase 3's Quick View); Y toggles the sidebar (F-P2); Start opens Sources; RT, or B held, closes the mini-player (B-052); View stays fullscreen; see INPUT_MODEL.md, "Controller mapping".
+- Desktop input automation goes through a guard: send keys only after checking the foreground window is the Reflux test process (raise it with `AttachThreadInput`, never by sending keys), move the pointer only where Reflux's window is under it, and capture only Reflux's own windows (PrintWindow), never the screen.
 
 **Known intermittents** (not to be "fixed" by weakening the test): `PointerTest.controlsLeaveWhilePlayingAndReturnWithThePointer`; `AboutWindowTest` (fails on unmodified HEAD too). Re-run, and record both runs.

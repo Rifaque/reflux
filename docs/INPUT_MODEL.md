@@ -107,6 +107,7 @@ These keys have stated exceptions:
 
 - **Touch:** the system keyboard.
 - **Physical keyboard:** typing into the field.
+- **A mouse on a Windows or Linux desk (B-051):** the keyboard button beside Search's field opens the Reflux keyboard; keys are clicked. No other platform shows the button.
 - **Controller, or any remote (television included):** the **Reflux keyboard**. Confirm on a focused field opens it; a remote opens it with OK, on release. The system keyboard is kept away under directional input and on a television, so a remote never depends on its lifecycle (B-004).
 
 The Reflux keyboard's layout and controls:
@@ -117,21 +118,23 @@ The Reflux keyboard's layout and controls:
 | Bottom row | Shift, symbols, cursor back, space (`http://` for an address), cursor forward, erase, clear, done. A remote, which has no buttons for these, reaches them there |
 | Controller | D-pad: choose a key. A: type it. B: close (the text stays). X: erase. Y: space. LB/RB: move the cursor. LT: Shift (once, then locked, then off). RT: symbols. Start: done, which is the field's own action |
 | Above the keys | The text with its cursor (masked for a secret). A physical keyboard still types into the field underneath |
+| The cursor | Where LB/RB (or the cursor keys) put it, in the keyboard's box and as the field's own caret; it goes to the end only when the field shows other text (a refused character, a physical keyboard's edit) (B-054). Held X erases on, held LB/RB move on |
+| By modality | Under directional input or on a television the chosen key is lit (white). A pointer or a finger lights none: a pressed key sinks and brightens briefly, and a hovered one brightens a little (B-051). Picking up a controller lights its key again |
 
 ## Controller mapping (B-039, B-012)
 
-What each button means in each context. A button gets a meaning only where one is useful and conflicts with nothing. Hints name only what is available now: while browsing, Select, Back (where there is somewhere to go back to), and Y Sources.
+What each button means in each context. A button gets a meaning only where one is useful and conflicts with nothing. Hints name only what is available now: while browsing, Select, Back (where there is somewhere to go back to), Y Sidebar (where the navigation is beside the page), with the mini-player up RT Close player and Back · hold to close player (B marked to hold: its circle fills as a ring while held, a small ▼ above it), and last LT Hide hints. Hidden, only LT Show hints stays, and the choice is kept. Keys are drawn outlined in their controller shapes; hints that come and go open or close in place on one short ease (B-055).
 
 | Button | Browsing | Player | Reflux keyboard | Profile gate, panels |
 | --- | --- | --- | --- | --- |
 | A (south; east on Nintendo) | Select | Play/pause | Type the chosen key | Select |
-| B (east; south on Nintendo) | Back | Back (to the mini-player where there is one) | Close the keyboard | Back / close |
+| B (east; south on Nintendo) | Back; **held** (700 ms) with the mini-player up: close the player (B-052) | Back (to the mini-player where there is one) | Close the keyboard | Back / close |
 | **X (west)** | **Nothing (reserved)**: Media Quick View on a focused movie or show, Phase 3 (DECISIONS.md, 2026-11-19) | Nothing | Erase | Nothing |
-| Y (north) | Sources (Menu) | The player's lists (Menu) | Space | Nothing |
+| Y (north) | **Sidebar and back** to the exact item left (F-P2) | The player's lists (Menu) | Space | Nothing |
 | Start / Options / Menu | Sources (Menu) | The player's lists | Done | Nothing |
 | View / Create / Select | Fullscreen | Fullscreen | Nothing | Nothing |
 | LB / RB | Previous / next destination | Previous / next item | Cursor back / forward | Nothing |
-| LT / RT | Nothing (no meaning without a conflict) | Slower / faster | Shift / symbols | Nothing |
+| LT / RT | **LT hides or shows the hints** (B-055); **RT closes the mini-player** while it is up (B-052), else nothing | Slower / faster | Shift / symbols | Nothing |
 | D-pad, left stick | Move focus | Up/down: lists; left/right: seek | Choose a key | Move focus |
 | Right stick | Nothing (**reserved** for Trickplay, B-029, Phase 3) | Nothing (reserved, B-029) | Nothing | Nothing |
 
@@ -141,7 +144,10 @@ What each button means in each context. A button gets a meaning only where one i
 - **Back:** B is Back everywhere, and closes the innermost thing first.
 - **Remotes:** a remote has no X, Y, bumpers or triggers, so everything above is also reachable with the D-pad, OK and Back (the keyboard's bottom row; Sources from the navigation).
 - **Platform conventions:** confirm and cancel follow each family's own.
-- **F-P2:** the owner's undecided proposal that Y toggle the sidebar would take Y from Sources. Phase 2 leaves Y as it was.
+- **F-P2 (decided on the Windows walk, 2026-11-19):** Y toggles the sidebar; Sources stays on Start and a remote's Menu. With a phone's bottom bar there is no sidebar, and Y does nothing.
+- **The mini-player (B-052):** while it is up and nothing is over it, B waits for its release (a short B is Back, a held one closes the player, never both), and RT closes it. View stays fullscreen (the owner's choice). A remote's Back held, and its Stop key, close it too.
+- **Held buttons:** directions repeat; on the Reflux keyboard so do Erase (X) and the cursor (LB/RB) (B-054). A, B and the rest never repeat on the desktop; Android repeats held keys itself.
+- **Arrival focus (B-053):** a page opened from an item (Details) arrives on its main action (Play, Resume, Play episode; the first action beside it where nothing can play) under directional input or on a television, never for a pointer or a finger, and never playing by itself.
 - **Phase 3:**
   - X is held for Quick View, and the right stick for Trickplay.
   - Quick View's Menu/Options trigger on a focused item is to be reconciled with Menu opening Sources, in Phase 3.
@@ -149,17 +155,17 @@ What each button means in each context. A button gets a meaning only where one i
 
 ## Haptics (F-001, F-002)
 
-Everything felt goes through one gateway (`Haptics`). Its events are `CONFIRM`, `TOGGLE`, `BOUNDARY` and `ERROR`, and each has a minimum interval.
+Everything felt goes through one gateway (`Haptics`). Its events are `CONFIRM`, `TOGGLE`, `BOUNDARY`, `NAVIGATE` and `ERROR`, and each has a minimum interval.
 
 - **Interface haptics:**
   - **Off by default.** They act only on a touch, and only once the viewer has turned them on in Settings.
   - The toolkit's own haptics (text selection) go through the gateway as well.
   - A controller never makes the device vibrate.
 - **Controller rumble:**
-  - **On by default**, and the viewer can turn it off in Settings.
-  - Only on a controller with motors: XInput on Windows, an `InputDevice` vibrator on Android. Linux's joystick interface has no force feedback, so nothing is offered there.
-  - Its events: a boundary (a direction with nowhere to go, at most every 450 ms), and an error (a wrong PIN). Moving between items is never felt.
-  - A controller that disconnects stops at once.
+  - **On by default on Windows and Linux** (the owner's requirement, 2026-11-19), and the viewer can turn it off in Settings.
+  - Only on a controller with motors: XInput on Windows; on Linux the kernel's force feedback (`FF_RUMBLE` on the controller's event device, where the session may write to it); an `InputDevice` vibrator on Android.
+  - Its events: a light tick on each move (`NAVIGATE`, at most every 300 ms), a confirmation when Select takes effect, a firmer tick at a boundary (at most every 450 ms), and an error (a wrong PIN).
+  - It stops at once when the controller disconnects, when Reflux is no longer the application in use, when it is turned off, and on close.
 - A test fails if anything reaches a vibrator, a controller's motors or the toolkit's haptics outside the gateway's platform halves.
 
 ## Television remote
@@ -171,6 +177,7 @@ A remote has a D-pad, OK, Back, and sometimes play/pause, rewind, and fast-forwa
 - Search: the field has focus on arrival and OK opens the Reflux keyboard (since Beta 2 Phase 2; before, the system's television keyboard); Back puts the keyboard away, down reaches the results, and Back from the field goes back.
 - Choosing a folder: OK goes into a folder or uses the open one, Back goes up one folder and out from the top.
 - Connecting a server or a share: a page arrives on its first field. Up and down move between the fields and down from the last one goes to Connect; a field's keyboard (the Reflux keyboard, since Beta 2 Phase 2) opens only when OK is pressed on it (on release, so the keyboard never receives the press), and Back puts it away. Done goes on to the next field, or connects from the last.
+- The mini-player (a handheld's): Back held closes what plays, and so does Stop (B-052).
 - Sources: Menu opens them from anywhere while browsing. Down from an open source goes to its first control (its switch), never straight to Remove.
 
 ## Desktop shell

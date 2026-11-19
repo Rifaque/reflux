@@ -1395,6 +1395,58 @@ M11 decided the open items of its plan (planning/M11-DISTRIBUTION-PLAN.md, secti
 - **1.0 communication.** "Planned for December 2026", depending on feedback, qualification, and store approval; 10 December is an internal readiness checkpoint and 15 December the release decision, never a promised release date. Each platform publishes through its own path.
 - **No Windows installer in the beta**: none exists or is tested, and building one would change the release; reconsidered for 1.0.
 
+## 2026-11-20 — F-P4: an adaptive virtual keyboard, planned for Phase 3
+
+**Owner's decision.** The on-screen keyboard becomes one system with layouts per input that transform live, but **in Phase 3**. Phase 2 only researches and plans it.
+
+**Recommendations recorded for Phase 3** (planning/F-P4-ADAPTIVE-KEYBOARD.md, with evidence and sources; the owner decides the open questions):
+- **The controller layout stays QWERTY:** column-aligned, with an action column and wrap, and the existing button shortcuts. Alphabetic is not the default: no controller study shows it beating QWERTY, and the platforms moved from ABC to QWERTY.
+- **The mouse layout is a conventional staggered keyboard,** on Windows and Linux only.
+- **One key identity, one session;** layouts as data; a custom per-key morph rather than experimental shared-element APIs.
+- **Mode switches** happen on explicit acts at once, and on pointer travel only with hysteresis.
+- **Android touch keeps the system keyboard.**
+
+## 2026-11-19 — Phase 2 final verification: Y is the sidebar, the mini-player's close, controller feedback on Windows and Linux, statistics provider not chosen
+
+**Context.** The owner's final Phase 2 verification brief, the Windows controller walk with a GameSir G7 Pro, and the Phase 2 follow-up brief (three approved issues). Decisions made by the owner on the way are recorded here with what they supersede.
+
+**Decisions.**
+- **Y toggles the sidebar (F-P2, placed in Phase 2).**
+  - On the walk the owner said Y "was supposed to be for opening up the sidebar … and going back to the original position". Asked again when the follow-up brief said to keep Y on Sources, they chose the sidebar toggle.
+  - Y moves focus to the navigation beside the page, and Y again returns to the exact item left.
+  - Start and a remote's Menu open Sources.
+  - This supersedes "Y keeps Sources" (B-039's mapping, earlier the same day).
+- **The mini-player is closed by RT, or by holding B (B-052).**
+  - Two ways, each enough alone, never a chord. View was proposed and rejected by the owner: it stays fullscreen.
+  - Holding B means B waits for its release while the mini-player is up: a short B is Back, and a held one (700 ms) closes. A remote's Back held does the same; its Stop key already did.
+  - The triggers otherwise keep no browsing meaning. X stays reserved (F-P3); the right stick stays reserved (Trickplay, Phase 3).
+- **Controller feedback is required, on by default, on Windows and Linux (F-002 revised).**
+  - Windows: XInput.
+  - Linux: the kernel's force-feedback interface on the controller's event device (`FF_RUMBLE`, where the device has it and the session may write to it).
+  - The feel is subtle: a light tick on each move (rate-limited), a confirmation on a choice, a firmer tick at an edge, and an error pattern.
+  - It stops on disconnect, when Reflux is no longer in use, when it is turned off, and on close.
+  - Android's interface haptics stay off and opt-in, and are a separate thing.
+  - This supersedes "Linux: not offered" and "never while moving between items".
+- **Statistics: Aptabase evaluated and not selected.** Its daily-salted IP-address hash is a privacy trade-off not acceptable for this beta. Statistics stay off, nothing is sent, no other provider is added, and the opt-in groundwork stays (F-004).
+- **Java2D's Direct3D pipeline is off on Windows (B-002).**
+  - With it on, Compose's transparent controls window was sized in the wrong scale on a monitor whose scale differs from the primary's.
+  - Off, it is right on both monitors, and Compose still draws through Skia's own Direct3D.
+  - An explicit `-Dsun.java2d.d3d` is respected.
+- **The joystick API is asked only when it has something to read (B-050).** It corrupted the heap when a controller reconnected. XInput pads never reach it, and it is left alone for 4 s after the set of controllers changes. A non-XInput controller's hot-plug still needs its walk.
+- **Details opens on Play for a controller or a remote (B-053).** The page's main action takes focus when it arrives, wherever focus is shown, and only once; never for a pointer or a finger, and never playing anything by itself.
+- **LT hides and shows the controller's hints while browsing (B-055).** Hidden, only "LT Show hints" stays, and the choice is kept. The owner shaped the bar on the walk: keys outlined in their controller shapes (round face buttons, bumper and trigger shapes), calm motion with no bounce, and the hold hint not changing the bar's height. LT had no browsing meaning before; in the player it is still slower, and on the keyboard Shift.
+- **Search is a page from the first glance to what was found (B-057; the owner's Search steer).**
+  - **A filter apart from suggestions:** All / Movies / Shows narrows whatever is asked.
+  - **The idle page offers only what this library has:** recent searches (the profile's, on this device, clearable, never sent), quick finds that find something here with their counts, and the library's genres. Nothing finds nothing, and no artwork is there to fill space.
+  - **Results** in sections by kind.
+  - **Nothing found** keeps the query and offers ways on.
+  - The fixed text chips are gone.
+  - **Second design, after the owner's review:** one search line with an editorial index, set in type rather than built of boxes. The scope is plain tabs on the field's own line; "Start with" is a list of lines with quiet counts; genres are an index of words. There are no tiles, badges or colours. The first design's switch, metric tiles and gradient genre cards were rejected by the owner as out of place in Reflux.
+- **A mouse can use the Reflux keyboard on a desk (B-051).**
+  - Search offers a keyboard button on Windows and Linux only (`Platform.pointerKeyboard`).
+  - The chosen key is lit for a controller or a remote only; a click shows a brief press instead.
+  - Phones, tablets and televisions are unchanged.
+
 ## 2026-11-19 — Controller X is reserved for Media Quick View (a Phase 3 feature)
 
 **Owner's decision (Phase 3 feature planning notice, during Phase 2).** A controller's **X** (the west face button: Square on PlayStation, Y on Nintendo) is reserved as the universal **contextual action for movies and TV shows**. It opens a new **Media Quick View** popup when a media item has focus, and does nothing media-related anywhere else. The popup is **Phase 3 scope** and is not built in Phase 2. In Phase 3 it will also open from a mouse's right-click, a touch long-press, a remote's Options/Menu key, and a long press of OK/Select.
@@ -1405,7 +1457,7 @@ M11 decided the open items of its plan (planning/M11-DISTRIBUTION-PLAN.md, secti
 - Nothing in Phase 2 may give a long press of OK/Select, right-click, or a touch long-press on a media card another meaning.
 
 **Recorded for Phase 3, not resolved now.**
-- A remote's Menu key, and a controller's Start and Y, open Sources while browsing (`SemanticAction.MENU`).
+- A remote's Menu key and a controller's Start open Sources while browsing (`SemanticAction.MENU`); Y, since the final verification, toggles the sidebar (F-P2).
 - Quick View's Menu/Options trigger on a focused media item will have to be reconciled with that. Phase 3 decides it, and Phase 2 does not move it.
 
 The requirement is registered as **F-P3** in [planning/BETA-BUG-TRACKER.md](planning/BETA-BUG-TRACKER.md) and in Phase 3 of [planning/BETA-2.md](planning/BETA-2.md).
