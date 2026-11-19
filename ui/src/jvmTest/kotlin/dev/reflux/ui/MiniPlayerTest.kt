@@ -387,6 +387,19 @@ class MiniPlayerTest {
             waitForIdle()
             await("both ways to close it offered") { prompted("RT Close player") && prompted("old to close player") }
             assertTrue(app.backWaitsForRelease, "with the mini-player up, Back waits to see if it is held")
+            // B's prompt is marked as one to hold, its ring empty; held, the ring fills over the hold; let go, it empties.
+            assertTrue(prompted("|hold:B:0"), "B marked for holding, its ring empty")
+            mainClock.autoAdvance = false
+            runOnIdle { app.backHold(true) }
+            mainClock.advanceTimeBy(dev.reflux.ui.state.BACK_HOLD_MS / 2)
+            assertTrue(prompted("|hold:B:") && !prompted("|hold:B:0") && !prompted("|hold:B:100"), "half way, the ring part filled")
+            save("mini-player-hold-half")
+            mainClock.advanceTimeBy(dev.reflux.ui.state.BACK_HOLD_MS)
+            mainClock.autoAdvance = true
+            await("the ring full") { prompted("|hold:B:100") }
+            save("mini-player-hold-full")
+            runOnIdle { app.backHold(false) }
+            await("the ring empty again") { prompted("|hold:B:0") }
             val page = app.navigator.current
             val player = platform.players.single()
             runOnIdle { assertTrue(app.onGamepadButton(GamepadButton.TRIGGER_RIGHT, ControllerFamily.XBOX)) }

@@ -216,6 +216,7 @@ internal fun runReflux(
                         reader, active = { focus.activeWindow != null }, repeats = app::repeatsWhileHeld,
                         waitsForRelease = { button, family -> button == dev.reflux.core.input.InputMapping.cancelButton(family) && app.backWaitsForRelease },
                         hold = { button, family -> SwingUtilities.invokeLater { app.onGamepadHold(button, family) } },
+                        holding = { _, _, down -> SwingUtilities.invokeLater { app.backHold(down) } },
                     ) { button, family ->
                         SwingUtilities.invokeLater { app.onGamepadButton(button, family) }
                     }

@@ -2,6 +2,9 @@
 
 package dev.reflux.ui
 
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.animateColorAsState
@@ -791,7 +794,7 @@ private fun BoxScope.CompactNavigation(app: AppState) {
             // With a controller in hand, what its buttons do here, in that controller's own terms.
             AnimatedVisibility(app.namesButtons, enter = fadeIn(Motion.inputMorph.tween()), exit = fadeOut(Motion.controlsHide.tween())) {
                 val family = app.input.controllerFamily ?: ControllerFamily.GENERIC
-                ButtonPrompts(browsePrompts(app, family), family)
+                ButtonPrompts(browsePrompts(app, family), family, hold = rememberBackHold(app, family))
             }
             // The bar is as wide as its four destinations and no wider: a compact capsule that floats over the page.
             val track = remember { SelectionTrack() }
@@ -1106,7 +1109,7 @@ private fun PageBar(app: AppState, modifier: Modifier = Modifier) {
         Spacer(Modifier.weight(1f))
         AnimatedVisibility(visible = app.namesButtons, enter = fadeIn(Motion.inputMorph.tween()), exit = fadeOut(Motion.controlsHide.tween())) {
             val family = app.input.controllerFamily ?: ControllerFamily.GENERIC
-            ButtonPrompts(browsePrompts(app, family), family, Modifier.padding(end = 14.dp))
+            ButtonPrompts(browsePrompts(app, family), family, Modifier.padding(end = 14.dp), hold = rememberBackHold(app, family))
         }
         // A television's pages start inside this bar, under it: there the sign is the dot alone (B-005).
         ActivityIndicator(activity, compact = layout.formFactor == FormFactor.TV)
@@ -1158,7 +1161,25 @@ internal fun showsProfileButton(destination: Destination): Boolean =
  * its conflict matrix are in docs/INPUT_MODEL.md, "Controller mapping"). Y (and Start) open Sources; X says nothing,
  * being reserved for Phase 3's Media Quick View (DECISIONS.md, 2026-11-19).
  */
-internal fun browsePrompts(app: AppState, family: ControllerFamily): List<Pair<GamepadButton, String>> = listOfNotNull(
+/**
+ * B-052: where holding Back closes the mini-player, its prompt is marked as one to hold, and its ring fills while Back is
+ * held, over exactly the time it takes ([dev.reflux.ui.state.BACK_HOLD_MS]); let go, it empties at once.
+ */
+@Composable
+internal fun rememberBackHold(app: AppState, family: ControllerFamily): dev.reflux.ui.components.HoldPrompt? {
+    val progress by animateFloatAsState(
+        if (app.backHolding) 1f else 0f,
+        if (app.backHolding) tween(dev.reflux.ui.state.BACK_HOLD_MS.toInt(), easing = LinearEasing) else snap(),
+    )
+    if (!app.backWaitsForRelease || app.hintsHidden) return null
+    return dev.reflux.ui.components.HoldPrompt(InputMapping.cancelButton(family), progress)
+}
+
+internal fun browsePrompts(app: AppState, family: ControllerFamily): List<Pair<GamepadButton, String>> =
+    // B-055: hidden, the bar keeps only LT's own hint, the way to bring the others back.
+    if (app.hintsHidden) listOf(GamepadButton.TRIGGER_LEFT to "Show hints") else allBrowsePrompts(app, family) + (GamepadButton.TRIGGER_LEFT to "Hide hints")
+
+private fun allBrowsePrompts(app: AppState, family: ControllerFamily): List<Pair<GamepadButton, String>> = listOfNotNull(
     InputMapping.confirmButton(family) to "Select",
     when {
         app.offlineOpen -> InputMapping.cancelButton(family) to "Close"

@@ -240,6 +240,7 @@ class AppState(
             }
         }
         scope.launch { runCatching { read { this.onlineMetadata } }.getOrNull()?.let { onlineMetadata = it } }
+        scope.launch { runCatching { read { setting(CONTROLLER_HINTS) } }.getOrNull()?.let { hintsHidden = it == "hidden" } }
         // Who is watching is known, or asked, from the moment Reflux opens (docs/WATCH_STATE.md, "Profiles").
         scope.launch { askWhoIsWatchingAtStart() }
     }
@@ -316,6 +317,19 @@ class AppState(
         haptics.rumbleOn = on
         if (on) haptics.controller(HapticEvent.TOGGLE) else haptics.stopRumble()
         return attempt("That couldn't be saved. Try again.") { read { setSetting(Haptics.CONTROLLER_RUMBLE, if (on) null else "off") } }
+    }
+
+    /**
+     * Whether the controller's button hints are hidden while browsing (B-055): LT hides them, and then only LT's own hint
+     * stays, to bring them back. Kept across restarts. Shown by default.
+     */
+    var hintsHidden by mutableStateOf(false)
+        private set
+
+    fun toggleHints(): Job {
+        hintsHidden = !hintsHidden
+        val hidden = hintsHidden
+        return attempt("That couldn't be saved. Try again.") { read { setSetting(CONTROLLER_HINTS, if (hidden) "hidden" else null) } }
     }
 
     fun setMediaAtmosphere(on: Boolean): Job {
@@ -1055,6 +1069,7 @@ class AppState(
 
     /** A controller's button held down past [BACK_HOLD_MS] where holding means something (B-052). True when it did something. */
     fun onGamepadHold(button: GamepadButton, family: ControllerFamily): Boolean {
+        backHolding = false
         if (button != InputMapping.cancelButton(family) || !backWaitsForRelease) return false
         fromController = true
         return try {
@@ -1065,7 +1080,19 @@ class AppState(
     }
 
     /** A remote's Back (or a keyboard's Escape) held down past [BACK_HOLD_MS]: the same as a controller's (B-052). */
-    fun onBackHeld(): Boolean = backWaitsForRelease && closeMiniPlayer()
+    fun onBackHeld(): Boolean {
+        backHolding = false
+        return backWaitsForRelease && closeMiniPlayer()
+    }
+
+    /** Whether Back is being held now, where holding it closes the mini-player: its prompt's ring fills meanwhile (B-052). */
+    var backHolding by mutableStateOf(false)
+        private set
+
+    /** Back went down where holding it means something ([backWaitsForRelease]), or was let go, or acted. */
+    fun backHold(down: Boolean) {
+        backHolding = down && backWaitsForRelease
+    }
 
     /** Handles a controller button, named by its position so every controller family works alike. */
     fun onGamepadButton(button: GamepadButton, family: ControllerFamily): Boolean {
@@ -1134,6 +1161,10 @@ class AppState(
             }
             SemanticAction.MENU -> {
                 if (folderPicker == null && !offlineOpen) toggleSources()
+                true
+            }
+            SemanticAction.TOGGLE_HINTS -> {
+                toggleHints()
                 true
             }
             SemanticAction.TOGGLE_NAVIGATION ->
@@ -1564,6 +1595,9 @@ class AppState(
 
     private companion object {
         /** What a session in the mini-player still answers to while the viewer browses. */
+        /** The device setting that keeps the controller's hints hidden (B-055); absent: shown. */
+        const val CONTROLLER_HINTS = "controller_hints"
+
         /** What a held controller button keeps doing on the Reflux keyboard: erasing, and moving the cursor. */
         val HELD_TYPING = setOf(SemanticAction.TEXT_ERASE, SemanticAction.CURSOR_BACK, SemanticAction.CURSOR_FORWARD)
 
