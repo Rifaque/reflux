@@ -133,10 +133,12 @@ fun Pressable(
     role: Role = Role.Button,
     /** What activating it does, for a screen reader's "double tap to …", where its name does not say. */
     actionLabel: String? = null,
+    /** For a caller that moves something of its own with the lift (a card's title beneath it: B-009). */
+    interactionSource: MutableInteractionSource? = null,
     content: @Composable BoxScope.(active: Boolean) -> Unit,
 ) {
     val layout = LocalLayout.current
-    val interaction = remember { MutableInteractionSource() }
+    val interaction = interactionSource ?: remember { MutableInteractionSource() }
     val hovered by interaction.collectIsHoveredAsState()
     val focused by interaction.collectIsFocusedAsState()
     val pressed by interaction.collectIsPressedAsState()
@@ -217,6 +219,14 @@ private val RING_WIDTH_STRONG = 3.dp
 
 /** How far a focus ring reaches outside its control. A list that clips leaves this much room at its ends. */
 val FocusRingReach = RING_GAP + RING_WIDTH + 1.dp
+
+/**
+ * How far a lifted control of [height] reaches beyond its own bottom (or top) edge while it is active: half of what
+ * the lift adds to its height, and the ring around it when one is shown. What sits beneath a card (its title) moves
+ * down by this much, so the ring never crosses it (B-009); a row leaves this much room above its cards.
+ */
+fun liftReach(height: androidx.compose.ui.unit.Dp, focusScale: Float, lift: Float = 1f, ring: Boolean = true): androidx.compose.ui.unit.Dp =
+    height * ((focusScale - 1f) * lift / 2f) + if (ring) FocusRingReach else 0.dp
 
 /** A soft light around [shape], fading outwards from the focus ring. Drawn outside the control's own bounds. */
 private fun Modifier.focusGlow(shape: Shape, strength: Float): Modifier = if (strength <= 0f) this else drawBehind {
@@ -460,10 +470,10 @@ fun Tab(label: String, selected: Boolean, modifier: Modifier = Modifier, compact
 
 /** A section title with an optional trailing action ("See all"). */
 @Composable
-fun SectionHeader(title: String, modifier: Modifier = Modifier, action: String? = null, onAction: () -> Unit = {}) {
+fun SectionHeader(title: String, modifier: Modifier = Modifier, action: String? = null, actionModifier: Modifier = Modifier, onAction: () -> Unit = {}) {
     Row(modifier.fillMaxWidth().defaultMinSize(minHeight = 44.dp), verticalAlignment = Alignment.CenterVertically) {
         Text(title, Modifier.weight(1f).heading(), style = LocalTypography.current.title, maxLines = 1)
-        if (action != null) Button(action, onAction, style = ButtonStyle.QUIET)
+        if (action != null) Button(action, onAction, actionModifier, style = ButtonStyle.QUIET)
     }
 }
 

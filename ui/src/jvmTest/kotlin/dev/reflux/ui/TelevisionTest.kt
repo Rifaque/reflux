@@ -155,7 +155,9 @@ class TelevisionTest {
         assertTrue(focused().top > boundsOf("Ready to Watch").bottom - 4f)
         assertFalse(shows("Recently Added") && boundsOf("Recently Added").bottom > pageTop, "what went up is not left half showing")
 
+        // Up from a row's card is its own See all first (B-007), then the row above.
         remote(app, Key.ARROW_UP)
+        if (onAllNodes(isFocused() and hasText("See all")).fetchSemanticsNodes().isNotEmpty()) remote(app, Key.ARROW_UP)
         await("the first row to return") { abs(boundsOf("Recently Added").top - pageTop) < 14f }
         remote(app, Key.ARROW_RIGHT, 3)
         val fourth = focused()

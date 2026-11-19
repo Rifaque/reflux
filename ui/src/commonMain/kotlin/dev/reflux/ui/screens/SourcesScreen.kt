@@ -524,7 +524,6 @@ internal fun ConnectScreen(app: AppState, destination: Destination.Connect) {
     LaunchedEffect(Unit) {
         if (!television) runCatching { if (setup.editing != null && server) password.requestFocus() else address.requestFocus() }
     }
-    DisposableEffect(Unit) { onDispose { app.textInputActive = false } }
     val title = when {
         setup.editing != null && server -> "Sign in to ${setup.editing.displayName} again"
         setup.editing != null -> "Change ${setup.editing.displayName}"
@@ -555,13 +554,12 @@ internal fun ConnectScreen(app: AppState, destination: Destination.Connect) {
         }
         item(key = "form") {
             Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                val typing: (Boolean) -> Unit = { if (it) app.textInputActive = true else app.textInputActive = false }
                 TextInput(
                     setup.address, { setup.address = it }, if (server) "Server address" else "Share address",
                     Modifier.focusRequester(address).initialFocus(),
                     kind = InputKind.ADDRESS, placeholder = setup.examples.firstOrNull(),
                     error = setup.problemField == SourceSetup.Field.ADDRESS, enabled = !setup.connecting,
-                    onFocus = typing, onDone = { focus.moveFocus(FocusDirection.Down) },
+                    onDone = { focus.moveFocus(FocusDirection.Down) },
                 )
                 if (!server && setup.examples.size > 1) {
                     Text("For example ${setup.examples.joinToString(" or ")}", style = LocalTypography.current.caption, color = RefluxColors.contentTertiary)
@@ -569,7 +567,7 @@ internal fun ConnectScreen(app: AppState, destination: Destination.Connect) {
                 TextInput(
                     setup.username, { setup.username = it }, if (plex) "Plex account email or user name" else if (setup.anonymous) "User name (if it asks)" else "User name",
                     kind = InputKind.NAME, error = setup.problemField == SourceSetup.Field.USERNAME, enabled = !setup.connecting,
-                    onFocus = typing, onDone = { focus.moveFocus(FocusDirection.Down) },
+                    onDone = { focus.moveFocus(FocusDirection.Down) },
                 )
                 otherAccount?.let { who ->
                     Text(
@@ -584,7 +582,7 @@ internal fun ConnectScreen(app: AppState, destination: Destination.Connect) {
                     // Down from the last field is the way to connect, not whatever button is nearest.
                     fieldModifier = Modifier.focusProperties { down = submit },
                     kind = InputKind.SECRET, last = true, error = setup.problemField == SourceSetup.Field.PASSWORD, enabled = !setup.connecting,
-                    onFocus = typing, onDone = { setup.connect() },
+                    onDone = { setup.connect() },
                 )
             }
         }

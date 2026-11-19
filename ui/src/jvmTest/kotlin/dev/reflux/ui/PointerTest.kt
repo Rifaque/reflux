@@ -126,14 +126,14 @@ class PointerTest {
     @Test
     fun searchIsUsableWithAPointer() = screen(populated()) { app ->
         onNode(destination("Search")).mouseClick()
-        awaitText("Try")
+        awaitText("90s movies")
         onNodeWithText("90s movies").mouseClick()
         awaitText("Heat")
         assertEquals("90s movies", app.searchQuery)
         assertEquals(0, onAllNodesWithText("Dune").fetchSemanticsNodes().size)
 
         onNodeWithContentDescription("Clear search").mouseClick()
-        awaitText("Try")
+        awaitText("90s movies")
         assertEquals("", app.searchQuery)
         onNode(hasSetTextAction()).performTextInput("villeneuve movies")
         awaitText("Arrival")

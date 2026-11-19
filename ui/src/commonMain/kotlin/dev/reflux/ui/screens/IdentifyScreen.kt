@@ -59,7 +59,6 @@ internal fun IdentifyScreen(app: AppState, itemId: MediaId) {
     val session = remember(itemId) { IdentifySession(app, itemId, target.title, target.show, target.corrected, target.match, target.year, target.latestYear) }
     // The work's own name is searched once, as the page opens; after that, when the user asks.
     LaunchedEffect(session) { session.search() }
-    DisposableEffect(Unit) { onDispose { app.textInputActive = false } }
     val what = if (session.show) "show" else "movie"
     Page {
         item(key = "heading") {
@@ -75,7 +74,7 @@ internal fun IdentifyScreen(app: AppState, itemId: MediaId) {
                     Modifier.weight(1f).initialFocus(),
                     placeholder = "A title, and its year if you know it",
                     last = true, enabled = !session.applying,
-                    onFocus = { app.textInputActive = it }, onDone = { session.search() },
+                    onDone = { session.search() },
                 )
                 Button("Search", { session.search() }, icon = Icon.SEARCH, enabled = !session.applying)
             }

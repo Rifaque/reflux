@@ -161,7 +161,7 @@ class ScreensTest {
     @Test
     fun searchShowsHowTheQueryWasUnderstood() = screen(populated()) { app ->
         app.navigator.show(Destination.Search)
-        awaitText("Try")
+        awaitText("90s movies")
         onNode(hasSetTextAction()).performTextInput("4k science fiction")
         awaitText("Science Fiction")
         awaitText("Blade Runner 2049")
@@ -262,10 +262,14 @@ class ScreensTest {
     @Test
     fun searchSuggestsAndAdmitsWhenNothingMatches() = screen(populated()) { app ->
         app.navigator.show(Destination.Search)
-        awaitText("Try")
+        awaitText("90s movies")
         save("search-empty")
         onNode(hasSetTextAction()).performTextInput("zzzz")
-        awaitText("Nothing in your library matches “zzzz”.")
+        // B-037: a designed empty state, with what to do next.
+        awaitText("No matches for “zzzz”")
+        awaitText("Clear search")
+        awaitText("Browse movies")
+        assertEquals(0, onAllNodesWithText("Try").fetchSemanticsNodes().size, "no Try label before the suggestions (B-035)")
         save("search-no-results")
     }
 

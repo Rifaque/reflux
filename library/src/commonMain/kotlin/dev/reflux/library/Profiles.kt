@@ -210,16 +210,65 @@ fun Library.visibleSources(): List<SourceRecord> = queries.visibleSources().exec
 
 // PIN ----------------------------------------------------------------------------------------------
 
-/** Gives [id] a PIN, replacing any it had. Returns false when [pin] is not four digits. */
+/**
+ * Gives [id] its first PIN. Returns false when [pin] is not four digits, or when [id] already has a PIN: replacing
+ * or removing one needs that PIN ([changePin], [removePin]), so there is no way around it here (B-049).
+ */
 fun Library.setPin(id: ProfileId, pin: String, key: PinKey): Boolean {
     if (!PinPolicy.valid(pin)) return false
     val salt = key.randomBytes(SALT_BYTES)
-    queries.setProfilePin(salt.toHex(), verifier(key, salt, pin), id.value)
-    return true
+    // One statement: only a profile without a PIN takes one.
+    return queries.setFirstProfilePin(salt.toHex(), verifier(key, salt, pin), id.value).value == 1L
 }
 
-/** Takes [id]'s PIN away: opening it no longer asks. */
-fun Library.removePin(id: ProfileId) = queries.setProfilePin(null, null, id.value)
+private fun Library.writePin(id: ProfileId, pin: String, key: PinKey) {
+    val salt = key.randomBytes(SALT_BYTES)
+    queries.setProfilePin(salt.toHex(), verifier(key, salt, pin), id.value)
+}
+
+/** What came of asking to change or remove a profile's PIN (B-049). */
+sealed interface PinChange {
+    data object Changed : PinChange
+
+    /** Nothing changed: the new PIN is not four digits, or there is no such profile. */
+    data object Invalid : PinChange
+
+    /** Nothing changed: [check] is what became of the current PIN given, counted as a try exactly as opening it is. */
+    data class Refused(val check: PinCheck) : PinChange
+}
+
+/**
+ * Replaces [id]'s PIN with [next], only with its [current] one, checked in the same transaction with the counting and
+ * waiting of [checkPin]. Being the open profile authorises nothing: a device left unlocked is not a way to take a
+ * profile's protection (B-049). A profile without a PIN takes [next] as its first.
+ */
+fun Library.changePin(id: ProfileId, current: String?, next: String, key: PinKey): PinChange = database.transactionWithResult {
+    if (!PinPolicy.valid(next) || queries.profileById(id.value).executeAsOneOrNull() == null) return@transactionWithResult PinChange.Invalid
+    val verdict = verifyPin(id, current, key)
+    if (verdict != PinCheck.Accepted) return@transactionWithResult PinChange.Refused(verdict)
+    writePin(id, next, key)
+    PinChange.Changed
+}
+
+/**
+ * Takes [id]'s PIN away (opening it no longer asks), only with its [current] PIN, checked in the same transaction with
+ * [checkPin]'s counting and waiting (B-049). Nothing else of the profile changes: its history, favorites, accounts,
+ * and downloads stay, and no other profile is touched. A profile without a PIN is left as it is.
+ */
+fun Library.removePin(id: ProfileId, current: String?, key: PinKey?): PinChange = database.transactionWithResult {
+    if (queries.profileById(id.value).executeAsOneOrNull() == null) return@transactionWithResult PinChange.Invalid
+    val verdict = verifyPin(id, current, key)
+    if (verdict != PinCheck.Accepted) return@transactionWithResult PinChange.Refused(verdict)
+    queries.setProfilePin(null, null, id.value)
+    PinChange.Changed
+}
+
+/**
+ * Takes [id]'s PIN away without it, for a viewer whose device has just confirmed who they are with its own lock (the
+ * system's biometric or screen-lock prompt, never anything Reflux asked for or saw: Forgot PIN, DECISIONS.md
+ * 2026-11-19). Only `AppState`'s system-confirmed reset calls it, after the platform says the system confirmed it.
+ */
+fun Library.removePinConfirmedBySystem(id: ProfileId) = queries.setProfilePin(null, null, id.value)
 
 /**
  * Checks a PIN entered for [id]. Wrong entries are counted and kept, so restarting does not reset them; after

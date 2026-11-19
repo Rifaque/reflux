@@ -1224,6 +1224,10 @@ DELETE FROM profile WHERE id = ?;
 setProfilePin:
 UPDATE profile SET pin_salt = :salt, pin_verifier = :verifier, pin_failures = 0, pin_locked_until = NULL WHERE id = :id;
 
+-- A profile's first PIN: never over one it has, which only that PIN may change (B-049).
+setFirstProfilePin:
+UPDATE profile SET pin_salt = :salt, pin_verifier = :verifier, pin_failures = 0, pin_locked_until = NULL WHERE id = :id AND pin_verifier IS NULL;
+
 recordPinFailure:
 UPDATE profile SET pin_failures = :failures, pin_locked_until = :lockedUntil WHERE id = :id;
 

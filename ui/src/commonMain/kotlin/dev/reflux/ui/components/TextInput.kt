@@ -58,15 +58,18 @@ import dev.reflux.ui.theme.RefluxColors
 import dev.reflux.ui.theme.Text
 import dev.reflux.ui.theme.tween
 
-/** What a field holds, which decides the keyboard a phone or a television offers for it. */
-enum class InputKind { ADDRESS, NAME, SECRET, PIN }
+/** What a field holds (`dev.reflux.ui.state.InputKind`), named here where fields are built. */
+typealias InputKind = dev.reflux.ui.state.InputKind
 
 /**
  * A labelled, single-line field. It is quiet until it has focus, when its edge lights up in white; a field
  * the last problem was about has a red edge until it changes. Its height follows the layout's target size,
  * so it is as easy to reach with a remote as a button is.
  *
- * @param onFocus reports when typing starts and stops, so keys are not taken for shortcuts meanwhile.
+ * Every field reports its own focus ([textEntry]), so keys are never taken for shortcuts while it has it, and a
+ * controller or a remote types into it on the Reflux keyboard.
+ *
+ * @param onFocus reports when the field gains and loses focus, for a screen that needs to know.
  * @param onDone what the keyboard's action key does: go on to the next field, or submit.
  */
 @Composable
@@ -104,7 +107,7 @@ fun TextInput(
         BasicTextField(
             value = value,
             onValueChange = onValueChange,
-            modifier = fieldModifier.focusRequester(field).keyboardByRemote()
+            modifier = fieldModifier.focusRequester(field).textEntry(value, onValueChange, label, kind, onDone)
                 .fillMaxWidth().semantics {
                     contentDescription = label
                     if (error) error("Check this field")
@@ -120,7 +123,7 @@ fun TextInput(
                 autoCorrectEnabled = false,
                 keyboardType = when (kind) {
                     InputKind.ADDRESS -> KeyboardType.Uri
-                    InputKind.NAME -> KeyboardType.Text
+                    InputKind.NAME, InputKind.SEARCH -> KeyboardType.Text
                     InputKind.SECRET -> KeyboardType.Password
                     InputKind.PIN -> KeyboardType.NumberPassword
                 },
@@ -149,43 +152,3 @@ fun TextInput(
         )
     }
 }
-
-/**
- * How a text field takes a remote. Focus only passes through a field on its way somewhere, so a television
- * keeps the keyboard, which takes over the remote while it is up, away until OK asks for it; and OK opens it
- * when it is let go of. A keyboard opened as focus arrives, or on the press, takes the press or its release
- * for its own: Fire TV's then types the key it starts on, so a search began with an "a". Every field a
- * remote can reach uses this, with [showsKeyboardOnFocus] in its keyboard options.
- */
-@Composable
-internal fun Modifier.keyboardByRemote(): Modifier {
-    val television = LocalLayout.current.formFactor == FormFactor.TV
-    val keyboard = LocalSoftwareKeyboardController.current
-    var focused by remember { mutableStateOf(false) }
-    // Whether OK has asked for the keyboard since focus arrived; until it has, a television keeps it away.
-    var asked by remember { mutableStateOf(false) }
-    LaunchedEffect(focused) {
-        if (!focused) asked = false
-        if (!television || !focused) return@LaunchedEffect
-        // The field opens the keyboard by itself as it takes focus, a moment later.
-        repeat(KEYBOARD_PATIENCE_FRAMES) {
-            withFrameNanos { }
-            if (!asked) keyboard?.hide()
-        }
-    }
-    return onFocusChanged { focused = it.isFocused }.onPreviewKeyEvent { event ->
-        if (event.key != Key.DirectionCenter) return@onPreviewKeyEvent false
-        if (event.type == KeyEventType.KeyUp) {
-            asked = true
-            keyboard?.show()
-        }
-        true
-    }
-}
-
-/** Whether a field opens the keyboard as it takes focus: everywhere but on a television ([keyboardByRemote]). */
-@Composable
-internal fun showsKeyboardOnFocus(): Boolean = LocalLayout.current.formFactor != FormFactor.TV
-
-/** How many frames after focus arrives a television keeps hiding a keyboard nobody asked for. */
-private const val KEYBOARD_PATIENCE_FRAMES = 20

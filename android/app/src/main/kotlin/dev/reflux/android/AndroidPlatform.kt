@@ -111,6 +111,18 @@ internal class AndroidPlatform(private val environment: AndroidEnvironment, over
     /** Asks the system for its picture-in-picture window and says whether it was given. Set by the activity. */
     var enterSystem: (() -> Boolean)? = null
 
+    /** The device's own lock, for Forgot PIN; set by the activity. A television is not offered it (DECISIONS.md, 2026-11-19). */
+    var systemLock: dev.reflux.ui.state.SystemAuthentication? = null
+
+    override val systemAuthentication: dev.reflux.ui.state.SystemAuthentication? get() = systemLock.takeIf { !television }
+
+    /** The device's haptics and the controller's motors (F-001, F-002); set by the activity. A television has no haptics of its own. */
+    var haptics: dev.reflux.ui.state.DeviceHaptics? = null
+    var rumble: AndroidControllerRumble? = null
+
+    override val deviceHaptics: dev.reflux.ui.state.DeviceHaptics? get() = haptics.takeIf { !television }
+    override val controllerRumble: dev.reflux.ui.state.ControllerRumble? get() = rumble
+
     /**
      * The one video surface is a `SurfaceView` the toolkit lays out, so it can be placed in the mini-player's dock and moved
      * there with the engine running and neither decoder nor surface disturbed (VERIFICATION.md, M10 probe P1); a television's

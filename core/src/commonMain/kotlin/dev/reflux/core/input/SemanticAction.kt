@@ -38,10 +38,36 @@ enum class SemanticAction {
     /** The next or previous global destination, in the navigation's order. */
     NEXT_SECTION,
     PREVIOUS_SECTION,
+
+    // Typing on the Reflux keyboard (B-023): what a controller's other buttons do while it is open.
+
+    /** Erases the character before the cursor. */
+    TEXT_ERASE,
+
+    /** Types a space. */
+    TEXT_SPACE,
+
+    /** Moves the cursor one character toward the start. */
+    CURSOR_BACK,
+
+    /** Moves the cursor one character toward the end. */
+    CURSOR_FORWARD,
+
+    /** Capitals for the next letter, then for every letter, then none. */
+    TEXT_SHIFT,
+
+    /** Between letters and symbols. */
+    TEXT_SYMBOLS,
+
+    /** Finishes typing: the field's own action (go on, or search, or connect). */
+    TEXT_DONE,
 }
 
-/** The UI context interpreting input. The same button can mean different things while browsing or playing. */
-enum class InputContext { BROWSE, PLAYBACK }
+/**
+ * The UI context interpreting input. The same button can mean different things while browsing, playing, or typing
+ * on the Reflux keyboard ([TEXT_ENTRY], which is above everything while it is open).
+ */
+enum class InputContext { BROWSE, PLAYBACK, TEXT_ENTRY }
 
 /** Controller families, used for button glyphs and family-specific conventions. */
 enum class ControllerFamily { PLAYSTATION, XBOX, NINTENDO, GENERIC, TV_REMOTE }

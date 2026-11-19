@@ -230,7 +230,11 @@ internal fun ProfileGateOverlay(app: AppState, gate: ProfileGate) {
                     }
                     if (!gate.required) Button("Cancel", { app.dispatch(dev.reflux.core.input.SemanticAction.BACK) }, style = ButtonStyle.QUIET)
                 }
-                is ProfileGate.Unlock -> if (gate.forgetting) ForgotPin(app, gate) else PinEntry(app, gate)
+                is ProfileGate.Unlock -> when {
+                    gate.resetting -> ResetProfile(app, gate)
+                    gate.forgetting -> ForgotPin(app, gate)
+                    else -> PinEntry(app, gate)
+                }
             }
         }
     }
@@ -283,11 +287,40 @@ private fun PinEntry(app: AppState, gate: ProfileGate.Unlock) {
 }
 
 /**
+ * Forgot PIN (DECISIONS.md, 2026-11-19): the choices, with the safe one first. Keep profile changes nothing. Where the
+ * device has a lock of its own, the system can confirm its owner and the PIN goes while everything stays (the old PIN is
+ * never revealed, and Reflux never sees what is entered there). Reset profile is the destructive one, asked again
+ * before anything goes ([ResetProfile]).
+ */
+@Composable
+private fun ForgotPin(app: AppState, gate: ProfileGate.Unlock) {
+    val name = gate.profile.name
+    ProfileMark(gate.profile, 64.dp, lit = true)
+    Text("Forgot $name's PIN?", Modifier.heading(), style = LocalTypography.current.headline, align = TextAlign.Center)
+    Text("Reflux can't show or recover a PIN.", color = RefluxColors.contentSecondary, align = TextAlign.Center)
+    val system = app.systemConfirmsOwner
+    if (system) {
+        Text(
+            "Confirm it's you with this device's fingerprint, face, or screen lock to remove the PIN. $name's history, favorites, and sign-ins stay.",
+            style = LocalTypography.current.caption,
+            color = RefluxColors.contentTertiary,
+            align = TextAlign.Center,
+        )
+    }
+    gate.problem?.let { Text(it, Modifier.announces(it), color = RefluxColors.contentSecondary, align = TextAlign.Center) }
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterHorizontally), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Button("Keep profile", { app.forgotPin(false) }, Modifier.initialFocus(), style = ButtonStyle.QUIET)
+        if (system) Button("Use device lock", { app.removeForgottenPinWithSystem() }, style = ButtonStyle.GLASS, icon = Icon.LOCK)
+        Button("Reset profile…", { app.confirmProfileReset() }, style = ButtonStyle.QUIET)
+    }
+}
+
+/**
  * Starting a profile over when its PIN is forgotten: said plainly, with what goes and what stays, and the safe answer
  * first. The PIN protected what the profile kept, so that goes with it.
  */
 @Composable
-private fun ForgotPin(app: AppState, gate: ProfileGate.Unlock) {
+private fun ResetProfile(app: AppState, gate: ProfileGate.Unlock) {
     val name = gate.profile.name
     ProfileMark(gate.profile, 64.dp, lit = true)
     Text("Reset $name?", Modifier.heading(), style = LocalTypography.current.headline, align = TextAlign.Center)
@@ -304,7 +337,7 @@ private fun ForgotPin(app: AppState, gate: ProfileGate.Unlock) {
         align = TextAlign.Center,
     )
     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        Button("Keep it", { app.forgotPin(false) }, Modifier.initialFocus(), style = ButtonStyle.QUIET)
-        Button("Reset $name", { app.resetForgottenProfile() }, style = ButtonStyle.GLASS)
+        Button("Keep profile", { app.forgotPin(false) }, Modifier.initialFocus(), style = ButtonStyle.QUIET)
+        Button("Reset profile", { app.resetForgottenProfile() }, style = ButtonStyle.GLASS)
     }
 }

@@ -4,6 +4,10 @@
 
     <!-- Metadata, artwork, and network sources. Local playback and browsing never need it. -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- A controller's motors, for rumble (F-002), reached only through the haptics gateway. A normal permission: no prompt. -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- The system's own biometric or screen-lock prompt, for Forgot PIN on a phone or tablet (Reflux never sees what is entered). A normal permission: no prompt. -->
+    <uses-permission android:name="android.permission.USE_BIOMETRIC" />
 
     <!--
         Only asked for on a television, whose system has no folder picker: there Reflux lists storage

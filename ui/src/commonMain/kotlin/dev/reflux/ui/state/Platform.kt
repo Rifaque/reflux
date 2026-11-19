@@ -127,6 +127,20 @@ interface Platform {
      */
     val pinKey: dev.reflux.library.PinKey? get() = null
 
+    /**
+     * The device's own lock, for a viewer who forgot a profile's PIN to prove they are the device's owner and have the
+     * PIN removed without losing the profile (Forgot PIN, DECISIONS.md 2026-11-19). Null where Reflux has no secure way
+     * to ask the system (a television, Windows, Linux: docs/planning/PHASE-2-PLAN.md, "Forgot PIN"); the viewer then
+     * keeps the profile or resets it.
+     */
+    val systemAuthentication: SystemAuthentication? get() = null
+
+    /** The device's vibration, for interface haptics (F-001); null where there is none (desktops, televisions). */
+    val deviceHaptics: DeviceHaptics? get() = null
+
+    /** The motors of the controller in use, for rumble (F-002); null where the platform cannot drive them. */
+    val controllerRumble: ControllerRumble? get() = null
+
     /** The storage to choose a media folder from, where the platform has no picker of its own; null where it does. */
     val folderBrowser: FolderBrowser? get() = null
 
@@ -248,3 +262,18 @@ fun interface SupportReportOutlet {
     /** Delivers [text] as a file called [fileName]; returns what to tell the person, or throws when it could not. */
     suspend fun deliver(fileName: String, text: String): String
 }
+
+/**
+ * The system's own confirmation of the device's owner: its biometric or screen-lock prompt. Reflux never collects,
+ * sees, or keeps what is entered there, and nothing is revealed by it: it only says whether the system confirmed.
+ */
+interface SystemAuthentication {
+    /** Whether the system can confirm its owner now (a lock is set up). */
+    fun available(): Boolean
+
+    /** Asks the system to confirm the device's owner, saying [title] and [subtitle] in its prompt. */
+    suspend fun confirm(title: String, subtitle: String): SystemConfirmation
+}
+
+/** What the system said. Only [CONFIRMED] authorises anything. */
+enum class SystemConfirmation { CONFIRMED, CANCELLED, FAILED, UNAVAILABLE }

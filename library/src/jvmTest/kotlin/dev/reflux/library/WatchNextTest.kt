@@ -471,9 +471,10 @@ class WatchNextTest {
         assertEquals(listOf(sam), WatchNext.programs(library).map { it.profile })
 
         // A profile with a PIN keeps its viewing off the launcher, which is outside the lock.
-        library.setPin(sam, "1357", MemoryPinKey())
+        val key = MemoryPinKey()
+        library.setPin(sam, "1357", key)
         assertTrue(WatchNext.programs(library).isEmpty())
-        library.removePin(sam)
+        library.removePin(sam, "1357", key)
         assertEquals(1, WatchNext.programs(library).size)
         // The same work in two profiles is two different cards: the row is rewritten when the profile changes.
         library.switchProfile(main)

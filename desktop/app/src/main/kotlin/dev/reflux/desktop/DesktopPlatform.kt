@@ -31,6 +31,11 @@ import kotlin.concurrent.thread
 internal class DesktopPlatform(private val environment: DesktopEnvironment) : Platform {
     val video = VideoSurface()
 
+    /** The controllers' motors, where the platform's reader can drive them (Windows XInput; F-002). Set once controllers are read. */
+    var rumble: dev.reflux.ui.state.ControllerRumble? = null
+
+    override val controllerRumble: dev.reflux.ui.state.ControllerRumble? get() = rumble
+
     /** Present on X11 only; created before any engine so that it sees the toolkit's own error handler. */
     private val x11Errors = X11ErrorGuard.create().also { guard ->
         if (guard == null && X11ErrorGuard.needed) report("Xlib could not be loaded: an X11 error after playback may end Reflux")
