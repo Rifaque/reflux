@@ -4,7 +4,7 @@
 
 **Scope.** B-001 to B-042 and F-001 to F-005 (the owner's original findings), two registered sidebar proposals (F-P1, F-P2), and every issue found since (B-043 onward). Release gates, phase scope, phase order, and exit criteria are **not** here: they are in [BETA-2.md](BETA-2.md), which links back to this file. What each test run was, in full, is in [VERIFICATION.md](../VERIFICATION.md); decisions and their reasons are in [DECISIONS.md](../DECISIONS.md).
 
-**Last updated:** 2026-11-19 (branch `open-source-gpl`, after commit `0a0396f`).
+**Last updated:** 2026-11-19, Phase 1 closeout walks (branch `open-source-gpl`, after commit `556887b`).
 
 ## Contents
 
@@ -62,8 +62,8 @@ Status of the 47 original findings:
 | Not Started | 35 | B-002, B-004, B-007 to B-017, B-019 to B-021, B-023, B-025, B-027 to B-030, B-032, B-034 to B-040, B-042; F-001, F-002, F-003, F-005 |
 | Investigating | 3 | B-006, B-022, B-041 |
 | In Progress | 1 | F-004 (Phase 1 foundation implemented; Phase 3 validation to come) |
-| Fixed | 7 | B-001, B-003, B-005, B-018, B-024, B-031, B-033 |
-| Verified | 0 | (none: every fixed issue still lacks a required check or owner acceptance) |
+| Fixed | 5 | B-003, B-005, B-018, B-024, B-031 (each lacks a required check: see its entry) |
+| Verified | 2 | B-001, B-033 (owner acceptance still pending, as for every issue) |
 | Blocked | 0 | |
 | Deferred | 0 | |
 | Not Reproduced | 1 | B-026 |
@@ -72,12 +72,12 @@ Newly discovered: B-043 Fixed; B-044 Investigating; B-045 Not Started. F-P1 and 
 
 | Phase | Items | Fixed | Investigating / In Progress | Not Reproduced | Not Started | Verified | Owner acceptance |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| **1** | 11 (9 bugs, F-004 foundation, B-041 baseline) | 7 | 3 (B-006, B-041 baseline, F-004) | 1 (B-026) | 0 | 0 | **Pending**: implemented, with named checks outstanding |
+| **1** | 11 (9 bugs, F-004 foundation, B-041 baseline) | 5 | 3 (B-006, B-041, F-004) | 1 (B-026) | 0 | 2 | **Pending**: exit criteria met (BETA-2.md); the owner's own checks and acceptance remain |
 | **2** | 23 issues in 19 work-order steps | 0 | 0 | 0 | 23 | 0 | Not started |
 | **3** | 8 issues + 2 checkpoints (B-041 final, F-004 final) | 0 | 0 | 0 | 8 | 0 | Not started |
 | Unassigned / pending | B-016, B-017, B-022, B-042, F-005 (and F-P1, F-P2) | 0 | 1 (B-022, measured under B-041) | 0 | 6 | 0 | Owner decisions needed |
 
-**Phase 1 is not complete**: its exit criteria in BETA-2.md are not all met (B-041's baseline is partial; physical checks for B-031, B-003, B-005, B-033, B-024 and B-026 are outstanding), and the owner has not accepted it. Phase 2 has not started. Beta 2 is not cut.
+**Phase 1 meets its exit criteria (BETA-2.md, Phase 1) and awaits the owner's acceptance** (2026-11-19 closeout walks: VERIFICATION.md, "Phase 1 closeout walks"; PHASE-1-PLAN.md, "Stage G"). What only the owner can do is listed there: a physical Linux desktop (B-031), a live Jellyfin server at two addresses (B-003), a real Jellyfin version list (B-024), a Fire TV walk (B-005), and the decisions on Forgot PIN and the statistics provider. Phase 2 has not started. Beta 2 is not cut.
 
 ## Phase overview
 
@@ -88,16 +88,16 @@ Scope, order, dependencies, exit criteria, and the gate: [BETA-2.md](BETA-2.md#t
 | # | Issue | Status |
 | --- | --- | --- |
 | 1 | [B-018](#b-018) Profile deletion authorization | Fixed |
-| 2 | [B-031](#b-031) Linux libmpv locale/init | Fixed (VM and containers; physical Linux pending) |
-| 3 | [B-001](#b-001) Playback lifecycle/frozen frame | Fixed (physical devices passed; one case outstanding) |
-| 4 | [B-026](#b-026) Windows process shutdown | Not Reproduced |
+| 2 | [B-031](#b-031) Linux libmpv locale/init | Fixed (VM desktop session and containers; physical Linux pending) |
+| 3 | [B-001](#b-001) Playback lifecycle/frozen frame | Verified (physical devices, server source included) |
+| 4 | [B-026](#b-026) Windows process shutdown | Not Reproduced (including closing during playback) |
 | 5 | [B-003](#b-003) Multiple Jellyfin endpoints | Fixed (live server pending) |
-| 6 | [B-033](#b-033) Orphaned favourites | Fixed (device walk pending) |
+| 6 | [B-033](#b-033) Orphaned favourites | Verified (phone and tablet walks) |
 | 7 | [B-024](#b-024) Resolution/HDR metadata | Fixed (Windows walk pending) |
-| 8 | [B-005](#b-005) Scan status UI | Fixed (device walks pending) |
+| 8 | [B-005](#b-005) Scan status UI | Fixed (phone, tablet walked; TV on the emulator; Fire TV pending) |
 | 9 | [B-006](#b-006) Metadata/search latency | Investigating (local search part fixed) |
 | 10 | [F-004](#f-004) Analytics architecture, schema, privacy, consent | In Progress (foundation implemented; nothing transmitted) |
-| 11 | [B-041](#b-041) Performance baseline | Investigating (baseline partial) |
+| 11 | [B-041](#b-041) Performance baseline | Investigating (baseline recorded on all six platforms; gaps named) |
 
 **Phase 2: controller, focus, interaction, input, and haptics**
 
@@ -150,7 +150,7 @@ Each entry: the header facts, the original report (the master tracker prompt's t
 
 - **Category:** Bug (playback) · **Priority:** High, provisional · **Platforms:** P T TV F (Android)
 - **Components:** `android:app` (`MainActivity.VideoLayer`, the `SurfaceView` host), `ui` (`AppState.play` / `finishPlayback` / `createPlayer`), the Media3 engine adapter
-- **Phase:** 1, step 3 · **Status:** Fixed · **Last updated:** 2026-11-19
+- **Phase:** 1, step 3 · **Status:** Verified (physical devices; Google TV on the emulator; owner acceptance pending) · **Last updated:** 2026-11-19
 - **Related:** the M10 surface-continuity contract (one surface per playback across full player, dock, PiP)
 
 **Original description.** Opening another movie or episode can leave the previous media's final frame on screen while the new media's audio and playback time continue. *Investigate:* player lifecycle, media transitions, surface attachment/detachment, playback state reset, asynchronous races, and rendering state.
@@ -170,13 +170,13 @@ Each entry: the header facts, the original report (the master tracker prompt's t
 - **Investigation findings:** `VideoLayer` attached the engine only in `AndroidView.factory`, which runs once per composition node. `AppState.play` → `finishPlayback()` → `createPlayer()` ran back to back; with no frame composed between them the node survived and engine B was never attached. Timing-dependent, hence intermittent.
 - **Root cause:** established (the new test fails on the old code in the mini-player case and passes with the fix).
 - **Implementation:** the surface is keyed on the engine (`key(player)`: a new engine gets a new `SurfaceView`, with nothing of A's buffer or fixed size), and attachment is a `DisposableEffect(player, view)`, not the factory alone. One engine still keeps one surface across full player, dock and PiP. Commit `c1ca1d1`; DECISIONS.md, 2026-11-18.
-- **Tests added or modified:** new `SurfaceHandoverOnDeviceTest` (red and blue generated films, colour read off the surface with `PixelCopy`; five cases: mini-player to another film, close then play and reopen, end then another, stop then another, five changes in a row).
+- **Tests added or modified:** new `SurfaceHandoverOnDeviceTest` (red and blue generated films, colour read off the surface with `PixelCopy`; five cases: mini-player to another film, close then play and reopen, end then another, stop then another, five changes in a row). Closeout (2026-11-19): a sixth case, `fromAFolderToAServerAndBack`: a folder film, then a film streamed over HTTP from a WebDAV share on the device's loopback (`LoopbackFileShare`, byte ranges, the media framework's own HTTP stack), then the folder film again; the share sees only reading methods.
 - **Automated verification:** the instrumented tests below; full `./gradlew check` on Windows for the JVM modules.
-- **Emulator verification:** Google TV emulator (`Reflux_TV`): 4/4 + 1 skipped (no mini-player on TV).
-- **Physical/device verification:** old code on the Pad 7: 4 passed, mini-player case **failed** (the reproduction). Fixed code: Pad 7 5/5, Phone 2a 5/5, Fire TV Stick 4K Plus 4/4 + 1 skipped.
+- **Emulator verification:** Google TV emulator (`Reflux_TV`): 4/4 + 1 skipped (no mini-player on TV). Closeout: 5 + 1 skipped, the server-source case included.
+- **Physical/device verification:** old code on the Pad 7: 4 passed, mini-player case **failed** (the reproduction). Fixed code: Pad 7 5/5, Phone 2a 5/5, Fire TV Stick 4K Plus 4/4 + 1 skipped. Closeout run (2026-11-19, commit `556887b` plus the new tests): the whole class with the server case, Phone 2a 6/6 and Pad 7 6/6.
 - **Regression testing:** unchanged and passing: `SurfaceContinuityOnDeviceTest` 2/2 (Pad 7, Phone 2a, Fire TV, emulator); `PlayerAccessibilityOnDeviceTest` 1/1 (Pad 7, Phone 2a); `ActivityRecreationOnDeviceTest` 1/1 (all four); `TelevisionOnDeviceTest` 2/2 (Fire TV, emulator); `PlaybackOnDeviceTest` 4 + 2 skipped (both handhelds).
 - **Evidence:** VERIFICATION.md, "Phase 1", B-001. Debug build `dev.rsxdevelops.reflux.debug`, installed beside the store build.
-- **Outstanding work:** "different source types": the handover test used two files from a folder; a server (Jellyfin or Plex) source was not tried. Owner acceptance. *(BETA-2.md had registered this as "Verified on physical device"; it is Fixed here because the source-type criterion is not yet met.)*
+- **Outstanding work:** owner acceptance. The server-source case ran on the two handhelds, not on the Fire TV or the TV emulator (the reported scenarios did). A Jellyfin or Plex server source specifically was not tried (none is reachable); the share exercises the same streamed path through the media framework. *(Status history: "Verified on physical device" in BETA-2.md; Fixed when this tracker was made, for want of the source-type case; Verified at Phase 1 closeout once that case passed.)*
 
 <a id="b-002"></a>
 ### B-002: Playback controls disappear or misrender after moving windows between monitors
@@ -289,12 +289,13 @@ Each entry: the header facts, the original report (the master tracker prompt's t
 - **Investigation findings:** desktop and tablet pages reserve a 64 dp bar and did not collide; phones and TVs did.
 - **Root cause:** established in code (above).
 - **Implementation:** on phones and TVs the sign is a dot in a fixed place (its words for screen readers, and in full on Sources); on Search's row it steps aside as the profile entry does; beside a rail or sidebar the words stay in their own bar, cut short. Commit `c1ca1d1`; DECISIONS.md, 2026-11-18.
-- **Tests added or modified:** new `ActivityIndicatorLayoutTest` (the sign's bounds against every heading and text field).
+- **Tests added or modified:** new `ActivityIndicatorLayoutTest` (the sign's bounds against every heading and text field); at closeout, on-device `PhaseOneWalkOnDeviceTest.theLibrarysSignNeverCoversALabelOrAField`.
 - **Automated verification:** 4/4 at phone (412×915: Home, Movies with a very long source name, Search), tablet (1200×800), desktop (1440×900), small window (960×640) and television sizes. Its first run found a second overlap (the dot over the phone's Search field: x 372–396 against the field's 68–388), since fixed.
-- **Physical/device verification:** none yet.
+- **Physical/device verification (Phase 1 closeout, 2026-11-19):** Home, Movies and Search opened in turn while 400 new files were scanned for each; whenever the sign was on screen, its bounds were checked against every other visible label and text field through the accessibility tree. **Phone 2a:** Home and Movies, sign seen and clear; Search, no sign (on a phone's Search it steps aside, by design). **Pad 7:** all three seen and clear. Screenshots looked at (phone Movies: the dot beside the profile button, the heading clear; tablet Search: "Scanning Walk library" in its own bar above the field).
+- **Emulator verification:** Google TV emulator: all three pages, sign seen and clear (its screenshot was taken just after the sign went, so the bounds check is the evidence there).
 - **Regression testing:** full `./gradlew check` passed with it.
-- **Evidence:** VERIFICATION.md, "Phase 1", B-005.
-- **Outstanding work:** phone, tablet, and TV device walks; owner acceptance.
+- **Evidence:** VERIFICATION.md, "Phase 1", B-005, and "Phase 1 closeout walks".
+- **Outstanding work:** a Fire TV walk (the matrix asks for it; the Fire TV was not connected); owner acceptance.
 
 <a id="b-006"></a>
 ### B-006: Metadata and search latency
@@ -864,9 +865,10 @@ Each entry: the header facts, the original report (the master tracker prompt's t
 - **Root cause:** not established. **Not explained** and not resolved.
 - **Implementation:** none (no evidence to justify a change).
 - **Tests:** none added; measurement script (first rounds closed the launcher, which has no window; not counted).
-- **Physical/device verification:** the 19 rounds ran on the owner's physical Windows machine.
+- **Physical/device verification:** the 19 rounds, and the 5 closes during playback, ran on the owner's physical Windows machine.
 - **Evidence:** VERIFICATION.md, "Phase 1", B-026 (with the tester procedure: `Get-CimInstance Win32_Process | ? ExecutablePath -like '*Reflux*' | select ProcessId,ParentProcessId,ThreadCount,CreationDate,CommandLine`, plus a support report, and whether something was playing).
-- **Outstanding work:** closing during playback; a hung engine (the 5 s release patience); the tester's process listing if it recurs; an attempt on a second Windows machine.
+- **Closing during playback (Phase 1 closeout, 2026-11-19):** the packaged app (`createDistributable` of `556887b`), a scratch library with one local film, five rounds: started, the film played (Tab, Enter; screenshot of each round with the clock running; `libmpv-2.dll` loaded in the application process), then WM_CLOSE to the window as the title bar's X sends. Before closing: the launcher (5 threads, 8 MB) and the application (160–168 threads, 595–646 MB). Every round: both processes gone 738–816 ms after the close, launcher exit code 0, nothing left. Still not reproduced; the report is still not explained.
+- **Outstanding work:** a hung engine (the 5 s release patience); the tester's process listing if it recurs (procedure in VERIFICATION.md); an attempt on a second Windows machine.
 
 <a id="b-027"></a>
 ### B-027: Separate Jellyfin libraries and aggregate views
@@ -973,7 +975,7 @@ Each entry: the header facts, the original report (the master tracker prompt's t
 
 - **Category:** Bug (Linux compatibility) · **Priority:** High; potentially release-blocking · **Platforms:** L
 - **Components:** `playback:mpv` (`NumericLocale`, `createHandle`, `MpvPlayer`, `MpvProbe`, `MpvDecodeProbe`); `desktop:app` (`main`); `desktop:engine` (`DiagnosticLog`)
-- **Phase:** 1, step 2 · **Status:** Fixed (verified in a VM and in containers; physical Linux pending) · **Last updated:** 2026-11-19
+- **Phase:** 1, step 2 · **Status:** Fixed (verified in a VM desktop session and in containers; physical Linux pending) · **Last updated:** 2026-11-19
 - **Related:** B-043 (the Linux install hint)
 
 **Original description.** libmpv 0.42.0 reports an error when launched with `LC_NUMERIC=en_US.UTF-8`: `Non-C locale detected. This is not supported. Call 'setlocale(LC_NUMERIC, "C");'`. The application had a workaround using `LC_NUMERIC=C` to launch Reflux. *Expected:* establish the C numeric locale safely before libmpv initialization as required; preserve the user's system language and regional formatting for the rest of the application; avoid forcing the entire application into English or changing all user locale settings; log a meaningful error when needed without flooding logs; investigate Wayland/XWayland separately where relevant, without claiming it is the cause unless confirmed. *Investigate:* initialization order, native library calls, locale safety, Compose/JVM/native interactions, and desktop packaging.
@@ -996,10 +998,11 @@ Each entry: the header facts, the original report (the master tracker prompt's t
 - **Tests added or modified:** `NumericLocaleTest` (new); `DiagnosticLogTest` (3).
 - **Automated verification (Windows):** `:playback:mpv:test` all passed; `NumericLocaleTest` 4 + 1 skipped (Linux-only); `DiagnosticLogTest` 3/3.
 - **Desktop/OS-specific verification (VM and containers, not physical):** WSL2 Ubuntu 24.04, libmpv 0.37, `de_DE.UTF-8`: HEAD `MpvEngineTest` 22 of 24 failed; fixed tree 24/24 and `NumericLocaleTest` 3 + 1 skipped, 50 engines made and destroyed, a real file played at speed 1.5. Packaged tarball in Docker containers under `de_DE.UTF-8`: engine started on Ubuntu 22.04, Ubuntu 24.04, Debian 12, Fedora 41; Arch started its engine (image has no locale data, so the locale case was not exercised); playback through the CLI to the end on Ubuntu 22.04 and 24.04.
+- **Desktop session in a VM (Phase 1 closeout, 2026-11-19; a VM result, not physical):** the Ubuntu 26.04 QA VM (`Reflux-QA-Ubuntu-26.04`: GNOME on Wayland, Reflux's window through XWayland, VMSVGA with 3D; the distribution's `libmpv2` 0.41.0). **Before:** the released `0.9.0-beta.1` tarball (SHA-256 matching the release's SHA256SUMS) under the session's own `en_US.UTF-8`: Play printed "Non-C locale detected. This is not supported. Call 'setlocale(LC_NUMERIC, "C");'" and logged "libmpv was found but could not be initialized": the tester's report, reproduced. **After:** the tarball built from `556887b`, no workaround: under `en_US.UTF-8` the film played (clock seen advancing 00:00:06 → 00:00:21), the log said "The numeric locale was en_US.UTF-8; it is C for libmpv (language and formats are unchanged)" and reported the audio output; under `de_DE.UTF-8` the same, with "was de_DE.UTF-8". The CLI's probe under `en_US.UTF-8` read the film's streams through libmpv. The version line showed the measured `1920 × 1080` (B-024's technical line).
 - **Physical/device verification:** none. No physical Linux desktop is available to the agent.
 - **Regression testing:** full `./gradlew check` (Windows) passed; the Windows engine tests unchanged.
 - **Evidence:** VERIFICATION.md, "Phase 1", B-031 and Workstream 12; "Website documentation portal…" (Arch, the wording correction).
-- **Outstanding work:** a physical Linux desktop under `en_US.UTF-8` (as reported) and `de_DE.UTF-8`, local and Jellyfin playback, libmpv 0.42.0 (owner check). A new Ubuntu 26.04 VirtualBox VM was created on 2026-11-19 for desktop-session walks; a result from it is a VM result, not physical. Wayland only if playback still fails or stays black.
+- **Outstanding work:** a physical Linux desktop under `en_US.UTF-8` (as reported) and `de_DE.UTF-8`, local and Jellyfin playback, ideally libmpv 0.42.0 as reported (owner check; the VM had 0.41.0). Wayland: the VM's session was Wayland with XWayland and the picture showed, so nothing points at it.
 
 <a id="b-032"></a>
 ### B-032: Disconnected-source badge overlaps poster/watch indicator
@@ -1032,7 +1035,7 @@ Each entry: the header facts, the original report (the master tracker prompt's t
 
 - **Category:** Bug (data integrity/UX) · **Priority:** Medium · **Platforms:** reported Android; the library rules are shared
 - **Components:** `library` (`favorites()`, availability); `ui` (`DetailsScreen` `Gone` page, Home shelf)
-- **Phase:** 1, step 6 · **Status:** Fixed · **Last updated:** 2026-11-19
+- **Phase:** 1, step 6 · **Status:** Verified (physical phone and tablet; owner acceptance pending) · **Last updated:** 2026-11-19
 - **Related:** B-032 (disconnected-source display)
 
 **Original description.** Removing a source can leave orphaned favourites that point to media no longer in the library. Selecting them produces a "no longer in library" type of message. *Expected:* provide a way to manage and remove orphaned favourites; distinguish temporarily disconnected sources from permanently removed sources; do not silently delete favourites without appropriate handling; preserve favourites when a source is temporarily unavailable.
@@ -1052,12 +1055,13 @@ Each entry: the header facts, the original report (the master tracker prompt's t
 - **Investigation findings:** `favorites()` resolved item rows without regard to versions; Details' model had no visible version, so the page was `Gone`. Favourites are profile state and correctly survived.
 - **Root cause:** established in code.
 - **Implementation:** the `Gone` page says it is a favourite (or in a collection) and offers "Remove from favorites"; favourite cards with nothing to play are marked "Not available". Nothing deleted automatically. Commit `c1ca1d1`; DECISIONS.md, 2026-11-18.
-- **Tests added or modified:** `UnavailableFavoritesTest` (2, new); `ScreensTest` (1 new).
+- **Tests added or modified:** `UnavailableFavoritesTest` (2, new); `ScreensTest` (1 new); at closeout, on-device `PhaseOneWalkOnDeviceTest.aFavouriteOfARemovedSourceIsKeptAndCanBeRemoved` (the reported case through the real activity).
 - **Automated verification:** `:library:jvmTest --tests UnavailableFavoritesTest` 2/2; `:ui:jvmTest --tests ScreensTest` 23/23. Windows.
-- **Physical/device verification:** none.
+- **Physical/device verification (Phase 1 closeout, 2026-11-19):** the reported case on the Phone 2a and the Pad 7 (debug build beside the store build): a favourite film; its source removed the way Sources removes it (`AppState.removeSource`); still a favourite; its page read "This is no longer in your library" with "Its files were moved or deleted, or its source was removed. It stays in your favorites until you remove it…" and a "Remove from favorites" button; pressed through the accessibility tree; the favourite gone. Passed on both; screenshots of each step kept (VERIFICATION.md).
+- **Emulator verification:** the same walk passed on the Google TV emulator.
 - **Regression testing:** full `./gradlew check` passed.
-- **Evidence:** VERIFICATION.md, "Phase 1", B-033.
-- **Outstanding work:** an Android device walk of the reported case; owner acceptance.
+- **Evidence:** VERIFICATION.md, "Phase 1", B-033, and "Phase 1 closeout walks".
+- **Outstanding work:** owner acceptance.
 
 <a id="b-034"></a>
 ### B-034: Mobile search placeholder is too long and visually heavy
@@ -1233,14 +1237,14 @@ Each entry: the header facts, the original report (the master tracker prompt's t
 
 - **Category:** Performance (release readiness) · **Priority:** High (V1 readiness requirement) · **Platforms:** P, T, TV (Android TV, Google TV), F, W, L
 - **Components:** all (measurement harnesses: `SearchPerformanceTest`; packaged desktop timing; `am start -W` on Android)
-- **Phase:** **one issue, two checkpoints**: Phase 1 step 11 (baseline) and Phase 3 step 9 (final optimisation and comparison) · **Status:** Investigating (baseline partial) · **Last updated:** 2026-11-19
+- **Phase:** **one issue, two checkpoints**: Phase 1 step 11 (baseline) and Phase 3 step 9 (final optimisation and comparison) · **Status:** Investigating (Phase 1 baseline recorded on all six platforms, gaps named; Phase 3 to finish) · **Last updated:** 2026-11-19
 - **Related:** B-006, B-022, B-026 (shutdown), B-030, B-038
 
 **Original description.** Perform a comprehensive cross-platform performance audit and establish measurable baselines and optimization criteria. *Platforms:* Android phone, Android tablet, Android TV, Google TV, Fire TV, Windows, Linux. *Audit areas:* cold startup; warm startup; first usable UI; content loading; library scanning; search; artwork and cache performance; memory use; scrolling/frame pacing; UI transitions; playback startup and transitions; CPU/GPU use; battery where applicable; shutdown; long sessions. *Test conditions:* release builds; physical devices where available; desktop operating systems; different densities and window sizes; realistic/large libraries; connected and disconnected sources. *Expected:* document measured baselines; identify bottlenecks supported by measurements; prioritize optimizations based on evidence; establish sensible regression thresholds. *Phase allocation:* baseline measurements belong in Phase 1; final optimization and repeat measurements belong in Phase 3. This is a single issue with separate checkpoints, not two duplicated issues.
 
 **Findings document.** Areas to measure: cold and warm startup; first usable screen; first library content; large-library scan and metadata; search latency; artwork loading, caching, memory; scrolling and frame pacing; navigation transitions; playback startup, buffering, seeking, recovery; CPU, memory, GPU, battery; background work and shutdown; long-session stability and memory growth. Test matrix: physical devices, representative desktop hardware, densities and resolutions, large libraries, connected and disconnected sources. Expected output: measured baseline, bottleneck evidence, platform findings, regression thresholds. Do not optimise on assumptions or one device. Compare release builds, not only debug builds.
 
-**Checkpoint 1: baseline (Phase 1). Status: partial.**
+**Checkpoint 1: baseline (Phase 1). Status: recorded, with the gaps named below** (every platform has numbers: Windows, Android phone, tablet and Fire TV physical, Google TV on the emulator, Linux in a VM).
 
 | Area | Platform | Measured | Kind |
 | --- | --- | --- | --- |
@@ -1252,8 +1256,16 @@ Each entry: the header facts, the original report (the master tracker prompt's t
 | | Fire TV Stick 4K Plus | median 480 ms, p95 517 ms (6 of 7 runs reported) | Physical |
 | | Google TV (`0.9.0-alpha.2` under the store ID) | median 238 ms, p95 419 ms | **Emulator** |
 | Local search (11,000-item fixture) | JVM on Windows | see [B-006](#b-006) | Physical (JVM) |
+| Start to window (packaged, empty library, 7 runs; run 1 after a page-cache drop) | Linux (Ubuntu 26.04 QA VM, GNOME/XWayland, 4 vCPU, 8 GB) | cold 6.45 s; warm 2.84–3.35 s; median of 7: 2.90 s | **VM** |
+| Resident memory at 6 s (one process on Linux) | Linux VM | warm 676–721 MB (cold run 346 MB, its window just up) | **VM** |
+| Close (WM_DELETE) to process gone | Linux VM | 454–709 ms, one run 2,046 ms; median 591 ms | **VM** |
+| Memory after a cold start (store build, `dumpsys meminfo` TOTAL PSS at 6 s, 3 runs) | Phone 2a | 300, 323, 367 MB | Physical |
+| | Pad 7 | 273, 282, 326 MB | Physical |
+| Frame pacing scrolling Home (store build, `dumpsys gfxinfo`, 16 swipes, 3 runs) | Phone 2a | 2,780–2,824 frames; janky 0.04–0.43 %; p50 10 ms, p90 14–17 ms, p95 21 ms, p99 40–46 ms | Physical |
+| | Pad 7 | 1,260–1,352 frames; janky 0.16–0.22 %; p50 13 ms, p90 18–22 ms, p95 30 ms, p99 36–38 ms | Physical |
+| Close during playback to both processes gone (5 rounds) | Windows | 738–816 ms (B-026) | Physical |
 
-Not measured yet: an Android release build of the Phase 1 code (none can be installed beside the store build without replacing it), Linux on hardware, scrolling frame times, Android memory and CPU, GPU, battery, large-library scans on devices, artwork, playback start and transitions, long sessions; regression thresholds not set. Macrobenchmark recommended for M12, at its cost (a module, an AndroidX dependency, a benchmark build type).
+The store build is `0.9.0-beta.1` (release), with the owner's own library as installed (its size was not read); the frame figures are Home only. Not measured yet: an Android release build of the Phase 1 code (none can be installed beside the store build without replacing it), Linux on hardware, scrolling frame times beyond Home and on TV, Android CPU, GPU, battery, large-library scans on devices, artwork, playback start and transitions, long sessions; regression thresholds not set. Macrobenchmark recommended for M12, at its cost (a module, an AndroidX dependency, a benchmark build type).
 
 **Checkpoint 2: final optimisation and comparison (Phase 3). Status: Not Started.**
 
@@ -1459,6 +1471,7 @@ Found during Beta 2 work, not in the original findings. Each was allocated by ex
 - **Investigation findings:** the test file is unchanged since `540147c`; none of the four commits touches it or the player controls. `:ui:jvmTest --tests "*AccessibilityTest*" --rerun` alone: 3/3 passed. Suspected the same timing family as `PointerTest` (a wall-clock wait under load); not confirmed.
 - **Root cause:** not established.
 - **Implementation:** none. Not to be "fixed" by weakening the test.
+- **Later run:** the next forced full check (Phase 1 closeout, 2026-11-19) passed it: 1,496 tests, 0 failures.
 - **Outstanding work:** confirm whether the wait depends on wall-clock time under load; fix the test's timing if so, keeping what it asserts.
 
 <a id="b-045"></a>
@@ -1495,25 +1508,26 @@ Per fixed or investigated issue, by kind of verification. ✓ done · ✗ requir
 
 | Issue | Automated tests | Emulator | Physical device | Desktop/OS (VM, container) | Regression (full check) | Owner acceptance |
 | --- | --- | --- | --- | --- | --- | --- |
-| B-001 | ✓ (instrumented) | ✓ Google TV | ✓ Pad 7, Phone 2a, Fire TV (server source ✗) | — | ✓ | Pending |
+| B-001 | ✓ (instrumented) | ✓ Google TV (server case too) | ✓ Pad 7, Phone 2a (with a server source), Fire TV | — | ✓ | Pending |
 | B-003 | ✓ 15 new | — | ✗ live two-address server, device walk | — | ✓ | Pending |
-| B-005 | ✓ layout, 5 sizes | ✗ | ✗ phone, tablet, TV walks | — | ✓ | Pending |
+| B-005 | ✓ layout, 5 sizes; on-device walk | ✓ Google TV | ✓ Phone 2a, Pad 7; ✗ Fire TV | — | ✓ | Pending |
 | B-006 | ✓ fixture (JVM) | — | ✗ Android fixture | — | ✓ | Pending |
 | B-018 | ✓ 9 new | — | ✗ walk of the reported case | ✓ Windows JVM | ✓ | Pending |
 | B-022 | measurement | — | ✓ Windows timing (one machine) | — | — | Pending |
 | B-024 | ✓ | — | ✗ Windows walk | ✓ Windows JVM | ✓ | Pending |
-| B-026 | measurement (19 closes) | — | ✓ owner's Windows machine (not reproduced) | — | — | Pending |
-| B-031 | ✓ | — | ✗ physical Linux desktop | ✓ WSL2 VM; Ubuntu 22.04/24.04, Debian 12, Fedora 41, Arch containers | ✓ | Pending |
-| B-033 | ✓ | — | ✗ Android walk | ✓ Windows JVM | ✓ | Pending |
-| B-041 | measurement | ✓ Google TV cold start | ◐ Windows; Phone 2a, Pad 7, Fire TV cold start | ✗ Linux | — | Pending |
+| B-026 | measurement (19 closes; 5 during playback) | — | ✓ owner's Windows machine (not reproduced) | — | — | Pending |
+| B-031 | ✓ | — | ✗ physical Linux desktop | ✓ Ubuntu 26.04 VM desktop session (before and after, `en_US` and `de_DE`); WSL2 VM; Ubuntu 22.04/24.04, Debian 12, Fedora 41, Arch containers | ✓ | Pending |
+| B-033 | ✓; on-device walk | ✓ Google TV | ✓ Phone 2a, Pad 7 | ✓ Windows JVM | ✓ | Pending |
+| B-041 | measurement | ✓ Google TV cold start | ◐ Windows; Phone 2a, Pad 7 (cold start, memory, Home frames); Fire TV cold start | ◐ Linux in a VM (start, memory, close) | — | Pending |
 | B-043 | ✓ | — | — | ◐ base packages in containers; Mint not run | ✓ | Pending |
 | F-004 | ✓ 6 | — | — (nothing sent) | — | ✓ | Pending |
 
-Machines (CLAUDE.md, "Testing environment"): Windows 11 development machine (physical); Xiaomi Pad 7, Nothing Phone (2a), Fire TV Stick 4K Plus (physical); Google TV emulator; WSL2 Ubuntu 24.04 (VM); Docker containers; a new **Ubuntu 26.04 VirtualBox VM** (`Reflux-QA-Ubuntu-26.04`, created 2026-11-19: 4 vCPU, 8 GB, 60 GB, VMSVGA with 3D, 128 MB video memory; Ubuntu not yet installed). Full runs: VERIFICATION.md, "Phase 1", "Open-source transition", "Website documentation portal…", and "Beta bug tracker and register reconciliation".
+Machines (CLAUDE.md, "Testing environment"): Windows 11 development machine (physical); Xiaomi Pad 7, Nothing Phone (2a), Fire TV Stick 4K Plus (physical); Google TV emulator; WSL2 Ubuntu 24.04 (VM); Docker containers; the **Ubuntu 26.04 VirtualBox VM** (`Reflux-QA-Ubuntu-26.04`, created 2026-11-19: 4 vCPU, 8 GB, 60 GB, VMSVGA with 3D, 128 MB video memory; GNOME on Wayland; used for B-031's desktop walk and B-041's Linux baseline). Full runs: VERIFICATION.md, "Phase 1", "Open-source transition", "Website documentation portal…", and "Beta bug tracker and register reconciliation".
 
 ## Change history
 
 | Date | Change | By |
 | --- | --- | --- |
 | 2026-11-19 | Tracker created from the owner's master tracker prompt, BETA-2.md's register, PHASE-1-PLAN.md, VERIFICATION.md, DECISIONS.md and the code at `0a0396f`. All of B-001 to B-042 and F-001 to F-005 entered once, with both source texts. Statuses moved to the tracker's eight words. **B-001** recorded as Fixed (BETA-2.md had "Verified on physical device"; its "different source types" criterion is not met). **B-042** shown as pending owner approval (BETA-2.md had listed it in Phase 2). **B-026** Not Reproduced. New issues **B-043** (Linux hint), **B-044** (`AccessibilityTest` timeout), **B-045** (`AboutWindowTest`). F-P1 and F-P2 kept. The per-issue text in BETA-2.md moved here; BETA-2.md keeps phases, order, exit criteria and the gate. | Claude (agent), for the owner's review |
+| 2026-11-19 | **Phase 1 closeout walks.** B-001 → Verified (server-source case on Phone 2a and Pad 7, and on the Google TV emulator); B-033 → Verified (reported case walked on Phone 2a and Pad 7, and the emulator); B-005 walked on phone, tablet and TV emulator (Fire TV pending, stays Fixed); B-031 walked in the Ubuntu 26.04 VM's desktop session, before (beta.1 reproduces) and after, under `en_US` and `de_DE` (physical pending, stays Fixed); B-026 closed during playback 5 times, clean (Not Reproduced); B-041 baseline recorded on all six platforms (Linux VM; Android memory and Home frame pacing); B-044 passed in the next full check. Counts: 35 Not Started, 3 Investigating, 1 In Progress, 5 Fixed, 2 Verified, 1 Not Reproduced. | Claude (agent) |
 | 2026-11-19 | Consistency check (throwaway script): 51 entries, one anchor each, no duplicates; every link and anchor in the tracker, BETA-2.md, CLAUDE.md, ROADMAP.md, DECISIONS.md, PHASE-1-PLAN.md and VERIFICATION.md resolves; every entry's status is one of the eight; the phase overview matches the entries; counts 35 Not Started, 3 Investigating, 1 In Progress, 7 Fixed, 1 Not Reproduced (47). 0 problems. | Claude (agent) |

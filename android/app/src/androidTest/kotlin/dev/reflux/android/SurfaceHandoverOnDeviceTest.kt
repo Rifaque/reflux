@@ -196,6 +196,45 @@ class SurfaceHandoverOnDeviceTest {
         playing(red, "red after stopping blue")
     }
 
+    /**
+     * B-001's "different source types": a film in a folder, then one streamed from a server (a WebDAV share on the
+     * device's loopback, over HTTP through the media framework), and back. The share's film is the blue one.
+     */
+    @Test
+    fun fromAFolderToAServerAndBack() {
+        val bytes = instrumentation.context.assets.open("blue.mkv").use { it.readBytes() }
+        val share = LoopbackFileShare(mapOf("Share Film (2023)/Share.Film.2023.mkv" to bytes))
+        var shared: dev.reflux.core.model.SourceId? = null
+        try {
+            val result = runBlocking { environment.connections.connect(dev.reflux.core.source.ConnectionKind.SHARE, dev.reflux.core.source.ConnectionRequest(share.url)) }
+            shared = (result as? dev.reflux.library.ConnectResult.Connected)?.sourceId ?: throw AssertionError("the share connects: $result")
+            runBlocking { environment.pipeline.refresh(shared) }
+            val onShare = environment.library.movies().single { it.item.title == "Share Film" }.item.id
+            assertTrue((environment.library.versions(onShare).single().version.stream.durationMs ?: 0) > 0, "the share's film was opened over HTTP")
+            instrumentation.runOnMainSync { app.play(red) }
+            playing(red, "red from the folder")
+            instrumentation.runOnMainSync {
+                app.playback!!.close()
+                app.play(onShare)
+            }
+            playing(onShare, "the share's film right after the folder's")
+            instrumentation.runOnMainSync {
+                app.playback!!.close()
+                app.play(red)
+            }
+            playing(red, "the folder's film right after the share's")
+            assertTrue(share.methods.all { it == "PROPFIND" || it == "GET" || it == "HEAD" }, "nothing that changes a share: ${share.methods.toSet()}")
+            assertTrue("GET" in share.methods, "the film was streamed from the share")
+        } finally {
+            runCatching {
+                instrumentation.runOnMainSync { app.playback?.close() }
+                until("the engine to be let go") { app.playback == null }
+            }
+            shared?.let { runCatching { runBlocking { environment.removeSource(it).await() } } }
+            share.close()
+        }
+    }
+
     @Test
     fun severalChangesInARow() {
         var item = red
