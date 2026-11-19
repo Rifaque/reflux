@@ -16,6 +16,11 @@ import dev.reflux.core.input.GamepadButton
  *   DualSense, Switch Pro, and generic pads, wired or Bluetooth.
  *
  * XInput devices also appear as joysticks, so those are recognized by their device path and read once.
+ *
+ * B-050: the joystick API corrupts the process's heap when a controller is connected while it is being asked (measured on
+ * Windows 11 with a GameSir G7 Pro: a probe asking only it crashed on reconnect; XInput and raw input, asked the same way,
+ * never did). So it is asked only when raw input lists a game controller that XInput does not read, and not at all while the
+ * set of game controllers is changing: it is left alone until that set has been the same for [SETTLE_MS].
  */
 internal class WindowsGamepads : GamepadReader {
     private val xinput = XInput.load()
@@ -30,6 +35,10 @@ internal class WindowsGamepads : GamepadReader {
     private val padProbeAt = LongArray(XInput.SLOTS)
     private var joystickScanAt = 0L
     private var connectedJoysticks = emptyList<Joystick>()
+
+    /** The game controllers raw input listed last time, and since when that list has been the same. */
+    private var controllersSeen: Controllers? = null
+    private var controllersSince = 0L
 
     private val vibration = Memory(4)
 
@@ -72,7 +81,20 @@ internal class WindowsGamepads : GamepadReader {
 
     private fun scanJoysticks(): List<Joystick> {
         val api = joysticks ?: return emptyList()
-        val xinputDevices = xinputDevices()
+        val now = System.nanoTime() / 1_000_000
+        val controllers = controllers() ?: return emptyList()
+        if (controllers != controllersSeen) {
+            controllersSeen = controllers
+            controllersSince = now
+        }
+        // Only XInput pads (or none): nothing for the joystick API to read, so it is never asked.
+        if (controllers.others == 0) return emptyList()
+        // Something came or went a moment ago: the joystick API is not asked until that has settled.
+        if (now - controllersSince < SETTLE_MS) {
+            joystickScanAt = controllersSince + SETTLE_MS
+            return emptyList()
+        }
+        val xinputDevices = controllers.xinput
         return (0 until api.joyGetNumDevs().coerceAtMost(Joysticks.MAX_DEVICES)).mapNotNull { id ->
             info.clear()
             info.setInt(0, Joysticks.INFO_SIZE.toInt())
@@ -95,7 +117,9 @@ internal class WindowsGamepads : GamepadReader {
         info.setInt(0, Joysticks.INFO_SIZE.toInt())
         info.setInt(4, Joysticks.RETURN_ALL)
         if (api.joyGetPosEx(joystick.id, info) != 0) {
-            joystickScanAt = 0 // unplugged: look again on the next poll
+            // Unplugged: not asked again until the controllers have been looked at afresh, and have settled.
+            connectedJoysticks = emptyList()
+            joystickScanAt = 0
             return null
         }
         return Joysticks.decode(
@@ -106,28 +130,51 @@ internal class WindowsGamepads : GamepadReader {
         )
     }
 
-    /** Vendor and product IDs of connected XInput devices, from the `IG_` marker in their device paths. */
-    private fun xinputDevices(): Set<Pair<Int, Int>> {
-        val api = rawInput ?: return emptySet()
+    /**
+     * The game controllers raw input lists (HID joysticks and gamepads): the vendor and product of those XInput reads, from
+     * the `IG_` marker in their device paths, and the device paths of all of them. Null where raw input cannot be asked.
+     */
+    private data class Controllers(val paths: Set<String>) {
+        val xinput: Set<Pair<Int, Int>> = paths.mapNotNull(Joysticks::xinputIds).toSet()
+        val others: Int = paths.count { Joysticks.xinputIds(it) == null }
+    }
+
+    private fun controllers(): Controllers? {
+        val api = rawInput ?: return null
         return runCatching {
             val count = IntByReference()
-            if (api.GetRawInputDeviceList(null, count, RawInput.ENTRY_SIZE) != 0 || count.value == 0) return emptySet()
+            if (api.GetRawInputDeviceList(null, count, RawInput.ENTRY_SIZE) != 0) return null
+            if (count.value == 0) return Controllers(emptySet())
             val list = Memory(RawInput.ENTRY_SIZE.toLong() * count.value)
             val read = api.GetRawInputDeviceList(list, count, RawInput.ENTRY_SIZE)
-            (0 until read.coerceAtLeast(0)).mapNotNull { index ->
+            if (read < 0) return null
+            val device = Memory(RawInput.DEVICE_INFO_SIZE.toLong())
+            val paths = (0 until read).mapNotNull { index ->
+                if (list.getInt(index.toLong() * RawInput.ENTRY_SIZE + Native.POINTER_SIZE) != RawInput.TYPE_HID) return@mapNotNull null
                 val handle = list.getPointer(index.toLong() * RawInput.ENTRY_SIZE) ?: return@mapNotNull null
+                device.clear()
+                device.setInt(0, RawInput.DEVICE_INFO_SIZE)
+                val size = IntByReference(RawInput.DEVICE_INFO_SIZE)
+                if (api.GetRawInputDeviceInfoW(handle, RawInput.DEVICE_INFO, device, size) <= 0) return@mapNotNull null
+                val usagePage = device.getShort(20).toInt() and 0xFFFF
+                val usage = device.getShort(22).toInt() and 0xFFFF
+                if (!RawInput.isGameController(usagePage, usage)) return@mapNotNull null
                 val length = IntByReference()
                 api.GetRawInputDeviceInfoW(handle, RawInput.DEVICE_NAME, null, length)
                 if (length.value <= 0) return@mapNotNull null
                 val name = Memory((length.value + 1) * 2L)
                 if (api.GetRawInputDeviceInfoW(handle, RawInput.DEVICE_NAME, name, length) <= 0) return@mapNotNull null
-                Joysticks.xinputIds(name.getWideString(0))
-            }.toSet()
-        }.getOrDefault(emptySet())
+                name.getWideString(0)
+            }
+            Controllers(paths.toSet())
+        }.getOrNull()
     }
 
     private companion object {
         const val RESCAN_MS = 2_000L
+
+        /** How long the set of game controllers must stay the same before the joystick API is asked again (B-050). */
+        const val SETTLE_MS = 4_000L
     }
 }
 
@@ -217,7 +264,7 @@ internal interface Joysticks : Library {
 }
 
 @Suppress("FunctionName")
-private interface RawInput : Library {
+internal interface RawInput : Library {
     fun GetRawInputDeviceList(list: Pointer?, count: IntByReference, entrySize: Int): Int
     fun GetRawInputDeviceInfoW(device: Pointer, command: Int, data: Pointer?, size: IntByReference): Int
 
@@ -225,5 +272,13 @@ private interface RawInput : Library {
         /** `RAWINPUTDEVICELIST`: a handle and a type, padded to pointer alignment. */
         val ENTRY_SIZE = Native.POINTER_SIZE * 2
         const val DEVICE_NAME = 0x20000007
+        const val DEVICE_INFO = 0x2000000b
+
+        /** `RID_DEVICE_INFO`: its size, its type, and for a HID device vendor, product, version, usage page and usage. */
+        const val DEVICE_INFO_SIZE = 32
+        const val TYPE_HID = 2
+
+        /** A HID joystick (generic desktop page, usage 4) or gamepad (5): what a game controller reports itself as. */
+        fun isGameController(usagePage: Int, usage: Int): Boolean = usagePage == 0x01 && (usage == 0x04 || usage == 0x05)
     }
 }
