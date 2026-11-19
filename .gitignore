@@ -51,3 +51,16 @@ skills-lock.json
 .playwright-mcp/
 
 brag-output/
+# Local test virtual machines (CLAUDE.md, "Testing environment"): disks, saved states, and machine files never belong in Git.
+*.vdi
+*.vmdk
+*.vhd
+*.vhdx
+*.qcow2
+*.ova
+*.vbox
+*.vbox-prev
+*.vbox-tmp
+*.nvram
+.vagrant/
+VirtualBox VMs/
