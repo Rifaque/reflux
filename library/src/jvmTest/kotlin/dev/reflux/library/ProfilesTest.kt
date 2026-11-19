@@ -189,9 +189,57 @@ class ProfilesTest {
         assertEquals(PinCheck.Rejected(null), reopened.checkPin(main, "0001", key), "the count started again")
         // The PIN itself is nowhere in the database.
         assertFalse("2580" in String(Files.readAllBytes(file), Charsets.ISO_8859_1))
-        library.removePin(main)
+        assertEquals(PinChange.Changed, library.removePin(main, "2580", key))
         assertFalse(library.profile(main)!!.hasPin)
         assertEquals(PinCheck.Accepted, library.checkPin(main, "", key))
+    }
+
+    @Test
+    fun aPinIsChangedOrRemovedOnlyWithItself() = runTest {
+        // B-049: being the open profile is not authorisation; the current PIN is, checked where the change is made.
+        AccountServers.movie("alex", "heat", "Heat", 1995)
+        signIn("alex")
+        scanAll()
+        val heat = library.movies().single().item.id
+        library.stopped(heat, 30 * MINUTE, 100 * MINUTE, null)
+        val key = MemoryPinKey()
+        val main = library.activeProfile()
+        val sam = library.createProfile("Sam")
+        assertTrue(library.setPin(main, "2580", key))
+        assertTrue(library.setPin(sam, "1111", key))
+        assertFalse(library.setPin(main, "9999", key), "a first PIN cannot replace one: that would go around it")
+        assertEquals(PinCheck.Accepted, library.checkPin(main, "2580", key))
+
+        // Wrong, missing, another profile's: nothing changes, and each counts as a try.
+        assertEquals(PinChange.Refused(PinCheck.Rejected(null)), library.removePin(main, "0000", key))
+        assertEquals(PinChange.Refused(PinCheck.Rejected(null)), library.removePin(main, null, key))
+        assertEquals(PinChange.Refused(PinCheck.Rejected(null)), library.removePin(main, "1111", key))
+        assertEquals(PinChange.Refused(PinCheck.Rejected(null)), library.changePin(main, "0000", "4444", key))
+        assertTrue(library.profile(main)!!.hasPin)
+        assertEquals(PinCheck.Accepted, library.checkPin(main, "2580", key), "still the same PIN")
+        // Enough wrong tries wait, for removing as for opening.
+        repeat(PinPolicy.FREE_ATTEMPTS) { library.removePin(main, "0000", key) }
+        assertIs<PinCheck.Locked>(assertIs<PinChange.Refused>(library.removePin(main, "2580", key)).check)
+        clock += PinPolicy.lockAfter(PinPolicy.FREE_ATTEMPTS) ?: 0
+        clock += 60 * 60_000L
+
+        // Changing: the old one stops working, the new one opens it.
+        assertEquals(PinChange.Invalid, library.changePin(main, "2580", "12", key))
+        assertEquals(PinChange.Changed, library.changePin(main, "2580", "4444", key))
+        assertIs<PinCheck.Rejected>(library.checkPin(main, "2580", key))
+        assertEquals(PinCheck.Accepted, library.checkPin(main, "4444", key))
+
+        // Removing: only the PIN goes; the profile's history stays; the other profile keeps its PIN.
+        assertEquals(PinChange.Changed, library.removePin(main, "4444", key))
+        assertFalse(library.profile(main)!!.hasPin)
+        assertEquals(30 * MINUTE, library.watchState(heat, main)?.positionMs, "history kept")
+        assertTrue(library.profile(sam)!!.hasPin)
+        assertEquals(PinCheck.Accepted, library.checkPin(sam, "1111", key))
+        // Kept after reopening, and a PIN can be added again.
+        val reopened = Library(LibraryDatabase.open(file)) { clock }
+        assertFalse(reopened.profile(main)!!.hasPin)
+        assertTrue(reopened.setPin(main, "7777", key))
+        assertEquals(PinCheck.Accepted, reopened.checkPin(main, "7777", key))
     }
 
     @Test

@@ -32,6 +32,23 @@ object InputMapping {
                 GamepadButton.SHOULDER_RIGHT -> SemanticAction.NEXT_SECTION
                 else -> null
             }
+            // The Reflux keyboard (B-023): the D-pad moves among its keys, confirm types one, and the other buttons
+            // are the editing a console keyboard gives them: X erases, Y is a space, the bumpers move the cursor, the
+            // triggers change case and page, and Start finishes. No destination, section, or Menu while typing.
+            InputContext.TEXT_ENTRY -> when (button) {
+                GamepadButton.DPAD_UP -> SemanticAction.NAVIGATE_UP
+                GamepadButton.DPAD_DOWN -> SemanticAction.NAVIGATE_DOWN
+                GamepadButton.DPAD_LEFT -> SemanticAction.NAVIGATE_LEFT
+                GamepadButton.DPAD_RIGHT -> SemanticAction.NAVIGATE_RIGHT
+                GamepadButton.FACE_WEST -> SemanticAction.TEXT_ERASE
+                GamepadButton.FACE_NORTH -> SemanticAction.TEXT_SPACE
+                GamepadButton.SHOULDER_LEFT -> SemanticAction.CURSOR_BACK
+                GamepadButton.SHOULDER_RIGHT -> SemanticAction.CURSOR_FORWARD
+                GamepadButton.TRIGGER_LEFT -> SemanticAction.TEXT_SHIFT
+                GamepadButton.TRIGGER_RIGHT -> SemanticAction.TEXT_SYMBOLS
+                GamepadButton.START -> SemanticAction.TEXT_DONE
+                else -> null
+            }
             InputContext.PLAYBACK -> when (button) {
                 GamepadButton.DPAD_UP -> SemanticAction.NAVIGATE_UP
                 GamepadButton.DPAD_DOWN -> SemanticAction.NAVIGATE_DOWN
@@ -47,7 +64,7 @@ object InputMapping {
         }
     }
 
-    fun map(key: Key, context: InputContext): SemanticAction? = when (key) {
+    fun map(key: Key, context: InputContext): SemanticAction? = if (context == InputContext.TEXT_ENTRY) typingOnKeyboard(key) else when (key) {
         Key.ARROW_UP -> SemanticAction.NAVIGATE_UP
         Key.ARROW_DOWN -> SemanticAction.NAVIGATE_DOWN
         Key.ARROW_LEFT -> if (context == InputContext.PLAYBACK) SemanticAction.SEEK_BACKWARD else SemanticAction.NAVIGATE_LEFT
@@ -85,6 +102,26 @@ object InputMapping {
         Key.SHORTCUT_5 -> SemanticAction.GO_DOWNLOADS.takeIf { context == InputContext.BROWSE }
         Key.SHORTCUT_6 -> SemanticAction.GO_SOURCES.takeIf { context == InputContext.BROWSE }
         Key.TAB, Key.OTHER -> null
+    }
+
+    /**
+     * Keys while the Reflux keyboard is open: a remote's or a keyboard's arrows move among its keys, OK or Enter types
+     * the chosen one, and Escape or Back puts it away. Every other key is the field's: a physical keyboard still types
+     * into it (Backspace included), and nothing is a shortcut.
+     */
+    private fun typingOnKeyboard(key: Key): SemanticAction? = when (key) {
+        Key.ARROW_UP -> SemanticAction.NAVIGATE_UP
+        Key.ARROW_DOWN -> SemanticAction.NAVIGATE_DOWN
+        Key.ARROW_LEFT -> SemanticAction.NAVIGATE_LEFT
+        Key.ARROW_RIGHT -> SemanticAction.NAVIGATE_RIGHT
+        Key.ENTER, Key.DPAD_CENTER -> SemanticAction.SELECT
+        Key.ESCAPE, Key.BACK -> SemanticAction.BACK
+        Key.MEDIA_PLAY_PAUSE, Key.MEDIA_PLAY, Key.MEDIA_PAUSE -> SemanticAction.PLAY_PAUSE
+        Key.MEDIA_STOP -> SemanticAction.STOP
+        Key.VOLUME_UP -> SemanticAction.VOLUME_UP
+        Key.VOLUME_DOWN -> SemanticAction.VOLUME_DOWN
+        Key.VOLUME_MUTE -> SemanticAction.MUTE
+        else -> null
     }
 
     /** The label shown in prompts for a button on a given controller family. */

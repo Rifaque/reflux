@@ -31,6 +31,23 @@ internal class WindowsGamepads : GamepadReader {
     private var joystickScanAt = 0L
     private var connectedJoysticks = emptyList<Joystick>()
 
+    private val vibration = Memory(4)
+
+    /**
+     * An XInput controller's two motors at [strength] (F-002). The joystick API has no motors to drive, so a PlayStation,
+     * Switch, or generic pad read through it does not rumble here: it is not offered as one that can.
+     */
+    override fun canRumble(id: String): Boolean = xinput != null && id.startsWith(XInput.XINPUT_ID_PREFIX)
+
+    override fun rumble(id: String, strength: Float): Boolean {
+        val api = xinput ?: return false
+        val slot = id.removePrefix(XInput.XINPUT_ID_PREFIX).toIntOrNull() ?: return false
+        val speed = (strength.coerceIn(0f, 1f) * 65535).toInt()
+        vibration.setShort(0, speed.toShort())
+        vibration.setShort(2, speed.toShort())
+        return synchronized(vibration) { api.XInputSetState(slot, vibration) == 0 }
+    }
+
     private class Joystick(val id: Int, val family: ControllerFamily, val hasHat: Boolean, val xMin: Int, val xMax: Int, val yMin: Int, val yMax: Int)
 
     override fun poll(): List<GamepadState> {
@@ -118,10 +135,14 @@ internal class WindowsGamepads : GamepadReader {
 internal interface XInput : Library {
     fun XInputGetState(index: Int, state: Pointer): Int
 
+    /** `XINPUT_VIBRATION`: two `WORD`s, the low- and high-frequency motors' speeds. */
+    fun XInputSetState(index: Int, vibration: Pointer): Int
+
     companion object {
         const val SLOTS = 4
         const val STATE_SIZE = 16L
         private const val TRIGGER_PRESSED = 96 // of 255: clearly pulled, not resting
+        const val XINPUT_ID_PREFIX = "xinput:"
 
         fun load(): XInput? = listOf("xinput1_4", "xinput1_3", "xinput9_1_0").firstNotNullOfOrNull { name ->
             runCatching { Native.load(name, XInput::class.java) }.getOrNull()
@@ -139,7 +160,7 @@ internal interface XInput : Library {
             val pressed = bits.filter { buttons and it.first != 0 }.mapTo(mutableSetOf()) { it.second }
             if ((leftTrigger.toInt() and 0xFF) >= TRIGGER_PRESSED) pressed += GamepadButton.TRIGGER_LEFT
             if ((rightTrigger.toInt() and 0xFF) >= TRIGGER_PRESSED) pressed += GamepadButton.TRIGGER_RIGHT
-            return GamepadState("xinput:$slot", ControllerFamily.XBOX, pressed, thumbX / 32767f, -(thumbY / 32767f))
+            return GamepadState("$XINPUT_ID_PREFIX$slot", ControllerFamily.XBOX, pressed, thumbX / 32767f, -(thumbY / 32767f))
         }
     }
 }

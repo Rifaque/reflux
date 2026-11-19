@@ -31,12 +31,17 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalDensity
 import dev.reflux.design.FormFactor
 import dev.reflux.ui.components.FocusScrollsNothing
@@ -131,6 +136,14 @@ internal fun HomeScreen(app: AppState) {
                 itemsIndexed(home.rows, key = { _, row -> row.id }) { index, row -> Box(place(first + index)) { RowSection(app, row) } }
             }
         }
+        // Pulling down at the top checks the library for changes, with a finger (B-048).
+        val pull: @Composable (@Composable () -> Unit) -> Unit = { page ->
+            dev.reflux.ui.components.PullToRefresh(
+                app.pullRefreshing, { app.pullToRefresh() },
+                enabled = LocalLayout.current.modality == dev.reflux.core.input.InputModality.TOUCH,
+                top = LocalChromeInsets.current.top,
+            ) { page() }
+        }
         if (LocalLayout.current.formFactor == FormFactor.TV) {
             // A television's page moves a row at a time: the row with focus sits under the navigation, its
             // title showing, and the one after it is in view. Nothing stops half way under the bar.
@@ -144,7 +157,14 @@ internal fun HomeScreen(app: AppState) {
                 }
             }
         } else {
-            rows { Modifier }
+            // Coming back up to the featured title shows all of it, its artwork and words as well as its buttons (B-013):
+            // bringing the focused button into view alone left the page scrolled to just above it.
+            val scope = rememberCoroutineScope()
+            pull {
+                rows { index ->
+                    if (index == 0 && featured != null) Modifier.onFocusChanged { focus -> if (focus.hasFocus) scope.launch { list.moveToItem(0, 0) } } else Modifier
+                }
+            }
         }
     }
 }
@@ -262,11 +282,25 @@ private fun RowSection(app: AppState, row: HomeRowModel) {
     val scope = rememberCoroutineScope()
     val interaction = remember { MutableInteractionSource() }
     val hovered by interaction.collectIsHoveredAsState()
+    // See all belongs to its row (B-007): up from any of the row's cards is its See all, and down from See all is back
+    // into this row, where focus was in it, never the next row's See all. Moving down card by card is unchanged.
+    val seeAll = remember { FocusRequester() }
+    val hasSeeAll = row.seeAll != null
+    // Each card's requester, and the card focus was last on in this row: down from See all goes back to it, or to the
+    // first card in view. Decided when Down is pressed, so it is always a card that is there.
+    val requesters = remember { HashMap<String, FocusRequester>() }
+    var lastInRow by remember { mutableStateOf<String?>(null) }
+    val intoRow = {
+        val visible = state.layoutInfo.visibleItemsInfo.map { it.key }
+        val key = lastInRow?.takeIf { it in visible } ?: visible.firstOrNull { it in requesters }
+        key?.let(requesters::get) ?: FocusRequester.Default
+    }
     Column {
         SectionHeader(
             row.title,
             Modifier.padding(horizontal = margin),
-            action = "See all".takeIf { row.seeAll != null },
+            action = "See all".takeIf { hasSeeAll },
+            actionModifier = Modifier.focusRequester(seeAll).focusProperties { down = intoRow() },
             onAction = { row.seeAll?.let { app.navigator.open(Destination.Listing(row.title, it)) } },
         )
         Box(Modifier.hoverable(interaction)) {
@@ -274,16 +308,21 @@ private fun RowSection(app: AppState, row: HomeRowModel) {
             FocusScrollInsets(start = margin, end = margin) {
                 LazyRow(
                     state = state,
-                    // Vertical padding leaves room for the focus lift and ring, which would otherwise be clipped.
-                    contentPadding = PaddingValues(horizontal = margin, vertical = 14.dp),
+                    // Vertical padding leaves room for the focus lift and ring, which would otherwise reach the section's
+                    // title above (B-009); the words under a lifted card step down with it.
+                    contentPadding = PaddingValues(horizontal = margin, vertical = maxOf(14.dp, dev.reflux.ui.components.liftReach(layout.posterWidthDp.dp * 1.5f, layout.focusScale) + 2.dp)),
                     horizontalArrangement = Arrangement.spacedBy(layout.gutterDp.dp),
                 ) {
                     items(row.cards, key = { it.id.value }) { card ->
+                        val own = remember(card.id.value) { FocusRequester().also { requesters[card.id.value] = it } }
+                        androidx.compose.runtime.DisposableEffect(card.id.value) { onDispose { requesters.remove(card.id.value) } }
+                        val up = Modifier.focusRequester(own).onFocusChanged { if (it.hasFocus) lastInRow = card.id.value }
+                            .then(if (hasSeeAll) Modifier.focusProperties { this.up = seeAll } else Modifier)
                         if (row.wide) {
-                            WideCard(card, { app.play(card.id) })
+                            WideCard(card, { app.play(card.id) }, up)
                         } else {
                             // The same work can be in several rows; focus returns to the one it was opened from.
-                            PosterCard(card, { app.navigator.open(Destination.Details(card.detailsId)) }, focusKey = "${row.id}/${card.id.value}")
+                            PosterCard(card, { app.navigator.open(Destination.Details(card.detailsId)) }, up, focusKey = "${row.id}/${card.id.value}")
                         }
                     }
                 }

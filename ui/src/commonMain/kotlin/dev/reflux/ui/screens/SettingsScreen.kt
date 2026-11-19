@@ -23,6 +23,8 @@ import dev.reflux.ui.components.Icon
 import dev.reflux.ui.components.InputKind
 import dev.reflux.ui.components.TextInput
 import dev.reflux.ui.components.heading
+import dev.reflux.ui.components.announces
+import dev.reflux.ui.components.pane
 import dev.reflux.ui.components.initialFocus
 import dev.reflux.ui.components.readable
 import androidx.compose.ui.semantics.semantics
@@ -46,6 +48,8 @@ internal fun SettingsScreen(app: AppState) {
     val profile = app.activeProfile
     var renaming by remember { mutableStateOf(false) }
     var settingPin by remember { mutableStateOf(false) }
+    var removingPin by remember { mutableStateOf(false) }
+    val closePin = { settingPin = false; removingPin = false; app.dismissPinRefusal() }
     var clearing by remember { mutableStateOf(false) }
     Page {
         item(key = "heading") { Heading("Settings", null) }
@@ -66,11 +70,23 @@ internal fun SettingsScreen(app: AppState) {
         }
         if (app.pinsAvailable) {
             item(key = "pin") {
+                // Changing or removing a PIN needs that PIN (B-049): an unlocked device is not a way to take a profile's
+                // protection. Once it has gone, the panel closes by itself.
+                LaunchedEffect(profile?.hasPin) { if (profile?.hasPin != true && removingPin) closePin() }
                 when {
-                    settingPin -> PinSetup(onSave = { pin -> settingPin = false; app.setPin(pin) }, onCancel = { settingPin = false })
+                    settingPin -> PinSetup(
+                        changing = profile?.hasPin == true,
+                        refused = app.pinRefused,
+                        onSave = { current, pin ->
+                            if (profile?.hasPin == true) app.setPin(pin, current).invokeOnCompletion { if (app.pinRefused == null) settingPin = false }
+                            else { settingPin = false; app.setPin(pin) }
+                        },
+                        onCancel = closePin,
+                    )
+                    removingPin -> RemovePin(profile?.name ?: "This profile", app.pinRefused, onRemove = { current -> app.removePin(current) }, onKeep = closePin)
                     profile?.hasPin == true -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Option(Icon.LOCK, "Change PIN", "This profile asks for its PIN when it is opened.") { settingPin = true }
-                        Button("Remove PIN", { app.removePin() }, style = ButtonStyle.QUIET)
+                        Option(Icon.LOCK, "Remove PIN", "Open this profile without a PIN. You'll need the current PIN.") { removingPin = true }
                     }
                     else -> Option(Icon.LOCK, "Add a PIN", "Ask for a ${PinPolicy.LENGTH}-digit PIN before this profile opens. It keeps your profile private on a shared device.") { settingPin = true }
                 }
@@ -114,6 +130,26 @@ internal fun SettingsScreen(app: AppState) {
                 )
             }
         }
+        // What is felt (F-001, F-002): offered only where it means something. Interface haptics are off until turned
+        // on; controller rumble is on until turned off.
+        if (app.haptics.interfaceAvailable) {
+            item(key = "interface-haptics") {
+                SwitchRow(
+                    "Interface haptics",
+                    "A light tap from this device for a few things you do by touch: a switch changing, a pull to refresh, a wrong PIN. Off until you turn it on.",
+                    app.haptics.interfaceOn,
+                ) { app.setInterfaceHaptics(!app.haptics.interfaceOn) }
+            }
+        }
+        if (app.platform.controllerRumble != null) {
+            item(key = "controller-rumble") {
+                SwitchRow(
+                    "Controller rumble",
+                    "A short rumble from a controller that has motors, at the end of a row and when something is refused. Never while moving between items.",
+                    app.haptics.rumbleOn,
+                ) { app.setControllerRumble(!app.haptics.rumbleOn) }
+            }
+        }
         // The one appearance choice Reflux has: whether artwork may color the space around it. Off by default; it is
         // not a theme, and nothing else about the interface changes with it (DECISIONS.md, 2026-11-07).
         item(key = "atmosphere") {
@@ -140,18 +176,26 @@ private fun Section(title: String) {
     Text(title, Modifier.padding(top = 14.dp, bottom = 2.dp).heading(), style = LocalTypography.current.title)
 }
 
-/** A new PIN, entered twice so a slip of the finger does not lock the viewer out. */
+/**
+ * A new PIN, entered twice so a slip of the finger does not lock the viewer out. Replacing one ([changing]) asks for the
+ * current PIN first (B-049); [refused] says why the last one given was not accepted.
+ */
 @Composable
-private fun PinSetup(onSave: (String) -> Unit, onCancel: () -> Unit) {
+private fun PinSetup(changing: Boolean, refused: dev.reflux.ui.state.PinRefusal?, onSave: (current: String?, next: String) -> Unit, onCancel: () -> Unit) {
+    var current by remember(refused?.attempt) { mutableStateOf("") }
     var first by remember { mutableStateOf("") }
     var second by remember { mutableStateOf("") }
-    val ready = PinPolicy.valid(first) && first == second
+    val ready = PinPolicy.valid(first) && first == second && (!changing || PinPolicy.valid(current))
     val mismatch = second.length == PinPolicy.LENGTH && first != second
     Column(Modifier.fillMaxWidth().glass(MaterialRole.ELEVATED, Shapes.large).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            TextInput(first, { first = it.filter(Char::isDigit).take(PinPolicy.LENGTH) }, "New PIN", Modifier.widthIn(max = 220.dp).initialFocus(), kind = InputKind.PIN)
-            TextInput(second, { second = it.filter(Char::isDigit).take(PinPolicy.LENGTH) }, "Again", Modifier.widthIn(max = 220.dp), kind = InputKind.PIN, last = true, error = mismatch, onDone = { if (ready) onSave(first) })
+            if (changing) {
+                TextInput(current, { current = it.filter(Char::isDigit).take(PinPolicy.LENGTH) }, "Current PIN", Modifier.widthIn(max = 220.dp).initialFocus(), kind = InputKind.PIN, error = refused != null)
+            }
+            TextInput(first, { first = it.filter(Char::isDigit).take(PinPolicy.LENGTH) }, "New PIN", Modifier.widthIn(max = 220.dp).then(if (changing) Modifier else Modifier.initialFocus()), kind = InputKind.PIN)
+            TextInput(second, { second = it.filter(Char::isDigit).take(PinPolicy.LENGTH) }, "Again", Modifier.widthIn(max = 220.dp), kind = InputKind.PIN, last = true, error = mismatch, onDone = { if (ready) onSave(current.takeIf { changing }, first) })
         }
+        refused?.problem?.let { Text(it, Modifier.announces(it), style = LocalTypography.current.caption, color = RefluxColors.contentSecondary) }
         if (mismatch) Text("The two don't match.", style = LocalTypography.current.caption, color = RefluxColors.contentSecondary)
         Text(
             "Forgetting it can't be undone by Reflux: another profile can delete this one, and with it what it kept on this device.",
@@ -159,8 +203,34 @@ private fun PinSetup(onSave: (String) -> Unit, onCancel: () -> Unit) {
             color = RefluxColors.contentTertiary,
         )
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            Button("Save PIN", { onSave(first) }, style = ButtonStyle.PRIMARY, enabled = ready)
+            Button("Save PIN", { onSave(current.takeIf { changing }, first) }, style = ButtonStyle.PRIMARY, enabled = ready)
             Button("Cancel", onCancel, style = ButtonStyle.QUIET)
+        }
+    }
+}
+
+/**
+ * Removing the open profile's PIN (B-049): what it means, said plainly; the current PIN, without which nothing changes;
+ * and the safe answer first. A wrong PIN counts as a try, as opening the profile does.
+ */
+@Composable
+private fun RemovePin(name: String, refused: dev.reflux.ui.state.PinRefusal?, onRemove: (String) -> Unit, onKeep: () -> Unit) {
+    var current by remember(refused?.attempt) { mutableStateOf("") }
+    Column(Modifier.fillMaxWidth().glass(MaterialRole.ELEVATED, Shapes.large).padding(16.dp).pane("Remove PIN", onKeep), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text("Remove $name's PIN?", Modifier.heading(), style = LocalTypography.current.bodyStrong)
+        Text(
+            "$name will open without a PIN. Anyone using this device can then see its watch history, favorites, and downloads, and use its server sign-ins. Its history and settings stay as they are.",
+            style = LocalTypography.current.caption,
+            color = RefluxColors.contentSecondary,
+        )
+        TextInput(
+            current, { current = it.filter(Char::isDigit).take(PinPolicy.LENGTH) }, "Current PIN", Modifier.widthIn(max = 220.dp),
+            kind = InputKind.PIN, last = true, error = refused != null, onDone = { if (PinPolicy.valid(current)) onRemove(current) },
+        )
+        refused?.problem?.let { Text(it, Modifier.announces(it), style = LocalTypography.current.caption, color = RefluxColors.contentSecondary) }
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Button("Keep PIN", onKeep, Modifier.initialFocus(), style = ButtonStyle.QUIET)
+            Button("Remove PIN", { onRemove(current) }, style = ButtonStyle.GLASS, enabled = PinPolicy.valid(current))
         }
     }
 }

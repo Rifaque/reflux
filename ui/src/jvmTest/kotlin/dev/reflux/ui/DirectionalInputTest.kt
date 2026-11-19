@@ -64,11 +64,12 @@ class DirectionalInputTest {
         onNodeWithText("Play").assertIsFocused()
         assertEquals(Destination.Home, app.navigator.current, "the same screen, now laid out for a controller")
         // Prompts name the buttons of the controller in the user's hands.
-        assertTrue(prompted("Cross") && prompted("Options"))
+        // Y (Triangle) is named for Sources while browsing; X (Square) is never offered (reserved for Quick View, Phase 3).
+        assertTrue(prompted("Cross") && prompted("Triangle Sources") && !prompted("Square"))
         save("home-controller-focus")
 
         press(app, GamepadButton.DPAD_DOWN, ControllerFamily.XBOX)
-        assertTrue(prompted("A ") && prompted("Menu") && !prompted("Cross"), "an Xbox pad is prompted in its own terms")
+        assertTrue(prompted("A ") && prompted("Y Sources") && !prompted("Cross"), "an Xbox pad is prompted in its own terms")
     }
 
     @Test

@@ -26,6 +26,7 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.animation.EnterExitState
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
@@ -58,6 +59,7 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
+import kotlinx.coroutines.launch
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -165,6 +167,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.stateDescription
@@ -347,11 +350,31 @@ fun RefluxApp(
         val focused = remember { FocusedControl() }
         val rail = remember { RailFocus() }
         val sideNavigation = LocalLayout.current.navigation.vertical
+        val waiting = androidx.compose.runtime.rememberCoroutineScope()
         DisposableEffect(app, focus, sideNavigation) {
             app.moveFocus = { action ->
+                val direction = when (action) {
+                    SemanticAction.NAVIGATE_UP -> FocusDirection.Up
+                    SemanticAction.NAVIGATE_DOWN -> FocusDirection.Down
+                    SemanticAction.NAVIGATE_LEFT -> FocusDirection.Left
+                    else -> FocusDirection.Right
+                }
                 // From a rail, Right goes back into the page where focus was in it (each page restores its last focused item).
                 val back = action == SemanticAction.NAVIGATE_RIGHT && sideNavigation && entry.inChrome
-                entry.enter() || (back && (rail.enterPage() || entry.start())) || entry.leaveChrome(action) || if (action == SemanticAction.NAVIGATE_LEFT && sideNavigation && !entry.inChrome) {
+                // Nothing has focus and the page has nothing to start on yet (it is still being read: a large library
+                // takes a moment on its way back to Home). The toolkit's own search would land on the navigation beside
+                // it, which is what made Right from Home "sometimes not enter the content" (B-008). The press waits for
+                // the page's start instead, for a moment, and only then falls back to the toolkit.
+                if (!entry.hasFocus && !entry.inChrome) {
+                    if (!entry.start()) waiting.launch {
+                        repeat(FOCUS_PATIENCE_FRAMES) {
+                            withFrameNanos { }
+                            if (entry.hasFocus || entry.start()) return@launch
+                        }
+                        focus.moveFocus(direction)
+                    }
+                    true
+                } else entry.enter() || (back && (rail.enterPage() || entry.start())) || entry.leaveChrome(action) || if (action == SemanticAction.NAVIGATE_LEFT && sideNavigation && !entry.inChrome) {
                     // Left is toward the rail. The toolkit's search also takes what is only partly to the left (a
                     // button above, in a centred column); whatever is not strictly to the left of where focus was
                     // gives way to the rail, on the destination the viewer is in.
@@ -361,14 +384,7 @@ fun RefluxApp(
                     val after = rail.focusedBounds
                     if (!entry.inChrome && (!moved || (before != null && after != null && after.right > before.left + 1f))) rail.focusCurrent() || moved else moved
                 } else {
-                    focus.moveFocus(
-                        when (action) {
-                            SemanticAction.NAVIGATE_UP -> FocusDirection.Up
-                            SemanticAction.NAVIGATE_DOWN -> FocusDirection.Down
-                            SemanticAction.NAVIGATE_LEFT -> FocusDirection.Left
-                            else -> FocusDirection.Right
-                        },
-                    )
+                    focus.moveFocus(direction)
                 }
             }
             app.clearFocus = { focus.clearFocus() }
@@ -442,9 +458,26 @@ fun RefluxApp(
         val behind = app.watching != null || panelOpen || app.profileGate != null
         val page = remember { PageScroll() }
         val materialBackdrop = remember { MaterialBackdrop() }
+        // Every text field reports itself and asks for the Reflux keyboard here (B-025's contract): no screen does.
+        val textEntry = remember(app) {
+            object : dev.reflux.ui.components.TextEntry {
+                override fun focused(field: Any, focused: Boolean) = app.editing.report(field, focused)
+                override fun open(request: dev.reflux.ui.state.KeyboardRequest) = app.openKeyboard(request)
+                override fun close(field: Any) = app.closeKeyboard(field)
+            }
+        }
+        // The toolkit's own haptics (text selection's handles, long presses) go through Reflux's gateway like everything
+        // else: nothing vibrates before the viewer turns interface haptics on (F-001).
+        val toolkitHaptics = remember(app) {
+            object : androidx.compose.ui.hapticfeedback.HapticFeedback {
+                override fun performHapticFeedback(hapticFeedbackType: androidx.compose.ui.hapticfeedback.HapticFeedbackType) =
+                    app.haptics.touch(dev.reflux.ui.state.HapticEvent.CONFIRM)
+            }
+        }
         CompositionLocalProvider(
             LocalFocusEntry provides entry, LocalFocusedControl provides focused, LocalChromeInsets provides insets, LocalPageScroll provides page,
-            LocalSystemBars provides bars, LocalMaterialBackdrop provides materialBackdrop,
+            LocalSystemBars provides bars, LocalMaterialBackdrop provides materialBackdrop, dev.reflux.ui.components.LocalTextEntry provides textEntry,
+            androidx.compose.ui.platform.LocalHapticFeedback provides toolkitHaptics,
         ) {
             GlassScene(
                 Modifier.fillMaxSize().background(RefluxColors.background).trackPointer(app).onFocusChanged { entry.hasFocus = it.hasFocus },
@@ -591,7 +624,7 @@ private fun Chrome(app: AppState, page: PageScroll, rail: RailFocus, navigationI
                 // It arrives and leaves in place: the picture travels to and from it, and words that slid would
                 // move the box the picture is heading for.
                 AnimatedVisibility(
-                    app.docked != null && app.folderPicker == null && !(bottomBar && app.textInputActive),
+                    app.docked != null && app.folderPicker == null && !(bottomBar && app.textInputActive && app.systemKeyboardShown),
                     Modifier.traversal(Traversal.AFTER_PAGE),
                     enter = fadeIn(Motion.playerDock.tween()),
                     exit = fadeOut(Motion.controlsHide.tween()),
@@ -671,6 +704,26 @@ private fun Chrome(app: AppState, page: PageScroll, rail: RailFocus, navigationI
         AnimatedVisibility(app.profileGate != null, enter = fadeIn(LocalMotion.current.pageEnter.tween()), exit = fadeOut(Motion.focusChange.tween())) {
             asked?.let { gate -> Box(Modifier.fillMaxSize().inert(app.profileGate == null)) { ProfileGateOverlay(app, gate) } }
         }
+        // The Reflux keyboard (B-023), above everything while a controller or a remote types: at the foot of the
+        // window, clear of the system's bars, rising as a sheet does.
+        var typing by remember { mutableStateOf(app.keyboard) }
+        app.keyboard?.let { typing = it }
+        AnimatedVisibility(
+            app.keyboard != null,
+            Modifier.align(Alignment.BottomCenter),
+            enter = fadeIn(Motion.sheetEnter.tween()) + slideInVertically(Motion.sheetEnter.tween()) { it / 4 },
+            exit = fadeOut(Motion.sheetExit.tween()),
+        ) {
+            typing?.let { session ->
+                Box(Modifier.fillMaxWidth().padding(start = bars.start + 12.dp, end = bars.end + 12.dp, bottom = bars.bottom + 12.dp), contentAlignment = Alignment.BottomCenter) {
+                    dev.reflux.ui.components.RefluxKeyboard(
+                        session,
+                        onPress = app::pressKey,
+                        prompts = app.input.controllerFamily?.takeIf { app.namesButtons },
+                    )
+                }
+            }
+        }
     }
     }
 }
@@ -714,23 +767,20 @@ private fun BoxScope.CompactNavigation(app: AppState) {
         // The page's heading starts beside this row: the sign is the dot alone here, and on Search, whose field runs
         // across this row, it steps aside as the profile entry does (B-005); Sources says it in full.
         if (navigator.current != Destination.Search) ActivityIndicator(activity, compact = true)
-        // Search has its field across the top; the utility area is a tap away from every other destination.
-        if (navigator.current is Destination.Section && navigator.current != Destination.Search) ProfileButton(app)
+        // Search has its field across the top; the utility area is a tap away from every other destination, but not
+        // from Profiles itself, where it would only lead to the page already shown (B-046). From Downloads, Sources, and
+        // Settings, reached from Profiles, it is the way back there, lit as where the viewer is.
+        if (showsProfileButton(navigator.current)) ProfileButton(app)
     }
-    // While typing, the keyboard owns the bottom of the screen: the destinations step aside rather than sit on
-    // top of the keyboard and cover what is being typed into, or the button that comes after it.
-    AnimatedVisibility(!app.textInputActive, Modifier.align(Alignment.BottomCenter).traversal(Traversal.AFTER_PAGE), enter = fadeIn(Motion.controlsShow.tween()), exit = fadeOut(Motion.controlsHide.tween())) {
+    // While the system keyboard is up, it owns the bottom of the screen: the destinations step aside rather than sit on
+    // top of it and cover what is being typed into, or the button that comes after it. Once it is put away they come
+    // back, even while the field keeps focus (B-036: they used to stay away, with only the system's Back to recover).
+    AnimatedVisibility(!(app.textInputActive && app.systemKeyboardShown), Modifier.align(Alignment.BottomCenter).traversal(Traversal.AFTER_PAGE), enter = fadeIn(Motion.controlsShow.tween()), exit = fadeOut(Motion.controlsHide.tween())) {
         Column(Modifier.padding(bottom = 10.dp), horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(8.dp)) {
             // With a controller in hand, what its buttons do here, in that controller's own terms.
             AnimatedVisibility(app.namesButtons, enter = fadeIn(Motion.inputMorph.tween()), exit = fadeOut(Motion.controlsHide.tween())) {
                 val family = app.input.controllerFamily ?: ControllerFamily.GENERIC
-                ButtonPrompts(
-                    listOfNotNull(
-                        InputMapping.confirmButton(family) to "Select",
-                        (InputMapping.cancelButton(family) to if (app.offlineOpen) "Close" else "Back").takeIf { app.offlineOpen || navigator.canGoBack },
-                    ),
-                    family,
-                )
+                ButtonPrompts(browsePrompts(app, family), family)
             }
             // The bar is as wide as its four destinations and no wider: a compact capsule that floats over the page.
             val track = remember { SelectionTrack() }
@@ -1005,8 +1055,17 @@ private fun NavigationItem(
 }
 
 @Composable
-private fun BusyDot(modifier: Modifier = Modifier) {
-    Box(modifier.padding(top = 2.dp, end = 2.dp).size(7.dp).background(RefluxColors.contentPrimary, CircleShape))
+private fun BusyDot(modifier: Modifier = Modifier) = DownloadBadge(modifier)
+
+/**
+ * The mark of something downloading, on the way to Downloads (B-047): a small arrow in a lit circle at the corner of the
+ * entry, which says what it is where a bare dot said nothing. The entry's name says it as words ("…, downloading").
+ */
+@Composable
+private fun DownloadBadge(modifier: Modifier = Modifier) {
+    Box(modifier.size(14.dp).background(RefluxColors.contentPrimary, CircleShape), contentAlignment = Alignment.Center) {
+        Icon(Icon.DOWNLOAD, size = 10.dp, tint = RefluxColors.background)
+    }
 }
 
 /** Whether something is being downloaded, for a small dot on the way to Downloads; it does not move. */
@@ -1036,15 +1095,7 @@ private fun PageBar(app: AppState, modifier: Modifier = Modifier) {
         Spacer(Modifier.weight(1f))
         AnimatedVisibility(visible = app.namesButtons, enter = fadeIn(Motion.inputMorph.tween()), exit = fadeOut(Motion.controlsHide.tween())) {
             val family = app.input.controllerFamily ?: ControllerFamily.GENERIC
-            ButtonPrompts(
-                listOfNotNull(
-                    InputMapping.confirmButton(family) to "Select",
-                    (InputMapping.cancelButton(family) to if (app.offlineOpen) "Close" else "Back").takeIf { app.offlineOpen || navigator.canGoBack },
-                    (GamepadButton.START to "Sources").takeIf { navigator.section != Destination.Sources },
-                ),
-                family,
-                Modifier.padding(end = 14.dp),
-            )
+            ButtonPrompts(browsePrompts(app, family), family, Modifier.padding(end = 14.dp))
         }
         // A television's pages start inside this bar, under it: there the sign is the dot alone (B-005).
         ActivityIndicator(activity, compact = layout.formFactor == FormFactor.TV)
@@ -1080,9 +1131,27 @@ private fun ProfileButton(app: AppState) {
                 if (who != null) ProfileMark(app.activeProfile, 34.dp, lit = here) else Icon(Icon.PROFILE, size = 22.dp, tint = tabColor(here))
             }
         }
-        if (busy) Box(Modifier.align(Alignment.TopEnd).padding(top = 3.dp, end = 3.dp).size(7.dp).background(RefluxColors.contentPrimary, CircleShape))
+        if (busy) DownloadBadge(Modifier.align(Alignment.TopEnd))
     }
 }
+
+/**
+ * Whether a phone's top row carries the profile entry on [destination] (B-046): on a destination's own page, except
+ * Search (its field runs across the row) and Profiles (the entry would lead to itself).
+ */
+internal fun showsProfileButton(destination: Destination): Boolean =
+    destination is Destination.Section && destination != Destination.Search && destination != Destination.Profiles
+
+/**
+ * What a controller's buttons do while browsing, said only where each is available now (B-039, B-012; the mapping and
+ * its conflict matrix are in docs/INPUT_MODEL.md, "Controller mapping"). Y (and Start) open Sources; X says nothing,
+ * being reserved for Phase 3's Media Quick View (DECISIONS.md, 2026-11-19).
+ */
+internal fun browsePrompts(app: AppState, family: ControllerFamily): List<Pair<GamepadButton, String>> = listOfNotNull(
+    InputMapping.confirmButton(family) to "Select",
+    (InputMapping.cancelButton(family) to if (app.offlineOpen) "Close" else "Back").takeIf { app.offlineOpen || app.navigator.canGoBack },
+    (GamepadButton.FACE_NORTH to "Sources").takeIf { app.navigator.section != Destination.Sources && app.folderPicker == null && !app.offlineOpen },
+)
 
 /** Where the user is shows as white against grey: the navigation never takes a color. */
 private fun tabColor(selected: Boolean): Color = if (selected) RefluxColors.contentPrimary else RefluxColors.contentSecondary
@@ -1102,8 +1171,10 @@ private fun ActivityIndicator(activity: PipelineActivity, compact: Boolean = fal
     ) { label ->
         if (label != null) {
             if (compact) {
-                Box(Modifier.size(24.dp).semantics { contentDescription = label }, contentAlignment = Alignment.Center) {
-                    Box(Modifier.size(6.dp).background(RefluxColors.contentSecondary, CircleShape))
+                // Where there is no room for its words, a small turning arc, the usual sign of work going on, rather than
+                // a dot that said nothing of what it was (B-047). Its words are said to a screen reader, and on Sources.
+                Box(Modifier.size(24.dp).semantics { contentDescription = label }.testTag("activity:$label"), contentAlignment = Alignment.Center) {
+                    WorkingArc(Modifier.size(14.dp))
                 }
             } else {
                 Row(Modifier.padding(end = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -1113,6 +1184,27 @@ private fun ActivityIndicator(activity: PipelineActivity, compact: Boolean = fal
             }
         }
     }
+}
+
+/** A small arc turning once a second (still, with motion reduced): the library being updated. */
+@Composable
+private fun WorkingArc(modifier: Modifier = Modifier) {
+    val turn = if (dev.reflux.ui.theme.MotionPolicy.reduced) {
+        0f
+    } else {
+        val spin = androidx.compose.animation.core.rememberInfiniteTransition()
+        spin.animateFloat(
+            0f, 360f,
+            androidx.compose.animation.core.infiniteRepeatable<Float>(androidx.compose.animation.core.tween(1000, easing = androidx.compose.animation.core.LinearEasing)),
+        ).value
+    }
+    val color = RefluxColors.contentSecondary
+    Box(
+        modifier.drawBehind {
+            val stroke = 2.dp.toPx()
+            drawArc(color, startAngle = turn, sweepAngle = 270f, useCenter = false, topLeft = Offset(stroke / 2, stroke / 2), size = Size(size.width - stroke, size.height - stroke), style = androidx.compose.ui.graphics.drawscope.Stroke(stroke, cap = androidx.compose.ui.graphics.StrokeCap.Round))
+        },
+    )
 }
 
 /** The most room the library's sign takes in a page's top bar: a long source name is cut short, never spread over the bar. */

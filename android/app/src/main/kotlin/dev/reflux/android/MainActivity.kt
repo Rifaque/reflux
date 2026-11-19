@@ -36,6 +36,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.runtime.SideEffect
+import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -170,6 +172,9 @@ class MainActivity : ComponentActivity() {
             it.allowStorage = ::allowStorage
             it.share = ::share
             it.browse = ::browse
+            it.systemLock = SystemLock(this)
+            it.haptics = AndroidDeviceHaptics(this)
+            it.rumble = AndroidControllerRumble(this)
         }
         // The last line of defence: a failure nobody handled is written down instead of ending the app.
         work = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate + CoroutineExceptionHandler { _, error -> platform.report("An unexpected error was not handled", error) })
@@ -278,6 +283,10 @@ class MainActivity : ComponentActivity() {
             val page = if (presentation == PlayerPresentation.SYSTEM) Modifier.clearAndSetSemantics { } else Modifier
             // The keyboard's room is given to the pages, not taken from the window the layout is chosen from: a
             // tablet with its keyboard up is still a tablet (it had turned into a phone on its side on the Pad 7).
+            // Whether the system keyboard is up: the phone's bar steps aside only while it is (B-036).
+            @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+            val imeShown = WindowInsets.isImeVisible
+            SideEffect { app.systemKeyboardShown = imeShown }
             RefluxApp(app, page, bars = bars, keyboard = Modifier.windowInsetsPadding(WindowInsets.ime.exclude(WindowInsets.systemBars)))
             // Video is a platform surface beneath the controls: the engine keeps its direct path to the display. One surface
             // for the whole of a playback, put where the experience layer says (the window, the dock, out of sight) by
@@ -360,6 +369,7 @@ class MainActivity : ComponentActivity() {
     @SuppressLint("RestrictedApi") // the toolkit marks this override as its own; it is how an activity sees every key
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         val button = Input.gamepadButton(event)
+        if (button != null) platform.rumble?.used(event.deviceId)
         if (event.action == KeyEvent.ACTION_DOWN) {
             val handled = when {
                 button != null -> app.onGamepadButton(button, Input.family(event.device))
@@ -384,6 +394,7 @@ class MainActivity : ComponentActivity() {
     override fun dispatchGenericMotionEvent(event: MotionEvent): Boolean {
         if (event.isFromSource(InputDevice.SOURCE_JOYSTICK) && event.action == MotionEvent.ACTION_MOVE) {
             val presses = sticks.presses(event)
+            if (presses.isNotEmpty()) platform.rumble?.used(event.deviceId)
             presses.forEach { app.onGamepadButton(it, Input.family(event.device)) }
             if (presses.isNotEmpty()) return true
         }
@@ -471,6 +482,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
+        platform.rumble?.let { it.stop(); it.close() }
         // However the activity ends (finished, recreated for a change it does not handle, taken by the system), what plays is
         // ended with it: its place is recorded and its engine, surface, and audio focus are let go. A new activity starts with
         // nothing playing; a playback left running with no activity to show it would be a second one beside the next.

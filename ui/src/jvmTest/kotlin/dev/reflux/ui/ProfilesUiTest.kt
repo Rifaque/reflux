@@ -248,17 +248,23 @@ class ProfilesUiTest {
             onNode(hasSetTextAction()).performTextInput("0000")
             awaitText("That's not the PIN. Try again.")
             onNodeWithText("Forgot PIN").performClick()
+            awaitText("Forgot Main's PIN?")
+            // Without a device lock to ask, the choices are to keep the profile or reset it.
+            assertFalse(saysAnywhere("Use device lock"))
+            onNodeWithText("Reset profile…").performClick()
             awaitText("Reset Main?")
             // Asking is not doing: nothing is erased until it is confirmed, and it can be taken back.
             assertEquals(40 * MINUTE, world.library.watchState(heat)?.positionMs)
             assertTrue(world.library.profiles().single().hasPin)
             save("profiles-forgot-pin")
-            onNodeWithText("Keep it").performClick()
+            onNodeWithText("Keep profile").performClick()
             awaitText("Enter this profile's PIN.")
             assertTrue(world.library.profiles().single().hasPin)
             onNodeWithText("Forgot PIN").performClick()
+            awaitText("Forgot Main's PIN?")
+            onNodeWithText("Reset profile…").performClick()
             awaitText("Reset Main?")
-            onNodeWithText("Reset Main").performClick()
+            onNodeWithText("Reset profile").performClick()
             await("the profile open again") { app.profileGate == null }
             awaitText("Recently Added")
             assertNull(world.library.watchState(heat), "what the PIN kept private went with it")
@@ -269,7 +275,7 @@ class ProfilesUiTest {
             // A new PIN can be set afterwards.
             runOnIdle { app.setPin("2468") }
             await("the new PIN") { world.library.profiles().single().hasPin }
-            runOnIdle { app.removePin() }
+            runOnIdle { app.removePin("2468") }
             await("no PIN") { !world.library.profiles().single().hasPin }
         }
         // The next launch: no question, the profile opens.
@@ -295,8 +301,9 @@ class ProfilesUiTest {
             runOnIdle { app.chooseProfile(app.profiles.first { it.id == sam }) }
             awaitText("Enter this profile's PIN.")
             onNodeWithText("Forgot PIN").performClick()
+            onNodeWithText("Reset profile…").performClick()
             awaitText("Reset Sam?")
-            onNodeWithText("Reset Sam").performClick()
+            onNodeWithText("Reset profile").performClick()
             await("Sam open, reset") { app.activeProfile?.id == sam && app.profileGate == null }
             assertNull(world.library.watchState(heat, sam))
             assertEquals(40 * MINUTE, world.library.watchState(heat, main)?.positionMs, "Main's history is untouched")

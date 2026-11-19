@@ -98,6 +98,9 @@ class TestWorld(metadata: Boolean = true, catalog: MetadataProvider = FakeCatalo
     /** Removes the world's files, for a world that made large ones. */
     fun delete() = root.toFile().deleteRecursively()
 
+    /** The folder the media source reads, for a test that changes what is on it. */
+    fun mediaRoot(): java.io.File = media.toFile()
+
     /** A small but varied library: movies with several versions and qualities, and two shows. */
     suspend fun populate() {
         file("Heat (1995)/Heat.1995.1080p.BluRay.x264.mkv")
@@ -324,6 +327,21 @@ class FakePlatform(
     /** How many times the experience layer asked the system for its window, and whether the system said yes. */
     var systemRequests = 0
     var systemAccepts = true
+
+    /** What the device's lock says when Forgot PIN asks it; null: this device has none to ask. */
+    var systemLockAnswer: dev.reflux.ui.state.SystemConfirmation? = null
+    var systemLockAsked = 0
+
+    override val systemAuthentication: dev.reflux.ui.state.SystemAuthentication?
+        get() = systemLockAnswer?.let { answer ->
+            object : dev.reflux.ui.state.SystemAuthentication {
+                override fun available() = true
+                override suspend fun confirm(title: String, subtitle: String): dev.reflux.ui.state.SystemConfirmation {
+                    systemLockAsked++
+                    return systemLockAnswer ?: answer
+                }
+            }
+        }
 
     override fun enterSystemPresentation(): Boolean {
         systemRequests++

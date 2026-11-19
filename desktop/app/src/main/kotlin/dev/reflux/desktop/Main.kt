@@ -197,6 +197,7 @@ internal fun runReflux(
                         SwingUtilities.invokeLater { app.onGamepadButton(button, family) }
                     }
                 }
+                platform.rumble = controllers
                 val displays = DisplayWatcher(window, environment.capabilities)
                 // A setting changed in the system's own window is seen when Reflux comes back to the front.
                 platform.refreshAccessibility()

@@ -25,6 +25,12 @@ internal interface GamepadReader : AutoCloseable {
     /** The controllers connected now. Called from one background thread, many times a second. */
     fun poll(): List<GamepadState>
 
+    /** Whether controller [id] has motors this reader can drive (F-002). */
+    fun canRumble(id: String): Boolean = false
+
+    /** Runs controller [id]'s motors at [strength], 0 stopping them. False where it cannot. */
+    fun rumble(id: String, strength: Float): Boolean = false
+
     override fun close() {}
 }
 
@@ -79,6 +85,10 @@ internal object NumberedButtons {
  * released, so a stick resting off-center does nothing.
  */
 internal class GamepadTranslator(private val press: (GamepadButton, ControllerFamily) -> Unit) {
+    /** The controller whose buttons were pressed last: the one in the viewer's hands, whose motors rumble. */
+    @Volatile var lastUsed: String? = null
+        private set
+
     private class Held(var buttons: Set<GamepadButton> = emptySet(), val repeatAt: MutableMap<GamepadButton, Long> = mutableMapOf(), var stick: Set<GamepadButton> = emptySet())
 
     private val held = mutableMapOf<String, Held>()
@@ -90,6 +100,7 @@ internal class GamepadTranslator(private val press: (GamepadButton, ControllerFa
      */
     fun update(states: List<GamepadState>, nowMs: Long, active: Boolean = true) {
         held.keys.retainAll(states.mapTo(mutableSetOf()) { it.id })
+        if (lastUsed != null && states.none { it.id == lastUsed }) lastUsed = null
         for (state in states) {
             val previous = held[state.id] ?: Held().also { known ->
                 // A controller is taken as it is found: whatever is already held or deflected when it
@@ -104,7 +115,10 @@ internal class GamepadTranslator(private val press: (GamepadButton, ControllerFa
                 val repeatAt = previous.repeatAt[button]
                 when {
                     button !in previous.buttons -> {
-                        if (active) press(button, state.family)
+                        if (active) {
+                            lastUsed = state.id
+                            press(button, state.family)
+                        }
                         if (button in DIRECTIONS) previous.repeatAt[button] = nowMs + REPEAT_DELAY_MS
                     }
                     repeatAt != null && nowMs >= repeatAt -> {
@@ -149,16 +163,41 @@ internal class GamepadInput(
     private val reader: GamepadReader,
     private val active: () -> Boolean,
     press: (GamepadButton, ControllerFamily) -> Unit,
-) : AutoCloseable {
+) : AutoCloseable, dev.reflux.ui.state.ControllerRumble {
     private val translator = GamepadTranslator(press)
 
     @Volatile private var running = true
+
+    /** The controller rumbling now, and when it stops (F-002): stopped by the polling thread, or at once on disconnect. */
+    @Volatile private var rumbling: String? = null
+    @Volatile private var rumbleUntil = 0L
+
+    override fun available(): Boolean = translator.lastUsed?.let(reader::canRumble) == true
+
+    override fun rumble(strength: Float, durationMs: Long) {
+        val id = translator.lastUsed?.takeIf(reader::canRumble) ?: return
+        if (runCatching { reader.rumble(id, strength) }.getOrDefault(false)) {
+            rumbling = id
+            rumbleUntil = System.nanoTime() / 1_000_000 + durationMs
+        }
+    }
+
+    override fun stop() {
+        val id = rumbling ?: return
+        rumbling = null
+        runCatching { reader.rumble(id, 0f) }
+    }
 
     private val poller = thread(name = "reflux-gamepads", isDaemon = true) {
         while (running) {
             // A reader that fails once is not asked again in a tight loop; controllers are optional.
             val states = runCatching { reader.poll() }.getOrElse { emptyList() }
-            translator.update(states, System.nanoTime() / 1_000_000, active())
+            val now = System.nanoTime() / 1_000_000
+            rumbling?.let { id ->
+                // Gone: nothing is left to stop, and nothing resumes on another. Done: the motors stop.
+                if (states.none { it.id == id }) rumbling = null else if (now >= rumbleUntil) stop()
+            }
+            translator.update(states, now, active())
             try {
                 Thread.sleep(if (states.isEmpty()) IDLE_POLL_MS else POLL_MS)
             } catch (_: InterruptedException) {
@@ -168,6 +207,7 @@ internal class GamepadInput(
     }
 
     override fun close() {
+        stop()
         running = false
         poller.interrupt()
         reader.close()

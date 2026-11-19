@@ -59,6 +59,9 @@ import dev.reflux.library.deleteProfile
 import dev.reflux.library.profileDownloadIds
 import dev.reflux.library.profiles
 import dev.reflux.library.removePin
+import dev.reflux.library.removePinConfirmedBySystem
+import dev.reflux.library.changePin
+import dev.reflux.library.PinChange
 import dev.reflux.library.renameProfile
 import dev.reflux.library.setPin
 import dev.reflux.library.switchProfile
@@ -229,6 +232,13 @@ class AppState(
 
     init {
         scope.launch { runCatching { read { setting(MEDIA_ATMOSPHERE) } }.getOrNull()?.let { mediaAtmosphere = it == "on" } }
+        scope.launch {
+            // Interface haptics are kept only once turned on, rumble only once turned off: an untouched device has the defaults.
+            runCatching { read { setting(Haptics.INTERFACE_HAPTICS) to setting(Haptics.CONTROLLER_RUMBLE) } }.getOrNull()?.let { (device, rumble) ->
+                haptics.interfaceOn = device == "on"
+                haptics.rumbleOn = rumble != "off"
+            }
+        }
         scope.launch { runCatching { read { this.onlineMetadata } }.getOrNull()?.let { onlineMetadata = it } }
         // Who is watching is known, or asked, from the moment Reflux opens (docs/WATCH_STATE.md, "Profiles").
         scope.launch { askWhoIsWatchingAtStart() }
@@ -259,6 +269,38 @@ class AppState(
             },
         )
         invalidate()
+    }
+
+    /**
+     * The one way anything is felt (F-001, F-002): interface haptics off until the viewer turns them on, rumble on
+     * until they turn it off, every request checked here.
+     */
+    val haptics: Haptics by lazy { Haptics({ platform.deviceHaptics }, { platform.controllerRumble }, { library.currentTime() }) }
+
+    /** Whether the input being handled now came from a controller's buttons, for its rumble. */
+    private var fromController = false
+
+    /**
+     * Feedback for [event] on whatever the viewer is using: a controller's motors when one is in the hand, the device's
+     * vibration for a touch, nothing for a pointer, a keyboard, or a remote.
+     */
+    fun feel(event: HapticEvent) {
+        when {
+            fromController || (input.modality == InputModality.DIRECTIONAL && input.controllerFamily != null && input.controllerFamily != ControllerFamily.TV_REMOTE) -> haptics.controller(event)
+            input.modality == InputModality.TOUCH -> haptics.touch(event)
+        }
+    }
+
+    fun setInterfaceHaptics(on: Boolean): Job {
+        haptics.interfaceOn = on
+        if (on) haptics.touch(HapticEvent.TOGGLE)
+        return attempt("That couldn't be saved. Try again.") { read { setSetting(Haptics.INTERFACE_HAPTICS, if (on) "on" else null) } }
+    }
+
+    fun setControllerRumble(on: Boolean): Job {
+        haptics.rumbleOn = on
+        if (on) haptics.controller(HapticEvent.TOGGLE) else haptics.stopRumble()
+        return attempt("That couldn't be saved. Try again.") { read { setSetting(Haptics.CONTROLLER_RUMBLE, if (on) null else "off") } }
     }
 
     fun setMediaAtmosphere(on: Boolean): Job {
@@ -353,6 +395,24 @@ class AppState(
     }
 
     // Library actions ----------------------------------------------------------------------------
+
+    /** Whether a pull at the top of a page is checking the library for changes now (B-048). */
+    var pullRefreshing by mutableStateOf(false)
+        private set
+
+    /**
+     * A pull at the top of Home, Movies, or Shows (B-048): checks every source for what was added, removed, or changed,
+     * through the same pipeline as Sources' refresh and the automatic checks, so what is already known (titles, artwork)
+     * is not fetched again, and a source that cannot be reached keeps its works as they were. A pull while one is
+     * running starts nothing new, and the pipeline joins a refresh already waiting its turn: no storm of scans. The sign
+     * goes when the work is done, whatever came of it; a failure is said, and nothing shown is taken away.
+     */
+    fun pullToRefresh(): Job? {
+        if (pullRefreshing) return null
+        pullRefreshing = true
+        haptics.touch(HapticEvent.CONFIRM)
+        return refresh().also { job -> job.invokeOnCompletion { pullRefreshing = false } }
+    }
 
     fun refresh(sourceId: SourceId? = null): Job = scope.launch {
         try {
@@ -830,17 +890,83 @@ class AppState(
      */
     val namesButtons: Boolean get() = input.modality == InputModality.DIRECTIONAL && input.controllerFamily != ControllerFamily.TV_REMOTE
 
-    /** Set while a text field has focus, so typing is never taken for shortcuts. */
+    /**
+     * Set while a text field has focus, so typing is never taken for shortcuts. Every field reports it itself
+     * (`Modifier.textEntry`, through [editing]); no screen sets it (B-019 to B-021).
+     */
     var textInputActive by mutableStateOf(false)
+
+    /**
+     * Whether the system's on-screen keyboard is up (the Android shell says so from its insets). A phone's bottom bar
+     * steps aside only while it is: a field that still has focus after the keyboard was put away keeps its page's
+     * navigation (B-036).
+     */
+    var systemKeyboardShown by mutableStateOf(false)
+
+    /** The fields with focus now: typing is active while any has it. */
+    internal val editing = dev.reflux.ui.components.TextEditing { textInputActive = it }
+
+    /**
+     * The Reflux keyboard, while a controller or a remote types into a field with it (B-023). It is above everything,
+     * the question of who is watching included, and takes every direction, confirm, and Back until it closes.
+     */
+    var keyboard: KeyboardSession? by mutableStateOf(null)
+        private set
+
+    /** Opens the Reflux keyboard for a field. */
+    fun openKeyboard(request: KeyboardRequest) {
+        keyboard = KeyboardSession(request)
+    }
+
+    /** Closes the Reflux keyboard, only if it is [field]'s when one is named. The field keeps focus and its text. */
+    fun closeKeyboard(field: Any? = null) {
+        if (field == null || keyboard?.request?.field === field) keyboard = null
+    }
+
+    /** A key of the Reflux keyboard pressed where it is, by a finger or a pointer. */
+    fun pressKey(row: Int, column: Int) {
+        val session = keyboard ?: return
+        session.choose(row, column)
+        if (session.press(session.selected) == KeyboardSession.Outcome.DONE) {
+            keyboard = null
+            session.request.done()
+        }
+    }
+
+    /** A semantic action while the Reflux keyboard is open: its own, Back to close it, and only media beside it. */
+    private fun typeOnKeyboard(session: KeyboardSession, action: SemanticAction): Boolean {
+        if (action == SemanticAction.BACK) {
+            keyboard = null
+            return true
+        }
+        if (action in DOCKED_ACTIONS && action != SemanticAction.MINI_PLAYER) return docked?.handle(action) ?: true
+        if (action == SemanticAction.FULLSCREEN) return true
+        when (session.handle(action)) {
+            KeyboardSession.Outcome.DONE -> {
+                keyboard = null
+                session.request.done()
+            }
+            KeyboardSession.Outcome.EDGE -> if (fromController) haptics.controller(HapticEvent.BOUNDARY)
+            KeyboardSession.Outcome.HANDLED -> Unit
+        }
+        return true
+    }
 
     /** Toolkit focus, as far as semantic actions need it. Installed by the root composable. */
     internal var moveFocus: ((SemanticAction) -> Boolean)? = null
     internal var clearFocus: (() -> Unit)? = null
     internal var activateFocused: (() -> Boolean)? = null
 
-    /** The player is one context, everything with focus and lists another: browsing, and the player's menus. */
+    /**
+     * The player is one context, everything with focus and lists another: browsing, and the player's menus. The Reflux
+     * keyboard is a third, above both while it is open.
+     */
     private val context: InputContext
-        get() = if (watching?.menu == null && watching != null) InputContext.PLAYBACK else InputContext.BROWSE
+        get() = when {
+            keyboard != null -> InputContext.TEXT_ENTRY
+            watching?.menu == null && watching != null -> InputContext.PLAYBACK
+            else -> InputContext.BROWSE
+        }
 
     /** Reports raw input evidence (pointer travel, touches, controller use) from the shell or the UI. */
     fun onSignal(signal: InputSignal) {
@@ -854,6 +980,9 @@ class AppState(
      */
     fun onKey(key: Key, repeat: Boolean = false): Boolean {
         onSignal(InputSignal.KeyPress(key))
+        // The Reflux keyboard first (B-025's priority: the active text editor): its arrows, OK, and Back. Every other
+        // key is the field's, which still has focus beneath it: a physical keyboard types straight into it.
+        if (keyboard != null) return InputMapping.map(key, InputContext.TEXT_ENTRY)?.let(::dispatch) ?: false
         // With what is playing in the mini-player, the viewer is browsing: keys are the page's.
         val browsing = watching == null
         // The player is operated by its keys. Tab would only walk the page behind the video, which nobody can see.
@@ -880,11 +1009,19 @@ class AppState(
     /** Handles a controller button, named by its position so every controller family works alike. */
     fun onGamepadButton(button: GamepadButton, family: ControllerFamily): Boolean {
         onSignal(InputSignal.GamepadButtonPress(button, family))
-        return dispatch(InputMapping.map(button, family, context) ?: return false)
+        val action = InputMapping.map(button, family, context) ?: return false
+        fromController = true
+        return try {
+            dispatch(action)
+        } finally {
+            fromController = false
+        }
     }
 
     /** Performs a semantic action, whichever input device expressed it. */
     fun dispatch(action: SemanticAction): Boolean {
+        // The Reflux keyboard is above everything while it is open, the question of who is watching included.
+        keyboard?.let { return typeOnKeyboard(it, action) }
         // Asking who is watching covers everything: Back is its own, and lists and fields take the rest.
         profileGate?.let { gate ->
             return when (action) {
@@ -899,12 +1036,17 @@ class AppState(
         watching?.let { return it.handle(action) }
         return when (action) {
             SemanticAction.NAVIGATE_UP, SemanticAction.NAVIGATE_DOWN, SemanticAction.NAVIGATE_LEFT, SemanticAction.NAVIGATE_RIGHT ->
-                moveFocus?.invoke(action) ?: false
+                (moveFocus?.invoke(action) ?: false).also { moved ->
+                    // The end of a row or a page, felt on a controller (F-002); never for a keyboard, a remote, or a pointer.
+                    if (!moved && fromController && moveFocus != null) haptics.controller(HapticEvent.BOUNDARY)
+                }
             SemanticAction.SELECT -> activateFocused?.invoke() ?: false
             SemanticAction.BACK -> if (backRoute == BackRoute.SYSTEM_PRESENTATION) platform.enterSystemPresentation() else when {
                 // With a keyboard, Escape first lets go of the field. A remote's Back has already put the
-                // on-screen keyboard away by the time it gets here, and goes back.
-                textInputActive && !platform.television -> {
+                // on-screen keyboard away by the time it gets here, and goes back. So has a touchscreen's: the system
+                // keyboard takes the first Back itself, so the next one is the viewer's way back, not a field to let
+                // go of that they cannot see has focus (B-036).
+                textInputActive && !platform.television && input.modality != InputModality.TOUCH -> {
                     clearFocus?.invoke()
                     true
                 }
@@ -960,6 +1102,7 @@ class AppState(
      */
     val backRoute: BackRoute
         get() {
+            if (keyboard != null) return BackRoute.APP
             profileGate?.let { return if (it.backLeaves()) BackRoute.SYSTEM else BackRoute.APP }
             val session = playback
             if (session?.presentation == PlayerPresentation.SYSTEM) return BackRoute.SYSTEM
@@ -971,7 +1114,7 @@ class AppState(
                 }
             }
             return when {
-                textInputActive && !platform.television -> BackRoute.APP
+                textInputActive && !platform.television && input.modality != InputModality.TOUCH -> BackRoute.APP
                 folderPicker != null || offlineOpen -> BackRoute.APP
                 platform.television && navigator.current is Destination.Section -> BackRoute.APP
                 navigator.canGoBack -> BackRoute.APP
@@ -1066,8 +1209,14 @@ class AppState(
                 }
                 gate.then?.let { continueFromOutside(it, gate.profile.id) }
             }
-            is PinCheck.Rejected -> profileGate = gate.copy(problem = check.lockedUntilEpochMs?.let(::waitFor) ?: "That's not the PIN. Try again.", attempt = gate.attempt + 1)
-            is PinCheck.Locked -> profileGate = gate.copy(problem = waitFor(check.untilEpochMs), attempt = gate.attempt + 1)
+            is PinCheck.Rejected -> {
+                profileGate = gate.copy(problem = check.lockedUntilEpochMs?.let(::waitFor) ?: "That's not the PIN. Try again.", attempt = gate.attempt + 1)
+                feel(HapticEvent.ERROR)
+            }
+            is PinCheck.Locked -> {
+                profileGate = gate.copy(problem = waitFor(check.untilEpochMs), attempt = gate.attempt + 1)
+                feel(HapticEvent.ERROR)
+            }
         }
     }
 
@@ -1076,9 +1225,66 @@ class AppState(
         return if (seconds < 90) "Too many tries. Try again in $seconds seconds." else "Too many tries. Try again in ${(seconds + 59) / 60} minutes."
     }
 
-    /** Asks whether to start the profile whose PIN is being asked for over, or with false takes the question back. */
+    /**
+     * Forgot PIN (DECISIONS.md, 2026-11-19): what to do about a profile whose PIN is forgotten. With [asking], the
+     * choices: keep the profile as it is, reset it (erasing what the PIN kept private), or, where the device has a
+     * lock of its own, have the system confirm its owner and remove the PIN while keeping everything. False takes the
+     * question back: Keep profile, which changes nothing.
+     */
     fun forgotPin(asking: Boolean = true) {
-        (profileGate as? ProfileGate.Unlock)?.let { profileGate = it.copy(forgetting = asking, problem = null) }
+        (profileGate as? ProfileGate.Unlock)?.let { profileGate = it.copy(forgetting = asking, resetting = false, problem = null) }
+    }
+
+    /** Asks to confirm resetting the profile whose PIN was forgotten, the destructive choice; false steps back from it. */
+    fun confirmProfileReset(asking: Boolean = true) {
+        (profileGate as? ProfileGate.Unlock)?.takeIf { it.forgetting }?.let { profileGate = it.copy(resetting = asking, problem = null) }
+    }
+
+    /** Whether Forgot PIN can offer the system's confirmation here: the platform has it, and a lock is set up. */
+    val systemConfirmsOwner: Boolean get() = runCatching { platform.systemAuthentication?.available() == true }.getOrDefault(false)
+
+    /**
+     * Removes a forgotten PIN once the system has confirmed the device's owner (its biometric or screen-lock prompt),
+     * keeping everything the profile has, and opens it. Nothing Reflux asks for is involved, and the old PIN is never
+     * revealed. Cancelled, failed, or unavailable, nothing changes and nothing opens; the viewer can still keep the
+     * profile or reset it.
+     */
+    fun removeForgottenPinWithSystem(): Job = attempt("The PIN couldn't be removed. Try again.") {
+        val gate = profileGate as? ProfileGate.Unlock ?: return@attempt
+        if (!gate.forgetting) return@attempt
+        val system = platform.systemAuthentication?.takeIf { it.available() }
+        if (system == null) {
+            profileGate = gate.copy(problem = "This device has no screen lock to confirm it's you.", attempt = gate.attempt + 1)
+            return@attempt
+        }
+        val answer = system.confirm("Remove ${gate.profile.name}'s PIN", "Confirm it's you to remove the PIN. ${gate.profile.name}'s history and settings stay.")
+        // The question may have been answered or left meanwhile: only the same one, still asking, goes on.
+        val now = profileGate as? ProfileGate.Unlock
+        if (now == null || now.profile.id != gate.profile.id || !now.forgetting) return@attempt
+        if (answer != SystemConfirmation.CONFIRMED) {
+            profileGate = now.copy(
+                problem = when (answer) {
+                    SystemConfirmation.CANCELLED -> "Nothing was changed."
+                    SystemConfirmation.UNAVAILABLE -> "Your device couldn't confirm it's you here. Nothing was changed."
+                    else -> "Your device didn't confirm it's you. Nothing was changed."
+                },
+                attempt = now.attempt + 1,
+            )
+            return@attempt
+        }
+        read { removePinConfirmedBySystem(gate.profile.id) }
+        loadProfiles()
+        val fresh = profiles.firstOrNull { it.id == gate.profile.id } ?: return@attempt
+        if (fresh.active) {
+            unlocked = true
+            profileGate = null
+        } else {
+            becomeProfile(fresh)
+            unlocked = true
+        }
+        gate.then?.let { continueFromOutside(it, fresh.id) }
+        invalidate()
+        notify("${fresh.name}'s PIN was removed. You can set a new one in Settings.")
     }
 
     /**
@@ -1090,7 +1296,8 @@ class AppState(
      */
     fun resetForgottenProfile(): Job = attempt("The profile couldn't be reset. Try again.") {
         val gate = profileGate as? ProfileGate.Unlock ?: return@attempt
-        if (!gate.forgetting) return@attempt
+        // Only from its own confirmation: Reset profile, then its warning, then confirming that.
+        if (!gate.forgetting || !gate.resetting) return@attempt
         val profile = gate.profile
         finishPlayback()
         val addresses = read { endpoints() }
@@ -1117,8 +1324,12 @@ class AppState(
     }
 
     private fun profileGateBack(gate: ProfileGate): Boolean {
+        if (gate is ProfileGate.Unlock && gate.resetting) {
+            profileGate = gate.copy(resetting = false, problem = null)
+            return true
+        }
         if (gate is ProfileGate.Unlock && gate.forgetting) {
-            profileGate = gate.copy(forgetting = false)
+            profileGate = gate.copy(forgetting = false, problem = null)
             return true
         }
         when (gate) {
@@ -1166,23 +1377,60 @@ class AppState(
     }
 
     /** Gives the active profile a PIN; says so, or why not. */
-    fun setPin(pin: String): Job = attempt("The PIN couldn't be saved. Try again.") {
+    /**
+     * Gives the open profile a PIN, or, when it has one, replaces it given its [current] PIN, checked by the library in
+     * the same transaction as the change (B-049). When the current PIN is not accepted, [pinRefused] says why.
+     */
+    fun setPin(pin: String, current: String? = null): Job = attempt("The PIN couldn't be saved. Try again.") {
         val active = activeProfile ?: return@attempt
         val key = platform.pinKey ?: return@attempt
         if (!PinPolicy.valid(pin)) return@attempt notify("A PIN is ${PinPolicy.LENGTH} digits.")
-        read { setPin(active.id, pin, key) }
+        val hasPin = read { profiles() }.firstOrNull { it.id == active.id }?.hasPin == true
+        if (hasPin) {
+            when (val outcome = read { changePin(active.id, current, pin, key) }) {
+                PinChange.Changed -> pinRefused = null
+                PinChange.Invalid -> return@attempt notify("A PIN is ${PinPolicy.LENGTH} digits.")
+                is PinChange.Refused -> return@attempt refusePinChange(outcome.check)
+            }
+        } else if (!read { setPin(active.id, pin, key) }) {
+            return@attempt
+        }
         unlocked = true
         loadProfiles()
         invalidate()
-        notify("${active.name} now asks for its PIN.")
+        notify(if (hasPin) "${active.name}'s PIN was changed." else "${active.name} now asks for its PIN.")
     }
 
-    fun removePin(): Job = attempt("The PIN couldn't be removed. Try again.") {
+    /**
+     * Removes the open profile's PIN, only with that [current] PIN (B-049): checked in the same transaction that removes
+     * it, with the counting and waiting of opening it. Nothing else of the profile, and nothing of another, changes.
+     */
+    fun removePin(current: String): Job = attempt("The PIN couldn't be removed. Try again.") {
         val active = activeProfile ?: return@attempt
-        read { removePin(active.id) }
+        when (val outcome = read { removePin(active.id, current, platform.pinKey) }) {
+            PinChange.Changed -> {
+                pinRefused = null
+                loadProfiles()
+                invalidate()
+                notify("${active.name} no longer asks for a PIN.")
+            }
+            PinChange.Invalid -> Unit
+            is PinChange.Refused -> refusePinChange(outcome.check)
+        }
+    }
+
+    /** Why the current PIN given to change or remove the open profile's PIN was not accepted; null when it was not refused. */
+    var pinRefused: PinRefusal? by mutableStateOf(null)
+
+    /** Forgets [pinRefused], when the question that asked is closed. */
+    fun dismissPinRefusal() {
+        pinRefused = null
+    }
+
+    private suspend fun refusePinChange(check: PinCheck) {
+        feel(HapticEvent.ERROR)
+        pinRefused = PinRefusal(refusal(check), (pinRefused?.attempt ?: 0) + 1)
         loadProfiles()
-        invalidate()
-        notify("${active.name} no longer asks for a PIN.")
     }
 
     /**
@@ -1302,11 +1550,16 @@ sealed interface ProfileGate {
         val problem: String? = null,
         val attempt: Int = 0,
         val then: MediaId? = null,
-        /** The viewer said they forgot the PIN and is being asked whether to start the profile over. */
+        /** The viewer said they forgot the PIN and is being asked what to do: keep the profile, or reset it. */
         val forgetting: Boolean = false,
+        /** The viewer chose to reset the profile and is being asked to confirm it, having been told what goes. */
+        val resetting: Boolean = false,
     ) : ProfileGate
 }
 
+
+/** The current PIN given to change or remove a PIN was not accepted: [problem] says why; [attempt] counts tries. */
+data class PinRefusal(val problem: String, val attempt: Int)
 
 /** The PIN given to delete [profile] was not accepted: [problem] says why, and [attempt] counts tries so it is said again. */
 data class DeletionRefusal(val profile: ProfileId, val problem: String, val attempt: Int)

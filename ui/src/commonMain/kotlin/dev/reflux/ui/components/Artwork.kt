@@ -42,6 +42,13 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.semantics.testTag
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
+import androidx.compose.foundation.layout.offset
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.dp
 import dev.reflux.core.model.ArtworkLocator
 import androidx.compose.runtime.DisposableEffect
@@ -269,24 +276,41 @@ fun TitlePlaceholder(title: String, caption: String?, modifier: Modifier = Modif
     }
 }
 
+/**
+ * A card's states over its artwork (B-032): not connected and watched are the same small round mark, each in its own
+ * corner (not connected at the start, watched at the end), so they never meet or cut each other short, however narrow
+ * the card. Not connected also dims the artwork. The words are the card's own description ("…, not connected,
+ * watched"), and the work's page says them in full.
+ */
 @Composable
 private fun StateBadges(card: MediaCard, modifier: Modifier = Modifier) {
     Box(modifier.fillMaxSize()) {
         if (card.offline) {
             Box(Modifier.fillMaxSize().background(RefluxColors.background.copy(alpha = 0.55f)))
-            Chip("Not connected", Modifier.align(Alignment.TopStart).padding(8.dp))
+            StateMark(Icon.OFFLINE, Modifier.align(Alignment.TopStart))
         }
-        if (card.watched) {
-            Box(
-                Modifier.align(Alignment.TopEnd).padding(8.dp).size(22.dp).clip(CircleShape).background(RefluxColors.background.copy(alpha = 0.72f)),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(Icon.CHECK, size = 13.dp)
-            }
-        }
+        if (card.watched) StateMark(Icon.CHECK, Modifier.align(Alignment.TopEnd))
         card.progress?.let { ProgressBar(it, Modifier.align(Alignment.BottomCenter).padding(horizontal = 8.dp, vertical = 8.dp)) }
     }
 }
+
+/** Tags a card's words beneath its poster, for the tests that keep the focus ring off them (B-009); not said by a screen reader. */
+internal const val CARD_CAPTION = "card-caption"
+
+/** One state mark: an icon in a small dark circle, the same size wherever it is. */
+@Composable
+private fun StateMark(icon: Icon, modifier: Modifier) {
+    Box(
+        modifier.padding(STATE_MARK_INSET).size(STATE_MARK_SIZE).clip(CircleShape).background(RefluxColors.background.copy(alpha = 0.78f)),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(icon, size = 13.dp)
+    }
+}
+
+/** A state mark's size, and how far it sits in from the card's corner. */
+internal val STATE_MARK_SIZE = 22.dp
+internal val STATE_MARK_INSET = 8.dp
 
 private fun describe(card: MediaCard): String = listOfNotNull(
     card.title,
@@ -310,14 +334,20 @@ fun PosterCard(card: MediaCard, onClick: () -> Unit, modifier: Modifier = Modifi
     val shape = Shapes.medium
     // A work with only a backdrop shows its backdrop, cropped to its middle, rather than a generated card.
     val image = rememberArtwork(ArtworkChoice.portrait(card.poster, card.wide), width)
+    val interaction = remember { MutableInteractionSource() }
+    val density = LocalDensity.current
+    var posterHeight by remember { mutableStateOf(width * 1.5f) }
+    val lifted = liftedBy(interaction, posterHeight)
     Column(if (fill) modifier.fillMaxWidth() else modifier.width(width), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Pressable(
             {
                 focusReturn.leaving()
                 onClick()
             },
-            focusReturn.modifier.semantics { contentDescription = describe(card) },
+            focusReturn.modifier.semantics { contentDescription = describe(card) }
+                .onSizeChanged { posterHeight = with(density) { it.height.toDp() } },
             shape,
+            interactionSource = interaction,
         ) { active ->
             // The card says all of it; words on the artwork would be said a second time.
             Box(Modifier.fillMaxWidth().aspectRatio(2f / 3f).clearAndSetSemantics { }) {
@@ -333,13 +363,34 @@ fun PosterCard(card: MediaCard, onClick: () -> Unit, modifier: Modifier = Modifi
             }
         }
         // Two lines are always reserved so rows line up; a placeholder already says the title, so only the caption follows it.
-        // The card has said all of this, as one stop.
-        Column(Modifier.padding(horizontal = 2.dp).clearAndSetSemantics { }) {
+        // The card has said all of this, as one stop. While the poster is lifted the words step down with it, clear
+        // of its ring (B-009); nothing else in the row moves.
+        Column(Modifier.offset { androidx.compose.ui.unit.IntOffset(0, lifted().roundToPx()) }.padding(horizontal = 2.dp).clearAndSetSemantics { testTag = CARD_CAPTION }) {
             if (image != null) Text(card.title, style = LocalTypography.current.captionStrong, maxLines = 1)
             Caption(card.caption, card.downloaded, card.downloadedPartly)
             if (image == null) Text(" ", style = LocalTypography.current.captionStrong, maxLines = 1)
         }
     }
+}
+
+/**
+ * How far below its own bottom edge a card's lifted poster reaches now, ring included (B-009): zero at rest, the
+ * whole of [liftReach] while it has a ring (a keyboard or a controller), and the lift alone under a pointer.
+ * Animated as the lift is, so the words beneath move with the poster.
+ */
+@Composable
+private fun liftedBy(interaction: MutableInteractionSource, posterHeight: Dp): () -> Dp {
+    val layout = LocalLayout.current
+    val hovered by interaction.collectIsHoveredAsState()
+    val focused by interaction.collectIsFocusedAsState()
+    val ring = focused && layout.showsFocus
+    val target = when {
+        ring -> liftReach(posterHeight, layout.focusScale)
+        hovered -> liftReach(posterHeight, layout.focusScale, ring = false)
+        else -> 0.dp
+    }
+    val shown by animateDpAsState(target, Motion.focusChange.tween())
+    return { shown }
 }
 
 /**

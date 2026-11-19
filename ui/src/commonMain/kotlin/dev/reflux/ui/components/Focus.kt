@@ -192,10 +192,17 @@ fun rememberFocusReturn(key: String): FocusReturn {
             entry!!.offer(requester, screen, returning = true)
             onDispose { entry.withdraw(requester) }
         }
-        // Only on the page being come back to: the same item on the page being left has just been activated.
-        LaunchedEffect(Unit) { if (showsFocus && entry!!.screen == screen) runCatching { requester.requestFocus() } }
+        // Only on the page being come back to: the same item on the page being left has just been activated. Not while
+        // focus is on the navigation (a destination chosen there): it stays there until the viewer comes back in.
+        LaunchedEffect(Unit) { if (showsFocus && entry!!.screen == screen && !entry.inChrome) runCatching { requester.requestFocus() } }
     }
-    return remember(entry, key, screen) { FocusReturn(Modifier.focusRequester(requester)) { entry?.left?.set(screen, key) } }
+    // The item with focus is also the one to come back to (B-008): leaving the page by the navigation, the bumpers, or a
+    // shortcut, and not only by opening an item, finds it again on return, instead of the page's first control.
+    return remember(entry, key, screen) {
+        FocusReturn(
+            Modifier.focusRequester(requester).onFocusChanged { if (it.isFocused && entry?.screen == screen) entry?.left?.set(screen, key) },
+        ) { entry?.left?.set(screen, key) }
+    }
 }
 
 /** [modifier] goes on the item; [leaving] is called when the user goes into it. */

@@ -22,7 +22,8 @@ private class RecordingKeyboard : SoftwareKeyboardController {
 @OptIn(ExperimentalTestApi::class)
 class KeyboardTest {
     @Test
-    fun aRemoteOpensTheSearchKeyboardWhenOkIsLetGo() {
+    fun aRemoteOpensTheRefluxKeyboardWhenOkIsLetGoAndNeverTheSystems() {
+        // B-004: a television's fields no longer rely on the system keyboard's lifecycle; OK opens Reflux's (B-023).
         val keyboard = RecordingKeyboard()
         television(around = { content -> CompositionLocalProvider(LocalSoftwareKeyboardController provides keyboard) { content() } }) { app ->
             awaitText("Recently Added")
@@ -34,11 +35,13 @@ class KeyboardTest {
             val before = keyboard.shown
             onNode(isFocused()).performKeyInput { keyDown(Key.DirectionCenter) }
             waitForIdle()
-            assertEquals(before, keyboard.shown, "the keyboard must not open while OK is still held")
+            assertEquals(before, keyboard.shown, "no keyboard opens while OK is still held")
+            assertEquals(null, app.keyboard)
             onNode(isFocused()).performKeyInput { keyUp(Key.DirectionCenter) }
             waitForIdle()
-            assertEquals(before + 1, keyboard.shown)
-            assertEquals("", app.searchQuery)
+            assertEquals(dev.reflux.ui.state.InputKind.SEARCH, app.keyboard?.kind, "OK's release opens the Reflux keyboard")
+            assertEquals(before, keyboard.shown, "and never the system's")
+            assertEquals("", app.searchQuery, "the press typed nothing")
         }
     }
 }
