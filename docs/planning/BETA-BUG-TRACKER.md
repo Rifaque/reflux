@@ -1602,7 +1602,7 @@ Registered in BETA-2.md from the owner's master prompt of 2026-11-19, which numb
 
 **Recommendation (from the plan).**
 - **Controller:** a column-aligned QWERTY with the digits on top, a right-hand action column (Erase, Space, Done), a short bottom row (Shift, &123, ←, →, Clear), horizontal wrap, and the existing button shortcuts (X erase, Y space, LB/RB cursor, LT Shift, RT symbols, Start done).
-  - An alphabetic layout is not the default: there is no controller evidence that it beats QWERTY, and the industry moved from ABC to QWERTY. It is a possible accessibility option (open question).
+  - An alphabetic layout is not the default: there is no controller evidence that it beats QWERTY, and the industry moved from ABC to QWERTY. Not offered in F-P4 (owner's decision D1); the architecture stays open to it.
 - **Mouse (W, L):** a staggered ANSI-style keyboard with a number row, the physical proportions (wide Backspace, Tab, Caps, Enter as Done, both Shifts, a 6u Space), hover, transient press, and no persistent highlight.
 - **One system:** stable key identities, layouts as data, one session (text, cursor, Shift/Caps, page, chosen key), and only presentation adapting.
 - **Arbitration:** explicit acts (a click, a button) switch at once; pointer travel switches only after 48 dp within 400 ms over the keyboard; 500 ms of hysteresis against incidental signals.
@@ -1614,7 +1614,14 @@ Registered in BETA-2.md from the owner's master prompt of 2026-11-19, which numb
 
 **Milestones.** M1 data → M2 controller layout → M3 mouse layout → M4 arbiter → M5 morph → M6 focus and state → M7 verification (the plan, §14).
 
-**Acceptance criteria and test matrix:** the plan, §12. **Risks:** §15. **Open questions:** §16 (an alphabetic option; a title-completion row; locales; dictation; physical-keyboard behaviour).
+**Owner's decisions (2026-11-20; the plan, §16):**
+- **D1:** refined QWERTY only (no alphabetic option in F-P4; extensible).
+- **D2:** library-backed title completions in scope. They never take focus; selecting fills the query and keeps the keyboard open; Done goes to the results.
+- **D3:** the mouse keyboard follows the system layout (AZERTY, QWERTZ…), labels always matching what is typed, with a US fallback and a visible note.
+- **D4:** dictation and phone entry excluded.
+- **D5:** physical typing never hides or presses the virtual keyboard.
+
+**Acceptance criteria and test matrix:** the plan, §12. **Risks:** §15.
 
 ## Unassigned issues and unresolved owner decisions
 

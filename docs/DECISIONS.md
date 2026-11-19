@@ -1395,11 +1395,23 @@ M11 decided the open items of its plan (planning/M11-DISTRIBUTION-PLAN.md, secti
 - **1.0 communication.** "Planned for December 2026", depending on feedback, qualification, and store approval; 10 December is an internal readiness checkpoint and 15 December the release decision, never a promised release date. Each platform publishes through its own path.
 - **No Windows installer in the beta**: none exists or is tested, and building one would change the release; reconsidered for 1.0.
 
+## 2026-11-20 — F-P4: the owner's decisions on the adaptive keyboard's scope
+
+Recorded in planning/F-P4-ADAPTIVE-KEYBOARD.md (§16, and where each applies):
+1. **Controller layout:** the refined QWERTY is the default and **only** layout in F-P4. There is no alphabetic option; the layout-as-data architecture keeps more layouts possible if accessibility feedback or testing justifies them.
+2. **Title completions: in F-P4,** deliberately simple, from the user's library only: no network, no AI, no metadata fetching.
+   - They update with the query and **never take focus**.
+   - They are reached by Up (controller), a click (mouse) or Tab (physical keyboard).
+   - Selecting one fills the query and keeps the keyboard open; Done then goes to the results. Selecting never opens a page by itself.
+3. **System keyboard locale:** on Windows and Linux the mouse keyboard follows the system layout (AZERTY, QWERTZ and others) where it can be read reliably. **Every key types exactly what it shows.** Dead keys insert their spacing accent; anything unreadable, or an IME layout, falls back to US with a visible note. The controller layout does not follow the locale.
+4. **Dictation and phone-assisted TV entry: excluded** from F-P4. They are possible separate features later.
+5. **Physical keyboard:** a separate input path. It never hides the virtual keyboard or presses, lights or animates its keys. The field updates normally, and the virtual keyboard closes only when dismissed explicitly.
+
 ## 2026-11-20 — F-P4: an adaptive virtual keyboard, planned for Phase 3
 
 **Owner's decision.** The on-screen keyboard becomes one system with layouts per input that transform live, but **in Phase 3**. Phase 2 only researches and plans it.
 
-**Recommendations recorded for Phase 3** (planning/F-P4-ADAPTIVE-KEYBOARD.md, with evidence and sources; the owner decides the open questions):
+**Recommendations recorded for Phase 3** (planning/F-P4-ADAPTIVE-KEYBOARD.md, with evidence and sources; the open questions were decided the same day, in the entry above):
 - **The controller layout stays QWERTY:** column-aligned, with an action column and wrap, and the existing button shortcuts. Alphabetic is not the default: no controller study shows it beating QWERTY, and the platforms moved from ABC to QWERTY.
 - **The mouse layout is a conventional staggered keyboard,** on Windows and Linux only.
 - **One key identity, one session;** layouts as data; a custom per-key morph rather than experimental shared-element APIs.

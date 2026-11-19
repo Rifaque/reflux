@@ -1,6 +1,12 @@
 # F-P4: Adaptive Virtual Keyboard and Cross-Modality Layout Morphing
 
 **Status:** Not Started. Phase 3 (the owner's steer, 2026-11-20). Research and plan only; nothing is implemented. Implementation waits for Phase 3's authorisation.
+**Owner's decisions (2026-11-20), incorporated below:**
+- **D1:** refined QWERTY is the only controller layout in F-P4; no alphabetic option, but the architecture stays open to more layouts.
+- **D2:** library-backed title completions are in scope (§4.5).
+- **D3:** the mouse keyboard follows the system keyboard layout where reliably detectable, with a documented fallback (§5.1).
+- **D4:** dictation and phone-assisted TV entry are excluded.
+- **D5:** physical typing is a separate input path that never hides or presses the virtual keyboard (§7).
 **Tracker:** [BETA-BUG-TRACKER.md, F-P4](BETA-BUG-TRACKER.md#f-p4). **ID:** F-P4 (F-P3 is Media Quick View).
 **Related:** B-023 (the Reflux keyboard), B-051 (the desk keyboard button, modality visuals), B-054 (cursor and held erase), B-004/B-011 (remote and controller text entry), B-025 (the input contract), B-057 (Search), INPUT_MODEL.md ("Text entry by input", "Controller mapping").
 
@@ -92,7 +98,7 @@ Reflux's text is short: search terms (2–15 characters), titles, names, server 
 | Concept | Description | For | Against | Verdict |
 | --- | --- | --- | --- | --- |
 | **A. Refined uniform QWERTY** | Today's grid, better ordered: digits, three QWERTY rows, actions row | Familiar; already tested | Actions far from letters; no wrap; digits row adds height | Better than today; not best |
-| **B. Alphabetic grid** (e.g. 6 × 5 + digits) | a–z in reading order | Scannable for non-typists; R1 shows it is good for novices against multi-tap | No controller evidence against QWERTY; industry moved away (R10); its order is unfamiliar to typists, and Reflux's users type | Not as the default. Possible as an accessibility option (open question Q1) |
+| **B. Alphabetic grid** (e.g. 6 × 5 + digits) | a–z in reading order | Scannable for non-typists; R1 shows it is good for novices against multi-tap | No controller evidence against QWERTY; industry moved away (R10); its order is unfamiliar to typists, and Reflux's users type | Not as the default. **Owner's decision D1: not offered in F-P4.** The layout data model (§6) keeps further layouts possible if accessibility feedback or testing justifies them later |
 | **C. Hybrid: column-aligned QWERTY with an action column** | QWERTY letter rows, column-aligned; digits row on top; a **right-hand action column** (Erase, Space, Done) beside the letters; a short **bottom row** (Shift, symbols, ←, →, Clear); horizontal wrap; console shortcuts unchanged | Familiar letters; actions 0–2 hops from any letter; predictable verticals; shortcuts make the column optional for controllers and convenient for remotes | Not a "physical" keyboard picture (it is not meant to be: that is the mouse layout's job) | **Recommended** |
 | Daisy wheel or dual-stick | Radial or split selection | Fast for experts | Learning curve; conflicts with the right stick's reservation (Trickplay); unfamiliar | Rejected |
 
@@ -139,9 +145,25 @@ The keyboard docks at the bottom and leaves the field and its results visible (t
 - Up/Down move to the key whose centre is nearest in x in the next row; the action column maps by row.
 - Shortcuts are unchanged (INPUT_MODEL.md): X erase, Y space, LB/RB cursor, LT Shift, RT symbols, Start done, B close. Held X and LB/RB repeat (B-054).
 
-### 4.5 Option (open question Q2)
+### 4.5 Title completions (in scope: owner's decision D2)
 
-A row of three **title completions** from the library above the digits, reached by Up. For short title searches this saves the most hops of anything here. It reads the search index and needs no network.
+Deliberately simple: a row of titles from the user's own library that complete what is typed. It is the biggest saving for short title searches.
+
+- **Source:** the library's movie and show titles already loaded for search (`Library.search`'s documents).
+  - No network request, no AI, no metadata fetch.
+  - Matching is case- and diacritic-insensitive: titles that start with the query first, then titles with a word starting with it, then the rest, by recently added.
+- **Updates:** with the query, on the same 140 ms typing pause Search already uses. Shown from the first character; hidden when nothing matches or the query is empty.
+- **Size:** at most 3 completions in the controller layout (TV, or a controller on any screen) and 5 in the mouse layout, each truncated with an ellipsis to one line.
+- **Where:** a row at the top of the keyboard panel, above the digits in the controller layout and above the number row in the mouse layout. It is part of the panel, so it morphs with it (§8): the row resizes, and completions are keyed by title ID.
+- **Focus is never taken.** Completions appearing or changing never move focus or the chosen key.
+  - **Controller:** Up from the top key row reaches the row (the completion nearest in x); Down returns to the key it came from. If the row empties while it has focus, focus returns to that key.
+  - **Mouse:** a click, with hover and press feedback as for keys.
+  - **Physical keyboard:** with the panel open, Tab from the field moves into the row (its first completion); Left/Right move along it; Enter chooses; Shift+Tab or Escape returns to the field without choosing. Down from the field still goes to the results (B-011, B-057).
+- **Selecting a completion** puts its full title into the query, with the cursor at the end. The keyboard stays open, with focus on that completion, so another can be chosen or typing go on.
+  - The results update to that title.
+  - Done (Start, or the mouse layout's Enter) then goes to the results, where that title is first, and A or a click opens it.
+  - Selecting never opens a page by itself: one rule for every input, and no accidental navigation.
+- **Accessibility:** the row is announced as "Suggestions, N titles" once when it first appears, not on every change. Each completion is a button named by its title.
 
 ---
 
@@ -162,6 +184,25 @@ An ANSI-style physical picture. Unit u ≈ 40 dp on a desktop window; the minimu
 - **Enter** is Done: the field's own action. **Tab** goes to the next field where the request has one (Connect, Identify), and is hidden otherwise. **Hide** closes the keyboard.
 - **Hover:** a light layer. **Press:** a 60 ms sink to 0.93 and back over 140 ms (B-051's feedback, kept). **No persistent chosen key.**
 - The keyboard is a floating panel under the field, sized to its content (about 15 × 5u), not edge to edge.
+
+### 5.1 The system keyboard layout (owner's decision D3)
+
+The mouse layout follows the **system's keyboard layout** where it can be read reliably: QWERTY, AZERTY, QWERTZ, and others with a direct character per key. **What a key shows is always what it types.**
+
+- **Reading the layout.**
+  - **Windows:** the active layout (`GetKeyboardLayout` for Reflux's thread). For each physical key (by scan code): `MapVirtualKeyEx` gives its virtual key, and `ToUnicodeEx` with the key states gives its character unshifted, with Shift, and with AltGr (Ctrl+Alt). The process's keyboard state is never altered: an empty state array is used, with a flag so dead-key state is not consumed.
+  - **Linux:** the X keyboard map Reflux runs under (XWayland or X11) through XKB (`XkbGetMap` / `XkbKeycodeToKeysym`, or libxkbcommon if bundled). Each key's keysym at levels 1–3 (plain, Shift, AltGr) is converted to a character.
+  - The map is read when the keyboard opens, and again when the window regains focus (Windows: `WM_INPUTLANGCHANGE`), so a layout switch while Reflux runs is followed.
+- **Drawing and typing.**
+  - The physical rows and stagger stay those of §5, with ISO's extra key beside the left Shift, and its Enter shape, where the layout has that key.
+  - Each key shows its character for the current state (plain, Shift or Caps, AltGr), and pressing it inserts exactly that character.
+  - Caps affects letters only, as the system does. An **AltGr** key appears in the bottom row only when the layout has third-level characters (QWERTZ's `@` on AltGr+Q).
+- **Dead keys** (`´`, `` ` ``, `^`, `¨`, `~` on many European layouts) do not compose in v1. The key shows and inserts the accent's spacing form, which is consistent and never misleading. Composition is a possible later refinement.
+- **Fallback, documented and visible.** When the layout cannot be read, or is not a direct-character layout (an IME layout for Chinese, Japanese or Korean; a layout whose keys yield nothing printable; an unsupported platform or display server), the keyboard uses **US ANSI** (§5 as drawn).
+  - Labels and inserted characters stay consistent.
+  - A small "US layout" note sits in the panel's corner, so nobody is misled about why their keys differ.
+  - A failure to read the layout is logged once.
+- **The controller layout does not follow the locale:** it stays the refined QWERTY (D1).
 
 ---
 
@@ -192,7 +233,7 @@ The global `InputModalityTracker` stays. While the keyboard is open, a **`Keyboa
 | A mouse click on a key | **POINTER** at once. The click types **the key under the pointer as drawn when it was pressed** (hit-tested against the current, pre-morph geometry), then the morph runs |
 | Mouse movement | POINTER only after **≥ 48 dp of travel within 400 ms** that ends **over the keyboard panel**. A nudge of the desk, or travel elsewhere on screen, does not switch |
 | Mouse wheel | No switch |
-| Physical keyboard typing | No switch. Typing goes to the field, as now; the virtual keyboard stays as it is |
+| Physical keyboard typing | **A separate input path (owner's decision D5).** No switch of mode. The virtual keyboard is **never hidden** by physical typing, and **no virtual key is pressed, lit or animated** by it. The text field updates normally, and the session's cursor follows the field's own selection after a physical edit (B-054's record treats it as an edit from elsewhere). The virtual keyboard stays open and stable until the user explicitly dismisses it: its Hide key, B, Back, or Escape |
 | Touch (Windows touchscreen) | POINTER (the mouse layout; a finger on a desk screen is a pointer here) |
 | Remote D-pad (a TV) | CONTROLLER; a TV has no pointer layout |
 
@@ -253,7 +294,7 @@ Never lost on a switch: the text, cursor, selection (none today), Shift (ONCE or
 - Keys keep their names (`keyName`) and roles. Focus order follows the visual layout in each mode. A screen reader announces a layout change once ("Keyboard, mouse layout") and never per key.
 - Contrast: key labels and input text at 4.5:1 or better (R8). The lit key's glyph is dark on light.
 - Reduced motion (§8). Large text: key labels scale with the system's text size up to the key's height, and the unit grows on a TV.
-- Speech and dictation: out of scope here (open question Q4).
+- Speech and dictation: **excluded from F-P4 (owner's decision D4).** They may be proposed as separate features later if there is demand.
 
 ---
 
@@ -276,6 +317,24 @@ Never lost on a switch: the text, cursor, selection (none today), Shift (ONCE or
 - [ ] A search can be done with the mouse alone.
 - [ ] Every special key works.
 
+**Title completions (D2).**
+- [ ] From the library only: no network request, no metadata fetch (checked by a test with networking unavailable).
+- [ ] Updates with the query; hidden when empty.
+- [ ] Never takes focus as it appears or changes.
+- [ ] Reachable by Up (controller), by click (mouse), and by Tab (physical keyboard).
+- [ ] Selecting puts the title into the query, keeps the keyboard open, and never opens a page by itself; Done then reaches the result.
+
+**System layout (D3).**
+- [ ] AZERTY and QWERTZ (Windows and Linux) show their own characters, and every key types what it shows, Shift and AltGr included.
+- [ ] Dead keys insert the spacing accent shown.
+- [ ] An unreadable or IME layout falls back to US with the "US layout" note.
+- [ ] A layout switch while Reflux runs is followed.
+
+**Physical keyboard (D5).**
+- [ ] Typing never hides the virtual keyboard, and never presses, lights or animates a virtual key.
+- [ ] The field updates, and the virtual keyboard's cursor follows it.
+- [ ] Only an explicit dismissal closes it.
+
 **Switching.**
 - [ ] Live, both ways.
 - [ ] No close or reopen.
@@ -297,6 +356,9 @@ Never lost on a switch: the text, cursor, selection (none today), Shift (ONCE or
 | Morph: key bounds sampled across the transition (monotone, no overlap between moving keys, keys unique to one layout absent at the ends) | Compose UI test (`runDesktopComposeUiTest`, test clock) | CI |
 | Mouse-only search; controller-only search; switching mid-word | UI tests | CI |
 | Reduced motion | UI test | CI |
+| Completions: matching and ranking from library titles; focus never taken; Up/Tab/click access; selection rules | Unit and UI tests | CI |
+| System layout mapping: Windows `ToUnicodeEx` table builder against recorded layouts (US, French AZERTY, German QWERTZ, Swiss, UK ISO); XKB keysym tables; fallback paths | Unit tests (recorded tables), and walks with real layouts | CI; Windows PC; Linux VM |
+| Physical typing with the panel open: no hide, no virtual press, cursor follows | UI test | CI |
 | Windows, physical: controller and mouse, switching, two DPIs | Walk | Owner's PC |
 | Linux VM (`Reflux-QA-Ubuntu-26.04`): mouse layout, the morph | Walk (VM) | Labelled VM |
 | Google TV emulator; Fire TV (physical): the controller layout, the remote | Instrumented walks | Labelled per device |
@@ -317,10 +379,10 @@ Never lost on a switch: the text, cursor, selection (none today), Shift (ONCE or
 
 1. **M1. Data:** `KeyId`; `KeyboardLayout` for controller and mouse × kinds × pages; geometric navigation; unit tests.
 2. **M2. Controller layout (Concept C):** the new view placing keys from layout data; the session's chosen key becomes a `KeyId`; all existing keyboard tests green; TV and Fire TV walks.
-3. **M3. Mouse layout:** the staggered desk layout, hover and press, Tab, Caps and Hide; mouse-only tests; a Windows walk.
+3. **M3. Mouse layout:** the staggered desk layout, hover and press, Tab, Caps and Hide; **the system keyboard layout (§5.1)** with its fallback; mouse-only tests; Windows walks with US, AZERTY and QWERTZ; a Linux VM walk.
 4. **M4. Arbiter:** keyboard-scoped mode switching with hysteresis; unit tests.
 5. **M5. Morph:** per-key animation, entering and leaving keys, the container, reduced motion; bound-sampling UI tests; performance measured on the Fire TV.
-6. **M6. Focus mapping and state:** the full §9 rules; switch-mid-word tests.
+6. **M6. Focus mapping and state:** the full §9 rules; switch-mid-word tests; **title completions (§4.5)** in both layouts, with their focus rules; physical-keyboard coexistence (D5).
 7. **M7. Verification:** the §12 matrix on every listed environment; docs (INPUT_MODEL.md "Text entry by input"); the owner's review.
 
 ---
@@ -335,14 +397,22 @@ Never lost on a switch: the text, cursor, selection (none today), Shift (ONCE or
 | Experimental Compose APIs | Not used; a custom animation over a stable `Layout` |
 | Remote users lose the action keys | The action column stays in the controller layout; shortcuts are an addition |
 | Breaking B-023, B-051, B-054 behaviour | Their tests kept; layout data behind the same session API |
-| Scope creep (a touch keyboard on Android) | Out of scope by the owner's steer; the system IME stays |
+| Scope creep (a touch keyboard on Android; dictation; phone entry) | Out of scope by the owner's steer and decision D4; the system IME stays |
+| A misleading locale layout | D3's rule: labels come from the same table that types; anything unreadable falls back to US with a visible note |
+| Completions slowing typing on large libraries | The index is already in memory; matching is bounded (prefix and word-start over titles), debounced, run off the interface thread, and measured with a 10,000-title library |
 
 ---
 
-## 16. Open questions (owner)
+## 16. Owner decisions (2026-11-20) and remaining questions
 
-- **Q1:** offer an **alphabetic controller layout** as an accessibility option (for those who do not type)? The evidence is mixed (R1, R3, R10). The default stays QWERTY.
-- **Q2:** add the **title completions row** (§4.5) to F-P4, or later? It is the biggest speed gain for short title searches.
-- **Q3:** mouse layout **locales** (AZERTY, QWERTZ, ISO Enter)? The default is ANSI US; others would follow the system's keyboard layout.
-- **Q4:** dictation or phone entry for TV text (R7, R8)? Not in F-P4.
-- **Q5:** should a physical keyboard's typing **hide** the desk virtual keyboard after a few keys? Recommended: no (§7). Typing goes to the field, and the virtual keyboard stays out of the way.
+| # | Question | Decision |
+| --- | --- | --- |
+| D1 (was Q1) | An alphabetic controller layout? | **No.** Refined QWERTY is the default and only layout in F-P4; the architecture stays extensible |
+| D2 (was Q2) | Title completions? | **Yes, in F-P4**, deliberately simple, from the library only (§4.5) |
+| D3 (was Q3) | Mouse layout locales? | **Follow the system layout** where reliably detectable; consistent labels and characters; US fallback with a note (§5.1) |
+| D4 (was Q4) | Dictation or phone entry for TV? | **Excluded** from F-P4; possible separate features later |
+| D5 (was Q5) | Physical typing hiding the virtual keyboard? | **No.** A separate input path: never hides it and never presses, lights or animates its keys (§7) |
+
+No questions remain open for the plan. Details to settle during implementation (not owner decisions):
+- the exact completion counts per screen size;
+- whether libxkbcommon is bundled for Linux or XKB is read through Xlib.
