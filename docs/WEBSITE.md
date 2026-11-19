@@ -5,10 +5,10 @@ reflux.rsxdevelops.dev: Reflux's public home (LAUNCH.md for its stages and visua
 ## Architecture
 
 - **React 19 + Vite, prerendered, static.** `npm run build` runs `scripts/release-data.mjs`, the client build, a server-side build of `src/entry-server.jsx`, and `scripts/prerender.mjs`, which writes every page in `src/routes.js` as its own HTML file (`index.html`, `download.html`, `docs/playback.html`, …) with its title, description, canonical address, and sharing card, plus `404.html`, `sitemap.xml`, and `robots.txt`. Every page is readable without JavaScript; the script then takes the page over for client-side navigation. No server code, backend, forms, or database.
-- **Routes** (`src/routes.js`, the one list the app, the prerenderer, and the checks read): Home, Platforms and compatibility, Sources, Download, Testing (the Beta page: joining per platform, the report template, known issues, the timeline to 1.0; `/beta` redirects to it; the season's dates and the 1.0 window are typed once, in `src/beta.js`), Documentation (Getting started, Adding sources, How playback works, Your library, Troubleshooting and FAQ), Releases, Support, Privacy, Terms, Third-party notices (with the artwork credits), Security, and a not-found page.
+- **Routes** (`src/routes.js`, the one list the app, the prerenderer, and the checks read): Home, Platforms and compatibility, Sources, Download, Testing (the Beta page: joining per platform, the report template, known issues, the timeline to 1.0; `/beta` redirects to it; the season's dates and the 1.0 window are typed once, in `src/beta.js`), Documentation (a portal of its own, below), Releases, Support, Privacy, License (`/terms` redirects to it), Third-party notices (with the artwork credits), Security, and a not-found page.
 - **Visual system** (`src/styles.css`): the product's own rules (DESIGN.md, LAUNCH.md "Visual direction"): near-black, one typeface (Manrope, self-hosted from `@fontsource-variable/manrope`, the brand's wordmark face; declared in `styles.css` with `font-display: optional` and its Latin file preloaded on every page by `prerender.mjs`, so text is never re-flowed when the font arrives: DECISIONS.md, 2026-11-12), hairlines and quiet surfaces, glass only on the sticky header, colour only from real product images, motion only on the hero's entrance and nothing with reduced motion. The brand (design/brand) is drawn inline from the master geometry.
 - **Motion** (`src/motion.jsx`, the end of `src/styles.css`): the shared motion language (DESIGN.md, "Motion language") with browser features only. The script sets `html.motion`; without it, or with `prefers-reduced-motion`, every element is in its finished state. Navigation uses React Router's `viewTransition` (the View Transition API where the browser has it).
-- **RSX Develops** is credited in the footer and on Terms with its own wordmark (`public/brand/`); Trakt on the third-party page with its notice (no logo).
+- **RSX Develops** is credited in the footer and on License with its own wordmark (`public/brand/`); Trakt on the third-party page with its notice (no logo).
 - **Hosting: Vercel** (DECISIONS.md, 2026-11-08), team "rifaque's projects", project `reflux`.
 
 ## Product images
@@ -25,7 +25,7 @@ The pictures of Reflux on the site are captures of the real app on real devices 
 | `CHANGELOG.md` | The Releases page |
 | `release/published/*.json` (manifests from `tools/release/release.py`) | Download buttons, sizes, SHA-256, commit, `SHA256SUMS` link, the Windows libmpv source bundle: each at `https://github.com/Rifaque/reflux/releases/download/v<version>/<name>` |
 | `release/stores.json` | Google Play and Amazon Appstore links once listings exist |
-| `legal/components.txt`, `LICENSE`, the website's lockfile | Third-party notices, Terms |
+| `legal/components.txt`, `NOTICE`, `LICENSE`, the website's lockfile | Third-party notices, License (`/license`; `/terms` redirects there permanently) |
 | `design/brand/reflux-mark.svg`, `reflux-lockup.svg` | The mark and lockup, inline |
 
 No version, address, or checksum is typed into a page; the site is not a second registry. The rules live in `scripts/release-lib.mjs` (pure, tested by `npm test`, which runs `node --test` over `scripts/*.test.mjs`) and the build fails on any violation:
@@ -36,6 +36,12 @@ No version, address, or checksum is typed into a page; the site is not a second 
 **Download routing:** Android and Google TV → Google Play; Fire TV → Amazon Appstore; Windows and Linux → the official GitHub release (the zip or tar.gz, the libmpv source beside the Windows zip, `SHA256SUMS`, `manifest.json`, `provenance.intoto.json`). Android packages are never offered from the site. The Download page opens with one availability table (platform, channel, state, link) built from both sources; a desktop platform is `available` only when a record has its archive, otherwise it says "No public build yet". With nothing published, each section says so.
 
 **Tests of the data step** set `RELEASE_PUBLISHED_DIR` (another folder of records) and `RELEASE_DATA_OUT` (another output file); they are for the tests only and are never set in a deployed build (the project has no environment variables).
+
+## Documentation and Download (2026-11-19)
+
+- **Documentation** (`/docs`, DECISIONS.md, 2026-11-19): the pages are listed once in `src/docs/pages.js` (groups, order, titles, descriptions) and written in `src/docs/content.jsx`; routes, prerendering, the sidebar, search, breadcrumbs, previous and next all come from that list. Blocks in `src/docs/blocks.jsx`: a command with a copy button, a callout (tip, note, warning), and tabs with a link per tab (`#linux-fedora`). Headings get anchors; a page with more than two gets a table of contents. Search runs in the page over the pages' own text: no index service. A command or a distribution is written only with where it was checked (VERIFICATION.md).
+- **Download** is a card per platform: its state (from the release data and `release/stores.json`), what it needs, its one action, and its install guide. Windows and Linux link to the GitHub release's files with size, SHA-256, and `SHA256SUMS`; store platforms show the store or the beta, never a file.
+- **The GPL's text** is written to `public/license.txt` from `LICENSE` at build time (`scripts/release-data.mjs`; ignored by Git), so the License page links to it rather than carrying 36 KB in the script.
 
 ## Search (M8)
 

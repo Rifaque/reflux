@@ -50,11 +50,11 @@ const shared = ['src/components.jsx', 'src/styles.css', 'src/App.jsx', 'src/rout
 const sources = {
   '/': ['src/pages/Home.jsx'], '/platforms': ['src/pages/Platforms.jsx'], '/sources': ['src/pages/Sources.jsx'],
   '/download': ['src/pages/Download.jsx', '../release'], '/testing': ['src/pages/Testing.jsx'], '/releases': ['src/pages/Releases.jsx', '../CHANGELOG.md'],
-  '/support': ['src/pages/Support.jsx'], '/privacy': ['src/pages/Legal.jsx'], '/terms': ['src/pages/Legal.jsx', '../LICENSE'],
+  '/support': ['src/pages/Support.jsx'], '/privacy': ['src/pages/Legal.jsx'], '/license': ['src/pages/Legal.jsx', '../NOTICE', '../LICENSE'],
   '/legal/third-party': ['src/pages/Legal.jsx', '../legal'], '/security': ['src/pages/Legal.jsx'],
 }
 function lastChanged(path) {
-  const files = [...(sources[path] ?? ['src/pages/Docs.jsx']), ...shared]
+  const files = [...(sources[path] ?? ['src/pages/Docs.jsx', 'src/docs']), ...shared]
   try {
     // In a shallow clone (CI, Vercel) the oldest commit fetched seems to add every file; it is never taken for a change.
     const shallowFile = execFileSync('git', ['rev-parse', '--git-path', 'shallow'], { cwd: site, encoding: 'utf8' }).trim()

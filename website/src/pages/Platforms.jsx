@@ -8,7 +8,7 @@ const platforms = [
   { name: 'Android TV and Google TV', needs: 'Android 8.0 or later', from: 'Google Play (closed beta until 1.0)', notes: 'Built for the remote. What you are watching and your next episodes appear in the home screen’s Watch Next row.' },
   { name: 'Fire TV', needs: 'Fire OS 7 or later', from: 'Amazon Appstore (beta by invitation until 1.0)', notes: 'Devices on Vega OS do not run Android apps and are not supported.' },
   { name: 'Windows', needs: 'Windows 10 or 11, 64-bit (tested on Windows 11)', from: 'GitHub Release, linked from Download', notes: 'Everything included, playback engine too. Not yet signed by a publisher, so Windows may warn before it first opens.' },
-  { name: 'Linux', needs: '64-bit, with your distribution’s libmpv', from: 'GitHub Release, linked from Download', notes: 'Runs on X11 and through XWayland. Install libmpv2 (Debian, Ubuntu) or mpv-libs (Fedora).' },
+  { name: 'Linux', needs: '64-bit, with your distribution’s libmpv', from: 'GitHub Release, linked from Download', notes: 'Runs on X11 and through XWayland. One command installs libmpv: the Linux guide has it for Ubuntu, Debian, Mint, Fedora, and Arch.' },
 ]
 
 // What was seen playing on real devices and the Google TV emulator (docs/PLAYBACK.md, section 17), and nothing more.

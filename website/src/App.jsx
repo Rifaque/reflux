@@ -11,7 +11,7 @@ import Testing from './pages/Testing.jsx'
 import { DocArticle, DocsIndex, docSlugs } from './pages/Docs.jsx'
 import Releases from './pages/Releases.jsx'
 import Support from './pages/Support.jsx'
-import { Notices, Privacy, Security, Terms } from './pages/Legal.jsx'
+import { License, Notices, Privacy, Security } from './pages/Legal.jsx'
 import NotFound from './pages/NotFound.jsx'
 
 export default function App() {
@@ -39,7 +39,7 @@ export default function App() {
           <Route path="/releases" element={<Releases />} />
           <Route path="/support" element={<Support />} />
           <Route path="/privacy" element={<Privacy />} />
-          <Route path="/terms" element={<Terms />} />
+          <Route path="/license" element={<License />} />
           <Route path="/legal/third-party" element={<Notices />} />
           <Route path="/security" element={<Security />} />
           <Route path="*" element={<NotFound />} />

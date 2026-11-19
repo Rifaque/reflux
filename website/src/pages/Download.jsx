@@ -1,147 +1,104 @@
+// Download (docs/WEBSITE.md, "Download"): one card per platform, each saying where Reflux comes from for it, what it
+// needs, and the one thing to do next, with its install guide one step away. Every version, file, size, and state is
+// the release data's (scripts/release-data.mjs): the publication record and the store records. The site never offers an
+// Android file: Android and Fire TV come only from their stores (docs/DECISIONS.md, 2026-11-15).
 import { Link } from 'react-router-dom'
 import release from '../generated/release.json'
 import { Out, PageHead } from '../components.jsx'
-import { STATE_LABELS, availability, desktopFile } from '../availability.js'
+import { STATE_LABELS, desktopFile } from '../availability.js'
 
 const latest = release.latest
 const megabytes = (bytes) => `${Math.round(bytes / 1048576)} MB`
-const notes = latest ? release.changelog.find((s) => s.version === latest.version) : null
 
-/** A store's listing, once it exists; until then, a plain word about when. The site never offers an Android file. */
-function Store({ name, listing, beta, how }) {
+/** A store-delivered platform: its state, and the way in (the listing once public, the beta while testing). */
+function StoreAction({ listing, beta, name }) {
   if (listing?.state === 'available' && listing.url) return <Out className="button" href={listing.url}>Get it on {name}</Out>
-  if (listing?.state === 'testing') return (
-    <>
-      <p>{how} Reflux is not on public {name.replace(/^the /, '')} until 1.0.</p>
-      <p><Link className="button" to={`/testing#${beta}`}>Join the beta</Link></p>
-    </>
-  )
-  return <p className="quiet">Not listed yet. Reflux will be on {name} when testing opens; it will be linked here.</p>
+  if (listing?.state === 'testing') return <Link className="button" to={`/testing#${beta}`}>Join the beta</Link>
+  return <span className="quiet small">Not listed yet</span>
 }
 
-/** A desktop build from Reflux's GitHub release, with what to check it against. */
-function Desktop({ platform }) {
+/** A GitHub-delivered platform: the file, straight from the release (never through this site), with its size and hash. */
+function DesktopAction({ platform, label }) {
   const file = desktopFile(latest, platform)
-  const source = latest?.artifacts.find((a) => a.kind === 'source' && a.distribution === 'github-release')
-  if (!file) return <p className="quiet">No public build yet. Desktop builds will come from Reflux’s official GitHub releases, linked here with their checksums.</p>
+  if (!file) return <span className="quiet small">No public build yet</span>
   return (
     <>
-      <p><Out className="button" href={file.url}>Download for {platform === 'windows' ? 'Windows' : 'Linux'}</Out></p>
-      <p className="small quiet">{file.name}, {megabytes(file.size)}, Reflux {latest.version}, built from commit <code>{latest.commit.slice(0, 7)}</code>. <Out href={latest.releaseUrl}>Release page</Out>.</p>
-      <p className="checksum small">SHA-256 <code>{file.sha256}</code> · <Out href={latest.checksumsUrl}>SHA256SUMS</Out></p>
-      {platform === 'windows' && source && <p className="small quiet">The complete source of the playback engine inside it, offered under its license: <Out href={source.url}>{source.name}</Out>.</p>}
+      <Out className="button" href={file.url}>Download for {label}</Out>
+      <p className="small quiet file-facts">{file.name} · {megabytes(file.size)}</p>
+      <p className="small quiet checksum">SHA-256 <code title={file.sha256}>{file.sha256.slice(0, 16)}…</code> · <Out href={latest.checksumsUrl}>SHA256SUMS</Out> · <Link to="/docs/install/verify">How to check</Link></p>
     </>
   )
 }
 
-function Where({ row }) {
-  if (row.url) return <Out href={row.url}>{row.channel === 'GitHub Release' ? `Reflux ${row.version}` : 'Open the listing'}</Out>
-  if (row.state === 'testing') return <Link to="/testing">Join the beta</Link>
-  return <span className="quiet">{row.note ?? 'Not yet'}</span>
+function State({ state }) {
+  return <span className={`state state-${state}`}>{STATE_LABELS[state] ?? state}</span>
 }
 
+const desktopState = (platform) => (desktopFile(latest, platform) ? (latest.version.includes('-') ? 'beta' : 'available') : 'not listed')
+
 export default function Download() {
-  const rows = availability({ stores: release.stores, latest })
-  const windowsName = desktopFile(latest, 'windows')?.name ?? 'reflux-<version>-windows-x64.zip'
-  const linuxName = desktopFile(latest, 'linux')?.name ?? 'reflux-<version>-linux-x64.tar.gz'
+  const play = release.stores.googlePlay
+  const amazon = release.stores.amazonAppstore
+  const cards = [
+    {
+      id: 'windows', name: 'Windows', state: desktopState('windows'), guide: '/docs/install/windows',
+      facts: ['Windows 10 or 11, 64-bit (x64)', 'A zip: the playback engine and Java runtime included', 'Not yet publisher-signed: Windows may warn once'],
+      action: <DesktopAction platform="windows" label="Windows" />,
+    },
+    {
+      id: 'linux', name: 'Linux', state: desktopState('linux'), guide: '/docs/install/linux',
+      facts: ['64-bit x86, on X11 or XWayland', 'A tar.gz with its own Java runtime', 'Needs your distribution’s libmpv: one command, in the guide'],
+      action: <DesktopAction platform="linux" label="Linux" />,
+    },
+    {
+      id: 'android', name: 'Android phones and tablets', state: play?.state ?? 'not listed', guide: '/docs/install/android',
+      facts: ['Android 8.0 or later', 'From Google Play; it updates there', 'Closed beta: invited Google accounts'],
+      action: <StoreAction listing={play} beta="android" name="Google Play" />,
+    },
+    {
+      id: 'android-tv', name: 'Android TV and Google TV', state: play?.state ?? 'not listed', guide: '/docs/install/android-tv',
+      facts: ['Android 8.0 or later', 'From Google Play on the TV', 'Closed beta: invited Google accounts'],
+      action: <StoreAction listing={play} beta="android" name="Google Play" />,
+    },
+    {
+      id: 'fire-tv', name: 'Fire TV', state: amazon?.state ?? 'not listed', guide: '/docs/install/fire-tv',
+      facts: ['Fire OS 7 or later (not Vega OS)', 'From the Amazon Appstore, through Beta Hub', 'Beta by invitation: Amazon accounts'],
+      action: <StoreAction listing={amazon} beta="fire-tv" name="the Amazon Appstore" />,
+    },
+  ]
   return (
     <article className="page">
       <PageHead eyebrow="Download" title="Get Reflux.">
         <p>
           {latest ? `Reflux ${latest.version}.` : `Reflux ${release.version} is in development and has not been released yet.`}
-          {latest?.version.includes('-') && ' A beta, tested until 15 December 2026; Reflux 1.0 is planned for December.'} Android and Google TV come from
-          Google Play, Fire TV from the Amazon Appstore, and Windows and Linux from Reflux's GitHub releases. Nothing else is official.
-          {' '}<Link to="/testing">About the beta</Link>.
+          {latest?.version.includes('-') && ' A beta until 15 December 2026; Reflux 1.0 is planned for December.'} Free on every platform,
+          from the places below and nowhere else.
         </p>
       </PageHead>
 
-      <section aria-labelledby="availability">
-        <h2 id="availability">Where each platform stands</h2>
-        <div className="table-wrap">
-          <table>
-            <thead><tr><th scope="col">Platform</th><th scope="col">From</th><th scope="col">State</th><th scope="col">Link</th></tr></thead>
-            <tbody>{rows.map((r) => <tr key={r.name}><th scope="row">{r.name}</th><td>{r.channel}</td><td>{STATE_LABELS[r.label ?? r.state]}</td><td><Where row={r} /></td></tr>)}</tbody>
-          </table>
-        </div>
-      </section>
+      <ul className="platform-cards">
+        {cards.map((card) => (
+          <li key={card.id} id={card.id} className="platform-card">
+            <div className="platform-card-head">
+              <h2>{card.name}</h2>
+              <State state={card.state} />
+            </div>
+            <ul className="platform-facts">{card.facts.map((f) => <li key={f}>{f}</li>)}</ul>
+            <div className="platform-action">{card.action}</div>
+            <Link to={card.guide} className="more small" viewTransition>Installation guide</Link>
+          </li>
+        ))}
+      </ul>
 
-      <div className="download-grid">
-        <section className="download" aria-labelledby="android">
-          <h2 id="android">Android phones, tablets, Android TV, and Google TV</h2>
-          <p className="quiet small">Android 8.0 or later. Install from Google Play and it updates there; there is no file to download.</p>
-          <Store name="Google Play" listing={release.stores.googlePlay} beta="android" how="A closed beta on Google Play: invited Google accounts opt in, then install and update from Google Play." />
-        </section>
-        <section className="download" aria-labelledby="fire-tv">
-          <h2 id="fire-tv">Fire TV</h2>
-          <p className="quiet small">Fire OS 7 or later. Not for devices on Vega OS. Install from the Appstore and it updates there.</p>
-          <Store name="the Amazon Appstore" listing={release.stores.amazonAppstore} beta="fire-tv" how="A beta by invitation, through Amazon Live App Testing: invited Amazon accounts install it with Appstore Beta Hub." />
-        </section>
-        <section className="download" aria-labelledby="windows">
-          <h2 id="windows">Windows</h2>
-          <p className="quiet small">Windows 10 or 11, 64-bit (x64). A zip with everything inside, the playback engine and its own Java runtime included; nothing else to install. There is no installer yet.</p>
-          <Desktop platform="windows" />
-          <h3>Install, update, remove</h3>
-          <ol className="plain numbered small">
-            <li>Extract <code>{windowsName}</code> to a folder you will keep.</li>
-            <li>Open <code>Reflux.exe</code> in it. If Windows says “Windows protected your PC”, choose More info, then Run anyway (see below). For a shortcut, right-click <code>Reflux.exe</code> and choose Send to → Desktop (create shortcut); on Windows 11 it is under Show more options.</li>
-            <li><strong>Update:</strong> Reflux does not update itself. When a new build is announced here and on <Link to="/releases">Releases</Link>, extract the newer zip to a new folder, then delete the old folder. Your library stays in <code>%LOCALAPPDATA%\Reflux</code>.</li>
-            <li><strong>Remove:</strong> delete the folder. To remove your library too, delete <code>%LOCALAPPDATA%\Reflux</code> and the “Reflux” entries in Windows Credential Manager.</li>
-          </ol>
-        </section>
-        <section className="download" aria-labelledby="linux">
-          <h2 id="linux">Linux</h2>
-          <p className="quiet small">64-bit x86 (x86-64), on X11 or through XWayland. A tar.gz with its own Java runtime; it plays through your distribution’s libmpv. No AppImage, Flatpak, or distribution package yet.</p>
-          <Desktop platform="linux" />
-          <h3>Install, update, remove</h3>
-          <ol className="plain numbered small">
-            <li>Install libmpv: <code>libmpv2</code> on Debian 12 or later and Ubuntu 24.04 or later, <code>mpv-libs</code> on Fedora. Ubuntu 22.04 does not package <code>libmpv2</code>, so there Reflux needs libmpv installed another way, or a newer Ubuntu.</li>
-            <li>To keep server sign-ins in your desktop’s Secret Service, install <code>secret-tool</code> (<code>libsecret-tools</code> on Debian and Ubuntu, <code>libsecret</code> on Fedora). Without it Reflux keeps them in its own files and says so in its log.</li>
-            <li>Extract <code>{linuxName}</code> (<code>tar -xzf</code>) anywhere you can write, such as <code>~/Applications</code>, and run <code>bin/Reflux</code>. No root access is needed; the archive keeps its execute permission.</li>
-            <li><strong>Update:</strong> Reflux does not update itself. Extract the newer archive to a fresh folder, then remove the old one. Your library in <code>~/.local/share/reflux</code> is not touched.</li>
-            <li><strong>Remove:</strong> delete the folder; delete <code>~/.local/share/reflux</code> as well to remove your library.</li>
-          </ol>
-        </section>
-      </div>
-
-      <aside className="notice" aria-labelledby="unsigned">
-        <h2 id="unsigned">About Windows security warnings</h2>
-        <p>Reflux for Windows is not yet signed with a publisher certificate, so Windows may show “Windows protected your PC” the first time you open it. That is expected for this build.</p>
-        <p>Download it only from this site or Reflux’s GitHub releases, and check that its SHA-256 matches the one above before you open it (see below). If it does not match, do not open it.</p>
-        <p>Keep SmartScreen and your other Windows protections on. Where Smart App Control is on, Windows does not run unsigned apps it does not know, and this build will not open there; Reflux will never ask you to turn it off. Signed builds are planned.</p>
-      </aside>
-
-      <section aria-labelledby="verify">
-        <h2 id="verify">Check what you downloaded</h2>
-        <p>
-          {latest ? 'Every desktop release lists' : 'Each desktop release will list'} the SHA-256 of each file
-          {latest ? <> in <Out href={latest.checksumsUrl}>SHA256SUMS</Out>, with the <Out href={latest.manifestUrl}>manifest</Out> and the <Out href={latest.provenanceUrl}>build provenance</Out> beside it</> : ', and publish SHA256SUMS, the manifest, and the build provenance beside the files'}.
-          Put the file and SHA256SUMS in one folder, then:
-        </p>
-        <pre className="notice-text">{`# Linux (and macOS)
-sha256sum -c --ignore-missing SHA256SUMS
-
-# Windows PowerShell
-Get-FileHash .\\${windowsName} -Algorithm SHA256`}</pre>
-        <p>On Windows, compare the hash it prints with the line for that file in SHA256SUMS. For a stronger check, GitHub’s CLI verifies the file’s attestation:</p>
-        <pre className="notice-text">{`gh attestation verify ${linuxName} -R Rifaque/reflux --signer-workflow Rifaque/reflux/.github/workflows/release.yml`}</pre>
-        <p className="small quiet">An attestation proves that GitHub saw Reflux’s release workflow build exactly this file from the commit it names, and that the file has not changed since. It does not say the software has no bugs, and it is not a publisher signature.</p>
-      </section>
-
-      <section aria-labelledby="notes">
-        <h2 id="notes">{latest ? `What is in Reflux ${latest.version}` : 'What is coming'}</h2>
-        {notes
-          ? <ul className="changes">{notes.items.slice(0, 8).map((item, i) => <li key={i}>{item}</li>)}</ul>
-          : <p>Reflux {release.version} is in development.</p>}
-        <p><Link to="/releases" className="more">All release notes</Link></p>
-      </section>
-
-      <section aria-labelledby="where-data">
-        <h2 id="where-data">Where Reflux keeps your library</h2>
+      <section aria-labelledby="more" className="download-more">
+        <h2 id="more">Before and after you download</h2>
         <ul className="plain">
-          <li><strong>Windows:</strong> %LOCALAPPDATA%\Reflux, and server sign-ins in Windows Credential Manager under “Reflux”.</li>
-          <li><strong>Linux:</strong> ~/.local/share/reflux, and sign-ins in your desktop’s secret store where it has one.</li>
-          <li><strong>Android, TVs:</strong> Reflux’s own storage, removed when you uninstall it.</li>
+          <li><Link to="/docs/install/verify">Check a download</Link> against its published SHA-256 and build attestation{latest && <> (<Out href={latest.releaseUrl}>the {latest.version} release on GitHub</Out>)</>}.</li>
+          <li><Link to="/releases">Release notes</Link>: what changed in each version.</li>
+          <li><Link to="/platforms">Platforms and compatibility</Link>: what each device plays.</li>
+          <li><Link to="/testing">The beta</Link>: how to join on Android and Fire TV, and how to report a problem.</li>
         </ul>
+        <p className="small quiet">Windows and Linux files are delivered by GitHub's release service directly; this site only links to them. Reflux is free and open source (<Link to="/license">License</Link>).</p>
       </section>
     </article>
   )

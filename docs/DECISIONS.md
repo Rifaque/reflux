@@ -1395,6 +1395,16 @@ M11 decided the open items of its plan (planning/M11-DISTRIBUTION-PLAN.md, secti
 - **1.0 communication.** "Planned for December 2026", depending on feedback, qualification, and store approval; 10 December is an internal readiness checkpoint and 15 December the release decision, never a promised release date. Each platform publishes through its own path.
 - **No Windows installer in the beta**: none exists or is tested, and building one would change the release; reconsidered for 1.0.
 
+## 2026-11-19 — The website gets a documentation portal, platform install guides, and a license page
+
+**Decided by the owner (2026-11-19, the consolidated master prompt).** Prepared locally; deploying it is the owner's.
+
+- **Documentation is a portal of its own** (`/docs`): grouped pages with a sidebar, search over the pages' text, breadcrumbs, a table of contents, previous and next, copyable commands, and an install guide per platform (Windows; Linux with a tab per distribution; Android; Android TV; Fire TV; checking a download). The content is the site's own source (`website/src/docs`), prerendered like every page; no documentation framework or search service was added.
+- **A guide states only what was checked.** A distribution's command says where it was checked with Reflux (VERIFICATION.md); one not checked says so. Device steps not verified are not written.
+- **Download is a card per platform**, each with its state, its requirements, its one action, and its guide. Files still come straight from the GitHub release; the site never hosts or proxies them.
+- **`/license` replaces `/terms`** (a permanent redirect), and the GPL's text is a static `/license.txt` made from the repository's `LICENSE` at build time, not part of the page's script.
+- **Download speed (investigated):** the site's pages are small and served from the edge cache; the downloads are GitHub's release service, measured starting in under half a second. The site's real cost was one script bundle carrying the changelog and, after the license change, the GPL's text; moving the GPL out kept the bundle about the same size despite the new documentation. Splitting the bundle per page is the next step if it grows; not done here.
+
 ## 2026-11-19 — Reflux is free and open source under GPL-3.0-or-later
 
 **Decided by the owner (2026-11-19).** Supersedes "Reflux is proprietary; its source is visible, not licensed" (2026-10-19). Prepared on the branch `open-source-gpl`; it takes effect for the public when that branch is merged and pushed, and for an app build when a build with it is cut (both the owner's).
