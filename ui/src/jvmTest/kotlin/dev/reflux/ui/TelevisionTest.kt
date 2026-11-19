@@ -215,7 +215,10 @@ class TelevisionTest {
         save("tv-search-results")
         remote(app, Key.ARROW_DOWN)
         await("a result") { !app.textInputActive && runCatching { focused().height > 100f }.getOrDefault(false) }
-        // Up is the field again, and Back from it goes back: a remote has no key just for letting go of a field.
+        // Up walks back over what is on screen (B-057): the scope tabs under the field, then the field. Down from the field
+        // goes straight to the results. Back from the field goes back: a remote has no key just for letting go of a field.
+        remote(app, Key.ARROW_UP)
+        await("the tabs") { !app.textInputActive && runCatching { focused().height < 100f }.getOrDefault(false) }
         remote(app, Key.ARROW_UP)
         await("the field") { app.textInputActive }
         // Back from it goes to the navigation, as from any destination's page, and then Home.

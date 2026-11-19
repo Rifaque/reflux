@@ -1,5 +1,10 @@
 package dev.reflux.ui.screens
 
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -91,11 +96,11 @@ import kotlinx.coroutines.delay
 /**
  * Search (B-057): one page from the first glance to what was found.
  *
- * - **The field leads**: larger than a page's controls, with a quiet line saying what can be asked.
- * - **A filter, not a suggestion**: All, Movies or Shows, a switch under the field, narrowing whatever is asked.
- * - **Idle, the page is a starting point** made of this library only: recent searches (this profile's, on this device),
- *   quick finds (smart searches that find something here, each with its count), and the library's genres. Nothing is
- *   offered that would find nothing, and nothing is there only to fill space.
+ * - **The field leads**, and its own line under it holds the scope as plain tabs (All, Movies, Shows): a filter, part of
+ *   the search, never a widget beside it (B-057's second design, after the owner's review).
+ * - **Idle, the page is an index set in type**, made of this library only: recent searches (this profile's, on this
+ *   device), "Start with" (smart searches that find something here, each with its count), and the genre index. No boxes,
+ *   badges or colours; nothing offered that would find nothing.
  * - **Results** say how many there are and what was understood, in sections by kind where there is more than one.
  * - **Nothing found** keeps the query in the field and offers ways on: clear it, search everything, or a quick find
  *   that does find something.
@@ -149,40 +154,26 @@ internal fun SearchScreen(app: AppState) {
         verticalArrangement = Arrangement.spacedBy(22.dp),
     ) {
         fullWidth("field") {
-            val phone = layout.formFactor == FormFactor.PHONE
-            val searchField: @Composable (Modifier) -> Unit = { modifier ->
-                    SearchField(app, query, field, modifier, if (hasResults) firstResult else null, onDone = {
-                        if (query.isNotBlank()) app.attempt("That search couldn't be remembered.") { app.read { rememberSearch(query) } }.invokeOnCompletion { recentVersion++ }
-                        if (!hasResults || runCatching { firstResult.requestFocus() }.isFailure) focus.moveFocus(FocusDirection.Down)
-                    })
-            }
-            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                // Wide, the switch sits at the field's end, on its line; on a phone, under it.
-                if (phone) {
-                    searchField(Modifier)
-                    ScopeSwitch(app)
-                } else {
-                    Row(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                        searchField(Modifier.weight(1f))
-                        ScopeSwitch(app)
-                    }
-                }
-                Summary(model, sections.sumOf { it.cards.size }, query.isBlank())
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                SearchField(app, query, field, Modifier, if (hasResults) firstResult else null, onDone = {
+                    if (query.isNotBlank()) app.attempt("That search couldn't be remembered.") { app.read { rememberSearch(query) } }.invokeOnCompletion { recentVersion++ }
+                    if (!hasResults || runCatching { firstResult.requestFocus() }.isFailure) focus.moveFocus(FocusDirection.Down)
+                })
+                // The field's own line: what to search in, and (with a query) what was found.
+                SearchLine(app, model, sections.sumOf { it.cards.size }, query.isBlank())
             }
         }
         val current = model
         when {
             query.isBlank() -> discovery?.let { found ->
-                if (found.recent.isNotEmpty()) fullWidth("recent") {
-                    RecentSearches(found.recent, onChoose = ::ask, onClear = { app.attempt("That couldn't be cleared. Try again.") { app.read { forgetSearches() } }.invokeOnCompletion { recentVersion++ } })
+                fullWidth("index") {
+                    if (found.isEmpty) Starting()
+                    else DiscoveryIndex(
+                        found,
+                        onAsk = ::ask,
+                        onClearRecent = { app.attempt("That couldn't be cleared. Try again.") { app.read { forgetSearches() } }.invokeOnCompletion { recentVersion++ } },
+                    )
                 }
-                if (found.quickFinds.isNotEmpty()) fullWidth("quick") {
-                    Section("Quick finds") { QuickFinds(found.quickFinds, onChoose = { ask(it.query) }) }
-                }
-                if (found.genres.isNotEmpty()) fullWidth("genres") {
-                    Section("Genres") { Genres(found.genres, onChoose = { ask(it.name.lowercase()) }) }
-                }
-                if (found.isEmpty) fullWidth("nothing") { Starting() }
             }
             current == null -> Unit
             sections.isEmpty() || sections.all { it.cards.isEmpty() } -> fullWidth("none") {
@@ -273,204 +264,216 @@ private fun SearchField(app: AppState, query: String, field: FocusRequester, mod
 }
 
 /**
- * Under the field: what a query found and how it was understood ("12 results · Movies · 4K"); idle, a quiet line on what can
- * be asked instead.
+ * The field's own line, no surface of its own: the scope as plain tabs (All, Movies, Shows), the chosen one bright and
+ * underlined, and at the far end what a query found and how it was understood ("12 results · Movies · 4K"). The same on every
+ * screen: it reads as part of the field, never as a widget beside it.
  */
 @Composable
-private fun Summary(model: SearchModel?, count: Int, idle: Boolean) {
-    val narrow = LocalLayout.current.formFactor == FormFactor.PHONE
-    val summary: @Composable () -> Unit = {
-        when {
-            idle -> Text("Titles, people, genres, or ask: “90s comedies under 2 hours”", style = LocalTypography.current.caption, color = RefluxColors.contentTertiary, maxLines = if (narrow) 2 else 1)
-            // Nothing found says so below, in its own words: no "0 results" above it.
-            model == null || count == 0 -> Unit
-            else -> {
-                val total = if (count == 1) "1 result" else "$count results"
-                // How many, then each thing understood, as separate quiet words: "12 results · Movies · 4K".
-                // Someone not looking at the page is told how many there are, by a node of its own.
-                Box(Modifier.announces(total))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text(total, style = LocalTypography.current.captionStrong, color = RefluxColors.contentSecondary, maxLines = 1)
-                    for (understood in model.interpretation) {
-                        Text("·", style = LocalTypography.current.caption, color = RefluxColors.contentTertiary)
-                        Text(understood, style = LocalTypography.current.caption, color = RefluxColors.contentTertiary, maxLines = 1)
+private fun SearchLine(app: AppState, model: SearchModel?, count: Int, idle: Boolean) {
+    Row(Modifier.fillMaxWidth().padding(start = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+        ScopeTabs(app)
+        Spacer(Modifier.weight(1f))
+        if (!idle && model != null && count > 0) {
+            val total = if (count == 1) "1 result" else "$count results"
+            // Someone not looking at the page is told how many there are, by a node of its own.
+            Box(Modifier.announces(total))
+            Row(Modifier.padding(start = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                for (understood in model.interpretation.take(3)) {
+                    Text(understood, style = LocalTypography.current.caption, color = RefluxColors.contentTertiary, maxLines = 1)
+                    Text("\u00b7", style = LocalTypography.current.caption, color = RefluxColors.contentTertiary)
+                }
+                Text(total, style = LocalTypography.current.captionStrong, color = RefluxColors.contentSecondary, maxLines = 1)
+            }
+        }
+    }
+}
+
+/** All, Movies, Shows: tabs of text. The chosen one is bright with a short rule under it; the others are quiet until pointed at. */
+@Composable
+private fun ScopeTabs(app: AppState) {
+    val layout = LocalLayout.current
+    val ink = RefluxColors.contentPrimary
+    Row(Modifier.semantics { contentDescription = "Search in" }, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+        for (scope in SearchScope.entries) {
+            val chosen = app.searchScope == scope
+            Pressable(
+                { app.searchScope = scope },
+                Modifier.testTag("scope:${scope.label}").semantics { selected = chosen },
+                Shapes.small, lift = 0f, role = Role.Tab,
+            ) { active ->
+                Box(
+                    Modifier.heightIn(min = maxOf(36f, layout.minTargetDp - 8f).dp)
+                        .background(if (active && !chosen) States.layer(StateLayers.ACTIVE_ON_GLASS) else Color.Transparent, Shapes.small)
+                        .drawBehind {
+                            if (chosen) {
+                                val inset = 10.dp.toPx()
+                                drawRect(ink, androidx.compose.ui.geometry.Offset(inset, size.height - 2.dp.toPx()), androidx.compose.ui.geometry.Size(size.width - 2 * inset, 2.dp.toPx()))
+                            }
+                        }
+                        .padding(horizontal = 10.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        scope.label, style = LocalTypography.current.captionStrong, maxLines = 1,
+                        color = when {
+                            chosen -> RefluxColors.contentPrimary
+                            active -> RefluxColors.contentSecondary
+                            else -> RefluxColors.contentTertiary
+                        },
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * The idle page as an index, set in type rather than built of boxes: on a wide screen two columns, "Start with" (recent
+ * searches, then the library's quick finds) narrow on the left and the genre index wide on the right; on a phone, one above
+ * the other. Everything here is this library's and finds something.
+ */
+@Composable
+private fun DiscoveryIndex(found: SearchDiscovery, onAsk: (String) -> Unit, onClearRecent: () -> Unit) {
+    val layout = LocalLayout.current
+    BoxWithConstraints(Modifier.fillMaxWidth().padding(top = 18.dp)) {
+        val wide = maxWidth >= 720.dp
+        val starts: @Composable (Modifier) -> Unit = { modifier ->
+            Column(modifier, verticalArrangement = Arrangement.spacedBy(26.dp)) {
+                if (found.recent.isNotEmpty()) {
+                    Column(verticalArrangement = Arrangement.spacedBy(IndexRowGap)) {
+                        Label("Recent", trailing = { QuietAction("Clear", onClearRecent) })
+                        for (words in found.recent) IndexRow(words, null, "recent", quiet = true) { onAsk(words) }
+                    }
+                }
+                if (found.quickFinds.isNotEmpty()) {
+                    Column(verticalArrangement = Arrangement.spacedBy(IndexRowGap)) {
+                        Label("Start with")
+                        for (find in found.quickFinds) IndexRow(find.title, find.count, "suggestion") { onAsk(find.query) }
                     }
                 }
             }
         }
-    }
-    summary()
-}
-
-/** All, Movies, Shows: one control, the choice lit within it, so it reads as a filter and never as a suggestion. */
-@Composable
-private fun ScopeSwitch(app: AppState) {
-    val layout = LocalLayout.current
-    Row(
-        Modifier.background(States.layer(0.05f), CircleShape).border(1.dp, RefluxColors.divider, CircleShape).padding(3.dp)
-            .semantics { contentDescription = "Search in" },
-        horizontalArrangement = Arrangement.spacedBy(2.dp),
-    ) {
-        for (scope in SearchScope.entries) {
-            val chosen = app.searchScope == scope
-            Pressable({ app.searchScope = scope }, Modifier.testTag("scope:${scope.label}"), CircleShape, lift = 0f) { active ->
-                Box(
-                    Modifier.heightIn(min = maxOf(34f, layout.minTargetDp - 6f).dp)
-                        .background(
-                            when {
-                                chosen -> RefluxColors.contentPrimary.copy(alpha = 0.92f)
-                                active -> States.layer(StateLayers.ACTIVE_ON_GLASS)
-                                else -> Color.Transparent
-                            },
-                            CircleShape,
-                        )
-                        .padding(horizontal = 16.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(scope.label, style = LocalTypography.current.captionStrong, color = if (chosen) RefluxColors.background else RefluxColors.contentSecondary, maxLines = 1)
+        val genres: @Composable (Modifier) -> Unit = { modifier ->
+            if (found.genres.isNotEmpty()) {
+                Column(modifier, verticalArrangement = Arrangement.spacedBy(IndexRowGap)) {
+                    Label("Genres")
+                    GenreIndex(found.genres) { onAsk(it.name.lowercase()) }
                 }
+            }
+        }
+        if (wide) {
+            Row(horizontalArrangement = Arrangement.spacedBy(if (layout.formFactor == FormFactor.TV) 72.dp else 56.dp)) {
+                starts(Modifier.weight(0.36f).widthIn(max = 420.dp))
+                genres(Modifier.weight(0.64f))
+            }
+        } else {
+            Column(verticalArrangement = Arrangement.spacedBy(30.dp)) {
+                starts(Modifier.fillMaxWidth())
+                genres(Modifier.fillMaxWidth())
             }
         }
     }
 }
 
-/** A section of the idle page: a heading in the page's section style, then its content. */
+/** A section's name, small and spaced, in the page's quietest colour: a label for what follows, not a heading competing with it. */
 @Composable
-private fun Section(title: String, trailing: (@Composable () -> Unit)? = null, content: @Composable () -> Unit) {
-    Column(Modifier.padding(top = 4.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(title, Modifier.weight(1f).heading(), style = LocalTypography.current.title, maxLines = 1)
-            trailing?.invoke()
-        }
-        content()
+private fun Label(text: String, trailing: (@Composable () -> Unit)? = null) {
+    Row(Modifier.fillMaxWidth().padding(start = 12.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            text, Modifier.weight(1f).heading(),
+            style = LocalTypography.current.label.copy(letterSpacing = 1.4.sp), color = RefluxColors.contentTertiary, maxLines = 1,
+        )
+        trailing?.invoke()
     }
 }
 
-/** This profile's recent searches, newest first, as a short line of quiet entries; Clear forgets them. */
+/** A small text action beside a label (Clear). */
 @Composable
-private fun RecentSearches(recent: List<String>, onChoose: (String) -> Unit, onClear: () -> Unit) {
-    Section("Recent", trailing = { Button("Clear", onClear, style = ButtonStyle.QUIET) }) {
-        TileGrid(recent, minWidth = 180.dp, gap = SuggestionGap) { words ->
-            Pressable({ onChoose(words) }, Modifier.testTag("recent"), Shapes.medium, lift = 0f) { active ->
+private fun QuietAction(text: String, onClick: () -> Unit) {
+    Pressable(onClick, Modifier, Shapes.small, lift = 0f) { active ->
+        Box(
+            Modifier.heightIn(min = 32.dp).background(if (active) States.layer(StateLayers.ACTIVE_ON_GLASS) else Color.Transparent, Shapes.small)
+                .padding(horizontal = 10.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(text, style = LocalTypography.current.captionStrong, color = if (active) RefluxColors.contentPrimary else RefluxColors.contentSecondary, maxLines = 1)
+        }
+    }
+}
+
+/**
+ * One line of the index: what it is, and on the right how many titles it finds, quietly. No box: pointed at or focused, the
+ * line takes a soft light behind it. [quiet] is a recent search, in the secondary colour.
+ */
+@Composable
+private fun IndexRow(title: String, count: Int?, tag: String, quiet: Boolean = false, onClick: () -> Unit) {
+    val layout = LocalLayout.current
+    Pressable(onClick, Modifier.fillMaxWidth().testTag(tag), Shapes.small, lift = 0f) { active ->
+        Row(
+            Modifier.fillMaxWidth().heightIn(min = maxOf(44f, layout.minTargetDp).dp)
+                .background(if (active) States.layer(StateLayers.ACTIVE_ON_GLASS) else Color.Transparent, Shapes.small)
+                .padding(horizontal = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                title, Modifier.weight(1f), style = LocalTypography.current.body, maxLines = 1,
+                color = when {
+                    active -> RefluxColors.contentPrimary
+                    quiet -> RefluxColors.contentSecondary
+                    else -> RefluxColors.contentPrimary.copy(alpha = 0.9f)
+                },
+            )
+            if (count != null) Text("$count", style = LocalTypography.current.caption, color = RefluxColors.contentTertiary, maxLines = 1)
+        }
+    }
+}
+
+/**
+ * The genre index: the library's genres as words, set larger than the list beside them and flowing like an index, each with
+ * its count small after it. No colour of its own and no tile: a word lights, and is underlined, when it is pointed at or focused.
+ */
+@Composable
+private fun GenreIndex(genres: List<GenreFind>, onChoose: (GenreFind) -> Unit) {
+    val ink = RefluxColors.contentPrimary
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(SuggestionGap), verticalArrangement = Arrangement.spacedBy(IndexRowGap)) {
+        for (genre in genres) {
+            Pressable({ onChoose(genre) }, Modifier.testTag("genre"), Shapes.small, lift = 0f) { active ->
                 Row(
-                    Modifier.fillMaxWidth().heightIn(min = maxOf(44f, LocalLayout.current.minTargetDp).dp)
-                        .background(States.layer(if (active) StateLayers.ACTIVE_ON_GLASS else 0.03f), Shapes.medium)
-                        .padding(horizontal = 14.dp),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    Modifier.heightIn(min = maxOf(44f, LocalLayout.current.minTargetDp).dp)
+                        .background(if (active) States.layer(StateLayers.ACTIVE_ON_GLASS) else Color.Transparent, Shapes.small)
+                        .padding(horizontal = 12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Icon(Icon.SEARCH, size = 16.dp, tint = RefluxColors.contentTertiary)
-                    Text(words, style = LocalTypography.current.body, color = RefluxColors.contentSecondary, maxLines = 1)
+                    Text(
+                        genre.name,
+                        Modifier.drawBehind {
+                            if (active) drawRect(ink.copy(alpha = 0.7f), androidx.compose.ui.geometry.Offset(0f, size.height - 1.5.dp.toPx()), androidx.compose.ui.geometry.Size(size.width, 1.5.dp.toPx()))
+                        },
+                        style = LocalTypography.current.title, maxLines = 1,
+                        color = if (active) RefluxColors.contentPrimary else RefluxColors.contentPrimary.copy(alpha = 0.82f),
+                    )
+                    Text("${genre.count}", Modifier.padding(start = 6.dp, bottom = 10.dp), style = LocalTypography.current.caption, color = RefluxColors.contentTertiary, maxLines = 1)
                 }
             }
         }
     }
 }
 
-/**
- * Quick finds: compact tiles, each an emblem, a name and how many titles it finds here. Distinct from the genres below (no
- * colour of their own) and from the filter above (a tile runs a search; the switch narrows it).
- */
-@Composable
-private fun QuickFinds(finds: List<QuickFind>, onChoose: (QuickFind) -> Unit) {
-    val phone = LocalLayout.current.formFactor == FormFactor.PHONE
-    TileGrid(if (phone) finds.take(6) else finds, minWidth = if (phone) 150.dp else 220.dp, gap = SuggestionGap) { find ->
-        Pressable({ onChoose(find) }, Modifier.testTag("suggestion"), Shapes.medium, lift = 0f) { active ->
-            Row(
-                Modifier.fillMaxWidth().heightIn(min = maxOf(64f, LocalLayout.current.minTargetDp).dp)
-                    .background(States.layer(if (active) StateLayers.ACTIVE_ON_GLASS else 0.05f), Shapes.medium)
-                    .border(1.dp, RefluxColors.divider, Shapes.medium)
-                    .padding(horizontal = 12.dp, vertical = 10.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Emblem(find)
-                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text(find.title, style = LocalTypography.current.bodyStrong, maxLines = 1)
-                    Text(if (find.count == 1) "1 title" else "${find.count} titles", style = LocalTypography.current.caption, color = RefluxColors.contentTertiary, maxLines = 1)
-                }
-            }
-        }
-    }
-}
-
-/** A quick find's mark: a short word ("4K", "’90s") or an icon, in a small round of its own. */
-@Composable
-private fun Emblem(find: QuickFind) {
-    Box(Modifier.size(38.dp).background(States.layer(0.10f), CircleShape).border(1.dp, RefluxColors.divider, CircleShape), contentAlignment = Alignment.Center) {
-        when {
-            find.kind == QuickFindKind.CONTINUE -> Icon(Icon.PLAY, size = 16.dp)
-            find.kind == QuickFindKind.FAVORITES -> Icon(Icon.HEART, size = 16.dp)
-            else -> Text(find.emblem.orEmpty(), style = LocalTypography.current.label, maxLines = 1)
-        }
-    }
-}
-
-/**
- * Genres: tiles with a colour of their own, a quiet wash from one corner, the name and its count. The colour is the
- * genre's, the same each time, from a muted set that sits on the dark page without shouting.
- */
-@Composable
-private fun Genres(genres: List<GenreFind>, onChoose: (GenreFind) -> Unit) {
-    val layout = LocalLayout.current
-    val phone = layout.formFactor == FormFactor.PHONE
-    val tall = if (layout.formFactor == FormFactor.TV) 92.dp else if (phone) 72.dp else 84.dp
-    TileGrid(if (phone) genres.take(8) else genres, minWidth = if (phone) 150.dp else 190.dp, gap = SuggestionGap) { genre ->
-        val hue = GenreHues[(genre.name.lowercase().hashCode() and 0x7fffffff) % GenreHues.size]
-        Pressable({ onChoose(genre) }, Modifier.testTag("genre"), Shapes.medium, lift = 0f) { active ->
-            Box(
-                Modifier.fillMaxWidth().height(tall)
-                    .background(Brush.linearGradient(listOf(hue.copy(alpha = if (active) 0.62f else 0.46f), hue.copy(alpha = 0.10f))), Shapes.medium)
-                    .border(1.dp, hue.copy(alpha = 0.35f), Shapes.medium)
-                    .padding(horizontal = 14.dp, vertical = 12.dp),
-                contentAlignment = Alignment.BottomStart,
-            ) {
-                Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
-                    Text(genre.name, style = LocalTypography.current.bodyStrong, maxLines = 1)
-                    Text(if (genre.count == 1) "1 title" else "${genre.count} titles", style = LocalTypography.current.caption, color = RefluxColors.contentSecondary, maxLines = 1)
-                }
-            }
-        }
-    }
-}
-
-/** Muted hues for genre tiles: distinct from each other, never louder than the artwork elsewhere in Reflux. */
-private val GenreHues = listOf(
-    Color(0xFF6E5BC8), Color(0xFF3F7FBF), Color(0xFF2E9A8A), Color(0xFF5E9E4A), Color(0xFFB8893A),
-    Color(0xFFB8604A), Color(0xFFA9487A), Color(0xFF7A6A9E), Color(0xFF4A8FA8), Color(0xFF8A7A4A),
-)
-
-/**
- * Tiles in as many equal columns of at least [minWidth] as fit, row by row: wide on a desk, two across a phone, a few
- * large ones on a television, never stretched into one long line. Rows are plain rows, so a D-pad moves along and between them.
- */
-@Composable
-private fun <T> TileGrid(items: List<T>, minWidth: Dp, gap: Dp, tile: @Composable (T) -> Unit) {
-    BoxWithConstraints(Modifier.fillMaxWidth()) {
-        val columns = ((maxWidth + gap) / (minWidth + gap)).toInt().coerceAtLeast(1)
-        Column(verticalArrangement = Arrangement.spacedBy(gap)) {
-            for (row in items.chunked(columns)) {
-                Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
-                    for (item in row) Box(Modifier.weight(1f)) { tile(item) }
-                    repeat(columns - row.size) { Spacer(Modifier.weight(1f)) }
-                }
-            }
-        }
-    }
-}
+/** Room between the lines of the index: enough that a focused line's ring never meets the next (B-010). */
+private val IndexRowGap = 8.dp
 
 /** A library with nothing yet to suggest: a word on what Search does, rather than an empty page. */
 @Composable
 private fun Starting() {
-    Column(Modifier.fillMaxWidth().padding(top = 32.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(Modifier.fillMaxWidth().padding(top = 40.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text("Search your whole library", style = LocalTypography.current.bodyStrong, align = TextAlign.Center)
-        Text("Type a title or a name. Quick finds and genres appear here as your library grows.", style = LocalTypography.current.caption, color = RefluxColors.contentSecondary, align = TextAlign.Center)
+        Text("Type a title, a person or a genre, or ask for something like \u201cunfinished shows\u201d.", style = LocalTypography.current.caption, color = RefluxColors.contentSecondary, align = TextAlign.Center)
     }
 }
 
 /**
  * Nothing found (B-037, B-057): said plainly with the query, which stays in the field above to change, and ways on: clear it,
- * search everything when a filter narrowed it, browse, or a quick find that does find something here.
+ * search everything when a tab narrowed it (else browse), or a line of the index that does find something here.
  */
 @Composable
 private fun NoResults(
@@ -482,13 +485,10 @@ private fun NoResults(
     onBrowse: () -> Unit,
     onChoose: (QuickFind) -> Unit,
 ) {
-    Column(Modifier.fillMaxWidth().padding(top = 20.dp, bottom = 12.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Box(Modifier.size(56.dp).background(States.layer(0.06f), CircleShape).border(1.dp, RefluxColors.divider, CircleShape), contentAlignment = Alignment.Center) {
-            Icon(Icon.SEARCH, size = 24.dp, tint = RefluxColors.contentSecondary)
-        }
-        Text("No matches for “$query”", Modifier.heading(), style = LocalTypography.current.bodyStrong, align = TextAlign.Center, maxLines = 2)
+    Column(Modifier.fillMaxWidth().padding(top = 36.dp, bottom = 12.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Text("No matches for \u201c$query\u201d", Modifier.heading(), style = LocalTypography.current.title, align = TextAlign.Center, maxLines = 2)
         Text(
-            if (scope == SearchScope.ALL) "Check the spelling, try fewer words, or ask for something like “unfinished shows”."
+            if (scope == SearchScope.ALL) "Check the spelling, try fewer words, or ask for something like \u201cunfinished shows\u201d."
             else "Nothing in ${scope.label}. It may be among the rest of your library.",
             Modifier.widthIn(max = 520.dp), style = LocalTypography.current.caption, color = RefluxColors.contentSecondary, align = TextAlign.Center,
         )
@@ -498,9 +498,9 @@ private fun NoResults(
             else Button("Browse movies", onBrowse, style = ButtonStyle.QUIET)
         }
         if (alternatives.isNotEmpty()) {
-            Column(Modifier.widthIn(max = 760.dp).padding(top = 14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text("Or start from", style = LocalTypography.current.caption, color = RefluxColors.contentTertiary)
-                QuickFinds(alternatives, onChoose)
+            Column(Modifier.widthIn(max = 420.dp).padding(top = 22.dp), verticalArrangement = Arrangement.spacedBy(IndexRowGap)) {
+                Label("Or start with")
+                for (find in alternatives) IndexRow(find.title, find.count, "suggestion") { onChoose(find) }
             }
         }
     }

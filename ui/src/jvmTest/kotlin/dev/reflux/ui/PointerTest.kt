@@ -134,7 +134,7 @@ class PointerTest {
         assertEquals(0, onAllNodesWithText("Dune").fetchSemanticsNodes().size)
 
         onNodeWithContentDescription("Clear search").mouseClick()
-        awaitText("Quick finds")
+        awaitText("Start with")
         assertEquals("", app.searchQuery)
         onNode(hasSetTextAction()).performTextInput("villeneuve movies")
         awaitText("Arrival")

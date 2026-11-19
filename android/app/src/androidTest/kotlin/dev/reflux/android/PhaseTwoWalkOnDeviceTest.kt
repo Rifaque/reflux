@@ -177,7 +177,7 @@ class PhaseTwoWalkOnDeviceTest {
         // B-035: no "Try"; chips with a finger's target.
         assertFalse(nodes().any { it.isVisibleToUser && it.words() == "Try" }, "no Try label")
         // B-057: the idle page's quick finds, each a finger's target, offered because this library has something for them.
-        until("the quick finds") { says("Quick finds") }
+        until("the index") { says("Start with") }
         val chip = assertNotNull(withWords("Not seen yet")?.let { var n: AccessibilityNodeInfo? = it; while (n != null && !n.isClickable) n = n.parent; n })
         assertTrue(chip.bounds().height() >= (48 * density).toInt() - 1, "a quick find is at least 48 dp tall: ${chip.bounds().height() / density} dp")
         shot("p2-search-$model")
