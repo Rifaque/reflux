@@ -2193,7 +2193,9 @@ Screenshots looked at; on touch, Search shows no mouse-keyboard button.
 - new cases in `HomeFocusTest`, `MiniPlayerTest`, `GamepadTest`, `KeyboardSessionTest` and `InteractionContractTest`;
 - `DirectionalInputTest` updated (hints; arrival on Play).
 
-**Forced full check.** `./gradlew check --continue --rerun-tasks`: @@CHECK@@
+**Forced full check.** `./gradlew check --continue --rerun-tasks`, on `e5f595e`: **BUILD SUCCESSFUL** (exit 0), Android lint included.
+- 1,565 tests, 0 failures, 25 skipped: the window and physical-device tests that run only on request, and the platform-specific ones.
+- An earlier run, before the follow-ups, failed only on lint (`GestureBackNavigation`, fixed in `d4aa5ee`).
 
 ### Search redesign (B-057), 2026-11-19
 
