@@ -138,6 +138,7 @@ Open: B-056 (the blank on closing the mini-player, Investigating); a DualSense h
     - live, hysteresis-guarded switching while open, the keys morphing between layouts (about 300 ms; a crossfade under reduced motion);
     - nothing typed is lost, and focus is mapped by key.
     - Android touch keeps the system keyboard. Milestones M1–M7; acceptance and test matrix in the plan.
+    - Owner's decisions (2026-11-20): QWERTY only for controllers; simple title completions from the library; the mouse layout follows the system keyboard layout (US fallback); no dictation or phone entry; physical typing never hides or presses the virtual keyboard.
 
 **Exit criteria.**
 - Every assigned media-experience feature is implemented and reviewed.
