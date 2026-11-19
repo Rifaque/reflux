@@ -37,6 +37,32 @@ interface TextEntry {
 
     /** Closes the Reflux keyboard if it is [field]'s. */
     fun close(field: Any)
+
+    /** Where the Reflux keyboard's cursor is in [field], while it is open for [field]; else null. */
+    fun cursorOf(field: Any): Int? = null
+}
+
+/**
+ * A field's value for the toolkit, with its caret where the Reflux keyboard's cursor is while the keyboard types into it
+ * (the walk on Windows, 2026-11-19: the caret stayed at the start while the bumpers moved the keyboard's cursor). Otherwise
+ * the field keeps its own selection, as a keyboard, a pointer or a finger leaves it.
+ */
+@Composable
+internal fun rememberFieldValue(field: Any, value: String, onValueChange: (String) -> Unit): Pair<androidx.compose.ui.text.input.TextFieldValue, (androidx.compose.ui.text.input.TextFieldValue) -> Unit> {
+    val entry = LocalTextEntry.current
+    var held by remember { mutableStateOf(androidx.compose.ui.text.input.TextFieldValue(value, androidx.compose.ui.text.TextRange(value.length))) }
+    val typing = entry?.cursorOf(field)
+    val shown = when {
+        typing != null && held.text == value -> held.copy(selection = androidx.compose.ui.text.TextRange(typing.coerceIn(0, value.length)))
+        held.text == value -> held
+        else -> androidx.compose.ui.text.input.TextFieldValue(value, androidx.compose.ui.text.TextRange((typing ?: value.length).coerceIn(0, value.length)))
+    }
+    if (shown != held) held = shown
+    val change by rememberUpdatedState(onValueChange)
+    return shown to { next ->
+        held = next
+        if (next.text != value) change(next.text)
+    }
 }
 
 val LocalTextEntry = staticCompositionLocalOf<TextEntry?> { null }
@@ -65,12 +91,20 @@ class TextEditing(private val changed: (Boolean) -> Unit) {
  *   bring it back: B-004). A touchscreen keeps its system keyboard, the better one for a finger.
  */
 @Composable
-internal fun Modifier.textEntry(value: String, onValueChange: (String) -> Unit, label: String, kind: InputKind, onDone: () -> Unit): Modifier {
+internal fun Modifier.textEntry(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    kind: InputKind,
+    onDone: () -> Unit,
+    /** Who the field is, for [rememberFieldValue] to find the keyboard's cursor in it. */
+    field: Any = remember { Any() },
+): Modifier {
     val entry = LocalTextEntry.current
     val control = LocalFocusedControl.current
     val layout = LocalLayout.current
     val keyboard = LocalSoftwareKeyboardController.current
-    val self = remember { Any() }
+    val self = field
     val text by rememberUpdatedState(value)
     val write by rememberUpdatedState(onValueChange)
     val finish by rememberUpdatedState(onDone)

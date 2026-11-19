@@ -84,7 +84,11 @@ internal object NumberedButtons {
  * through a row. The left stick acts as a D-pad once it is clearly deflected and until it is clearly
  * released, so a stick resting off-center does nothing.
  */
-internal class GamepadTranslator(private val press: (GamepadButton, ControllerFamily) -> Unit) {
+internal class GamepadTranslator(
+    /** Whether a held button repeats beyond the directions, which always do: the Reflux keyboard's erase and cursor buttons. */
+    private val repeats: (GamepadButton, ControllerFamily) -> Boolean = { _, _ -> false },
+    private val press: (GamepadButton, ControllerFamily) -> Unit,
+) {
     /** The controller whose buttons were pressed last: the one in the viewer's hands, whose motors rumble. */
     @Volatile var lastUsed: String? = null
         private set
@@ -119,9 +123,14 @@ internal class GamepadTranslator(private val press: (GamepadButton, ControllerFa
                             lastUsed = state.id
                             press(button, state.family)
                         }
-                        if (button in DIRECTIONS) previous.repeatAt[button] = nowMs + REPEAT_DELAY_MS
+                        if (button in DIRECTIONS || repeats(button, state.family)) previous.repeatAt[button] = nowMs + REPEAT_DELAY_MS
                     }
                     repeatAt != null && nowMs >= repeatAt -> {
+                        // A button that no longer repeats (the keyboard closed while it was held) stops here.
+                        if (button !in DIRECTIONS && !repeats(button, state.family)) {
+                            previous.repeatAt.remove(button)
+                            continue
+                        }
                         if (active) press(button, state.family)
                         previous.repeatAt[button] = nowMs + REPEAT_INTERVAL_MS
                     }
@@ -162,9 +171,10 @@ internal class GamepadTranslator(private val press: (GamepadButton, ControllerFa
 internal class GamepadInput(
     private val reader: GamepadReader,
     private val active: () -> Boolean,
+    repeats: (GamepadButton, ControllerFamily) -> Boolean = { _, _ -> false },
     press: (GamepadButton, ControllerFamily) -> Unit,
 ) : AutoCloseable, dev.reflux.ui.state.ControllerRumble {
-    private val translator = GamepadTranslator(press)
+    private val translator = GamepadTranslator(repeats, press)
 
     @Volatile private var running = true
 
@@ -193,11 +203,13 @@ internal class GamepadInput(
             // A reader that fails once is not asked again in a tight loop; controllers are optional.
             val states = runCatching { reader.poll() }.getOrElse { emptyList() }
             val now = System.nanoTime() / 1_000_000
+            val inUse = active()
             rumbling?.let { id ->
-                // Gone: nothing is left to stop, and nothing resumes on another. Done: the motors stop.
-                if (states.none { it.id == id }) rumbling = null else if (now >= rumbleUntil) stop()
+                // Gone: nothing is left to stop, and nothing resumes on another. Done, or Reflux no longer the application
+                // in use: the motors stop.
+                if (states.none { it.id == id }) rumbling = null else if (now >= rumbleUntil || !inUse) stop()
             }
-            translator.update(states, now, active())
+            translator.update(states, now, inUse)
             try {
                 Thread.sleep(if (states.isEmpty()) IDLE_POLL_MS else POLL_MS)
             } catch (_: InterruptedException) {

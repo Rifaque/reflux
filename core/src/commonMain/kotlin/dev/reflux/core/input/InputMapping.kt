@@ -26,7 +26,9 @@ object InputMapping {
                 GamepadButton.DPAD_DOWN -> SemanticAction.NAVIGATE_DOWN
                 GamepadButton.DPAD_LEFT -> SemanticAction.NAVIGATE_LEFT
                 GamepadButton.DPAD_RIGHT -> SemanticAction.NAVIGATE_RIGHT
-                GamepadButton.START, GamepadButton.FACE_NORTH -> SemanticAction.MENU
+                // Y goes to the navigation and back (F-P2); Start, like a remote's Menu, opens Sources.
+                GamepadButton.FACE_NORTH -> SemanticAction.TOGGLE_NAVIGATION
+                GamepadButton.START -> SemanticAction.MENU
                 // The bumpers step through the global destinations, as on a console.
                 GamepadButton.SHOULDER_LEFT -> SemanticAction.PREVIOUS_SECTION
                 GamepadButton.SHOULDER_RIGHT -> SemanticAction.NEXT_SECTION

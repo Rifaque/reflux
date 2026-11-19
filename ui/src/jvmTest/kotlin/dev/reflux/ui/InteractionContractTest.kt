@@ -53,6 +53,22 @@ class InteractionContractTest {
     private fun DesktopComposeUiTest.fieldText(): String =
         onNode(hasSetTextAction() and isFocused()).fetchSemanticsNode().config.getOrNull(SemanticsProperties.EditableText)?.text.orEmpty()
 
+    /** Where the focused field's caret is. */
+    private fun DesktopComposeUiTest.caret(): Int? =
+        runCatching { onNode(hasSetTextAction() and isFocused()).fetchSemanticsNode().config.getOrNull(SemanticsProperties.TextSelectionRange)?.start }.getOrNull()
+
+    private fun DesktopComposeUiTest.keyboardShowsCursor(text: String, at: Int): Boolean =
+        onAllNodes(SemanticsMatcher("keyboard text") { it.config.getOrNull(SemanticsProperties.TestTag) == "keyboard-text:$text|$at" }).fetchSemanticsNodes().isNotEmpty()
+
+    /** Moves to [letter] on the open Reflux keyboard by the keys' places, and types it. */
+    private fun DesktopComposeUiTest.typeLetter(app: AppState, letter: Char) {
+        val session = assertNotNull(app.keyboard)
+        val (row, column) = session.rows.withIndex().firstNotNullOf { (r, keys) -> keys.indexOf(KeyboardKey.Type(letter.toString())).takeIf { it >= 0 }?.let { r to it } }
+        while (session.row != row) press(app, if (session.row < row) GamepadButton.DPAD_DOWN else GamepadButton.DPAD_UP)
+        while (session.column != column) press(app, if (session.column < column) GamepadButton.DPAD_RIGHT else GamepadButton.DPAD_LEFT)
+        press(app, GamepadButton.FACE_SOUTH)
+    }
+
     private fun DesktopComposeUiTest.keyboardShows(text: String): Boolean =
         onAllNodes(SemanticsMatcher("keyboard text") { it.config.getOrNull(SemanticsProperties.TestTag)?.startsWith("keyboard-text:$text|") == true })
             .fetchSemanticsNodes().isNotEmpty()
@@ -252,6 +268,19 @@ class InteractionContractTest {
                 press(app, GamepadButton.FACE_SOUTH)
             }
             assertEquals("heat", app.searchQuery)
+            // The left bumper twice puts the cursor between "he" and "at", and the field's own caret goes with it (the walk on
+            // Windows, 2026-11-19: it stayed at the start, and the next letter after the first went to the end).
+            repeat(2) { press(app, GamepadButton.SHOULDER_LEFT) }
+            await("the caret in the field") { caret() == 2 && keyboardShowsCursor("heat", 2) }
+            typeLetter(app, 'x')
+            typeLetter(app, 'y')
+            await("typed where the cursor is") { app.searchQuery == "hexyat" && caret() == 4 && keyboardShowsCursor("hexyat", 4) }
+            // Holding X erases one, then on (the translator repeats it; here, the presses it makes).
+            press(app, GamepadButton.FACE_WEST)
+            press(app, GamepadButton.FACE_WEST)
+            assertEquals("heat", app.searchQuery)
+            assertTrue(app.repeatsWhileHeld(GamepadButton.FACE_WEST, ControllerFamily.XBOX), "X repeats while the keyboard is open")
+            assertFalse(app.repeatsWhileHeld(GamepadButton.FACE_SOUTH, ControllerFamily.XBOX), "A never does")
             await("what was found") { saysAnywhere("Heat, 1995") }
             // Start finishes typing and goes on to the results.
             press(app, GamepadButton.START)

@@ -24,6 +24,34 @@ class KeyboardSessionTest {
         press(selected)
     }
 
+    /** A field that hands its new text back only when it is composed again, as a screen's field does (Search's). */
+    private class LaggingField(var shown: String = "") {
+        var written: String? = null
+        fun request() = KeyboardRequest(this, "Search", InputKind.SEARCH, { shown }, { written = it }, {})
+        fun compose() { written?.let { shown = it }; written = null }
+    }
+
+    @Test
+    fun theCursorStaysWhereItWasPutWhenTheFieldCatchesUpLate() {
+        // The walk on Windows (2026-11-19): ABD, the left bumper once, C, then E went after D instead of after C.
+        val field = LaggingField()
+        val session = KeyboardSession(field.request())
+        for (letter in listOf("a", "b", "d")) { session.typeKey(letter); field.compose(); assertEquals(field.shown.length, session.cursor) }
+        assertEquals("abd", field.shown)
+        session.handle(SemanticAction.CURSOR_BACK)
+        assertEquals(2, session.cursor, "between b and d")
+        session.typeKey("c")
+        field.compose()
+        assertEquals("abcd", field.shown)
+        assertEquals(3, session.cursor, "still after c once it has")
+        session.typeKey("e")
+        field.compose()
+        assertEquals("abced", field.shown, "E goes where the cursor is")
+        // An edit made elsewhere (a physical keyboard) puts the cursor at the end.
+        field.shown = "zz"
+        assertEquals(2, session.cursor)
+    }
+
     @Test
     fun typesWhereTheCursorIsAndErasesBeforeIt() {
         val field = Field("rflux")

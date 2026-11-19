@@ -391,11 +391,21 @@ fun RefluxApp(
             app.activateFocused = focused::activate
             // Back on a television's destination goes to the navigation first, landing on where the viewer is.
             app.focusNavigation = { !entry.inChrome && rail.leavingPage(focused).let { rail.focusCurrent() } }
+            // Y (F-P2): into the navigation, landing on where the viewer is; and from it back to exactly the item that was
+            // left, which keeps its row's scroll and the page's state because the page never changed. If that item is gone
+            // (another destination was opened from the navigation), the page's own start.
+            app.toggleNavigation = if (!sideNavigation) null else {
+                {
+                    if (entry.inChrome) rail.enterPage() || entry.start()
+                    else rail.leavingPage(focused).let { rail.focusCurrent() }
+                }
+            }
             onDispose {
                 app.moveFocus = null
                 app.clearFocus = null
                 app.activateFocused = null
                 app.focusNavigation = null
+                app.toggleNavigation = null
             }
         }
         val screens = rememberSaveableStateHolder()
@@ -464,6 +474,7 @@ fun RefluxApp(
                 override fun focused(field: Any, focused: Boolean) = app.editing.report(field, focused)
                 override fun open(request: dev.reflux.ui.state.KeyboardRequest) = app.openKeyboard(request)
                 override fun close(field: Any) = app.closeKeyboard(field)
+                override fun cursorOf(field: Any): Int? = app.keyboard?.takeIf { it.request.field === field }?.cursor
             }
         }
         // The toolkit's own haptics (text selection's handles, long presses) go through Reflux's gateway like everything
@@ -1150,7 +1161,7 @@ internal fun showsProfileButton(destination: Destination): Boolean =
 internal fun browsePrompts(app: AppState, family: ControllerFamily): List<Pair<GamepadButton, String>> = listOfNotNull(
     InputMapping.confirmButton(family) to "Select",
     (InputMapping.cancelButton(family) to if (app.offlineOpen) "Close" else "Back").takeIf { app.offlineOpen || app.navigator.canGoBack },
-    (GamepadButton.FACE_NORTH to "Sources").takeIf { app.navigator.section != Destination.Sources && app.folderPicker == null && !app.offlineOpen },
+    (GamepadButton.FACE_NORTH to "Sidebar").takeIf { app.toggleNavigation != null && app.folderPicker == null && !app.offlineOpen },
 )
 
 /** Where the user is shows as white against grey: the navigation never takes a color. */

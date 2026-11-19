@@ -69,11 +69,15 @@ class KeyboardSession(val request: KeyboardRequest) {
 
     val text: String get() = request.read()
 
-    /** Where the cursor is, between 0 and the text's length. */
+    /**
+     * Where the cursor is, between 0 and the text's length: where it was put while the field shows what the keyboard last
+     * wrote; at the end of the field's text otherwise (a field that refused a character, an edit from a physical keyboard,
+     * or the frame before a field hands back what was written).
+     */
     val cursor: Int
         get() {
             val now = text
-            return if (now != known) now.length else cursorAt.coerceIn(0, now.length)
+            return if (now == known) cursorAt.coerceIn(0, now.length) else now.length
         }
 
     /** Whether what is typed is hidden (a password, a PIN). */
@@ -110,6 +114,11 @@ class KeyboardSession(val request: KeyboardRequest) {
     /** Presses [key], as confirm on it, a touch, or a click does. */
     fun press(key: KeyboardKey): Outcome {
         val now = text
+        // Text changed from elsewhere (a physical keyboard) since the keyboard last wrote: typing goes on at its end.
+        if (now != known) {
+            known = now
+            cursorAt = now.length
+        }
         val at = cursor
         when (key) {
             is KeyboardKey.Type -> {
@@ -141,16 +150,19 @@ class KeyboardSession(val request: KeyboardRequest) {
         column = columnIndex.coerceIn(0, rows[row].lastIndex)
     }
 
-    /** Writes [next] to the field, and places the cursor at [at] if the field took it as it was, or at its end if not. */
+    /**
+     * Writes [next] to the field and places the cursor at [at]. A field hands its new text back only once it is composed
+     * again, so what was written is the record, not what the field says this instant (reading it back at once put the
+     * cursor at the end after every key: the walk on Windows, 2026-11-19). If the field ends up with other text (it refused
+     * or changed what was written), [cursor] stays within it, and the next key goes on from its end.
+     */
     private fun put(next: String, at: Int) {
         request.write(next)
-        val taken = request.read()
-        known = taken
-        cursorAt = if (taken == next) at else taken.length
+        known = next
+        cursorAt = at
     }
 
     private fun place(at: Int) {
-        known = text
         cursorAt = at
     }
 

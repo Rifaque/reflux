@@ -104,10 +104,12 @@ fun TextInput(
             color = RefluxColors.contentSecondary,
             maxLines = 1,
         )
+        val self = remember { Any() }
+        val (shown, change) = rememberFieldValue(self, value, onValueChange)
         BasicTextField(
-            value = value,
-            onValueChange = onValueChange,
-            modifier = fieldModifier.focusRequester(field).textEntry(value, onValueChange, label, kind, onDone)
+            value = shown,
+            onValueChange = change,
+            modifier = fieldModifier.focusRequester(field).textEntry(value, onValueChange, label, kind, onDone, self)
                 .fillMaxWidth().semantics {
                     contentDescription = label
                     if (error) error("Check this field")

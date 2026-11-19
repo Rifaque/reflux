@@ -57,6 +57,23 @@ class GamepadTest {
     }
 
     @Test
+    fun aButtonTheAppSaysRepeatsRepeatsLikeADirectionAndStopsWhenItNoLongerDoes() {
+        // Holding X on the Reflux keyboard keeps erasing (the walk on Windows, 2026-11-19); A never repeats.
+        var typing = true
+        val held = mutableListOf<GamepadButton>()
+        val keys = GamepadTranslator(repeats = { button, _ -> typing && button == GamepadButton.FACE_WEST }) { button, _ -> held += button }
+        keys.update(pad(), -1_000)
+        keys.update(pad(GamepadButton.FACE_WEST, GamepadButton.FACE_SOUTH), 0)
+        for (t in listOf(430L, 545L, 660L)) keys.update(pad(GamepadButton.FACE_WEST, GamepadButton.FACE_SOUTH), t)
+        assertEquals(4, held.count { it == GamepadButton.FACE_WEST }, "erased once, then again and again: $held")
+        assertEquals(1, held.count { it == GamepadButton.FACE_SOUTH }, "A is pressed once however long it is held")
+        typing = false
+        keys.update(pad(GamepadButton.FACE_WEST), 780)
+        keys.update(pad(GamepadButton.FACE_WEST), 900)
+        assertEquals(4, held.count { it == GamepadButton.FACE_WEST }, "the keyboard closed: holding X does nothing more")
+    }
+
+    @Test
     fun theStickNavigatesOnlyWhenClearlyDeflected() {
         translator.update(pad(x = 0.3f), 0)
         assertTrue(pressed().isEmpty(), "a stick resting off-center does nothing")
