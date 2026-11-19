@@ -71,6 +71,7 @@ import javax.swing.SwingUtilities
 fun main() {
     // Before any window, thread, or engine: libmpv needs the numeric locale to be C (B-031; NumericLocale).
     dev.reflux.playback.mpv.NumericLocale.prepareProcess()
+    prepareToolkit()
     val environment = try {
         DesktopEnvironment()
     } catch (e: dev.reflux.library.NewerLibraryException) {
@@ -80,6 +81,24 @@ fun main() {
     }
     runReflux(environment)
 }
+
+/**
+ * Settings the toolkit reads once, when it starts, so they are made before the first window.
+ *
+ * On Windows, Java2D's own Direct3D pipeline is turned off (an explicit `-Dsun.java2d.d3d` is respected). B-002: with it on,
+ * the player's controls window (a transparent window over the video, VideoOverlay) was given its size unscaled on a display
+ * whose scale differs from the primary's. Measured at 150% beside a 125% primary: 1010 x 1044 device pixels over a
+ * 1514 x 1566 picture, so the title, the transport and the close button fell outside it. The toolkit's own record of the
+ * window was right; only its native size was wrong, and only for a translucent window with this pipeline on (measured with
+ * Compose's own dialog outside Reflux: an opaque one, or this pipeline off, is sized right on both displays). Compose draws
+ * through Skia's own Direct3D, not Java2D's, so nothing Reflux shows is drawn differently; only the toolkit's few plain Swing
+ * windows (a message box) are painted in software. Moving the window with its title bar is what the walk did.
+ */
+internal fun prepareToolkit(os: String = System.getProperty("os.name").orEmpty()) {
+    if (os.startsWith("Windows") && System.getProperty(JAVA2D_D3D) == null) System.setProperty(JAVA2D_D3D, "false")
+}
+
+internal const val JAVA2D_D3D = "sun.java2d.d3d"
 
 /** Says, in a window of the system's own, that this library needs a newer Reflux, and where it is; then Reflux ends. */
 internal fun refuseNewerLibrary(e: dev.reflux.library.NewerLibraryException) {
@@ -274,9 +293,10 @@ private val DockGlass: java.awt.Color = run {
     java.awt.Color(mix(16), mix(8), mix(0))
 }
 
-private val HiddenCursor = PointerIcon(
-    Toolkit.getDefaultToolkit().createCustomCursor(BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB), Point(0, 0), "hidden"),
-)
+// Made when first used, not when this file's class loads: loading it starts the toolkit, and that must wait for prepareToolkit.
+private val HiddenCursor by lazy {
+    PointerIcon(Toolkit.getDefaultToolkit().createCustomCursor(BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB), Point(0, 0), "hidden"))
+}
 
 /**
  * The window and taskbar icon: the Reflux mark (design/brand) on a graphite tile lit from the top left, like the glass
