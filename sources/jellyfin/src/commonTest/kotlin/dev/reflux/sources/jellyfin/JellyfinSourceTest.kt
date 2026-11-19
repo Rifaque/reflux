@@ -96,7 +96,9 @@ class JellyfinSourceTest {
         assertEquals(1995, heat.identity.year)
         assertEquals(mapOf("tmdb" to "949", "imdb" to "tt0113277"), heat.identity.externalIds)
         assertEquals(listOf("items/m1/sources/s1", "items/m1/sources/s2"), heat.versions.map { it.path })
-        assertEquals(listOf("Heat 4K", "Heat 1080p"), heat.versions.map { it.edition })
+        // The server names them "Heat 4K" and "Heat 1080p": the title and a resolution, which the streams already say
+        // (and say with authority), not an edition (B-024).
+        assertEquals(listOf(null, null), heat.versions.map { it.edition })
 
         val uhd = heat.versions.first()
         assertEquals(Container.MATROSKA, uhd.stream.container)

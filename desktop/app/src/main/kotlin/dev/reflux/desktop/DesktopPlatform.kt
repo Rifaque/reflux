@@ -91,7 +91,7 @@ internal class DesktopPlatform(private val environment: DesktopEnvironment) : Pl
         if (System.getProperty("os.name").startsWith("Windows")) {
             "Playback needs libmpv (libmpv-2.dll), which this build does not include yet."
         } else {
-            "Install libmpv with your package manager (libmpv2 on Debian and Ubuntu, mpv-libs on Fedora), then restart Reflux."
+            LinuxPlaybackSetup.hint()
         }
 
     override fun report(problem: String, cause: Throwable?) = environment.diagnostics.record(problem, cause)
@@ -150,7 +150,7 @@ internal class DesktopPlatform(private val environment: DesktopEnvironment) : Pl
             throw e
         }
         if (player == null) {
-            report("libmpv was found but could not be initialized")
+            report("libmpv was found but could not be initialized" + (dev.reflux.playback.mpv.MpvPlayer.lastFailure?.let { ": $it" } ?: ""))
             x11Errors?.release()
             video.hide()
         }

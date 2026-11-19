@@ -72,8 +72,11 @@ class JellyfinSource(
     http: HttpFetcher,
     displayName: String = "Jellyfin",
     deviceName: String = "Reflux",
-) : CatalogSource, WatchStateSyncSource, DownloadableSource, SectionedSource, PlaybackEvidenceSource, NegotiatingSource {
-    private val api = JellyfinApi(credentials.serverUrl, http, credentials.deviceId, deviceName, credentials.accessToken)
+    /** Which of the server's addresses to use; one over [credentials]' addresses unless a test gives its own clock. */
+    selector: dev.reflux.core.net.EndpointSelector = dev.reflux.core.net.EndpointSelector(credentials.addresses, monotonicMs),
+) : CatalogSource, WatchStateSyncSource, DownloadableSource, SectionedSource, PlaybackEvidenceSource, NegotiatingSource,
+    dev.reflux.core.source.MultiAddressSource {
+    private val api = JellyfinApi(selector, http, credentials.deviceId, deviceName, credentials.accessToken)
     private val startedSessions = mutableSetOf<String>()
 
     /** What the server answered when each open playback began. */
@@ -89,8 +92,11 @@ class JellyfinSource(
         capabilities = setOf(SourceCapability.PROVIDES_CATALOG, SourceCapability.WATCH_STATE_SYNC, SourceCapability.DOWNLOAD) + SERVER_CONVERSIONS,
     )
 
+    override fun addressHealth() = api.health()
+
+    /** Asked at the more preferred addresses first again from time to time, so that coming home is noticed (B-003). */
     override suspend fun availability(): Availability = try {
-        api.get("System/Info/Public")
+        api.probe("System/Info/Public")
         Availability.AVAILABLE
     } catch (e: CancellationException) {
         throw e
@@ -546,8 +552,9 @@ class JellyfinSource(
                 durationMs = (source.long("RunTimeTicks") ?: item.long("RunTimeTicks"))?.div(TICKS_PER_MS),
                 bitrateBps = source.long("Bitrate"),
             ),
-            // Jellyfin names multiple versions of one item ("4K", "Director's Cut").
-            edition = source.string("Name")?.takeIf { sources > 1 && it.isNotBlank() },
+            // Jellyfin names multiple versions of one item after their files ("Heat 4K", "2160p HDR", "Director's Cut"):
+            // only a cut or an edition is kept; the stream says what its resolution and range are (B-024).
+            edition = source.string("Name")?.takeIf { sources > 1 }?.let { dev.reflux.core.identify.VersionNames.edition(it, item.string("Name")) },
             subtitles = externalSubtitles,
         )
     }
@@ -722,7 +729,7 @@ class JellyfinSource(
          * @throws JellyfinException when the server could not be reached or the end not confirmed.
          */
         internal suspend fun signOut(credentials: JellyfinCredentials, http: HttpFetcher, deviceName: String) {
-            val api = JellyfinApi(credentials.serverUrl, http, credentials.deviceId, deviceName, credentials.accessToken)
+            val api = JellyfinApi(dev.reflux.core.net.EndpointSelector(credentials.addresses, monotonicMs), http, credentials.deviceId, deviceName, credentials.accessToken)
             try {
                 api.postWithoutAnswer("Sessions/Logout")
             } catch (e: JellyfinException) {

@@ -82,6 +82,64 @@ class ProfilesUiTest {
     }
 
     @Test
+    fun deletingAProfileWithAPinAsksForItsPinAndAWrongOneDeletesNothing() {
+        // B-018: confirming is not authorisation; the profile's own PIN is.
+        val world = populated()
+        val platform = FakePlatform()
+        val sam = world.library.createProfile("Sam")
+        world.library.setPin(sam, "2580", platform.pinKey!!)
+        screen(world, platform) { app ->
+            awaitText("Recently Added")
+            runOnIdle { app.go(Destination.Profiles) }
+            awaitText("Delete Sam…")
+            onNodeWithText("Delete Sam…").performScrollTo().performClick()
+            onNodeWithText("Delete").performClick()
+            awaitText("Enter Sam's PIN to delete it.")
+            assertEquals(2, world.library.profiles().size, "confirming deleted nothing")
+            onNode(hasSetTextAction()).performTextInput("0000")
+            awaitText("That's not the PIN. Try again.")
+            assertEquals(2, world.library.profiles().size, "a wrong PIN deleted nothing")
+            onNode(hasSetTextAction()).performTextReplacement("2580")
+            await("Sam deleted") { world.library.profiles().size == 1 && app.profiles.size == 1 }
+            assertFalse(saysAnywhere("Enter Sam's PIN to delete it."))
+        }
+    }
+
+    @Test
+    fun deletingAProfileWithoutAPinStillOnlyNeedsConfirming() {
+        val world = populated()
+        world.library.createProfile("Sam")
+        screen(world) { app ->
+            awaitText("Recently Added")
+            runOnIdle { app.go(Destination.Profiles) }
+            awaitText("Delete Sam…")
+            onNodeWithText("Delete Sam…").performScrollTo().performClick()
+            onNodeWithText("Delete").performClick()
+            await("Sam deleted") { world.library.profiles().size == 1 }
+        }
+    }
+
+    @Test
+    fun theAppStateDoesNotDeleteAProtectedProfileWhateverThePageThought() {
+        // Whatever asks (a stale page, or no page), the profile's PIN is read at the moment of deleting.
+        val world = populated()
+        val platform = FakePlatform()
+        val sam = world.library.createProfile("Sam")
+        screen(world, platform) { app ->
+            awaitText("Recently Added")
+            await("the profiles") { app.profiles.size == 2 }
+            val stale = app.profiles.first { it.name == "Sam" }
+            assertFalse(stale.hasPin)
+            world.library.setPin(sam, "2580", platform.pinKey!!)
+            runOnIdle { app.deleteProfile(stale) }
+            await("refused") { app.deletionRefused != null }
+            assertEquals(2, world.library.profiles().size)
+            runOnIdle { app.deleteProfile(stale, "2580") }
+            await("deleted") { world.library.profiles().size == 1 }
+        }
+    }
+
+    @Test
     fun aTelevisionAsksWhoIsWatchingAtStartWhenThereAreSeveralAndBackDoesNotGetPastIt() {
         val world = populated()
         world.library.createProfile("Sam")

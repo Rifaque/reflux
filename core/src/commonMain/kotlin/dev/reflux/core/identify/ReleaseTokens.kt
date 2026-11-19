@@ -44,6 +44,15 @@ internal object ReleaseTokens {
         ).joinToString("|"),
     )
 
+    /** Every quality word: resolution, range, codec, source, audio, release markers, and the ambiguous ones (`DV`, `WEB`). */
+    private val quality = Regex(
+        titleTerminator.pattern + "|" + bounded(listOf("dv", "hlg", "sdr", "atmos", "avc", "av1", "vp9", "web", "hd", "fhd", "imax enhanced", """\d[ ._]\d""", """\d{1,2}[ ._-]?bit""").joinToString("|")).pattern,
+        RegexOption.IGNORE_CASE,
+    )
+
+    /** [text] with every quality word taken out, for telling what else a name says. */
+    fun withoutQuality(text: String): String = text.replace(quality, " ")
+
     /** Locates an edition phrase. Editions end titles and are reported separately. */
     fun findEdition(text: String): MatchResult? = editionPattern.find(text)
 

@@ -208,7 +208,7 @@ class ProfilesTest {
         library.setFavorite(heat, true)
         library.createCollection("Sam's")
 
-        library.deleteProfile(sam)
+        assertEquals(ProfileDeletion.Deleted, library.deleteProfile(sam, null, null))
         assertEquals(main, library.activeProfile(), "the active profile that went is replaced")
         assertEquals(listOf("Main"), library.profiles().map { it.name })
         assertEquals(30 * MINUTE, library.watchState(heat)?.positionMs)
@@ -216,7 +216,7 @@ class ProfilesTest {
         assertTrue(library.queries.allFavorites(sam.value).executeAsList().isEmpty())
         assertTrue(library.queries.userCollections(sam.value).executeAsList().isEmpty())
         assertNull(library.watchState(heat, sam))
-        library.deleteProfile(main)
+        assertEquals(ProfileDeletion.Kept, library.deleteProfile(main, null, null))
         assertEquals(1, library.profiles().size, "the last profile stays")
     }
 
@@ -227,10 +227,139 @@ class ProfilesTest {
         AccountServers.movie("sam", "alien", "Alien", 1979)
         val account = signIn("sam")
         assertEquals(listOf(account), library.accountSourcesOf(sam).map { it.id })
-        assertTrue(runCatching { library.deleteProfile(sam) }.isFailure, "its server must be signed out of first")
+        assertTrue(runCatching { library.deleteProfile(sam, null, null) }.isFailure, "its server must be signed out of first")
         connections.remove(account).await()
-        library.deleteProfile(sam)
+        assertEquals(ProfileDeletion.Deleted, library.deleteProfile(sam, null, null))
         assertNull(library.profile(sam))
+    }
+
+    // B-018: a profile with a PIN is deleted only with its own PIN, checked where the deleting happens.
+
+    @Test
+    fun aProfileWithAPinIsNotDeletedWithoutIt() = runTest {
+        val key = MemoryPinKey()
+        val main = library.activeProfile()
+        val sam = library.createProfile("Sam")
+        library.switchProfile(sam)
+        library.setProfileSetting("subtitles", "en")
+        library.createCollection("Sam's")
+        library.setPin(sam, "2580", key)
+        library.switchProfile(main)
+
+        val refused = ProfileDeletion.Refused(PinCheck.Rejected(null))
+        assertEquals(refused, library.deleteProfile(sam, null, key), "no PIN")
+        assertEquals(refused, library.deleteProfile(sam, "2580", null), "a PIN that cannot be checked is not right")
+        assertEquals(refused, library.deleteProfile(sam, "1234", key), "a wrong PIN")
+        assertEquals(refused, library.deleteProfile(sam, "", key))
+        // Nothing of Sam's went.
+        assertNotNull(library.profile(sam))
+        assertEquals("en", library.queries.profileSettingValue(sam.value, "subtitles").executeAsOneOrNull())
+        assertEquals(1, library.queries.userCollections(sam.value).executeAsList().size)
+
+        assertEquals(ProfileDeletion.Deleted, library.deleteProfile(sam, "2580", key))
+        assertNull(library.profile(sam))
+        assertTrue(library.queries.userCollections(sam.value).executeAsList().isEmpty())
+    }
+
+    @Test
+    fun anotherProfilesPinDoesNotDeleteIt() = runTest {
+        val key = MemoryPinKey()
+        val main = library.activeProfile()
+        library.setPin(main, "1111", key)
+        val sam = library.createProfile("Sam")
+        library.setPin(sam, "2580", key)
+        // The open profile's own PIN, right for it, is not Sam's.
+        assertEquals(ProfileDeletion.Refused(PinCheck.Rejected(null)), library.deleteProfile(sam, "1111", key))
+        assertNotNull(library.profile(sam))
+        // Nor does a PIN just accepted for one profile carry over to another.
+        assertEquals(PinCheck.Accepted, library.checkPin(sam, "2580", key))
+        assertEquals(ProfileDeletion.Refused(PinCheck.Rejected(null)), library.deleteProfile(main, null, key))
+        assertNotNull(library.profile(main))
+    }
+
+    @Test
+    fun wrongPinsToDeleteCountTowardsTheWaitAndAWaitingProfileIsNotDeleted() = runTest {
+        val key = MemoryPinKey()
+        val sam = library.createProfile("Sam")
+        library.setPin(sam, "2580", key)
+        repeat(PinPolicy.FREE_ATTEMPTS - 1) { assertEquals(ProfileDeletion.Refused(PinCheck.Rejected(null)), library.deleteProfile(sam, "0000", key)) }
+        val last = assertIs<ProfileDeletion.Refused>(library.deleteProfile(sam, "0000", key))
+        val until = assertNotNull(assertIs<PinCheck.Rejected>(last.check).lockedUntilEpochMs, "the fifth wrong PIN makes it wait")
+        // While it waits even the right PIN deletes nothing, here or in the library opened again.
+        assertEquals(ProfileDeletion.Refused(PinCheck.Locked(until)), library.deleteProfile(sam, "2580", key))
+        assertEquals(ProfileDeletion.Refused(PinCheck.Locked(until)), Library(LibraryDatabase.open(file)) { clock }.deleteProfile(sam, "2580", key))
+        // Deleting and opening share one count.
+        assertEquals(PinCheck.Locked(until), library.checkPin(sam, "2580", key))
+        assertNotNull(library.profile(sam))
+        clock = until + 1
+        assertEquals(ProfileDeletion.Deleted, library.deleteProfile(sam, "2580", key))
+    }
+
+    @Test
+    fun wrongPinsToOpenAProfileAlsoGuardItsDeletion() = runTest {
+        val key = MemoryPinKey()
+        val sam = library.createProfile("Sam")
+        library.setPin(sam, "2580", key)
+        repeat(PinPolicy.FREE_ATTEMPTS) { library.checkPin(sam, "0000", key) }
+        assertIs<PinCheck.Locked>(assertIs<ProfileDeletion.Refused>(library.deleteProfile(sam, "2580", key)).check)
+        assertNotNull(library.profile(sam))
+    }
+
+    @Test
+    fun deletingAProtectedProfileLeavesEveryOtherProfileAsItWas() = runTest {
+        val key = MemoryPinKey()
+        AccountServers.movie("alex", "heat", "Heat", 1995)
+        val main = library.activeProfile()
+        val alex = signIn("alex")
+        scanAll()
+        val heat = library.movies().single().item.id
+        library.stopped(heat, 30 * MINUTE, 100 * MINUTE, null)
+        library.setFavorite(heat, true)
+        library.createCollection("Main's").let { library.addToCollection(it.id, heat) }
+        library.setProfileSetting("subtitles", "fr")
+        library.setPin(main, "1111", key)
+        val sam = library.createProfile("Sam")
+        library.switchProfile(sam)
+        library.stopped(heat, 10 * MINUTE, 100 * MINUTE, null)
+        library.setFavorite(heat, true)
+        library.createCollection("Sam's")
+        library.setProfileSetting("subtitles", "en")
+        library.setPin(sam, "2580", key)
+        library.switchProfile(main)
+
+        assertEquals(ProfileDeletion.Deleted, library.deleteProfile(sam, "2580", key))
+
+        assertNull(library.watchState(heat, sam))
+        assertTrue(library.queries.allFavorites(sam.value).executeAsList().isEmpty())
+        assertTrue(library.queries.userCollections(sam.value).executeAsList().isEmpty())
+        assertNull(library.queries.profileSettingValue(sam.value, "subtitles").executeAsOneOrNull())
+        // Main's PIN, account, history, favorite, collection, and setting are untouched.
+        assertEquals(30 * MINUTE, library.watchState(heat, main)?.positionMs)
+        assertEquals(listOf(heat.value), library.queries.allFavorites(main.value).executeAsList().map { it.item_id })
+        assertEquals(listOf("Main's"), library.queries.userCollections(main.value).executeAsList().map { it.name })
+        assertEquals("fr", library.queries.profileSettingValue(main.value, "subtitles").executeAsOneOrNull())
+        assertEquals(listOf(alex), library.accountSourcesOf(main).map { it.id })
+        assertEquals(PinCheck.Accepted, library.checkPin(main, "1111", key))
+    }
+
+    @Test
+    fun aProtectedProfilesAccountsAreStillRemovedFirstAndTheLastProfileStillStays() = runTest {
+        val key = MemoryPinKey()
+        val main = library.activeProfile()
+        val sam = library.createProfile("Sam")
+        library.switchProfile(sam)
+        AccountServers.movie("sam", "alien", "Alien", 1979)
+        val account = signIn("sam")
+        library.setPin(sam, "2580", key)
+        library.switchProfile(main)
+        assertTrue(runCatching { library.deleteProfile(sam, "2580", key) }.isFailure, "its server must be signed out of first")
+        assertNotNull(library.profile(sam), "and nothing was deleted")
+        connections.remove(account).await()
+        assertEquals(ProfileDeletion.Deleted, library.deleteProfile(sam, "2580", key))
+        // The last profile, even with its PIN given right, is kept.
+        library.setPin(main, "1111", key)
+        assertEquals(ProfileDeletion.Kept, library.deleteProfile(main, "1111", key))
+        assertNotNull(library.profile(main))
     }
 
     @Test
@@ -307,7 +436,7 @@ class ProfilesTest {
         assertEquals(sam, library.syncProfileOf(shared.descriptor.id))
         library.scan(shared)
         library.switchProfile(ProfileId.DEFAULT)
-        library.deleteProfile(sam)
+        library.deleteProfile(sam, null, null)
         assertNull(library.syncProfileOf(shared.descriptor.id), "it names nobody, rather than a profile that is gone")
         // And nobody inherits the server's record of the viewer who is gone.
         library.scan(shared)

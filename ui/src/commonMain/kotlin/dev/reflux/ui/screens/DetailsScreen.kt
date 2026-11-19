@@ -130,7 +130,7 @@ private val LocalLibraryScope = staticCompositionLocalOf<LibraryScope> { Library
 private fun DetailsPage(app: AppState, itemId: MediaId, scope: LibraryScope) {
     val loaded by app.libraryState(itemId, scope) { Loaded(detailsModel(itemId, app.platform.device, app.viewer, app.sourceCapabilities, scope)) }
     // Null while loading; a loaded page without details is a work that has left the library.
-    val details = (loaded ?: return).details ?: return Gone(app)
+    val details = (loaded ?: return).details ?: return Gone(app, itemId)
     val layout = LocalLayout.current
     var season by rememberSaveable(itemId) { mutableIntStateOf(details.initialSeason) }
     val shown = details.seasons.getOrNull(season)
@@ -231,17 +231,26 @@ private class Loaded(val details: DetailsModel?)
 
 /** Shown when the open work disappears, e.g. its last file was deleted or its source removed. */
 @Composable
-private fun Gone(app: AppState) {
+private fun Gone(app: AppState, itemId: MediaId) {
+    // A favorite outlives the copies it had (B-033): it is said here, and can be let go of without the source back.
+    val favorite by app.libraryState(itemId) { isFavorite(itemId) }
     AmbientBackdrop()
     Box(Modifier.fillMaxSize().padding(start = LocalChromeInsets.current.contentStart, top = LocalChromeInsets.current.top), contentAlignment = Alignment.Center) {
         Column(Modifier.widthIn(max = 460.dp).padding(24.dp), verticalArrangement = Arrangement.spacedBy(14.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Text("This is no longer in your library", style = LocalTypography.current.headline, align = TextAlign.Center)
             Text(
-                "Its files were moved or deleted, or its source was removed. If they come back, so does everything you watched.",
+                if (favorite == true) {
+                    "Its files were moved or deleted, or its source was removed. It stays in your favorites until you remove it; if it comes back, so does everything you watched."
+                } else {
+                    "Its files were moved or deleted, or its source was removed. If they come back, so does everything you watched."
+                },
                 color = RefluxColors.contentSecondary,
                 align = TextAlign.Center,
             )
-            Button("Back", { if (!app.navigator.back()) app.navigator.show(Destination.Home) }, Modifier.initialFocus(), icon = Icon.BACK, style = ButtonStyle.PRIMARY)
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Button("Back", { if (!app.navigator.back()) app.navigator.show(Destination.Home) }, Modifier.initialFocus(), icon = Icon.BACK, style = ButtonStyle.PRIMARY)
+                if (favorite == true) Button("Remove from favorites", { app.removeFavorite(itemId) }, style = ButtonStyle.QUIET)
+            }
         }
     }
 }

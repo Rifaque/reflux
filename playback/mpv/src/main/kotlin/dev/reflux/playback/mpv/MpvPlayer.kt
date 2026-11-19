@@ -285,6 +285,14 @@ class MpvPlayer private constructor(
             "audio-fallback-to-null" to "yes",
         )
 
+        /**
+         * Why the last engine or probe could not be made, in words for the diagnostics log (never shown as it is, and
+         * with no address or credential in it); null once one was made.
+         */
+        @Volatile
+        var lastFailure: String? = null
+            internal set
+
         /** Whether libmpv can be loaded on this machine. */
         val isAvailable: Boolean by lazy { LibMpv.loadOrNull() != null }
 
@@ -306,12 +314,15 @@ class MpvPlayer private constructor(
             onAudioOutput: ((source: Int, output: Int) -> Unit)? = null,
         ): MpvPlayer? {
             val mpv = LibMpv.loadOrNull() ?: return null
-            val handle = mpv.mpv_create() ?: return null
+            val handle = mpv.createHandle() ?: return null
             (defaultOptions + options - "log-file").forEach { (name, value) -> mpv.mpv_set_option_string(handle, name, value) }
-            if (mpv.mpv_initialize(handle) < 0) {
+            val initialized = mpv.mpv_initialize(handle)
+            if (initialized < 0) {
+                lastFailure = "libmpv could not initialize: " + runCatching { mpv.mpv_error_string(initialized) }.getOrDefault("error $initialized")
                 mpv.mpv_terminate_destroy(handle)
                 return null
             }
+            lastFailure = null
             if (log != null) mpv.mpv_request_log_messages(handle, "debug")
             return MpvPlayer(mpv, handle, capabilities, log, onDecode, onAudioOutput)
         }

@@ -29,6 +29,7 @@ import dev.reflux.ui.state.Destination
 import kotlinx.coroutines.runBlocking
 import java.nio.file.Files
 import kotlin.test.Test
+import kotlin.test.assertFalse
 import kotlin.math.abs
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -281,6 +282,27 @@ class ScreensTest {
             save("details-gone")
             onNodeWithText("Back").performClick()
             awaitText("Recently Added")
+        }
+    }
+
+    @Test
+    fun aFavoriteThatLeftTheLibraryCanBeRemovedFromFavoritesWithoutItsSource() {
+        // B-033: the favorite stays the viewer's, is said to be one, and goes when they say so.
+        val world = populated()
+        val heat = world.movie("Heat").item.id
+        world.library.setFavorite(heat, true)
+        screen(world) { app ->
+            app.navigator.open(Destination.Details(heat))
+            awaitText("Versions")
+            world.library.versions(heat).forEach { Files.delete(world.source.resolve(it.version.location.path)) }
+            runOnIdle { app.refresh() }
+            awaitText("This is no longer in your library")
+            awaitText("Its files were moved or deleted, or its source was removed. It stays in your favorites until you remove it; if it comes back, so does everything you watched.")
+            save("details-gone-favorite")
+            onNodeWithText("Remove from favorites").performClick()
+            await("removed") { !world.library.isFavorite(heat) }
+            awaitText("Removed from your favorites.")
+            assertFalse(saysAnywhere("Remove from favorites"), "nothing more to remove")
         }
     }
 

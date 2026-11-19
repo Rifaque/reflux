@@ -22,7 +22,7 @@ class MpvDecodeProbe private constructor(private val mpv: LibMpv) {
     data class Sample(val key: DecodeKey, val width: Int, val height: Int, val path: Path)
 
     fun run(samples: List<Sample> = bundled(), hwdec: String = PLAYBACK_HWDEC_COPY, timeoutMs: Long = 3_000): DecodeEvidence {
-        val handle = mpv.mpv_create() ?: return DecodeEvidence.UNKNOWN
+        val handle = mpv.createHandle() ?: return DecodeEvidence.UNKNOWN
         try {
             mapOf(
                 "config" to "no", "terminal" to "no", "vo" to "null", "ao" to "null", "audio" to "no", "pause" to "yes",

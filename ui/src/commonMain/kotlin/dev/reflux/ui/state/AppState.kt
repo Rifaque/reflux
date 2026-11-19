@@ -54,6 +54,7 @@ import dev.reflux.library.accountSourcesOf
 import dev.reflux.library.checkPin
 import dev.reflux.library.clearWatchHistory
 import dev.reflux.library.createProfile
+import dev.reflux.library.ProfileDeletion
 import dev.reflux.library.deleteProfile
 import dev.reflux.library.profileDownloadIds
 import dev.reflux.library.profiles
@@ -198,7 +199,10 @@ class AppState(
         private set
 
     /** What the background pipeline is doing, for a quiet progress indicator. */
-    val activity: StateFlow<PipelineActivity> get() = pipeline.activity
+    val activity: StateFlow<PipelineActivity> get() = activityShown ?: pipeline.activity
+
+    /** For layout tests: an activity held on screen for as long as it is looked at, instead of the pipeline's. */
+    internal var activityShown: StateFlow<PipelineActivity>? by mutableStateOf(null)
 
     /** Whether titles and artwork could not be fetched last time; the library works without them. */
     val metadataUnreachable: StateFlow<Boolean> get() = pipeline.metadataUnreachable
@@ -583,6 +587,25 @@ class AppState(
         platform.removeSource(id)
         watchSources()
         invalidate()
+    }
+
+    /**
+     * Stops reaching a server at one of its addresses (B-003); the source, its account, library, and other addresses
+     * stay. A source's only address is not removed this way: removing the source is.
+     */
+    fun removeSourceAddress(id: SourceId, address: String): Job = attempt("That address couldn't be removed.") {
+        val connections = platform.connections ?: return@attempt
+        if (withContext(background) { connections.removeAddress(id, address) }) {
+            invalidate()
+            notify("Reflux no longer uses $address.")
+        }
+    }
+
+    /** Takes [itemId] out of the active profile's favorites, whether or not anything can play it now (B-033). */
+    fun removeFavorite(itemId: MediaId): Job = attempt("Your favorites couldn't be updated.") {
+        read { setFavorite(itemId, false) }
+        invalidate()
+        notify("Removed from your favorites.")
     }
 
     fun toggleFavorite(entry: LibraryEntry): Job = attempt("Your favorites couldn't be updated.") {
@@ -1177,19 +1200,47 @@ class AppState(
      * Deletes another profile and everything that was its own: its server accounts are signed out of and removed, its
      * downloads deleted, its history gone. The active profile is not deleted from inside itself.
      */
-    fun deleteProfile(profile: Profile): Job = attempt("The profile couldn't be deleted. Try again.") {
+    fun deleteProfile(profile: Profile, pin: String? = null): Job = attempt("The profile couldn't be deleted. Try again.") {
         if (profile.active || profiles.size <= 1) return@attempt
+        // A profile with a PIN is deleted only with its own PIN (docs/WATCH_STATE.md, "Profiles"). It is checked before
+        // anything is signed out of or deleted, and again by the library in the same transaction that deletes.
+        val key = platform.pinKey
+        // Whether it has a PIN is read now, not from the page that asked: nothing may go on what the page last knew.
+        val current = read { profiles() }.firstOrNull { it.id == profile.id } ?: return@attempt
+        if (current.hasPin) {
+            val check = if (pin == null || key == null) PinCheck.Rejected(null) else read { checkPin(profile.id, pin, key) }
+            if (check != PinCheck.Accepted) {
+                deletionRefused = DeletionRefusal(profile.id, refusal(check), deletionRefused?.attempt?.plus(1) ?: 1)
+                loadProfiles()
+                return@attempt
+            }
+        }
+        deletionRefused = null
         val accounts = read { accountSourcesOf(profile.id) }
         accounts.forEach {
             stopPlayingFrom(it.id)
             platform.removeSource(it.id)
         }
         platform.offline?.let { offline -> read { profileDownloadIds(profile.id) }.forEach { withContext(background) { offline.remove(it) } } }
-        read { deleteProfile(profile.id) }
+        val outcome = read { deleteProfile(profile.id, pin, key) }
         loadProfiles()
         watchSources()
         invalidate()
-        notify("${profile.name} was deleted from this device.")
+        when (outcome) {
+            ProfileDeletion.Deleted -> notify("${profile.name} was deleted from this device.")
+            ProfileDeletion.Kept -> Unit
+            // Only if the PIN changed between the two checks; its accounts and downloads are already gone, as asked.
+            is ProfileDeletion.Refused -> deletionRefused = DeletionRefusal(profile.id, refusal(outcome.check), 1)
+        }
+    }
+
+    /** Why the PIN given to delete a profile was not accepted, for the question that asked for it; null when none was refused. */
+    var deletionRefused: DeletionRefusal? by mutableStateOf(null)
+
+    private fun refusal(check: PinCheck): String = when (check) {
+        is PinCheck.Locked -> waitFor(check.untilEpochMs)
+        is PinCheck.Rejected -> check.lockedUntilEpochMs?.let(::waitFor) ?: "That's not the PIN. Try again."
+        PinCheck.Accepted -> ""
     }
 
     private companion object {
@@ -1256,3 +1307,6 @@ sealed interface ProfileGate {
     ) : ProfileGate
 }
 
+
+/** The PIN given to delete [profile] was not accepted: [problem] says why, and [attempt] counts tries so it is said again. */
+data class DeletionRefusal(val profile: ProfileId, val problem: String, val attempt: Int)

@@ -61,9 +61,30 @@ class JellyfinConnector(
     override suspend fun signOut(config: String, keeping: String?): Boolean {
         val credentials = JellyfinCredentials.decode(config) ?: return false
         // A server may hand the same token out again to a sign-in from this device; ending it would end both.
-        if (keeping?.let(JellyfinCredentials::decode)?.let { it.serverUrl == credentials.serverUrl && it.accessToken == credentials.accessToken } == true) return false
+        if (keeping?.let(JellyfinCredentials::decode)?.let { it.serverId == credentials.serverId && it.accessToken == credentials.accessToken } == true) return false
         JellyfinSource.signOut(credentials, http, deviceName)
         return true
+    }
+
+    override fun addresses(config: String): List<String> = JellyfinCredentials.decode(config)?.addresses.orEmpty()
+
+    /**
+     * A sign-in at another address of the server and account [existing] connects to adds that address (B-003). The new
+     * sign-in's token and device are the ones kept (it has just been accepted; the old session is ended as a replaced
+     * one is), with every address of both, the home network's first. Another server or another user is not combined.
+     */
+    override fun combine(existing: String, established: String): String {
+        val old = JellyfinCredentials.decode(existing) ?: return established
+        val new = JellyfinCredentials.decode(established) ?: return established
+        if (old.serverId != new.serverId || old.userId != new.userId) return established
+        return new.at(old.addresses + new.addresses).encode()
+    }
+
+    override fun withoutAddress(config: String, address: String): String? {
+        val credentials = JellyfinCredentials.decode(config) ?: return null
+        val left = credentials.addresses.filterNot { dev.reflux.core.net.EndpointSelector.same(it) == dev.reflux.core.net.EndpointSelector.same(address) }
+        if (left.isEmpty() || left.size == credentials.addresses.size) return null
+        return credentials.at(left).encode()
     }
 
     internal companion object {

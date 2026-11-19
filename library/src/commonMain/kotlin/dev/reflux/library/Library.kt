@@ -93,8 +93,29 @@ class Library(
     @Volatile
     internal var activeProfileCache: ProfileId? = null
 
+    /**
+     * What title search searches (B-006), made once and kept until anything it is made of changes: a work, a version or
+     * what a profile sees of it, a description, a source. Measured on 11,000 playables, making it was nearly all of a
+     * search's time, and it was made again for every keystroke (docs/VERIFICATION.md, "Phase 1"). [searchGeneration]
+     * counts the changes, so that a set made while one happened is never kept.
+     */
+    @Volatile
+    private var searchDocuments: Pair<Long, List<SearchDocument>>? = null
+
+    @Volatile
+    private var searchGeneration = 0L
+
+    /** Held so that the database keeps telling: every write to these tables comes through the same queries. */
+    private val searchWatch: List<app.cash.sqldelight.Query<*>> =
+        listOf(queries.anyPlayables(), queries.metadataOf(""), queries.sourceMetadataOfSource(""), queries.sourceOrder())
+    private val searchChanged = app.cash.sqldelight.Query.Listener {
+        searchGeneration++
+        searchDocuments = null
+    }
+
     init {
         ensureProfiles()
+        searchWatch.forEach { it.addListener(searchChanged) }
     }
 
     /** The latest year a release can name; a later number in a title is part of it (`Blade Runner 2049`). */
@@ -462,6 +483,19 @@ class Library(
 
     /** Deterministic title search across movies, shows, and episodes. */
     fun search(query: String, limit: Int = 50): List<LibraryEntry> {
+        val hits = SearchMatcher.search(query, searchDocuments(), limit)
+        val byId = entries(itemsByIds(hits.map { it.document.id.value })).associateBy { it.item.id }
+        return hits.mapNotNull { byId[it.document.id] }
+    }
+
+    /** What [search] searches, as kept in [searchDocuments] while nothing it is made of has changed. */
+    private fun searchDocuments(): List<SearchDocument> {
+        val generation = searchGeneration
+        searchDocuments?.takeIf { it.first == generation }?.let { return it.second }
+        return makeSearchDocuments().also { if (searchGeneration == generation) searchDocuments = generation to it }
+    }
+
+    private fun makeSearchDocuments(): List<SearchDocument> {
         val movies = queries.presentMovies(null, null).executeAsList()
         val shows = queries.presentShows(null, null).executeAsList()
         val episodes = queries.presentPlayables(null, null).executeAsList().filter { it.kind == MediaKind.EPISODE.name }
@@ -473,12 +507,9 @@ class Library(
             val year = meta?.releaseDate?.year ?: row.year?.toInt()
             return SearchDocument(MediaId(row.id), kind, title, year, (aliases + row.title + meta?.originalTitle).filterNotNull().filter { it.isNotEmpty() && it != title }.distinct())
         }
-        val documents = movies.mapNotNull { document(it, MediaKind.MOVIE) } +
+        return movies.mapNotNull { document(it, MediaKind.MOVIE) } +
             shows.mapNotNull { document(it, MediaKind.SHOW) } +
             episodes.mapNotNull { document(it, MediaKind.EPISODE, listOf(showTitles[it.show_id])) }
-        val hits = SearchMatcher.search(query, documents, limit)
-        val byId = entries(itemsByIds(hits.map { it.document.id.value })).associateBy { it.item.id }
-        return hits.mapNotNull { byId[it.document.id] }
     }
 
     /**
@@ -551,6 +582,12 @@ class Library(
         if (favorite) queries.insertFavorite(profile, itemId.value, now()) else queries.deleteFavorite(profile, itemId.value)
     }
 
+    /**
+     * Whether [itemId] is one of the active profile's favorites, whether or not anything can play it: a favorite stays
+     * when its only source goes (B-033), so that it is there again if the work comes back, until the viewer removes it.
+     */
+    fun isFavorite(itemId: MediaId): Boolean = queries.allFavorites(activeProfile().value).executeAsList().any { it.item_id == itemId.value }
+
     /** The active profile's favorites, most recently added first. */
     fun favorites(): List<LibraryEntry> {
         val order = queries.allFavorites(activeProfile().value).executeAsList().map { it.item_id }
@@ -587,7 +624,7 @@ class Library(
     internal fun entries(items: List<MediaItem>, scope: LibraryScope = LibraryScope.Unified): List<LibraryEntry> {
         if (items.isEmpty()) return emptyList()
         val ids = items.map { it.id.value }
-        val availability = itemAvailability(scope)
+        val availability = itemAvailability(items, scope)
         val profile = activeProfile().value
         val favorites = queries.allFavorites(profile).executeAsList().map { it.item_id }.toSet()
         val states = ids.chunked(QUERY_CHUNK).flatMap { queries.watchStatesOfItems(profile, it).executeAsList() }
@@ -614,14 +651,18 @@ class Library(
         }
     }
 
-    /** Availability per item: available if any version is, unknown if any might be, otherwise unavailable. */
-    private fun itemAvailability(scope: LibraryScope): (MediaItem) -> Availability {
-        val rows = queries.itemAvailability(scope.sourceValue, scope.sectionValue).executeAsList()
-        val byItem = rows.groupBy({ it.item_id }, { enumOrNull<Availability>(it.availability) ?: Availability.UNKNOWN })
-        val episodesByParent = queries.presentPlayables(scope.sourceValue, scope.sectionValue).executeAsList()
-            .filter { it.kind == MediaKind.EPISODE.name }
-            .flatMap { listOf(it.show_id!! to it.id, it.season_id!! to it.id) }
-            .groupBy({ it.first }, { it.second })
+    /**
+     * Availability per item: available if any version is, unknown if any might be, otherwise unavailable. Read for
+     * [items] alone, and for a show or a season through its episodes in [scope]: what a listing shows, not the whole
+     * library, which every listing used to read (B-006).
+     */
+    private fun itemAvailability(items: List<MediaItem>, scope: LibraryScope): (MediaItem) -> Availability {
+        val shows = items.mapNotNull { item -> (item as? Show)?.id?.value ?: (item as? Season)?.showId?.value }.distinct()
+        val episodes = shows.chunked(QUERY_CHUNK).flatMap { queries.presentEpisodesOfShows(it, scope.sourceValue, scope.sectionValue).executeAsList() }
+        val episodesByParent = episodes.flatMap { listOf(it.show_id!! to it.id, it.season_id!! to it.id) }.groupBy({ it.first }, { it.second })
+        val wanted = (items.filter { it !is Show && it !is Season }.map { it.id.value } + episodes.map { it.id }).distinct()
+        val byItem = wanted.chunked(QUERY_CHUNK).flatMap { queries.itemAvailabilityOf(it, scope.sourceValue, scope.sectionValue).executeAsList() }
+            .groupBy({ it.item_id }, { enumOrNull<Availability>(it.availability) ?: Availability.UNKNOWN })
         fun combine(values: List<Availability>): Availability = when {
             Availability.AVAILABLE in values -> Availability.AVAILABLE
             Availability.UNKNOWN in values -> Availability.UNKNOWN

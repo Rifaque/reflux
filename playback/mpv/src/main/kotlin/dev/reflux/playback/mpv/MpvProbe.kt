@@ -15,7 +15,7 @@ class MpvProbe private constructor(private val mpv: LibMpv) {
 
     /** Probes [target]; returns null if the file cannot be opened. Blocking; call from a background thread. */
     fun probe(target: PlaybackTarget, timeoutMs: Long = 10_000): StreamInfo? {
-        val handle = mpv.mpv_create() ?: return null
+        val handle = mpv.createHandle() ?: return null
         try {
             mapOf(
                 "config" to "no", "terminal" to "no", "vo" to "null", "ao" to "null", "pause" to "yes",

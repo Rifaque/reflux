@@ -45,6 +45,30 @@ class FormattingTest {
     }
 
     @Test
+    fun theStreamsOwnSizeIsTheOneShownAndAFileNamesGuessIsNot() {
+        // B-024: one authority for each fact. A scope film read by a probe is 4K by convention, 3840 × 1600 exactly.
+        val scope = version(StreamInfo(video = VideoStream(VideoCodec.HEVC, 3840, 1600, dynamicRange = DynamicRange.HDR10)))
+        assertEquals(listOf("4K", "HDR10"), Formatting.versionQuality(scope))
+        assertEquals(listOf("HEVC", "3840 × 1600"), Formatting.versionTechnical(scope))
+        val sdr = version(StreamInfo(video = VideoStream(VideoCodec.H264, 1920, 1080)))
+        assertEquals(listOf("1080p"), Formatting.versionQuality(sdr), "SDR is the default and goes unsaid")
+        assertEquals(listOf("H.264", "1920 × 1080"), Formatting.versionTechnical(sdr))
+        // What a file name says ("2160p") is a claim, not a measurement: no exact size from it.
+        val hinted = MediaVersion(
+            VersionId("v"), MediaId("m"), MediaLocation(SourceId("s"), "a.mkv"), 0, 0,
+            StreamInfo(video = VideoStream(VideoCodec.HEVC, width = 3840, height = 2160)), StreamInfoOrigin.FILENAME_HINTS, null,
+        )
+        assertEquals(listOf("HEVC"), Formatting.versionTechnical(hinted))
+        // Nothing known of the size: nothing invented.
+        assertEquals(listOf("HEVC"), Formatting.versionTechnical(version(StreamInfo(video = VideoStream(VideoCodec.HEVC, height = 2160)))))
+        for ((range, label) in listOf(DynamicRange.HDR10_PLUS to "HDR10+", DynamicRange.DOLBY_VISION to "Dolby Vision", DynamicRange.HLG to "HLG")) {
+            assertEquals(listOf("4K", label), Formatting.versionQuality(version(StreamInfo(video = VideoStream(VideoCodec.HEVC, 3840, 2160, dynamicRange = range)))))
+        }
+        // Two versions a server named "2160p HDR" and "1080p" have no edition: nothing contradicts the streams.
+        assertEquals(listOf("4K", "HDR10"), Formatting.versionQuality(version(scope.stream, edition = dev.reflux.core.identify.VersionNames.edition("2160p HDR", "Heat"))))
+    }
+
+    @Test
     fun clockShowsHoursOnlyWhenNeeded() {
         assertEquals("0:00", Formatting.clock(0))
         assertEquals("2:03", Formatting.clock(123_000))

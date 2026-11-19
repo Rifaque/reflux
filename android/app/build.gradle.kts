@@ -142,6 +142,17 @@ abstract class GenerateTestMedia : DefaultTask() {
             )
         }
         output.get().file("chained-seekhead.mkv").asFile.writeBytes(chainSeekHead(seekable.readBytes()))
+        // Two films of one colour each, as MP4 and as Matroska: what a picture read off the surface tells apart, so that
+        // one film's picture is never taken for the next one's (B-001, SurfaceHandoverOnDeviceTest).
+        for ((name, colour) in listOf("red.mp4" to "red", "blue.mkv" to "blue")) {
+            exec.exec {
+                commandLine(
+                    "ffmpeg", "-loglevel", "error", "-y", "-f", "lavfi", "-i", "color=c=$colour:size=320x180:rate=10", "-f", "lavfi", "-i", "sine=frequency=440",
+                    "-t", "60", "-c:v", "libx264", "-preset", "ultrafast", "-pix_fmt", "yuv420p", "-g", "10", "-c:a", "aac", "-b:a", "32k",
+                    output.get().file(name).asFile.path,
+                )
+            }
+        }
         // Formats the real library lacks, each answering one question (docs/PLAYBACK.md, section 16). The desktop's
         // FormatFixtures makes the same files from the same arguments.
         for ((name, arguments) in formatFixtures) {

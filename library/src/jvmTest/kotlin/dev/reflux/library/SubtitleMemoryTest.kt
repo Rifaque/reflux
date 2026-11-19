@@ -167,7 +167,7 @@ class SubtitleMemoryTest {
         library.resetProfile(sam)
         assertNull(library.subtitlePreference(heat.id, sam))
         assertEquals(SubtitlePreference(false, "fr"), library.subtitlePreference(heat.id))
-        library.deleteProfile(sam)
+        library.deleteProfile(sam, null, null)
         assertEquals(SubtitlePreference(false, "fr"), library.subtitlePreference(heat.id))
     }
 
