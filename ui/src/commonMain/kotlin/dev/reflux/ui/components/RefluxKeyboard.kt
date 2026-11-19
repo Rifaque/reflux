@@ -1,5 +1,17 @@
 package dev.reflux.ui.components
 
+import dev.reflux.core.input.InputModality
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
+import androidx.compose.foundation.hoverable
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -54,6 +66,7 @@ import dev.reflux.ui.theme.glass
 @Composable
 fun RefluxKeyboard(session: KeyboardSession, onPress: (row: Int, column: Int) -> Unit, prompts: ControllerFamily?, modifier: Modifier = Modifier) {
     val layout = LocalLayout.current
+    val lit = layout.modality == InputModality.DIRECTIONAL || layout.formFactor == FormFactor.TV
     val keyHeight = when (layout.formFactor) {
         FormFactor.TV -> 40.dp
         FormFactor.PHONE -> 44.dp
@@ -70,7 +83,9 @@ fun RefluxKeyboard(session: KeyboardSession, onPress: (row: Int, column: Int) ->
         session.rows.forEachIndexed { rowIndex, keys ->
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 keys.forEachIndexed { columnIndex, key ->
-                    val chosen = rowIndex == session.row && columnIndex == session.column
+                    // The chosen key is lit for a controller or a remote, which move it; a pointer or a finger presses keys where
+                    // they are, and leaves none lit behind it (B-051).
+                    val chosen = lit && rowIndex == session.row && columnIndex == session.column
                     KeyCap(session, key, chosen, Modifier.weight(key.weight).height(keyHeight)) { onPress(rowIndex, columnIndex) }
                 }
             }
@@ -112,17 +127,39 @@ private fun KeyCap(session: KeyboardSession, key: KeyboardKey, chosen: Boolean, 
     val name = keyName(session, key)
     val on = (key == KeyboardKey.Shift && session.shift != ShiftState.OFF)
     val shape = Shapes.small
+    // A pointer's or a finger's press (B-051): the key sinks a little and brightens while it is down, and for a moment after a
+    // click too quick to see, then is itself again. Never a lit key left behind.
+    val interaction = remember { MutableInteractionSource() }
+    val down by interaction.collectIsPressedAsState()
+    val hovered by interaction.collectIsHoveredAsState()
+    var flash by remember { mutableIntStateOf(0) }
+    var flashing by remember { mutableStateOf(false) }
+    LaunchedEffect(flash) {
+        if (flash == 0) return@LaunchedEffect
+        flashing = true
+        kotlinx.coroutines.delay(KEY_FLASH_MS)
+        flashing = false
+    }
+    val pressed = !chosen && (down || flashing)
+    val sink by animateFloatAsState(if (pressed) 0.93f else 1f, tween(if (pressed) 60 else 140))
+    val tone by animateFloatAsState(
+        when {
+            pressed -> 0.26f
+            on -> 0.22f
+            hovered && !chosen -> 0.13f
+            else -> 0.08f
+        },
+        tween(if (pressed) 60 else 160),
+    )
     Box(
-        modifier.clip(shape)
-            .background(
-                when {
-                    chosen -> RefluxColors.contentPrimary
-                    on -> States.layer(0.22f)
-                    else -> States.layer(0.08f)
-                },
-            )
+        modifier.graphicsLayer { scaleX = sink; scaleY = sink }.clip(shape)
+            .background(if (chosen) RefluxColors.contentPrimary else States.layer(tone))
             .then(if (key == KeyboardKey.Shift && session.shift == ShiftState.LOCKED) Modifier.border(2.dp, RefluxColors.contentPrimary, shape) else Modifier)
-            .clickable(remember { MutableInteractionSource() }, indication = null, onClick = onClick)
+            .hoverable(interaction)
+            .clickable(interaction, indication = null) {
+                flash++
+                onClick()
+            }
             .semantics {
                 contentDescription = name
                 role = Role.Button
@@ -139,6 +176,9 @@ private fun KeyCap(session: KeyboardSession, key: KeyboardKey, chosen: Boolean, 
         }
     }
 }
+
+/** How long a clicked key stays pressed-looking after a click too quick to see (B-051). */
+private const val KEY_FLASH_MS = 110L
 
 /** What a key shows. */
 private fun label(session: KeyboardSession, key: KeyboardKey): String = when (key) {

@@ -195,6 +195,12 @@ interface Platform {
     val docksVideo: Boolean get() = false
 
     /**
+     * Whether Search offers a button that opens the Reflux keyboard for a pointer (B-051): a Windows or Linux desktop, where
+     * someone may have only a mouse. Never on a phone, a tablet or a television, whose keyboards are their own.
+     */
+    val pointerKeyboard: Boolean get() = false
+
+    /**
      * Whether the system has a window of its own for what is playing while Reflux is not shown (Android's
      * picture-in-picture): what is playing can go on in it ([PlayerPresentation.SYSTEM]), and Back at the root, with
      * playback running in the dock, goes there. False where there is none, and on a television, whose player is the

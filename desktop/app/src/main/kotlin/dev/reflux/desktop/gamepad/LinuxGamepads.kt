@@ -14,7 +14,8 @@ import kotlin.concurrent.thread
 import kotlin.io.path.name
 
 /**
- * Controllers on Linux, through the kernel's joystick interface (`/dev/input/js*`).
+ * Controllers on Linux, through the kernel's joystick interface (`/dev/input/js*`); their motors through their event
+ * devices ([LinuxRumble]).
  *
  * Each device is a stream of small events and needs nothing but read access, which desktop sessions grant
  * for game controllers. What each button number means comes from the device's capabilities in sysfs: the
@@ -27,6 +28,8 @@ import kotlin.io.path.name
 internal class LinuxGamepads(
     private val devices: Path = Path.of("/dev/input"),
     private val sysfs: Path = Path.of("/sys/class/input"),
+    /** The controllers' motors, through their event devices (F-002; LinuxRumble). */
+    private val motors: LinuxRumble = LinuxRumble(devices, sysfs),
 ) : GamepadReader {
     private val open = ConcurrentHashMap<String, Device>()
     private var scanAt = 0L
@@ -42,8 +45,13 @@ internal class LinuxGamepads(
         return open.values.sortedBy { it.name }.map { it.state.snapshot() }
     }
 
+    override fun canRumble(id: String): Boolean = motors.canRumble(id)
+
+    override fun rumble(id: String, strength: Float): Boolean = motors.rumble(id, strength)
+
     override fun close() {
         closed = true
+        motors.close()
         open.values.forEach { it.reader.interrupt() }
         open.clear()
     }
@@ -55,6 +63,7 @@ internal class LinuxGamepads(
             emptyMap() // no input devices here at all
         }
         open.keys.retainAll(nodes.keys)
+        motors.retain(nodes.keys)
         for ((name, node) in nodes) {
             if (open.containsKey(name) || !Files.isReadable(node)) continue
             val layout = JoystickLayout.read(sysfs.resolve(name).resolve("device")) ?: continue
@@ -78,6 +87,7 @@ internal class LinuxGamepads(
                 }
             } catch (_: IOException) {
                 open.remove(name, this) // unplugged, or closed while reading
+                motors.forget(name) // and its motors with it
             }
         }
     }

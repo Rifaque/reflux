@@ -336,6 +336,8 @@ class FakePlatform(
     override val systemPresentation: Boolean = false,
     /** Whether a subtitle file beside a local video can be read here (a television from Android 13 cannot). */
     override val readsSidecarSubtitles: Boolean = true,
+    /** Whether Search offers the Reflux keyboard to a pointer (a desktop's does: B-051). */
+    override val pointerKeyboard: Boolean = false,
 ) : Platform {
     /** How many times the experience layer asked the system for its window, and whether the system said yes. */
     var systemRequests = 0

@@ -74,6 +74,32 @@ class GamepadTest {
     }
 
     @Test
+    fun aButtonThatWaitsForItsReleaseIsAPressWhenTappedAndAHoldWhenHeldNeverBoth() {
+        // B-052: B with the mini-player up.
+        val tapped = mutableListOf<GamepadButton>()
+        val held = mutableListOf<GamepadButton>()
+        val keys = GamepadTranslator(waitsForRelease = { button, _ -> button == GamepadButton.FACE_EAST }, hold = { button, _ -> held += button }, holdMs = 700) { button, _ -> tapped += button }
+        keys.update(pad(), -1_000)
+        keys.update(pad(GamepadButton.FACE_EAST), 0)
+        keys.update(pad(GamepadButton.FACE_EAST), 300)
+        assertTrue(tapped.isEmpty(), "nothing while it is still down")
+        keys.update(pad(), 320)
+        assertEquals(listOf(GamepadButton.FACE_EAST), tapped, "let go in time: a press")
+        assertTrue(held.isEmpty())
+        keys.update(pad(GamepadButton.FACE_EAST), 1_000)
+        keys.update(pad(GamepadButton.FACE_EAST), 1_500)
+        keys.update(pad(GamepadButton.FACE_EAST), 1_710)
+        assertEquals(listOf(GamepadButton.FACE_EAST), held, "held long enough: a hold")
+        keys.update(pad(GamepadButton.FACE_EAST), 2_500)
+        keys.update(pad(), 2_600)
+        assertEquals(1, tapped.size, "and not a press as well when let go")
+        assertEquals(1, held.size, "once")
+        // Any other button is as it always was.
+        keys.update(pad(GamepadButton.FACE_SOUTH), 3_000)
+        assertEquals(GamepadButton.FACE_SOUTH, tapped.last())
+    }
+
+    @Test
     fun theStickNavigatesOnlyWhenClearlyDeflected() {
         translator.update(pad(x = 0.3f), 0)
         assertTrue(pressed().isEmpty(), "a stick resting off-center does nothing")

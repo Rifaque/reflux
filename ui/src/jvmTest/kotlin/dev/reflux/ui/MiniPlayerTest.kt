@@ -30,6 +30,8 @@ import dev.reflux.ui.state.AppState
 import dev.reflux.ui.state.Destination
 import dev.reflux.ui.state.PlayerPresentation
 import dev.reflux.ui.state.VideoFrame
+import dev.reflux.core.input.ControllerFamily
+import dev.reflux.core.input.GamepadButton
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -367,6 +369,45 @@ class MiniPlayerTest {
             assertSame(session, app.playback)
             assertEquals(PlayerPresentation.MINI, session.presentation)
             assertEquals(1, platform.players.size)
+        }
+    }
+
+    @Test
+    fun withAControllerBMinimisesAndRtOrAHeldBClosesForGood() {
+        // B-052, the owner's decision (2026-11-19): B in the full player still steps aside into the mini-player; then RT, or
+        // B held, closes what plays (stopped, not hidden), the mini-player goes, and the page and its focus stay.
+        val platform = docking()
+        screen(populated(), platform) { app ->
+            awaitText("Recently Added")
+            runOnIdle { app.onGamepadButton(GamepadButton.DPAD_DOWN, ControllerFamily.XBOX) }
+            playing(app, platform)
+            assertFalse(app.backWaitsForRelease, "in the full player, B is the player's at once")
+            runOnIdle { app.onGamepadButton(GamepadButton.FACE_EAST, ControllerFamily.XBOX) }
+            await("the mini-player") { exists(dock) && app.docked != null }
+            waitForIdle()
+            await("both ways to close it offered") { prompted("RT Close player") && prompted("old to close player") }
+            assertTrue(app.backWaitsForRelease, "with the mini-player up, Back waits to see if it is held")
+            val page = app.navigator.current
+            val player = platform.players.single()
+            runOnIdle { assertTrue(app.onGamepadButton(GamepadButton.TRIGGER_RIGHT, ControllerFamily.XBOX)) }
+            await("closed") { app.playback == null && !exists(dock) }
+            assertTrue(player in platform.released, "playback stopped and the player released, not hidden")
+            assertEquals(page, app.navigator.current, "the page is unchanged")
+            assertFalse(prompted("Close player"))
+            // Again, and a held B this time; a short B before it was only Back.
+            playing(app, platform)
+            runOnIdle { app.onGamepadButton(GamepadButton.FACE_EAST, ControllerFamily.XBOX) }
+            await("the mini-player again") { app.docked != null }
+            runOnIdle { assertTrue(app.onGamepadHold(GamepadButton.FACE_EAST, ControllerFamily.XBOX)) }
+            await("closed by holding B") { app.playback == null && !exists(dock) }
+            assertEquals(page, app.navigator.current)
+            assertFalse(app.onGamepadHold(GamepadButton.FACE_EAST, ControllerFamily.XBOX), "with nothing playing, holding B is nothing")
+            // A remote's Back held, on a device with a dock.
+            playing(app, platform)
+            runOnIdle { app.playback!!.collapse() }
+            await("docked") { app.docked != null }
+            runOnIdle { assertTrue(app.onBackHeld()) }
+            await("closed by a held Back") { app.playback == null }
         }
     }
 }
