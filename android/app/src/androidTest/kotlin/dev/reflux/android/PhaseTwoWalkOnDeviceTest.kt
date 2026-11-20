@@ -175,7 +175,8 @@ class PhaseTwoWalkOnDeviceTest {
         until("the field") { nodes().any { it.isEditable } }
         val phone = context.resources.configuration.smallestScreenWidthDp < 600
         // B-034: a short placeholder, whole.
-        assertTrue(says("Search your library"), "the short placeholder")
+        shot("p2-search-placeholder-$model")
+        assertTrue(says("Search your library"), "the short placeholder: ${nodes().filter { it.isEditable }.map { it.words() }}")
         // B-035: no "Try"; chips with a finger's target.
         assertFalse(nodes().any { it.isVisibleToUser && it.words() == "Try" }, "no Try label")
         // B-057: the idle page's quick finds, each a finger's target, offered because this library has something for them.
@@ -392,6 +393,8 @@ class PhaseTwoWalkOnDeviceTest {
         until("Home") { app.navigator.current == Destination.Home }
         instrumentation.runOnMainSync { app.go(Destination.Search) }
         until("the field") { app.navigator.current == Destination.Search && app.textInputActive }
+        // The field reports itself before it is ready for OK on a slower television (the Google TV emulator).
+        Thread.sleep(800)
         remote(KeyEvent.KEYCODE_DPAD_CENTER)
         try {
             until("the Reflux keyboard", 6_000) { app.keyboard != null }
@@ -449,6 +452,8 @@ class PhaseTwoWalkOnDeviceTest {
     private fun pad(keyCode: Int) {
         instrumentation.uiAutomation.executeShellCommand("input gamepad keyevent $keyCode").close()
         Thread.sleep(700)
+        // The accessibility tree catches up with a move after the move: a check read before it would press once too often.
+        runCatching { instrumentation.uiAutomation.waitForIdle(300, 3_000) }
     }
 
     /** Whether what has focus is (or holds) the visible words [words]: by its words, or by its box holding theirs. */
@@ -530,5 +535,170 @@ class PhaseTwoWalkOnDeviceTest {
             if (device.sources and android.view.InputDevice.SOURCE_GAMEPAD != android.view.InputDevice.SOURCE_GAMEPAD) continue
             @Suppress("DEPRECATION") println("Controller on $model: ${device.name}, vibrator: ${device.vibrator.hasVibrator()}")
         }
+    }
+
+    @Test
+    fun onATelevisionAControllerWalksEveryPageWhateverTheLibrary() {
+        // Phase 2's close (2026-11-20), a controller on a television, written for any library (a television's own library
+        // may be too large for the test film to be on screen): Movies, Details on Play, focus restored after Back, Shows,
+        // Search typed with the Reflux keyboard, the shortcuts, Start's Sources, and a confirmation cancelled by B.
+        org.junit.Assume.assumeTrue(television)
+        start()
+        until("Home") { app.navigator.current == Destination.Home && nodes().any { it.isFocused } }
+        pad(KeyEvent.KEYCODE_DPAD_DOWN)
+        until("a controller in hand") { app.input.controllerFamily != null && app.input.modality == dev.reflux.core.input.InputModality.DIRECTIONAL }
+        shot("p2-tvc-home-$model")
+        // Movies by RB; into the grid, along to the walk's own film (a television's other films may be on a source that is
+        // not connected, whose page rightly puts focus past a Play that cannot play: B-053).
+        pad(KeyEvent.KEYCODE_BUTTON_R1)
+        until("Movies") { app.navigator.current == Destination.Movies }
+        pad(KeyEvent.KEYCODE_DPAD_RIGHT)
+        until("a film focused", 6_000) { nodes().any { it.isFocused } }
+        repeat(10) { if (!focusIsOn("Jungle Walk")) pad(KeyEvent.KEYCODE_DPAD_RIGHT) }
+        assertTrue(focusIsOn("Jungle Walk"), "on the walk's film: focus on '${focusedFilm()}'")
+        val film: String? = "Jungle Walk"
+        shot("p2-tvc-movies-$model")
+        // Its page: Play has focus and nothing plays; B comes back to the same film.
+        pad(KeyEvent.KEYCODE_BUTTON_A)
+        until("details") { app.navigator.current is Destination.Details }
+        until("Play focused", 8_000) {
+            val focused = nodes().firstOrNull { it.isFocused } ?: return@until false
+            val play = nodes().firstOrNull { it.isVisibleToUser && (it.words() == "Play" || it.words().startsWith("Resume")) }
+            play != null && focused.bounds().contains(play.bounds().centerX(), play.bounds().centerY())
+        }
+        kotlin.test.assertNull(app.playback, "nothing plays on arrival")
+        shot("p2-tvc-details-$model")
+        pad(KeyEvent.KEYCODE_BUTTON_B)
+        until("Movies again") { app.navigator.current == Destination.Movies }
+        if (film != null) until("focus back on $film", 6_000) { focusIsOn(film) }
+        // Shows, then Search, by RB.
+        pad(KeyEvent.KEYCODE_BUTTON_R1)
+        until("Shows") { app.navigator.current == Destination.Shows }
+        until("focus on Shows", 6_000) { nodes().any { it.isFocused } }
+        shot("p2-tvc-shows-$model")
+        pad(KeyEvent.KEYCODE_BUTTON_R1)
+        until("Search") { app.navigator.current == Destination.Search && app.textInputActive }
+        Thread.sleep(800)
+        pad(KeyEvent.KEYCODE_BUTTON_A)
+        until("the Reflux keyboard", 6_000) { app.keyboard != null }
+        until("the system keyboard kept away", 4_000) { !app.systemKeyboardShown }
+        val word = (film ?: "a").lowercase().filter { it in 'a'..'z' }.take(3).ifEmpty { "a" }
+        val session = app.keyboard!!
+        for (letter in word + "x") {
+            val (row, column) = session.rows.withIndex().firstNotNullOf { (r, keys) -> keys.indexOf(dev.reflux.ui.state.KeyboardKey.Type(letter.toString())).takeIf { it >= 0 }?.let { r to it } }
+            while (session.row != row) pad(if (session.row < row) KeyEvent.KEYCODE_DPAD_DOWN else KeyEvent.KEYCODE_DPAD_UP)
+            while (session.column != column) pad(if (session.column < column) KeyEvent.KEYCODE_DPAD_RIGHT else KeyEvent.KEYCODE_DPAD_LEFT)
+            pad(KeyEvent.KEYCODE_BUTTON_A)
+        }
+        until("typed") { app.searchQuery == word + "x" }
+        pad(KeyEvent.KEYCODE_BUTTON_X)
+        until("erased") { app.searchQuery == word }
+        if (film != null) until("found $film") { says(film) }
+        shot("p2-tvc-keyboard-$model")
+        pad(KeyEvent.KEYCODE_BUTTON_B)
+        until("put away") { app.keyboard == null }
+        kotlin.test.assertEquals(word, app.searchQuery, "the query is kept")
+        kotlin.test.assertEquals(Destination.Search, app.navigator.current)
+        // X has no browsing meaning (reserved); Y opens and closes the sidebar; LT hides and shows the hints.
+        val before = app.navigator.current
+        pad(KeyEvent.KEYCODE_BUTTON_X)
+        kotlin.test.assertEquals(before, app.navigator.current, "X does nothing while browsing")
+        pad(KeyEvent.KEYCODE_BUTTON_Y)
+        pad(KeyEvent.KEYCODE_BUTTON_Y)
+        pad(KeyEvent.KEYCODE_BUTTON_L2)
+        until("hints hidden") { app.hintsHidden }
+        pad(KeyEvent.KEYCODE_BUTTON_L2)
+        until("hints shown") { !app.hintsHidden }
+        // Start opens Sources; B comes back with focus kept on the page.
+        pad(KeyEvent.KEYCODE_BUTTON_START)
+        until("Sources") { app.navigator.current == Destination.Sources }
+        until("focus in Sources", 6_000) { nodes().any { it.isFocused } }
+        shot("p2-pad-sources-$model")
+        // On a television the first Back from a top-level page goes to the navigation, the next one leaves (NAVIGATION.md, 2).
+        pad(KeyEvent.KEYCODE_BUTTON_B)
+        until("focus in the navigation", 6_000) { nodes().any { it.isFocused } }
+        kotlin.test.assertEquals(Destination.Sources, app.navigator.current, "the first B goes to the navigation, not away")
+        pad(KeyEvent.KEYCODE_BUTTON_B)
+        until("back from Sources") { app.navigator.current != Destination.Sources }
+        until("focus after Sources", 6_000) { nodes().any { it.isFocused } }
+        // Nothing a pointer would do happened on the way: the controller kept the walk.
+        kotlin.test.assertEquals(dev.reflux.core.input.InputModality.DIRECTIONAL, app.input.modality)
+        // A confirmation's focus (A on an option, focus on Keep, B back to the option) is not walked here: on the emulator the
+        // accessibility tree runs behind a move, so a check of where focus is can press once too often, and a press on the
+        // wrong option of Settings changes a setting. It is PanelFocusTest's, on the television harness, and was walked by hand.
+        instrumentation.runOnMainSync { app.searchQuery = "" }
+    }
+
+    /** The title of the focused film's card: the words of a title inside its box, or its own words. */
+    private fun focusedFilm(): String? {
+        val focused = nodes().firstOrNull { it.isFocused } ?: return null
+        val box = focused.bounds()
+        val inside = nodes().filter { it != focused && it.isVisibleToUser && it.words().isNotBlank() && box.contains(it.bounds()) }
+        return inside.map { it.words() }.firstOrNull { words -> words.length > 2 && words.any { it.isLetter() } }
+            ?: focusedWords()?.substringBefore(',')?.trim()?.takeIf { it.isNotBlank() }
+    }
+
+    /** A scope tab, by its words, in the top third of the screen (the bar at the bottom has the same words). */
+    private fun tab(label: String): AccessibilityNodeInfo? {
+        val top = context.resources.displayMetrics.heightPixels / 3
+        val words = nodes().firstOrNull { it.isVisibleToUser && it.words() == label && it.bounds().top < top } ?: return null
+        var n: AccessibilityNodeInfo? = words
+        while (n != null && !n.isClickable) n = n.parent
+        return n
+    }
+
+    @Test
+    fun searchOnAPhoneFindsNarrowsEditsAndKeepsItsQuery() {
+        // Phase 2's close (2026-11-20): a handheld's Search by touch, after B-057's redesign.
+        org.junit.Assume.assumeFalse(television)
+        start()
+        until("Home") { app.navigator.current == Destination.Home && (says("Recently Added") || says("Continue Watching")) }
+        instrumentation.runOnMainSync {
+            app.searchQuery = ""
+            app.searchScope = dev.reflux.ui.state.SearchScope.ALL
+            app.go(Destination.Search)
+        }
+        until("the index") { says("Start with") }
+        Thread.sleep(800)
+        // A suggestion asks its question: the query is filled and the film is found.
+        tap(assertNotNull(withWords("Not seen yet")?.let { var n: AccessibilityNodeInfo? = it; while (n != null && !n.isClickable) n = n.parent; n }))
+        until("asked") { app.searchQuery.isNotBlank() }
+        until("found") { says("Jungle Walk") && says("result") }
+        shot("p2-search-results-$model")
+        // Shows: nothing there, said so, with everything one tap away.
+        tap(assertNotNull(tab("Shows"), "the Shows tab"))
+        until("shows") { app.searchScope == dev.reflux.ui.state.SearchScope.SHOWS }
+        until("nothing among shows") { says("No matches for") && !says("Jungle Walk") }
+        shot("p2-search-shows-empty-$model")
+        tap(assertNotNull(withWords("Search everything")?.let { var n: AccessibilityNodeInfo? = it; while (n != null && !n.isClickable) n = n.parent; n }))
+        until("everything") { app.searchScope == dev.reflux.ui.state.SearchScope.ALL && says("Jungle Walk") }
+        tap(assertNotNull(tab("Movies"), "the Movies tab"))
+        until("movies") { app.searchScope == dev.reflux.ui.state.SearchScope.MOVIES && says("Jungle Walk") }
+        // Editing: the field again, the system keyboard up, the query as it was; then what is typed changes the results.
+        tap(nodes().first { it.isEditable })
+        until("the keyboard", 8_000) { imeShown() }
+        val asked = app.searchQuery
+        assertTrue(nodes().any { it.isEditable && it.text?.toString() == asked }, "the query is in the field: $asked")
+        instrumentation.runOnMainSync { app.searchQuery = "jung" }
+        until("still found") { says("Jungle Walk") }
+        back()
+        until("the keyboard gone", 8_000) { !imeShown() }
+        // A result opens its page; Back comes to Search with the query and the scope kept.
+        val card = assertNotNull(
+            nodes().firstOrNull { it.isVisibleToUser && it.words().contains("Jungle Walk") && it.bounds().top > context.resources.displayMetrics.heightPixels / 6 }
+                ?.let { var n: AccessibilityNodeInfo? = it; while (n != null && !n.isClickable) n = n.parent; n ?: it },
+            "the film's card",
+        )
+        tap(card)
+        until("details") { app.navigator.current is Destination.Details }
+        back()
+        until("search again") { app.navigator.current == Destination.Search }
+        assertEquals("jung", app.searchQuery, "the query is kept")
+        assertEquals(dev.reflux.ui.state.SearchScope.MOVIES, app.searchScope, "the scope is kept")
+        // Clear: the idle page again.
+        tap(assertNotNull(withWords("Clear search")?.let { var n: AccessibilityNodeInfo? = it; while (n != null && !n.isClickable) n = n.parent; n ?: it }, "the clear button"))
+        until("cleared") { app.searchQuery.isEmpty() && says("Start with") }
+        shot("p2-search-cleared-$model")
+        instrumentation.runOnMainSync { app.searchScope = dev.reflux.ui.state.SearchScope.ALL }
     }
 }
