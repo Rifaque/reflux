@@ -119,6 +119,12 @@ internal fun ProfilesScreen(app: AppState) {
                 ProfileRow(profile, if (index == 0) Modifier.initialFocus() else Modifier) { app.chooseProfile(profile) }
             }
         }
+        // Leaving the open profile without choosing another yet (B-017): Reflux then asks who is watching.
+        if (app.profilesShown) {
+            item(key = "log-out") {
+                Button("Log out of ${app.activeProfile?.name ?: "this profile"}", { app.logOut() }, Modifier.padding(top = 4.dp), icon = Icon.LOCK, style = ButtonStyle.QUIET)
+            }
+        }
         item(key = "add") {
             if (adding) {
                 ClosesOnBack(app) { adding = false; addReturn.back() }

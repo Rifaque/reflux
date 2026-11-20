@@ -386,7 +386,7 @@ private fun liftedBy(interaction: MutableInteractionSource, posterHeight: Dp): (
     val ring = focused && layout.showsFocus
     val target = when {
         ring -> liftReach(posterHeight, layout.focusScale)
-        hovered -> liftReach(posterHeight, layout.focusScale, ring = false)
+        hovered && layout.hoverShows -> liftReach(posterHeight, layout.focusScale, ring = false)
         else -> 0.dp
     }
     val shown by animateDpAsState(target, Motion.focusChange.tween())

@@ -1,5 +1,6 @@
 package dev.reflux.ui
 
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsProperties
@@ -10,6 +11,8 @@ import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.isFocused
 import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.performMouseInput
 import dev.reflux.core.input.ControllerFamily
 import dev.reflux.core.input.GamepadButton
 import dev.reflux.core.input.InputModality
@@ -95,6 +98,54 @@ class CardLayoutTest {
     }
 
     private fun DesktopComposeUiTest.focusedOrEmpty(): Rect = runCatching { focused() }.getOrDefault(Rect.Zero)
+
+    private fun DesktopComposeUiTest.cards(): List<Rect> =
+        onAllNodes(SemanticsMatcher("a card") { it.config.getOrNull(SemanticsProperties.Role) == Role.Button && it.boundsInRoot.height > 150f })
+            .fetchSemanticsNodes().map { it.boundsInRoot }
+            // Whole cards only: one cut off by the window's edge is narrower without being at rest.
+            .filter { it.left > 1f && it.right < 1439f }
+
+    @Test
+    fun aRestingPointerNeverLiftsACardWhileAControllerHasFocus() {
+        // B-042: hover and focus are separate states. The pointer rests on one card; the controller moves focus; only
+        // the focused card is lifted, whatever card is under the pointer, and hover comes back with the pointer.
+        screen(populated(), width = 1440, height = 900) { app ->
+            awaitText("Recently Added")
+            mainClock.advanceTimeBy(800)
+            waitForIdle()
+            val target = cards().first { it.left > 300f }
+            onRoot().performMouseInput { moveTo(Offset(target.center.x, target.center.y)) }
+            mainClock.advanceTimeBy(800)
+            waitForIdle()
+            val hoveredWidth = cards().filter { it.center.y in target.top..target.bottom }.maxOf { it.width }
+            val restWidth = cards().filter { it.center.y in target.top..target.bottom }.minOf { it.width }
+            assertTrue(hoveredWidth > restWidth + 1f, "under the pointer, hover lifts the card ($hoveredWidth against $restWidth)")
+            for (button in listOf(GamepadButton.DPAD_DOWN, GamepadButton.DPAD_RIGHT, GamepadButton.DPAD_RIGHT, GamepadButton.DPAD_UP)) {
+                press(app, button)
+                mainClock.advanceTimeBy(800)
+                waitForIdle()
+                val focus = focusedOrEmpty()
+                val rows = cards().filter { !it.overlaps(focus) }.groupBy { (it.top / 20f).toInt() }.values.filter { it.size > 1 }
+                for (row in rows) {
+                    val widths = row.map { it.width }
+                    assertTrue(widths.max() - widths.min() < 1f, "after $button only the focused card is lifted, not the one under the pointer: $row")
+                }
+            }
+            // The pointer used again: hover is shown again.
+            val under = cards().first { it.left > 300f }
+            for (dx in listOf(30f, 60f, 90f, 60f, 30f, 0f)) {
+                onRoot().performMouseInput { moveTo(Offset(under.center.x + dx, under.center.y)) }
+                mainClock.advanceTimeBy(16)
+            }
+            // The travel the window reports (the test's synthetic moves carry no position change of their own).
+            runOnIdle { app.onSignal(dev.reflux.core.input.InputSignal.PointerMove(40f, 0f)) }
+            mainClock.advanceTimeBy(800)
+            waitForIdle()
+            assertTrue(app.input.modality == InputModality.POINTER, "the pointer took over")
+            val row = cards().filter { it.center.y in under.top - 40f..under.bottom + 40f }
+            assertTrue(row.maxOf { it.width } > row.minOf { it.width } + 1f, "hover lifts again once the pointer is in use: $row")
+        }
+    }
 
     @Test
     fun aCardsStateMarksNeverMeetOnTheNarrowestCard() {

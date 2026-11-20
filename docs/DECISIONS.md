@@ -1395,6 +1395,17 @@ M11 decided the open items of its plan (planning/M11-DISTRIBUTION-PLAN.md, secti
 - **1.0 communication.** "Planned for December 2026", depending on feedback, qualification, and store approval; 10 December is an internal readiness checkpoint and 15 December the release decision, never a promised release date. Each platform publishes through its own path.
 - **No Windows installer in the beta**: none exists or is tested, and building one would change the release; reconsidered for 1.0.
 
+## 2026-11-20 — Phase 3: every device opens the last-used profile; Switch profile and Log out; hover is shown only under a pointer
+
+**Context.** The owner's Phase 3 work order (2026-11-20) placed B-016 and B-017 in Phase 3 and set B-016's behaviour: "the app opens using the last-used profile instead of forcing profile selection on every launch", with profile selection still accessible, and an obvious way to switch or log out (B-017). The tester's original B-016 text asked for the opposite (a chooser at every start); the work order is the owner's later instruction and is followed. B-042 was believed fixed; the code showed it was not.
+
+**Decisions.**
+- **B-016:** every device opens the profile it had, **a television included** (until now a television with several profiles asked at every start: M8, 2026-11-11). A profile with a PIN still opens locked. The active profile is the one the library marks active; a deleted or missing one falls back to another (`ensureProfiles`, `deleteProfile`), so start-up never meets a profile that is gone.
+- **B-017:** with several profiles, Settings offers **Switch profile** (asks who is watching; Back steps out of it) and **Log out** (also beside the list on Profiles). Logging out deletes and signs out of nothing; it stops playback (recorded for its profile), clears the session (search, last playback report, notice), locks a PIN profile again, returns to Home beneath, and asks who is watching as a required question (Back leaves Reflux). With one profile neither is shown: one profile is never mentioned (M8).
+- **B-042:** hover and focus are separate states. `Pressable` and a card's lift count hover only while the pointer is the input in use (`LayoutProfile.hoverShows`); under a controller, a remote or a keyboard a resting pointer lifts nothing. Hover is not disabled: it shows again as soon as the pointer moves.
+
+**Alternatives rejected.** Keeping the television's question at every start (the work order asks for one behaviour everywhere; the PIN protects a private profile and Switch profile is a press away); a "Log out" that clears the active profile in the database (no "nobody" profile exists, and the next start would have to invent one); disabling hover under a controller by consuming hover events (hides real input; the state is simply not shown).
+
 ## 2026-11-20 — Phase 2 accepted and closed
 
 **The owner formally accepted Phase 2: ACCEPTED AND CLOSED BY OWNER.**

@@ -1291,12 +1291,9 @@ class AppState(
         loadProfiles()
         if (continuedFromOutside) return
         val active = activeProfile ?: return
-        profileGate = when {
-            active.hasPin -> ProfileGate.Unlock(active, required = true)
-            // A shared screen with several viewers asks, every time; a phone or a computer remembers who it was.
-            platform.television && profilesShown -> ProfileGate.Choose(required = true)
-            else -> null
-        }
+        // Every device opens the profile it had (B-016; DECISIONS.md, 2026-11-20): a television no longer asks at every
+        // start. A profile with a PIN still opens locked, and "Who's watching?" is a press away (B-017).
+        profileGate = if (active.hasPin) ProfileGate.Unlock(active, required = true) else null
     }
 
     /** Opens the question of who is watching, from the profile entry. */
@@ -1305,6 +1302,26 @@ class AppState(
             loadProfiles()
             profileGate = ProfileGate.Choose(required = false)
         }
+    }
+
+    /**
+     * Logs the viewer out of the open profile (B-017): nothing of theirs is deleted or signed out of, but what they
+     * were doing stops, nothing of their session is left on screen, a PIN is asked for again, and Reflux asks who is
+     * watching, as at a start where someone has to choose. Switching ([askWhoIsWatching]) asks without leaving.
+     */
+    fun logOut(): Job = attempt("Couldn't log out. Try again.") {
+        if (!profilesShown) return@attempt
+        finishPlayback()
+        offlineOpen = false
+        folderPicker = null
+        closeKeyboard()
+        searchQuery = ""
+        lastPlayback = emptyList()
+        notice = null
+        unlocked = false
+        navigator.show(Destination.Home)
+        loadProfiles()
+        profileGate = ProfileGate.Choose(required = true)
     }
 
     /** The viewer chose [profile]: one with a PIN asks for it first; the one already open just closes the question. */

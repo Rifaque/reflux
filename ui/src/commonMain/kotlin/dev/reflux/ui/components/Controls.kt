@@ -143,7 +143,10 @@ fun Pressable(
     val focused by interaction.collectIsFocusedAsState()
     val pressed by interaction.collectIsPressedAsState()
     val ring = focused && layout.showsFocus
-    val active = enabled && (hovered || ring)
+    // Hover and focus are separate states (B-042): a pointer resting on one card while a controller or a keyboard
+    // moves focus to another never lifts the card under it, so the two never fight over a card. Hover shows again
+    // as soon as the pointer is the input in use.
+    val active = enabled && ((hovered && layout.hoverShows) || ring)
     val focusedControl = LocalFocusedControl.current
     val click by rememberUpdatedState(onClick)
     val self = remember { FocusRequester() }
