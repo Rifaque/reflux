@@ -153,7 +153,7 @@ Closure (2026-11-20): the Linux VM, the Google TV emulator and the Phone 2a walk
 - The tracker is complete and current.
 - The Phase 3 review is presented to the owner for acceptance.
 
-*State (2026-11-20): **implemented, awaiting the owner's review.*** The owner's Phase 3 work order of 2026-11-20 set the executed scope:
+*State (2026-11-20): **implemented and through its final validation, awaiting the owner's acceptance.*** The owner's Phase 3 work order of 2026-11-20 set the executed scope:
 - **In scope:** B-016, B-017, a bug sweep (B-042 included), B-030, B-029, F-P3, B-014, B-028, F-P4, F-003 (conditional on feasibility), B-041, B-022, F-004.
 - **Out of scope as V1.1 candidates:** B-027, B-038, B-040 (researched only: [V1.1-LIBRARY-RESEARCH.md](V1.1-LIBRARY-RESEARCH.md)).
 
@@ -165,13 +165,18 @@ Evidence: the tracker's [phase overview](BETA-BUG-TRACKER.md#phase-overview) and
   - Jellyfin verified live;
   - Plex tested against its format only;
   - graceful where a source has none.
-- **Video haptics:** not shipped. Feasibility was shown on the desktop; synchronisation with real output devices, Android, and physical validation remain (F-003).
+- **Video haptics:** **deferred by the owner (2026-11-20)** as a future experimental feature, outside Phase 3 and Beta 2, with no release assigned (F-003; DECISIONS.md). Phase 3's feasibility findings are kept for that work.
 - **Home discovery:** the featured hero is intentional; discovery variety is V1.1.
 - **Performance:** compared with Phase 1 where like-for-like; no regression.
 - **Analytics:** validated; nothing can be sent.
 - **Regression tests:** the full check (VERIFICATION.md).
 - **Tracker:** current.
-- **Owner's review:** pending.
+- **Final validation (2026-11-20; VERIFICATION.md, "Phase 3: final validation and closure"):**
+  - the owner's physical controller and mouse walk on Windows: B-042 Verified, and B-064 to B-069 found and fixed;
+  - Linux in the QA VM, with B-063 (display scale) found and fixed;
+  - the TV emulator walks;
+  - the Steam artwork (B-070).
+- **Owner's review:** pending. The next phase's brief: [PHASE-4-HANDOFF.md](PHASE-4-HANDOFF.md).
 
 ### Reconciliation: what the allocations do not settle (owner decisions; nothing moved)
 

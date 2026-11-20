@@ -2371,3 +2371,81 @@ Phase 1 on the same machine and method: 2.6 to 2.7 s, 492 to 500 MB, 0.71 to 0.8
 **Video haptics feasibility (F-003; a scratch test, not committed):** libmpv's `lavfi` `astats` on a 150 Hz low-pass, read through `af-metadata`, saw each 60 Hz pulse at −5 dB against −62 dB of quiet, about 400 ms ahead of `time-pos` with `ao=null`. Not shipped (the tracker's F-003).
 
 **The owner's packaged build** (not Phase 3's) left a crash log in the repository's root: a Skia access violation during a window resize after 11 h 43 min. Registered as B-061; the log is left in place, uncommitted.
+
+## Phase 3: final validation and closure (2026-11-20)
+
+The owner's "Phase 3 Final Validation & Closure" work order, and the steers given during it: the walk's findings, Linux display scaling, and Steam artwork. Same branch; nothing was pushed, merged, deployed, versioned, tagged, released, or changed in a store console or in Steam.
+
+**Environments:**
+- **This Windows 11 machine, physical,** with the owner's **physical controller and mouse.** The owner walked it, on a scratch library (`REFLUX_HOME` in the session's scratch folder: films and the Docker Jellyfin). Only Reflux's own window was captured (PrintWindow, every 2 s, 206 frames looked at as contact sheets). No keystroke or controller input was sent by the agent.
+- **The Ubuntu QA VM `Reflux-QA-Ubuntu-26.04`** (VirtualBox; GNOME on Wayland; Reflux through XWayland): a **VM**.
+  - It was running in the owner's session for the first walk. For the scaling runs it was started headless and signed in by itself.
+  - Its display was changed for the scaling runs and put back.
+- **The Google TV emulator `Reflux_TV`,** headless: an **emulator**.
+- **Fire TV Stick 4K Plus,** physical: **asleep**. It was not woken for the reruns, because that would switch on the television it is attached to.
+- **Xiaomi Pad 7,** physical, attached; not walked again: its debug build asks for the owner's PIN, which was not given for this session.
+- **Not used:** the Nothing Phone (2a) (not connected), a physical Linux desktop, the cousin's Surface Laptop 5 with CachyOS, Steam.
+
+**The owner's physical walk (Windows, controller and mouse):**
+
+| Part | The owner's result | Then |
+| --- | --- | --- |
+| Card focus and a resting mouse (B-042) | Correct: only the controller's card lifts; the hovered card stays flat; hover returns when the mouse moves. "I like this behaviour." | B-042 **Verified (physical)**; unchanged |
+| Quick View (X, right-click, Start → Sources) | Works; too translucent, the blur behind too strong | B-069: more solid, darker, a lighter blur |
+| The player: right-stick scenes, A/B, held, 8 s idle, timeline pictures by mouse, the time alone without previews | All worked; the "A Go here · B Stay" line redundant | B-069: the line removed |
+| The player's hints | Wanted LT to hide them, kept across restarts, with no LT hint left | B-067 |
+| B into the mini-player, and back | No obvious way back to the full player | B-068: pressing the right stick |
+| The adaptive keyboard | The morph looks good; it did not work properly by mouse and controller; moving the mouse changed only the hints; an empty place where Tab is; Backspace and Space in large words | B-064, B-065: causes reproduced with real mouse events and fixed |
+| Profiles | Work; Delete buttons for every profile listed below them all; the navigation's initial oversized | B-066: a Manage menu per profile; icon-sized initial |
+| Atmosphere, the featured hero | No finding reported | none |
+
+**The owner's re-walk** of the fixes (B-064 to B-069) on the physical controller is the remaining acceptance step. The fixes are automated (below) and were not driven on the owner's desktop by the agent.
+
+**Linux, the QA VM (a VM, not physical Linux):**
+- **The XKB layout reader:** read correctly for us, de and fr. With a US layout on Linux the desk keyboard shows an extra ISO `<` key (minor; noted).
+- **Start-up trace:** first frame at 2,280 ms. Quick View by the keyboard's Menu key, playback, the held-seek time bubble, and the player's controls above the video on Wayland all checked.
+- **B-063, display scale (2560 × 1600 virtual display).** Captures are of Reflux's own X11 window (`ffmpeg x11grab -window_id`) and compared at native pixels without resampling:
+
+| Desktop scale | Xft.dpi | Before (`REFLUX_SCALE=1`) | After |
+| --- | --- | --- | --- |
+| 100% | 96 | – | nothing applied; unchanged |
+| 200% | 192 | 1360 × 823 window, all half size | ×2, 2183 × 1345, crisp at native pixels |
+| 125% (GNOME fractional, XWayland native) | 192 (XWayland screen 4096 × 2560) | – | ×2, matching GNOME's 2× drawing that it then reduces |
+
+- **Not reachable in this VM:**
+  - 150% ("not supported by mode" at 2560 × 1600);
+  - KDE's two legacy-application modes, the Surface's panel, and a second monitor.
+  - These are the owner's physical checks (the tracker's B-063).
+- **The Java probe:** Java 21.0.13 under Xvfb (WSL) showed the toolkit ignoring Xft.dpi and rounding a fractional `uiScale` down.
+
+**Android:**
+
+| Run | Where | Result |
+| --- | --- | --- |
+| `PhaseThreeWalkOnDeviceTest` | Google TV emulator | **OK (3 tests)**, on the build with all of today's changes; the grid shows the new ⌫ and spacebar keys (screenshot looked at) |
+| `PhaseTwoWalkOnDeviceTest`, the TV controller walk | Fire TV (before), then the emulator | **Stale since F-P3:** it said "X does nothing", and X opens Quick View; it also expected the film on Home without moving down. Both were updated, and the walk then passed X → Quick View → B, Y, the bumpers and LT on the emulator. The emulator exited twice during the long walk, leaving the rest unrun; the first exit left a `test://walk2` source behind, cleared with `pm clear` on the **emulator's** debug build. To rerun on the Fire TV when it is on |
+| Quick View and the system's Back on a phone and a tablet | – | Not rerun after B-069 (appearance only). The Pad 7 passed it in Phase 3's walks |
+
+**Steam artwork (B-070):**
+- `tools/brand/make-steam-artwork.py` renders `design/brand/steam/` from the brand's master geometry.
+- The files were checked for size, mode, the logo's alpha, clear space and the cover at 150 px. They were looked at as one collection, with the logo laid over the hero.
+- **Not applied in Steam** on Windows or Linux.
+
+**Website:**
+- `npm test` 33/33, `npm run build`, `npm run check-dist` (24 pages, 55 files, 0 problems), and `check-layout --screenshots` (24 pages × 7 sizes, 0 problems; the Releases page looked at, desktop and phone).
+- `check-links`: 25 pages and 31 external links, 1 unreachable: `https://www.plex.tv/about/privacy-legal/`, refusing the checker (not a broken link on the site).
+
+**Automated, new or changed in the final validation:**
+
+| Area | Tests | Result |
+| --- | --- | --- |
+| B-064, B-065 | `KeyboardWalkTest` (3, real mouse events) | Before the fixes: 2 failed (the first key after the morph, and a mouse move that never morphed). After: passed. `AdaptiveKeyboardTest`, `PointerKeyboardTest` and `KeyboardTest` pass unchanged |
+| B-066 | `ProfilesUiTest` (16, 1 new); `InteractionContractTest` through the new menu | Passed |
+| B-067 | `HintsTest` (hidden means none, kept); `MiniPlayerTest` | Passed |
+| B-068 | `MiniPlayerTest.theRightStickBringsTheMiniPlayerBackToTheFullPlayer_andLtHidesThePlayersHintsToo` | Passed |
+| B-063 | `LinuxDisplayScaleTest` (5) | Passed |
+
+**Full check** (`./gradlew check --continue`, this machine, the final tree):
+- **Result:** BUILD SUCCESSFUL in 15 min 19 s; **1,647 tests, 0 failures, 26 skipped**; Android lint and `verifySharedSources` clean.
+- **Per module:** android 56, core 393, design 43, desktop app 77, desktop engine 52, library 263, Trakt 23, mpv 60, Jellyfin 74, local 6, Plex 25, SMB 10, WebDAV 20, ui 545.
+- **Not run:** the real-window tests (`-Preflux.windowTests`), because they would drive the owner's desktop.

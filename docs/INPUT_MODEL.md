@@ -123,7 +123,7 @@ The Reflux keyboard's layout and controls:
 
 ## Controller mapping (B-039, B-012)
 
-What each button means in each context. A button gets a meaning only where one is useful and conflicts with nothing. Hints name only what is available now: while browsing, Select, Back (where there is somewhere to go back to), Y Sidebar (where the navigation is beside the page), with the mini-player up RT Close player and Back · hold to close player (B marked to hold: its circle fills as a ring while held, a small ▼ above it), and last LT Hide hints. Hidden, only LT Show hints stays, and the choice is kept. Keys are drawn outlined in their controller shapes; hints that come and go open or close in place on one short ease (B-055).
+What each button means in each context. A button gets a meaning only where one is useful and conflicts with nothing. Hints name only what is available now: while browsing, Select, Back (where there is somewhere to go back to), Y Sidebar (where the navigation is beside the page), with the mini-player up RS Full player, RT Close player and Back · hold to close player (B marked to hold: its circle fills as a ring while held, a small ▼ above it), and last LT Hide hints. The player's hints end with LT Hide hints too. Hidden, no hint stays, LT's own included (B-067, the owner's walk of 2026-11-20); LT brings them back, and the choice is kept, for browsing and the player alike. Keys are drawn outlined in their controller shapes; hints that come and go open or close in place on one short ease (B-055).
 
 | Button | Browsing | Player | Reflux keyboard | Profile gate, panels |
 | --- | --- | --- | --- | --- |
@@ -134,9 +134,9 @@ What each button means in each context. A button gets a meaning only where one i
 | Start / Options / Menu | Sources (Menu). A **remote's or keyboard's** Menu on a focused film or show opens its Quick View instead (F-P3); a controller's Start always opens Sources | The player's lists | Done | Closes Quick View |
 | View / Create / Select | Fullscreen | Fullscreen | Nothing | Nothing |
 | LB / RB | Previous / next destination | Previous / next item | Cursor back / forward | Nothing |
-| LT / RT | **LT hides or shows the hints** (B-055); **RT closes the mini-player** while it is up (B-052), else nothing | Slower / faster | Shift / symbols | Nothing |
+| LT / RT | **LT hides or shows the hints** (B-055); **RT closes the mini-player** while it is up (B-052), else nothing | **LT hides or shows the hints** (B-067); RT nothing (speed is in Options) | Shift / symbols | Nothing |
 | D-pad, left stick | Move focus | Up/down: lists; left/right: seek | Choose a key | Move focus |
-| Right stick | Nothing | **Scenes** (B-029): left/right past a dead zone moves through the version's previews, a picture a step (10 s a step where it has none), faster held and further pushed; **A goes there, B stays**; left/right then fine-tune; idle for 8 s or the controller lost, it ends without seeking | Nothing | Nothing |
+| Right stick | Nothing; **pressed** (RS / R3) with the mini-player up, the full player again, from wherever focus is (B-068) | **Scenes** (B-029): left/right past a dead zone moves through the version's previews, a picture a step (10 s a step where it has none), faster held and further pushed; **A goes there, B stays** (no hint spells it out: B-069); left/right then fine-tune; idle for 8 s or the controller lost, it ends without seeking | Nothing | Nothing |
 
 **Conflicts checked:**
 - **Text input:** no browsing or player meaning reaches a focused field; the keyboard is its own context.
