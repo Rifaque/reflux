@@ -2232,3 +2232,73 @@ Screenshots looked at; on touch, Search shows no mouse-keyboard button.
   - The controller walk failed once on this build. Fire OS leaves a focused card's node without words, so the walk pressed past the card. It now finds the card by its box; three runs since, three passes.
 - **Nothing Phone (2a):** not driven this time; another app was open on it (the owner's).
 - **Windows:** the packaged app reopened on the owner's PC with their own library for review; not driven or captured by the agent.
+
+## Phase 2: closing walks and closure (2026-11-20)
+
+On the `open-source-gpl` working tree after `b9ddec6`, with this pass's fixes (B-058, B-059, B-060). Each result is labelled with where it ran. Nothing here is a release build: the Linux tarball and the Android packages are local test builds (`0.9.0-beta.1` in their names because the version is unchanged).
+
+**Skipped by the owner's decision (not failures).**
+- **B-056**, the blank on closing the mini-player: a minor nitpick, accepted as a known minor issue and deferred to a later beta if evidence comes up.
+- **A DualSense hot-plug check:** not applicable; the owner has no DualSense. This is not a product failure. B-050's fix stays walked with the GameSir G7 Pro.
+
+### Linux desktop, in a VM (not physical Linux)
+
+**Environment.**
+- **VM:** `Reflux-QA-Ubuntu-26.04` on VirtualBox 7.2 (4 vCPU, 8 GB, VMSVGA with 3D). Run headless and driven only through VirtualBox's own virtual mouse and keyboard (its API), never the Windows desktop.
+- **System:** Ubuntu 26.04 LTS, kernel 7.0.0-43, GNOME on Wayland; Reflux through XWayland; libmpv2 0.41.0-2ubuntu4; `en_US.UTF-8`.
+- **Build:** `packageDesktopArchive` from a clean export of `b9ddec6` plus this pass's changes, built in WSL2. The final tarball's SHA-256 starts `d53a165c`.
+- **Library:** the test film and five short ffmpeg titles in the VM, and a two-episode show; no Trakt key, so titles come from file names and there are no genres.
+
+| Check | Result |
+| --- | --- |
+| Start-up | Starts; "Reflux … started", the libmpv locale note, hardware decoding probed (software only in the VM) |
+| Home, Movies, Shows by mouse | Pass: hover lights the sidebar; no focus ring for the pointer |
+| Search | Pass: idle "Start with" with right counts (Not seen yet 5, Under 2 hours 5, the 2010s 2, the 2020s 3; no Genres without metadata); the desk-keyboard button shown; typing; the All, Movies and Shows tabs; Shows' scoped empty state with "Search everything" |
+| Search, then Backspace after a tab click | **Failed, then fixed: B-059.** Retested "night" → Movies tab → Backspace → "nigh", still on Search |
+| Details by mouse | Pass: version line "H.264 · 1920 × 1080 · AAC Mono", no ring for the pointer |
+| Player | **Failed, then fixed: B-058** (the video over the controls on Wayland; also in the released beta, same VM). Retested under Wayland: mpv "Initializing GPU context 'x11egl'"; full controls over the picture; the pointer brings them back; playback 0:18 → 0:24 in 5 s; pause, +10 s, Esc to the mini-player (the picture follows), close |
+| Settings | Pass: Controller rumble on by default, Media Atmosphere off |
+| Final tarball (with B-060) | Installed and started ("Reflux 0.9.0-beta.1 started"). Its keyboard walk of Settings' panels was not captured: the VM's GNOME session had locked after five idle minutes, and its sign-in is the owner's. B-060 is ui code shared with the walked build, covered by tests and walked on the Google TV emulator |
+| Controller in the VM | **Not done.** VirtualBox's USB passthrough of the GameSir G7 Pro failed ("busy with a previous request"), and the controller stayed "Captured". The owner replugged it, and Windows has it again (XInput slot 0 connected). Linux controller input remains covered by unit tests (`LinuxGamepads`, `LinuxRumbleTest`) only |
+
+**Limits of a VM:**
+- software decoding and VMSVGA graphics;
+- no real controller;
+- not a physical Linux desktop. The owner's physical procedure still applies.
+
+### Google TV (emulator, not a physical Google TV)
+
+**Environment:** AVD `Reflux_TV` (Android 16, 1920 × 1080), headless, with the debug build and its test package. Its library is the earlier Blender films, on a source that is not connected, plus the walks' own test film. Driven by `input gamepad keyevent` (a gamepad's buttons, as the system delivers them) and `input keyevent` (a remote).
+
+| Walk | Result |
+| --- | --- |
+| `onATelevisionAControllerWalksEveryPageWhateverTheLibrary` (new) | **Pass, twice.** It covers:<br>- Home focus;<br>- RB to Movies, onto the test film;<br>- A to Details with Play focused, nothing playing;<br>- B back with focus on the same film;<br>- RB to Shows (focus there), RB to Search;<br>- A on the field opens the Reflux keyboard, with the system keyboard kept away;<br>- typing "jun" + "x", X erases, the film found, B closes it with the query kept;<br>- X does nothing while browsing, Y twice, LT hides and shows the hints;<br>- Start opens Sources, the first B goes to the navigation and the second leaves (NAVIGATION.md, 2);<br>- the controller kept the walk throughout (directional modality: no hover/focus conflict) |
+| `onATelevisionTheRemoteTypesInSearchWithTheRefluxKeyboard` | Pass (after a settle before OK: the walk sent OK as the field reported ready, and the earlier run timed out; by hand OK opens the keyboard every time) |
+| `profilesHasNoButtonToItselfAndHomeHasOne`, `interfaceHapticsAreOffUntilTurnedOnInSettings` | Pass |
+| `onATelevisionOkOnACardOpensItsPageOnPlayAndOkAgainPlays`, `onATelevisionAControllerBrowsesChoosesTypesAndHidesItsHints` | **Not run to the end here: a test precondition.** They look for the test film on Home, and this emulator's larger library keeps it off screen. Their checks are covered by the walk above; both passed on the physical Fire TV (2026-11-19) |
+| A confirmation (Settings, Clear watch history) | **Failed, then fixed: B-060.** Before, A showed the confirmation but focus fell to the sidebar, and B left Settings. After, by hand with gamepad keys: A puts focus on Keep; B closes it, stays on Settings, and focus is back on the option |
+| A side effect, put right | While a walk tried to automate the Settings step, a misread of focus made A turn **Online metadata & artwork** on, twice. Each time it was turned back off by hand and checked off; no PIN was set. The walk no longer touches Settings |
+| Details where the source is not connected | Correct as designed: Resume is disabled, and focus goes to the watched button (B-053's fallback) |
+
+### Nothing Phone (2a): physical, then the phone emulator
+
+| Walk | Where | Result |
+| --- | --- | --- |
+| `searchKeepsItsNavigationAndBackTellsTheKeyboardFromLeaving` | **Physical Phone (2a)**, wired adb | **Pass.** Search's layout, the short placeholder, the system keyboard up and the bottom bar stepping aside, the empty state with its actions, Back putting the keyboard away (the bar back, still on Search), the next Back to Home, the query kept |
+| Further touch checks on the physical phone | Physical | **Stopped:** the owner began using the phone (another app in front), so nothing more was sent to it. The walk's screenshots and a UI dump left on it were deleted |
+| `searchOnAPhoneFindsNarrowsEditsAndKeepsItsQuery` (new) | **Phone emulator** (`Reflux_Phone`, 1080 × 2400 at 420 dpi) | **Pass, three times.** It covers:<br>- a suggestion asks its question ("unwatched", "Unwatched · 1 result");<br>- Shows: the scoped empty state; "Search everything"; the Movies tab;<br>- the field again with the system keyboard and the query in it, then editing it;<br>- Back puts the keyboard away;<br>- a result opens its page, and Back returns with the query and the scope kept;<br>- Clear search returns to the index, with the opened search under Recent;<br>- the bottom bar back with the keyboard away |
+| `searchKeepsItsNavigationAndBackTellsTheKeyboardFromLeaving` | Phone emulator | Pass on 4 runs; failed on 2 cold starts, once on "the short placeholder" and once on "the bar steps aside". A screenshot of each showed the right screen; these are the emulator's timing. Recorded as an intermittent of the emulator |
+
+**Emulator housekeeping:**
+- the phone emulator had a leftover display override (1200 × 1920 at 240 dpi, a tablet layout), reset to its own;
+- old milestone test packages (`dev.reflux.m3`, `dev.rsxdevelops.reflux.m10` and their tests) were removed from it to free storage.
+
+### Automated
+
+- **New tests:**
+  - `SearchDesignTest.aClickedTabLeavesTheTypingInTheField` (B-059);
+  - `EmbeddedOptionsTest` (3) and `ListOptionTest` (3) (B-058);
+  - `PanelFocusTest` (3) (B-060);
+  - device walks `onATelevisionAControllerWalksEveryPageWhateverTheLibrary` and `searchOnAPhoneFindsNarrowsEditsAndKeepsItsQuery`.
+- **Changed:** `InteractionContractTest` (B-020's Escape sequence: the panel closes before the page is left).
+- **Full check:** `./gradlew check --continue` on the final tree: **BUILD SUCCESSFUL**, Android lint included: 1,575 tests, 0 failures, 25 skipped (the window and physical-device tests run only on request, and the platform-specific ones). That is the earlier 1,565 plus the 10 new tests.

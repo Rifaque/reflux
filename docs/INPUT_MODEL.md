@@ -200,7 +200,7 @@ A remote has a D-pad, OK, Back, and sometimes play/pause, rewind, and fast-forwa
 
 ## Back (M10)
 
-Back is one semantic action with one derivation (`AppState.backRoute`; docs/PLAYBACK.md, section 18). On Android the shell enables one handler to match it and none at the root, so the system's own Back runs there; a controller's cancel button at the root is given to the system's Back as a remote's is; Escape, Backspace, a mouse's back button and a controller's cancel are the same action on a desktop.
+Back is one semantic action with one derivation (`AppState.backRoute`; docs/PLAYBACK.md, section 18). A panel opened in place on a page closes first: a confirmation, a rename, a PIN panel, or adding or deleting a profile. Its first control took focus as it opened, for input that shows focus, and focus goes back to what opened it (B-060). With a keyboard, Escape in such a panel's field first lets go of the field, then closes the panel, then leaves the page. On Android the shell enables one handler to match it and none at the root, so the system's own Back runs there; a controller's cancel button at the root is given to the system's Back as a remote's is; Escape, Backspace, a mouse's back button and a controller's cancel are the same action on a desktop.
 
 ## Held keys (M10)
 
