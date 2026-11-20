@@ -330,12 +330,15 @@ private fun RowSection(app: AppState, row: HomeRowModel) {
                     }
                 }
             }
-            // A mouse has no sideways wheel, so a row under the pointer offers to page.
+            // A mouse has no sideways wheel, so a row under the pointer offers to page: only while the mouse is the input
+            // in use (B-073). A mouse resting over the row while a controller or the keys move is not using it, as a card
+            // under it is not lifted (B-042); the arrows fade, and come back when the mouse moves.
+            val pointing = hovered && layout.modality == dev.reflux.core.input.InputModality.POINTER
             fun page(direction: Int) {
                 scope.launch { state.animateScrollBy(direction * state.layoutInfo.viewportSize.width * 0.8f, Motion.navigation.tween()) }
             }
-            RowPager(hovered && state.canScrollBackward, Icon.BACK, "Earlier in ${row.title}", Modifier.align(Alignment.CenterStart).padding(start = margin / 4)) { page(-1) }
-            RowPager(hovered && state.canScrollForward, Icon.CHEVRON_RIGHT, "More of ${row.title}", Modifier.align(Alignment.CenterEnd).padding(end = margin / 4)) { page(1) }
+            RowPager(pointing && state.canScrollBackward, Icon.BACK, "Earlier in ${row.title}", Modifier.align(Alignment.CenterStart).padding(start = margin / 4)) { page(-1) }
+            RowPager(pointing && state.canScrollForward, Icon.CHEVRON_RIGHT, "More of ${row.title}", Modifier.align(Alignment.CenterEnd).padding(end = margin / 4)) { page(1) }
         }
     }
 }

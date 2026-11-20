@@ -2568,6 +2568,71 @@ The existing `AdaptiveKeyboardTest`, `PointerKeyboardTest` and `KeyboardTest` pa
 - **Not applied in Steam:** Steam on this machine is the owner's, and adding a shortcut there changes their library. The owner's (or the cousin's) check.
 - **Not checked against a client:** Steam's slot sizes are from Valve's library-asset sizes and current community guides, not checked against a client here.
 
+<a id="b-071"></a>
+### B-071: Hidden hints left a small dot where the bar was
+
+- **Category:** Bug (visual) · **Priority:** Low · **Platforms:** All with a controller
+- **Components:** `ui` (`RefluxApp`, `ButtonPrompts`)
+- **How found:** 2026-11-20, the owner's manual test of the build with B-067 in it.
+- **Phase:** 3 (final validation) · **Status:** Fixed (automated) · **Last updated:** 2026-11-20
+- **Related:** B-067, B-055
+
+**Cause:** B-067 made hidden mean no hints at all, LT's own included, but the browsing bars stayed shown while a controller was in use. A bar with no hints was still its frosted pill (its padding on a round surface), drawn as a small dot.
+
+**Fix.**
+- **Both browsing bars hide with the hints** (the bottom bar beside the navigation, and the top bar).
+- **The bar keeps its last hints while it fades out,** and draws nothing when it has none.
+
+**Test:** `RailEntryTest.hiddenHintsLeaveNoBarBehind`: once the hints are hidden there is no bar, empty or not.
+
+<a id="b-072"></a>
+### B-072: Right from the sidebar sometimes did not enter Home (an old issue)
+
+- **Category:** Bug (focus) · **Priority:** High (the owner: Home unreachable from the sidebar by controller or keyboard) · **Platforms:** W, L, tablets (the sidebar or rail beside the page)
+- **Components:** `ui` (`RefluxApp`: focus from the navigation into the page; `RailFocus`, `FocusEntry`)
+- **How found:** 2026-11-20, the owner's manual test of the final build. The owner says it was an old issue, never recorded.
+- **Phase:** 3 (final validation) · **Status:** Fixed (automated) · **Last updated:** 2026-11-20
+- **Related:** B-008 (the same failure when nothing had focus), B-062
+
+**Reproduction (the test harness, before the fix).** Choose Movies in the sidebar, then Up and A on Home, then Right after a delay:
+
+| Delay after choosing Home | Result before the fix |
+| --- | --- |
+| 0 to 120 ms | Focus ended on nothing |
+| 250 ms | Focus stayed in the sidebar |
+| 400 ms | Worked |
+
+A second Right always worked. Every slower route tried (by Left or Y, after Quick View or Details, with a work in progress, by keys or a controller: 18 in all) worked. That is the "sometimes": in the real app Home reads its library and artwork before it can offer a place to start, so the window was wider than in the harness. Movies, starting on a plain grid, offered sooner.
+
+**Causes.**
+1. **The page's start was taken from the leaving page.** The focus entry learned which page was on screen only when it was next composed. A Right in the same instant as the choice took the start of the page that was leaving, and focus went with that page.
+2. **No wait from the sidebar.** With nothing to start on yet, Right fell to the toolkit's own search, which found the leaving page (nothing) or nothing at all (the sidebar). B-008 had added a wait only for the case where nothing has focus.
+3. **The sidebar returned focus to any page.** It went back to the item last left without checking which page that item was on.
+
+**Fix.**
+- **The entry follows the navigator** at once, for Right and for Y.
+- **Right from the sidebar waits for the chosen page's start,** for up to about 1.5 s and as long as focus is still in the sidebar on that page, before the toolkit's search.
+- **Focus returns only to the same page:** the sidebar goes back to an item only on the page it was left from.
+
+**Tests:**
+- `RailEntryTest.rightFromTheSidebarEntersHomeHoweverSoonAfterChoosingIt`: 0, 16, 120 and 250 ms. It failed at every one of these delays before the fix (by the probe) and passes with it.
+- `HomeFocusTest`, `NavigationTest`, `TelevisionTest`, `HintsTest` and `MiniPlayerTest` pass.
+
+<a id="b-073"></a>
+### B-073: A Home row's paging arrows showed while a controller was in use
+
+- **Category:** Bug (input modality) · **Priority:** Low · **Platforms:** W, L (a mouse beside a controller or keys)
+- **Components:** `ui` (`HomeScreen` rows)
+- **How found:** 2026-11-20, the owner's manual test.
+- **Phase:** 3 (final validation) · **Status:** Fixed (automated) · **Last updated:** 2026-11-20
+- **Related:** B-042 (the same rule for cards)
+
+**Cause:** the arrows showed while the row was hovered. A mouse resting over the row stays "hovering" while a controller or the keys move, so the arrows stayed.
+
+**Fix:** the arrows show only while the row is hovered and the mouse is the input in use. They fade when a controller or the keys move, and come back when the mouse moves.
+
+**Test:** `RailEntryTest.aRowsArrowsAreTheMousesAndFadeWhenTheControllerMoves`.
+
 ## Regression tracking
 
 Every regression found, and every recurring failure watched, with the run that found it. A regression introduced by a Beta 2 change gets a new B-number in the section above and a row here.
@@ -2641,3 +2706,4 @@ Machines (CLAUDE.md, "Testing environment"): Windows 11 development machine (phy
 - **New and Fixed:** B-063 (Linux scale), B-064 (keyboard following the mouse), B-065 (Tab and the key glyphs), B-066 (profile management), B-067 (player hints and LT), B-068 (the mini-player back to the full player), B-069 (Quick View look; the Trickplay hint), B-070 (Steam artwork).
 - **F-003:** Deferred by the owner as a future feature.
 - **A stale on-device test:** the Phase 2 Fire TV walk still said "X does nothing" (Quick View since F-P3); updated. | Claude (agent) |
+| 2026-11-20 | **The owner's manual test of the final build:** B-071 (hidden hints left a dot), B-072 (Right from the sidebar into Home, an old issue never recorded), B-073 (row arrows with a controller): found, reproduced in tests, and fixed. | Claude (agent) |

@@ -332,6 +332,12 @@ fun ButtonPrompts(prompts: List<Pair<GamepadButton, String>>, family: Controller
     // Calm (B-055): every hint keeps its place while the bar is up, so one that comes or goes opens or closes where it
     // belongs, on one short ease with no overshoot; the bar is exactly as wide as its hints at every moment, so a hint at
     // its anchored end stays where it is. A changed label cross-fades in place.
+    // While the bar fades out because its hints were all taken away (B-071), it keeps showing the last ones rather than
+    // collapsing to its empty pill; with nothing ever to say, it draws nothing at all.
+    var lastShown by remember { mutableStateOf(prompts) }
+    if (prompts.isNotEmpty()) lastShown = prompts
+    @Suppress("NAME_SHADOWING") val prompts = lastShown
+    if (prompts.isEmpty()) return
     val order = remember { ArrayList<GamepadButton>() }
     val labels = remember { HashMap<GamepadButton, String>() }
     var previous: GamepadButton? = null
