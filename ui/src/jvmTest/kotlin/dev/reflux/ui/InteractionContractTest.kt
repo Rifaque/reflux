@@ -137,6 +137,11 @@ class InteractionContractTest {
             assertTrue(runOnIdle { app.onKey(Key.ESCAPE) })
             await("the field let go") { !app.textInputActive }
             assertEquals(Destination.Profiles, app.navigator.current, "the first Escape only lets go of the field")
+            // The next Escape is Back, and Back closes the panel the field was in before it leaves the page (Phase 2's
+            // close, 2026-11-20: a panel open in place is closed first, for every input).
+            assertTrue(runOnIdle { app.onKey(Key.ESCAPE) })
+            await("the panel closed") { onAllNodes(hasSetTextAction()).fetchSemanticsNodes().isEmpty() }
+            assertEquals(Destination.Profiles, app.navigator.current, "the panel closes before the page is left")
             assertTrue(runOnIdle { app.onKey(Key.ESCAPE) })
             await("back") { app.navigator.current == Destination.Home }
 

@@ -16,10 +16,12 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -44,6 +46,9 @@ import dev.reflux.ui.components.absorbsPointer
 import dev.reflux.ui.components.heading
 import dev.reflux.ui.components.initialFocus
 import dev.reflux.ui.components.pane
+import dev.reflux.ui.components.rememberPanelReturn
+import dev.reflux.ui.components.returnsFocus
+import dev.reflux.ui.components.takesFocus
 import dev.reflux.ui.state.AppState
 import dev.reflux.ui.state.Destination
 import dev.reflux.ui.state.ProfileGate
@@ -91,6 +96,10 @@ internal fun ProfilesScreen(app: AppState) {
     var adding by remember { mutableStateOf(false) }
     var deleting by remember { mutableStateOf<Profile?>(null) }
     var askingPin by remember { mutableStateOf(false) }
+    // Focus comes back to what opened a panel in place, when it closes (for input that shows focus).
+    val addReturn = rememberPanelReturn()
+    val deleteReturn = rememberPanelReturn()
+    var lastDeleting by remember { mutableStateOf<Any?>(null) }
     // Once the profile is gone, the question about it is too.
     LaunchedEffect(app.profiles) {
         if (deleting?.let { gone -> app.profiles.none { it.id == gone.id } } == true) {
@@ -112,9 +121,10 @@ internal fun ProfilesScreen(app: AppState) {
         }
         item(key = "add") {
             if (adding) {
-                AddProfile(onAdd = { name -> adding = false; app.addProfile(name) }, onCancel = { adding = false })
+                ClosesOnBack(app) { adding = false; addReturn.back() }
+                AddProfile(onAdd = { name -> adding = false; addReturn.back(); app.addProfile(name) }, onCancel = { adding = false; addReturn.back() })
             } else {
-                Button("Add a profile", { adding = true }, Modifier.padding(top = 4.dp), icon = Icon.PLUS, style = ButtonStyle.QUIET)
+                Button("Add a profile", { adding = true }, Modifier.padding(top = 4.dp).returnsFocus(addReturn), icon = Icon.PLUS, style = ButtonStyle.QUIET)
             }
         }
         // Another viewer's profile can be deleted from here; the open one is changed in Settings.
@@ -122,16 +132,25 @@ internal fun ProfilesScreen(app: AppState) {
         if (others.isNotEmpty()) {
             item(key = "delete") {
                 val confirming = deleting
-                val cancel = { deleting = null; askingPin = false; app.deletionRefused = null }
+                val cancel = { deleting = null; askingPin = false; app.deletionRefused = null; deleteReturn.back() }
                 if (confirming == null) {
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        others.forEach { profile -> Button("Delete ${profile.name}…", { deleting = profile }, style = ButtonStyle.QUIET) }
+                        others.forEach { profile ->
+                            Button(
+                                "Delete ${profile.name}…",
+                                { deleting = profile; lastDeleting = profile.id },
+                                if (profile.id == lastDeleting) Modifier.returnsFocus(deleteReturn) else Modifier,
+                                style = ButtonStyle.QUIET,
+                            )
+                        }
                     }
                 } else if (askingPin) {
                     // A profile with a PIN is deleted only with that PIN: confirming is not enough (docs/WATCH_STATE.md, "Profiles").
+                    ClosesOnBack(app, cancel)
                     DeletionPin(app, confirming, onCancel = cancel)
                 } else {
                     Confirm(
+                        app,
                         "Delete ${confirming.name}?",
                         "Its watch history, favorites, collections, and downloads go, and its server accounts are signed out of on this device. Your servers keep their own history.",
                         confirm = "Delete",
@@ -185,7 +204,7 @@ private fun ProfileRow(profile: Profile, modifier: Modifier = Modifier, onClick:
 private fun AddProfile(onAdd: (String) -> Unit, onCancel: () -> Unit) {
     var name by remember { mutableStateOf("") }
     Column(Modifier.fillMaxWidth().glass(MaterialRole.ELEVATED, Shapes.large).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        TextInput(name, { name = it.take(40) }, "Name", Modifier.initialFocus(), last = true, onDone = { if (name.isNotBlank()) onAdd(name) })
+        TextInput(name, { name = it.take(40) }, "Name", Modifier.initialFocus().takesFocus(), last = true, onDone = { if (name.isNotBlank()) onAdd(name) })
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Button("Add", { onAdd(name) }, style = ButtonStyle.PRIMARY, enabled = name.isNotBlank())
             Button("Cancel", onCancel, style = ButtonStyle.QUIET)
@@ -195,14 +214,26 @@ private fun AddProfile(onAdd: (String) -> Unit, onCancel: () -> Unit) {
 
 /** A question that changes something that cannot be undone, said plainly, with the safe answer in reach first. */
 @Composable
-internal fun Confirm(title: String, body: String, confirm: String, onConfirm: () -> Unit, onCancel: () -> Unit) {
+internal fun Confirm(app: AppState, title: String, body: String, confirm: String, onConfirm: () -> Unit, onCancel: () -> Unit) {
+    ClosesOnBack(app, onCancel)
     Column(Modifier.fillMaxWidth().glass(MaterialRole.ELEVATED, Shapes.large).padding(16.dp).pane(title, onCancel), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text(title, Modifier.heading(), style = LocalTypography.current.bodyStrong)
         Text(body, style = LocalTypography.current.caption, color = RefluxColors.contentSecondary)
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            Button("Keep", onCancel, Modifier.initialFocus(), style = ButtonStyle.QUIET)
+            Button("Keep", onCancel, Modifier.initialFocus().takesFocus(), style = ButtonStyle.QUIET)
             Button(confirm, onConfirm, style = ButtonStyle.GLASS)
         }
+    }
+}
+
+/** While shown, Back (a remote's, a controller's B, Escape) closes this panel before anything else on the page does. */
+@Composable
+internal fun ClosesOnBack(app: AppState, close: () -> Unit) {
+    val current by rememberUpdatedState(close)
+    DisposableEffect(app) {
+        val closing: () -> Unit = { current() }
+        app.openPanel(closing)
+        onDispose { app.closedPanel(closing) }
     }
 }
 
@@ -251,7 +282,7 @@ private fun DeletionPin(app: AppState, profile: Profile, onCancel: () -> Unit) {
             pin,
             { typed -> pin = typed.filter(Char::isDigit).take(PinPolicy.LENGTH); if (pin.length == PinPolicy.LENGTH) app.deleteProfile(profile, pin) },
             "PIN",
-            Modifier.widthIn(max = 260.dp).initialFocus(),
+            Modifier.widthIn(max = 260.dp).initialFocus().takesFocus(),
             kind = InputKind.PIN,
             last = true,
             error = refused != null,

@@ -29,6 +29,9 @@ import dev.reflux.ui.components.initialFocus
 import dev.reflux.ui.components.readable
 import androidx.compose.ui.semantics.semantics
 import dev.reflux.ui.components.rememberFocusReturn
+import dev.reflux.ui.components.rememberPanelReturn
+import dev.reflux.ui.components.returnsFocus
+import dev.reflux.ui.components.takesFocus
 import dev.reflux.ui.state.AppState
 import dev.reflux.ui.state.Destination
 import dev.reflux.ui.theme.LocalTypography
@@ -49,23 +52,28 @@ internal fun SettingsScreen(app: AppState) {
     var renaming by remember { mutableStateOf(false) }
     var settingPin by remember { mutableStateOf(false) }
     var removingPin by remember { mutableStateOf(false) }
-    val closePin = { settingPin = false; removingPin = false; app.dismissPinRefusal() }
+    // Focus comes back to what opened a panel in place, when it closes (for input that shows focus).
+    val nameReturn = rememberPanelReturn()
+    val pinReturn = rememberPanelReturn()
+    val clearReturn = rememberPanelReturn()
+    val closePin = { settingPin = false; removingPin = false; app.dismissPinRefusal(); pinReturn.back() }
     var clearing by remember { mutableStateOf(false) }
     Page {
         item(key = "heading") { Heading("Settings", null) }
         item(key = "profile-title") { Section(if (app.profilesShown) profile?.name ?: "This profile" else "You") }
         item(key = "name") {
             if (renaming) {
+                ClosesOnBack(app) { renaming = false; nameReturn.back() }
                 var name by remember { mutableStateOf(profile?.name.orEmpty()) }
                 Column(Modifier.fillMaxWidth().glass(MaterialRole.ELEVATED, Shapes.large).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    TextInput(name, { name = it.take(40) }, "Name", Modifier.initialFocus(), last = true, onDone = { renaming = false; app.renameProfile(name) })
+                    TextInput(name, { name = it.take(40) }, "Name", Modifier.initialFocus().takesFocus(), last = true, onDone = { renaming = false; nameReturn.back(); app.renameProfile(name) })
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Button("Save", { renaming = false; app.renameProfile(name) }, style = ButtonStyle.PRIMARY, enabled = name.isNotBlank())
-                        Button("Cancel", { renaming = false }, style = ButtonStyle.QUIET)
+                        Button("Save", { renaming = false; nameReturn.back(); app.renameProfile(name) }, style = ButtonStyle.PRIMARY, enabled = name.isNotBlank())
+                        Button("Cancel", { renaming = false; nameReturn.back() }, style = ButtonStyle.QUIET)
                     }
                 }
             } else {
-                Option(Icon.PROFILE, "Name", profile?.name ?: "", Modifier.initialFocus()) { renaming = true }
+                Option(Icon.PROFILE, "Name", profile?.name ?: "", Modifier.initialFocus().returnsFocus(nameReturn)) { renaming = true }
             }
         }
         if (app.pinsAvailable) {
@@ -74,35 +82,40 @@ internal fun SettingsScreen(app: AppState) {
                 // protection. Once it has gone, the panel closes by itself.
                 LaunchedEffect(profile?.hasPin) { if (profile?.hasPin != true && removingPin) closePin() }
                 when {
-                    settingPin -> PinSetup(
-                        changing = profile?.hasPin == true,
-                        refused = app.pinRefused,
-                        onSave = { current, pin ->
-                            if (profile?.hasPin == true) app.setPin(pin, current).invokeOnCompletion { if (app.pinRefused == null) settingPin = false }
-                            else { settingPin = false; app.setPin(pin) }
-                        },
-                        onCancel = closePin,
-                    )
-                    removingPin -> RemovePin(profile?.name ?: "This profile", app.pinRefused, onRemove = { current -> app.removePin(current) }, onKeep = closePin)
+                    settingPin -> PinPanel(app, closePin) {
+                        PinSetup(
+                            changing = profile?.hasPin == true,
+                            refused = app.pinRefused,
+                            onSave = { current, pin ->
+                                if (profile?.hasPin == true) app.setPin(pin, current).invokeOnCompletion { if (app.pinRefused == null) { settingPin = false; pinReturn.back() } }
+                                else { settingPin = false; pinReturn.back(); app.setPin(pin) }
+                            },
+                            onCancel = closePin,
+                        )
+                    }
+                    removingPin -> PinPanel(app, closePin) {
+                        RemovePin(profile?.name ?: "This profile", app.pinRefused, onRemove = { current -> app.removePin(current) }, onKeep = closePin)
+                    }
                     profile?.hasPin == true -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Option(Icon.LOCK, "Change PIN", "This profile asks for its PIN when it is opened.") { settingPin = true }
+                        Option(Icon.LOCK, "Change PIN", "This profile asks for its PIN when it is opened.", Modifier.returnsFocus(pinReturn)) { settingPin = true }
                         Option(Icon.LOCK, "Remove PIN", "Open this profile without a PIN. You'll need the current PIN.") { removingPin = true }
                     }
-                    else -> Option(Icon.LOCK, "Add a PIN", "Ask for a ${PinPolicy.LENGTH}-digit PIN before this profile opens. It keeps your profile private on a shared device.") { settingPin = true }
+                    else -> Option(Icon.LOCK, "Add a PIN", "Ask for a ${PinPolicy.LENGTH}-digit PIN before this profile opens. It keeps your profile private on a shared device.", Modifier.returnsFocus(pinReturn)) { settingPin = true }
                 }
             }
         }
         item(key = "clear") {
             if (clearing) {
                 Confirm(
+                    app,
                     "Clear watch history on this device?",
                     "Reflux forgets what this profile watched and where it stopped, and Continue Watching starts empty. Nothing changes on your servers, which keep their own history, and your media, downloads, favorites, and other profiles stay as they are.",
                     confirm = "Clear history",
-                    onConfirm = { clearing = false; app.clearWatchHistory() },
-                    onCancel = { clearing = false },
+                    onConfirm = { clearing = false; clearReturn.back(); app.clearWatchHistory() },
+                    onCancel = { clearing = false; clearReturn.back() },
                 )
             } else {
-                Option(Icon.REFRESH, "Clear watch history", "Forget what this profile watched on this device. Your servers keep their own history.") { clearing = true }
+                Option(Icon.REFRESH, "Clear watch history", "Forget what this profile watched on this device. Your servers keep their own history.", Modifier.returnsFocus(clearReturn)) { clearing = true }
             }
         }
 
@@ -180,6 +193,13 @@ private fun Section(title: String) {
  * A new PIN, entered twice so a slip of the finger does not lock the viewer out. Replacing one ([changing]) asks for the
  * current PIN first (B-049); [refused] says why the last one given was not accepted.
  */
+/** A PIN panel, which Back closes. */
+@Composable
+private fun PinPanel(app: AppState, close: () -> Unit, content: @Composable () -> Unit) {
+    ClosesOnBack(app, close)
+    content()
+}
+
 @Composable
 private fun PinSetup(changing: Boolean, refused: dev.reflux.ui.state.PinRefusal?, onSave: (current: String?, next: String) -> Unit, onCancel: () -> Unit) {
     var current by remember(refused?.attempt) { mutableStateOf("") }
@@ -190,9 +210,9 @@ private fun PinSetup(changing: Boolean, refused: dev.reflux.ui.state.PinRefusal?
     Column(Modifier.fillMaxWidth().glass(MaterialRole.ELEVATED, Shapes.large).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             if (changing) {
-                TextInput(current, { current = it.filter(Char::isDigit).take(PinPolicy.LENGTH) }, "Current PIN", Modifier.widthIn(max = 220.dp).initialFocus(), kind = InputKind.PIN, error = refused != null)
+                TextInput(current, { current = it.filter(Char::isDigit).take(PinPolicy.LENGTH) }, "Current PIN", Modifier.widthIn(max = 220.dp).initialFocus().takesFocus(), kind = InputKind.PIN, error = refused != null)
             }
-            TextInput(first, { first = it.filter(Char::isDigit).take(PinPolicy.LENGTH) }, "New PIN", Modifier.widthIn(max = 220.dp).then(if (changing) Modifier else Modifier.initialFocus()), kind = InputKind.PIN)
+            TextInput(first, { first = it.filter(Char::isDigit).take(PinPolicy.LENGTH) }, "New PIN", Modifier.widthIn(max = 220.dp).then(if (changing) Modifier else Modifier.initialFocus().takesFocus()), kind = InputKind.PIN)
             TextInput(second, { second = it.filter(Char::isDigit).take(PinPolicy.LENGTH) }, "Again", Modifier.widthIn(max = 220.dp), kind = InputKind.PIN, last = true, error = mismatch, onDone = { if (ready) onSave(current.takeIf { changing }, first) })
         }
         refused?.problem?.let { Text(it, Modifier.announces(it), style = LocalTypography.current.caption, color = RefluxColors.contentSecondary) }
@@ -229,7 +249,7 @@ private fun RemovePin(name: String, refused: dev.reflux.ui.state.PinRefusal?, on
         )
         refused?.problem?.let { Text(it, Modifier.announces(it), style = LocalTypography.current.caption, color = RefluxColors.contentSecondary) }
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            Button("Keep PIN", onKeep, Modifier.initialFocus(), style = ButtonStyle.QUIET)
+            Button("Keep PIN", onKeep, Modifier.initialFocus().takesFocus(), style = ButtonStyle.QUIET)
             Button("Remove PIN", { onRemove(current) }, style = ButtonStyle.GLASS, enabled = PinPolicy.valid(current))
         }
     }
