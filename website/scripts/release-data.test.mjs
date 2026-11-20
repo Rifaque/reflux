@@ -54,3 +54,12 @@ test('a record newer than the repository stops the build', () => {
   assert.notEqual(r.status, 0)
   assert.match(r.stderr, /newer than the version in development/)
 })
+
+test('changelog groups ("### Title") are kept with their items, and every item stays in the flat list too', () => {
+  const r = run({})
+  assert.equal(r.status, 0, r.stderr)
+  const unreleased = r.data.changelog.find((c) => c.version === 'Unreleased')
+  if (!unreleased.groups.length) return
+  assert.deepEqual(unreleased.groups.flatMap((g) => g.items), unreleased.items, 'a grouped section has no item outside its groups')
+  for (const group of unreleased.groups) assert.ok(group.title && group.items.length, `group ${group.title} has items`)
+})

@@ -334,6 +334,8 @@ td { color: var(--text-2); min-width: 9rem; }
 .release-date { font-weight: 500; font-size: 0.75em; }
 .changes { padding-left: 1.2rem; color: var(--text-2); }
 .changes li { margin: 0.55rem 0; }
+.release-group { margin-top: 1.6rem; }
+.release-group h3 { font-size: 1.05rem; margin: 0 0 0.2rem; color: var(--text); }
 
 .support-grid { display: grid; gap: 1rem 3rem; grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr)); }
 .support-grid section { margin-top: 1rem; }

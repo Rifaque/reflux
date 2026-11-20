@@ -4,29 +4,64 @@ What changes for people using Reflux, version by version. The rules for versions
 
 ## Unreleased
 
-- Reflux is now free and open-source software under the GNU GPL, version 3 or later. About Reflux says so under "Copyright and license" and shows Reflux's notice and the full license; the source is at github.com/Rifaque/reflux. The software Reflux is built with keeps its own licenses, and the license gives no right to the Reflux name or logo.
+Not in a downloadable build yet: these are in development for the next beta.
 
-- Deleting a profile that has a PIN now asks for that profile's PIN; confirming is no longer enough, and wrong PINs count towards the same wait as opening it. Profiles without a PIN are deleted as before.
-- On Android, starting another film right after one (from the mini-player, after closing, or after one ended) no longer leaves the last film's picture frozen on screen while the new one's sound plays.
-- On Linux, playback works whatever the system's numeric format: libmpv used to refuse to start under any format other than plain C, which most desktops (en_US.UTF-8 included) are not set to. The language and formats Reflux shows are unchanged.
-- On Linux without libmpv, Reflux tells you the exact command to install it for your distribution, including distributions built on an older Ubuntu or Debian (Linux Mint 21, Pop!_OS 22.04), which get the older package their base has.
-- Adding the same Jellyfin server again at another address (at home, then through Tailscale) keeps both: Reflux uses the home address when it answers, switches to the other when you are away, and comes back by itself. Your library, history, and sign-in stay as they are. Sources lists the addresses and lets you remove one. Signing in again at a new address for a server that moved adds that address too; remove the old one in Sources.
-- A favourite whose source was removed can be removed from Favorites on its page, without bringing the source back; a favourite you keep comes back with everything you watched if the film does.
-- A version's page no longer shows a resolution or HDR from its file name beside the one Reflux measured (as in "1440p · Dolby Vision · 2160p HDR"); a version's technical details give its exact picture size when it was measured.
-- The sign that Reflux is finding titles and details no longer covers a page's heading or the search field on phones and TVs; there it is a small dot, and its words are on Sources.
-- Search answers much faster in large libraries (about 18 times faster on 11,000 episodes and films on a desktop), and listings across Reflux read less of the library to show what is available.
-- Reflux's website has documentation of its own: install guides for Windows, Linux (a tab per distribution, each command saying where it was checked), Android, Android TV, and Fire TV, how to check a download, and guides to sources, the library, playback, and profiles, with search, a contents list on each page, and commands you can copy. Download shows a card per platform with what it needs and how to get it. The license is at /license.
-- Reflux opens the profile you used last on every device, a TV included. With more than one profile, Settings has Switch profile and Log out, and Profiles has Log out beside the list: logging out keeps everything the profile has, asks for its PIN again if it has one, and asks who's watching.
-- With a controller in hand, a mouse pointer resting over a poster no longer lifts that poster beside the one the controller is on; hover comes back as soon as you move the mouse.
+### Playback & Media
+
 - In the player, moving the mouse along the timeline shows the scene at that place with its time, and holding a seek key or dragging shows it too, wherever your Jellyfin server (10.9 or later) or Plex server has made scene previews. Where a video has none, the time is shown alone.
 - With a controller in the player, the right stick moves through those scenes: A goes there, B stays where you are. Without previews it moves ten seconds at a time.
-- On a film or show, X on a controller, a right-click, a long press, or a remote's Menu opens a quick view: what it is, Play or Resume, Favorite, Download where possible, and Details. A controller's Start still opens Sources.
+- On Android, starting another film right after one (from the mini-player, after closing, or after one ended) no longer leaves the last film's picture frozen on screen while the new one's sound plays.
+- On Linux, playback works whatever the system's numeric format (most desktops, en_US.UTF-8 included, used to make it refuse to start), and on a Wayland desktop the player's controls are no longer hidden behind the picture.
+- On Windows, the player's controls stay where they belong when you move its window to another monitor.
+- A version's page no longer shows a resolution or HDR from its file name beside the one Reflux measured; a version's details give its exact picture size when it was measured.
+
+### Navigation & Controllers
+
+- On a film or show, X on a controller, a right-click, a long press, or a remote's Menu opens a quick view: what it is, Play or Resume, Favorite, Download where possible, and Details. Back closes it, the Back gesture on a phone included.
+- Controllers work across the whole app with one consistent set of buttons: Y takes you to the navigation and back to exactly where you were, the bumpers move between sections, and a controller's Start opens Sources. Button hints use your controller's own symbols, and LT hides them.
+- With the mini-player up, RT (or holding B) closes it.
+- A film's or show's page opens on Play, so pressing again plays.
+- Returning Home, See all, and moving between rows no longer leave focus stuck or skip items; panels opened in place (a confirmation, a PIN) take focus and close first on Back.
+- With a controller in hand, a mouse pointer resting over a poster no longer lifts that poster beside the one the controller is on.
+- On a TV, Home starts on the featured title's buttons even when it can't be played right now.
+- Controller rumble is on where your controller supports it (you can turn it off); vibration for touches on phones and tablets is off until you turn it on.
+
+### Search & Typing
+
+- Search has been redesigned: suggestions from your own library, real filters, and results in sections, with a clearer empty state and a shorter search box on phones.
+- With a controller or a remote, Reflux has its own keyboard: a QWERTY grid laid out for a controller. On Windows and Linux it becomes a full keyboard in your own layout (AZERTY, QWERTZ, and so on) when you use the mouse, its keys moving into place; nothing you typed is lost when you switch.
+- While you type a search, matching titles from your library are offered; choosing one fills in the search.
+- Typing on a real keyboard never presses the on-screen keyboard's keys, and Backspace in a text field never takes you to another page.
+- On phones and tablets, the system keyboard no longer pushes the navigation or Back out of place in Search.
+
+### Home & Discovery
+
 - Home's featured title is no longer the first in alphabetical order: it is what you're in the middle of, or one of your best unwatched films and shows, changing from day to day.
+- Pulling down on Home, Movies, or Shows on a phone or tablet looks for new media.
+- Search answers much faster in large libraries (about 18 times faster on 11,000 episodes and films on a desktop).
+
+### Profiles & Privacy
+
+- Reflux opens the profile you used last on every device, a TV included. With more than one profile, Settings has Switch profile and Log out; logging out keeps everything the profile has and asks for its PIN again.
+- Deleting a profile that has a PIN now asks for that profile's PIN; a PIN can be removed with it, and Forgot PIN offers to keep the profile or reset it (on Android, your device's own screen lock can remove it).
+- A favourite whose source was removed can be removed from Favorites on its page, without bringing the source back.
+- Reflux still sends nothing to the people who make it: no analytics, no account.
+
+### Look & Feel
+
 - Media Atmosphere, when you turn it on, now visibly tints the page around the artwork.
-- The on-screen keyboard is a QWERTY grid laid out for a controller, and on Windows and Linux it becomes a full keyboard in your own layout (AZERTY, QWERTZ, and so on) when you use the mouse, its keys moving into place; nothing you typed is lost when you switch. Search suggests matching titles from your library as you type, and typing on a real keyboard never presses its keys.
-- On a TV, Home now starts on the featured title's Details when it can't be played right now (its server away), instead of leaving focus in the navigation with no way to the right; the featured title also prefers something you can play now.
-- On a phone or tablet, the system's Back gesture closes the quick view.
-- On the desktop, a problem that repeats (an engine that will not start, asked for again and again) is written to the diagnostics log once and counted, instead of filling it.
+- The sign that Reflux is finding titles no longer covers a page's heading or the search field on phones and TVs, and posters' badges and focus outlines no longer cover their titles.
+
+### Stability & Sources
+
+- Adding the same Jellyfin server again at another address (at home, then through Tailscale) keeps both, and Reflux uses whichever answers.
+- On Windows, switching a controller off and on no longer closes Reflux.
+- On Linux without libmpv, Reflux tells you the exact command to install it for your distribution, including those built on an older Ubuntu or Debian.
+- On the desktop, a problem that repeats is written to the diagnostics log once and counted, instead of filling it.
+
+### Licence
+
+- Reflux is now free and open-source software under the GNU GPL, version 3 or later. About Reflux says so and shows the full licence; the source is at github.com/Rifaque/reflux.
 
 ## 0.9.0-beta.1 — 2026-11-16
 
