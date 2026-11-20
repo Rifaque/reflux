@@ -2456,3 +2456,12 @@ The owner's "Phase 3 Final Validation & Closure" work order, and the steers give
   - Rerun alone: 11/11 passed.
   - They had passed in the full check before these changes, and these changes touch no source code: timing under load, recorded as an intermittent.
 - **The packaged app** was rebuilt and opened on the walk library for the owner's check.
+
+## Phase 3: owner acceptance and formal closure (2026-11-20)
+
+- **The owner's manual test** of the rebuilt application, on Windows (physical): B-071, B-072 and B-073 confirmed fixed ("all fixed"). Recorded as Verified and closed.
+- **The latest automated result, unchanged at the closure:**
+  - `:ui:jvmTest :core:jvmTest`: 941 tests, 2 failures (`SourcesUiTest`, timing under the full run; 11/11 alone; B-074).
+  - The earlier full `./gradlew check` (1,647 tests, 0 failures, 26 skipped) stands as history; it was before B-071 to B-073.
+  - No full check was run again for the closure, which changed documentation only.
+- **Phase 3 is closed:** planning/BETA-2.md, "Phase 3 closure".

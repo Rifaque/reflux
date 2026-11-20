@@ -1395,6 +1395,17 @@ M11 decided the open items of its plan (planning/M11-DISTRIBUTION-PLAN.md, secti
 - **1.0 communication.** "Planned for December 2026", depending on feedback, qualification, and store approval; 10 December is an internal readiness checkpoint and 15 December the release decision, never a promised release date. Each platform publishes through its own path.
 - **No Windows installer in the beta**: none exists or is tested, and building one would change the release; reconsidered for 1.0.
 
+## 2026-11-20 — Phase 3 accepted and formally closed
+
+- **The owner accepted and formally closed Phase 3,** after testing the rebuilt application by hand.
+- **Owner-verified and closed:** B-071 (no dot left by hidden hints), B-072 (Right from the sidebar into Home), B-073 (row arrows only for the mouse).
+- **The closure record:** planning/BETA-2.md, "Phase 3 closure". It covers the commits, results, accepted limitations, and the deferred and carried items.
+- **The latest test run is not wholly green:** 941 tests in the UI and core run, 2 timing-sensitive `SourcesUiTest` failures. They pass 11/11 alone and are registered as B-074 for Beta 3.
+- **Hard freeze:** Beta 2's fix scope is closed. Any bug, UX issue, request or improvement found from now on is recorded for Beta 3 or later (the tracker's Beta 3 backlog), unless the owner explicitly authorises a critical Beta 2 blocker.
+- **F-003 (video haptics)** stays deferred to a future version with no release assigned. No haptics work starts until it has its own research, hardware validation, design and plan.
+- **Phase 4** starts in a fresh session from planning/PHASE-4-HANDOFF.md. Nothing of it was started at the closure.
+- **Unchanged:** nothing pushed, merged, tagged, published, deployed or released; no version changed; Beta 2 not cut.
+
 ## 2026-11-20 — Phase 3 closure: video haptics deferred with no release; Phase 4's scope
 
 - **F-003, video-synchronised haptics (the owner):**

@@ -153,7 +153,7 @@ Closure (2026-11-20): the Linux VM, the Google TV emulator and the Phone 2a walk
 - The tracker is complete and current.
 - The Phase 3 review is presented to the owner for acceptance.
 
-*State (2026-11-20): **implemented and through its final validation, awaiting the owner's acceptance.*** The owner's Phase 3 work order of 2026-11-20 set the executed scope:
+*State (2026-11-20): **accepted and formally closed by the owner**; see [Phase 3 closure](#phase-3-closure-2026-11-20-accepted-and-formally-closed-by-the-owner) below. Before the closure:* The owner's Phase 3 work order of 2026-11-20 set the executed scope:
 - **In scope:** B-016, B-017, a bug sweep (B-042 included), B-030, B-029, F-P3, B-014, B-028, F-P4, F-003 (conditional on feasibility), B-041, B-022, F-004.
 - **Out of scope as V1.1 candidates:** B-027, B-038, B-040 (researched only: [V1.1-LIBRARY-RESEARCH.md](V1.1-LIBRARY-RESEARCH.md)).
 
@@ -177,6 +177,78 @@ Evidence: the tracker's [phase overview](BETA-BUG-TRACKER.md#phase-overview) and
   - the TV emulator walks;
   - the Steam artwork (B-070).
 - **Owner's review:** pending. The next phase's brief: [PHASE-4-HANDOFF.md](PHASE-4-HANDOFF.md).
+
+### Phase 3 closure (2026-11-20): accepted and formally closed by the owner
+
+**The owner accepted and formally closed Phase 3 on 2026-11-20,** after testing the final build by hand (DECISIONS.md, 2026-11-20, "Phase 3 accepted and formally closed"). Each issue's record is in the [tracker](BETA-BUG-TRACKER.md#phase-overview), and the runs in VERIFICATION.md under "Phase 3", "Phase 3: final validation and closure" and "Phase 3: owner acceptance and formal closure". This record is not repeated there.
+
+**Commits** (branch `open-source-gpl`, local only):
+
+| Commit | What |
+| --- | --- |
+| `dcef9fb` | M1: profiles |
+| `b2af2b7` | M2–M4: Trickplay, Quick View, the hero, Atmosphere, the adaptive keyboard |
+| `c32f50c` | The closing walks |
+| `83c8ef6` | The website |
+| `2dcc967` | The final-validation fixes |
+| `9bb69e9` | The Steam artwork |
+| `da08741` | The validation docs |
+| `03b4ec2` | B-071 to B-073 |
+| this closure's documentation commit | The closure |
+
+**What Phase 3 delivered.**
+
+| Area | Done | Status |
+| --- | --- | --- |
+| **Profiles** | Last-used profile on every device (B-016); Switch profile and Log out (B-017); management from each profile's own menu (B-066) | Verified; B-066 Fixed |
+| **Playback and media** | Trickplay from Jellyfin's and Plex's own previews (B-030); right-stick scenes (B-029); the right stick's press back to the full player (B-068) | Verified; B-068 Fixed |
+| **Navigation and controllers** | Media Quick View (F-P3); hover kept apart from focus (B-042); LT hides every hint, kept (B-067, B-071); Right from the sidebar into any page (B-072); row arrows only for the mouse (B-073) | Verified, except B-067 (Fixed) |
+| **Typing** | The adaptive keyboard (F-P4), following the mouse (B-064), with Tab, ⌫ and a spacebar (B-065) | Fixed |
+| **Home and look** | The featured hero (B-014); a perceptible Atmosphere (B-028); Quick View's look and the Trickplay hint (B-069); TV start focus (B-062) | Fixed |
+| **Desktop** | The Linux desktop's scale applied (B-063); Steam library artwork (B-070) | Fixed, with the limitations below |
+| **Checkpoints** | Performance compared with Phase 1, no regression where comparable (B-041); statistics validated: nothing can be sent (F-004) | Recorded |
+
+**Final verification.**
+- **The latest run** (after B-071 to B-073), `:ui:jvmTest :core:jvmTest`: **941 tests, 2 failures. It was not completely green.**
+  - Both failures are `SourcesUiTest` timing out under the full run.
+  - Rerun alone, `SourcesUiTest` passed 11/11.
+  - Every other test passed.
+  - Registered as B-074 (test reliability, Beta 3).
+- **The last full check** (`./gradlew check`, before B-071 to B-073): 1,647 tests, 0 failures, 26 skipped, with lint and `verifySharedSources` clean. Kept as history; it is not a substitute for the run above.
+- **Not run:** the real-window desktop tests, because they would drive the owner's desktop.
+
+**Physical, virtual and missing validation.**
+- **Physical:**
+  - Windows: the owner's controller and mouse walks, and the owner's manual test of the final build;
+  - the Xiaomi Pad 7 and Fire TV walks earlier in Phase 3.
+- **Virtual:**
+  - Linux in the Ubuntu 26.04 VM (scaling included);
+  - the Google TV and phone emulators;
+  - the Jellyfin test server in a container.
+- **Not done:**
+  - a physical Linux desktop and the Surface Laptop 5 with CachyOS (B-063);
+  - Steam on Windows or Linux (B-070);
+  - the Nothing Phone (2a) after the final changes;
+  - the Fire TV rerun of the updated Phase 2 TV walk (it was asleep; the emulator exited twice in that walk);
+  - a Plex server with generated previews.
+
+**Accepted limitations and exceptions (the owner's acceptance includes them).**
+- **B-063:** verified in a VM only. KDE's "Scaled by the system" mode still enlarges every X11 application. A second monitor at another scale is not followed.
+- **B-070:** the files are made and checked, but were never applied in Steam.
+- **B-064 to B-069:** fixed and in the accepted build. No separate owner confirmation of each is recorded.
+- **The Linux US layout:** the desk keyboard shows an extra ISO `<` key (minor).
+- **B-056:** deferred (Phase 2).
+
+**Deferred and carried, not Beta 2 fixes:**
+- **F-003, video-synchronised haptics:** a future version with no release assigned. It needs its own research, hardware validation, design and plan; no haptics work is to start.
+- **B-027, B-038, B-040:** V1.1 candidates.
+- **Still being investigated:** B-061 (a Skia crash; a Beta 3 candidate), B-022 (measured), B-044 and B-074 (test reliability).
+- **F-004:** stays In Progress by design: no provider without the owner.
+- **F-005 and F-P1:** unassigned.
+
+**The freeze.** From the closure, Beta 2's fix scope is frozen. New findings go to the tracker's [Beta 3 backlog](BETA-BUG-TRACKER.md#beta-3-backlog-from-phase-3s-closure-2026-11-20), unless the owner explicitly authorises a critical Beta 2 blocker.
+
+**Next.** Phase 4 starts in a fresh session from [PHASE-4-HANDOFF.md](PHASE-4-HANDOFF.md). Beta 2 is still not cut: the [gate](#the-beta-2-gate) remains.
 
 ### Reconciliation: what the allocations do not settle (owner decisions; nothing moved)
 

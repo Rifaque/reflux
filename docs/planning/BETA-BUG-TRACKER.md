@@ -15,9 +15,10 @@
 5. [Issues: original feature findings (F-001 to F-005)](#issues-original-feature-findings-f-001-to-f-005)
 6. [Unassigned issues and unresolved owner decisions](#unassigned-issues-and-unresolved-owner-decisions)
 7. [Newly discovered issues (B-043 onward)](#newly-discovered-issues-b-043-onward)
-8. [Regression tracking](#regression-tracking)
-9. [Verification and evidence summary](#verification-and-evidence-summary)
-10. [Change history](#change-history)
+8. [Beta 3 backlog](#beta-3-backlog-from-phase-3s-closure-2026-11-20)
+9. [Regression tracking](#regression-tracking)
+10. [Verification and evidence summary](#verification-and-evidence-summary)
+11. [Change history](#change-history)
 
 ## Status definitions and how this tracker is kept
 
@@ -46,7 +47,21 @@
 
 ## Executive status summary
 
-As of 2026-11-19. Counts are reconciled against the code, the commits, and VERIFICATION.md.
+**At Phase 3's formal closure (2026-11-20; the owner accepted and closed Phase 3).** Reconciled entry by entry against the code, the commits, VERIFICATION.md, and the owner's confirmations. All 82 entries are B-001 to B-074, F-001 to F-005, F-P1 to F-P4 (F-P1 and F-P2 share one entry, counted once):
+
+| Status | Count | Entries |
+| --- | --- | --- |
+| Verified | 11 | B-001, B-033 (Phase 1); B-016, B-017, B-029, B-030, B-042, F-P3 (Phase 3, physical); B-071, B-072, B-073 (the owner's manual test, closed) |
+| Fixed | 56 | Phases 1 and 2 as below; Phase 3: B-014, B-028, B-041, B-045, B-062, F-P4, B-063 to B-070. Each entry names what was and was not checked |
+| Investigating | 5 | B-006, B-022 (carried); B-044, B-074 (test reliability, Beta 3); B-061 (crash, Beta 3 candidate) |
+| In Progress | 1 | F-004: foundation and validation done, nothing can be sent; a provider is the owner's later choice |
+| Deferred | 2 | F-003 (future version, no release assigned); B-056 (a later beta) |
+| Not Started | 5 | B-027, B-038, B-040 (V1.1 candidates, researched); F-005, F-P1 (unassigned) |
+| Not Reproduced | 2 | B-015, B-026 |
+
+From here on, new findings go to the [Beta 3 backlog](#beta-3-backlog-from-phase-3s-closure-2026-11-20).
+
+**Earlier summary (as of 2026-11-19, kept as history).** Counts were reconciled against the code, the commits, and VERIFICATION.md.
 
 | | Count |
 | --- | --- |
@@ -80,7 +95,7 @@ Newly discovered: B-043 Fixed; B-044 Investigating; B-045 Not Started. Added by 
 | **3** | 8 issues + 2 checkpoints (B-041 final, F-004 final) | 0 | 0 | 0 | 8 | 0 | Not started |
 | Unassigned / pending | B-016, B-017, B-022, B-042, F-005 (and F-P1, F-P2) | 0 | 1 (B-022, measured under B-041) | 0 | 6 | 0 | Owner decisions needed |
 
-**Phase 3 (2026-11-20): implemented and awaiting the owner's review** (the work order; VERIFICATION.md, "Phase 3"). Fixed in Phase 3: B-014, B-016, B-017, B-028, B-029, B-030, B-042, B-045, B-062 (new), F-P3, F-P4. Investigating: B-022 (measured), F-003 (feasibility shown, not shipped), B-061 (new, a crash in the owner's build). B-041 and F-004 have their second checkpoints recorded. B-027, B-038 and B-040 are V1.1 candidates, researched and not implemented. The counts below are as of 2026-11-19 and predate Phase 3.
+**Phase 3 (2026-11-20): accepted and formally closed by the owner** (BETA-2.md, "Phase 3 closure"); the paragraph that follows is as it stood before the closure. Fixed in Phase 3: B-014, B-016, B-017, B-028, B-029, B-030, B-042, B-045, B-062 (new), F-P3, F-P4. Investigating: B-022 (measured), F-003 (feasibility shown, not shipped), B-061 (new, a crash in the owner's build). B-041 and F-004 have their second checkpoints recorded. B-027, B-038 and B-040 are V1.1 candidates, researched and not implemented. The counts below are as of 2026-11-19 and predate Phase 3.
 
 **Phase 1 was accepted by the owner (2026-11-19). Phase 2 was accepted and closed by the owner (2026-11-20)** (PHASE-2-PLAN.md, "Closure"; VERIFICATION.md, "Phase 2: closing walks and closure"; DECISIONS.md, 2026-11-20). Its accepted limitations: B-056 deferred as a known minor issue; DualSense not applicable; Linux verified in a VM; the Linux controller covered by automated tests; the Phone 2a Search walk completed on the emulator. Phase 3 has not started. Beta 2 is not cut.
 
@@ -150,22 +165,30 @@ Scope, order, dependencies, exit criteria, and the gate: [BETA-2.md](BETA-2.md#t
 
 | # | Issue | Status |
 | --- | --- | --- |
-| 1 | [B-016](#b-016) Open the last-used profile | Fixed (automated; Pad 7, Fire TV, emulators walked) |
-| 2 | [B-017](#b-017) Switch profile and Log out | Fixed (automated; Pad 7 physical, emulators walked) |
-| 3 | Bug sweep, with [B-042](#b-042) | B-042 Fixed (reproduced in a test first); B-045 Fixed; B-062 found and Fixed; B-061 registered (Investigating); B-044 cause found |
-| 4 | [B-030](#b-030) Trickplay previews | Fixed (Jellyfin live; Plex against the format only) |
-| 5 | [B-029](#b-029) Right-stick Trickplay navigation | Fixed (automated; physical controllers pending) |
-| 6 | [F-P3](#f-p3) Media Quick View | Fixed (Pad 7 and Fire TV physical; TV and phone emulators) |
+| 1 | [B-016](#b-016) Open the last-used profile | Verified (Pad 7 and Fire TV physical; emulators) |
+| 2 | [B-017](#b-017) Switch profile and Log out | Verified (Pad 7 physical; the owner's Windows walk) |
+| 3 | Bug sweep, with [B-042](#b-042) | B-042 **Verified** (the owner's physical walk); B-045 Fixed; B-062 found and Fixed; B-061 registered (Investigating, Beta 3 candidate); B-044 cause found (carried) |
+| 4 | [B-030](#b-030) Trickplay previews | Verified (the owner's Windows walk; Jellyfin live; Plex against the format only) |
+| 5 | [B-029](#b-029) Right-stick Trickplay navigation | Verified (the owner's physical controller on Windows) |
+| 6 | [F-P3](#f-p3) Media Quick View | Verified (Pad 7, Fire TV, the owner's Windows walk) |
 | 7 | [B-014](#b-014) Featured hero | Fixed (automated; rendered) |
 | 8 | [B-028](#b-028) Media atmosphere | Fixed (automated with a perceptibility threshold; rendered) |
 | 9 | [F-P4](#f-p4) Adaptive Virtual Keyboard | Fixed (automated; Fire TV physical and Google TV emulator grid walks; desktop renders) |
 | 10 | [F-003](#f-003) Video-synchronised haptics | **Deferred** (owner, 2026-11-20): a future experimental feature, no release assigned; feasibility findings kept |
-| 11 | [B-041](#b-041) Final performance comparison | Checkpoint 2 recorded where comparable; gaps named |
+| 11 | [B-041](#b-041) Final performance comparison | Fixed: both checkpoints recorded, no regression where comparable; gaps named |
 | 12 | [B-022](#b-022) Windows start-up | Investigating (measured with a breakdown; no optimisation justified yet) |
 | 13 | [F-004](#f-004) Final analytics validation | Checkpoint 2 validated (nothing can be sent; network checked) |
 | — | [B-027](#b-027), [B-038](#b-038), [B-040](#b-040) | **V1.1 candidates** (the work order): researched ([V1.1-LIBRARY-RESEARCH.md](V1.1-LIBRARY-RESEARCH.md)), not implemented |
+| + | Final validation: [B-063](#b-063) Linux display scale | Fixed (Ubuntu VM only; physical Linux and the Surface not tested: accepted limitation) |
+| + | [B-064](#b-064), [B-065](#b-065) The keyboard following the mouse; Tab, ⌫, spacebar | Fixed (in the accepted build) |
+| + | [B-066](#b-066) Profile management | Fixed (in the accepted build) |
+| + | [B-067](#b-067), [B-068](#b-068) LT hides every hint; RS back to the full player | Fixed (in the accepted build) |
+| + | [B-069](#b-069) Quick View look; the Trickplay hint removed | Fixed (in the accepted build) |
+| + | [B-070](#b-070) Steam artwork | Fixed (files only; never applied in Steam: accepted limitation) |
+| + | [B-071](#b-071), [B-072](#b-072), [B-073](#b-073) The empty hint bar; Right from the sidebar into Home; row arrows | **Verified by the owner** (manual test of the rebuilt app) and closed |
+| ✓ | **Phase 3** | **Accepted and formally closed by the owner, 2026-11-20** ([BETA-2.md, "Phase 3 closure"](BETA-2.md#phase-3-closure-2026-11-20-accepted-and-formally-closed-by-the-owner)) |
 
-**Unassigned or pending:** [F-005](#f-005), [F-P1 and F-P2](#f-p1-and-f-p2) (F-P2 done in Phase 2), [B-061](#b-061). See [owner decisions](#unassigned-issues-and-unresolved-owner-decisions).
+**Unassigned or pending:** [F-005](#f-005), [F-P1 and F-P2](#f-p1-and-f-p2) (F-P2 done in Phase 2). After the closure: the [Beta 3 backlog](#beta-3-backlog-from-phase-3s-closure-2026-11-20) (B-061, B-074, B-044, B-056, F-003). See [owner decisions](#unassigned-issues-and-unresolved-owner-decisions).
 
 ## Issues: bugs and product issues (B-001 to B-042)
 
@@ -587,7 +610,7 @@ Each entry: the header facts, the original report (the master tracker prompt's t
 
 - **Category:** Product decision / UX investigation · **Priority:** Low (design question) · **Platforms:** all (Home)
 - **Components:** `library` (`Home.kt`, `Library.home`, the `featured` selection); `ui` (`HomeScreen`)
-- **Phase:** 3, step 8 · **Status:** Fixed (automated; rendered and looked at) · **Last updated:** 2026-11-20
+- **Phase:** 3, step 8 · **Status:** Fixed (automated; rendered; no finding in the owner's walk) · **Last updated:** 2026-11-20
 - **Related:** B-040 (discovery variety), B-013
 
 **Original description.** The featured Home hero appears to be selected alphabetically, for example "2 Fast 2 Furious". It is unclear whether this is intended. *Investigate:* hero selection logic, rotation, randomization, recommendations, and sorting. *Expected:* decide on an intentional, sensible featured-content strategy; do not assume alphabetical selection is desired.
@@ -609,6 +632,7 @@ Each entry: the header facts, the original report (the master tracker prompt's t
 - **Tests:** `FeaturedTest` (5): continuing first; stable within a day and changing across days; listing order irrelevant; the alphabetical first no more likely than any other; profiles differ on most days; watched works step aside; no backdrop, no hero. `SmartLibraryTest` 6/6 unchanged.
 - **Automated verification:** library JVM tests, Windows, 2026-11-20. Rendered (`quick-view-controller`): Home's hero is "Mad Max: Fury Road", not "Alien", the alphabetical first of the test library.
 - **Outstanding:** walks per the matrix; owner acceptance. Not a recommendation engine: B-040 (V1.1) would give the hero a "because you watched" pick.
+- **Closure (2026-11-20):** accepted with Phase 3 by the owner (DECISIONS.md, "Phase 3 accepted and formally closed").
 
 <a id="b-015"></a>
 ### B-015: Poster alignment/clipping vertically
@@ -643,7 +667,7 @@ Each entry: the header facts, the original report (the master tracker prompt's t
 
 - **Category:** Product decision / UX · **Priority:** Medium · **Platforms:** W L P T (desktop and Android)
 - **Components (likely):** `ui` (`ProfilesScreen`, start-up), `library` (profiles); docs/WATCH_STATE.md ("Profiles")
-- **Phase:** **3** (the owner's Phase 3 work order, 2026-11-20) · **Status:** Fixed (automated; device walks in VERIFICATION.md, "Phase 3") · **Last updated:** 2026-11-20
+- **Phase:** **3** (the owner's Phase 3 work order, 2026-11-20) · **Status:** Verified (physical: the Pad 7 and Fire TV walks, VERIFICATION.md, "Phase 3") · **Last updated:** 2026-11-20
 - **Related:** B-017, B-018
 
 **Original description.** The application opens directly into the last-used profile instead of presenting an obvious profile-selection experience. *Expected:* provide a startup profile chooser with the last-used profile prominently available, rather than making profile selection invisible or implicit. Phase allocation is unresolved; do not assign without recording the owner decision.
@@ -667,13 +691,14 @@ Each entry: the header facts, the original report (the master tracker prompt's t
 - **Automated verification:** `ProfilesUiTest` 15/15, `ProfileSecurityTest` 4/4, `ProfileBoundaryTest` 3/3 (Windows JVM, 2026-11-20).
 - **Device verification:** see VERIFICATION.md, "Phase 3".
 - **Outstanding:** owner acceptance.
+- **Closure (2026-11-20):** accepted with Phase 3 by the owner (DECISIONS.md, "Phase 3 accepted and formally closed").
 
 <a id="b-017"></a>
 ### B-017: No obvious logout/profile switch
 
 - **Category:** Product decision / UX · **Priority:** Medium · **Platforms:** all
 - **Components (likely):** `ui` (`ProfilesScreen`, navigation chrome)
-- **Phase:** **3** (the owner's Phase 3 work order, 2026-11-20) · **Status:** Fixed (automated; device walks in VERIFICATION.md, "Phase 3") · **Last updated:** 2026-11-20
+- **Phase:** **3** (the owner's Phase 3 work order, 2026-11-20) · **Status:** Verified (physical: the Pad 7 walk; the owner's Windows walk, 2026-11-20) · **Last updated:** 2026-11-20
 - **Related:** B-016, B-018
 
 **Original description.** There is no obvious way to log out, switch profiles, or return to "Who's watching?". *Expected:* profile switching/logout must be discoverable and predictable without damaging profile data. Phase allocation is unresolved; do not assign without recording the owner decision.
@@ -695,6 +720,8 @@ Each entry: the header facts, the original report (the master tracker prompt's t
 - **Tests:** `ProfilesUiTest.logOutAsksWhoIsWatchingKeepsEverythingAndBackDoesNotGetPastIt` (history and PIN kept, PIN asked again, session cleared, Home beneath, Back does not pass); `switchProfileIsOfferedInSettingsAndOnProfilesOnlyOnceThereAreSeveral`; the existing `nothingOfOneViewersSessionIsLeftForTheNext` and `switchingProfileWhilePlayingStopsThePlaybackForTheProfileItWasFor`.
 - **Automated verification:** as B-016 (2026-11-20).
 - **Outstanding:** owner acceptance.
+- **Verified, physical (2026-11-20, the owner on Windows):** add a profile, Switch profile, Log out to "Who's watching?" and back, delete: "The profile functionality works." Its management was then redesigned (B-066).
+- **Closure (2026-11-20):** accepted with Phase 3 by the owner (DECISIONS.md, "Phase 3 accepted and formally closed").
 
 <a id="b-018"></a>
 ### B-018: Profile deletion without proving ownership
@@ -812,7 +839,7 @@ Each entry: the header facts, the original report (the master tracker prompt's t
 
 - **Category:** Performance (investigation) · **Priority:** Low to Medium · **Platforms:** W
 - **Components (likely):** `desktop:app` (start-up, JVM and Compose initialisation), `library` (database open), `playback:mpv` (engine initialisation)
-- **Phase:** **3** (the owner's Phase 3 work order, 2026-11-20, with B-041) · **Status:** Investigating (measured with a breakdown; no optimisation justified yet) · **Last updated:** 2026-11-20
+- **Phase:** **3** (the owner's Phase 3 work order, 2026-11-20, with B-041) · **Status:** Investigating (carried: measured with a breakdown in Phase 3; no optimisation justified yet) · **Last updated:** 2026-11-20
 - **Related:** B-041 (its baseline holds the measurements), B-006
 
 **Original description.** Startup feels slower than Android; approximately 3–4 seconds was observed. *Investigate:* measure cold startup, warm startup, initial usable UI, source initialization, database work, media engine initialization, rendering, and blocking operations. *Expected:* establish actual measurements and optimize justified bottlenecks.
@@ -1023,7 +1050,7 @@ Each entry: the header facts, the original report (the master tracker prompt's t
 
 - **Category:** Bug (UX/feature) · **Priority:** Medium, provisional · **Platforms:** all
 - **Components:** `design` (`ArtworkAtmosphere.kt`); `ui` (`Artwork`, `Theme`, `DetailsScreen`, `HomeScreen`, Settings)
-- **Phase:** 3, step 6 · **Status:** Fixed (automated, with a perceptibility threshold; rendered and looked at) · **Last updated:** 2026-11-20
+- **Phase:** 3, step 6 · **Status:** Fixed (automated with a perceptibility threshold; rendered; no finding in the owner's walk) · **Last updated:** 2026-11-20
 - **Related:** none
 
 **Original description.** Media atmosphere/ambience functionality appears to have little or no visible effect. *Investigate:* colour extraction, active state, animation, theme integration, rendering, cache updates, intensity, and whether changes are perceptible. *Expected:* if advertised, the feature should visibly work; effects must be intentional and tasteful, not so subtle that users cannot tell it is active; document limitations if any platform cannot support it.
@@ -1045,13 +1072,14 @@ Each entry: the header facts, the original report (the master tracker prompt's t
 - **Tests:** `VisualSystemTest.mediaAtmosphereIsOffByDefaultAndAWashWhenOn` now requires a colour distance above 0.08 (perceptible) besides saturation and the 7:1 contrast; it passes. Renders `m4-atmosphere-off` / `-on` looked at.
 - **Performance:** one sample of each artwork's pixels, cached (`ArtworkSamples`, held to one read per image by its test); the wash is a gradient drawn behind the page, not recomposed while scrolling. Nothing added.
 - **Outstanding:** walks (TV, phone, tablet) per the matrix; owner acceptance.
+- **Closure (2026-11-20):** accepted with Phase 3 by the owner (DECISIONS.md, "Phase 3 accepted and formally closed").
 
 <a id="b-029"></a>
 ### B-029: Right analogue stick Trickplay navigation
 
 - **Category:** Feature requirement · **Priority:** Medium (UX requirement) · **Platforms:** controller-capable (W, TV, F, controller P/T)
 - **Components (likely):** `ui` (`PlayerControls`, input handling), Trickplay from B-030
-- **Phase:** 3, step 4 (after B-030) · **Status:** Fixed (automated; physical controllers pending) · **Last updated:** 2026-11-20
+- **Phase:** 3, step 4 (after B-030) · **Status:** Verified (physical: the owner's controller walk on Windows, 2026-11-20) · **Last updated:** 2026-11-20
 - **Related:** B-030 (dependency), B-039 (mapping), F-003
 
 **Original description.** Use the right analog stick for scene-based Trickplay navigation. *Expected:* the stick should navigate scene previews, not blindly seek by arbitrary time increments; integrate with preview selection and confirmation.
@@ -1072,13 +1100,15 @@ Each entry: the header facts, the original report (the master tracker prompt's t
 - **Input:** Windows reads XInput's right thumb X and the joystick API's Z axis (DualShock and other HID pads); Linux `ABS_RX` (or `ABS_Z` where the triggers are not there); Android `AXIS_Z` where it is a stick, with device removal ending the scrub. The desktop poller reports the latest value to the UI thread at most once per pass of its queue.
 - **Tests:** `StickStepperTest` (6); `TrickplayUiTest`: a flick is one scene; A seeks there without pausing; B seeks nowhere and stays in the player; a lost controller and the 8 s idle end it without seeking; held, it repeats and speeds up; without previews it steps 10 s; nothing while browsing.
 - **Outstanding:** walks with physical controllers (Windows: the owner's Xbox controller; Fire TV and the Pad 7 with a controller where one pairs); the Google TV emulator has no analogue stick; owner acceptance.
+- **Verified, physical (2026-11-20, the owner on Windows with a controller):** a right-stick flick showed the scene preview with its time; B stayed; A went there; holding it sped up; 8 s idle cleared it; a work without previews showed the time alone. "All worked." (The "A Go here, B Stay" line was removed afterwards: B-069.)
+- **Closure (2026-11-20):** accepted with Phase 3 by the owner (DECISIONS.md, "Phase 3 accepted and formally closed").
 
 <a id="b-030"></a>
 ### B-030: Trickplay previews missing
 
 - **Category:** Feature requirement (playback UX) · **Priority:** High · **Platforms:** W L TV F P T
 - **Components (likely):** `sources:jellyfin`, `sources:plex` (preview data); `ui` (`PlayerControls` timeline); `library` (cache); `playback:mpv` / Media3 (local generation, if pursued)
-- **Phase:** 3, step 3 · **Status:** Fixed (Jellyfin verified live; Plex against the recorded format only; device walks in VERIFICATION.md, "Phase 3") · **Last updated:** 2026-11-20
+- **Phase:** 3, step 3 · **Status:** Verified (physical: the owner's mouse walk on Windows, 2026-11-20; Jellyfin live; Plex against the recorded format only) · **Last updated:** 2026-11-20
 - **Related:** B-029, B-041
 
 **Original description.** Playback needs scene thumbnail previews, both for mouse timeline hover and controller-driven scene navigation. *Mouse expectations:* hover over timeline positions; show the scene preview image and timestamp; update as the pointer moves; clicking/selecting the position seeks appropriately. *Controller expectations:* right stick navigates scene previews; preview selection is visible and updated; A confirms/seeks; B cancels without accidentally seeking. *Investigate:* thumbnail generation, indexing, caching, player timeline integration, sync, performance, media source capabilities, and local/remote sources. Support Jellyfin and Plex where usable preview data exists. Investigate local-file support separately. Gracefully fall back if previews are unavailable; do not break normal seeking.
@@ -1100,6 +1130,8 @@ Each entry: the header facts, the original report (the master tracker prompt's t
 - **Implementation:** `core/playback/Trickplay.kt` (`TrickplayManifest`, the frame mapping, `TrickplaySource`, `BifIndex`); `JellyfinSource` and `PlexSource` implement it; `ui/state/Trickplay.kt` (`TrickplayPreviews`: only the newest place loaded, older loads cancelled, a 60 ms settle before a new sheet, sheets kept encoded across playbacks in `TrickplaySheets` (32 MB) so none is downloaded twice while it fits, three decoded at most, background dispatcher); the timeline's floating preview (`TimelinePreview`) for the pointer, a dragged thumb, held seek keys and the right stick, the time alone where there are no previews.
 - **Tests:** `TrickplayTest` (6: mapping, clamping, malformed manifests, BIF reading, a multiplier of zero, malformed BIFs); `JellyfinTrickplayTest` (4: the width nearest 320, the account's token, one request per version, an unreachable server asked again, malformed answers); `PlexTrickplayTest` (2); `TrickplayUiTest` (hover shows the scene, sheets fetched once, looking is not seeking, no previews shows the time alone).
 - **Outstanding:** Plex against a server with generated previews (none available); walks on the matrix's platforms; owner acceptance.
+- **Verified, physical (2026-11-20, the owner on Windows):** the mouse over the timeline showed the scene pictures from the Jellyfin test server; a work without previews showed the time alone.
+- **Closure (2026-11-20):** accepted with Phase 3 by the owner (DECISIONS.md, "Phase 3 accepted and formally closed").
 
 <a id="b-031"></a>
 ### B-031: Linux libmpv fails under non-C numeric locales
@@ -1397,7 +1429,7 @@ Each entry: the header facts, the original report (the master tracker prompt's t
 
 - **Category:** Performance (release readiness) · **Priority:** High (V1 readiness requirement) · **Platforms:** P, T, TV (Android TV, Google TV), F, W, L
 - **Components:** all (measurement harnesses: `SearchPerformanceTest`; packaged desktop timing; `am start -W` on Android)
-- **Phase:** **one issue, two checkpoints**: Phase 1 step 11 (baseline) and Phase 3 step 9 (final optimisation and comparison) · **Status:** Investigating (Phase 1 baseline recorded on all six platforms, gaps named; Phase 3 to finish) · **Last updated:** 2026-11-19
+- **Phase:** **one issue, two checkpoints**: Phase 1 step 11 (baseline) and Phase 3 step 9 (final optimisation and comparison) · **Status:** Fixed (both checkpoints recorded: the Phase 1 baseline and Phase 3's comparison, no regression where comparable; gaps named, for release verification) · **Last updated:** 2026-11-20
 - **Related:** B-006, B-022, B-026 (shutdown), B-030, B-038
 
 **Original description.** Perform a comprehensive cross-platform performance audit and establish measurable baselines and optimization criteria. *Platforms:* Android phone, Android tablet, Android TV, Google TV, Fire TV, Windows, Linux. *Audit areas:* cold startup; warm startup; first usable UI; content loading; library scanning; search; artwork and cache performance; memory use; scrolling/frame pacing; UI transitions; playback startup and transitions; CPU/GPU use; battery where applicable; shutdown; long sessions. *Test conditions:* release builds; physical devices where available; desktop operating systems; different densities and window sizes; realistic/large libraries; connected and disconnected sources. *Expected:* document measured baselines; identify bottlenecks supported by measurements; prioritize optimizations based on evidence; establish sensible regression thresholds. *Phase allocation:* baseline measurements belong in Phase 1; final optimization and repeat measurements belong in Phase 3. This is a single issue with separate checkpoints, not two duplicated issues.
@@ -1460,6 +1492,7 @@ The store build is `0.9.0-beta.1` (release), with the owner's own library as ins
 - **Tests added or modified:** `SearchPerformanceTest` (B-006).
 - **Evidence:** VERIFICATION.md, "Phase 1", Baselines (WS11).
 - **Outstanding work:** the unmeasured areas above; thresholds; then Phase 3's checkpoint.
+- **Closure (2026-11-20):** accepted with Phase 3 by the owner (DECISIONS.md, "Phase 3 accepted and formally closed").
 
 <a id="b-042"></a>
 ### B-042: Controller focus and mouse hover conflict
@@ -1602,7 +1635,7 @@ Feature proposals, kept apart from bugs. The confirmed defaults are acceptance c
 
 - **Category:** Feature / architecture / privacy review · **Platforms:** all
 - **Components:** `core` (`dev.reflux.core.telemetry`: `TelemetryEvent`, `TelemetryContext`, `TelemetryConsent`, `ConsentStore`, `TelemetryTransport`, `TelemetryRecorder`); docs/PRIVACY.md
-- **Phase:** **two checkpoints**: Phase 1 step 10 (architecture, schema, privacy, consent) and Phase 3 step 10 (final validation) · **Status:** In Progress (Phase 1 foundation: implemented, tests passing; nothing transmitted) · **Last updated:** 2026-11-19
+- **Phase:** **two checkpoints**: Phase 1 step 10 (architecture, schema, privacy, consent) and Phase 3 step 10 (final validation) · **Status:** In Progress (carried beyond Phase 3 by design: the foundation is implemented and checkpoint 2 validated that nothing can be sent; no provider is integrated until the owner chooses one) · **Last updated:** 2026-11-20
 - **Confirmed default:** **OFF**. No data may be transmitted until explicit informed consent.
 - **Related:** B-041 (performance events would carry its measurements)
 
@@ -1631,6 +1664,7 @@ Feature proposals, kept apart from bugs. The confirmed defaults are acceptance c
 - **Outstanding (unchanged, the owner's):** a provider and its data contract; then the transport, the Settings switch, PRIVACY.md, the website's privacy page, and the store declarations, before anything is sent.
 
 **Outstanding work.** The owner's provider approval and data contract; retention; the Settings switch (only with a transport); PRIVACY.md, the website's privacy page, Play's Data safety and Amazon's questionnaire updated before anything is sent; network-level validation in Phase 3.
+- **Closure (2026-11-20):** accepted with Phase 3 by the owner (DECISIONS.md, "Phase 3 accepted and formally closed").
 
 <a id="f-005"></a>
 ### F-005: Controller mapping customisation
@@ -1664,7 +1698,7 @@ Registered in BETA-2.md from the owner's master prompt of 2026-11-19, which numb
 
 - **Category:** Feature (future UX) · **Platforms:** all (controller, mouse, touch, remote)
 - **How found:** the owner's Phase 3 feature planning notice, given during Phase 2 (2026-11-19; DECISIONS.md, same date, "Controller X is reserved for Media Quick View")
-- **Phase:** **3** (owner's decision) · **Status:** Fixed (automated; rendered and looked at; device walks in VERIFICATION.md, "Phase 3") · **Last updated:** 2026-11-20
+- **Phase:** **3** (owner's decision) · **Status:** Verified (physical: Pad 7, Fire TV, and the owner's Windows walk with a controller and a mouse, 2026-11-20) · **Last updated:** 2026-11-20
 - **Related:** B-039, B-012 (X kept free in Phase 2's mapping), F-005, F-P2
 
 **Original description (the owner's).** A controller's X is reserved as the universal contextual action for movies and TV shows, opening a new Media Quick View popup.
@@ -1693,13 +1727,15 @@ Registered in BETA-2.md from the owner's master prompt of 2026-11-19, which numb
 - **Tests:** `QuickViewUiTest` (6): X opens it on Play, navigating and playing nothing, and B returns focus to the card; Play plays and Details opens the page; right-click opens it and a click outside closes it; a long touch opens it on a phone; a remote's Menu opens it on a TV while Start still opens Sources; X with no film or show focused does nothing.
 - **Renders looked at:** `quick-view-controller`, `-phone`, `-tv`.
 - **Outstanding:** walks (Fire TV remote, Windows mouse and controller, a phone's long touch); owner acceptance.
+- **Verified, physical (2026-11-20, the owner on Windows):** X on a focused card, a right-click, and closing; it works. Its look was then made more solid (B-069).
+- **Closure (2026-11-20):** accepted with Phase 3 by the owner (DECISIONS.md, "Phase 3 accepted and formally closed").
 
 <a id="f-p4"></a>
 ### F-P4: Adaptive Virtual Keyboard and Cross-Modality Layout Morphing (Phase 3)
 
 - **Category:** Feature (input and UX) · **Platforms:** controller layout everywhere a controller or remote types (W, L, Android phone and tablet with a controller, TV, Fire TV); mouse layout on Windows and Linux desktop only; touch on Android keeps the system keyboard
 - **How found:** the owner's steer (2026-11-20): research and plan now, implement in Phase 3
-- **Phase:** **3** (the owner's decision) · **Status:** Fixed (automated; rendered and looked at; desktop walks and the Linux VM in VERIFICATION.md, "Phase 3") · **Last updated:** 2026-11-20
+- **Phase:** **3** (the owner's decision) · **Status:** Fixed (automated; Fire TV physical and Google TV emulator grid walks; the owner's Windows walk found B-064 and B-065, fixed in the accepted build) · **Last updated:** 2026-11-20
 - **Related:** B-023, B-051, B-054, B-004, B-011, B-025, B-057, F-P3
 - **Plan (full research, design, acceptance and tests):** [F-P4-ADAPTIVE-KEYBOARD.md](F-P4-ADAPTIVE-KEYBOARD.md)
 
@@ -1783,6 +1819,7 @@ Nothing here is assigned to a phase until the owner decides; each decision, when
 ## Newly discovered issues (B-043 onward)
 
 Found during Beta 2 work, not in the original findings. Each was allocated by existing scope; none is a scope change.
+- **Closure (2026-11-20):** accepted with Phase 3 by the owner (DECISIONS.md, "Phase 3 accepted and formally closed").
 
 <a id="b-043"></a>
 ### B-043: Linux install hint names a package that the Ubuntu 22.04 base of Mint 21 and Pop!_OS 22.04 lacks
@@ -1813,7 +1850,7 @@ Found during Beta 2 work, not in the original findings. Each was allocated by ex
 - **Category:** Bug (test reliability) · **Priority:** Low (test intermittent; no user-facing defect shown) · **Platforms:** Windows JVM test run
 - **Components:** `ui` tests (`ui/src/jvmTest/.../AccessibilityTest.kt`, line 218)
 - **How found:** 2026-11-19, the forced full check (`./gradlew check --continue --rerun-tasks`) on the four committed Beta 2 commits.
-- **Phase:** none needed (test reliability; carried with M12's intermittents) · **Status:** Investigating · **Last updated:** 2026-11-19
+- **Phase:** none needed (test reliability; carried with M12's intermittents) · **Status:** Investigating (carried: test infrastructure; cause known, not changed; see also B-074) · **Last updated:** 2026-11-20
 - **Related:** the known intermittents `PointerTest.controlsLeaveWhilePlayingAndReturnWithThePointer` and `AboutWindowTest` (CLAUDE.md, "Known intermittents"); B-045
 
 **Description.** `ComposeTimeoutException` in `await("the controls to leave") { !exists("Timeline") }` after `mainClock.advanceTimeBy(Motion.CONTROLS_AUTO_HIDE_MS * 3)`: the player controls had not left within the wait while every module was compiling and testing at once.
@@ -2343,7 +2380,7 @@ Asked for a rethink, not a tweak, the page was rebuilt as **one search line with
 - **Category:** Bug (crash) · **Priority:** High, provisional (a crash; one occurrence seen) · **Platforms:** W
 - **Components:** `desktop:app` (the window); Compose Multiplatform's Skiko renderer (`skiko-windows-x64.dll`)
 - **How found:** 2026-11-20, Phase 3's work: a JVM crash log (`hs_err_pid40688.log`) left in the repository's root by the owner's packaged desktop build (`jpackage` app version 0.9.31, run from `desktop/app/build/compose/binaries`), which had run for 11 h 43 min. Not caused by Phase 3's changes (the build predates them).
-- **Phase:** none assigned (found in Phase 3; the owner allocates) · **Status:** Investigating · **Last updated:** 2026-11-20
+- **Phase:** none assigned (found in Phase 3; the owner allocates) · **Status:** Investigating (carried open; not fixed in Beta 2; placement the owner's: a Beta 3 candidate) · **Last updated:** 2026-11-20
 - **Related:** B-002 (monitors and window moves), B-056 (blank on closing the mini-player)
 
 **Description.** `EXCEPTION_ACCESS_VIOLATION` reading `0xffffffffffffffff` in `skiko-windows-x64.dll` on the AWT event thread. The Java stack: a Swing layout pass resized the window's `ComposeWindowPanel` → `SkiaLayer.reshape` → `Direct3DRedrawer.renderImmediately` failed → `RedrawerManager.findNextWorkingRenderApi` (Skiko giving up on Direct3D and trying the next renderer) → `Direct3DRedrawer.dispose` → `ContextHandler.dispose` → a Skia object's native finalizer, which crashed. Heap 66 of 120 MB used: not memory exhaustion.
@@ -2361,7 +2398,7 @@ Asked for a rethink, not a tweak, the page was rebuilt as **one search line with
 - **Category:** Bug (focus) · **Priority:** Medium · **Platforms:** TV, F (any start with the hero's Play disabled)
 - **Components:** `ui` (`HomeScreen` hero); `library` (`Featured.choose`)
 - **How found:** 2026-11-20, Phase 3's Google TV emulator walk. The emulator's library was from a Jellyfin source that needed signing in again, so the featured work's Play was disabled.
-- **Phase:** 3 (found and fixed in Phase 3's walks) · **Status:** Fixed (emulator walked; automated) · **Last updated:** 2026-11-20
+- **Phase:** 3 (found and fixed in Phase 3's walks) · **Status:** Fixed (Google TV emulator walked; automated) · **Last updated:** 2026-11-20
 - **Related:** B-014, B-053, B-025
 
 **Description.** Home started with focus in the navigation rail rather than on the page; Right from the rail did not reach the page (nothing focusable level with it), and Down moved within the rail.
@@ -2377,6 +2414,7 @@ Asked for a rethink, not a tweak, the page was rebuilt as **one search line with
   - `FeaturedTest.whatCanBePlayedNowComesFirst`.
 - **Walked:** the Google TV emulator starts on Details. Down then reaches a card, and the remote's Menu opens Quick View (screenshot looked at).
 - **Outstanding:** owner acceptance.
+- **Closure (2026-11-20):** accepted with Phase 3 by the owner (DECISIONS.md, "Phase 3 accepted and formally closed").
 
 <a id="b-063"></a>
 ### B-063: On a Linux desktop scaled above 100%, Reflux was drawn at 100%: small, or enlarged and blurred by the compositor
@@ -2384,7 +2422,7 @@ Asked for a rethink, not a tweak, the page was rebuilt as **one search line with
 - **Category:** Bug (rendering) · **Priority:** High (text blurred on a HiDPI laptop: unreadable) · **Platforms:** L (X11, and Wayland through XWayland)
 - **Components:** `desktop:app` (`LinuxDisplayScale`, `Main.kt`, `VideoSurface.kt`)
 - **How found:** 2026-11-20, the owner's cousin: CachyOS (KDE) on a Microsoft Surface Laptop 5, "extremely blurry" text (an owner's screenshot beside the file manager).
-- **Phase:** 3 (found in its final validation; the owner's steer) · **Status:** Fixed (VM-verified; physical Surface pending) · **Last updated:** 2026-11-20
+- **Phase:** 3 (found in its final validation; the owner's steer) · **Status:** Fixed (verified in the Ubuntu VM only; physical Linux, the Surface Laptop 5 with KDE, and mixed-scale monitors not tested: an accepted limitation) · **Last updated:** 2026-11-20
 - **Related:** B-031 (Linux playback), B-002 (scaling on Windows)
 
 **Versions:** Compose Multiplatform 1.12.1 (Skiko); Java 21 (bundled runtime); X11 toolkit (XToolkit; no native Wayland toolkit in that runtime), so on Wayland Reflux runs through XWayland. Renderer: Skiko's OpenGL on Linux; it plays no part (the scale is wrong before anything is drawn).
@@ -2433,6 +2471,7 @@ Asked for a rethink, not a tweak, the page was rebuilt as **one search line with
   - Linux Mint (X11, Cinnamon);
   - a second monitor at another scale (the scale is read once at start: moving between monitors of different scales is not followed).
 - **KDE's "Scaled by the system" mode:** it still enlarges every X11 application, Reflux included. The remedy there is the desktop's own setting, "Apply scaling themselves" (System Settings › Display & Monitor › Legacy Applications (X11)), which Reflux now honours. Its user documentation is for Phase 4's website work.
+- **Closure (2026-11-20):** accepted with Phase 3 by the owner (DECISIONS.md, "Phase 3 accepted and formally closed").
 
 <a id="b-064"></a>
 ### B-064: The adaptive keyboard did not follow the mouse: moving it changed only the hints, a click's first key was lost, a controller's first A typed nothing
@@ -2440,7 +2479,7 @@ Asked for a rethink, not a tweak, the page was rebuilt as **one search line with
 - **Category:** Bug (input) · **Priority:** High (the owner: "the most important functional issue") · **Platforms:** W, L (the desk keyboard)
 - **Components:** `ui` (`RefluxKeyboard`, `AppState` keyboard and modality), `core` (`KeyboardModeArbiter`)
 - **How found:** 2026-11-20, the owner's physical controller and mouse walk on Windows.
-- **Phase:** 3 (final validation) · **Status:** Fixed (automated with real mouse events; the owner's re-walk pending) · **Last updated:** 2026-11-20
+- **Phase:** 3 (final validation) · **Status:** Fixed (automated with real mouse events; part of the build the owner tested and accepted; no separate owner confirmation recorded) · **Last updated:** 2026-11-20
 - **Related:** F-P4, B-051, B-023
 
 **Causes (each reproduced by `KeyboardWalkTest`, with real mouse events, before its fix).**
@@ -2457,6 +2496,7 @@ Asked for a rethink, not a tweak, the page was rebuilt as **one search line with
 - the pointer's travel shows the desk keyboard without a key being clicked.
 
 The existing `AdaptiveKeyboardTest`, `PointerKeyboardTest` and `KeyboardTest` pass unchanged.
+- **Closure (2026-11-20):** accepted with Phase 3 by the owner (DECISIONS.md, "Phase 3 accepted and formally closed").
 
 <a id="b-065"></a>
 ### B-065: The desk keyboard had an empty place where Tab is, and Backspace and Space were spelt out in large words
@@ -2464,7 +2504,7 @@ The existing `AdaptiveKeyboardTest`, `PointerKeyboardTest` and `KeyboardTest` pa
 - **Category:** Polish (keyboard) · **Priority:** Low · **Platforms:** W, L
 - **Components:** `ui` (`KeyboardLayouts`, `Keyboard`, `RefluxKeyboard`)
 - **How found:** 2026-11-20, the owner's walk.
-- **Phase:** 3 (final validation) · **Status:** Fixed (automated) · **Last updated:** 2026-11-20
+- **Phase:** 3 (final validation) · **Status:** Fixed (automated; part of the build the owner accepted) · **Last updated:** 2026-11-20
 
 **Fix.**
 - **Tab is a key where a physical keyboard has it.** In a search it takes the offered title (the focused one, else the first), as Tab completes in a terminal; elsewhere it finishes the field.
@@ -2472,6 +2512,7 @@ The existing `AdaptiveKeyboardTest`, `PointerKeyboardTest` and `KeyboardTest` pa
 - **Space is a long bar.**
 - **Screen reader names:** "Backspace", "Space", "Tab, take the suggestion".
 - **Test:** `KeyboardWalkTest` (Tab fills "Blade Runner 2049").
+- **Closure (2026-11-20):** accepted with Phase 3 by the owner (DECISIONS.md, "Phase 3 accepted and formally closed").
 
 <a id="b-066"></a>
 ### B-066: Profiles listed every other profile's Delete below them all, and the navigation's profile initial was oversized
@@ -2479,7 +2520,7 @@ The existing `AdaptiveKeyboardTest`, `PointerKeyboardTest` and `KeyboardTest` pa
 - **Category:** UX · **Priority:** Medium · **Platforms:** All
 - **Components:** `ui` (`ProfilesScreen`, `RefluxApp` navigation)
 - **How found:** 2026-11-20, the owner's walk.
-- **Phase:** 3 (final validation) · **Status:** Fixed (automated) · **Last updated:** 2026-11-20
+- **Phase:** 3 (final validation) · **Status:** Fixed (automated; part of the build the owner accepted) · **Last updated:** 2026-11-20
 
 **Fix.**
 - **A Manage button (⋯) beside each profile** opens that profile's options under its row, one at a time; Back closes the panel first.
@@ -2489,6 +2530,7 @@ The existing `AdaptiveKeyboardTest`, `PointerKeyboardTest` and `KeyboardTest` pa
 - **The navigation's initial** is icon-sized (20 dp beside 20 dp icons; its letter about half the circle). Profiles' own large initials are unchanged.
 
 **Tests:** `ProfilesUiTest.eachProfileIsManagedFromItsOwnMenu_theOpenOneRenamedButNeverDeleted`. The deletion tests (B-018, B-019) go through the new menu and pass.
+- **Closure (2026-11-20):** accepted with Phase 3 by the owner (DECISIONS.md, "Phase 3 accepted and formally closed").
 
 <a id="b-067"></a>
 ### B-067: The player's hints could not be hidden, LT changed the speed there, and hidden hints still showed LT's
@@ -2496,7 +2538,7 @@ The existing `AdaptiveKeyboardTest`, `PointerKeyboardTest` and `KeyboardTest` pa
 - **Category:** UX (controller) · **Priority:** Medium · **Platforms:** All with a controller
 - **Components:** `core` (`InputMapping`), `ui` (`AppState`, `PlayerOverlay`, `RefluxApp`)
 - **How found:** 2026-11-20, the owner's walk.
-- **Phase:** 3 (final validation) · **Status:** Fixed (automated) · **Last updated:** 2026-11-20
+- **Phase:** 3 (final validation) · **Status:** Fixed (automated; part of the build the owner accepted; B-071 followed from it and is verified) · **Last updated:** 2026-11-20
 - **Related:** B-055
 
 **Fix.**
@@ -2507,6 +2549,7 @@ The existing `AdaptiveKeyboardTest`, `PointerKeyboardTest` and `KeyboardTest` pa
 **Tests:**
 - `HintsTest`: everything hidden including LT, and kept after a restart;
 - `MiniPlayerTest`: the player's hints hidden by LT, playback untouched, and the choice kept.
+- **Closure (2026-11-20):** accepted with Phase 3 by the owner (DECISIONS.md, "Phase 3 accepted and formally closed").
 
 <a id="b-068"></a>
 ### B-068: With a controller, nothing brought the mini-player back to the full player
@@ -2514,7 +2557,7 @@ The existing `AdaptiveKeyboardTest`, `PointerKeyboardTest` and `KeyboardTest` pa
 - **Category:** UX (controller) · **Priority:** Medium · **Platforms:** All with a controller and a mini-player
 - **Components:** `ui` (`AppState`, `RefluxApp`), `core` (`InputMapping` glyphs)
 - **How found:** 2026-11-20, the owner's walk: only by moving focus across the page to the video.
-- **Phase:** 3 (final validation) · **Status:** Fixed (automated) · **Last updated:** 2026-11-20
+- **Phase:** 3 (final validation) · **Status:** Fixed (automated; part of the build the owner accepted) · **Last updated:** 2026-11-20
 - **Related:** B-052
 
 **Fix.**
@@ -2527,6 +2570,7 @@ The existing `AdaptiveKeyboardTest`, `PointerKeyboardTest` and `KeyboardTest` pa
 - **Hinted** as "RS Full player" beside "RT Close player", and hidden with the other hints.
 
 **Tests:** `MiniPlayerTest.theRightStickBringsTheMiniPlayerBackToTheFullPlayer_andLtHidesThePlayersHintsToo`: minimise and restore three times, with focus moved, the same playback each time.
+- **Closure (2026-11-20):** accepted with Phase 3 by the owner (DECISIONS.md, "Phase 3 accepted and formally closed").
 
 <a id="b-069"></a>
 ### B-069: Quick View was too translucent over too strong a blur, and scene navigation spelt out "A Go here, B Stay"
@@ -2534,7 +2578,7 @@ The existing `AdaptiveKeyboardTest`, `PointerKeyboardTest` and `KeyboardTest` pa
 - **Category:** Polish · **Priority:** Low · **Platforms:** All
 - **Components:** `ui` (`QuickView`, `Glass`, `PlayerOverlay`)
 - **How found:** 2026-11-20, the owner's walk.
-- **Phase:** 3 (final validation) · **Status:** Fixed (automated; the owner's eye pending) · **Last updated:** 2026-11-20
+- **Phase:** 3 (final validation) · **Status:** Fixed (automated; part of the build the owner accepted) · **Last updated:** 2026-11-20
 
 **Fix.**
 - **Quick View's surface:** a slightly darker, more solid tint (90%, a third of the way from the surface colour to the background) over 40% of the blur.
@@ -2543,6 +2587,7 @@ The existing `AdaptiveKeyboardTest`, `PointerKeyboardTest` and `KeyboardTest` pa
 - **Scene navigation's preview** keeps its picture and time; the "A Go here, B Stay" line is gone, and A and B still commit and cancel.
 
 **Tests:** the Quick View and Trickplay suites pass.
+- **Closure (2026-11-20):** accepted with Phase 3 by the owner (DECISIONS.md, "Phase 3 accepted and formally closed").
 
 <a id="b-070"></a>
 ### B-070: Added to Steam as a non-Steam game, Reflux showed only its name
@@ -2550,7 +2595,7 @@ The existing `AdaptiveKeyboardTest`, `PointerKeyboardTest` and `KeyboardTest` pa
 - **Category:** Polish (desktop, outside the app) · **Priority:** Low · **Platforms:** W, L (Steam's library and Big Picture)
 - **Components:** `design/brand/steam/`, `tools/brand/make-steam-artwork.py`
 - **How found:** 2026-11-20, the owner's cousin, on Windows and Linux.
-- **Phase:** 3 (the owner's steer) · **Status:** Fixed (files made and checked; not applied in Steam) · **Last updated:** 2026-11-20
+- **Phase:** 3 (the owner's steer) · **Status:** Fixed (the files made and checked; never applied in Steam on Windows or Linux: an accepted limitation) · **Last updated:** 2026-11-20
 
 **Done.**
 - **A Steam artwork set,** rendered from the brand's master geometry, in the same way as the store artwork:
@@ -2567,6 +2612,7 @@ The existing `AdaptiveKeyboardTest`, `PointerKeyboardTest` and `KeyboardTest` pa
 **Not done:**
 - **Not applied in Steam:** Steam on this machine is the owner's, and adding a shortcut there changes their library. The owner's (or the cousin's) check.
 - **Not checked against a client:** Steam's slot sizes are from Valve's library-asset sizes and current community guides, not checked against a client here.
+- **Closure (2026-11-20):** accepted with Phase 3 by the owner (DECISIONS.md, "Phase 3 accepted and formally closed").
 
 <a id="b-071"></a>
 ### B-071: Hidden hints left a small dot where the bar was
@@ -2574,7 +2620,7 @@ The existing `AdaptiveKeyboardTest`, `PointerKeyboardTest` and `KeyboardTest` pa
 - **Category:** Bug (visual) · **Priority:** Low · **Platforms:** All with a controller
 - **Components:** `ui` (`RefluxApp`, `ButtonPrompts`)
 - **How found:** 2026-11-20, the owner's manual test of the build with B-067 in it.
-- **Phase:** 3 (final validation) · **Status:** Fixed (automated) · **Last updated:** 2026-11-20
+- **Phase:** 3 (final validation) · **Status:** Verified (physical: the owner's manual test of the rebuilt app on Windows, 2026-11-20) · closed · **Last updated:** 2026-11-20
 - **Related:** B-067, B-055
 
 **Cause:** B-067 made hidden mean no hints at all, LT's own included, but the browsing bars stayed shown while a controller was in use. A bar with no hints was still its frosted pill (its padding on a round surface), drawn as a small dot.
@@ -2584,6 +2630,7 @@ The existing `AdaptiveKeyboardTest`, `PointerKeyboardTest` and `KeyboardTest` pa
 - **The bar keeps its last hints while it fades out,** and draws nothing when it has none.
 
 **Test:** `RailEntryTest.hiddenHintsLeaveNoBarBehind`: once the hints are hidden there is no bar, empty or not.
+- **Owner-verified (2026-11-20):** the owner tested the rebuilt application on Windows by hand and confirmed the fix ("all fixed"). Closed with Phase 3.
 
 <a id="b-072"></a>
 ### B-072: Right from the sidebar sometimes did not enter Home (an old issue)
@@ -2591,7 +2638,7 @@ The existing `AdaptiveKeyboardTest`, `PointerKeyboardTest` and `KeyboardTest` pa
 - **Category:** Bug (focus) · **Priority:** High (the owner: Home unreachable from the sidebar by controller or keyboard) · **Platforms:** W, L, tablets (the sidebar or rail beside the page)
 - **Components:** `ui` (`RefluxApp`: focus from the navigation into the page; `RailFocus`, `FocusEntry`)
 - **How found:** 2026-11-20, the owner's manual test of the final build. The owner says it was an old issue, never recorded.
-- **Phase:** 3 (final validation) · **Status:** Fixed (automated) · **Last updated:** 2026-11-20
+- **Phase:** 3 (final validation) · **Status:** Verified (physical: the owner's manual test of the rebuilt app on Windows, 2026-11-20) · closed · **Last updated:** 2026-11-20
 - **Related:** B-008 (the same failure when nothing had focus), B-062
 
 **Reproduction (the test harness, before the fix).** Choose Movies in the sidebar, then Up and A on Home, then Right after a delay:
@@ -2617,6 +2664,7 @@ A second Right always worked. Every slower route tried (by Left or Y, after Quic
 **Tests:**
 - `RailEntryTest.rightFromTheSidebarEntersHomeHoweverSoonAfterChoosingIt`: 0, 16, 120 and 250 ms. It failed at every one of these delays before the fix (by the probe) and passes with it.
 - `HomeFocusTest`, `NavigationTest`, `TelevisionTest`, `HintsTest` and `MiniPlayerTest` pass.
+- **Owner-verified (2026-11-20):** the owner tested the rebuilt application on Windows by hand and confirmed the fix ("all fixed"). Closed with Phase 3.
 
 <a id="b-073"></a>
 ### B-073: A Home row's paging arrows showed while a controller was in use
@@ -2624,7 +2672,7 @@ A second Right always worked. Every slower route tried (by Left or Y, after Quic
 - **Category:** Bug (input modality) · **Priority:** Low · **Platforms:** W, L (a mouse beside a controller or keys)
 - **Components:** `ui` (`HomeScreen` rows)
 - **How found:** 2026-11-20, the owner's manual test.
-- **Phase:** 3 (final validation) · **Status:** Fixed (automated) · **Last updated:** 2026-11-20
+- **Phase:** 3 (final validation) · **Status:** Verified (physical: the owner's manual test of the rebuilt app on Windows, 2026-11-20) · closed · **Last updated:** 2026-11-20
 - **Related:** B-042 (the same rule for cards)
 
 **Cause:** the arrows showed while the row was hovered. A mouse resting over the row stays "hovering" while a controller or the keys move, so the arrows stayed.
@@ -2632,6 +2680,35 @@ A second Right always worked. Every slower route tried (by Left or Y, after Quic
 **Fix:** the arrows show only while the row is hovered and the mouse is the input in use. They fade when a controller or the keys move, and come back when the mouse moves.
 
 **Test:** `RailEntryTest.aRowsArrowsAreTheMousesAndFadeWhenTheControllerMoves`.
+
+<a id="b-074"></a>
+### B-074: Two `SourcesUiTest` cases time out under the full UI and core run
+
+- **Category:** Test reliability (not a product bug) · **Priority:** Low · **Platforms:** the test machine (Windows)
+- **Components:** `ui` tests (`SourcesUiTest`)
+- **How found:** 2026-11-20, the UI and core run after B-071 to B-073 (941 tests, 2 failures).
+- **Phase:** **Beta 3** (test infrastructure; registered at Phase 3's closure, after the freeze) · **Status:** Investigating · **Last updated:** 2026-11-20
+- **Related:** B-044 (the other known intermittents)
+
+**Observed.** `aServerThatIsAwayOrStopsAnsweringIsRemovedAtOnce` ("Timed out waiting for the server's films") and `aServerThatIsAwayStaysListedAndInTheLibraryAndCanBeSignedInAgain` ("Timed out waiting for the notice") failed in the full `:ui:jvmTest :core:jvmTest` run.
+- **Rerun alone:** `SourcesUiTest` passed 11/11 at once.
+- **History:** both passed in the full `./gradlew check` of the same day before B-071 to B-073, and those changes touch nothing they exercise.
+
+**Reading (not a confirmed cause).** Their waits on servers going away are too short when the machine is loaded by the whole suite. A Jellyfin test container was also running on the machine at the time.
+
+**To do (Beta 3):** run them repeatedly under load, find what they wait on, and make the waits deterministic without weakening the test (CLAUDE.md: intermittents are not "fixed" by weakening).
+
+## Beta 3 backlog (from Phase 3's closure, 2026-11-20)
+
+Phase 3 is closed and Beta 2's fix scope is frozen (DECISIONS.md, 2026-11-20, "Phase 3 accepted and formally closed"). Every bug, UX issue, request or improvement found from now on is entered here, and in its own entry with the next free number, for **Beta 3 or a later release**, unless the owner explicitly authorises it as a critical Beta 2 blocker.
+
+| Item | What | Status |
+| --- | --- | --- |
+| [B-074](#b-074) | Two `SourcesUiTest` cases time out under the full run | Investigating (test reliability) |
+| [B-061](#b-061) | A Skia crash after a Direct3D failure (Windows, the owner's build) | Investigating; a Beta 3 candidate (the owner places it) |
+| [B-044](#b-044) | Test intermittents mixing the test and wall clocks | Investigating (test infrastructure) |
+| [B-056](#b-056) | Blank on closing the mini-player | Deferred by the owner (a later beta) |
+| [F-003](#f-003) | Video-synchronised haptics | Deferred: a future version, **no release assigned**; needs its own research, hardware validation, design and plan first |
 
 ## Regression tracking
 
@@ -2707,3 +2784,11 @@ Machines (CLAUDE.md, "Testing environment"): Windows 11 development machine (phy
 - **F-003:** Deferred by the owner as a future feature.
 - **A stale on-device test:** the Phase 2 Fire TV walk still said "X does nothing" (Quick View since F-P3); updated. | Claude (agent) |
 | 2026-11-20 | **The owner's manual test of the final build:** B-071 (hidden hints left a dot), B-072 (Right from the sidebar into Home, an old issue never recorded), B-073 (row arrows with a controller): found, reproduced in tests, and fixed. | Claude (agent) |
+- **Owner-verified (2026-11-20):** the owner tested the rebuilt application on Windows by hand and confirmed the fix ("all fixed"). Closed with Phase 3.
+| 2026-11-20 | **Phase 3 accepted and formally closed by the owner.**
+- **Owner-verified and closed:** B-071, B-072, B-073 (the owner's manual test of the rebuilt app).
+- **Reconciled with the evidence:** B-016, B-017, B-029, B-030 and F-P3 are Verified (physical walks, the owner's among them, which still read "pending"); B-041 is Fixed (both checkpoints); the Phase 3 final-validation fixes are recorded as in the accepted build.
+- **Carried open:** B-022, B-044, B-061, F-004 and the deferred items.
+- **New:** B-074, the two timing-sensitive `SourcesUiTest` cases, for Beta 3.
+- **Freeze:** a Beta 3 backlog section opened. New findings go there unless the owner authorises a critical Beta 2 blocker.
+- **Counts:** 82 entries: 11 Verified, 56 Fixed, 5 Investigating, 1 In Progress, 2 Deferred, 5 Not Started, 2 Not Reproduced. | Claude (agent), for the owner |
