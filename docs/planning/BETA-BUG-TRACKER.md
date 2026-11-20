@@ -80,7 +80,7 @@ Newly discovered: B-043 Fixed; B-044 Investigating; B-045 Not Started. Added by 
 | **3** | 8 issues + 2 checkpoints (B-041 final, F-004 final) | 0 | 0 | 0 | 8 | 0 | Not started |
 | Unassigned / pending | B-016, B-017, B-022, B-042, F-005 (and F-P1, F-P2) | 0 | 1 (B-022, measured under B-041) | 0 | 6 | 0 | Owner decisions needed |
 
-**Phase 1 was accepted by the owner (2026-11-19). Phase 2 is implemented and awaits the owner's review** (PHASE-2-PLAN.md; VERIFICATION.md, "Phase 2"). Its open items are named in each entry: B-002's reproduction, physical controllers, Fire TV, the Pad 7 and the owner's acceptance. Phase 3 has not started. Beta 2 is not cut.
+**Phase 1 was accepted by the owner (2026-11-19). Phase 2 was accepted and closed by the owner (2026-11-20)** (PHASE-2-PLAN.md, "Closure"; VERIFICATION.md, "Phase 2: closing walks and closure"; DECISIONS.md, 2026-11-20). Its accepted limitations: B-056 deferred as a known minor issue; DualSense not applicable; Linux verified in a VM; the Linux controller covered by automated tests; the Phone 2a Search walk completed on the emulator. Phase 3 has not started. Beta 2 is not cut.
 
 ## Phase overview
 

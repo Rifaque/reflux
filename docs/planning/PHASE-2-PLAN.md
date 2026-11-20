@@ -1,5 +1,7 @@
 # Phase 2 (Beta 2): Controller, Focus, Interaction, Input, Haptics & UX Reliability
 
+> **Status: ACCEPTED AND CLOSED BY OWNER (2026-11-20).** See "Closure" below and DECISIONS.md, 2026-11-20, "Phase 2 accepted and closed".
+
 Written 2026-11-19 on `open-source-gpl` at `7dbade6`. The tree was clean, and the screenshot left untracked at Phase 1's end was gone. Phase 1 had been accepted by the owner, and the owner's Phase 2 brief of the same day authorised this work (DECISIONS.md, 2026-11-19, "Phase 2 authorised"). Scope, order and exit criteria are in [BETA-2.md](BETA-2.md); each issue's record is in [BETA-BUG-TRACKER.md](BETA-BUG-TRACKER.md); runs are in VERIFICATION.md, "Phase 2". This file holds the plan, the audit behind it, and the interaction contract it implements.
 
 **Hardware at the start.** Over USB adb: the Nothing Phone (2a) and the Xiaomi Pad 7 (both physical). Also this Windows 11 machine, the Google TV emulator (`Reflux_TV`), the Ubuntu 26.04 QA VM, and WSL2. The Fire TV was not connected (it uses network adb at a changing address). There is one monitor at a time (see B-002).
@@ -170,7 +172,19 @@ Then PRIVACY.md, the website, Play's Data safety and Amazon's questionnaire are 
 
 **Owner's decision (2026-11-19, final verification brief): Aptabase is not selected.** Its daily-salted IP-address hash is a privacy trade-off not acceptable for this beta. Statistics stay off; nothing is transmitted from any build; no other provider is added in this pass. The opt-in groundwork (closed schema, consent off by default, the disabled transport) is kept for a later choice (DECISIONS.md, 2026-11-19, "Phase 2 final verification").
 
-## Closure (2026-11-20): ready for the owner's acceptance
+## Closure (2026-11-20): accepted and closed by the owner
+
+**The owner accepted and closed Phase 2 on 2026-11-20.** The final verification passed: 1,575 tests, 0 failures, 25 skipped, Android lint included. The acceptance includes these limitations and exceptions:
+- B-056 is accepted as a minor known issue, deferred to a later beta; no further investigation now.
+- DualSense verification is not applicable: the owner has no DualSense.
+- The Linux desktop was verified in an Ubuntu VM, not on physical Linux hardware.
+- The Linux controller was not physically tested; its automated coverage is documented.
+- The Phone 2a Search walk on the device was interrupted; the emulator walk completed.
+- The remaining emulator, physical-device and test limitations are accepted as documented (VERIFICATION.md, "Phase 2: closing walks and closure").
+
+Accepted issues and limitations are not reopened without new evidence.
+
+The closing walks, what they found, and the limitations as they stood:
 
 The closing walks are recorded in VERIFICATION.md, "Phase 2: closing walks and closure", each labelled by where it ran.
 - **Linux desktop:** in the Ubuntu 26.04 QA VM.
