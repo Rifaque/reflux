@@ -149,7 +149,7 @@ internal class DesktopPlatform(private val environment: DesktopEnvironment) : Pl
         x11Errors?.hold()
         // On X11 the engine keeps its video output until it is destroyed, instead of dropping it whenever
         // playback stops: every teardown is a moment in which an X error would end the process.
-        val options = EMBEDDED_OPTIONS + ("wid" to surface.toString()) + if (x11Errors != null) mapOf("force-window" to "yes") else emptyMap()
+        val options = embeddedOptions(surface, linux = LINUX, guarded = x11Errors != null)
         val player = try {
             withContext(Dispatchers.IO) { environment.createPlayer(options) }
         } catch (e: Throwable) {
@@ -191,13 +191,36 @@ internal class DesktopPlatform(private val environment: DesktopEnvironment) : Pl
         withContext(Dispatchers.IO) { environment.removeSource(id) }
     }
 
-    private companion object {
+    internal companion object {
+        private val LINUX = System.getProperty("os.name").startsWith("Linux")
+
         /** Reflux draws its own controls and handles all input, so mpv's are switched off. */
-        val EMBEDDED_OPTIONS = mapOf(
+        private val EMBEDDED_OPTIONS = mapOf(
             "input-cursor" to "no",
             "cursor-autohide" to "no",
             "osd-level" to "0",
         )
+
+        /**
+         * What the engine is given to draw into [surface], Reflux's own native window.
+         *
+         * On Linux that window is always an X11 one: the toolkit is X11, and on a Wayland session it runs through XWayland. Left
+         * to choose, mpv's GPU output tries Wayland first when the session has one. A Wayland surface cannot be put inside an X11
+         * window, so mpv made a surface of its own above Reflux's windows: it covered the player's controls window (only the
+         * parts above the picture showed, and the pointer never reached the controls) and sat out of place (B-058, the Ubuntu
+         * 26.04 GNOME walk, 2026-11-20). So the GPU output is held to X11 contexts, EGL first.
+         *
+         * @param guarded the X11 error guard is in place: the engine then keeps its video output until it is destroyed.
+         */
+        fun embeddedOptions(surface: Long, linux: Boolean, guarded: Boolean): Map<String, String> = buildMap {
+            putAll(EMBEDDED_OPTIONS)
+            put("wid", surface.toString())
+            if (linux) put("gpu-context", X11_CONTEXTS)
+            if (guarded) put("force-window", "yes")
+        }
+
+        /** mpv's X11 GPU contexts, in order: EGL, then GLX, then Vulkan. */
+        const val X11_CONTEXTS = "x11egl,x11,x11vk"
     }
 }
 

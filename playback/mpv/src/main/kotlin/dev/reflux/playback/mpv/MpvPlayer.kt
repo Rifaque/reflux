@@ -315,7 +315,14 @@ class MpvPlayer private constructor(
         ): MpvPlayer? {
             val mpv = LibMpv.loadOrNull() ?: return null
             val handle = mpv.createHandle() ?: return null
-            (defaultOptions + options - "log-file").forEach { (name, value) -> mpv.mpv_set_option_string(handle, name, value) }
+            (defaultOptions + options - "log-file").forEach { (name, value) ->
+                if (mpv.mpv_set_option_string(handle, name, value) < 0 && name in LIST_OPTIONS) {
+                    // One name this build of libmpv lacks rejects the whole list (Ubuntu's has no "x11" GPU context): keep the
+                    // ones it knows, in order (B-058).
+                    knownEntries(value) { entry -> mpv.mpv_set_option_string(handle, name, entry) >= 0 }
+                        ?.let { mpv.mpv_set_option_string(handle, name, it) }
+                }
+            }
             val initialized = mpv.mpv_initialize(handle)
             if (initialized < 0) {
                 lastFailure = "libmpv could not initialize: " + runCatching { mpv.mpv_error_string(initialized) }.getOrDefault("error $initialized")
@@ -326,6 +333,16 @@ class MpvPlayer private constructor(
             if (log != null) mpv.mpv_request_log_messages(handle, "debug")
             return MpvPlayer(mpv, handle, capabilities, log, onDecode, onAudioOutput)
         }
+
+        /** Options whose value is a list of names in order of preference, any of which a build may not have. */
+        internal val LIST_OPTIONS = setOf("gpu-context", "gpu-api", "vo")
+
+        /**
+         * The entries of the list [value] that [accepts] takes one at a time, in their order, joined again; null when it
+         * takes none of them.
+         */
+        internal fun knownEntries(value: String, accepts: (String) -> Boolean): String? =
+            value.split(',').map { it.trim() }.filter { it.isNotEmpty() && accepts(it) }.takeIf { it.isNotEmpty() }?.joinToString(",")
 
         /** How far short of its running time a file may end and still have played to its end. */
         internal const val END_TOLERANCE_MS: Long = 15_000
