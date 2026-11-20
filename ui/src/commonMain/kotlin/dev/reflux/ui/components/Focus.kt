@@ -1,5 +1,6 @@
 package dev.reflux.ui.components
 
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.runtime.key
 import androidx.compose.foundation.layout.height
@@ -193,6 +194,52 @@ fun Modifier.initialFocus(onArrival: Boolean = false): Modifier {
         LaunchedEffect(Unit) { if (showsFocus && entry.screen == screen && !entry.inChrome) runCatching { requester.requestFocus() } }
     }
     return focusRequester(requester)
+}
+
+/**
+ * For the first control of a panel that opens in place of the control that opened it (a rename field, a PIN panel, a
+ * confirmation): it takes focus as the panel appears, for input that shows focus. Without it the control that had focus was
+ * gone, focus fell to the navigation, and Back there left the page with the panel open (Phase 2's close, the Google TV
+ * walk, 2026-11-20). Never for a pointer or a finger, which see no focus.
+ */
+@Composable
+fun Modifier.takesFocus(): Modifier {
+    val requester = remember { FocusRequester() }
+    val showsFocus = LocalLayout.current.showsFocus
+    LaunchedEffect(Unit) {
+        if (showsFocus) {
+            withFrameNanos { }
+            runCatching { requester.requestFocus() }
+        }
+    }
+    return focusRequester(requester)
+}
+
+/** Where focus goes back to when a panel opened in place closes: the control that opened it ([returnsFocus]). */
+class PanelReturn internal constructor(internal val requester: FocusRequester) {
+    internal var pending by mutableStateOf(false)
+
+    /** Call as the panel closes. */
+    fun back() {
+        pending = true
+    }
+}
+
+@Composable
+fun rememberPanelReturn(): PanelReturn = remember { PanelReturn(FocusRequester()) }
+
+/** Marks the control that opens a panel in place: focus comes back to it when the panel closes, for input that shows focus. */
+@Composable
+fun Modifier.returnsFocus(to: PanelReturn): Modifier {
+    val showsFocus = LocalLayout.current.showsFocus
+    LaunchedEffect(to.pending) {
+        if (to.pending) {
+            withFrameNanos { }
+            if (showsFocus) runCatching { to.requester.requestFocus() }
+            to.pending = false
+        }
+    }
+    return focusRequester(to.requester)
 }
 
 /**

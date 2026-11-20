@@ -1,5 +1,6 @@
 package dev.reflux.ui.state
 
+import androidx.compose.runtime.mutableStateListOf
 import dev.reflux.library.MetadataRefresh
 import dev.reflux.library.onlineMetadata
 import dev.reflux.library.setOnlineMetadata
@@ -1157,6 +1158,10 @@ class AppState(
                     offlineOpen = false
                     true
                 }
+                panelCloses.isNotEmpty() -> {
+                    panelCloses.last().invoke()
+                    true
+                }
                 // On a television a destination's own page gives Back to the navigation first: Back never
                 // leaves a section, or Reflux, from the middle of a row.
                 platform.television && navigator.current is Destination.Section && focusNavigation?.invoke() == true -> true
@@ -1221,6 +1226,7 @@ class AppState(
             return when {
                 textInputActive && !platform.television && input.modality != InputModality.TOUCH -> BackRoute.APP
                 folderPicker != null || offlineOpen -> BackRoute.APP
+                panelCloses.isNotEmpty() -> BackRoute.APP
                 platform.television && navigator.current is Destination.Section -> BackRoute.APP
                 navigator.canGoBack -> BackRoute.APP
                 // Playing in the dock, and the system has a window for it: leaving is not stopping.
@@ -1232,6 +1238,21 @@ class AppState(
     private fun ProfileGate.backLeaves(): Boolean = when (this) {
         is ProfileGate.Choose -> required
         is ProfileGate.Unlock -> !forgetting && !profilesShown && required
+    }
+
+    /**
+     * Panels open in place on the page (a confirmation, a rename, a PIN panel), innermost last. Back closes the innermost
+     * before anything else on the page: before, a remote's Back or a controller's B went to the navigation or left the page
+     * with the panel still open (Phase 2's close, the Google TV walk, 2026-11-20).
+     */
+    private val panelCloses = mutableStateListOf<() -> Unit>()
+
+    internal fun openPanel(close: () -> Unit) {
+        panelCloses += close
+    }
+
+    internal fun closedPanel(close: () -> Unit) {
+        panelCloses.remove(close)
     }
 
     // Profiles (docs/WATCH_STATE.md, "Profiles") ----------------------------------------------------------
