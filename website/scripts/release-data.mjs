@@ -28,10 +28,15 @@ let current = null
 for (const line of read('CHANGELOG.md').split(/\r?\n/)) {
   const heading = /^## (.+?)(?: — (\d{4}-\d{2}-\d{2}))?$/.exec(line)
   if (heading) {
-    current = { version: heading[1], date: heading[2] ?? null, items: [] }
+    current = { version: heading[1], date: heading[2] ?? null, items: [], groups: [] }
     changelog.push(current)
+  } else if (current && line.startsWith('### ')) {
+    // A section may sort its notes into groups for people reading them (Playback & Media, …): each "### Title" starts one.
+    current.groups.push({ title: line.slice(4).trim(), items: [] })
   } else if (current && line.startsWith('- ')) {
-    current.items.push(line.slice(2).trim())
+    const item = line.slice(2).trim()
+    current.items.push(item)
+    current.groups.at(-1)?.items.push(item)
   }
 }
 
