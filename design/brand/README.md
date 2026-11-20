@@ -14,6 +14,7 @@ It says what Reflux does without a picture of a film or a play button: media tha
 | `reflux-wordmark.svg` | "reflux" in Manrope at weight 600, outlined, tracked −1.5% with 0.06 em after the f |
 | `reflux-lockup.svg` | Mark and wordmark side by side |
 | `store/` | Google Play and Amazon Appstore listing artwork |
+| `steam/` | Artwork for Reflux added to a Steam library as a non-Steam game, with how to apply it (`steam/README.md`) |
 | `exploration/` | The rounds of concepts that led here, as rendered |
 
 All three are filled polygons with the even-odd rule (absolute `M`/`L`/`Z` only), so every tool reads them the same way. Built by `tools/brand/make-brand-geometry.py` from the stroke definition in that script (four cubic Béziers, 11 units wide, round ends; the cut 0.42 of the stroke on each side of the returning pass, within 2.4 strokes of the crossing) and Manrope's variable TTF (google/fonts, `ofl/manrope/Manrope[wght].ttf`, SHA-256 `3ae11c49…6ae6`, OFL-1.1: `Manrope-OFL.txt`). Every platform's file is rendered from these by `tools/brand/make-brand-assets.py`; nothing is drawn twice by hand.
@@ -50,6 +51,7 @@ Rotate, mirror, stretch, or redraw the mark; close the cut; set the wordmark in 
 | The desktop window and taskbar | `desktop/app/src/main/resources/reflux-mark.path`, drawn by `Main.kt` |
 | Website | `website/public/favicon.svg`, `favicon-32.png`, `apple-touch-icon.png`, `icon-192.png`, `icon-512.png`, `og-image.png`, `mark.svg`, `lockup.svg` |
 | Google Play | `store/play-icon-512.png`, `store/play-feature-graphic-1024x500.png`, `store/play-tv-banner-1280x720.png` |
+| Steam library shortcut (not a store listing) | `steam/steam-grid-600x900.png`, `steam-wide-920x430.png`, `steam-hero-3840x1240.png`, `steam-logo-1280x264.png`, `steam-icon-256.png`, by `tools/brand/make-steam-artwork.py` |
 | Amazon Appstore (Fire TV) | `store/amazon-icon-512.png`, `store/amazon-icon-114.png`, `store/amazon-firetv-icon-1280x720.png`, `store/amazon-firetv-background-1920x1080.png` |
 
 ## RSX Develops, the publisher
