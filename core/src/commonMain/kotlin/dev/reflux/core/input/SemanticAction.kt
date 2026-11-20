@@ -41,6 +41,13 @@ enum class SemanticAction {
      */
     TOGGLE_NAVIGATION,
 
+    /**
+     * The focused item's contextual action (F-P3): Media Quick View for a focused film or show. A controller's X, a
+     * pointer's right-click, a long touch, and a remote's Menu on a focused card. With no media item focused it does
+     * nothing.
+     */
+    CONTEXT,
+
     /** Hides the controller's button hints while browsing, or shows them again (B-055; the owner's choice: LT). */
     TOGGLE_HINTS,
 

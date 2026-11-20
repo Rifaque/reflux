@@ -392,6 +392,11 @@ fun RefluxApp(
             }
             app.clearFocus = { focus.clearFocus() }
             app.activateFocused = focused::activate
+            // F-P3: the focused card's Quick View; focus comes back to that card when it closes.
+            app.focusedContext = {
+                val card = focused.requester
+                focused.context().also { opened -> if (opened && card != null) entry.afterPanel = card }
+            }
             // Back on a television's destination goes to the navigation first, landing on where the viewer is.
             app.focusNavigation = { !entry.inChrome && rail.leavingPage(focused).let { rail.focusCurrent() } }
             // Y (F-P2): into the navigation, landing on where the viewer is; and from it back to exactly the item that was
@@ -407,6 +412,7 @@ fun RefluxApp(
                 app.moveFocus = null
                 app.clearFocus = null
                 app.activateFocused = null
+                app.focusedContext = null
                 app.focusNavigation = null
                 app.toggleNavigation = null
             }
@@ -431,7 +437,7 @@ fun RefluxApp(
             // the navigation. Once the screen has started, focus on the navigation is the viewer's doing (Back on
             // a destination puts it there); a page that then gains a new first line (a removal finishing a moment
             // later) must not pull it back. On arrival it is not: that is where the toolkit put it.
-            val covered = app.offlineOpen || app.folderPicker != null || app.profileGate != null
+            val covered = app.offlineOpen || app.folderPicker != null || app.profileGate != null || app.quickView != null
             var started by remember { mutableStateOf<Destination?>(null) }
             LaunchedEffect(app.navigator.current, entry.starts, covered) {
                 if (covered) return@LaunchedEffect
@@ -456,7 +462,7 @@ fun RefluxApp(
         } else if (layout.showsFocus) {
             // A keyboard or a controller at a desk: a panel that closes hands focus back to what opened it at
             // once, not on the next arrow, so a key pressed next acts where the user was.
-            val covered = app.offlineOpen || app.folderPicker != null || app.profileGate != null
+            val covered = app.offlineOpen || app.folderPicker != null || app.profileGate != null || app.quickView != null
             LaunchedEffect(covered) {
                 if (covered) return@LaunchedEffect
                 repeat(FOCUS_PATIENCE_FRAMES) {
@@ -466,7 +472,7 @@ fun RefluxApp(
             }
         }
         // What is in front is all a screen reader finds: the player, or a panel that holds focus until it closes.
-        val panelOpen = app.offlineOpen || app.folderPicker != null
+        val panelOpen = app.offlineOpen || app.folderPicker != null || app.quickView != null
         // What plays in the mini-player is beside the page, not in front of it: the page stays the viewer's.
         val behind = app.watching != null || panelOpen || app.profileGate != null
         val page = remember { PageScroll() }
@@ -490,6 +496,11 @@ fun RefluxApp(
         }
         CompositionLocalProvider(
             LocalFocusEntry provides entry, LocalFocusedControl provides focused, LocalChromeInsets provides insets, LocalPageScroll provides page,
+            dev.reflux.ui.components.LocalQuickView provides { id: dev.reflux.core.model.MediaId ->
+                // Opened by a pointer or a finger on a card that may not have focus: its place is where focus comes back to.
+                focused.requester?.let { entry.afterPanel = it }
+                app.openQuickView(id)
+            },
             LocalSystemBars provides bars, LocalMaterialBackdrop provides materialBackdrop, dev.reflux.ui.components.LocalTextEntry provides textEntry,
             androidx.compose.ui.platform.LocalHapticFeedback provides toolkitHaptics,
         ) {
@@ -651,6 +662,12 @@ private fun Chrome(app: AppState, page: PageScroll, rail: RailFocus, navigationI
         if (app.offlineOpen) {
             Box(Modifier.fillMaxSize().pointerInput(app) { detectTapGestures { app.offlineOpen = false } })
         }
+        // Media Quick View (F-P3): over the page, which steps back; a click outside closes it.
+        AnimatedVisibility(app.quickView != null, enter = fadeIn(Motion.controlsShow.tween()), exit = fadeOut(Motion.controlsHide.tween())) {
+            var shown by remember { mutableStateOf(app.quickView) }
+            app.quickView?.let { shown = it }
+            shown?.let { itemId -> dev.reflux.ui.screens.QuickViewOverlay(app, itemId) }
+        }
         // Choosing a folder takes the whole screen's attention: the page behind it steps back.
         AnimatedVisibility(app.folderPicker != null, enter = fadeIn(Motion.controlsShow.tween()), exit = fadeOut(Motion.controlsHide.tween())) {
             var shown by remember { mutableStateOf(app.folderPicker) }
@@ -730,10 +747,19 @@ private fun Chrome(app: AppState, page: PageScroll, rail: RailFocus, navigationI
         ) {
             typing?.let { session ->
                 Box(Modifier.fillMaxWidth().padding(start = bars.start + 12.dp, end = bars.end + 12.dp, bottom = bars.bottom + 12.dp), contentAlignment = Alignment.BottomCenter) {
+                    // Title completions as the query changes (D2), on Search's own typing pause; never taking focus.
+                    if (session.kind == dev.reflux.ui.state.InputKind.SEARCH) {
+                        LaunchedEffect(session, session.text, session.mode) {
+                            kotlinx.coroutines.delay(140)
+                            session.offer(app.completionsFor(session.text, if (session.mode == dev.reflux.ui.state.KeyboardMode.POINTER) 5 else 3))
+                        }
+                    }
                     dev.reflux.ui.components.RefluxKeyboard(
                         session,
-                        onPress = app::pressKey,
+                        onKey = { key -> app.pressKey(key) },
                         prompts = app.input.controllerFamily?.takeIf { app.namesButtons },
+                        onComplete = app::completeOnKeyboard,
+                        onPointerTravel = app::keyboardPointerTravel,
                     )
                 }
             }

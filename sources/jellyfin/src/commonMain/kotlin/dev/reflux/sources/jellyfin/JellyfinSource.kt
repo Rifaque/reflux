@@ -23,6 +23,8 @@ import dev.reflux.core.playback.StreamInfo
 import dev.reflux.core.playback.SubtitleFormat
 import dev.reflux.core.playback.SubtitlePlan
 import dev.reflux.core.playback.SubtitleStream
+import dev.reflux.core.playback.TrickplayManifest
+import dev.reflux.core.playback.TrickplaySource
 import dev.reflux.core.playback.VideoCodec
 import dev.reflux.core.playback.VideoPlan
 import dev.reflux.core.playback.VideoProfile
@@ -75,7 +77,7 @@ class JellyfinSource(
     /** Which of the server's addresses to use; one over [credentials]' addresses unless a test gives its own clock. */
     selector: dev.reflux.core.net.EndpointSelector = dev.reflux.core.net.EndpointSelector(credentials.addresses, monotonicMs),
 ) : CatalogSource, WatchStateSyncSource, DownloadableSource, SectionedSource, PlaybackEvidenceSource, NegotiatingSource,
-    dev.reflux.core.source.MultiAddressSource {
+    dev.reflux.core.source.MultiAddressSource, TrickplaySource {
     private val api = JellyfinApi(selector, http, credentials.deviceId, deviceName, credentials.accessToken)
     private val startedSessions = mutableSetOf<String>()
 
@@ -252,6 +254,60 @@ class JellyfinSource(
         val (itemId, _) = versionIds(path) ?: return
         val params = mapOf("userId" to credentials.userId)
         if (played) api.post("UserPlayedItems/$itemId", null, params) else api.delete("UserPlayedItems/$itemId", params)
+    }
+
+    /** Each version's previews as the server last described them; a version without any is remembered as such. */
+    private val trickplays = mutableMapOf<String, TrickplayChoice?>()
+
+    private class TrickplayChoice(val manifest: TrickplayManifest, val width: Int)
+
+    /**
+     * The server's trickplay tiles for the version at [path] (B-030; Jellyfin 10.9 and later, where the server has
+     * generated them: `BaseItemDto.Trickplay`, per media source and width). The width nearest [TRICKPLAY_WIDTH] is
+     * used. A server that has none, an older server, or one that cannot be reached now gives none.
+     */
+    override suspend fun trickplay(path: String): TrickplayManifest? {
+        val (itemId, sourceId) = versionIds(path) ?: return null
+        if (path in trickplays) return trickplays[path]?.manifest
+        val item = try {
+            api.get("Items", mapOf("userId" to credentials.userId, "ids" to itemId, "Fields" to "Trickplay")).obj()?.array("Items")?.firstOrNull()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            return null // not remembered: the server may answer next time
+        }
+        val choice = item?.obj("Trickplay")?.obj(sourceId)?.let { widths -> chooseTrickplay(itemId, sourceId, widths) }
+        trickplays[path] = choice
+        return choice?.manifest
+    }
+
+    private fun chooseTrickplay(itemId: String, sourceId: String, widths: JsonObject): TrickplayChoice? =
+        widths.entries.mapNotNull { (width, info) ->
+            val described = info as? JsonObject ?: return@mapNotNull null
+            val pixels = width.toIntOrNull() ?: described.int("Width") ?: return@mapNotNull null
+            val manifest = TrickplayManifest.of(
+                key = "jellyfin/${descriptor.id.value}/$itemId/$sourceId/$pixels",
+                intervalMs = described.long("Interval"),
+                count = described.int("ThumbnailCount"),
+                frameWidth = described.int("Width"),
+                frameHeight = described.int("Height"),
+                columns = described.int("TileWidth") ?: 1,
+                rows = described.int("TileHeight") ?: 1,
+            ) ?: return@mapNotNull null
+            TrickplayChoice(manifest, pixels)
+        }.minByOrNull { kotlin.math.abs(it.width - TRICKPLAY_WIDTH) }
+
+    override suspend fun trickplaySheet(path: String, manifest: TrickplayManifest, sheet: Int): ByteArray? {
+        val (itemId, sourceId) = versionIds(path) ?: return null
+        val choice = trickplays[path]?.takeIf { it.manifest == manifest } ?: return null
+        if (sheet !in 0 until manifest.sheets) return null
+        return try {
+            api.bytes("Videos/$itemId/Trickplay/${choice.width}/$sheet.jpg", mapOf("MediaSourceId" to sourceId)).takeIf { it.isNotEmpty() }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            null
+        }
     }
 
     private fun versionIds(path: String): Pair<String, String>? {
@@ -672,6 +728,9 @@ class JellyfinSource(
 
         /** The widest each kind of picture is asked for: a backdrop fills a large screen; the rest are smaller. */
         private val IMAGE_WIDTHS = mapOf("Backdrop" to 1920, "Logo" to 800, "Primary" to 780)
+
+        /** The preview width asked for when a server keeps several (its default is 320): enough for a floating preview. */
+        private const val TRICKPLAY_WIDTH = 320
 
         /** What a description is made of, asked for with the catalog (and the series): fields that cost a server nothing measurable. */
         private const val DESCRIPTION_FIELDS = "Overview,Genres,Taglines,Studios,OriginalTitle"

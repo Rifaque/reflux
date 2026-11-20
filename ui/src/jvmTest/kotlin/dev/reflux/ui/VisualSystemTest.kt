@@ -132,7 +132,8 @@ class VisualSystemTest {
             waitForIdle()
             save("m4-atmosphere-on")
             val on = margin()
-            assertTrue(on.any { distance(it, background) > 0.03f && saturation(it) > 0.15f }, "the artwork's atmosphere when on: $on")
+            // B-028: perceptible, not a few levels of each channel (a distance of 0.03 passed when testers saw nothing).
+            assertTrue(on.any { distance(it, background) > 0.08f && saturation(it) > 0.15f }, "the artwork's atmosphere when on, clearly: $on")
             // Never more than a wash: it stays dark enough for primary text at AA, wherever it is.
             assertTrue(on.all { Palette.textPrimary.toColor().let { text -> contrast(text, it) >= 7.0 } }, "readable: $on")
             await("the choice kept with the library") { app.library.setting(MEDIA_ATMOSPHERE) == "on" }

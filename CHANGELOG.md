@@ -18,6 +18,12 @@ What changes for people using Reflux, version by version. The rules for versions
 - Reflux's website has documentation of its own: install guides for Windows, Linux (a tab per distribution, each command saying where it was checked), Android, Android TV, and Fire TV, how to check a download, and guides to sources, the library, playback, and profiles, with search, a contents list on each page, and commands you can copy. Download shows a card per platform with what it needs and how to get it. The license is at /license.
 - Reflux opens the profile you used last on every device, a TV included. With more than one profile, Settings has Switch profile and Log out, and Profiles has Log out beside the list: logging out keeps everything the profile has, asks for its PIN again if it has one, and asks who's watching.
 - With a controller in hand, a mouse pointer resting over a poster no longer lifts that poster beside the one the controller is on; hover comes back as soon as you move the mouse.
+- In the player, moving the mouse along the timeline shows the scene at that place with its time, and holding a seek key or dragging shows it too, wherever your Jellyfin server (10.9 or later) or Plex server has made scene previews. Where a video has none, the time is shown alone.
+- With a controller in the player, the right stick moves through those scenes: A goes there, B stays where you are. Without previews it moves ten seconds at a time.
+- On a film or show, X on a controller, a right-click, a long press, or a remote's Menu opens a quick view: what it is, Play or Resume, Favorite, Download where possible, and Details. A controller's Start still opens Sources.
+- Home's featured title is no longer the first in alphabetical order: it is what you're in the middle of, or one of your best unwatched films and shows, changing from day to day.
+- Media Atmosphere, when you turn it on, now visibly tints the page around the artwork.
+- The on-screen keyboard is a QWERTY grid laid out for a controller, and on Windows and Linux it becomes a full keyboard in your own layout (AZERTY, QWERTZ, and so on) when you use the mouse, its keys moving into place; nothing you typed is lost when you switch. Search suggests matching titles from your library as you type, and typing on a real keyboard never presses its keys.
 - On the desktop, a problem that repeats (an engine that will not start, asked for again and again) is written to the diagnostics log once and counted, instead of filling it.
 
 ## 0.9.0-beta.1 — 2026-11-16

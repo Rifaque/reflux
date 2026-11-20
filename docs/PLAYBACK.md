@@ -602,6 +602,21 @@ There is no retry, backoff, or lower-quality ladder. `PlanOutcome.CANNOT_PLAY` s
 
 A source with no account of itself still has the engine's side compared. A planned original the server transcodes is a mismatch, and tests hold that. Live, this found a real defect: a planned remux whose audio the server converted.
 
+### Trickplay: scene previews (B-030) and the right stick (B-029)
+
+**What exists.** A source that keeps scene previews for a version says so through `TrickplaySource` (core): a `TrickplayManifest` (a picture every `intervalMs`, `count` of them, `columns` by `rows` on each sheet, each `frameWidth` by `frameHeight`) and each sheet's encoded image. Reflux never generates previews and never claims a version has them.
+- **Jellyfin** (10.9 and later; verified live on Jellyfin 12.4.0): `BaseItemDto.Trickplay` (asked with `Fields=Trickplay` for the one item) per media source and width; the width nearest 320 is used; tiles at `Videos/{item}/Trickplay/{width}/{index}.jpg?MediaSourceId=…`, with the account's token. Only where the server's administrator turned on trickplay extraction and the server has run it. A version is asked once a session; an unreachable server is asked again later.
+- **Plex:** the part's BIF index (`/library/parts/{part}/indexes/sd`), only where the server's owner turned on video preview thumbnails and they were generated; read once (64 MB at most), one picture a sheet. Tested against the recorded BIF format only: no Plex server with generated previews was available (VERIFICATION.md, "Phase 3").
+- **Local folders, SMB, WebDAV, downloaded copies:** none. Local generation (decoding frames on the device) is not done: it would compete with playback for the decoder, and is a later investigation.
+
+**How the player uses them** (`ui/state/Trickplay.kt`, `TrickplayPreviews`):
+- Nothing is fetched until a place is looked at: the pointer over the timeline, the thumb dragged, a held seek key, the right stick.
+- Only the newest place is loaded: a newer one cancels the older load, so an old picture never replaces a newer one. A sheet not yet kept waits 60 ms first, so sweeping across the bar does not ask for every sheet passed over.
+- Sheets are kept encoded across playbacks (`TrickplaySheets`, 32 MB, least recently used out), so no sheet is downloaded twice while it fits; at most three are kept decoded. Loading and decoding run on the background dispatcher, never on the player's thread.
+- The preview floats above the timeline at the place, with its time beneath. A version without previews shows the time alone. A sheet that fails to load shows no picture; playback and seeking never depend on it.
+
+**The right stick** (`core/input/StickStepper`, `PlaybackSession.rightStick`): in the full player, past a dead zone (0.5 to engage, 0.3 to release), a push moves one scene at once; held, it repeats every 260 ms gently to 70 ms fully over, and after 2 and 4 s it moves 3 and 8 scenes a step. A scene is a preview picture where there are previews, 10 s where there are none. Playback is not moved until **A**; **B** leaves the scenes with playback where it is; left and right on the D-pad fine-tune by one; 8 s untouched, or the controller gone (disconnected, Reflux left), ends it without seeking. Read on Windows through XInput's right thumb and the joystick API's Z axis, on Linux from `ABS_RX` (or `ABS_Z` where the triggers are not there), on Android from `AXIS_Z` where it is a stick.
+
 ## 9. Diagnostics
 
 Built as `PlaybackReport` (core): the player's **Info** list and the diagnostics log, in a viewer's words. The table below was the proposal; section 17 says what it covers.

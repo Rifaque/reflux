@@ -69,11 +69,12 @@ import java.awt.image.BufferedImage
 import javax.swing.SwingUtilities
 
 fun main() {
+    StartupTrace.mark("main")
     // Before any window, thread, or engine: libmpv needs the numeric locale to be C (B-031; NumericLocale).
     dev.reflux.playback.mpv.NumericLocale.prepareProcess()
     prepareToolkit()
     val environment = try {
-        DesktopEnvironment()
+        DesktopEnvironment().also { StartupTrace.mark("environment") }
     } catch (e: dev.reflux.library.NewerLibraryException) {
         // A library from a newer Reflux is left exactly as it is; the person is told why this one will not open it.
         refuseNewerLibrary(e)
@@ -138,6 +139,7 @@ internal fun runReflux(
     application(exitProcessOnExit = exitProcess) {
         // The last line of defence: a failure nobody handled is written down instead of ending the app.
         val scope = rememberCoroutineScope { CoroutineExceptionHandler { _, error -> platform.report("An unexpected error was not handled", error) } }
+        StartupTrace.mark("composition")
         val app = remember {
             AppState(environment.library, environment.pipeline, environment.registry::resolve, platform, scope).also { state ->
                 state.start()
@@ -173,6 +175,11 @@ internal fun runReflux(
             // Fullscreen is experience-layer state; the shell only carries it out.
             val fullscreen = remember(window) { Fullscreen(window, windowState) }
             LaunchedEffect(platform.fullscreen) { fullscreen.set(platform.fullscreen) }
+            LaunchedEffect(Unit) {
+                StartupTrace.mark("window")
+                androidx.compose.runtime.withFrameNanos { }
+                StartupTrace.firstFrame()
+            }
             DisposableEffect(window) {
                 platform.window = window
                 window.minimumSize = Dimension(900, 600)
@@ -211,12 +218,23 @@ internal fun runReflux(
                 }
                 Toolkit.getDefaultToolkit().addAWTEventListener(mouse, AWTEvent.MOUSE_EVENT_MASK)
                 // Controllers are read system-wide, so they only act while a Reflux window is the active one.
+                val stickLatest = java.util.concurrent.atomic.AtomicReference<Pair<Float?, dev.reflux.core.input.ControllerFamily>?>(null)
+                val stickPending = java.util.concurrent.atomic.AtomicBoolean(false)
                 val controllers = gamepads?.let { reader ->
                     GamepadInput(
                         reader, active = { focus.activeWindow != null }, repeats = app::repeatsWhileHeld,
                         waitsForRelease = { button, family -> button == dev.reflux.core.input.InputMapping.cancelButton(family) && app.backWaitsForRelease },
                         hold = { button, family -> SwingUtilities.invokeLater { app.onGamepadHold(button, family) } },
                         holding = { _, _, down -> SwingUtilities.invokeLater { app.backHold(down) } },
+                        // The right stick (B-029): reported many times a second while held, handed to the UI thread at most
+                        // once per pass of its queue, with the latest value.
+                        rightStick = { value, family ->
+                            stickLatest.set(value to family)
+                            if (stickPending.compareAndSet(false, true)) SwingUtilities.invokeLater {
+                                stickPending.set(false)
+                                stickLatest.get()?.let { (latest, from) -> app.onRightStick(latest, from) }
+                            }
+                        },
                     ) { button, family ->
                         SwingUtilities.invokeLater { app.onGamepadButton(button, family) }
                     }

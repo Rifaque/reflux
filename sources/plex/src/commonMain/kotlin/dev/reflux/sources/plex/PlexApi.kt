@@ -102,6 +102,10 @@ internal class PlexApi(
         return (parsed as? JsonArray)?.mapNotNull { it as? JsonObject } ?: throw PlexException("unexpected response", result.status)
     }
 
+    /** The raw body of a GET (an image or an index of them), or null when it is larger than [limit] bytes. */
+    suspend fun bytes(path: String, params: Map<String, String> = emptyMap(), limit: Int = Int.MAX_VALUE): ByteArray? =
+        send(HttpRequest(url(path, params), headers = headers + ("Accept" to "*/*"))).body.takeIf { it.size <= limit }
+
     /** A request whose answer, if any, is not needed. */
     suspend fun call(path: String, params: Map<String, String> = emptyMap(), method: String = "GET") {
         send(HttpRequest(url(path, params), method, headers))

@@ -1,5 +1,9 @@
 package dev.reflux.ui.player
 
+import androidx.compose.ui.platform.testTag
+import androidx.compose.foundation.border
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.layout
 import dev.reflux.ui.theme.States
 import dev.reflux.ui.theme.Shapes
 import androidx.compose.animation.AnimatedVisibility
@@ -634,8 +638,22 @@ private fun NowPlaying(session: PlaybackSession, compact: Boolean, chrome: Playe
 private fun Timeline(session: PlaybackSession, state: PlayerState, remote: Boolean, chrome: PlayerChromeSpec, onScrubbing: (Boolean) -> Unit, modifier: Modifier = Modifier) {
     val duration = state.durationMs?.takeIf { it > 0 }
     var preview by remember { mutableStateOf<Float?>(null) }
-    // Where a held seek key would land, or where the thumb is dragged to, is what the clock says; the position otherwise.
-    val position = preview?.let { fraction -> duration?.let { (it * fraction).toLong() } } ?: session.seekPreview ?: state.positionMs
+    var hover by remember { mutableStateOf<Float?>(null) }
+    val scrub = session.sceneScrub
+    // Where a held seek key would land, the right stick's scene, or where the thumb is dragged to, is what the clock
+    // says; the position otherwise.
+    val position = preview?.let { fraction -> duration?.let { (it * fraction).toLong() } } ?: scrub?.targetMs ?: session.seekPreview ?: state.positionMs
+    // The place a preview is shown for (B-030): the thumb dragged, the pointer over the bar, the stick's scene, a held key.
+    val dragged = preview
+    val hovered = hover
+    val previewMs = when {
+        duration == null -> null
+        dragged != null -> (duration * dragged).toLong()
+        hovered != null -> (duration * hovered).toLong()
+        else -> scrub?.targetMs ?: session.seekPreview
+    }
+    val previews = session.previews
+    LaunchedEffect(previews, previewMs) { previews?.want(previewMs) }
     val clock = LocalTypography.current.captionStrong.let {
         if (chrome.tier == PlayerChromeTier.BASELINE) it else it.copy(fontSize = chrome.clockSp.sp)
     }
@@ -655,7 +673,9 @@ private fun Timeline(session: PlaybackSession, state: PlayerState, remote: Boole
             color = RefluxColors.contentSecondary,
             maxLines = 1,
         )
+        Box(Modifier.weight(1f)) {
         Slider(
+            onHover = { hover = it },
             fraction = if (duration == null) 0f else (position.toFloat() / duration).coerceIn(0f, 1f),
             description = "Timeline",
             color = RefluxColors.progress,
@@ -669,12 +689,16 @@ private fun Timeline(session: PlaybackSession, state: PlayerState, remote: Boole
                 onScrubbing(false)
                 duration?.let { session.seekTo((it * fraction).toLong()) }
             },
-            modifier = Modifier.weight(1f).then(if (remote) Modifier.semantics { customActions = transportActions(session, state) } else Modifier),
+            modifier = Modifier.fillMaxWidth().then(if (remote) Modifier.semantics { customActions = transportActions(session, state) } else Modifier),
             valueText = duration?.let { Formatting.clock(position) + " of " + Formatting.clock(it) },
             style = style,
             marks = if (duration == null) emptyList() else state.chapters.map { it.startMs.toFloat() / duration }.filter { it > 0.005f && it < 0.995f },
             enabled = duration != null,
         )
+            if (previewMs != null && duration != null) {
+                TimelinePreview(previews, previewMs, (previewMs.toFloat() / duration).coerceIn(0f, 1f), scrubbing = scrub != null, family = session.controllerFamily())
+            }
+        }
         Text(
             duration?.let { "-" + Formatting.clock((it - position).coerceAtLeast(0)) } ?: "",
             Modifier.widthIn(min = remainingWidth).clearAndSetSemantics { },
@@ -684,6 +708,66 @@ private fun Timeline(session: PlaybackSession, state: PlayerState, remote: Boole
         )
     }
 }
+
+/**
+ * The scene at [positionMs], floating above the timeline at [fraction] of its width (B-030): the version's preview where
+ * its source keeps them, with the time beneath; the time alone where it has none, so nothing pretends to be a picture.
+ * During the right stick's scene navigation (B-029) it also says how to go there or stay, with [family]'s buttons.
+ */
+@Composable
+private fun TimelinePreview(previews: dev.reflux.ui.state.TrickplayPreviews?, positionMs: Long, fraction: Float, scrubbing: Boolean, family: dev.reflux.core.input.ControllerFamily) {
+    val manifest = previews?.manifest
+    val picture = previews?.picture
+    val television = LocalLayout.current.formFactor == dev.reflux.design.FormFactor.TV
+    val width = if (manifest == null) null else if (television) 260.dp else 200.dp
+    val hint = if (!scrubbing) null else {
+        val go = dev.reflux.core.input.InputMapping.glyph(dev.reflux.core.input.InputMapping.confirmButton(family), family)
+        val stay = dev.reflux.core.input.InputMapping.glyph(dev.reflux.core.input.InputMapping.cancelButton(family), family)
+        "$go Go here, $stay Stay"
+    }
+    val gap = with(LocalDensity.current) { 10.dp.roundToPx() }
+    val label = Modifier.background(androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.72f), Shapes.small).padding(horizontal = 8.dp, vertical = 3.dp)
+    Column(
+        Modifier
+            .layout { measurable, constraints ->
+                val placeable = measurable.measure(androidx.compose.ui.unit.Constraints())
+                val x = (constraints.maxWidth * fraction - placeable.width / 2f).toInt().coerceIn(0, (constraints.maxWidth - placeable.width).coerceAtLeast(0))
+                layout(constraints.maxWidth, 0) { placeable.place(x, -placeable.height - gap) }
+            }
+            .testTag(TRICKPLAY_PREVIEW)
+            .clearAndSetSemantics { },
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        if (manifest != null && width != null) {
+            val height = width * (manifest.frameHeight.toFloat() / manifest.frameWidth)
+            Box(
+                Modifier.size(width, height).clip(Shapes.medium).background(androidx.compose.ui.graphics.Color.Black)
+                    .border(1.dp, androidx.compose.ui.graphics.Color.White.copy(alpha = 0.5f), Shapes.medium),
+            ) {
+                picture?.let { shown ->
+                    androidx.compose.foundation.Canvas(Modifier.fillMaxSize().testTag(TRICKPLAY_PICTURE)) {
+                        val frame = shown.frame
+                        // A sheet of one picture (Plex) is drawn whole; a tiled sheet (Jellyfin) by its rectangle.
+                        val whole = manifest.perSheet == 1
+                        drawImage(
+                            shown.sheet,
+                            srcOffset = if (whole) androidx.compose.ui.unit.IntOffset.Zero else androidx.compose.ui.unit.IntOffset(frame.x, frame.y),
+                            srcSize = if (whole) androidx.compose.ui.unit.IntSize(shown.sheet.width, shown.sheet.height) else androidx.compose.ui.unit.IntSize(frame.width, frame.height),
+                            dstSize = androidx.compose.ui.unit.IntSize(size.width.toInt(), size.height.toInt()),
+                        )
+                    }
+                }
+            }
+        }
+        Text(Formatting.clock(positionMs), label, style = LocalTypography.current.captionStrong, color = androidx.compose.ui.graphics.Color.White, maxLines = 1)
+        hint?.let { Text(it, label, style = LocalTypography.current.caption, color = androidx.compose.ui.graphics.Color.White, maxLines = 1) }
+    }
+}
+
+/** The floating preview over the timeline, and its picture, for tests (B-030). */
+internal const val TRICKPLAY_PREVIEW = "trickplay-preview"
+internal const val TRICKPLAY_PICTURE = "trickplay-picture"
 
 /**
  * The width of the widest text a clock shaped like [longest] can show (every digit tried as each of 0 to 9, since

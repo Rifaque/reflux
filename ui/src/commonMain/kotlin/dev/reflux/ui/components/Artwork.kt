@@ -141,8 +141,12 @@ fun backdropTones(hue: Float?): Pair<Color, Color> =
     if (hue == null) Color.hsl(0f, 0f, 0.2f) to Color.hsl(0f, 0f, 0.07f)
     else Color.hsl(hue, 0.34f, 0.25f) to Color.hsl((hue + 38f) % 360f, 0.40f, 0.085f)
 
-/** How much of an artwork's atmosphere tints the page around it: a wash, never a color scheme. */
-private const val ATMOSPHERE_STRENGTH = 0.22f
+/**
+ * How much of an artwork's atmosphere tints the page around it: a wash, never a color scheme. At 0.22 (until B-028,
+ * 2026-11-20) the page moved by a few levels of each channel, which testers could not see; at 0.6 two works' pages
+ * are told apart at a glance, and the tone (lightness 0.2) keeps primary text above 7:1 on it.
+ */
+internal const val ATMOSPHERE_STRENGTH = 0.6f
 
 /** A sparse sample of [image]: rows spread over its height, a pixel in every few. Enough to know its color. */
 private fun sample(image: ImageBitmap): LongArray {
@@ -348,6 +352,7 @@ fun PosterCard(card: MediaCard, onClick: () -> Unit, modifier: Modifier = Modifi
                 .onSizeChanged { posterHeight = with(density) { it.height.toDp() } },
             shape,
             interactionSource = interaction,
+            onContext = quickView(card),
         ) { active ->
             // The card says all of it; words on the artwork would be said a second time.
             Box(Modifier.fillMaxWidth().aspectRatio(2f / 3f).clearAndSetSemantics { }) {
@@ -371,6 +376,13 @@ fun PosterCard(card: MediaCard, onClick: () -> Unit, modifier: Modifier = Modifi
             if (image == null) Text(" ", style = LocalTypography.current.captionStrong, maxLines = 1)
         }
     }
+}
+
+/** A card's contextual action (F-P3): Quick View of the film or show it leads to, where Quick View can be opened. */
+@Composable
+private fun quickView(card: MediaCard): (() -> Unit)? {
+    val open = LocalQuickView.current ?: return null
+    return remember(open, card.detailsId) { { open(card.detailsId) } }
 }
 
 /**
@@ -414,7 +426,7 @@ fun WideCard(card: MediaCard, onClick: () -> Unit, modifier: Modifier = Modifier
     val shape = Shapes.medium
     val image = rememberArtwork(ArtworkChoice.landscape(card.wide, card.poster, 16f / 9f), width)
     Column(modifier.width(width), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Pressable(onClick, Modifier.semantics { contentDescription = describe(card) }, shape, lift = 0.6f) { active ->
+        Pressable(onClick, Modifier.semantics { contentDescription = describe(card) }, shape, lift = 0.6f, onContext = quickView(card)) { active ->
             // The card says all of it; the title on the image would be said a second time.
             Box(Modifier.fillMaxWidth().aspectRatio(16f / 9f).clearAndSetSemantics { }) {
                 ArtworkImage(image, Modifier.fillMaxSize(), alignment = Alignment.TopCenter) {

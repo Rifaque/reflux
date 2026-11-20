@@ -44,9 +44,39 @@ fun Library.home(rowLimit: Int = 20): HomeFeed {
     }
     if (movies.isNotEmpty()) add("movies", "Movies", movies, "movies")
 
-    val featured = (continueWatching + recent + movies + shows)
-        .firstOrNull { it.artwork.containsKey(ArtworkKind.BACKDROP) && (it.item is Movie || it.item is Show || it.item.kind == MediaKind.EPISODE) }
+    val featured = Featured.choose(continueWatching, movies + shows, day = now() / DAY_MS, viewer = activeProfile().value)
     return HomeFeed(featured, rows)
+}
+
+private const val DAY_MS = 86_400_000L
+
+/**
+ * What Home features at its top (B-014; DECISIONS.md, 2026-11-20, "The featured hero"), by rules that can be said in a
+ * sentence and never alphabetically:
+ * 1. **What the viewer is in the middle of**, the most recent first, so the hero's main action is the one most wanted.
+ * 2. Otherwise **one of the library's best unwatched films and shows**: those with a backdrop, the [POOL] highest rated
+ *    (ties by identity, never by title), one chosen for the day and the viewer, so it stays put through the day and
+ *    changes from one day to the next, and two profiles do not see the same pick.
+ * 3. With nothing unwatched, the same from everything with a backdrop. Without any backdrop, nothing is featured.
+ * Deterministic: the same library, day and viewer give the same work. It reads only what Home has already loaded.
+ */
+internal object Featured {
+    const val POOL = 12
+
+    fun choose(continuing: List<LibraryEntry>, candidates: List<LibraryEntry>, day: Long, viewer: String): LibraryEntry? {
+        continuing.firstOrNull { it.featurable() }?.let { return it }
+        val withArt = candidates.filter { it.featurable() && (it.item is Movie || it.item is Show) }
+        val pool = withArt.filter { it.watchState?.completed != true }.ifEmpty { withArt }
+        if (pool.isEmpty()) return null
+        val best = pool.sortedWith(compareByDescending<LibraryEntry> { it.metadata?.rating ?: 0.0 }.thenBy { it.item.id.value }).take(POOL)
+        return best[((stableHash("$viewer:$day") % best.size) + best.size) % best.size]
+    }
+
+    private fun LibraryEntry.featurable(): Boolean =
+        artwork.containsKey(ArtworkKind.BACKDROP) && (item is Movie || item is Show || item.kind == MediaKind.EPISODE)
+
+    /** A hash that is the same on every platform and run (unlike [String.hashCode] promises nothing about). */
+    private fun stableHash(text: String): Int = text.fold(0x811C9DC5.toInt()) { hash, char -> (hash xor char.code) * 0x01000193 }
 }
 
 /** Genres with the most movies, ties broken alphabetically. */

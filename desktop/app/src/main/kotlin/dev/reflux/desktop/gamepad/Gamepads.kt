@@ -18,6 +18,8 @@ internal data class GamepadState(
     val buttons: Set<GamepadButton>,
     val stickX: Float = 0f,
     val stickY: Float = 0f,
+    /** The right stick's horizontal axis, −1..1 with right positive (B-029); 0 where the reader has none. */
+    val rightX: Float = 0f,
 )
 
 /** Reads every connected controller. One implementation per platform API; all of them only ever read. */
@@ -206,6 +208,11 @@ internal class GamepadInput(
     waitsForRelease: (GamepadButton, ControllerFamily) -> Boolean = { _, _ -> false },
     hold: (GamepadButton, ControllerFamily) -> Unit = { _, _ -> },
     holding: (GamepadButton, ControllerFamily, Boolean) -> Unit = { _, _, _ -> },
+    /**
+     * The right stick of the controller in use (B-029), on the polling thread: its horizontal axis whenever it moves or
+     * is held off centre, and null once when that controller is gone (or Reflux is no longer the application in use).
+     */
+    private val rightStick: (Float?, ControllerFamily) -> Unit = { _, _ -> },
     press: (GamepadButton, ControllerFamily) -> Unit,
 ) : AutoCloseable, dev.reflux.ui.state.ControllerRumble {
     private val translator = GamepadTranslator(repeats, waitsForRelease, hold, dev.reflux.ui.state.BACK_HOLD_MS, holding, press)
@@ -244,12 +251,35 @@ internal class GamepadInput(
                 if (states.none { it.id == id }) rumbling = null else if (now >= rumbleUntil || !inUse) stop()
             }
             translator.update(states, now, inUse)
+            reportRightStick(states, inUse)
             try {
                 Thread.sleep(if (states.isEmpty()) IDLE_POLL_MS else POLL_MS)
             } catch (_: InterruptedException) {
                 break
             }
         }
+    }
+
+    /** The controller whose right stick was last reported off centre, and its last value. */
+    private var stickOwner: String? = null
+    private var stickValue = 0f
+
+    private fun reportRightStick(states: List<GamepadState>, inUse: Boolean) {
+        val owner = stickOwner
+        if (owner != null && (!inUse || states.none { it.id == owner })) {
+            // Gone, or Reflux left: whatever the stick was doing is over, never committed.
+            stickOwner = null
+            stickValue = 0f
+            rightStick(null, states.firstOrNull()?.family ?: ControllerFamily.GENERIC)
+            return
+        }
+        if (!inUse) return
+        val state = states.firstOrNull { it.id == owner } ?: states.maxByOrNull { abs(it.rightX) } ?: return
+        val value = state.rightX.takeIf { abs(it) >= STICK_NOISE } ?: 0f
+        // Reported while it is held off centre (the stepping is timed by the receiver), and once when it returns.
+        if (value != 0f || stickValue != 0f) rightStick(value, state.family)
+        stickValue = value
+        stickOwner = if (value != 0f) state.id else null
     }
 
     override fun close() {
@@ -261,6 +291,9 @@ internal class GamepadInput(
 
     companion object {
         private const val POLL_MS = 8L
+
+        /** Under this the right stick is at rest: drift, not a push. */
+        private const val STICK_NOISE = 0.12f
         private const val IDLE_POLL_MS = 250L
 
         /** The controller reader for this operating system, or null where Reflux has none yet. */
