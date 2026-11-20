@@ -159,7 +159,7 @@ Scope, order, dependencies, exit criteria, and the gate: [BETA-2.md](BETA-2.md#t
 | 7 | [B-014](#b-014) Featured hero | Fixed (automated; rendered) |
 | 8 | [B-028](#b-028) Media atmosphere | Fixed (automated with a perceptibility threshold; rendered) |
 | 9 | [F-P4](#f-p4) Adaptive Virtual Keyboard | Fixed (automated; Fire TV physical and Google TV emulator grid walks; desktop renders) |
-| 10 | [F-003](#f-003) Video-synchronised haptics | Investigating (feasibility shown on the desktop; not shipped: reasons in its entry) |
+| 10 | [F-003](#f-003) Video-synchronised haptics | **Deferred** (owner, 2026-11-20): a future experimental feature, no release assigned; feasibility findings kept |
 | 11 | [B-041](#b-041) Final performance comparison | Checkpoint 2 recorded where comparable; gaps named |
 | 12 | [B-022](#b-022) Windows start-up | Investigating (measured with a breakdown; no optimisation justified yet) |
 | 13 | [F-004](#f-004) Final analytics validation | Checkpoint 2 validated (nothing can be sent; network checked) |
@@ -1466,7 +1466,7 @@ The store build is `0.9.0-beta.1` (release), with the owner's own library as ins
 
 - **Category:** Bug (UI/controller interaction) · **Priority:** To be determined (master tracker prompt); "Major" in the master prompt that first reported it (see owner decisions) · **Platforms:** controller-capable desktop layouts (W, and L)
 - **Components (likely):** `ui` (`Artwork` card focus/hover state, `Focus`)
-- **Phase:** **3** (the owner's Phase 3 work order, 2026-11-20: "reverify B-042 as part of the bug sweep") · **Status:** Fixed (automated; reproduced in a UI test before the fix) · **Last updated:** 2026-11-20
+- **Phase:** **3** (the owner's Phase 3 work order, 2026-11-20: "reverify B-042 as part of the bug sweep") · **Status:** Verified (physical: the owner's walk on Windows with a controller and a mouse, 2026-11-20) · **Last updated:** 2026-11-20
 - **Related:** B-025, B-009, B-015
 
 **Original description.** When controller focus expands a media card, moving the mouse over a different card can cause hover behaviour to interact incorrectly with the previously focused card, producing flicker or confusing expansion behaviour. *Expected:* controller focus and mouse hover must coexist predictably; moving the mouse should not cause the previous controller-focused card to incorrectly behave as hovered; focus and hover state must remain separate and correctly managed; avoid globally disabling hover as a simplistic fix. *Recommended phase:* Phase 2, alongside B-025 shared focus architecture. This is a recommendation, not yet an owner-confirmed allocation; record it as pending approval.
@@ -1493,6 +1493,10 @@ The store build is `0.9.0-beta.1` (release), with the owner's own library as ins
 ## Issues: original feature findings (F-001 to F-005)
 
 Feature proposals, kept apart from bugs. The confirmed defaults are acceptance criteria, not preferences (BETA-2.md, "Acceptance criteria the owner set"; CLAUDE.md).
+- **Verified, physical (2026-11-20, the owner on Windows):**
+  - With the mouse resting over another card while the controller moved, only the controller's card lifted and was outlined; the hovered card stayed flat.
+  - Moving the mouse again brought hover back.
+  - The owner's words: "This is correct. I like this behaviour." Kept as it is.
 
 <a id="f-001"></a>
 ### F-001: Interface haptics
@@ -1564,7 +1568,7 @@ Feature proposals, kept apart from bugs. The confirmed defaults are acceptance c
 
 - **Category:** Feature (experimental) · **Platforms:** supported controllers/devices
 - **Components (likely):** playback audio analysis, the rumble/haptics services, player settings
-- **Phase:** 3, step 5 · **Status:** Investigating (feasibility shown on the desktop; implementation not started: the reasons below) · **Last updated:** 2026-11-20
+- **Phase:** **none: a deferred future feature** (the owner, 2026-11-20: not part of Phase 3 or Beta 2; no release assigned; Phase 4 places it) · **Status:** Deferred (owner's decision) · **Last updated:** 2026-11-20
 - **Confirmed defaults:** **OFF** by default; controller video haptics **OFF** by default; explicit opt-in required; must remain experimental and must not be enabled automatically.
 - **Related:** F-001, F-002, B-029, B-030
 
@@ -1583,7 +1587,8 @@ Feature proposals, kept apart from bugs. The confirmed defaults are acceptance c
   - **Android needs a custom Media3 `AudioProcessor`** in the renderer chain: a separate piece of work. `Visualizer` needs the recording permission and is not acceptable.
   - **Passthrough (bitstreamed audio) bypasses filters:** no haptics there, and that must be said.
   - **Validation needs a controller someone can feel,** on each platform: the owner's.
-- **Decision recorded (not an owner deferral):** no haptic output was shipped in Phase 3. A setting for a feature that does not exist would misrepresent it (the acceptance requires settings that reflect behaviour), and an unsynchronised rumble is the "fake implementation" the work order rules out. The owner decides whether F-003 moves to a later phase.
+- **The owner's decision (2026-11-20, Phase 3's closure):** video-synchronised haptics are deferred as a future experimental feature. They are not part of Phase 3 or Beta 2, are not to be implemented, shipped or enabled, and have no release yet. V1.2, V1.3, V1.4 and Version 2 are possible, deliberately undecided, and Phase 4's roadmap work places them ([PHASE-4-HANDOFF.md](PHASE-4-HANDOFF.md)). Before then they need their own research, design, hardware validation, synchronisation investigation, platform analysis, safety controls, and implementation and testing plan. The findings below are kept for that work.
+- **Earlier reasoning (before the owner's decision):** no haptic output was shipped in Phase 3. A setting for a feature that does not exist would misrepresent it (the acceptance requires settings that reflect behaviour), and an unsynchronised rumble is the "fake implementation" the work order rules out. The owner decides whether F-003 moves to a later phase.
 - **Design for when it is scheduled:**
   1. A core `HapticDirector`, pure and tested: onsets from band energy over a running floor; an intensity ceiling; envelopes of at most 150 ms; at most one event per 250 ms; a 2 s cooldown after five in a row; stop on pause, seek, end, error, disconnect, preference off.
   2. The desktop engine adds the analysis filter only while video haptics are on, and reads its metadata at 50 Hz.
@@ -2373,6 +2378,196 @@ Asked for a rethink, not a tweak, the page was rebuilt as **one search line with
 - **Walked:** the Google TV emulator starts on Details. Down then reaches a card, and the remote's Menu opens Quick View (screenshot looked at).
 - **Outstanding:** owner acceptance.
 
+<a id="b-063"></a>
+### B-063: On a Linux desktop scaled above 100%, Reflux was drawn at 100%: small, or enlarged and blurred by the compositor
+
+- **Category:** Bug (rendering) · **Priority:** High (text blurred on a HiDPI laptop: unreadable) · **Platforms:** L (X11, and Wayland through XWayland)
+- **Components:** `desktop:app` (`LinuxDisplayScale`, `Main.kt`, `VideoSurface.kt`)
+- **How found:** 2026-11-20, the owner's cousin: CachyOS (KDE) on a Microsoft Surface Laptop 5, "extremely blurry" text (an owner's screenshot beside the file manager).
+- **Phase:** 3 (found in its final validation; the owner's steer) · **Status:** Fixed (VM-verified; physical Surface pending) · **Last updated:** 2026-11-20
+- **Related:** B-031 (Linux playback), B-002 (scaling on Windows)
+
+**Versions:** Compose Multiplatform 1.12.1 (Skiko); Java 21 (bundled runtime); X11 toolkit (XToolkit; no native Wayland toolkit in that runtime), so on Wayland Reflux runs through XWayland. Renderer: Skiko's OpenGL on Linux; it plays no part (the scale is wrong before anything is drawn).
+
+**Cause (measured).**
+- **Java ignores the desktop's scale.** Java 21's X11 toolkit scales a window only by a whole `GDK_SCALE`: it ignores Xft.dpi, and rounds a fractional `sun.java2d.uiScale` down.
+- **The probe:** Java 21.0.13 under Xvfb, `ScaleProbe` printing the default transform. The results were 1.0 plain; 2.0 with `GDK_SCALE=2`; 1.0 with `uiScale=1.5`; 2.0 with `uiScale=2`.
+- **What the desktops do:** KDE and GNOME tell X11 applications their scale through Xft.dpi (144 at 150%, 192 at 200%), which GTK and Qt apply. Reflux ignored it and drew at 100%.
+- **The two outcomes:**
+  - Where the desktop lets applications scale themselves (KDE's "Legacy applications: Apply scaling themselves"; GNOME's XWayland native scaling), Reflux was half size or smaller.
+  - Where the compositor scales X11 windows instead ("Scaled by the system"), it enlarged Reflux's 100% picture: blurred everything, text most visibly. This matches the report.
+- **Not the cause:**
+  - fonts or hinting (the text is rasterised at 1× correctly, then enlarged);
+  - CachyOS itself;
+  - Skiko's renderer.
+
+**Fix.**
+- **Reflux applies the desktop's scale itself** (`LinuxDisplayScale`): Xft.dpi ÷ 96 (from XSETTINGS, else `xrdb -query`), less what the toolkit already applies, so nothing is scaled twice.
+  - Compose content is drawn at that density in the window's own pixels, in both Compose roots (the window and the player's controls window).
+  - The window opens at the same size for the eye, within 90% of the screen.
+- **Rounding:** to the desktops' eighths.
+- **GNOME's large text:** its text-scaling-factor (which Reflux already applies to text alone) is taken out.
+- **Overrides:** an explicit `GDK_SCALE` or `sun.java2d.uiScale` is respected, and `REFLUX_SCALE` sets the scale outright for a desktop that says nothing.
+- **Recorded:** the applied scale goes into diagnostics.
+- **Unchanged:** Windows and Android (the code returns 1 off Linux).
+
+**Tests:** `LinuxDisplayScaleTest`, 5 cases:
+- 125/150/175/200% at toolkit scale 1;
+- `GDK_SCALE=2`, never doubled;
+- 100%, and nothing known;
+- large text taken out;
+- the override, the rounding, and the `xrdb` parsing.
+
+**Verified (VM, not physical): the Ubuntu 26.04 QA VM**, GNOME on Wayland, Reflux through XWayland, display set to 2560 × 1600. Captures are of Reflux's own window and compared at native pixels, without resampling.
+- **100%:** Xft.dpi 96; nothing applied; unchanged.
+- **200%:**
+  - Xft.dpi 192.
+  - Before (`REFLUX_SCALE=1`, the old behaviour): a 1360 × 823 window, everything half size.
+  - After: ×2, a 2183 × 1345 window. The text is crisp at native pixels and the layout correct (the compact rail, as a 1150 dp window has).
+- **125%** (GNOME's fractional and XWayland native scaling): Xft.dpi 192 over a 4096 × 2560 XWayland screen. GNOME draws X11 applications at 2× and reduces them, and Reflux's ×2 matches it.
+- **Restored afterwards:** the VM's display (1280 × 800, 100%, no experimental features).
+
+**Remaining:**
+- **Physical checks (the owner's):**
+  - the Surface Laptop 5 with CachyOS (KDE): 150%, both legacy-scaling modes;
+  - Linux Mint (X11, Cinnamon);
+  - a second monitor at another scale (the scale is read once at start: moving between monitors of different scales is not followed).
+- **KDE's "Scaled by the system" mode:** it still enlarges every X11 application, Reflux included. The remedy there is the desktop's own setting, "Apply scaling themselves" (System Settings › Display & Monitor › Legacy Applications (X11)), which Reflux now honours. Its user documentation is for Phase 4's website work.
+
+<a id="b-064"></a>
+### B-064: The adaptive keyboard did not follow the mouse: moving it changed only the hints, a click's first key was lost, a controller's first A typed nothing
+
+- **Category:** Bug (input) · **Priority:** High (the owner: "the most important functional issue") · **Platforms:** W, L (the desk keyboard)
+- **Components:** `ui` (`RefluxKeyboard`, `AppState` keyboard and modality), `core` (`KeyboardModeArbiter`)
+- **How found:** 2026-11-20, the owner's physical controller and mouse walk on Windows.
+- **Phase:** 3 (final validation) · **Status:** Fixed (automated with real mouse events; the owner's re-walk pending) · **Last updated:** 2026-11-20
+- **Related:** F-P4, B-051, B-023
+
+**Causes (each reproduced by `KeyboardWalkTest`, with real mouse events, before its fix).**
+1. **Moving the mouse never showed the desk keyboard.** The keyboard measured the pointer's travel with `positionChange()`, which was zero for every move of a hovering mouse. It now measures from the last position it saw.
+2. **The hints and the keyboard switched at different times.** The app's modality (which the hints follow) does not see moves over the keyboard. So the hints changed later, on a click's press, and the hints bar leaving moved the keys from under the pointer before its release. That click typed nothing.
+   - Now the keyboard's switch sets the modality too, and the pointer taking over anywhere shows the desk keyboard after the arbiter's hold.
+   - Not on a click's press.
+   - A click anywhere on the panel, not only on a key, shows it on release.
+3. **A controller's first A after the mouse only revealed the grid's focus.** It now types at once.
+
+**Tests:** `KeyboardWalkTest`:
+- every key by mouse, including Erase, Space, Shift, Caps Lock, Clear and Tab;
+- the controller's first press types, X erases, and a mouse click types after the switch;
+- the pointer's travel shows the desk keyboard without a key being clicked.
+
+The existing `AdaptiveKeyboardTest`, `PointerKeyboardTest` and `KeyboardTest` pass unchanged.
+
+<a id="b-065"></a>
+### B-065: The desk keyboard had an empty place where Tab is, and Backspace and Space were spelt out in large words
+
+- **Category:** Polish (keyboard) · **Priority:** Low · **Platforms:** W, L
+- **Components:** `ui` (`KeyboardLayouts`, `Keyboard`, `RefluxKeyboard`)
+- **How found:** 2026-11-20, the owner's walk.
+- **Phase:** 3 (final validation) · **Status:** Fixed (automated) · **Last updated:** 2026-11-20
+
+**Fix.**
+- **Tab is a key where a physical keyboard has it.** In a search it takes the offered title (the focused one, else the first), as Tab completes in a terminal; elsewhere it finishes the field.
+- **Erase is the conventional erase glyph,** drawn as a key outline pointing left with a cross. It deletes before the cursor, as before, and is never the cursor's arrow.
+- **Space is a long bar.**
+- **Screen reader names:** "Backspace", "Space", "Tab, take the suggestion".
+- **Test:** `KeyboardWalkTest` (Tab fills "Blade Runner 2049").
+
+<a id="b-066"></a>
+### B-066: Profiles listed every other profile's Delete below them all, and the navigation's profile initial was oversized
+
+- **Category:** UX · **Priority:** Medium · **Platforms:** All
+- **Components:** `ui` (`ProfilesScreen`, `RefluxApp` navigation)
+- **How found:** 2026-11-20, the owner's walk.
+- **Phase:** 3 (final validation) · **Status:** Fixed (automated) · **Last updated:** 2026-11-20
+
+**Fix.**
+- **A Manage button (⋯) beside each profile** opens that profile's options under its row, one at a time; Back closes the panel first.
+  - **The open profile:** Rename (here) and Add a PIN or Change PIN (in Settings, where the current PIN is asked). It is not deleted while open, which keeps Reflux from being left without a profile; the panel says why.
+  - **Another profile:** Delete…, confirmed, and with its own PIN where it has one. Its name and PIN stay its owner's.
+- **Add a profile** stays apart from any one profile.
+- **The navigation's initial** is icon-sized (20 dp beside 20 dp icons; its letter about half the circle). Profiles' own large initials are unchanged.
+
+**Tests:** `ProfilesUiTest.eachProfileIsManagedFromItsOwnMenu_theOpenOneRenamedButNeverDeleted`. The deletion tests (B-018, B-019) go through the new menu and pass.
+
+<a id="b-067"></a>
+### B-067: The player's hints could not be hidden, LT changed the speed there, and hidden hints still showed LT's
+
+- **Category:** UX (controller) · **Priority:** Medium · **Platforms:** All with a controller
+- **Components:** `core` (`InputMapping`), `ui` (`AppState`, `PlayerOverlay`, `RefluxApp`)
+- **How found:** 2026-11-20, the owner's walk.
+- **Phase:** 3 (final validation) · **Status:** Fixed (automated) · **Last updated:** 2026-11-20
+- **Related:** B-055
+
+**Fix.**
+- **LT shows and hides the hints in the player** as it does everywhere: one preference, kept across restarts (`controller_hints`).
+- **Hidden means none,** LT's own included.
+- **The triggers no longer change the speed in the player.** Speed is in Options, as before, and on the keyboard's `,` and `.`.
+
+**Tests:**
+- `HintsTest`: everything hidden including LT, and kept after a restart;
+- `MiniPlayerTest`: the player's hints hidden by LT, playback untouched, and the choice kept.
+
+<a id="b-068"></a>
+### B-068: With a controller, nothing brought the mini-player back to the full player
+
+- **Category:** UX (controller) · **Priority:** Medium · **Platforms:** All with a controller and a mini-player
+- **Components:** `ui` (`AppState`, `RefluxApp`), `core` (`InputMapping` glyphs)
+- **How found:** 2026-11-20, the owner's walk: only by moving focus across the page to the video.
+- **Phase:** 3 (final validation) · **Status:** Fixed (automated) · **Last updated:** 2026-11-20
+- **Related:** B-052
+
+**Fix.**
+- **Pressing the right stick** (RS on Xbox, R3 on PlayStation) brings the same playback back to the full player, from wherever focus is.
+- **Why this button:**
+  - It is the player's own stick (its scenes, B-029).
+  - Nothing else uses it.
+  - It never plays, closes or opens anything else.
+  - Every other button is taken: A, B, X and Y; Start (Sources); View (fullscreen); the bumpers (sections); LT (hints); RT (closes the mini-player).
+- **Hinted** as "RS Full player" beside "RT Close player", and hidden with the other hints.
+
+**Tests:** `MiniPlayerTest.theRightStickBringsTheMiniPlayerBackToTheFullPlayer_andLtHidesThePlayersHintsToo`: minimise and restore three times, with focus moved, the same playback each time.
+
+<a id="b-069"></a>
+### B-069: Quick View was too translucent over too strong a blur, and scene navigation spelt out "A Go here, B Stay"
+
+- **Category:** Polish · **Priority:** Low · **Platforms:** All
+- **Components:** `ui` (`QuickView`, `Glass`, `PlayerOverlay`)
+- **How found:** 2026-11-20, the owner's walk.
+- **Phase:** 3 (final validation) · **Status:** Fixed (automated; the owner's eye pending) · **Last updated:** 2026-11-20
+
+**Fix.**
+- **Quick View's surface:** a slightly darker, more solid tint (90%, a third of the way from the surface colour to the background) over 40% of the blur.
+- **The dim behind:** 60% instead of 72%.
+- **Unchanged:** the layout, the motion and the hierarchy.
+- **Scene navigation's preview** keeps its picture and time; the "A Go here, B Stay" line is gone, and A and B still commit and cancel.
+
+**Tests:** the Quick View and Trickplay suites pass.
+
+<a id="b-070"></a>
+### B-070: Added to Steam as a non-Steam game, Reflux showed only its name
+
+- **Category:** Polish (desktop, outside the app) · **Priority:** Low · **Platforms:** W, L (Steam's library and Big Picture)
+- **Components:** `design/brand/steam/`, `tools/brand/make-steam-artwork.py`
+- **How found:** 2026-11-20, the owner's cousin, on Windows and Linux.
+- **Phase:** 3 (the owner's steer) · **Status:** Fixed (files made and checked; not applied in Steam) · **Last updated:** 2026-11-20
+
+**Done.**
+- **A Steam artwork set,** rendered from the brand's master geometry, in the same way as the store artwork:
+  - the portrait cover, 600 × 900;
+  - the landscape capsule, 920 × 430;
+  - the hero, 3840 × 1240, with no lettering;
+  - the lockup on transparency, 1280 × 264;
+  - the icon, 256.
+- **A README for people,** on Windows and Linux, covering every slot through Steam's own menus.
+- **Nothing in the app changed.**
+
+**Checked:** dimensions, modes (RGB covers, an RGBA logo and icon), the logo's alpha from 0 to 255, the brand's clear space, and the cover at 150 px wide. The covers and the hero, with the logo over it, were looked at together.
+
+**Not done:**
+- **Not applied in Steam:** Steam on this machine is the owner's, and adding a shortcut there changes their library. The owner's (or the cousin's) check.
+- **Not checked against a client:** Steam's slot sizes are from Valve's library-asset sizes and current community guides, not checked against a client here.
+
 ## Regression tracking
 
 Every regression found, and every recurring failure watched, with the run that found it. A regression introduced by a Beta 2 change gets a new B-number in the section above and a row here.
@@ -2441,3 +2636,8 @@ Machines (CLAUDE.md, "Testing environment"): Windows 11 development machine (phy
 - **Checkpoints:** B-041 and F-004 second checkpoints recorded.
 - **V1.1 candidates (the work order):** B-027, B-038, B-040 researched (V1.1-LIBRARY-RESEARCH.md), not implemented.
 - **B-044:** cause found (mixed virtual and wall clocks), not changed. | Claude (agent) |
+| 2026-11-20 | **Phase 3 final validation** (the owner's physical controller and mouse walk on Windows, and the owner's steers on Linux scaling and Steam).
+- **B-042 Verified (physical):** with a mouse resting over one card and a controller moving, only the controller's card lifts; the owner likes it, and it is unchanged.
+- **New and Fixed:** B-063 (Linux scale), B-064 (keyboard following the mouse), B-065 (Tab and the key glyphs), B-066 (profile management), B-067 (player hints and LT), B-068 (the mini-player back to the full player), B-069 (Quick View look; the Trickplay hint), B-070 (Steam artwork).
+- **F-003:** Deferred by the owner as a future feature.
+- **A stale on-device test:** the Phase 2 Fire TV walk still said "X does nothing" (Quick View since F-P3); updated. | Claude (agent) |

@@ -1395,6 +1395,24 @@ M11 decided the open items of its plan (planning/M11-DISTRIBUTION-PLAN.md, secti
 - **1.0 communication.** "Planned for December 2026", depending on feedback, qualification, and store approval; 10 December is an internal readiness checkpoint and 15 December the release decision, never a promised release date. Each platform publishes through its own path.
 - **No Windows installer in the beta**: none exists or is tested, and building one would change the release; reconsidered for 1.0.
 
+## 2026-11-20 — Phase 3 closure: video haptics deferred with no release; Phase 4's scope
+
+- **F-003, video-synchronised haptics (the owner):**
+  - Deferred as a future experimental feature: not part of Phase 3 or Beta 2, and not to be implemented, shipped, or enabled.
+  - No release is assigned. V1.2, V1.3, V1.4 and Version 2 are possible, deliberately undecided. Phase 4's roadmap work places it, after research and the owner's review.
+  - Phase 3's feasibility findings are kept (the tracker's F-003).
+- **B-027, B-038, B-040** remain V1.1 candidates, researched and not implemented.
+- **Phase 4 (the owner):**
+  - documentation consolidation;
+  - a user-facing website overhaul;
+  - Beta 2's contents and the remaining gate;
+  - a future roadmap across V1, V1.1, V1.2, V1.3, V1.5 and Version 2 (candidates, not commitments);
+  - a website roadmap easter egg, to be planned and built in Phase 4 (not in Phase 3). [planning/PHASE-4-HANDOFF.md](planning/PHASE-4-HANDOFF.md).
+- **The website in Phase 3's closure:**
+  - CHANGELOG.md's Unreleased section is grouped for people (`### Playback & Media` …), and the Releases page shows the groups, saying they are not in a downloadable build;
+  - the user docs keep describing the downloadable beta, with a note where the next beta changes behaviour;
+  - no screenshot of an unreleased build is published.
+
 ## 2026-11-20 — Phase 3: Trickplay from the servers' own previews; Quick View; the featured hero; a perceptible Atmosphere; one adaptive keyboard
 
 **Trickplay (B-030, B-029).**
