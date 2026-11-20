@@ -1395,13 +1395,27 @@ M11 decided the open items of its plan (planning/M11-DISTRIBUTION-PLAN.md, secti
 - **1.0 communication.** "Planned for December 2026", depending on feedback, qualification, and store approval; 10 December is an internal readiness checkpoint and 15 December the release decision, never a promised release date. Each platform publishes through its own path.
 - **No Windows installer in the beta**: none exists or is tested, and building one would change the release; reconsidered for 1.0.
 
+## 2026-11-20 — Phase 2 accepted and closed
+
+**The owner formally accepted Phase 2: ACCEPTED AND CLOSED BY OWNER.**
+- **Verification:** the final walks were completed, and three defects found in them (B-058, B-059, B-060) were fixed and retested. The final verification passed: 1,575 tests, 0 failures, 25 skipped, Android lint included.
+- **What the acceptance includes:**
+- B-056 is accepted as a minor known issue, deferred to a later beta; no further investigation now.
+- DualSense verification is not applicable: the owner has no DualSense.
+- The Linux desktop was verified in an Ubuntu VM, not on physical Linux hardware.
+- The Linux controller was not physically tested; its automated coverage is documented.
+- The Phone 2a Search walk on the device was interrupted; the emulator walk completed.
+- The remaining emulator, physical-device and test limitations are accepted as documented (VERIFICATION.md, "Phase 2: closing walks and closure").
+- **Reopening:** accepted issues and limitations are not reopened unless new evidence warrants it.
+- **Next:** Phase 3's research and planning happen outside this session. No Phase 3 work was started, and Beta 2 is not cut.
+
 ## 2026-11-20 — Phase 2's closure: what is skipped, and two rules from the closing walks
 
 **The owner's decisions (final; not to be reopened in Phase 2).**
 - **B-056** (the brief blank on closing the mini-player) is a minor nitpick, not a Beta 2 blocker. It is skipped and deferred, accepted as a known minor issue, and revisited in a later beta only if reproducible evidence emerges.
 - **The DualSense hot-plug check** is not applicable: the owner has no DualSense. It is not a failure, and no substitute test stands in for it.
 
-**Rules adopted from the closing walks (planning/BETA-BUG-TRACKER.md, B-058 to B-060; for the owner's review at Phase 2's acceptance).**
+**Rules adopted from the closing walks (planning/BETA-BUG-TRACKER.md, B-058 to B-060; accepted with Phase 2 on 2026-11-20).**
 - **A panel opened in place takes focus, and Back closes it first (B-060).** Panels are a confirmation, a rename, a PIN panel, and adding or deleting a profile.
   - For input that shows focus, the panel's first control (the safe one, on a confirmation) takes focus as it appears.
   - When it closes, focus goes back to what opened it.

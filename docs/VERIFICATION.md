@@ -2235,6 +2235,8 @@ Screenshots looked at; on touch, Search shows no mouse-keyboard button.
 
 ## Phase 2: closing walks and closure (2026-11-20)
 
+**Owner acceptance (2026-11-20): Phase 2 ACCEPTED AND CLOSED BY OWNER**, with the limitations and exceptions below accepted as recorded (DECISIONS.md, 2026-11-20, "Phase 2 accepted and closed").
+
 On the `open-source-gpl` working tree after `b9ddec6`, with this pass's fixes (B-058, B-059, B-060). Each result is labelled with where it ran. Nothing here is a release build: the Linux tarball and the Android packages are local test builds (`0.9.0-beta.1` in their names because the version is unchanged).
 
 **Skipped by the owner's decision (not failures).**
