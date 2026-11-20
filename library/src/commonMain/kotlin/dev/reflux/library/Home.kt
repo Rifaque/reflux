@@ -58,14 +58,17 @@ private const val DAY_MS = 86_400_000L
  *    (ties by identity, never by title), one chosen for the day and the viewer, so it stays put through the day and
  *    changes from one day to the next, and two profiles do not see the same pick.
  * 3. With nothing unwatched, the same from everything with a backdrop. Without any backdrop, nothing is featured.
+ * In each, works that can be played now come before works whose source is away.
  * Deterministic: the same library, day and viewer give the same work. It reads only what Home has already loaded.
  */
 internal object Featured {
     const val POOL = 12
 
     fun choose(continuing: List<LibraryEntry>, candidates: List<LibraryEntry>, day: Long, viewer: String): LibraryEntry? {
-        continuing.firstOrNull { it.featurable() }?.let { return it }
-        val withArt = candidates.filter { it.featurable() && (it.item is Movie || it.item is Show) }
+        // What can be played now first, everywhere: a featured work whose source is away offers nothing to press (B-062).
+        val ready = { entry: LibraryEntry -> entry.availability == dev.reflux.core.model.Availability.AVAILABLE }
+        (continuing.firstOrNull { it.featurable() && ready(it) } ?: continuing.firstOrNull { it.featurable() })?.let { return it }
+        val withArt = candidates.filter { it.featurable() && (it.item is Movie || it.item is Show) }.let { all -> all.filter(ready).ifEmpty { all } }
         val pool = withArt.filter { it.watchState?.completed != true }.ifEmpty { withArt }
         if (pool.isEmpty()) return null
         val best = pool.sortedWith(compareByDescending<LibraryEntry> { it.metadata?.rating ?: 0.0 }.thenBy { it.item.id.value }).take(POOL)

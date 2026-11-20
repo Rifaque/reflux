@@ -153,6 +153,26 @@ Closure (2026-11-20): the Linux VM, the Google TV emulator and the Phone 2a walk
 - The tracker is complete and current.
 - The Phase 3 review is presented to the owner for acceptance.
 
+*State (2026-11-20): **implemented, awaiting the owner's review.*** The owner's Phase 3 work order of 2026-11-20 set the executed scope:
+- **In scope:** B-016, B-017, a bug sweep (B-042 included), B-030, B-029, F-P3, B-014, B-028, F-P4, F-003 (conditional on feasibility), B-041, B-022, F-004.
+- **Out of scope as V1.1 candidates:** B-027, B-038, B-040 (researched only: [V1.1-LIBRARY-RESEARCH.md](V1.1-LIBRARY-RESEARCH.md)).
+
+Evidence: the tracker's [phase overview](BETA-BUG-TRACKER.md#phase-overview) and VERIFICATION.md, "Phase 3". Against the exit criteria:
+- **Media-experience features:** implemented and reviewed: Trickplay, the stick, Quick View, the hero, Atmosphere, the keyboard.
+- **Sorting and filtering:** not in this phase (V1.1, by the work order).
+- **Trickplay:**
+  - usable with the mouse and the controller;
+  - Jellyfin verified live;
+  - Plex tested against its format only;
+  - graceful where a source has none.
+- **Video haptics:** not shipped. Feasibility was shown on the desktop; synchronisation with real output devices, Android, and physical validation remain (F-003).
+- **Home discovery:** the featured hero is intentional; discovery variety is V1.1.
+- **Performance:** compared with Phase 1 where like-for-like; no regression.
+- **Analytics:** validated; nothing can be sent.
+- **Regression tests:** the full check (VERIFICATION.md).
+- **Tracker:** current.
+- **Owner's review:** pending.
+
 ### Reconciliation: what the allocations do not settle (owner decisions; nothing moved)
 
 The tracker's [owner-decision table](BETA-BUG-TRACKER.md#unassigned-issues-and-unresolved-owner-decisions) holds each one's options and reasoning.

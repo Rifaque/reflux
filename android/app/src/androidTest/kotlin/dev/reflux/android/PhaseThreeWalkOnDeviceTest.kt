@@ -142,25 +142,36 @@ class PhaseThreeWalkOnDeviceTest {
         Thread.sleep(700)
     }
 
+    private val density get() = context.resources.displayMetrics.density
+
     private fun quickViewShown() = nodes().any { it.isVisibleToUser && it.paneTitle?.toString() == "Quick view" }
 
     @Test
     fun quickViewOpensOnAFilmAndBackClosesIt() {
         start()
-        until("the film") { says("Jungle Walk") }
+        // Whatever the device's library shows first: a card is a tall node with a description.
+        fun cards() = nodes().filter { it.isVisibleToUser && it.bounds().height() > 100 * density && it.contentDescription != null && it.bounds().width() < it.bounds().height() }
         if (television) {
-            // Down into the page from the navigation, onto a card, then the remote's Menu.
-            remote(KeyEvent.KEYCODE_DPAD_RIGHT)
-            repeat(2) { remote(KeyEvent.KEYCODE_DPAD_DOWN) }
-            remote(KeyEvent.KEYCODE_MENU)
+            until("Home") { app.navigator.current == Destination.Home && app.profileGate == null }
+            Thread.sleep(1500)
+            // Home starts on the hero's action (B-062: Details where it cannot play); down into the first row, then the
+            // remote's Menu on the card there.
+            var tries = 0
+            while (app.quickView == null && tries++ < 4) {
+                remote(KeyEvent.KEYCODE_DPAD_DOWN)
+                remote(KeyEvent.KEYCODE_MENU)
+                if (app.navigator.current != Destination.Home) remote(KeyEvent.KEYCODE_BACK)
+            }
         } else {
-            val card = assertNotNull(nodes().firstOrNull { it.isVisibleToUser && it.words().startsWith("Jungle Walk") && it.bounds().height() > 100 }, "a card")
+            until("a card on Home") { cards().isNotEmpty() }
+            val card = cards().first()
             press(card.bounds().exactCenterX(), card.bounds().exactCenterY(), 900)
         }
         until("Quick View") { quickViewShown() }
         Thread.sleep(500)
         shot("quick-view")
-        assertTrue(says("Play") || says("Resume"), "its main action")
+        // Its main action, or, for a work that cannot play now (its source away), Favorite and Details only.
+        assertTrue(says("Play") || says("Resume") || (says("Details") && nodes().none { it.isVisibleToUser && it.paneTitle == null && it.words() == "Play" }), "its actions")
         assertEquals(Destination.Home, app.navigator.current, "opening it opened no page")
         assertNull(app.playback, "and played nothing")
         if (television) remote(KeyEvent.KEYCODE_BACK) else instrumentation.uiAutomation.performGlobalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_BACK)

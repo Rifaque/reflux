@@ -2304,3 +2304,70 @@ On the `open-source-gpl` working tree after `b9ddec6`, with this pass's fixes (B
   - device walks `onATelevisionAControllerWalksEveryPageWhateverTheLibrary` and `searchOnAPhoneFindsNarrowsEditsAndKeepsItsQuery`.
 - **Changed:** `InteractionContractTest` (B-020's Escape sequence: the panel closes before the page is left).
 - **Full check:** `./gradlew check --continue` on the final tree: **BUILD SUCCESSFUL**, Android lint included: 1,575 tests, 0 failures, 25 skipped (the window and physical-device tests run only on request, and the platform-specific ones). That is the earlier 1,565 plus the 10 new tests.
+
+## Phase 3 (2026-11-20)
+
+On `open-source-gpl`, from `9903e86` (Phase 2 closed). Commits `dcef9fb` (M1), `b2af2b7` (M2–M4) and the closing commit. The owner's Phase 3 work order set the scope (DECISIONS.md, 2026-11-20; planning/BETA-2.md, Phase 3's state); each issue's record is in planning/BETA-BUG-TRACKER.md. Nothing was pushed, merged, deployed, versioned, tagged, released, or changed in a store console.
+
+**Environments:**
+- this Windows 11 machine, physical;
+- Xiaomi Pad 7 (2410CRP4CI, Android 16), physical, USB;
+- Fire TV Stick 4K Plus (AFTMA08C15, Fire OS, API 30), physical, network adb (woken for the run, put back to sleep);
+- the Google TV emulator (`Reflux_TV`, Android 16) and the phone emulator (`Reflux_Phone`), headless, **emulators**. The Phone 2a was not connected, so the phone form factor is emulator only.
+- a Jellyfin Server 12.4.0 in Docker (`tools/ci/jellyfin-test-server.sh`, trickplay extraction turned on through its API and its task run; a **container**, removed afterwards).
+
+**Not used:** the Linux QA VM (no Phase 3 Linux walk; Linux is covered by the shared code's tests, the XKB reader's keysym test, and a Linux-only XKB test that skipped here), a physical Linux desktop, a Plex server with generated previews, any physical controller (the owner's), the owner's mouse at the owner's desk.
+
+**Full check:** `./gradlew check --continue` on this machine, the closing tree: BUILD SUCCESSFUL in 13 min 26 s; **1,637 tests, 0 failures, 26 skipped** (live servers not named, OS-specific cases, the performance fixture without `-Preflux.perf`), Android lint and `verifySharedSources` clean. Per module: android 56, core 393, design 43, desktop app 72, desktop engine 52, library 263, Trakt 23, mpv 60, Jellyfin 74, local 6, Plex 25, SMB 10, WebDAV 20, ui 540. Hosted CI has not run: nothing is pushed.
+
+**Earlier full check (2026-11-20, before the last fixes):** 1,630 tests, 0 failures, 25 skipped, lint clean. `verifySharedSources` failed on one `@Synchronized` in shared code, removed and re-verified.
+
+**Automated, new in Phase 3:**
+
+| Area | Tests | Result |
+| --- | --- | --- |
+| B-016, B-017 | `ProfilesUiTest` (15, of which 3 new or replaced) | Passed |
+| B-042 | `CardLayoutTest.aRestingPointerNeverLiftsACardWhileAControllerHasFocus` | Failed with the old rule (two lifted cards), passed with the fix |
+| B-045 | `AboutWindowTest`, real window (`-Preflux.windowTests=true`), the owner idle for some fifty minutes | Passed (1/1) |
+| B-030 | `TrickplayTest` (6), `JellyfinTrickplayTest` (4), `PlexTrickplayTest` (2), `TrickplayUiTest` (hover) | Passed |
+| B-030, live | `JellyfinTrickplayLiveTest` against the Docker server | Passed: 240 pictures every 10 s, 10 × 10 sheets of 320 × 180, 3 sheets read, each a JPEG of the grid's width |
+| B-029 | `StickStepperTest` (6), `TrickplayUiTest` (stick, held stick, no previews, browsing) | Passed |
+| F-P3 | `QuickViewUiTest` (6) | Passed |
+| B-014 | `FeaturedTest` (6) | Passed |
+| B-028 | `VisualSystemTest` (perceptibility threshold raised to 0.08) | Passed |
+| F-P4 | `KeyboardLayoutsTest` (8), `KeyboardModeArbiterTest` (4), `AdaptiveKeyboardTest` (5), `KeyboardSessionTest` (2 updated to the approved grid) | Passed |
+| F-P4, D3 | `SystemKeyboardLayoutTest` (Windows: this machine's layout read as US 0409; keysym conversion) | Passed; the Linux XKB case skipped (not Linux) |
+| B-062 | `HeroFocusTest` (2), `FeaturedTest.whatCanBePlayedNowComesFirst` | The away case failed before the fix, passed after |
+
+**Renders looked at** (`-Preflux.screenshots`):
+- the desk keyboard, AZERTY, the grid after the morph, completions;
+- Quick View on desktop, phone and TV;
+- the timeline preview with and without previews, and during the stick;
+- Atmosphere off and on.
+
+**Device walks (`PhaseThreeWalkOnDeviceTest`, debug build `dev.rsxdevelops.reflux.debug` beside the store build):**
+
+| Device | Kind | Result |
+| --- | --- | --- |
+| Google TV `Reflux_TV` | Emulator | 3/3: Quick View from the remote's Menu (a work whose source was away: Favorite, Download, Details, no Play), Back closing it; Switch profile and Log out in Settings, Log out asking who is watching; the remote typing on the grid (OK typed w; Left wrapped to the action column's Erase; OK erased) |
+| Xiaomi Pad 7 | **Physical** | 3/3 (the grid walk is a television's and skipped itself): Quick View from a long touch, closed by the system's Back after the fix below; Log out to "Who's watching?" and back into Main. Screenshots looked at |
+| Fire TV Stick 4K Plus | **Physical** | 3/3: Quick View from the remote's Menu; Log out and back; the remote typing on the grid, with a word-start completion ("Jungle Walk" for "w"). Screenshots looked at |
+| `Reflux_Phone` | Emulator | 3/3 |
+
+**Found by the walks, and fixed:**
+- **The system's Back did not close Quick View on Android** (the Pad 7): `backRoute` now keeps Back in the app while it is open.
+- **B-062** (the Google TV emulator): a television started Home in the navigation when the featured work could not play. The build before Phase 3 (`9903e86`, built in a temporary worktree) behaved the same: it is not a regression.
+
+**Performance (B-041, B-022; Windows, physical):**
+- packaged app, empty library, 7 runs: start to window median 2,227 ms (first 5,091 ms);
+- working set at 6 s: 446 to 490 MB;
+- close: 682 to 714 ms;
+- breakdown: environment about 0.78 s, first composition to window about 0.70 s, window to first frame about 0.31 s.
+
+Phase 1 on the same machine and method: 2.6 to 2.7 s, 492 to 500 MB, 0.71 to 0.82 s. Details and the gaps: the tracker's B-041 and B-022.
+
+**Statistics (F-004):** no production code records or sends; no analytics SDK in any build file or manifest. On the Google TV emulator over 30 s, the app's only sockets were its configured Jellyfin source (`10.0.2.2:8096`) and its loopback-only SMB stream server.
+
+**Video haptics feasibility (F-003; a scratch test, not committed):** libmpv's `lavfi` `astats` on a 150 Hz low-pass, read through `af-metadata`, saw each 60 Hz pulse at −5 dB against −62 dB of quiet, about 400 ms ahead of `time-pos` with `ao=null`. Not shipped (the tracker's F-003).
+
+**The owner's packaged build** (not Phase 3's) left a crash log in the repository's root: a Skia access violation during a window resize after 11 h 43 min. Registered as B-061; the log is left in place, uncommitted.

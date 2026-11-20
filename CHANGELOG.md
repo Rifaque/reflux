@@ -24,6 +24,8 @@ What changes for people using Reflux, version by version. The rules for versions
 - Home's featured title is no longer the first in alphabetical order: it is what you're in the middle of, or one of your best unwatched films and shows, changing from day to day.
 - Media Atmosphere, when you turn it on, now visibly tints the page around the artwork.
 - The on-screen keyboard is a QWERTY grid laid out for a controller, and on Windows and Linux it becomes a full keyboard in your own layout (AZERTY, QWERTZ, and so on) when you use the mouse, its keys moving into place; nothing you typed is lost when you switch. Search suggests matching titles from your library as you type, and typing on a real keyboard never presses its keys.
+- On a TV, Home now starts on the featured title's Details when it can't be played right now (its server away), instead of leaving focus in the navigation with no way to the right; the featured title also prefers something you can play now.
+- On a phone or tablet, the system's Back gesture closes the quick view.
 - On the desktop, a problem that repeats (an engine that will not start, asked for again and again) is written to the diagnostics log once and counted, instead of filling it.
 
 ## 0.9.0-beta.1 — 2026-11-16

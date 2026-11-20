@@ -267,8 +267,11 @@ private fun Hero(app: AppState, card: MediaCard, image: ImageBitmap?, poster: Im
             if (facts.isNotEmpty()) Text(facts.joinToString("  ·  "), style = LocalTypography.current.metadata, color = RefluxColors.contentSecondary, maxLines = 1)
             if (!overview.isNullOrBlank()) Text(overview, Modifier.widthIn(max = 540.dp), color = RefluxColors.contentSecondary, maxLines = if (compact) 2 else 3)
             Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Button(if (inProgress) "Resume" else "Play", { app.play(card.id) }, Modifier.initialFocus(), icon = Icon.PLAY, style = ButtonStyle.PRIMARY, enabled = !card.offline)
-                Button("Details", { app.navigator.open(Destination.Details(card.detailsId)) })
+                // Home starts on the hero's main action; where it cannot play now, on Details beside it (B-062): a disabled
+                // button cannot take focus, which left a television's focus in the navigation with nothing to its right.
+                val playable = !card.offline
+                Button(if (inProgress) "Resume" else "Play", { app.play(card.id) }, if (playable) Modifier.initialFocus() else Modifier, icon = Icon.PLAY, style = ButtonStyle.PRIMARY, enabled = playable)
+                Button("Details", { app.navigator.open(Destination.Details(card.detailsId)) }, if (playable) Modifier else Modifier.initialFocus())
             }
         }
     }

@@ -4,7 +4,7 @@
 
 **Scope.** B-001 to B-042 and F-001 to F-005 (the owner's original findings), two registered sidebar proposals (F-P1, F-P2), and every issue found since (B-043 onward). Release gates, phase scope, phase order, and exit criteria are **not** here: they are in [BETA-2.md](BETA-2.md), which links back to this file. What each test run was, in full, is in [VERIFICATION.md](../VERIFICATION.md); decisions and their reasons are in [DECISIONS.md](../DECISIONS.md).
 
-**Last updated:** 2026-11-19, Phase 2 implementation (branch `open-source-gpl`, after commit `7dbade6`).
+**Last updated:** 2026-11-20, Phase 3 implementation (branch `open-source-gpl`; Phase 3's commits from `dcef9fb`). Phase 3's summary and walks: VERIFICATION.md, "Phase 3".
 
 ## Contents
 
@@ -80,6 +80,8 @@ Newly discovered: B-043 Fixed; B-044 Investigating; B-045 Not Started. Added by 
 | **3** | 8 issues + 2 checkpoints (B-041 final, F-004 final) | 0 | 0 | 0 | 8 | 0 | Not started |
 | Unassigned / pending | B-016, B-017, B-022, B-042, F-005 (and F-P1, F-P2) | 0 | 1 (B-022, measured under B-041) | 0 | 6 | 0 | Owner decisions needed |
 
+**Phase 3 (2026-11-20): implemented and awaiting the owner's review** (the work order; VERIFICATION.md, "Phase 3"). Fixed in Phase 3: B-014, B-016, B-017, B-028, B-029, B-030, B-042, B-045, B-062 (new), F-P3, F-P4. Investigating: B-022 (measured), F-003 (feasibility shown, not shipped), B-061 (new, a crash in the owner's build). B-041 and F-004 have their second checkpoints recorded. B-027, B-038 and B-040 are V1.1 candidates, researched and not implemented. The counts below are as of 2026-11-19 and predate Phase 3.
+
 **Phase 1 was accepted by the owner (2026-11-19). Phase 2 was accepted and closed by the owner (2026-11-20)** (PHASE-2-PLAN.md, "Closure"; VERIFICATION.md, "Phase 2: closing walks and closure"; DECISIONS.md, 2026-11-20). Its accepted limitations: B-056 deferred as a known minor issue; DualSense not applicable; Linux verified in a VM; the Linux controller covered by automated tests; the Phone 2a Search walk completed on the emulator. Phase 3 has not started. Beta 2 is not cut.
 
 ## Phase overview
@@ -142,26 +144,28 @@ Scope, order, dependencies, exit criteria, and the gate: [BETA-2.md](BETA-2.md#t
 | + | [B-058](#b-058) Linux on Wayland: the video covered the player's controls | Fixed (Linux VM walked; physical Linux desktop pending, the owner's) |
 | + | [B-059](#b-059) A clicked Search tab took the typing from the field | Fixed (Linux VM walked; automated) |
 | + | [B-060](#b-060) Panels opened in place lost focus, and Back skipped them | Fixed (Google TV emulator walked by hand; automated) |
-| — | [B-042](#b-042) Controller focus and mouse hover conflict | **Pending owner approval** (recommended here, beside B-025); not in the phase until approved. Its cause is recorded in B-025's entry |
+| — | [B-042](#b-042) Controller focus and mouse hover conflict | Moved to Phase 3 by the owner's work order (2026-11-20) and Fixed there |
 
-**Phase 3: media experience, discovery, Trickplay, and final performance**
+**Phase 3: media experience, discovery, Trickplay, and final performance** (the owner's Phase 3 work order, 2026-11-20, which set this scope)
 
 | # | Issue | Status |
 | --- | --- | --- |
-| 1 | [B-027](#b-027) Separate Jellyfin libraries and aggregate views | Not Started (owner to confirm the V1.1 → Phase 3 scope before implementation) |
-| 2 | [B-038](#b-038) Sorting and filtering | Not Started |
-| 3 | [B-030](#b-030) Trickplay previews | Not Started |
-| 4 | [B-029](#b-029) Right-stick Trickplay navigation | Not Started (depends on B-030) |
-| 5 | [F-003](#f-003) Video-synchronised haptics | Not Started |
-| 6 | [B-028](#b-028) Media atmosphere | Not Started |
-| 7 | [B-040](#b-040) Recommendations/discovery variety | Not Started |
-| 8 | [B-014](#b-014) Featured hero | Not Started |
-| 9 | [B-041](#b-041) Final performance optimisation and comparison | Not Started (final checkpoint) |
-| 10 | [F-004](#f-004) Final analytics validation | Not Started (final checkpoint) |
-| 11 | [F-P3](#f-p3) Media Quick View (X reserved) | Not Started (owner's Phase 3 requirement, 2026-11-19) |
-| 12 | [F-P4](#f-p4) Adaptive Virtual Keyboard and cross-modality morphing | Not Started; researched and planned ([F-P4-ADAPTIVE-KEYBOARD.md](F-P4-ADAPTIVE-KEYBOARD.md)) |
+| 1 | [B-016](#b-016) Open the last-used profile | Fixed (automated; Pad 7, Fire TV, emulators walked) |
+| 2 | [B-017](#b-017) Switch profile and Log out | Fixed (automated; Pad 7 physical, emulators walked) |
+| 3 | Bug sweep, with [B-042](#b-042) | B-042 Fixed (reproduced in a test first); B-045 Fixed; B-062 found and Fixed; B-061 registered (Investigating); B-044 cause found |
+| 4 | [B-030](#b-030) Trickplay previews | Fixed (Jellyfin live; Plex against the format only) |
+| 5 | [B-029](#b-029) Right-stick Trickplay navigation | Fixed (automated; physical controllers pending) |
+| 6 | [F-P3](#f-p3) Media Quick View | Fixed (Pad 7 and Fire TV physical; TV and phone emulators) |
+| 7 | [B-014](#b-014) Featured hero | Fixed (automated; rendered) |
+| 8 | [B-028](#b-028) Media atmosphere | Fixed (automated with a perceptibility threshold; rendered) |
+| 9 | [F-P4](#f-p4) Adaptive Virtual Keyboard | Fixed (automated; Fire TV physical and Google TV emulator grid walks; desktop renders) |
+| 10 | [F-003](#f-003) Video-synchronised haptics | Investigating (feasibility shown on the desktop; not shipped: reasons in its entry) |
+| 11 | [B-041](#b-041) Final performance comparison | Checkpoint 2 recorded where comparable; gaps named |
+| 12 | [B-022](#b-022) Windows start-up | Investigating (measured with a breakdown; no optimisation justified yet) |
+| 13 | [F-004](#f-004) Final analytics validation | Checkpoint 2 validated (nothing can be sent; network checked) |
+| — | [B-027](#b-027), [B-038](#b-038), [B-040](#b-040) | **V1.1 candidates** (the work order): researched ([V1.1-LIBRARY-RESEARCH.md](V1.1-LIBRARY-RESEARCH.md)), not implemented |
 
-**Unassigned or pending:** [B-016](#b-016), [B-017](#b-017), [B-022](#b-022), [B-042](#b-042), [F-005](#f-005), [F-P1 and F-P2](#f-p1-and-f-p2). See [owner decisions](#unassigned-issues-and-unresolved-owner-decisions).
+**Unassigned or pending:** [F-005](#f-005), [F-P1 and F-P2](#f-p1-and-f-p2) (F-P2 done in Phase 2), [B-061](#b-061). See [owner decisions](#unassigned-issues-and-unresolved-owner-decisions).
 
 ## Issues: bugs and product issues (B-001 to B-042)
 
@@ -808,7 +812,7 @@ Each entry: the header facts, the original report (the master tracker prompt's t
 
 - **Category:** Performance (investigation) · **Priority:** Low to Medium · **Platforms:** W
 - **Components (likely):** `desktop:app` (start-up, JVM and Compose initialisation), `library` (database open), `playback:mpv` (engine initialisation)
-- **Phase:** **Unassigned** (owner decision; measured under B-041) · **Status:** Investigating · **Last updated:** 2026-11-19
+- **Phase:** **3** (the owner's Phase 3 work order, 2026-11-20, with B-041) · **Status:** Investigating (measured with a breakdown; no optimisation justified yet) · **Last updated:** 2026-11-20
 - **Related:** B-041 (its baseline holds the measurements), B-006
 
 **Original description.** Startup feels slower than Android; approximately 3–4 seconds was observed. *Investigate:* measure cold startup, warm startup, initial usable UI, source initialization, database work, media engine initialization, rendering, and blocking operations. *Expected:* establish actual measurements and optimize justified bottlenecks.
@@ -830,7 +834,21 @@ Each entry: the header facts, the original report (the master tracker prompt's t
 - **Implementation / tests:** none.
 - **Physical/device verification:** the measurement above is on the physical Windows development machine.
 - **Evidence:** VERIFICATION.md, "Phase 1", Baselines (WS11).
-- **Outstanding work:** the owner's phase decision; a start-up breakdown (JVM, Compose, database, sources, engine); a larger library; then optimisation if justified (B-041's Phase 3 checkpoint).
+- **Phase 3 measurement (2026-11-20, the same Windows machine, method and workload as Phase 1: the packaged app from `createDistributable` at Phase 3's tree, an empty library through `REFLUX_HOME`, 7 runs, start to the window's appearance by its process, the window closed with `WM_CLOSE`):**
+  - Start to window: 5,091 ms on the first (cold) run, then 2,162 to 2,240 ms; **median of 7: 2,227 ms**. Phase 1: 2.6 to 2.7 s, cold 5.0 to 5.2 s.
+  - Working set at 6 s: 446 to 490 MB (cold run 359 MB). Phase 1: 492 to 500 MB.
+  - Close to the processes gone: 682 to 714 ms. Phase 1: 0.71 to 0.82 s.
+  - No regression; the difference from Phase 1 is within what the machine's state moves.
+- **The breakdown (new, `StartupTrace`, opt-in with `REFLUX_STARTUP_TRACE=1` or `REFLUX_STARTUP_TRACE_FILE`; milliseconds after the JVM's start, warm runs):**
+  - main 0;
+  - **environment (the database, sources and registry) about 780 ms;**
+  - composition about 940 ms;
+  - **window about 1,660 ms;**
+  - first frame about 1,970 ms;
+  - the launcher and the JVM's own start before `main` make up the rest of the 2.2 s seen from outside.
+- **Where the time goes:** creating `DesktopEnvironment` (about 0.78 s), and from the first composition to the window (about 0.7 s: `AppState`, the window, the toolkit's first layout). Android starts in 0.24 to 0.48 s, but that is not a like-for-like comparison: an activity in a running runtime against a JVM and a desktop toolkit started from nothing.
+- **Root cause / optimisation:** none established. The next step is a profile of `DesktopEnvironment`'s construction (database open and migration check, the artwork cache's directory, source records, the engine's library lookup) on a library of the tester's size. An optimisation without that evidence would be guesswork, which B-041 rules out.
+- **Outstanding:** that profile; a non-empty, large library run; the owner's acceptance of the measurement.
 
 <a id="b-023"></a>
 ### B-023: Reflux-designed controller keyboard
@@ -1409,7 +1427,28 @@ Each entry: the header facts, the original report (the master tracker prompt's t
 
 The store build is `0.9.0-beta.1` (release), with the owner's own library as installed (its size was not read); the frame figures are Home only. Not measured yet: an Android release build of the Phase 1 code (none can be installed beside the store build without replacing it), Linux on hardware, scrolling frame times beyond Home and on TV, Android CPU, GPU, battery, large-library scans on devices, artwork, playback start and transitions, long sessions; regression thresholds not set. Macrobenchmark recommended for M12, at its cost (a module, an AndroidX dependency, a benchmark build type).
 
-**Checkpoint 2: final optimisation and comparison (Phase 3). Status: Not Started.**
+**Checkpoint 2: final optimisation and comparison (Phase 3). Status: recorded where a like-for-like comparison is possible; gaps named.**
+
+| Area | Platform | Phase 1 | Phase 3 (2026-11-20) | Kind |
+| --- | --- | --- | --- | --- |
+| Start to window (packaged, empty library, 7 runs) | Windows | median 2.6 to 2.7 s; cold 5.0 to 5.2 s | median 2.23 s; cold 5.09 s | Physical (development machine) |
+| Working set at 6 s | Windows | 492 to 500 MB | 446 to 490 MB | Physical |
+| Close to processes gone | Windows | 0.71 to 0.82 s | 0.68 to 0.71 s | Physical |
+| Start-up breakdown | Windows | none | environment 0.78 s; first composition to window 0.70 s; window to first frame 0.31 s | Physical |
+| Local search, 11,000 items | JVM | B-006's fix | unchanged code path; `SearchPerformanceTest` in the full check | Physical (JVM) |
+| Trickplay | Jellyfin 12.4.0 (Docker), JVM | none | a version described in one request; sheets 0.37 to 0.81 MB each, fetched once and kept | Container server |
+
+- **Rendering cost of Phase 3's features:**
+  - The keyboard's morph places about 60 keys from animated values read at placement (no recomposition per frame).
+  - Trickplay decodes at most three sheets, off the UI thread.
+  - Atmosphere samples each image once (unchanged).
+  - A static composition local that would have recomposed every page on each recomposition of the root was found and fixed before commit (`LocalQuickView`).
+- **Not measured again, and why:**
+  - **Android cold start:** the store build on the devices is still `0.9.0-beta.1`, so measuring it again says nothing about Phase 3's code, and no release build of Phase 3's code can be installed beside it. The debug build's times are not comparable.
+  - **Linux:** the QA VM was not run in Phase 3.
+  - **Frame pacing, CPU, battery:** not measured.
+  - Regression thresholds are not set. Macrobenchmark is still recommended for M12.
+- **Conclusion:** no regression where a like-for-like comparison exists; no bottleneck established beyond the desktop start-up breakdown (B-022).
 
 **Acceptance criteria.** Every audit area measured on the matrix's platforms with method, device, OS, build and commit, sources, cold/warm, run count, median and P95, and the physical/emulator/VM distinction; bottlenecks evidenced; optimisations prioritised by evidence; regression thresholds set; the Phase 3 run compared with this baseline.
 
@@ -1575,7 +1614,16 @@ Feature proposals, kept apart from bugs. The confirmed defaults are acceptance c
 - **Automated verification:** `:core:jvmTest --tests "dev.reflux.core.telemetry.*"` 5 + 1 passed (off by default; nothing recorded or sent; the build's transport sends nothing even with a yes and makes Settings offer nothing; a yes sends one batch, a no stops and forgets; a refused or offline batch dropped once; bounded queue; buckets; every field an enum or the build's context). Nothing in the app records or sends an event.
 - **Physical/device verification:** not applicable yet (nothing is sent).
 
-**Checkpoint 2 (Phase 3): Not Started.**
+**Checkpoint 2 (Phase 3): validated (2026-11-20); nothing is sent, so the validation is that nothing can be.**
+- **Code paths:** `TelemetryRecorder` is constructed only in tests; no production module records an event; the only transport in any build is `TelemetryTransport.Disabled`; Settings offers no switch (nothing to consent to). Read from the code, not the documents.
+- **Dependencies:** every Gradle build file, version catalogue and Android manifest searched for analytics, crash-reporting or telemetry SDKs (Firebase, Crashlytics, Sentry, PostHog, Aptabase, Amplitude, Mixpanel, Segment, TelemetryDeck, App Center, Bugsnag): none.
+- **Network, on the Google TV emulator (Phase 3's debug build, a fresh start, then 30 s on Home; every TCP and UDP socket of the app's UID read from `/proc/net` every 2.5 s):**
+  - two connections to `10.0.2.2:8096`, the Jellyfin server the emulator's library was set up with: a source the user added;
+  - one socket listening on `127.0.0.1`: Reflux's own loopback stream server for SMB files, which nothing outside the device can reach;
+  - nothing else.
+- **Consent, opt-out, withdrawal, retention:** the recorder's tests (`TelemetryTest`, `TelemetrySchemaTest`) still pass in the full check: off by default; nothing recorded or sent without consent; a no stops and forgets; a bounded queue; every field an enum or the build's context. Retention and deletion stay to be set with a provider, as no data exists.
+- **Documents:** PRIVACY.md ("RSX Develops: Nothing"; the statistics foundation, with no transport and no switch), the website's privacy page (no analytics), and the code agree. No change was needed.
+- **Outstanding (unchanged, the owner's):** a provider and its data contract; then the transport, the Settings switch, PRIVACY.md, the website's privacy page, and the store declarations, before anything is sent.
 
 **Outstanding work.** The owner's provider approval and data contract; retention; the Settings switch (only with a transport); PRIVACY.md, the website's privacy page, Play's Data safety and Amazon's questionnaire updated before anything is sent; network-level validation in Phase 3.
 
@@ -1631,6 +1679,12 @@ Registered in BETA-2.md from the owner's master prompt of 2026-11-19, which numb
 - **Long press of OK is not a trigger:** Reflux acts on OK when it is pressed (B-025's contract), so a long press would open the card first. Changing that contract is not a Phase 3 bug fix (DECISIONS.md, 2026-11-20).
 - **The popup (`screens/QuickView.kt`):** poster, title, facts (year, runtime, rating), genres, tagline or overview; Play/Resume (focused on opening), Favorite, Download where the source and platform can keep a copy, and Details. Only supported actions are shown. Missing artwork, facts or overview leave their place out; a work gone from the library says so and offers Close.
 - **Closing:** Back, X, Menu or a click outside close it, and focus returns to the card. Play and Details close it first. The page behind is inert while it is open.
+- **Found on the Pad 7's walk and fixed:** the system's Back (a gesture) did not close it, because Android routes it by `AppState.backRoute`, which did not yet know Quick View and handed Back at Home to the system. `backRoute` is now the app's while Quick View is open; `QuickViewUiTest.aLongTouchOpensIt` asserts it; the walk then passed.
+- **Device walks (`PhaseThreeWalkOnDeviceTest.quickViewOpensOnAFilmAndBackClosesIt`), all passed:**
+  - Pad 7 (physical): a long touch, then Back;
+  - Fire TV Stick 4K Plus (physical): the remote's Menu, then Back;
+  - Google TV emulator: the remote's Menu on a work whose source is away, showing Favorite, Download and Details without Play;
+  - phone emulator: a long touch.
 - **Tests:** `QuickViewUiTest` (6): X opens it on Play, navigating and playing nothing, and B returns focus to the card; Play plays and Details opens the page; right-click opens it and a click outside closes it; a long touch opens it on a phone; a remote's Menu opens it on a TV while Start still opens Sources; X with no film or show focused does nothing.
 - **Renders looked at:** `quick-view-controller`, `-phone`, `-tv`.
 - **Outstanding:** walks (Fire TV remote, Windows mouse and controller, a phone's long touch); owner acceptance.
@@ -1708,12 +1762,12 @@ Nothing here is assigned to a phase until the owner decides; each decision, when
 
 | Issue | Decision required | Recommendation | Reasoning | Options | Current allocation / status |
 | --- | --- | --- | --- | --- | --- |
-| [B-016](#b-016) | Whether to change start-up to a profile chooser, and when | Phase 2, with B-017 | It is interaction work next to B-019/B-020's profile inputs, and it changes documented design (WATCH_STATE.md), which is the owner's call | Phase 2 · Phase 3 · V1.1 · keep the current design (and close as by design) | Unassigned · Not Started |
-| [B-017](#b-017) | Whether and when to add a discoverable profile switch / "Who's watching?" | Phase 2, with B-016 | One entry point serves both | Phase 2 · Phase 3 · V1.1 | Unassigned · Not Started |
-| [B-022](#b-022) | Phase for any Windows start-up optimisation | Measure under B-041 (Phase 1 baseline taken), optimise in Phase 3 only if the breakdown justifies it | Start-up is one of B-041's audit areas; no bottleneck is established yet | Phase 3 under B-041 · its own Phase 2/3 item · V1.1 | Unassigned · Investigating |
-| [B-042](#b-042) | Approve Phase 2 allocation | Phase 2, with B-025 | It is a focus/hover architecture question that B-025's shared model must answer | Phase 2 · Phase 3 · later | **Pending approval** · Not Started. Its severity also differs between sources ("Major" in the first master prompt; "To be determined" in the tracker prompt): owner to set |
+| [B-016](#b-016) | ~~Whether to change start-up to a profile chooser, and when~~ **Decided by the owner's Phase 3 work order (2026-11-20): open the last-used profile; Phase 3; Fixed** | Phase 2, with B-017 | It is interaction work next to B-019/B-020's profile inputs, and it changes documented design (WATCH_STATE.md), which is the owner's call | Phase 2 · Phase 3 · V1.1 · keep the current design (and close as by design) | Phase 3 · Fixed |
+| [B-017](#b-017) | ~~Whether and when to add a discoverable profile switch~~ **Decided (2026-11-20): Phase 3; Fixed** | Phase 2, with B-016 | One entry point serves both | Phase 2 · Phase 3 · V1.1 | Phase 3 · Fixed |
+| [B-022](#b-022) | Phase for any Windows start-up optimisation: **Phase 3 (the work order); measured, no optimisation justified yet** | Measure under B-041 (Phase 1 baseline taken), optimise in Phase 3 only if the breakdown justifies it | Start-up is one of B-041's audit areas; no bottleneck is established yet | Phase 3 under B-041 · its own Phase 2/3 item · V1.1 | Phase 3 · Investigating |
+| [B-042](#b-042) | ~~Approve Phase 2 allocation~~ **Phase 3 (the work order); Fixed** | Phase 2, with B-025 | It is a focus/hover architecture question that B-025's shared model must answer | Phase 2 · Phase 3 · later | Phase 3 · Fixed |
 | [F-005](#f-005) | Whether to schedule controller remapping | V1.1 | B-039 should first settle the default mapping; customisation depends on it | Phase 2 (after B-039) · Phase 3 · V1.1 · not planned | Unassigned · Not Started |
-| [B-027](#b-027) | Confirm the scope change from "V1.1 candidate" (findings document) to Beta 2 Phase 3 | Confirm Phase 3 as the owner's plan of 2026-11-19 states | The owner's phase plan listed "Separate Jellyfin libraries: Included" and DECISIONS.md records it; the tracker prompt asks for confirmation before implementation | Confirm Phase 3 · return to V1.1 | Phase 3 (owner's plan) · Not Started; **not to be implemented until confirmed** |
+| [B-027](#b-027) | **Resolved by the work order (2026-11-20): a V1.1 candidate, researched in Phase 3, not implemented.** (Was: confirm the scope change from "V1.1 candidate" to Beta 2 Phase 3) | Confirm Phase 3 as the owner's plan of 2026-11-19 states | The owner's phase plan listed "Separate Jellyfin libraries: Included" and DECISIONS.md records it; the tracker prompt asks for confirmation before implementation | Confirm Phase 3 · return to V1.1 | Phase 3 (owner's plan) · Not Started; **not to be implemented until confirmed** |
 | [F-P1, F-P2](#f-p1-and-f-p2) | Number them and place them | Number F-006, F-007; Phase 3 with B-027 (sidebar entries for libraries) or Phase 2 with B-039 for F-P2 | The sidebar's library entries (B-027) and Y's role (B-039) both touch them | Phase 2 · Phase 3 · V1.1 | Unallocated · Not Started |
 | [B-018](#b-018) | "Forgot PIN" still erases a protected profile's private data without its PIN | **Decided by the owner (2026-11-19):** Keep profile / Reset profile, plus system authentication where it is secure | Implemented in Phase 2: Android phones and tablets through the system's prompt; TV, Windows, Linux keep the two choices (PHASE-2-PLAN.md) | — | Phase 1 · Fixed; decision **resolved** (DECISIONS.md, 2026-11-19) |
 | [F-004](#f-004) | Statistics provider, region, data contract, retention | Aptabase through its HTTP API behind Reflux's transport (EU-hosted or self-hosted), not its SDKs | Evaluated in Phase 2 (PHASE-2-PLAN.md, "F-004"): fits; its daily IP-derived count is still processing of the address, to be disclosed | Aptabase · own endpoint · none | Foundation done; evaluated; nothing sent |
@@ -2296,6 +2350,29 @@ Asked for a rethink, not a tweak, the page was rebuilt as **one search line with
 - **Options, for the owner:** (1) report it upstream with the log (JetBrains' Skiko) and update Compose Multiplatform when a fix lands; (2) pin `skiko.renderApi` to OpenGL or software on Windows (avoids the Direct3D fallback path at a performance cost, and needs its own measurement); (3) catch nothing: a native crash cannot be caught in Java.
 - **Outstanding:** the owner's account of what happened at 11:37 (sleep, a monitor, a game); a reproduction; the decision above. The log is left in place, uncommitted.
 
+<a id="b-062"></a>
+### B-062: A television started Home in the navigation when the featured work could not play, and Right could not leave it
+
+- **Category:** Bug (focus) · **Priority:** Medium · **Platforms:** TV, F (any start with the hero's Play disabled)
+- **Components:** `ui` (`HomeScreen` hero); `library` (`Featured.choose`)
+- **How found:** 2026-11-20, Phase 3's Google TV emulator walk. The emulator's library was from a Jellyfin source that needed signing in again, so the featured work's Play was disabled.
+- **Phase:** 3 (found and fixed in Phase 3's walks) · **Status:** Fixed (emulator walked; automated) · **Last updated:** 2026-11-20
+- **Related:** B-014, B-053, B-025
+
+**Description.** Home started with focus in the navigation rail rather than on the page; Right from the rail did not reach the page (nothing focusable level with it), and Down moved within the rail.
+
+**Work record**
+- **Not caused by Phase 3:** the build before Phase 3 (`9903e86`, built in a temporary worktree) behaved the same on the same emulator and library.
+- **Cause:** the hero's Play is the page's starting focus (`initialFocus`), and a disabled button cannot take focus, so the start fell back to the navigation.
+- **Fix:**
+  - Where the hero cannot play now, Details is the starting focus.
+  - The featured pick prefers works that can play now (`Featured.choose`), falling back to the rest.
+- **Tests:**
+  - `HeroFocusTest`: a television with the library away starts on Details; failed before the fix and passes with it. With the library there it starts on Play.
+  - `FeaturedTest.whatCanBePlayedNowComesFirst`.
+- **Walked:** the Google TV emulator starts on Details. Down then reaches a card, and the remote's Menu opens Quick View (screenshot looked at).
+- **Outstanding:** owner acceptance.
+
 ## Regression tracking
 
 Every regression found, and every recurring failure watched, with the run that found it. A regression introduced by a Beta 2 change gets a new B-number in the section above and a row here.
@@ -2357,3 +2434,10 @@ Machines (CLAUDE.md, "Testing environment"): Windows 11 development machine (phy
 - **Forgot PIN** decided and implemented. **F-004** provider evaluated (Aptabase, not integrated).
 - **Counts:** 12 Not Started, 4 Investigating, 1 In Progress, 26 Fixed, 2 Verified, 2 Not Reproduced (47 original). | Claude (agent) |
 | 2026-11-19 | Consistency check (throwaway script): 51 entries, one anchor each, no duplicates; every link and anchor in the tracker, BETA-2.md, CLAUDE.md, ROADMAP.md, DECISIONS.md, PHASE-1-PLAN.md and VERIFICATION.md resolves; every entry's status is one of the eight; the phase overview matches the entries; counts 35 Not Started, 3 Investigating, 1 In Progress, 7 Fixed, 1 Not Reproduced (47). 0 problems. | Claude (agent) |
+| 2026-11-20 | **Phase 3 implemented** (the owner's Phase 3 work order; commits `dcef9fb`, `b2af2b7` and the closing commit; VERIFICATION.md, "Phase 3").
+- **Fixed:** B-014, B-016, B-017, B-028, B-029, B-030, B-042 (believed fixed, it was not; reproduced first), B-045, F-P3, F-P4.
+- **New:** B-061 (a Skia crash in the owner's build: Investigating) and B-062 (TV start focus: Fixed).
+- **Investigating:** B-022 (measured with a breakdown), F-003 (feasibility shown, not shipped).
+- **Checkpoints:** B-041 and F-004 second checkpoints recorded.
+- **V1.1 candidates (the work order):** B-027, B-038, B-040 researched (V1.1-LIBRARY-RESEARCH.md), not implemented.
+- **B-044:** cause found (mixed virtual and wall clocks), not changed. | Claude (agent) |
