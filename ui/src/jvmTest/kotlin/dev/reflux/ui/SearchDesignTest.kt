@@ -1,17 +1,21 @@
 package dev.reflux.ui
 
+import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.click
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.isFocused
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performKeyInput
 import androidx.compose.ui.test.performMouseInput
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
+import androidx.compose.ui.test.pressKey
 import dev.reflux.core.input.ControllerFamily
 import dev.reflux.core.input.GamepadButton
 import dev.reflux.ui.state.Destination
@@ -54,6 +58,32 @@ class SearchDesignTest {
         onNodeWithText("In 4K").mouseClick()
         await("asked") { app.searchQuery == "4k" }
         awaitText("Blade Runner 2049")
+    }
+
+    /**
+     * A tab clicked with the mouse leaves the typing in the field, so Backspace goes on editing the query instead of being
+     * Back, which left Search (found on the Linux VM walk, 2026-11-20). "Search everything" does the same.
+     */
+    @Test
+    fun aClickedTabLeavesTheTypingInTheField() = screen(populated()) { app ->
+        toSearch(app)
+        onNode(hasSetTextAction()).performTextInput("4k")
+        awaitText("Blade Runner 2049")
+        onNode(hasTestTag("scope:Movies")).mouseClick()
+        await("movies") { app.searchScope == SearchScope.MOVIES }
+        await("the field to keep the typing") { onAllNodes(hasSetTextAction() and isFocused()).fetchSemanticsNodes().isNotEmpty() }
+        onNode(hasSetTextAction() and isFocused()).performKeyInput { pressKey(Key.Backspace) }
+        await("Backspace to edit the query") { app.searchQuery == "4" }
+        assertEquals(Destination.Search, app.navigator.current, "still on Search")
+        // Nothing among the shows, then everything again: the field still has the typing.
+        onNode(hasSetTextAction()).performTextReplacement("4k")
+        onNode(hasTestTag("scope:Shows")).mouseClick()
+        await("shows") { app.searchScope == SearchScope.SHOWS }
+        if (saysAnywhere("No matches for")) {
+            onNodeWithText("Search everything").mouseClick()
+            await("everything") { app.searchScope == SearchScope.ALL }
+            await("the field to have focus again") { onAllNodes(hasSetTextAction() and isFocused()).fetchSemanticsNodes().isNotEmpty() }
+        }
     }
 
     @Test

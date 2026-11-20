@@ -52,6 +52,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import dev.reflux.core.input.InputModality
 import dev.reflux.design.FormFactor
 import dev.reflux.design.MaterialRole
 import dev.reflux.design.StateLayers
@@ -160,7 +161,7 @@ internal fun SearchScreen(app: AppState) {
                     if (!hasResults || runCatching { firstResult.requestFocus() }.isFailure) focus.moveFocus(FocusDirection.Down)
                 })
                 // The field's own line: what to search in, and (with a query) what was found.
-                SearchLine(app, model, sections.sumOf { it.cards.size }, query.isBlank())
+                SearchLine(app, model, sections.sumOf { it.cards.size }, query.isBlank(), field)
             }
         }
         val current = model
@@ -180,7 +181,10 @@ internal fun SearchScreen(app: AppState) {
                 NoResults(
                     query, scope, discovery?.quickFinds.orEmpty().take(3),
                     onClear = { ask("") },
-                    onEverything = { app.searchScope = SearchScope.ALL },
+                    onEverything = {
+                        app.searchScope = SearchScope.ALL
+                        runCatching { field.requestFocus() }
+                    },
                     onBrowse = { app.go(Destination.Movies) },
                     onChoose = { ask(it.query) },
                 )
@@ -269,9 +273,9 @@ private fun SearchField(app: AppState, query: String, field: FocusRequester, mod
  * screen: it reads as part of the field, never as a widget beside it.
  */
 @Composable
-private fun SearchLine(app: AppState, model: SearchModel?, count: Int, idle: Boolean) {
+private fun SearchLine(app: AppState, model: SearchModel?, count: Int, idle: Boolean, field: FocusRequester) {
     Row(Modifier.fillMaxWidth().padding(start = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-        ScopeTabs(app)
+        ScopeTabs(app, field)
         Spacer(Modifier.weight(1f))
         if (!idle && model != null && count > 0) {
             val total = if (count == 1) "1 result" else "$count results"
@@ -290,14 +294,20 @@ private fun SearchLine(app: AppState, model: SearchModel?, count: Int, idle: Boo
 
 /** All, Movies, Shows: tabs of text. The chosen one is bright with a short rule under it; the others are quiet until pointed at. */
 @Composable
-private fun ScopeTabs(app: AppState) {
+private fun ScopeTabs(app: AppState, field: FocusRequester) {
     val layout = LocalLayout.current
     val ink = RefluxColors.contentPrimary
     Row(Modifier.semantics { contentDescription = "Search in" }, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
         for (scope in SearchScope.entries) {
             val chosen = app.searchScope == scope
             Pressable(
-                { app.searchScope = scope },
+                {
+                    app.searchScope = scope
+                    // A tab is the query's own filter: clicked, the typing goes on in the field, so Backspace still
+                    // edits the query rather than going Back (the Linux walk, 2026-11-20). Chosen by a controller or the
+                    // arrows, focus stays on the tabs to move along them.
+                    if (app.input.modality == InputModality.POINTER) runCatching { field.requestFocus() }
+                },
                 Modifier.testTag("scope:${scope.label}").semantics { selected = chosen },
                 Shapes.small, lift = 0f, role = Role.Tab,
             ) { active ->
