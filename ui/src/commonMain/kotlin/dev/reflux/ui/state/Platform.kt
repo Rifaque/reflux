@@ -104,6 +104,19 @@ interface Platform {
     val television: Boolean get() = false
 
     /**
+     * Whether the Reflux keyboard offers its desk-keyboard picture to a pointer (F-P4): Windows and Linux. Elsewhere the
+     * controller's grid is the only presentation (Android touch keeps the system keyboard).
+     */
+    val deskKeyboard: Boolean get() = pointerKeyboard
+
+    /**
+     * The system's keyboard layout for the desk keyboard (owner's decision D3), read afresh each time the keyboard opens,
+     * or null where it cannot be read reliably (an input-method layout for Chinese, Japanese or Korean; no layout to
+     * read): US is then used, with a "US layout" note.
+     */
+    fun keyboardLayout(): SystemKeymap? = null
+
+    /**
      * Whether loudness is the device's own business (its volume keys, a television's remote). The player
      * then offers no volume of its own, and the keys that would have changed it are free for something else.
      */

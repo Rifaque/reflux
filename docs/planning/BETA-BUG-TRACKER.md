@@ -583,7 +583,7 @@ Each entry: the header facts, the original report (the master tracker prompt's t
 
 - **Category:** Product decision / UX investigation · **Priority:** Low (design question) · **Platforms:** all (Home)
 - **Components:** `library` (`Home.kt`, `Library.home`, the `featured` selection); `ui` (`HomeScreen`)
-- **Phase:** 3, step 8 · **Status:** Not Started · **Last updated:** 2026-11-19
+- **Phase:** 3, step 8 · **Status:** Fixed (automated; rendered and looked at) · **Last updated:** 2026-11-20
 - **Related:** B-040 (discovery variety), B-013
 
 **Original description.** The featured Home hero appears to be selected alphabetically, for example "2 Fast 2 Furious". It is unclear whether this is intended. *Investigate:* hero selection logic, rotation, randomization, recommendations, and sorting. *Expected:* decide on an intentional, sensible featured-content strategy; do not assume alphabetical selection is desired.
@@ -600,11 +600,11 @@ Each entry: the header facts, the original report (the master tracker prompt's t
 
 **Work record**
 
-- **Code note (written while building this tracker; not an investigation and not a confirmed root cause):** `Library.home()` features the first entry with a backdrop from Continue Watching, then Recently Added, then all movies, then shows. When none of the first two has a backdrop, the first movie of the `movies()` listing is featured, which would explain an alphabetical pick if that listing is ordered by title. To confirm in Phase 3.
-- **Root cause:** not established.
-- **Implementation / tests / verification:** none.
-- **Evidence:** the tester's report; `library/src/commonMain/kotlin/dev/reflux/library/Home.kt`.
-- **Outstanding work:** the owner's strategy decision; implementation; tests.
+- **Root cause (confirmed in the code):** with nothing in Continue Watching, the hero was the first of Recently Added with a backdrop. After a first scan every work has the same `added_at`, and `recentlyAdded` breaks ties by `sort_key`, so the alphabetically first work with a backdrop ("2 Fast 2 Furious") was featured.
+- **Strategy (DECISIONS.md, 2026-11-20, "Phase 3: Trickplay …; the featured hero …"):** what the viewer is in the middle of; otherwise a pick for the day and the profile among the twelve best-rated unwatched films and shows with a backdrop (ties by identity, never title); with nothing unwatched, among everything with a backdrop; nothing without a backdrop. Deterministic, stable through a day, different between profiles, no new query (`Featured.choose` in `library/Home.kt` over what Home already loads).
+- **Tests:** `FeaturedTest` (5): continuing first; stable within a day and changing across days; listing order irrelevant; the alphabetical first no more likely than any other; profiles differ on most days; watched works step aside; no backdrop, no hero. `SmartLibraryTest` 6/6 unchanged.
+- **Automated verification:** library JVM tests, Windows, 2026-11-20. Rendered (`quick-view-controller`): Home's hero is "Mad Max: Fury Road", not "Alien", the alphabetical first of the test library.
+- **Outstanding:** walks per the matrix; owner acceptance. Not a recommendation engine: B-040 (V1.1) would give the hero a "because you watched" pick.
 
 <a id="b-015"></a>
 ### B-015: Poster alignment/clipping vertically
@@ -639,7 +639,7 @@ Each entry: the header facts, the original report (the master tracker prompt's t
 
 - **Category:** Product decision / UX · **Priority:** Medium · **Platforms:** W L P T (desktop and Android)
 - **Components (likely):** `ui` (`ProfilesScreen`, start-up), `library` (profiles); docs/WATCH_STATE.md ("Profiles")
-- **Phase:** **Unassigned** (owner decision) · **Status:** Not Started · **Last updated:** 2026-11-19
+- **Phase:** **3** (the owner's Phase 3 work order, 2026-11-20) · **Status:** Fixed (automated; device walks in VERIFICATION.md, "Phase 3") · **Last updated:** 2026-11-20
 - **Related:** B-017, B-018
 
 **Original description.** The application opens directly into the last-used profile instead of presenting an obvious profile-selection experience. *Expected:* provide a startup profile chooser with the last-used profile prominently available, rather than making profile selection invisible or implicit. Phase allocation is unresolved; do not assign without recording the owner decision.
@@ -980,7 +980,7 @@ Each entry: the header facts, the original report (the master tracker prompt's t
 
 - **Category:** Feature / product requirement · **Priority:** V1.1 product requirement in the findings document; moved into Beta 2 by the owner's phase plan (confirmation requested, below) · **Platforms:** all, with platform-specific navigation
 - **Components (likely):** `sources:jellyfin` (user views, library IDs); `library` (library identity, aggregate queries); `ui` (`BrowseScreen`, `SourceLibraryScreen`, sidebar, mobile navigation)
-- **Phase:** 3, step 1 (owner's phase plan, 2026-11-19; DECISIONS.md) · **Status:** Not Started · **Last updated:** 2026-11-19
+- **Phase:** **V1.1 candidate** (the owner's Phase 3 work order, 2026-11-20: researched in Phase 3, not implemented) · **Status:** Not Started (researched: [V1.1-LIBRARY-RESEARCH.md](V1.1-LIBRARY-RESEARCH.md)) · **Last updated:** 2026-11-20
 - **Related:** B-003 (a different problem), B-038 (filter by library), F-P1 (sidebar)
 
 **Original description.** Support viewing separate Jellyfin libraries individually as well as aggregated Movies and Shows. For example, users may have Marvel, DC, Anime, and other libraries but still want aggregate Movies and TV views. *Expected:* aggregate Movies view; aggregate Shows view; access to each original Jellyfin library separately; appropriate library navigation and separation; desktop/TV sidebar navigation; appropriate mobile navigation; preserve original source/library identity. This was originally identified as a V1.1 candidate. Later Beta 2 scope notes include it in Phase 3. Treat this discrepancy as an owner scope decision to reconcile, not an invitation to silently change scope.
@@ -1005,7 +1005,7 @@ Each entry: the header facts, the original report (the master tracker prompt's t
 
 - **Category:** Bug (UX/feature) · **Priority:** Medium, provisional · **Platforms:** all
 - **Components:** `design` (`ArtworkAtmosphere.kt`); `ui` (`Artwork`, `Theme`, `DetailsScreen`, `HomeScreen`, Settings)
-- **Phase:** 3, step 6 · **Status:** Not Started · **Last updated:** 2026-11-19
+- **Phase:** 3, step 6 · **Status:** Fixed (automated, with a perceptibility threshold; rendered and looked at) · **Last updated:** 2026-11-20
 - **Related:** none
 
 **Original description.** Media atmosphere/ambience functionality appears to have little or no visible effect. *Investigate:* colour extraction, active state, animation, theme integration, rendering, cache updates, intensity, and whether changes are perceptible. *Expected:* if advertised, the feature should visibly work; effects must be intentional and tasteful, not so subtle that users cannot tell it is active; document limitations if any platform cannot support it.
@@ -1022,15 +1022,18 @@ Each entry: the header facts, the original report (the master tracker prompt's t
 
 **Work record**
 
-- **Investigation findings / root cause / implementation / tests / verification:** none yet.
-- **Outstanding work:** everything.
+- **Investigation:** the atmosphere was working, and invisible: the page tone was the artwork's dominant hue at lightness 0.2 and saturation 0.45, washed over the near-black page at **22 %**, which moves each channel by a few levels (a red work: about (24, 14, 14) against (10, 10, 10)). The UI test held it to a colour distance of 0.03, which passed while testers saw nothing.
+- **Fix:** the wash is **60 %** (`ATMOSPHERE_STRENGTH`): a red work's page is about (49, 21, 21). The tone's lightness is unchanged, so primary text stays above 7:1 on it (`ArtworkAtmosphereTest.atmosphereIsAlwaysABackground`, `VisualSystemTest`). Still off by default, still only Home's hero and a title's page, as Settings says; the transition is the page's own colour animation, instant under reduced motion (`MotionPolicy`).
+- **Tests:** `VisualSystemTest.mediaAtmosphereIsOffByDefaultAndAWashWhenOn` now requires a colour distance above 0.08 (perceptible) besides saturation and the 7:1 contrast; it passes. Renders `m4-atmosphere-off` / `-on` looked at.
+- **Performance:** one sample of each artwork's pixels, cached (`ArtworkSamples`, held to one read per image by its test); the wash is a gradient drawn behind the page, not recomposed while scrolling. Nothing added.
+- **Outstanding:** walks (TV, phone, tablet) per the matrix; owner acceptance.
 
 <a id="b-029"></a>
 ### B-029: Right analogue stick Trickplay navigation
 
 - **Category:** Feature requirement · **Priority:** Medium (UX requirement) · **Platforms:** controller-capable (W, TV, F, controller P/T)
 - **Components (likely):** `ui` (`PlayerControls`, input handling), Trickplay from B-030
-- **Phase:** 3, step 4 (after B-030) · **Status:** Not Started · **Last updated:** 2026-11-19
+- **Phase:** 3, step 4 (after B-030) · **Status:** Fixed (automated; physical controllers pending) · **Last updated:** 2026-11-20
 - **Related:** B-030 (dependency), B-039 (mapping), F-003
 
 **Original description.** Use the right analog stick for scene-based Trickplay navigation. *Expected:* the stick should navigate scene previews, not blindly seek by arbitrary time increments; integrate with preview selection and confirmation.
@@ -1047,15 +1050,17 @@ Each entry: the header facts, the original report (the master tracker prompt's t
 
 **Work record**
 
-- **Investigation findings / root cause / implementation / tests / verification:** none yet.
-- **Outstanding work:** everything; blocked in order (not formally Blocked) on B-030.
+- **Implementation:** docs/PLAYBACK.md, "Trickplay". `core/input/StickStepper` (dead zone 0.5 engage / 0.3 release, one step at once, repeats 260→70 ms by deflection, ×3 and ×8 steps after 2 and 4 s held); `PlaybackSession.rightStick` with `SceneScrub(origin, target)`: a scene is a preview picture, 10 s where there are none; playback does not move until **A** (`commitScrub`), **B** stays (`cancelScrub`), D-pad left/right fine-tune, 8 s untouched or the controller lost (`stickLost`) ends it without seeking. Only in the full player; nothing while browsing.
+- **Input:** Windows reads XInput's right thumb X and the joystick API's Z axis (DualShock and other HID pads); Linux `ABS_RX` (or `ABS_Z` where the triggers are not there); Android `AXIS_Z` where it is a stick, with device removal ending the scrub. The desktop poller reports the latest value to the UI thread at most once per pass of its queue.
+- **Tests:** `StickStepperTest` (6); `TrickplayUiTest`: a flick is one scene; A seeks there without pausing; B seeks nowhere and stays in the player; a lost controller and the 8 s idle end it without seeking; held, it repeats and speeds up; without previews it steps 10 s; nothing while browsing.
+- **Outstanding:** walks with physical controllers (Windows: the owner's Xbox controller; Fire TV and the Pad 7 with a controller where one pairs); the Google TV emulator has no analogue stick; owner acceptance.
 
 <a id="b-030"></a>
 ### B-030: Trickplay previews missing
 
 - **Category:** Feature requirement (playback UX) · **Priority:** High · **Platforms:** W L TV F P T
 - **Components (likely):** `sources:jellyfin`, `sources:plex` (preview data); `ui` (`PlayerControls` timeline); `library` (cache); `playback:mpv` / Media3 (local generation, if pursued)
-- **Phase:** 3, step 3 · **Status:** Not Started · **Last updated:** 2026-11-19
+- **Phase:** 3, step 3 · **Status:** Fixed (Jellyfin verified live; Plex against the recorded format only; device walks in VERIFICATION.md, "Phase 3") · **Last updated:** 2026-11-20
 - **Related:** B-029, B-041
 
 **Original description.** Playback needs scene thumbnail previews, both for mouse timeline hover and controller-driven scene navigation. *Mouse expectations:* hover over timeline positions; show the scene preview image and timestamp; update as the pointer moves; clicking/selecting the position seeks appropriately. *Controller expectations:* right stick navigates scene previews; preview selection is visible and updated; A confirms/seeks; B cancels without accidentally seeking. *Investigate:* thumbnail generation, indexing, caching, player timeline integration, sync, performance, media source capabilities, and local/remote sources. Support Jellyfin and Plex where usable preview data exists. Investigate local-file support separately. Gracefully fall back if previews are unavailable; do not break normal seeking.
@@ -1072,8 +1077,11 @@ Each entry: the header facts, the original report (the master tracker prompt's t
 
 **Work record**
 
-- **Investigation findings / root cause / implementation / tests / verification:** none yet.
-- **Outstanding work:** everything.
+- **Research:** Jellyfin (10.9+) keeps trickplay tiles per media source and width when its administrator turns on extraction (`BaseItemDto.Trickplay`, `Videos/{item}/Trickplay/{width}/{index}.jpg`); Plex keeps a BIF index per part when its owner turns on video preview thumbnails (`/library/parts/{id}/indexes/sd`). Neither is generated by Reflux: local generation would compete with playback for the decoder and is a later investigation. Recorded in docs/PLAYBACK.md, "Trickplay".
+- **Live check (Jellyfin 12.4.0 in Docker, `tools/ci/jellyfin-test-server.sh`, extraction turned on through its API):** the 40-minute test film's `Trickplay` answered `{"<source>": {"320": {"Width":320,"Height":180,"TileWidth":10,"TileHeight":10,"ThumbnailCount":240,"Interval":10000}}}`; sheets 0 and 2 fetched (810,762 and 369,415 bytes, `image/jpeg`), sheet 3 404, and without the token 401. Sheet 2 looked at: pictures 200 to 239 on a 10 × 10 grid, as the mapping expects.
+- **Implementation:** `core/playback/Trickplay.kt` (`TrickplayManifest`, the frame mapping, `TrickplaySource`, `BifIndex`); `JellyfinSource` and `PlexSource` implement it; `ui/state/Trickplay.kt` (`TrickplayPreviews`: only the newest place loaded, older loads cancelled, a 60 ms settle before a new sheet, sheets kept encoded across playbacks in `TrickplaySheets` (32 MB) so none is downloaded twice while it fits, three decoded at most, background dispatcher); the timeline's floating preview (`TimelinePreview`) for the pointer, a dragged thumb, held seek keys and the right stick, the time alone where there are no previews.
+- **Tests:** `TrickplayTest` (6: mapping, clamping, malformed manifests, BIF reading, a multiplier of zero, malformed BIFs); `JellyfinTrickplayTest` (4: the width nearest 320, the account's token, one request per version, an unreachable server asked again, malformed answers); `PlexTrickplayTest` (2); `TrickplayUiTest` (hover shows the scene, sheets fetched once, looking is not seeking, no previews shows the time alone).
+- **Outstanding:** Plex against a server with generated previews (none available); walks on the matrix's platforms; owner acceptance.
 
 <a id="b-031"></a>
 ### B-031: Linux libmpv fails under non-C numeric locales
@@ -1288,7 +1296,7 @@ Each entry: the header facts, the original report (the master tracker prompt's t
 
 - **Category:** Feature / product requirement · **Priority:** Medium · **Platforms:** all
 - **Components (likely):** `library` (queries, indexes); `ui` (`BrowseScreen`, settings persistence)
-- **Phase:** 3, step 2 · **Status:** Not Started · **Last updated:** 2026-11-19
+- **Phase:** **V1.1 candidate** (the owner's Phase 3 work order, 2026-11-20: researched in Phase 3, not implemented) · **Status:** Not Started (researched: [V1.1-LIBRARY-RESEARCH.md](V1.1-LIBRARY-RESEARCH.md)) · **Last updated:** 2026-11-20
 - **Related:** B-027 (filter by library), B-037, B-041 (large libraries)
 
 **Original description.** Add meaningful sorting and filtering for Movies and Shows. *Expected sorting* includes appropriate supported fields such as title, year, date added, rating, runtime. *Expected filtering* includes supported fields such as genre, year, watched/unwatched, favourites, resolution, source, library. *Requirements:* only show options supported by available metadata; Movies and Shows should have consistent, sensible behaviour; filters must be clearable/resettable; persist state appropriately; avoid unnecessary full reloads and expensive work for every filter change; test with realistic library sizes.
@@ -1346,7 +1354,7 @@ Each entry: the header facts, the original report (the master tracker prompt's t
 
 - **Category:** Product improvement · **Priority:** Low to Medium · **Platforms:** all (Home)
 - **Components:** `library` (`Home.kt`, `Library.home()` rows, smart search); `ui` (`HomeScreen`)
-- **Phase:** 3, step 7 · **Status:** Not Started · **Last updated:** 2026-11-19
+- **Phase:** **V1.1 candidate** (the owner's Phase 3 work order, 2026-11-20: researched in Phase 3, not implemented) · **Status:** Not Started (researched: [V1.1-LIBRARY-RESEARCH.md](V1.1-LIBRARY-RESEARCH.md)) · **Last updated:** 2026-11-20
 - **Related:** B-014, B-027
 
 **Original description.** Improve the variety and usefulness of Home recommendations and discovery. *Potential sections* based on available metadata and watch state: because you liked…; similar content; genre-based recommendations; unwatched favourites; recently added; hidden gems; continue watching; next episode; director-based recommendations; franchise collections. *Expected:* meaningful, deterministic, and explainable selection logic where appropriate; avoid duplicate or redundant sections; avoid empty rows; avoid excessive Home scrolling; respect profile privacy and watch-state separation; do not present recommendations that lack sufficient data as if they were personalized.
@@ -1517,7 +1525,7 @@ Feature proposals, kept apart from bugs. The confirmed defaults are acceptance c
 
 - **Category:** Feature (experimental) · **Platforms:** supported controllers/devices
 - **Components (likely):** playback audio analysis, the rumble/haptics services, player settings
-- **Phase:** 3, step 5 · **Status:** Not Started · **Last updated:** 2026-11-19
+- **Phase:** 3, step 5 · **Status:** Investigating (feasibility shown on the desktop; implementation not started: the reasons below) · **Last updated:** 2026-11-20
 - **Confirmed defaults:** **OFF** by default; controller video haptics **OFF** by default; explicit opt-in required; must remain experimental and must not be enabled automatically.
 - **Related:** F-001, F-002, B-029, B-030
 
@@ -1527,7 +1535,23 @@ Feature proposals, kept apart from bugs. The confirmed defaults are acceptance c
 
 **Acceptance criteria.** Off by default and independent of interface haptics (enabling one never enables the other); controller video haptics off until enabled there; explicit opt-in; intensity ceiling; rate limits and cooldowns; short envelopes; pause, stop, seek, error and disconnect handled; never continuous rumble from audio volume alone; no activation on switching media, profile or output device; playback performance measured with it on.
 
-**Work record:** none yet. **Outstanding work:** everything.
+**Work record**
+
+- **Feasibility probe (2026-11-20, Windows, Reflux's own libmpv binding; a scratch test, not committed):** a generated file with a 60 Hz pulse for 0.25 s every 2 s (plus a quiet 1 kHz tone), played with `af=@haptics:lavfi=[lowpass=f=150,astats=metadata=1:reset=1]` and `ao=null`; `af-metadata/haptics` read every 10 ms against `time-pos`. The low band's RMS went from −62 dB to about −5 dB for each pulse, cleanly, and **every pulse was seen about 400 ms before the playback clock reached it** (pulses at 2.0 and 4.0 s seen at positions 1.60–1.92 and 3.60–3.92 s): the filter runs ahead of output by the audio buffer.
+- **Conclusion:**
+  - **Detection is feasible on the desktop:** low-band energy and onsets, never volume alone.
+  - **Synchronisation needs the lead measured against the real output device:** WASAPI, PulseAudio/PipeWire and passthrough each add their own latency, which `ao=null` cannot show. Without that, rumble would land early by an unknown amount.
+  - **Android needs a custom Media3 `AudioProcessor`** in the renderer chain: a separate piece of work. `Visualizer` needs the recording permission and is not acceptable.
+  - **Passthrough (bitstreamed audio) bypasses filters:** no haptics there, and that must be said.
+  - **Validation needs a controller someone can feel,** on each platform: the owner's.
+- **Decision recorded (not an owner deferral):** no haptic output was shipped in Phase 3. A setting for a feature that does not exist would misrepresent it (the acceptance requires settings that reflect behaviour), and an unsynchronised rumble is the "fake implementation" the work order rules out. The owner decides whether F-003 moves to a later phase.
+- **Design for when it is scheduled:**
+  1. A core `HapticDirector`, pure and tested: onsets from band energy over a running floor; an intensity ceiling; envelopes of at most 150 ms; at most one event per 250 ms; a 2 s cooldown after five in a row; stop on pause, seek, end, error, disconnect, preference off.
+  2. The desktop engine adds the analysis filter only while video haptics are on, and reads its metadata at 50 Hz.
+  3. Each event is scheduled for `lead + measured device latency` after its detection.
+  4. An Android `AudioProcessor` feeds the same director.
+  5. Off by default, separate from interface haptics, and off on controllers until enabled there (BETA-2.md, the acceptance list).
+- **Outstanding:** the owner's scheduling decision; then the design above; physical validation.
 
 <a id="f-004"></a>
 ### F-004: Privacy-respecting analytics
@@ -1587,7 +1611,7 @@ Registered in BETA-2.md from the owner's master prompt of 2026-11-19, which numb
 
 - **Category:** Feature (future UX) · **Platforms:** all (controller, mouse, touch, remote)
 - **How found:** the owner's Phase 3 feature planning notice, given during Phase 2 (2026-11-19; DECISIONS.md, same date, "Controller X is reserved for Media Quick View")
-- **Phase:** **3** (owner's decision) · **Status:** Not Started · **Last updated:** 2026-11-19
+- **Phase:** **3** (owner's decision) · **Status:** Fixed (automated; rendered and looked at; device walks in VERIFICATION.md, "Phase 3") · **Last updated:** 2026-11-20
 - **Related:** B-039, B-012 (X kept free in Phase 2's mapping), F-005, F-P2
 
 **Original description (the owner's).** A controller's X is reserved as the universal contextual action for movies and TV shows, opening a new Media Quick View popup.
@@ -1601,14 +1625,22 @@ Registered in BETA-2.md from the owner's master prompt of 2026-11-19, which numb
 - Long press of OK, right-click and touch long-press on a card are given no other meaning.
 - Recorded for Phase 3: Menu/Options currently opens Sources while browsing, and Quick View's Menu trigger on a focused item has to be reconciled with that (docs/INPUT_MODEL.md, "Controller mapping").
 
-**Outstanding work:** everything of the popup, in Phase 3.
+**Phase 3's implementation (2026-11-20).**
+- **Activation:** a controller's X (`SemanticAction.CONTEXT`, BROWSE context), a pointer's right-click, a long touch, and a remote's or keyboard's Menu, on a focused film or show's card (`Pressable(onContext)`, `FocusedControl.context`, `LocalQuickView`). With nothing to show, X does nothing and Menu opens Sources.
+- **Menu and Sources reconciled:** a controller's Start is never a context key and always opens Sources. A remote's Menu is the card's context on a card, and Sources elsewhere.
+- **Long press of OK is not a trigger:** Reflux acts on OK when it is pressed (B-025's contract), so a long press would open the card first. Changing that contract is not a Phase 3 bug fix (DECISIONS.md, 2026-11-20).
+- **The popup (`screens/QuickView.kt`):** poster, title, facts (year, runtime, rating), genres, tagline or overview; Play/Resume (focused on opening), Favorite, Download where the source and platform can keep a copy, and Details. Only supported actions are shown. Missing artwork, facts or overview leave their place out; a work gone from the library says so and offers Close.
+- **Closing:** Back, X, Menu or a click outside close it, and focus returns to the card. Play and Details close it first. The page behind is inert while it is open.
+- **Tests:** `QuickViewUiTest` (6): X opens it on Play, navigating and playing nothing, and B returns focus to the card; Play plays and Details opens the page; right-click opens it and a click outside closes it; a long touch opens it on a phone; a remote's Menu opens it on a TV while Start still opens Sources; X with no film or show focused does nothing.
+- **Renders looked at:** `quick-view-controller`, `-phone`, `-tv`.
+- **Outstanding:** walks (Fire TV remote, Windows mouse and controller, a phone's long touch); owner acceptance.
 
 <a id="f-p4"></a>
 ### F-P4: Adaptive Virtual Keyboard and Cross-Modality Layout Morphing (Phase 3)
 
 - **Category:** Feature (input and UX) · **Platforms:** controller layout everywhere a controller or remote types (W, L, Android phone and tablet with a controller, TV, Fire TV); mouse layout on Windows and Linux desktop only; touch on Android keeps the system keyboard
 - **How found:** the owner's steer (2026-11-20): research and plan now, implement in Phase 3
-- **Phase:** **3** (the owner's decision) · **Status:** Not Started (researched and planned) · **Last updated:** 2026-11-20
+- **Phase:** **3** (the owner's decision) · **Status:** Fixed (automated; rendered and looked at; desktop walks and the Linux VM in VERIFICATION.md, "Phase 3") · **Last updated:** 2026-11-20
 - **Related:** B-023, B-051, B-054, B-004, B-011, B-025, B-057, F-P3
 - **Plan (full research, design, acceptance and tests):** [F-P4-ADAPTIVE-KEYBOARD.md](F-P4-ADAPTIVE-KEYBOARD.md)
 
@@ -1636,6 +1668,39 @@ Registered in BETA-2.md from the owner's master prompt of 2026-11-19, which numb
 - **D5:** physical typing never hides or presses the virtual keyboard.
 
 **Acceptance criteria and test matrix:** the plan, §12. **Risks:** §15.
+
+**Phase 3's implementation (2026-11-20).**
+- **Layouts as data** (`ui/state/KeyboardLayouts.kt`):
+  - the controller's column-aligned QWERTY grid with the digits on top, the action column (Erase, Space, Done; `http://` and `.com` for an address) and the bottom row (Shift, &123, ←, →, Clear);
+  - the desk keyboard: staggered ANSI with Backspace, Caps, Enter (Done), both Shifts, &123, a 6.5u Space, Clear, Hide; a symbols page that never repeats a key on the board;
+  - the PIN pad, unchanged.
+- **Key identity:** keys are identified by what they are (`KeyboardKey.Type` by its text), and focus is mapped by key (§9).
+- **The system layout (D3, `desktop/SystemKeyboardLayout.kt`):**
+  - Windows: `GetKeyboardLayout` of the focused window's thread, `MapVirtualKeyEx` and `ToUnicodeEx` with an empty state and the no-state-change flag, plain and Shift.
+  - Linux: XKB (`XkbKeycodeToKeysym` in the current group), keysyms as text.
+  - Fallback: US with a "US layout" note for Chinese, Japanese and Korean input methods, a layout giving nothing printable, or no display; a failure to read is logged once.
+  - Dead keys type their spacing accent.
+  - **Not done:** an AltGr key (third-level characters are on &123) and dead-key composition, as the plan allows.
+- **Arbitration (`core/input/KeyboardModeArbiter`):** explicit acts switch at once; pointer travel switches only after 48 dp within 400 ms over the keyboard; motion is ignored for 500 ms after a switch; a stick at 0.8 or more counts as explicit. A controller press that only reveals the grid types nothing.
+- **The morph (`components/RefluxKeyboard.kt`):**
+  - each key is composed by identity, and its rectangle is animated on a spring (damping 0.9, stiffness 500), read at placement so nothing recomposes per frame;
+  - keys of one layout only fade and scale out (120 ms) and in (180 ms after 120 ms);
+  - the container follows;
+  - under reduced motion, a 150 ms crossfade with nothing sliding.
+- **State:** text, cursor, Shift/Caps and page are the session's and never change with the presentation.
+- **Title completions (D2):**
+  - from the library's titles only, read once per search keyboard; no network or metadata request;
+  - case- and accent-insensitive (`TitleText.key`): prefix first, then word-prefix; at most 3 (grid) or 5 (desk), after Search's 140 ms pause;
+  - never focused by appearing; Up from the top row, Tab, or a click reaches them;
+  - choosing fills the query and keeps the keyboard open, and Done goes to the results.
+- **Physical keyboard (D5):** off a television, a key never presses, lights or moves a virtual key, nor changes the presentation. Letters and arrows are the field's; Enter finishes (or chooses the focused completion); Escape closes (or leaves the completions); Tab moves along the completions. Before this, a physical Enter pressed the chosen virtual key.
+- **Tests:**
+  - `KeyboardLayoutsTest` (8): no overlap or duplicate key in any layout; grid alignment and the action column; wrap and edges; the desk's stagger and special keys; an AZERTY keymap typing what its keys show; switching keeps everything and maps focus by key; a desk-only key maps to the nearest grid key; completions never focused, reached by Up, filling the query.
+  - `KeyboardModeArbiterTest` (4).
+  - `AdaptiveKeyboardTest` (5): the desk keyboard for a pointer; a controller press morphs it into the grid, q travelling between its two places, nothing lost, focus from the last clicked key; a nudge does not switch and deliberate travel does; physical keys never touch the virtual keyboard; completions fill without opening anything; the US note; a TV has only the grid.
+  - `KeyboardSessionTest` (2 updated to the approved grid: Done in the action column, left and right wrapping), `PointerKeyboardTest`, `InteractionContractTest`, `TelevisionTest`, `SearchDesignTest` passing.
+- **Renders looked at:** `keyboard-desk`, `keyboard-desk-azerty`, `keyboard-grid-after-morph`, `keyboard-completions`.
+- **Outstanding:** a Windows walk with a real AZERTY or QWERTZ layout and two DPIs (the owner's machine); the Linux VM's XKB reading; the morph measured on the Fire TV (no desk keyboard there, so the grid alone); owner acceptance.
 
 ## Unassigned issues and unresolved owner decisions
 
@@ -2212,6 +2277,24 @@ Asked for a rethink, not a tweak, the page was rebuilt as **one search line with
 **Verification (Google TV emulator, by hand with gamepad keys):** A on Clear watch history puts focus on Keep. B closes the confirmation, stays on Settings, and focus is on Clear watch history again.
 
 **Not walked on a device by a test:** on the emulator the accessibility tree runs behind a move, so a walk's check of where focus is pressed once too often. That landed on "Online metadata & artwork", and A turned it on. It was turned back off by hand, and verified off. The device walk therefore leaves Settings alone, and this behaviour is `PanelFocusTest`'s.
+
+<a id="b-061"></a>
+### B-061: The desktop app ended in Skia's native code when Direct3D failed while its window was resized (Windows)
+
+- **Category:** Bug (crash) · **Priority:** High, provisional (a crash; one occurrence seen) · **Platforms:** W
+- **Components:** `desktop:app` (the window); Compose Multiplatform's Skiko renderer (`skiko-windows-x64.dll`)
+- **How found:** 2026-11-20, Phase 3's work: a JVM crash log (`hs_err_pid40688.log`) left in the repository's root by the owner's packaged desktop build (`jpackage` app version 0.9.31, run from `desktop/app/build/compose/binaries`), which had run for 11 h 43 min. Not caused by Phase 3's changes (the build predates them).
+- **Phase:** none assigned (found in Phase 3; the owner allocates) · **Status:** Investigating · **Last updated:** 2026-11-20
+- **Related:** B-002 (monitors and window moves), B-056 (blank on closing the mini-player)
+
+**Description.** `EXCEPTION_ACCESS_VIOLATION` reading `0xffffffffffffffff` in `skiko-windows-x64.dll` on the AWT event thread. The Java stack: a Swing layout pass resized the window's `ComposeWindowPanel` → `SkiaLayer.reshape` → `Direct3DRedrawer.renderImmediately` failed → `RedrawerManager.findNextWorkingRenderApi` (Skiko giving up on Direct3D and trying the next renderer) → `Direct3DRedrawer.dispose` → `ContextHandler.dispose` → a Skia object's native finalizer, which crashed. Heap 66 of 120 MB used: not memory exhaustion.
+
+**Reading (not a confirmed cause).** Direct3D stopped working under the window (a device lost: a driver reset, the display sleeping and waking, a monitor or GPU change after almost twelve hours), and Skiko's fallback freed its Direct3D context in a way that crashed. That path is Skiko's, not Reflux's; Reflux chooses no renderer.
+
+**Work record**
+- **Reproduction:** not attempted on the owner's machine (the owner's displays and the owner's running session). Nothing in the log says what changed the window's size.
+- **Options, for the owner:** (1) report it upstream with the log (JetBrains' Skiko) and update Compose Multiplatform when a fix lands; (2) pin `skiko.renderApi` to OpenGL or software on Windows (avoids the Direct3D fallback path at a performance cost, and needs its own measurement); (3) catch nothing: a native crash cannot be caught in Java.
+- **Outstanding:** the owner's account of what happened at 11:37 (sleep, a monitor, a game); a reproduction; the decision above. The log is left in place, uncommitted.
 
 ## Regression tracking
 

@@ -166,6 +166,7 @@ class MainActivity : ComponentActivity() {
         installSplashScreen()
         enableEdgeToEdge(SystemBarStyle.dark(TRANSPARENT), SystemBarStyle.dark(TRANSPARENT))
         super.onCreate(savedInstanceState)
+        getSystemService(android.hardware.input.InputManager::class.java)?.registerInputDeviceListener(stickWatcher, null)
         val environment = (application as RefluxApplication).environment
         environment.startOffline((application as RefluxApplication).scope)
         platform = AndroidPlatform(environment, television()).also {
@@ -443,8 +444,32 @@ class MainActivity : ComponentActivity() {
         return false
     }
 
+    /** The controller whose right stick is off centre now (B-029): its going away ends what the stick was doing. */
+    private var stickDevice: Int? = null
+
+    private val stickWatcher = object : android.hardware.input.InputManager.InputDeviceListener {
+        override fun onInputDeviceAdded(deviceId: Int) = Unit
+        override fun onInputDeviceChanged(deviceId: Int) = Unit
+        override fun onInputDeviceRemoved(deviceId: Int) {
+            if (deviceId != stickDevice) return
+            stickDevice = null
+            app.onRightStick(null, dev.reflux.core.input.ControllerFamily.GENERIC)
+        }
+    }
+
+    /** The right stick's horizontal axis: Android's `AXIS_Z` on a standard gamepad, where it is a stick (−1 to 1), not a trigger. */
+    private fun rightStickX(event: MotionEvent): Float? {
+        val range = event.device?.getMotionRange(MotionEvent.AXIS_Z, InputDevice.SOURCE_JOYSTICK) ?: return null
+        if (range.min >= 0f) return null
+        return event.getAxisValue(MotionEvent.AXIS_Z).takeIf { kotlin.math.abs(it) > range.flat.coerceAtLeast(0.12f) } ?: 0f
+    }
+
     override fun dispatchGenericMotionEvent(event: MotionEvent): Boolean {
         if (event.isFromSource(InputDevice.SOURCE_JOYSTICK) && event.action == MotionEvent.ACTION_MOVE) {
+            rightStickX(event)?.let { value ->
+                if (value != 0f || stickDevice == event.deviceId) app.onRightStick(value, Input.family(event.device))
+                stickDevice = if (value != 0f) event.deviceId else null
+            }
             val presses = sticks.presses(event)
             if (presses.isNotEmpty()) platform.rumble?.used(event.deviceId)
             presses.forEach { app.onGamepadButton(it, Input.family(event.device)) }
@@ -534,6 +559,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
+        getSystemService(android.hardware.input.InputManager::class.java)?.unregisterInputDeviceListener(stickWatcher)
         platform.rumble?.let { it.stop(); it.close() }
         // However the activity ends (finished, recreated for a change it does not handle, taken by the system), what plays is
         // ended with it: its place is recorded and its engine, surface, and audio focus are let go. A new activity starts with

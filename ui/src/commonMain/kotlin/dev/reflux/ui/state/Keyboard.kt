@@ -25,19 +25,36 @@ class KeyboardRequest(
     val done: () -> Unit,
 )
 
-/** One key of the Reflux keyboard. [weight] is its width against the others in its row. */
-sealed class KeyboardKey(val weight: Float) {
-    /** Types [text]: a letter (cased by Shift), a digit, a symbol, or a run such as `http://`. */
-    data class Type(val text: String, private val width: Float = 1f) : KeyboardKey(width)
-    data object Shift : KeyboardKey(1.5f)
+/**
+ * One key of the Reflux keyboard, by what it is (F-P4's stable key identity): the same key in the controller's grid and
+ * on the desk keyboard is one key, wherever each layout puts it ([KeyboardLayouts]).
+ */
+sealed class KeyboardKey {
+    /**
+     * Types [text]: a letter (cased by Shift), a digit, a symbol, or a run such as `http://`. [shifted] is what it types
+     * with Shift where that is not simply its capital (a desk keyboard's `1` and `!`). A key is its [text]: the same
+     * character in two layouts is one key, whatever its Shift gives.
+     */
+    class Type(val text: String, val shifted: String? = null) : KeyboardKey() {
+        override fun equals(other: Any?): Boolean = other is Type && other.text == text
+        override fun hashCode(): Int = text.hashCode()
+        override fun toString(): String = "Type($text)"
+    }
+    data object Shift : KeyboardKey()
+    /** A desk keyboard's right-hand Shift: Shift by another name. */
+    data object ShiftRight : KeyboardKey()
+    /** Capitals until pressed again (a desk keyboard's Caps Lock): letters only, as the system does. */
+    data object Caps : KeyboardKey()
     /** Letters and symbols. */
-    data object Page : KeyboardKey(1.5f)
-    data object Space : KeyboardKey(3f)
-    data object Erase : KeyboardKey(1.5f)
-    data object Clear : KeyboardKey(1.5f)
-    data object CursorBack : KeyboardKey(1f)
-    data object CursorForward : KeyboardKey(1f)
-    data object Done : KeyboardKey(2f)
+    data object Page : KeyboardKey()
+    data object Space : KeyboardKey()
+    data object Erase : KeyboardKey()
+    data object Clear : KeyboardKey()
+    data object CursorBack : KeyboardKey()
+    data object CursorForward : KeyboardKey()
+    data object Done : KeyboardKey()
+    /** Puts the keyboard away (the desk keyboard's Hide). */
+    data object Hide : KeyboardKey()
 }
 
 enum class KeyboardPage { LETTERS, SYMBOLS }
@@ -50,18 +67,34 @@ enum class ShiftState { OFF, ONCE, LOCKED }
  * the cursor. Pure state, so every rule here is tested without a screen. Directional input moves the chosen key
  * across rows by where keys are (the nearest one above or below), so rows of different keys stay predictable.
  */
-class KeyboardSession(val request: KeyboardRequest) {
+class KeyboardSession(
+    val request: KeyboardRequest,
+    mode: KeyboardMode = KeyboardMode.CONTROLLER,
+    /** The desk keyboard's layout, read from the system (D3), or US where it could not be read. */
+    private val keymap: SystemKeymap = KeyboardLayouts.US,
+    /** Said in the desk keyboard's corner when [keymap] is the fallback ("US layout"). */
+    private val keymapNote: String? = null,
+) {
     val kind: InputKind get() = request.kind
     val label: String get() = request.label
+
+    /** Which presentation is shown (F-P4): it changes nothing typed, chosen, or set. */
+    var mode by mutableStateOf(mode)
+        private set
 
     var page by mutableStateOf(KeyboardPage.LETTERS)
         private set
     var shift by mutableStateOf(if (request.kind == InputKind.NAME && request.read().isEmpty()) ShiftState.ONCE else ShiftState.OFF)
         private set
-    var row by mutableIntStateOf(if (request.kind == InputKind.PIN) 0 else 1)
+
+    /** The key a controller or a remote has chosen: an identity, so it stays the same key when the layout changes. */
+    var chosen: KeyboardKey by mutableStateOf(initialKey(request.kind))
         private set
-    var column by mutableIntStateOf(0)
-        private set
+
+    /** Where the pointer last pressed or hovered, for mapping focus back to the controller's grid (§9). */
+    private var lastClicked: KeyboardKey? = null
+    private var lastHovered: KeyboardKey? = null
+
     private var cursorAt by mutableIntStateOf(request.read().length)
 
     /** The text was this when the cursor was last placed: if it changes from elsewhere (a physical keyboard), the cursor goes to its end. */
@@ -83,19 +116,99 @@ class KeyboardSession(val request: KeyboardRequest) {
     /** Whether what is typed is hidden (a password, a PIN). */
     val secret: Boolean get() = kind == InputKind.SECRET || kind == InputKind.PIN
 
-    val rows: List<List<KeyboardKey>> get() = layout(kind, page)
+    /** The layout shown now, for this mode, field and page. */
+    val layout: KeyboardLayout
+        get() = when (mode) {
+            KeyboardMode.CONTROLLER -> KeyboardLayouts.controller(kind, page)
+            KeyboardMode.POINTER -> KeyboardLayouts.pointer(kind, page, keymap, keymapNote)
+        }
 
-    val selected: KeyboardKey get() = rows[row][column]
+    /** The controller's grid, which directions move through whatever is shown (a press of the D-pad shows it). */
+    private val grid: KeyboardLayout get() = KeyboardLayouts.controller(kind, page)
 
-    /** What [key] types now, Shift applied. */
-    fun typed(key: KeyboardKey.Type): String =
-        if (shift != ShiftState.OFF && key.text.length == 1) key.text.uppercase() else key.text
+    /** The rows of the controller's grid, each left to right. */
+    val rows: List<List<KeyboardKey>> get() = grid.rows.map { row -> row.map { it.key } }
+
+    /** The chosen key's row and column in the controller's grid. */
+    val row: Int get() = rows.indexOfFirst { chosen in it }.coerceAtLeast(0)
+    val column: Int get() = rows.getOrNull(row)?.indexOf(chosen)?.coerceAtLeast(0) ?: 0
+
+    val selected: KeyboardKey get() = chosen
+
+    /**
+     * Title completions for a search (owner's decision D2), from the library only, newest first; set by the experience
+     * layer as the query changes. They never take focus: [completion] is set only when the viewer moves into them.
+     */
+    var completions: List<String> by mutableStateOf(emptyList())
+        private set
+
+    /** The completion a controller or a physical keyboard is on, or null while focus is on the keys. */
+    var completion: Int? by mutableStateOf(null)
+        private set
+
+    /** What [key] types now: with Shift once, its Shift character; with capitals locked, letters as capitals. */
+    fun typed(key: KeyboardKey.Type): String = when {
+        shift == ShiftState.ONCE -> key.shifted ?: if (key.text.length == 1) key.text.uppercase() else key.text
+        shift == ShiftState.LOCKED && key.text.length == 1 && key.text[0].isLetter() -> key.text.uppercase()
+        else -> key.text
+    }
+
+    /**
+     * Shows the keyboard as [next] (F-P4, §9): nothing typed, set, or paged changes. Into the controller's grid, focus goes
+     * to the key last clicked if the grid has it, else to the key the controller last had, else to the grid's key nearest
+     * where the pointer last was: never simply the first key.
+     */
+    fun show(next: KeyboardMode) {
+        if (next == mode) return
+        if (next == KeyboardMode.CONTROLLER) {
+            val shown = layout
+            val clicked = lastClicked?.takeIf { it in grid }
+            val hovered = lastHovered?.let { key -> shown.place(key) }?.let { grid.nearest(it.centerX / shown.width, it.centerY / shown.height) }
+            chosen = clicked ?: chosen.takeIf { it in grid } ?: hovered ?: chosen
+        }
+        mode = next
+        lastClicked = null
+    }
+
+    /** The pointer is over [key] (or over none): remembered for mapping focus if a controller takes over. */
+    fun hovering(key: KeyboardKey?) {
+        if (key != null) lastHovered = key
+    }
+
+    /** Sets the completions offered for the query; the one focused stays within them, or focus goes back to the keys. */
+    fun offer(titles: List<String>) {
+        completions = titles
+        completion = completion?.takeIf { it < titles.size }
+    }
+
+    /** Moves focus into the completions (Up from the top row, Tab from the field), at [index]; false when there are none. */
+    fun enterCompletions(index: Int = 0): Boolean {
+        if (completions.isEmpty()) return false
+        completion = index.coerceIn(0, completions.lastIndex)
+        return true
+    }
+
+    /** Focus back from the completions to the key it came from. */
+    fun leaveCompletions() {
+        completion = null
+    }
+
+    /**
+     * Puts completion [index] into the field (D2): the whole title, the cursor at its end. The keyboard stays open and
+     * nothing is opened; Done then goes to the results, where that title is first.
+     */
+    fun complete(index: Int): Outcome {
+        val title = completions.getOrNull(index) ?: return Outcome.EDGE
+        put(title, title.length)
+        shift = ShiftState.OFF
+        return Outcome.HANDLED
+    }
 
     /**
      * A semantic action while the keyboard is open. Returns [Outcome.DONE] when typing is finished (the Done key, or
      * Start), [Outcome.EDGE] when a direction has nowhere to go, else [Outcome.HANDLED].
      */
-    fun handle(action: SemanticAction): Outcome = when (action) {
+    fun handle(action: SemanticAction): Outcome = completion?.let { at -> inCompletions(at, action) } ?: when (action) {
         SemanticAction.NAVIGATE_LEFT -> move(0, -1)
         SemanticAction.NAVIGATE_RIGHT -> move(0, 1)
         SemanticAction.NAVIGATE_UP -> move(-1, 0)
@@ -109,6 +222,22 @@ class KeyboardSession(val request: KeyboardRequest) {
         SemanticAction.TEXT_SYMBOLS -> if (kind == InputKind.PIN) Outcome.EDGE else press(KeyboardKey.Page)
         SemanticAction.TEXT_DONE -> Outcome.DONE
         else -> Outcome.HANDLED
+    }
+
+    /** Directions and confirm while focus is on completion [at]: along the row, Down back to the keys, confirm fills it in. */
+    private fun inCompletions(at: Int, action: SemanticAction): Outcome? = when (action) {
+        SemanticAction.NAVIGATE_LEFT -> if (at > 0) Outcome.HANDLED.also { completion = at - 1 } else Outcome.EDGE
+        SemanticAction.NAVIGATE_RIGHT -> if (at < completions.lastIndex) Outcome.HANDLED.also { completion = at + 1 } else Outcome.EDGE
+        SemanticAction.NAVIGATE_UP -> Outcome.EDGE
+        SemanticAction.NAVIGATE_DOWN -> Outcome.HANDLED.also { leaveCompletions() }
+        SemanticAction.SELECT -> complete(at)
+        else -> null
+    }
+
+    /** A pointer pressed [key] where it is drawn: typed, and remembered for mapping focus (§9). */
+    fun click(key: KeyboardKey): Outcome {
+        lastClicked = key
+        return press(key)
     }
 
     /** Presses [key], as confirm on it, a touch, or a click does. */
@@ -130,24 +259,38 @@ class KeyboardSession(val request: KeyboardRequest) {
             KeyboardKey.Clear -> put("", 0)
             KeyboardKey.CursorBack -> if (at > 0) place(at - 1) else return Outcome.EDGE
             KeyboardKey.CursorForward -> if (at < now.length) place(at + 1) else return Outcome.EDGE
-            KeyboardKey.Shift -> shift = when (shift) {
-                ShiftState.OFF -> ShiftState.ONCE
-                ShiftState.ONCE -> ShiftState.LOCKED
-                ShiftState.LOCKED -> ShiftState.OFF
+            // The controller's Shift steps through once, locked, off; a desk keyboard's Shift is once or off, and its Caps
+            // locks or unlocks, as a physical one does.
+            KeyboardKey.Shift, KeyboardKey.ShiftRight -> shift = if (mode == KeyboardMode.POINTER) {
+                if (shift == ShiftState.ONCE) ShiftState.OFF else ShiftState.ONCE
+            } else {
+                when (shift) {
+                    ShiftState.OFF -> ShiftState.ONCE
+                    ShiftState.ONCE -> ShiftState.LOCKED
+                    ShiftState.LOCKED -> ShiftState.OFF
+                }
             }
+            KeyboardKey.Caps -> shift = if (shift == ShiftState.LOCKED) ShiftState.OFF else ShiftState.LOCKED
             KeyboardKey.Page -> {
                 page = if (page == KeyboardPage.LETTERS) KeyboardPage.SYMBOLS else KeyboardPage.LETTERS
                 clamp()
             }
             KeyboardKey.Done -> return Outcome.DONE
+            KeyboardKey.Hide -> return Outcome.HIDE
         }
         return Outcome.HANDLED
     }
 
-    /** Chooses [key] where it is, as a pointer or a finger does by pressing it. */
+    /** Chooses the key at [rowIndex], [columnIndex] of the controller's grid, as tests and a finger on a key do. */
     fun choose(rowIndex: Int, columnIndex: Int) {
-        row = rowIndex.coerceIn(0, rows.lastIndex)
-        column = columnIndex.coerceIn(0, rows[row].lastIndex)
+        val grid = rows
+        val r = rowIndex.coerceIn(0, grid.lastIndex)
+        chosen = grid[r][columnIndex.coerceIn(0, grid[r].lastIndex)]
+    }
+
+    /** Chooses [key] itself. */
+    fun choose(key: KeyboardKey) {
+        if (key in grid) chosen = key
     }
 
     /**
@@ -166,76 +309,38 @@ class KeyboardSession(val request: KeyboardRequest) {
         cursorAt = at
     }
 
+    /**
+     * Moves the chosen key through the controller's grid (§4.4): left and right wrap within a row, the action column its
+     * last stop; up and down go to the nearest key of the next row, and stop at the top and the bottom. Up from the top
+     * row goes into the completions where a search has any.
+     */
     private fun move(rows: Int, columns: Int): Outcome {
-        val layout = this.rows
-        if (rows == 0) {
-            val next = column + columns
-            if (next !in layout[row].indices) return Outcome.EDGE
-            column = next
-            return Outcome.HANDLED
-        }
-        val target = row + rows
-        if (target !in layout.indices) return Outcome.EDGE
-        // The key in the next row whose middle is nearest this one's: keys are chosen by where they are.
-        val middle = middleOf(layout[row], column)
-        column = layout[target].indices.minBy { kotlin.math.abs(middleOf(layout[target], it) - middle) }
-        row = target
+        val next = grid.neighbour(chosen, columns, rows)
+        if (next == null) return if (rows < 0 && enterCompletions(nearestCompletion())) Outcome.HANDLED else Outcome.EDGE
+        chosen = next
         return Outcome.HANDLED
     }
 
-    private fun clamp() {
-        row = row.coerceIn(0, rows.lastIndex)
-        column = column.coerceIn(0, rows[row].lastIndex)
+    /** The completion above the chosen key, by where each sits across the row. */
+    private fun nearestCompletion(): Int {
+        val here = grid.place(chosen) ?: return 0
+        return ((here.centerX / grid.width) * completions.size).toInt().coerceIn(0, (completions.size - 1).coerceAtLeast(0))
     }
 
-    enum class Outcome { HANDLED, EDGE, DONE }
+    private fun clamp() {
+        if (chosen !in grid) chosen = grid.rows.getOrNull(1)?.firstOrNull()?.key ?: grid.keys.first().key
+    }
+
+    enum class Outcome { HANDLED, EDGE, DONE, HIDE }
 
     companion object {
-        /** Where the middle of key [index] falls across its row, from 0 to 1. */
-        internal fun middleOf(row: List<KeyboardKey>, index: Int): Float {
-            val total = row.sumOf { it.weight.toDouble() }.toFloat()
-            val before = row.take(index).sumOf { it.weight.toDouble() }.toFloat()
-            return (before + row[index].weight / 2f) / total
+        /** Where focus starts: the first letter, or a PIN's 1. */
+        private fun initialKey(kind: InputKind): KeyboardKey = KeyboardLayouts.controller(kind, KeyboardPage.LETTERS).let { grid ->
+            (if (kind == InputKind.PIN) grid.rows[0] else grid.rows[1]).first().key
         }
 
-        private fun keys(text: String) = text.map { KeyboardKey.Type(it.toString()) }
-
-        private val DIGITS = keys("1234567890")
-
-        /**
-         * The rows for a field of [kind] on [page]. Every layout ends with the keys a remote needs, having no buttons
-         * for them: the cursor, a space, erase, clear, and done. A PIN is a number pad; an address keeps `:`, `/`, `.`,
-         * and `http://` on its first page.
-         */
-        fun layout(kind: InputKind, page: KeyboardPage): List<List<KeyboardKey>> {
-            if (kind == InputKind.PIN) {
-                return listOf(
-                    keys("123"),
-                    keys("456"),
-                    keys("789"),
-                    listOf(KeyboardKey.Clear, KeyboardKey.Type("0"), KeyboardKey.Erase),
-                    listOf(KeyboardKey.Done),
-                )
-            }
-            val address = kind == InputKind.ADDRESS
-            val characters = when (page) {
-                KeyboardPage.LETTERS -> listOf(
-                    DIGITS,
-                    keys("qwertyuiop"),
-                    keys(if (address) "asdfghjkl:" else "asdfghjkl'"),
-                    keys(if (address) "zxcvbnm./-" else "zxcvbnm,.-"),
-                )
-                KeyboardPage.SYMBOLS -> listOf(
-                    DIGITS,
-                    keys("!@#\$%^&*()"),
-                    keys("-_=+[]{};:"),
-                    keys("'\",./\\?|~`"),
-                )
-            }
-            val middle = if (address && page == KeyboardPage.LETTERS) KeyboardKey.Type("http://", 3f) else KeyboardKey.Space
-            return characters + listOf(
-                listOf(KeyboardKey.Shift, KeyboardKey.Page, KeyboardKey.CursorBack, middle, KeyboardKey.CursorForward, KeyboardKey.Erase, KeyboardKey.Clear, KeyboardKey.Done),
-            )
-        }
+        /** The controller's rows for a field of [kind] on [page] (the grid of [KeyboardLayouts.controller]). */
+        fun layout(kind: InputKind, page: KeyboardPage): List<List<KeyboardKey>> =
+            KeyboardLayouts.controller(kind, page).rows.map { row -> row.map { it.key } }
     }
 }

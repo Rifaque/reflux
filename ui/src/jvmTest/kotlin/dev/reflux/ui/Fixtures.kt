@@ -338,7 +338,13 @@ class FakePlatform(
     override val readsSidecarSubtitles: Boolean = true,
     /** Whether Search offers the Reflux keyboard to a pointer (a desktop's does: B-051). */
     override val pointerKeyboard: Boolean = false,
+    /** Whether the Reflux keyboard offers its desk picture to a pointer (F-P4: Windows and Linux). */
+    override val deskKeyboard: Boolean = false,
+    /** The system's keyboard layout as the desk keyboard reads it; null as where it cannot be read (US, with a note). */
+    private val keymap: dev.reflux.ui.state.SystemKeymap? = dev.reflux.ui.state.KeyboardLayouts.US,
 ) : Platform {
+    override fun keyboardLayout(): dev.reflux.ui.state.SystemKeymap? = keymap
+
     /** How many times the experience layer asked the system for its window, and whether the system said yes. */
     var systemRequests = 0
     var systemAccepts = true

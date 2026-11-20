@@ -129,14 +129,14 @@ What each button means in each context. A button gets a meaning only where one i
 | --- | --- | --- | --- | --- |
 | A (south; east on Nintendo) | Select | Play/pause | Type the chosen key | Select |
 | B (east; south on Nintendo) | Back; **held** (700 ms) with the mini-player up: close the player (B-052) | Back (to the mini-player where there is one) | Close the keyboard | Back / close |
-| **X (west)** | **Nothing (reserved)**: Media Quick View on a focused movie or show, Phase 3 (DECISIONS.md, 2026-11-19) | Nothing | Erase | Nothing |
+| **X (west)** | **Media Quick View** of the focused film or show (F-P3); nothing where no film or show has focus | Nothing; during the right stick's scenes, nothing | Erase | Closes Quick View |
 | Y (north) | **Sidebar and back** to the exact item left (F-P2) | The player's lists (Menu) | Space | Nothing |
-| Start / Options / Menu | Sources (Menu) | The player's lists | Done | Nothing |
+| Start / Options / Menu | Sources (Menu). A **remote's or keyboard's** Menu on a focused film or show opens its Quick View instead (F-P3); a controller's Start always opens Sources | The player's lists | Done | Closes Quick View |
 | View / Create / Select | Fullscreen | Fullscreen | Nothing | Nothing |
 | LB / RB | Previous / next destination | Previous / next item | Cursor back / forward | Nothing |
 | LT / RT | **LT hides or shows the hints** (B-055); **RT closes the mini-player** while it is up (B-052), else nothing | Slower / faster | Shift / symbols | Nothing |
 | D-pad, left stick | Move focus | Up/down: lists; left/right: seek | Choose a key | Move focus |
-| Right stick | Nothing (**reserved** for Trickplay, B-029, Phase 3) | Nothing (reserved, B-029) | Nothing | Nothing |
+| Right stick | Nothing | **Scenes** (B-029): left/right past a dead zone moves through the version's previews, a picture a step (10 s a step where it has none), faster held and further pushed; **A goes there, B stays**; left/right then fine-tune; idle for 8 s or the controller lost, it ends without seeking | Nothing | Nothing |
 
 **Conflicts checked:**
 - **Text input:** no browsing or player meaning reaches a focused field; the keyboard is its own context.
@@ -148,10 +148,11 @@ What each button means in each context. A button gets a meaning only where one i
 - **The mini-player (B-052):** while it is up and nothing is over it, B waits for its release (a short B is Back, a held one closes the player, never both), and RT closes it. View stays fullscreen (the owner's choice). A remote's Back held, and its Stop key, close it too.
 - **Held buttons:** directions repeat; on the Reflux keyboard so do Erase (X) and the cursor (LB/RB) (B-054). A, B and the rest never repeat on the desktop; Android repeats held keys itself.
 - **Arrival focus (B-053):** a page opened from an item (Details) arrives on its main action (Play, Resume, Play episode; the first action beside it where nothing can play) under directional input or on a television, never for a pointer or a finger, and never playing by itself.
-- **Phase 3:**
-  - X is held for Quick View, and the right stick for Trickplay.
-  - Quick View's Menu/Options trigger on a focused item is to be reconciled with Menu opening Sources, in Phase 3.
-  - Long press of OK/Select, right-click and touch long-press on a media card are kept free for Quick View.
+- **Phase 3 (implemented):**
+  - **Quick View (F-P3)** opens from a focused film or show's card with X, a remote's or keyboard's Menu, a pointer's right-click, or a long touch. It opens on Play (or Resume), and Back, X, Menu or a click outside closes it, focus returning to the card. With nothing to show (a setting, a button) X and Menu do what they did: nothing, and Sources.
+  - **Menu and Sources, reconciled:** a controller's Start is never a context key, so Start always opens Sources; a remote has no Start, and its Menu on a card is the card's context. Sources stays reachable from a remote through the navigation and from Menu anywhere else.
+  - **Long press of OK** is not a Quick View trigger: Reflux acts on OK when it is pressed (the interaction contract, B-025), so a long press would first open the card. A remote's Menu is its way in.
+  - **The right stick (B-029)** has a meaning only in the full player. A scene navigation never moves playback until A; the D-pad's seeking and the player's other buttons are unchanged outside it.
 
 ## Haptics (F-001, F-002)
 

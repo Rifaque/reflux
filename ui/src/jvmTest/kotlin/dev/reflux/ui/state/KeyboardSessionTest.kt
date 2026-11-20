@@ -122,8 +122,8 @@ class KeyboardSessionTest {
         assertEquals(KeyboardKey.Type("g"), session.selected)
         session.handle(SemanticAction.NAVIGATE_DOWN)
         session.handle(SemanticAction.NAVIGATE_DOWN)
-        // The bottom row's keys are wider: below "b" is the space, which spans the middle.
-        assertEquals(KeyboardKey.Space, session.selected)
+        // The bottom row's keys are wider (F-P4's grid): below "b" is the cursor-back key, nearest in x.
+        assertEquals(KeyboardKey.CursorBack, session.selected)
         assertEquals(KeyboardSession.Outcome.EDGE, session.handle(SemanticAction.NAVIGATE_DOWN), "nothing below the last row")
         session.handle(SemanticAction.NAVIGATE_UP)
         session.handle(SemanticAction.NAVIGATE_UP)
@@ -131,8 +131,10 @@ class KeyboardSessionTest {
         session.handle(SemanticAction.NAVIGATE_UP)
         assertEquals(0, session.row)
         assertEquals(KeyboardSession.Outcome.EDGE, session.handle(SemanticAction.NAVIGATE_UP))
-        repeat(20) { session.handle(SemanticAction.NAVIGATE_LEFT) }
-        assertEquals(0, session.column, "left stops at the row's start rather than wrapping into another row")
+        // F-P4 §4.4 (owner-approved): left and right wrap within the row, the action column its last stop.
+        repeat(5) { session.handle(SemanticAction.NAVIGATE_LEFT) }
+        assertEquals(0, session.row, "wrapping stays in the row")
+        assertEquals(KeyboardKey.Erase, KeyboardSession(Field().request(InputKind.SEARCH)).let { s -> s.handle(SemanticAction.NAVIGATE_UP); s.handle(SemanticAction.NAVIGATE_LEFT); s.selected })
     }
 
     @Test
@@ -163,8 +165,9 @@ class KeyboardSessionTest {
         session.handle(SemanticAction.TEXT_SYMBOLS)
         assertEquals(KeyboardPage.LETTERS, session.page)
         assertEquals(KeyboardSession.Outcome.DONE, session.handle(SemanticAction.TEXT_DONE))
-        val last = session.rows.last()
-        session.choose(session.rows.lastIndex, last.indexOf(KeyboardKey.Done))
+        // Done is in the action column (F-P4 §4.1).
+        session.choose(KeyboardKey.Done)
+        assertEquals(KeyboardKey.Done, session.selected)
         assertEquals(KeyboardSession.Outcome.DONE, session.press(session.selected))
     }
 

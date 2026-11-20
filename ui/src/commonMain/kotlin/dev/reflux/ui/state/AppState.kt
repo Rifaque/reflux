@@ -952,23 +952,103 @@ class AppState(
     var keyboard: KeyboardSession? by mutableStateOf(null)
         private set
 
-    /** Opens the Reflux keyboard for a field. */
+    /** Which of the keyboard's presentations is shown, decided with hysteresis while it is open (F-P4, §7). */
+    private var keyboardArbiter: dev.reflux.core.input.KeyboardModeArbiter? = null
+
+    /** The library's film and show titles, read when a search keyboard opens, for its completions (D2). */
+    private var completionTitles: List<String> = emptyList()
+
+    /**
+     * Opens the Reflux keyboard for a field: as the controller's grid, or, where a pointer is the input in use on a desk
+     * (Windows, Linux), as a keyboard in the system's own layout (F-P4, D3; US with a note where it cannot be read).
+     */
     fun openKeyboard(request: KeyboardRequest) {
-        keyboard = KeyboardSession(request)
+        val desk = platform.deskKeyboard && !platform.television
+        val mode = if (desk && input.modality == InputModality.POINTER) KeyboardMode.POINTER else KeyboardMode.CONTROLLER
+        val system = if (desk) runCatching { platform.keyboardLayout() }.getOrNull() else null
+        keyboard = KeyboardSession(request, mode, system ?: KeyboardLayouts.US, if (desk && system == null) "US layout" else null)
+        keyboardArbiter = dev.reflux.core.input.KeyboardModeArbiter(
+            if (mode == KeyboardMode.POINTER) dev.reflux.core.input.KeyboardModeArbiter.Mode.POINTER else dev.reflux.core.input.KeyboardModeArbiter.Mode.CONTROLLER,
+        )
+        if (request.kind == InputKind.SEARCH) scope.launch {
+            completionTitles = runCatching { read { (movies() + shows()).map { it.item.title }.distinct() } }.getOrDefault(emptyList())
+        }
+    }
+
+    /**
+     * The title completions for [query] (owner's decision D2): titles from the library only, no network and no metadata
+     * request; case- and accent-insensitive; titles starting with it first, then titles with a word starting with it;
+     * at most [limit]. Empty for an empty query.
+     */
+    fun completionsFor(query: String, limit: Int): List<String> {
+        val wanted = dev.reflux.core.identify.TitleText.key(query.trim())
+        if (wanted.isEmpty()) return emptyList()
+        val scored = completionTitles.mapNotNull { title ->
+            val folded = dev.reflux.core.identify.TitleText.key(title)
+            when {
+                folded == wanted -> null
+                folded.startsWith(wanted) -> 0 to title
+                folded.split(' ').any { it.startsWith(wanted) } -> 1 to title
+                else -> null
+            }
+        }
+        return scored.sortedWith(compareBy<Pair<Int, String>> { it.first }.thenBy { it.second.length }.thenBy { it.second }).take(limit).map { it.second }
+    }
+
+    /** A completion chosen by a pointer or a finger: it fills the field; the keyboard stays open (D2). */
+    fun completeOnKeyboard(index: Int) {
+        val session = keyboard ?: return
+        session.complete(index)
+    }
+
+    /** The pointer travelled [dp] over the keyboard: the desk presentation once that is clearly deliberate (§7). */
+    fun keyboardPointerTravel(dp: Float) {
+        val session = keyboard ?: return
+        if (!platform.deskKeyboard || platform.television) return
+        if (keyboardArbiter?.pointerMoved(dp, overKeyboard = true, nowMs = UiClock.nowMs()) == true) session.show(KeyboardMode.POINTER)
+    }
+
+    private fun showKeyboardFor(controller: Boolean) {
+        val session = keyboard ?: return
+        val arbiter = keyboardArbiter ?: return
+        val now = UiClock.nowMs()
+        if (controller) {
+            if (arbiter.controllerPressed(now) || session.mode != KeyboardMode.CONTROLLER) session.show(KeyboardMode.CONTROLLER)
+        } else if (platform.deskKeyboard && !platform.television) {
+            if (arbiter.clicked(now) || session.mode != KeyboardMode.POINTER) session.show(KeyboardMode.POINTER)
+        }
     }
 
     /** Closes the Reflux keyboard, only if it is [field]'s when one is named. The field keeps focus and its text. */
     fun closeKeyboard(field: Any? = null) {
-        if (field == null || keyboard?.request?.field === field) keyboard = null
+        if (field == null || keyboard?.request?.field === field) {
+            keyboard = null
+            keyboardArbiter = null
+        }
     }
 
     /** A key of the Reflux keyboard pressed where it is, by a finger or a pointer. */
     fun pressKey(row: Int, column: Int) {
         val session = keyboard ?: return
         session.choose(row, column)
-        if (session.press(session.selected) == KeyboardSession.Outcome.DONE) {
-            keyboard = null
-            session.request.done()
+        pressKey(session.selected)
+    }
+
+    /**
+     * [key] pressed where it is drawn, by a pointer or a finger: typed as drawn when it was pressed, then the desk
+     * presentation is shown where there is one (§7: the click types the key under it, then the morph runs).
+     */
+    fun pressKey(key: KeyboardKey) {
+        val session = keyboard ?: return
+        val outcome = session.click(key)
+        showKeyboardFor(controller = false)
+        when (outcome) {
+            KeyboardSession.Outcome.DONE -> {
+                keyboard = null
+                session.request.done()
+            }
+            KeyboardSession.Outcome.HIDE -> keyboard = null
+            else -> Unit
         }
     }
 
@@ -980,15 +1060,53 @@ class AppState(
         }
         if (action in DOCKED_ACTIONS && action != SemanticAction.MINI_PLAYER) return docked?.handle(action) ?: true
         if (action == SemanticAction.FULLSCREEN) return true
+        // A controller's or a remote's press shows the controller's grid first (§7), with focus mapped by key (§9); a
+        // press that only revealed the grid's focus types nothing.
+        val wasPointer = session.mode == KeyboardMode.POINTER
+        showKeyboardFor(controller = true)
+        if (wasPointer && action == SemanticAction.SELECT) return true
         when (session.handle(action)) {
             KeyboardSession.Outcome.DONE -> {
                 keyboard = null
                 session.request.done()
             }
+            KeyboardSession.Outcome.HIDE -> keyboard = null
             KeyboardSession.Outcome.EDGE -> if (fromController) haptics.controller(HapticEvent.BOUNDARY)
             KeyboardSession.Outcome.HANDLED -> Unit
         }
         return true
+    }
+
+    /**
+     * A physical keyboard's key while the Reflux keyboard is open, off a television (owner's decision D5): a separate
+     * way to type. It never presses, lights or moves a virtual key, and never changes the presentation; letters and
+     * arrows are the field's. Enter finishes (or chooses the completion it is on), Escape closes (or leaves the
+     * completions), and Tab moves along the completions.
+     */
+    private fun physicalKeyOnKeyboard(session: KeyboardSession, key: Key): Boolean {
+        val at = session.completion
+        return when (key) {
+            Key.TAB -> if (at == null) session.enterCompletions(0) else session.enterCompletions((at + 1) % session.completions.size.coerceAtLeast(1))
+            Key.ARROW_LEFT -> at != null && session.enterCompletions((at - 1).coerceAtLeast(0))
+            Key.ARROW_RIGHT -> at != null && session.enterCompletions(at + 1)
+            Key.ARROW_UP, Key.ARROW_DOWN -> at != null && true.also { session.leaveCompletions() }
+            Key.ENTER -> {
+                if (at != null) {
+                    session.complete(at)
+                    session.leaveCompletions()
+                } else {
+                    keyboard = null
+                    session.request.done()
+                }
+                true
+            }
+            Key.ESCAPE -> {
+                if (at != null) session.leaveCompletions() else keyboard = null
+                true
+            }
+            // Media keys still reach what is playing beside the keyboard.
+            else -> InputMapping.map(key, InputContext.TEXT_ENTRY)?.takeIf { it in DOCKED_ACTIONS }?.let(::dispatch) ?: false
+        }
     }
 
     /** Toolkit focus, as far as semantic actions need it. Installed by the root composable. */
@@ -1021,7 +1139,12 @@ class AppState(
         onSignal(InputSignal.KeyPress(key))
         // The Reflux keyboard first (B-025's priority: the active text editor): its arrows, OK, and Back. Every other
         // key is the field's, which still has focus beneath it: a physical keyboard types straight into it.
-        if (keyboard != null) return InputMapping.map(key, InputContext.TEXT_ENTRY)?.let(::dispatch) ?: false
+        keyboard?.let { session ->
+            // A television's keys are its remote's, which type on the Reflux keyboard; elsewhere they are a physical
+            // keyboard's, a separate way to type (D5).
+            return if (platform.television) InputMapping.map(key, InputContext.TEXT_ENTRY)?.let(::dispatch) ?: false
+            else physicalKeyOnKeyboard(session, key)
+        }
         // With what is playing in the mini-player, the viewer is browsing: keys are the page's.
         val browsing = watching == null
         // The player is operated by its keys. Tab would only walk the page behind the video, which nobody can see.
@@ -1120,6 +1243,45 @@ class AppState(
         }
     }
 
+    /**
+     * The right stick of a controller (B-029): its horizontal axis while it moves or is held, or null when the
+     * controller holding it is gone. In the full player it moves through the scenes; it has no browsing meaning.
+     */
+    fun onRightStick(value: Float?, family: ControllerFamily) {
+        val session = playback
+        if (value == null) return run { session?.stickLost() }
+        onSignal(InputSignal.GamepadAxis(kotlin.math.abs(value), family))
+        val playing = watching
+        if (playing == null || keyboard != null || profileGate != null) return run { session?.stickLost() }
+        playing.rightStick(value)
+    }
+
+    // Media Quick View (F-P3) ---------------------------------------------------------------------
+
+    /** The film or show whose Quick View is open, over the page; null while none is. */
+    var quickView: MediaId? by mutableStateOf(null)
+        private set
+
+    /** The focused control's contextual action, wired by the shell's composition (F-P3); false when it has none. */
+    internal var focusedContext: (() -> Boolean)? = null
+
+    /**
+     * Opens Quick View for [itemId] (a film or a show) over the page: from a card's X, right-click, long touch, or a
+     * remote's Menu. Not while something else covers the page, and not from inside the player.
+     */
+    fun openQuickView(itemId: MediaId) {
+        if (watching != null || keyboard != null || profileGate != null || folderPicker != null || offlineOpen) return
+        quickView = itemId
+    }
+
+    /** Closes Quick View; focus goes back to the card that opened it. */
+    fun closeQuickView() {
+        quickView = null
+    }
+
+    /** Preview sheets already fetched, kept across playbacks (B-030). */
+    val trickplaySheets = TrickplaySheets()
+
     /** Performs a semantic action, whichever input device expressed it. */
     fun dispatch(action: SemanticAction): Boolean {
         // The Reflux keyboard is above everything while it is open, the question of who is watching included.
@@ -1128,6 +1290,16 @@ class AppState(
         profileGate?.let { gate ->
             return when (action) {
                 SemanticAction.BACK -> profileGateBack(gate)
+                SemanticAction.NAVIGATE_UP, SemanticAction.NAVIGATE_DOWN, SemanticAction.NAVIGATE_LEFT, SemanticAction.NAVIGATE_RIGHT ->
+                    (moveFocus?.invoke(action) ?: false).also { moved -> feelMove(moved) }
+                SemanticAction.SELECT -> (activateFocused?.invoke() ?: false).also(::feelChoice)
+                else -> true
+            }
+        }
+        // Quick View is in front of the page (F-P3): Back, X, or Menu closes it; the arrows and Select are its own.
+        quickView?.let {
+            return when (action) {
+                SemanticAction.BACK, SemanticAction.CONTEXT, SemanticAction.MENU -> true.also { closeQuickView() }
                 SemanticAction.NAVIGATE_UP, SemanticAction.NAVIGATE_DOWN, SemanticAction.NAVIGATE_LEFT, SemanticAction.NAVIGATE_RIGHT ->
                     (moveFocus?.invoke(action) ?: false).also { moved -> feelMove(moved) }
                 SemanticAction.SELECT -> (activateFocused?.invoke() ?: false).also(::feelChoice)
@@ -1167,10 +1339,13 @@ class AppState(
                 platform.television && navigator.current is Destination.Section && focusNavigation?.invoke() == true -> true
                 else -> navigator.back()
             }
+            // A remote's Menu on a focused film or show is its Quick View (F-P3); anywhere else it opens Sources, as
+            // a controller's Start always does (Start is not a context key: CLAUDE.md, "Controller mapping").
             SemanticAction.MENU -> {
-                if (folderPicker == null && !offlineOpen) toggleSources()
+                if (folderPicker == null && !offlineOpen && (fromController || focusedContext?.invoke() != true)) toggleSources()
                 true
             }
+            SemanticAction.CONTEXT -> folderPicker == null && !offlineOpen && focusedContext?.invoke() == true
             SemanticAction.TOGGLE_HINTS -> {
                 toggleHints()
                 true

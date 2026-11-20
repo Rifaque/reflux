@@ -124,7 +124,7 @@ internal class JoystickState(private val id: String, private val layout: Joystic
     fun snapshot(): GamepadState {
         val buttons = down + tapped + layout.axisButtons(axes)
         tapped.clear()
-        return GamepadState(id, layout.family, buttons, axes[JoystickLayout.ABS_X], axes[JoystickLayout.ABS_Y])
+        return GamepadState(id, layout.family, buttons, axes[JoystickLayout.ABS_X], axes[JoystickLayout.ABS_Y], layout.rightStickX(axes))
     }
 }
 
@@ -184,6 +184,12 @@ internal class JoystickLayout(val family: ControllerFamily, private val keys: Li
     }
 
     /** Whether Z and RZ are triggers. On pads without stick-click and trigger buttons they are the right stick. */
+    /**
+     * The right stick's horizontal axis (B-029): `ABS_RX` where the triggers are `ABS_Z` and `ABS_RZ` (xpad, and
+     * hid-playstation), `ABS_Z` on older layouts that have no analogue triggers there (hid-sony's DualShock 4).
+     */
+    fun rightStickX(axes: FloatArray): Float = if (analogTriggers) axes[ABS_RX] else if (ABS_Z in absolutes) axes[ABS_Z] else 0f
+
     private val analogTriggers = BTN_SOUTH in keys && ABS_RX in absolutes && ABS_Z in absolutes && ABS_RZ in absolutes
 
     companion object {

@@ -13,6 +13,7 @@ import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
@@ -56,6 +57,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.isSecondaryPressed
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.drawOutline
@@ -101,6 +103,15 @@ import dev.reflux.ui.theme.tween
 class FocusedControl {
     internal var activate: (() -> Unit)? = null
 
+    /**
+     * The focused control's contextual action, where it has one (F-P3: Media Quick View on a film or show's card), and
+     * what it is about. Observable, so hints can offer it only while it is there.
+     */
+    internal var context: (() -> Unit)? by androidx.compose.runtime.mutableStateOf(null)
+
+    /** Performs the focused control's contextual action. Returns false when the focused control has none. */
+    fun context(): Boolean = context?.let { it(); true } ?: false
+
     /** The focused control itself, so focus can be put back on it (after a visit to the navigation rail). */
     internal var requester: FocusRequester? = null
 
@@ -109,6 +120,9 @@ class FocusedControl {
 }
 
 val LocalFocusedControl = staticCompositionLocalOf<FocusedControl?> { null }
+
+/** Opens Media Quick View for a film or show (F-P3); null where there is none to open (a preview, a test of a card alone). */
+val LocalQuickView = staticCompositionLocalOf<((dev.reflux.core.model.MediaId) -> Unit)?> { null }
 
 /**
  * Makes a surface solid to the pointer: taps, hovers, and scrolls on it stop here instead of reaching what
@@ -135,6 +149,11 @@ fun Pressable(
     actionLabel: String? = null,
     /** For a caller that moves something of its own with the lift (a card's title beneath it: B-009). */
     interactionSource: MutableInteractionSource? = null,
+    /**
+     * Its contextual action (F-P3): a pointer's right-click, a long touch, and, while it has focus, a controller's X or
+     * a remote's Menu ([FocusedControl.context]). Null where it has none.
+     */
+    onContext: (() -> Unit)? = null,
     content: @Composable BoxScope.(active: Boolean) -> Unit,
 ) {
     val layout = LocalLayout.current
@@ -149,15 +168,19 @@ fun Pressable(
     val active = enabled && ((hovered && layout.hoverShows) || ring)
     val focusedControl = LocalFocusedControl.current
     val click by rememberUpdatedState(onClick)
+    val contextual by rememberUpdatedState(onContext)
     val self = remember { FocusRequester() }
     if (focusedControl != null && focused && enabled) {
-        DisposableEffect(focusedControl) {
+        DisposableEffect(focusedControl, onContext != null) {
             val action = { click() }
+            val menu: (() -> Unit)? = if (onContext == null) null else ({ contextual?.invoke(); Unit })
             focusedControl.activate = action
             focusedControl.requester = self
+            focusedControl.context = menu
             onDispose {
                 if (focusedControl.activate === action) focusedControl.activate = null
                 if (focusedControl.requester === self) focusedControl.requester = null
+                if (focusedControl.context === menu) focusedControl.context = null
             }
         }
     }
@@ -181,7 +204,32 @@ fun Pressable(
                 if (press > 0f) drawRect(RefluxColors.scrim.copy(alpha = PRESSED_DIM * press))
             }
             .focusRequester(self)
-            .clickable(interactionSource = interaction, indication = null, enabled = enabled, onClickLabel = actionLabel, role = role, onClick = onClick),
+            .then(
+                if (onContext == null || !enabled) Modifier else Modifier.pointerInput(Unit) {
+                    // A right-click opens it at once, and goes no further.
+                    awaitPointerEventScope {
+                        while (true) {
+                            val event = awaitPointerEvent(PointerEventPass.Initial)
+                            if (event.type == PointerEventType.Press && event.buttons.isSecondaryPressed) {
+                                event.changes.forEach { it.consume() }
+                                contextual?.invoke()
+                            }
+                        }
+                    }
+                },
+            )
+            .then(
+                if (onContext == null) {
+                    Modifier.clickable(interactionSource = interaction, indication = null, enabled = enabled, onClickLabel = actionLabel, role = role, onClick = onClick)
+                } else {
+                    // A long touch is the contextual action, named for a screen reader as one.
+                    @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+                    Modifier.combinedClickable(
+                        interactionSource = interaction, indication = null, enabled = enabled, onClickLabel = actionLabel, role = role,
+                        onLongClickLabel = "Quick view", onLongClick = { contextual?.invoke() }, onClick = onClick,
+                    )
+                },
+            ),
         content = { content(active) },
     )
 }
@@ -518,6 +566,8 @@ fun Slider(
     color: Color = Color.White,
     valueText: String? = null,
     style: SliderStyle = SliderStyle.Default,
+    /** Where a pointer hovers along it (0 to 1), and null once it leaves; for a preview of that place (B-030). */
+    onHover: ((Float?) -> Unit)? = null,
 ) {
     // A finger gets the height of a target; what is drawn stays a line through its middle.
     val touch = LocalLayout.current.modality == InputModality.TOUCH
@@ -529,6 +579,7 @@ fun Slider(
     val thumb by animateDpAsState(if (active) style.thumbActiveDp.dp else if (enabled) style.thumbDp.dp else 0.dp, Motion.focusChange.tween())
     val change by rememberUpdatedState(onChange)
     val finished by rememberUpdatedState(onChangeFinished)
+    val hover by rememberUpdatedState(onHover)
     Canvas(
         modifier.height(if (touch) 48.dp else style.hitDp.dp)
             .semantics {
@@ -543,7 +594,26 @@ fun Slider(
                     true
                 } else disabled()
             }
-            .hoverable(interaction, enabled).pointerInput(enabled) {
+            .hoverable(interaction, enabled)
+            .then(
+                if (onHover == null) Modifier else Modifier.pointerInput(enabled) {
+                    awaitPointerEventScope {
+                        while (true) {
+                            val event = awaitPointerEvent(androidx.compose.ui.input.pointer.PointerEventPass.Initial)
+                            val change = event.changes.firstOrNull() ?: continue
+                            // A pointer only: a finger has no hover, and its drag is the thumb's own preview.
+                            if (change.type != androidx.compose.ui.input.pointer.PointerType.Mouse) continue
+                            when (event.type) {
+                                androidx.compose.ui.input.pointer.PointerEventType.Exit -> hover?.invoke(null)
+                                androidx.compose.ui.input.pointer.PointerEventType.Move,
+                                androidx.compose.ui.input.pointer.PointerEventType.Enter ->
+                                    if (enabled) hover?.invoke((change.position.x / size.width).coerceIn(0f, 1f))
+                            }
+                        }
+                    }
+                },
+            )
+            .pointerInput(enabled) {
             if (!enabled) return@pointerInput
             awaitEachGesture {
                 val down = awaitFirstDown()

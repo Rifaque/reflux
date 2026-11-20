@@ -106,6 +106,10 @@ internal class JellyfinApi(
     suspend fun get(path: String, params: Map<String, String> = emptyMap()): JsonElement =
         parse(send { base -> HttpRequest(url(base, path, params), headers = headers()) })
 
+    /** The raw body of a GET (an image), or an exception as [get] throws. */
+    suspend fun bytes(path: String, params: Map<String, String> = emptyMap()): ByteArray =
+        send { base -> HttpRequest(url(base, path, params), headers = mapOf("Authorization" to authorization, "Accept" to "image/*")) }.body
+
     /**
      * As [get], for an availability check: the more preferred addresses are tried first again from time to time
      * ([EndpointSelector.probeOrder]), so that one that answers again is used again.

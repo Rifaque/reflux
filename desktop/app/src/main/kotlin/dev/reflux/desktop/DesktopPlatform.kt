@@ -44,6 +44,11 @@ internal class DesktopPlatform(private val environment: DesktopEnvironment) : Pl
     /** The main window, once it exists; dialogs are opened relative to it. */
     var window: Window? = null
 
+    /** Windows and Linux offer the Reflux keyboard's desk picture to a pointer, in the system's own layout (F-P4, D3). */
+    override val deskKeyboard: Boolean get() = true
+
+    override fun keyboardLayout(): dev.reflux.ui.state.SystemKeymap? = SystemKeyboardLayout.read()
+
     override val artwork: ArtworkLoader = DesktopArtworkLoader(environment.artwork, environment.registry::resolve)
 
     /** As observed now: the display the window is on, and what the engine was seen to decode ([DisplayWatcher]). */

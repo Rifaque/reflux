@@ -29,6 +29,8 @@ object InputMapping {
                 // Y goes to the navigation and back (F-P2); Start, like a remote's Menu, opens Sources.
                 GamepadButton.FACE_NORTH -> SemanticAction.TOGGLE_NAVIGATION
                 GamepadButton.START -> SemanticAction.MENU
+                // X is the focused item's contextual action: Media Quick View (F-P3, the owner's decision of 2026-11-19).
+                GamepadButton.FACE_WEST -> SemanticAction.CONTEXT
                 // LT hides the hints and brings them back (B-055); RT is the mini-player's close (AppState, B-052).
                 GamepadButton.TRIGGER_LEFT -> SemanticAction.TOGGLE_HINTS
                 // The bumpers step through the global destinations, as on a console.

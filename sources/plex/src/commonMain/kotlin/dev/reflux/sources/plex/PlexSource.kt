@@ -59,7 +59,7 @@ class PlexSource(
     http: HttpFetcher,
     displayName: String = "Plex",
     deviceName: String = "Reflux",
-) : CatalogSource, SectionedSource, WatchStateSyncSource, DownloadableSource {
+) : CatalogSource, SectionedSource, WatchStateSyncSource, DownloadableSource, dev.reflux.core.playback.TrickplaySource {
     private val api = PlexApi(credentials.serverUrl, http, credentials.deviceId, deviceName, credentials.token)
 
     override val descriptor: SourceDescriptor = SourceDescriptor(
@@ -376,10 +376,53 @@ class PlexSource(
         api.call(":/progress", mapOf("key" to key, "identifier" to LIBRARY_IDENTIFIER, "time" to positionMs.toString(), "state" to state))
     }
 
+    /** The last version's preview index, read whole once (a Plex BIF is one file); one at a time, for the one playing. */
+    private var index: Pair<String, dev.reflux.core.playback.BifIndex.Bif?>? = null
+
+    /**
+     * The previews Plex made for the version at [path] (B-030): its part's index (`/library/parts/{id}/indexes/sd`, a
+     * BIF), which exists only where the server's owner turned on video preview thumbnails and the server generated
+     * them. None otherwise; an index over [MAX_INDEX_BYTES] is not read.
+     */
+    override suspend fun trickplay(path: String): dev.reflux.core.playback.TrickplayManifest? {
+        val bif = bif(path) ?: return null
+        val (width, height) = dev.reflux.core.playback.BifIndex.jpegSize(bif.jpeg(0)) ?: return null
+        return dev.reflux.core.playback.TrickplayManifest.of("plex/${descriptor.id.value}/$path", bif.intervalMs, bif.count, width, height)
+    }
+
+    override suspend fun trickplaySheet(path: String, manifest: dev.reflux.core.playback.TrickplayManifest, sheet: Int): ByteArray? {
+        val bif = bif(path) ?: return null
+        return if (sheet in 0 until bif.count) bif.jpeg(sheet) else null
+    }
+
+    private suspend fun bif(path: String): dev.reflux.core.playback.BifIndex.Bif? {
+        index?.takeIf { it.first == path }?.let { return it.second }
+        val part = partId(path) ?: return null
+        val read = try {
+            api.bytes("library/parts/$part/indexes/sd", limit = MAX_INDEX_BYTES)?.let(dev.reflux.core.playback.BifIndex::read)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: PlexException) {
+            // The server answered that there is no index: remembered. Not reachable: asked again next time.
+            if (e.status == null) return null
+            null
+        }
+        index = path to read
+        return read
+    }
+
+    /** The part a version's path names: `items/{ratingKey}/library/parts/{part}/...`. */
+    private fun partId(path: String): String? = path.split('/').let { segments ->
+        if (segments.size >= 5 && segments[0] == "items" && segments[2] == "library" && segments[3] == "parts") segments[4] else null
+    }
+
     private fun ratingKey(path: String): String? = path.takeIf { it.startsWith("items/") }?.split('/')?.getOrNull(1)
 
     companion object {
         const val TYPE: String = "plex"
+
+        /** The largest preview index read whole (a two-hour film at Plex's default 2-second interval is far smaller). */
+        private const val MAX_INDEX_BYTES = 64 * 1024 * 1024
         private const val MOVIE = 1
         private const val SHOW = 2
         private const val SEASON = 3

@@ -70,6 +70,12 @@ data class UpNext(val entry: LibraryEntry, val totalMs: Long, val remainingMs: L
 enum class PlayerMenu(val title: String) { EPISODES("Episodes"), CHAPTERS("Chapters"), AUDIO("Audio"), SUBTITLES("Subtitles"), INFO("Info"), SPEED("Speed") }
 
 /** One line of a [PlayerMenu]; [selected] marks what is in effect now. */
+/**
+ * The right stick's scene navigation while it is under way (B-029): where playback was when it began ([originMs]) and
+ * the scene chosen now ([targetMs]). Playback is not moved until it is committed; cancelling leaves it where it is.
+ */
+data class SceneScrub(val originMs: Long, val targetMs: Long)
+
 data class MenuOption(val label: String, val detail: String? = null, val selected: Boolean = false)
 
 /**
@@ -279,6 +285,8 @@ class PlaybackSession internal constructor(
             replanned = false
             chosenAudio = null
         }
+        endScrub()
+        if (current?.version?.version?.location != plan.version.version.location || previews == null) startPreviews(plan)
         current = plan
         this.itemId = itemId
         entry = details.entry
@@ -486,6 +494,20 @@ class PlaybackSession internal constructor(
     /** Handles a semantic action while the player is open. Every action counts as "still watching". */
     fun handle(action: SemanticAction): Boolean {
         touch()
+        // The right stick's scene navigation takes the buttons while it is under way (B-029): A commits, B cancels,
+        // left and right fine-tune by one scene; nothing else acts until it ends.
+        if (sceneScrub != null) {
+            keepScrubAlive()
+            when (action) {
+                SemanticAction.SELECT, SemanticAction.PLAY_PAUSE -> commitScrub()
+                SemanticAction.BACK -> cancelScrub()
+                SemanticAction.NAVIGATE_LEFT, SemanticAction.SEEK_BACKWARD -> scrubBy(-1)
+                SemanticAction.NAVIGATE_RIGHT, SemanticAction.SEEK_FORWARD -> scrubBy(1)
+                SemanticAction.STOP -> { cancelScrub(); close() }
+                else -> Unit
+            }
+            return true
+        }
         val open = menu
         val prompt = upNext
         when {
@@ -735,6 +757,110 @@ class PlaybackSession internal constructor(
         this.menu = null
     }
 
+    // Scene previews and the right stick (B-030, B-029) ------------------------------------------
+
+    /** The version's scene previews, for the timeline and the right stick; replaced with each playback loaded. */
+    var previews: TrickplayPreviews? by mutableStateOf(null)
+        private set
+
+    /** The right stick's scene navigation, while it is under way. */
+    var sceneScrub: SceneScrub? by mutableStateOf(null)
+        private set
+
+    private val stepper = dev.reflux.core.input.StickStepper()
+    private var stickValue = 0f
+    private var stickTicker: Job? = null
+
+    private fun startPreviews(plan: PlaybackPlan) {
+        previews?.stop()
+        previews = TrickplayPreviews(scope, app.background, plan.source, plan.version.version.location.path, app.trickplaySheets).also { it.start() }
+    }
+
+    /**
+     * The right stick of the controller in hand, at [value] (−1 to 1): pushed past its dead zone in the full player, it
+     * moves through the scenes, a preview at a time where the version has previews ([TrickplayPreviews]), and
+     * [FALLBACK_SCENE_MS] at a time where it has none. A commits; B cancels; nothing moves playback before that.
+     */
+    internal fun rightStick(value: Float) {
+        if (closed || menu != null || error != null || presentation != PlayerPresentation.FULL) return
+        stickValue = value
+        // The push itself steps at once, so a flick released before the next look is still one scene; holding is timed below.
+        val pushedAt = UiClock.nowMs()
+        stepper.update(value, pushedAt).let { steps -> if (steps != 0) scrubBy(steps) }
+        if (stickTicker == null && stepper.engaged) {
+            // Only while the stick is held: a released stick leaves nothing running but the scrub's own idle timer.
+            stickTicker = scope.launch {
+                try {
+                    while (stepper.engaged) {
+                        delay(STICK_TICK_MS)
+                        val now = UiClock.nowMs()
+                        val steps = stepper.update(stickValue, now)
+                        if (steps != 0) scrubBy(steps)
+                    }
+                } finally {
+                    stickTicker = null
+                }
+            }
+        }
+    }
+
+    /** Ends a scene navigation left alone for [SCRUB_IDLE_MS], without seeking: nothing is committed by accident. */
+    private var scrubIdle: Job? = null
+
+    private fun keepScrubAlive() {
+        scrubIdle?.cancel()
+        scrubIdle = scope.launch {
+            delay(SCRUB_IDLE_MS)
+            cancelScrub()
+        }
+    }
+
+    /** The family of the controller in hand, for naming its buttons; Xbox's names where none has been used. */
+    internal fun controllerFamily(): dev.reflux.core.input.ControllerFamily =
+        app.input.controllerFamily ?: dev.reflux.core.input.ControllerFamily.XBOX
+
+    /** The controller holding the stick went away, or Reflux was left: the scrub ends without seeking. */
+    internal fun stickLost() {
+        stepper.reset()
+        stickValue = 0f
+        if (sceneScrub != null) cancelScrub()
+    }
+
+    private fun scrubBy(steps: Int) {
+        val state = player.state.value
+        val duration = state.durationMs?.takeIf { it > 0 } ?: return
+        if (state.seekable == false) return seekRefused(state.positionMs)
+        val manifest = previews?.manifest
+        val from = sceneScrub?.targetMs ?: state.positionMs
+        val target = if (manifest != null) manifest.frame(manifest.frameAt(from).index + steps).timeMs else from + steps * FALLBACK_SCENE_MS
+        val clamped = target.coerceIn(0, duration)
+        sceneScrub = SceneScrub(sceneScrub?.originMs ?: state.positionMs, clamped)
+        keepScrubAlive()
+        previews?.want(clamped)
+        touch()
+    }
+
+    /** Seeks to the scene chosen with the right stick (A). */
+    fun commitScrub() {
+        val scrub = sceneScrub ?: return
+        endScrub()
+        seekTo(scrub.targetMs)
+    }
+
+    /** Leaves the scene navigation without seeking (B): playback goes on from where it is. */
+    fun cancelScrub() {
+        if (sceneScrub == null) return
+        endScrub()
+        touch()
+    }
+
+    private fun endScrub() {
+        scrubIdle?.cancel()
+        scrubIdle = null
+        sceneScrub = null
+        previews?.want(null)
+    }
+
     // Direct controls ----------------------------------------------------------------------------
 
     fun seekTo(positionMs: Long) {
@@ -818,6 +944,8 @@ class PlaybackSession internal constructor(
      */
     fun close(): Job {
         closing?.let { return it }
+        endScrub()
+        previews?.stop()
         countdown?.cancel()
         cancelSeekHold()
         rememberVolume()
@@ -991,7 +1119,16 @@ class PlaybackSession internal constructor(
         val neighbours: Pair<LibraryEntry?, LibraryEntry?>,
     )
 
-    private companion object {
+    internal companion object {
+        /** One scene where a version has no previews: the right stick still moves, by this much a step. */
+        const val FALLBACK_SCENE_MS = 10_000L
+
+        /** A scene navigation left alone this long ends without seeking. */
+        const val SCRUB_IDLE_MS = 8_000L
+
+        /** How often a held stick is looked at. */
+        const val STICK_TICK_MS = 16L
+
         const val COUNTDOWN_TICK_MS = 250L
         /** How long the viewer is left waiting, to start or for data, before the wait is a stated failure. */
         const val PATIENCE_MS = 30_000L
