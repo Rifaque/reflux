@@ -5,8 +5,9 @@
 ## Where the work stands
 
 - **Beta 2** is planned in three phases: scope, phase and work order, exit criteria, the owner's defaults, the verification matrix, and the gate are in [docs/planning/BETA-2.md](docs/planning/BETA-2.md). Phase 1 (accepted) is in [docs/planning/PHASE-1-PLAN.md](docs/planning/PHASE-1-PLAN.md); Phase 2 (accepted and closed by the owner, 2026-11-20: its audit, the interaction contract, the plan, the closure) in [docs/planning/PHASE-2-PLAN.md](docs/planning/PHASE-2-PLAN.md).
-- **Phase 3** (the owner's work order, 2026-11-20) is implemented and through its final validation, and awaits the owner's acceptance.
-  - Its state: BETA-2.md (Phase 3) and VERIFICATION.md ("Phase 3", and "Phase 3: final validation and closure").
+- **Phase 3** (the owner's work order, 2026-11-20) is **accepted and formally closed by the owner** (2026-11-20).
+  - Its closure record: BETA-2.md, "Phase 3 closure"; the runs: VERIFICATION.md's three "Phase 3" sections.
+  - **Hard freeze:** Beta 2's fix scope is closed. Anything found from now on goes to the tracker's Beta 3 backlog, unless the owner authorises a critical Beta 2 blocker.
   - B-027, B-038 and B-040 are V1.1 candidates, researched in [docs/planning/V1.1-LIBRARY-RESEARCH.md](docs/planning/V1.1-LIBRARY-RESEARCH.md), not to be implemented without the owner.
   - F-003 (video haptics) is deferred by the owner with no release assigned.
 - **Phase 4's brief** (documentation consolidation, the website, Beta 2's contents, the roadmap, the roadmap easter egg) is [docs/planning/PHASE-4-HANDOFF.md](docs/planning/PHASE-4-HANDOFF.md). Nothing of it is started without the owner.

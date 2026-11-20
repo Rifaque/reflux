@@ -4,10 +4,12 @@ What Phase 4 is for, as the owner set it at Phase 3's closure (2026-11-20), and 
 
 ## Where Phase 3 left things
 
-- **Phase 3 is closed:**
-  - its scope, results and remaining limitations: [BETA-2.md](BETA-2.md), Phase 3's state;
-  - each issue: [BETA-BUG-TRACKER.md](BETA-BUG-TRACKER.md);
-  - the runs: VERIFICATION.md, "Phase 3" and "Phase 3: final validation and closure".
+- **Phase 3 is accepted and formally closed by the owner (2026-11-20).**
+  - Its closure record (commits, results, accepted limitations, deferred and carried items): [BETA-2.md, "Phase 3 closure"](BETA-2.md#phase-3-closure-2026-11-20-accepted-and-formally-closed-by-the-owner).
+  - Each issue: [BETA-BUG-TRACKER.md](BETA-BUG-TRACKER.md).
+  - The runs: VERIFICATION.md's three "Phase 3" sections.
+- **The latest test result is not wholly green:** 941 tests in the UI and core run, with 2 timing-sensitive `SourcesUiTest` failures (B-074). A full `./gradlew check` belongs at the start of Phase 4's release verification.
+- **Beta 2's fix scope is frozen.** Findings go to the tracker's [Beta 3 backlog](BETA-BUG-TRACKER.md#beta-3-backlog-from-phase-3s-closure-2026-11-20) unless the owner authorises a critical Beta 2 blocker. Phase 4 does not fix bugs by default.
 - **Beta 2 is not cut.** The gate in BETA-2.md still needs:
   - the owner's acceptance of Phase 3;
   - hosted CI;
@@ -15,7 +17,9 @@ What Phase 4 is for, as the owner set it at Phase 3's closure (2026-11-20), and 
   - release notes;
   - the release workflow.
 - **Open items carried into Phase 4's planning:**
-  - B-061: a Skia crash after a Direct3D failure, upstream in Skiko, Investigating;
+  - B-061: a Skia crash after a Direct3D failure, upstream in Skiko, Investigating (a Beta 3 candidate);
+  - B-074: two timing-sensitive `SourcesUiTest` cases (Beta 3);
+  - B-063 and B-070's untested parts: physical Linux and the Surface; Steam itself;
   - B-022: Windows start-up, measured, no optimisation justified yet;
   - B-044: a test-clock intermittent, test infrastructure for M12;
   - B-026 and B-015: Not Reproduced;
