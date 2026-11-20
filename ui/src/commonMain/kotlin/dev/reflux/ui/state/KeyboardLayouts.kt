@@ -160,7 +160,8 @@ object KeyboardLayouts {
         val keys = mutableListOf<PlacedKey>()
         rows[0].forEachIndexed { c, k -> keys += PlacedKey(keyOf(0, c, k), c.toFloat(), 0f, 1f) }
         keys += PlacedKey(KeyboardKey.Erase, 13f, 0f, 2f)
-        // Tab's place is left empty: no field asks for one (§5, "hidden otherwise").
+        // Tab, where a physical board has it (the owner's walk, 2026-11-20: an empty place read as a missing key).
+        keys += PlacedKey(KeyboardKey.Tab, 0f, 1f, 1.5f)
         rows[1].forEachIndexed { c, k -> keys += PlacedKey(keyOf(1, c, k), 1.5f + c, 1f, if (c == 12) 1.5f else 1f) }
         keys += PlacedKey(KeyboardKey.Caps, 0f, 2f, 1.75f)
         rows[2].forEachIndexed { c, k -> keys += PlacedKey(keyOf(2, c, k), 1.75f + c, 2f, 1f) }

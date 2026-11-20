@@ -2,6 +2,7 @@ package dev.reflux.ui
 
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -91,6 +92,8 @@ class ProfilesUiTest {
         screen(world, platform) { app ->
             awaitText("Recently Added")
             runOnIdle { app.go(Destination.Profiles) }
+            await("Sam's options") { onAllNodes(androidx.compose.ui.test.hasContentDescription("Manage Sam")).fetchSemanticsNodes().isNotEmpty() }
+            onNode(androidx.compose.ui.test.hasContentDescription("Manage Sam")).performScrollTo().performClick()
             awaitText("Delete Sam…")
             onNodeWithText("Delete Sam…").performScrollTo().performClick()
             onNodeWithText("Delete").performClick()
@@ -112,6 +115,8 @@ class ProfilesUiTest {
         screen(world) { app ->
             awaitText("Recently Added")
             runOnIdle { app.go(Destination.Profiles) }
+            await("Sam's options") { onAllNodes(androidx.compose.ui.test.hasContentDescription("Manage Sam")).fetchSemanticsNodes().isNotEmpty() }
+            onNode(androidx.compose.ui.test.hasContentDescription("Manage Sam")).performScrollTo().performClick()
             awaitText("Delete Sam…")
             onNodeWithText("Delete Sam…").performScrollTo().performClick()
             onNodeWithText("Delete").performClick()
@@ -382,6 +387,49 @@ class ProfilesUiTest {
             await("being told so") { app.notice == "There is nothing to play here yet." }
             assertEquals(listOf<Destination>(Destination.Home), app.navigator.path, "no page of it is opened")
             assertNull(app.playback)
+        }
+    }
+
+    @Test
+    fun eachProfileIsManagedFromItsOwnMenu_theOpenOneRenamedButNeverDeleted() {
+        // The owner's walk (2026-11-20): no list of every profile's Delete; each profile's actions are under its own row.
+        val world = populated()
+        world.library.createProfile("Sam")
+        world.library.createProfile("Alex")
+        screen(world) { app ->
+            awaitText("Recently Added")
+            runOnIdle { app.go(Destination.Profiles) }
+            await("the profiles") { app.profiles.size == 3 }
+            waitForIdle()
+            assertFalse(saysAnywhere("Delete Sam…"), "nothing is deleted from the list itself")
+            assertFalse(saysAnywhere("Delete Alex…"))
+            val main = app.activeProfile!!.name
+            // The open profile: renamed here, its PIN in Settings, and never deleted while open.
+            onNode(androidx.compose.ui.test.hasContentDescription("Manage $main")).performScrollTo().performClick()
+            awaitText("Rename")
+            assertTrue(onAllNodesWithText("switch to another profile first", substring = true).fetchSemanticsNodes().isNotEmpty())
+            assertFalse(saysAnywhere("Delete $main…"))
+            onNodeWithText("Rename").performClick()
+            onNode(hasSetTextAction()).performTextReplacement("Main room")
+            onNodeWithText("Save").performClick()
+            await("renamed") { app.activeProfile?.name == "Main room" }
+            // One panel at a time: opening Alex's closes the open one's.
+            onNode(androidx.compose.ui.test.hasContentDescription("Manage Alex")).performScrollTo().performClick()
+            awaitText("Delete Alex…")
+            assertFalse(saysAnywhere("Rename"))
+            // Back closes the panel before it leaves the page.
+            runOnIdle { app.dispatch(dev.reflux.core.input.SemanticAction.BACK) }
+            await("closed") { !saysAnywhere("Delete Alex…") }
+            assertEquals(Destination.Profiles, app.navigator.current)
+            // Deleting asks first; Keep keeps it.
+            onNode(androidx.compose.ui.test.hasContentDescription("Manage Alex")).performScrollTo().performClick()
+            onNodeWithText("Delete Alex…").performClick()
+            onNodeWithText("Keep").performClick()
+            assertEquals(3, world.library.profiles().size)
+            onNodeWithText("Delete Alex…").performClick()
+            onNodeWithText("Delete").performClick()
+            await("Alex deleted") { world.library.profiles().size == 2 && app.profiles.none { it.name == "Alex" } }
+            await("its panel gone with it") { !saysAnywhere("Delete Alex…") }
         }
     }
 }

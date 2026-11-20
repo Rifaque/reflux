@@ -83,6 +83,8 @@ class InteractionContractTest {
         screen(world, platform) { app ->
             awaitText("Recently Added")
             runOnIdle { app.go(Destination.Profiles) }
+            await("Sam's options") { onAllNodes(androidx.compose.ui.test.hasContentDescription("Manage Sam")).fetchSemanticsNodes().isNotEmpty() }
+            onNode(androidx.compose.ui.test.hasContentDescription("Manage Sam")).performScrollTo().performClick()
             awaitText("Delete Sam…")
             onNodeWithText("Delete Sam…").performScrollTo().performClick()
             onNodeWithText("Delete").performClick()

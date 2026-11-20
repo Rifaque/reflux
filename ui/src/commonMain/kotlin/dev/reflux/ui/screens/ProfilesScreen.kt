@@ -72,9 +72,16 @@ internal fun ProfileMark(profile: Profile?, size: Dp = 40.dp, lit: Boolean = fal
         contentAlignment = Alignment.Center,
     ) {
         if (initial != null) {
+            // Beside the navigation's icons the mark is icon-sized, and so is its letter: about half the circle, never the
+            // body text's size crammed into it (the owner's walk, 2026-11-20).
+            val typography = LocalTypography.current
             Text(
                 initial,
-                style = if (size >= 56.dp) LocalTypography.current.title else LocalTypography.current.bodyStrong,
+                style = when {
+                    size >= 56.dp -> typography.title
+                    size >= 40.dp -> typography.bodyStrong
+                    else -> typography.bodyStrong.copy(fontSize = androidx.compose.ui.unit.TextUnit(size.value * 0.46f, androidx.compose.ui.unit.TextUnitType.Sp), lineHeight = androidx.compose.ui.unit.TextUnit(size.value * 0.6f, androidx.compose.ui.unit.TextUnitType.Sp))
+                },
                 color = if (lit) RefluxColors.background else RefluxColors.contentPrimary,
             )
         } else {
@@ -94,17 +101,17 @@ internal fun ProfilesScreen(app: AppState) {
     // A phone, upright or on its side: its utility area is this one entry.
     val phone = LocalLayout.current.navigation.let { it == dev.reflux.design.NavigationStyle.BOTTOM_BAR || it == dev.reflux.design.NavigationStyle.COMPACT_RAIL }
     var adding by remember { mutableStateOf(false) }
-    var deleting by remember { mutableStateOf<Profile?>(null) }
-    var askingPin by remember { mutableStateOf(false) }
+    // One profile is managed at a time, in a panel under its row (the owner's walk, 2026-11-20): its own actions with it,
+    // never a list of every profile's Delete appended below them all.
+    var managing by remember { mutableStateOf<Any?>(null) }
     // Focus comes back to what opened a panel in place, when it closes (for input that shows focus).
     val addReturn = rememberPanelReturn()
-    val deleteReturn = rememberPanelReturn()
-    var lastDeleting by remember { mutableStateOf<Any?>(null) }
-    // Once the profile is gone, the question about it is too.
+    val manageReturn = rememberPanelReturn()
+    // Once the profile is gone, its panel is too.
     LaunchedEffect(app.profiles) {
-        if (deleting?.let { gone -> app.profiles.none { it.id == gone.id } } == true) {
-            deleting = null
-            askingPin = false
+        if (managing != null && app.profiles.none { it.id == managing }) {
+            managing = null
+            manageReturn.back()
         }
     }
     Page {
@@ -116,7 +123,15 @@ internal fun ProfilesScreen(app: AppState) {
         }
         app.profiles.forEachIndexed { index, profile ->
             item(key = "profile/${profile.id.value}") {
-                ProfileRow(profile, if (index == 0) Modifier.initialFocus() else Modifier) { app.chooseProfile(profile) }
+                val open = managing == profile.id
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    ProfileRow(
+                        profile,
+                        if (index == 0) Modifier.initialFocus() else Modifier,
+                        manage = ManageButton(open, if (open) manageReturn else null) { managing = if (open) null else profile.id },
+                    ) { app.chooseProfile(profile) }
+                    if (open) ManageProfile(app, profile, onClose = { managing = null; app.deletionRefused = null; manageReturn.back() })
+                }
             }
         }
         // Leaving the open profile without choosing another yet (B-017): Reflux then asks who is watching.
@@ -125,45 +140,13 @@ internal fun ProfilesScreen(app: AppState) {
                 Button("Log out of ${app.activeProfile?.name ?: "this profile"}", { app.logOut() }, Modifier.padding(top = 4.dp), icon = Icon.LOCK, style = ButtonStyle.QUIET)
             }
         }
+        // Adding is apart from any one profile's management.
         item(key = "add") {
             if (adding) {
                 ClosesOnBack(app) { adding = false; addReturn.back() }
                 AddProfile(onAdd = { name -> adding = false; addReturn.back(); app.addProfile(name) }, onCancel = { adding = false; addReturn.back() })
             } else {
                 Button("Add a profile", { adding = true }, Modifier.padding(top = 4.dp).returnsFocus(addReturn), icon = Icon.PLUS, style = ButtonStyle.QUIET)
-            }
-        }
-        // Another viewer's profile can be deleted from here; the open one is changed in Settings.
-        val others = app.profiles.filterNot { it.active }
-        if (others.isNotEmpty()) {
-            item(key = "delete") {
-                val confirming = deleting
-                val cancel = { deleting = null; askingPin = false; app.deletionRefused = null; deleteReturn.back() }
-                if (confirming == null) {
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        others.forEach { profile ->
-                            Button(
-                                "Delete ${profile.name}…",
-                                { deleting = profile; lastDeleting = profile.id },
-                                if (profile.id == lastDeleting) Modifier.returnsFocus(deleteReturn) else Modifier,
-                                style = ButtonStyle.QUIET,
-                            )
-                        }
-                    }
-                } else if (askingPin) {
-                    // A profile with a PIN is deleted only with that PIN: confirming is not enough (docs/WATCH_STATE.md, "Profiles").
-                    ClosesOnBack(app, cancel)
-                    DeletionPin(app, confirming, onCancel = cancel)
-                } else {
-                    Confirm(
-                        app,
-                        "Delete ${confirming.name}?",
-                        "Its watch history, favorites, collections, and downloads go, and its server accounts are signed out of on this device. Your servers keep their own history.",
-                        confirm = "Delete",
-                        onConfirm = { if (confirming.hasPin) askingPin = true else { deleting = null; app.deleteProfile(confirming) } },
-                        onCancel = cancel,
-                    )
-                }
             }
         }
         // A phone's utility area is this one entry: the rest of it is reached from here.
@@ -178,8 +161,93 @@ internal fun ProfilesScreen(app: AppState) {
     }
 }
 
+/** A profile row's own management button: open or closed, and where focus returns when its panel closes. */
+private class ManageButton(val open: Boolean, val returns: dev.reflux.ui.components.PanelReturn?, val toggle: () -> Unit)
+
 @Composable
-private fun ProfileRow(profile: Profile, modifier: Modifier = Modifier, onClick: () -> Unit) {
+private fun ProfileRow(profile: Profile, modifier: Modifier = Modifier, manage: ManageButton? = null, onClick: () -> Unit) {
+    if (manage == null) return ProfileCard(profile, modifier, onClick)
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+        ProfileCard(profile, modifier.weight(1f), onClick)
+        dev.reflux.ui.components.IconButton(
+            Icon.MORE,
+            if (manage.open) "Close ${profile.name}'s options" else "Manage ${profile.name}",
+            manage.toggle,
+            manage.returns?.let { Modifier.returnsFocus(it) } ?: Modifier,
+            size = 44.dp,
+            glass = true,
+            selected = manage.open,
+        )
+    }
+}
+
+/**
+ * What can be done with one profile, under its row. The open profile: its name, changed here, and its PIN, in Settings,
+ * where it is set and changed with the current one; it is not deleted while open (switch first), so Reflux is never left
+ * without one. Another profile: deleted, after a confirmation, and with its own PIN where it has one (docs/WATCH_STATE.md,
+ * "Profiles"). Its name and PIN are its owner's, changed from within it.
+ */
+@Composable
+private fun ManageProfile(app: AppState, profile: Profile, onClose: () -> Unit) {
+    var renaming by remember(profile.id) { mutableStateOf(false) }
+    var confirming by remember(profile.id) { mutableStateOf(false) }
+    var askingPin by remember(profile.id) { mutableStateOf(false) }
+    val backOut = {
+        when {
+            renaming -> renaming = false
+            confirming || askingPin -> { confirming = false; askingPin = false; app.deletionRefused = null }
+            else -> onClose()
+        }
+    }
+    if (!confirming) ClosesOnBack(app, backOut)
+    Column(
+        Modifier.fillMaxWidth().padding(start = 16.dp).glass(MaterialRole.ELEVATED, Shapes.large).padding(16.dp).pane("${profile.name}, options", onClose),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        when {
+            renaming -> {
+                var name by remember { mutableStateOf(profile.name) }
+                val save = { if (name.isNotBlank()) { renaming = false; app.renameProfile(name.trim()) } }
+                TextInput(name, { name = it.take(40) }, "Name", Modifier.initialFocus().takesFocus(), last = true, onDone = { save() })
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Button("Save", { save() }, style = ButtonStyle.PRIMARY, enabled = name.isNotBlank())
+                    Button("Cancel", { renaming = false }, style = ButtonStyle.QUIET)
+                }
+            }
+            askingPin -> DeletionPin(app, profile, onCancel = { askingPin = false; confirming = false; app.deletionRefused = null })
+            confirming -> Confirm(
+                app,
+                "Delete ${profile.name}?",
+                "Its watch history, favorites, collections, and downloads go, and its server accounts are signed out of on this device. Your servers keep their own history.",
+                confirm = "Delete",
+                onConfirm = { if (profile.hasPin) askingPin = true else { confirming = false; app.deleteProfile(profile) } },
+                onCancel = { confirming = false },
+            )
+            profile.active -> {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Button("Rename", { renaming = true }, Modifier.initialFocus().takesFocus(), icon = Icon.PROFILE, style = ButtonStyle.QUIET)
+                    Button(if (profile.hasPin) "Change PIN" else "Add a PIN", { app.go(Destination.Settings) }, icon = Icon.LOCK, style = ButtonStyle.QUIET)
+                }
+                Text(
+                    if (app.profiles.size > 1) "This profile is open. To delete it, switch to another profile first." else "Reflux keeps at least one profile, so this one can't be deleted.",
+                    style = LocalTypography.current.caption,
+                    color = RefluxColors.contentTertiary,
+                )
+            }
+            else -> {
+                Button("Delete ${profile.name}…", { confirming = true }, Modifier.initialFocus().takesFocus(), style = ButtonStyle.QUIET)
+                Text(
+                    if (profile.hasPin) "Its name and PIN are changed from within it. Deleting it asks for its PIN." else "Its name and PIN are changed from within it.",
+                    style = LocalTypography.current.caption,
+                    color = RefluxColors.contentTertiary,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ProfileCard(profile: Profile, modifier: Modifier = Modifier, onClick: () -> Unit) {
     val shape = Shapes.large
     Pressable(
         onClick,

@@ -111,6 +111,8 @@ fun Modifier.glass(
     role: MaterialRole,
     shape: Shape = RoundedCornerShape(Materials.spec(role).cornerRadiusDp.dp),
     tint: Color? = null,
+    /** A gentler blur than the role's, for a surface that should read as solid rather than frosted (Quick View). */
+    blurScale: Float = 1f,
 ): Modifier {
     val tier = LocalMaterialTier.current
     val roles = AppearancePolicy.roles
@@ -136,7 +138,7 @@ fun Modifier.glass(
     }
     val blurred = rememberGraphicsLayer()
     var position by remember { mutableStateOf(Offset.Zero) }
-    val radius = with(LocalDensity.current) { spec.blurRadiusDp.dp.toPx() }
+    val radius = with(LocalDensity.current) { (spec.blurRadiusDp * blurScale).dp.toPx() }
     val effect = remember(radius) { BlurEffect(radius, radius, TileMode.Clamp) }
     return base
         .onGloballyPositioned { position = it.positionInRoot() }

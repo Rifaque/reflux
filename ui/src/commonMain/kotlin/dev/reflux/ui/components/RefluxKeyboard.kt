@@ -41,7 +41,6 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
@@ -99,6 +98,7 @@ fun RefluxKeyboard(
     modifier: Modifier = Modifier,
     onComplete: (Int) -> Unit = {},
     onPointerTravel: (Float) -> Unit = {},
+    onPanelClick: () -> Unit = {},
 ) {
     val layout = LocalLayout.current
     val shown = session.layout
@@ -112,6 +112,7 @@ fun RefluxKeyboard(
     // A key unit: the controller's keys are larger targets; a desk keyboard is a desk keyboard's proportions (u ≈ 40 dp).
     val maxUnit = if (controller) (if (layout.formFactor == FormFactor.TV) 66.dp else 74.dp) else 42.dp
     val travel by rememberUpdatedState(onPointerTravel)
+    val panelClick by rememberUpdatedState(onPanelClick)
     val density = LocalDensity.current
     Column(
         modifier.widthIn(max = if (session.kind == InputKind.PIN) 420.dp else 980.dp).fillMaxWidth()
@@ -120,12 +121,22 @@ fun RefluxKeyboard(
             .pointerInput(Unit) {
                 // Pointer travel over the keyboard, for switching presentations only after a deliberate move (§7).
                 awaitPointerEventScope {
+                    // Travel is measured from the last position seen here: a hovering mouse's move events report no change of
+                    // their own (positionChange() was always zero, so moving the mouse never showed the desk keyboard).
+                    var last: androidx.compose.ui.geometry.Offset? = null
                     while (true) {
                         val event = awaitPointerEvent(PointerEventPass.Initial)
-                        if (event.type != PointerEventType.Move) continue
                         val change = event.changes.firstOrNull() ?: continue
                         if (change.type != androidx.compose.ui.input.pointer.PointerType.Mouse) continue
-                        val moved = change.positionChange()
+                        // A click anywhere on the panel is the pointer's: its keyboard is shown, on the release, so a key's own click
+                        // (handled by the key in this same event) types the key it was pressed on before anything moves.
+                        if (event.type == PointerEventType.Release) { panelClick(); continue }
+                        if (event.type == PointerEventType.Exit) { last = null; continue }
+                        if (event.type != PointerEventType.Move && event.type != PointerEventType.Enter) continue
+                        val from = last
+                        last = change.position
+                        if (from == null) continue
+                        val moved = change.position - from
                         travel((abs(moved.x) + abs(moved.y)) / density.density)
                     }
                 }
@@ -349,8 +360,31 @@ private fun KeyCap(session: KeyboardSession, key: KeyboardKey, chosen: Boolean, 
         when (key) {
             KeyboardKey.CursorBack -> Icon(Icon.BACK, size = 18.dp, tint = tint)
             KeyboardKey.CursorForward -> Icon(Icon.CHEVRON_RIGHT, size = 18.dp, tint = tint)
+            // The conventional erase glyph, drawn: a key pointing left with a cross in it, never mistaken for the cursor's arrow.
+            KeyboardKey.Erase -> BackspaceGlyph(tint)
+            // A spacebar is a long bar, as on a physical keyboard; its name stays "Space" for a screen reader.
+            KeyboardKey.Space -> Box(Modifier.width(36.dp).height(3.dp).clip(Shapes.small).background(tint.copy(alpha = 0.8f)))
             else -> Text(label(session, key), style = LocalTypography.current.bodyStrong, color = tint, maxLines = 1)
         }
+    }
+}
+
+/** The erase key's glyph: a left-pointing key outline with a cross, sized like the cursor icons beside it. */
+@Composable
+private fun BackspaceGlyph(tint: androidx.compose.ui.graphics.Color) {
+    androidx.compose.foundation.Canvas(Modifier.width(24.dp).height(16.dp)) {
+        val w = size.width
+        val h = size.height
+        val stroke = 1.6.dp.toPx()
+        val path = androidx.compose.ui.graphics.Path().apply {
+            moveTo(w * 0.32f, 0f + stroke / 2); lineTo(w - stroke / 2, stroke / 2); lineTo(w - stroke / 2, h - stroke / 2)
+            lineTo(w * 0.32f, h - stroke / 2); lineTo(stroke / 2, h / 2); close()
+        }
+        drawPath(path, tint, style = androidx.compose.ui.graphics.drawscope.Stroke(stroke, join = androidx.compose.ui.graphics.StrokeJoin.Round))
+        val cx = w * 0.64f
+        val r = h * 0.2f
+        drawLine(tint, androidx.compose.ui.geometry.Offset(cx - r, h / 2 - r), androidx.compose.ui.geometry.Offset(cx + r, h / 2 + r), stroke)
+        drawLine(tint, androidx.compose.ui.geometry.Offset(cx - r, h / 2 + r), androidx.compose.ui.geometry.Offset(cx + r, h / 2 - r), stroke)
     }
 }
 
@@ -369,6 +403,7 @@ private fun label(session: KeyboardSession, key: KeyboardKey): String = when (ke
     KeyboardKey.CursorBack, KeyboardKey.CursorForward -> ""
     KeyboardKey.Done -> if (session.mode == KeyboardMode.POINTER) "Enter" else "Done"
     KeyboardKey.Hide -> "Hide"
+    KeyboardKey.Tab -> "Tab"
 }
 
 /** What a key is called to a screen reader, and in tests: the same in both presentations, so a key is one key. */
@@ -389,4 +424,5 @@ internal fun keyName(session: KeyboardSession, key: KeyboardKey): String = when 
     KeyboardKey.CursorForward -> "Cursor forward"
     KeyboardKey.Done -> "Done"
     KeyboardKey.Hide -> "Hide keyboard"
+    KeyboardKey.Tab -> if (session.kind == InputKind.SEARCH) "Tab, take the suggestion" else "Tab, next field"
 }
