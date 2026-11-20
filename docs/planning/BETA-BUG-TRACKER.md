@@ -633,6 +633,7 @@ Each entry: the header facts, the original report (the master tracker prompt's t
   - What can make one poster look offset is the lift of a card that is hovered or focused: under a pointer, hover lifts a card by 4% about its centre. That is B-042's shared hover/focus state, unassigned.
 - **Not reproduced** without the tester's screenshots, which are not in the repository.
 - **Outstanding:** the owner's screenshots, or a walk with the owner on Windows.
+- **2026-11-20:** the likely cause above (a card lifted by a resting pointer) is fixed with B-042: under a controller nothing but the focused card is lifted. Still Not Reproduced without the screenshots.
 <a id="b-016"></a>
 ### B-016: App opens last-used profile instead of profile selection
 
@@ -655,17 +656,20 @@ Each entry: the header facts, the original report (the master tracker prompt's t
 
 **Work record**
 
-- **Investigation findings:** the behaviour matches the documented design (above). No other work.
-- **Root cause / implementation / tests / verification:** none.
-- **Evidence:** the tester's report; WATCH_STATE.md.
-- **Outstanding work:** the owner's decision (phase and design); see [owner decisions](#unassigned-issues-and-unresolved-owner-decisions).
+- **Investigation findings:** the behaviour matched the documented design (above). The active profile is persisted as the library's active row; `ensureProfiles` repairs none or several active, and `deleteProfile` makes another active when the open one goes, so a missing, deleted or invalid last profile cannot be opened.
+- **Owner's decision (2026-11-20, the Phase 3 work order):** "Implement the behaviour so that the app opens using the last-used profile instead of forcing profile selection on every launch", with profile selection still reachable. This reverses the tester's expectation above; the work order is the later instruction (DECISIONS.md, 2026-11-20, "Phase 3: every device opens the last-used profile").
+- **Implementation:** `AppState.askWhoIsWatchingAtStart` no longer asks on a television; every device opens the profile it had, and a profile with a PIN still opens locked. Selection stays a press away (B-017).
+- **Tests:** `ProfilesUiTest.aTelevisionOpensTheProfileItHadAndAsksWhoIsWatchingOnlyWhenAsked` (replaces the test that held the old television rule); `aProfileWithAPinOpensLockedAtStart` unchanged and passing.
+- **Automated verification:** `ProfilesUiTest` 15/15, `ProfileSecurityTest` 4/4, `ProfileBoundaryTest` 3/3 (Windows JVM, 2026-11-20).
+- **Device verification:** see VERIFICATION.md, "Phase 3".
+- **Outstanding:** owner acceptance.
 
 <a id="b-017"></a>
 ### B-017: No obvious logout/profile switch
 
 - **Category:** Product decision / UX · **Priority:** Medium · **Platforms:** all
 - **Components (likely):** `ui` (`ProfilesScreen`, navigation chrome)
-- **Phase:** **Unassigned** (owner decision) · **Status:** Not Started · **Last updated:** 2026-11-19
+- **Phase:** **3** (the owner's Phase 3 work order, 2026-11-20) · **Status:** Fixed (automated; device walks in VERIFICATION.md, "Phase 3") · **Last updated:** 2026-11-20
 - **Related:** B-016, B-018
 
 **Original description.** There is no obvious way to log out, switch profiles, or return to "Who's watching?". *Expected:* profile switching/logout must be discoverable and predictable without damaging profile data. Phase allocation is unresolved; do not assign without recording the owner decision.
@@ -682,9 +686,11 @@ Each entry: the header facts, the original report (the master tracker prompt's t
 
 **Work record**
 
-- **Investigation findings / root cause / implementation / tests / verification:** none yet.
-- **Evidence:** the tester's report only.
-- **Outstanding work:** the owner's decision; see [owner decisions](#unassigned-issues-and-unresolved-owner-decisions).
+- **Investigation findings:** switching existed only as the profile list on Profiles (a utility entry); there was no log out, and no switch where the profile is shown (Settings).
+- **Implementation:** with several profiles, Settings' profile section offers **Switch profile** (the "Who's watching?" question, which Back steps out of) and **Log out**; Profiles has **Log out of <name>** beside the list. `AppState.logOut` stops playback (recorded for its profile), closes the keyboard, clears the session's search, last playback report and notice, locks a PIN profile again, shows Home beneath, and asks who is watching as a required question (Back leaves Reflux). Nothing is deleted or signed out of: logging out is not resetting or deleting. With one profile neither entry is shown (one profile is never mentioned). Every action is an ordinary control, so it works by touch, pointer, keyboard, controller and remote.
+- **Tests:** `ProfilesUiTest.logOutAsksWhoIsWatchingKeepsEverythingAndBackDoesNotGetPastIt` (history and PIN kept, PIN asked again, session cleared, Home beneath, Back does not pass); `switchProfileIsOfferedInSettingsAndOnProfilesOnlyOnceThereAreSeveral`; the existing `nothingOfOneViewersSessionIsLeftForTheNext` and `switchingProfileWhilePlayingStopsThePlaybackForTheProfileItWasFor`.
+- **Automated verification:** as B-016 (2026-11-20).
+- **Outstanding:** owner acceptance.
 
 <a id="b-018"></a>
 ### B-018: Profile deletion without proving ownership
@@ -1413,7 +1419,7 @@ The store build is `0.9.0-beta.1` (release), with the owner's own library as ins
 
 - **Category:** Bug (UI/controller interaction) · **Priority:** To be determined (master tracker prompt); "Major" in the master prompt that first reported it (see owner decisions) · **Platforms:** controller-capable desktop layouts (W, and L)
 - **Components (likely):** `ui` (`Artwork` card focus/hover state, `Focus`)
-- **Phase:** **Pending owner approval** (recommended: Phase 2, beside B-025) · **Status:** Not Started · **Last updated:** 2026-11-19
+- **Phase:** **3** (the owner's Phase 3 work order, 2026-11-20: "reverify B-042 as part of the bug sweep") · **Status:** Fixed (automated; reproduced in a UI test before the fix) · **Last updated:** 2026-11-20
 - **Related:** B-025, B-009, B-015
 
 **Original description.** When controller focus expands a media card, moving the mouse over a different card can cause hover behaviour to interact incorrectly with the previously focused card, producing flicker or confusing expansion behaviour. *Expected:* controller focus and mouse hover must coexist predictably; moving the mouse should not cause the previous controller-focused card to incorrectly behave as hovered; focus and hover state must remain separate and correctly managed; avoid globally disabling hover as a simplistic fix. *Recommended phase:* Phase 2, alongside B-025 shared focus architecture. This is a recommendation, not yet an owner-confirmed allocation; record it as pending approval.
@@ -1430,8 +1436,12 @@ The store build is `0.9.0-beta.1` (release), with the owner's own library as ins
 
 **Work record**
 
-- **Investigation findings / root cause / implementation / tests / verification:** none yet.
-- **Outstanding work:** the owner's phase decision; then everything.
+- **Reverification (2026-11-20):** the work order believed B-042 fixed. **It was not:** `Pressable` still computed `active = hovered || ring`, and a card's lift (`liftedBy`) still lifted on hover whatever the modality, as recorded under B-025.
+- **Reproduced:** `CardLayoutTest.aRestingPointerNeverLiftsACardWhileAControllerHasFocus` rests the pointer on a card, then moves focus with the controller; with the old rule the card under the pointer stayed lifted beside the focused one (the test failed: two lifted cards in one row).
+- **Root cause:** hover and focus were one "active" state, so a resting pointer was a second focus while a controller drove.
+- **Fix:** `LayoutProfile.hoverShows` (true only while the modality is POINTER); `Pressable` and `liftedBy` count hover only then. Hover is not disabled: it shows again once the pointer is moved (the test checks this too). Focus rings are unchanged (`showsFocus`).
+- **Tests:** the test above, failing before the fix and passing after; `CardLayoutTest` 5/5 (Windows JVM, 2026-11-20).
+- **Outstanding:** a walk on Windows with the mouse and a controller together (VERIFICATION.md, "Phase 3"); owner acceptance.
 
 ## Issues: original feature findings (F-001 to F-005)
 
@@ -1690,7 +1700,9 @@ Found during Beta 2 work, not in the original findings. Each was allocated by ex
 - **Root cause:** not established.
 - **Implementation:** none. Not to be "fixed" by weakening the test.
 - **Later run:** the next forced full check (Phase 1 closeout, 2026-11-19) passed it: 1,496 tests, 0 failures.
-- **Outstanding work:** confirm whether the wait depends on wall-clock time under load; fix the test's timing if so, keeping what it asserts.
+- **Root cause (2026-11-20, from the code):** the player's chrome waits with `delay` (the test's virtual clock) but reads the time from `UiClock` (wall-clock monotonic time). After `mainClock.advanceTimeBy`, the chrome wakes, finds by the wall clock that its time has not come, and waits again, so the controls leave only once real seconds pass; under a full-check load the virtual clock advances slowly enough for the 30-second wait to run out.
+- **Recommended fix (not applied):** let tests drive `UiClock` from the Compose test clock. It changes the time base of every UI test that touches the player, so it is test-infrastructure work for M12's intermittents, not a Phase 3 bug fix.
+- **Outstanding work:** that change, then re-running the known intermittents (`PointerTest`, this one) under load.
 
 <a id="b-045"></a>
 ### B-045: `AboutWindowTest` fails on unmodified HEAD (a focus stop added after the test was written)
@@ -1698,12 +1710,15 @@ Found during Beta 2 work, not in the original findings. Each was allocated by ex
 - **Category:** Bug (test defect) · **Priority:** Low · **Platforms:** Windows (real-window tests, `-Preflux.windowTests=true`)
 - **Components:** `desktop:app` tests (`AboutWindowTest`)
 - **How found:** 2026-11-19, during the GPL transition's About-page checks.
-- **Phase:** none needed (test defect; carried with M12's intermittents) · **Status:** Not Started · **Last updated:** 2026-11-19
+- **Phase:** none needed (test defect; picked up in Phase 3's bug sweep) · **Status:** Fixed (test updated; the window run is recorded in VERIFICATION.md, "Phase 3") · **Last updated:** 2026-11-20
 - **Related:** B-044
 
 **Description.** On unmodified HEAD the test failed 2 of 2 runs at the arrow to Reflux's terms row, which lands on Privacy, a stop added after the test was written; on the GPL branch 1 of 2 runs passed the whole flow and 1 failed at the same step.
 
-**Work record:** recorded in VERIFICATION.md, "Open-source transition"; not fixed. **Outstanding work:** update the test's expected focus order to the current About page.
+**Work record:** recorded in VERIFICATION.md, "Open-source transition".
+- **Cause (2026-11-20):** the test pressed Down twice from the build's stop, expecting Reflux's terms; the page now has a Privacy stop, and a provider's credits stop before it when a provider is configured, so two presses land on Privacy or the credits.
+- **Fix:** the test moves a stop at a time, waiting for each press, until "Copyright and license" (at most three stops), and asserts that Privacy is the stop just before it. What it checks is unchanged or stronger.
+- **Outstanding:** the window run (VERIFICATION.md, "Phase 3").
 
 <a id="b-046"></a>
 ### B-046: Redundant Profile navigation button on the Profile destination

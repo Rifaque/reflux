@@ -76,6 +76,15 @@ internal fun SettingsScreen(app: AppState) {
                 Option(Icon.PROFILE, "Name", profile?.name ?: "", Modifier.initialFocus().returnsFocus(nameReturn)) { renaming = true }
             }
         }
+        // Switching and logging out are found where the profile is (B-017), not only on the Profiles page.
+        if (app.profilesShown) {
+            item(key = "switch") {
+                Option(Icon.PROFILE, "Switch profile", "Choose who's watching. Nothing of this profile changes.") { app.askWhoIsWatching() }
+            }
+            item(key = "log-out") {
+                Option(Icon.LOCK, "Log out", "Leave ${profile?.name ?: "this profile"} and ask who's watching. Its history, settings, and sign-ins stay.") { app.logOut() }
+            }
+        }
         if (app.pinsAvailable) {
             item(key = "pin") {
                 // Changing or removing a PIN needs that PIN (B-049): an unlocked device is not a way to take a profile's

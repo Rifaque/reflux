@@ -49,9 +49,18 @@ class AboutWindowTest {
                 // page is still arriving finds nothing to focus yet (slow under software rendering), so the first
                 // arrow is pressed again while nothing has focus; whichever one lands must land on the first stop.
                 shell.await("focus on the build", state = { "focused: ${shell.focused()}" }) { arrowUntilFocused(shell, "Reflux") }
-                shell.key(KeyEvent.VK_DOWN)
-                shell.key(KeyEvent.VK_DOWN)
-                shell.await("focus on Reflux's own terms", state = { "focused: ${shell.focused()}" }) { shell.focused() == "Copyright and license" }
+                // Down a stop at a time (B-045): the provider's credits where there are any, then Privacy, then Reflux's
+                // own terms. Each press is waited for, so one still being handled is not followed by the next.
+                var before: String? = null
+                var steps = 0
+                while (shell.focused() != "Copyright and license") {
+                    check(steps++ < 3) { "Reflux's own terms not reached within three stops (focused: ${shell.focused()})" }
+                    val from = shell.focused()
+                    if (from != "Reflux") before = from
+                    shell.key(KeyEvent.VK_DOWN)
+                    shell.await("focus to move on from $from", state = { "focused: ${shell.focused()}" }) { shell.focused() != from }
+                }
+                assertEquals("Privacy", before, "Privacy is the stop just before Reflux's own terms")
                 shell.awaitShown("Copyright © 2026 RSX Develops")
                 shell.awaitShown("Free software · GPL-3.0-or-later")
                 // Reflux's own notice, read and left with the keyboard, which comes back to the row it left.

@@ -106,6 +106,12 @@ data class LayoutProfile(
     val dock: MiniPlayerDock? = null,
 ) {
     val posterHeightDp: Float get() = posterWidthDp * 1.5f
+
+    /**
+     * Whether a pointer's hover is shown (B-042): only while the pointer is the input in use. Under a controller, a
+     * remote, or a keyboard, a pointer resting over a control is not a second focus.
+     */
+    val hoverShows: Boolean get() = modality == InputModality.POINTER
 }
 
 /**

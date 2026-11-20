@@ -25,8 +25,8 @@ private const val MINUTE = 60_000L
 
 /**
  * Profiles in the experience layer (M8; docs/WATCH_STATE.md, "Profiles", and docs/NAVIGATION.md, section 1): one
- * profile is never mentioned, a second is a viewer of its own, a PIN is asked for, a television asks who is
- * watching, a playback stays with the profile it was for, and clearing history asks first.
+ * profile is never mentioned, a second is a viewer of its own, a PIN is asked for, every device opens the
+ * last-used profile, logging out asks who is watching, a playback stays with the profile it was for, and clearing history asks first.
  */
 @OptIn(ExperimentalTestApi::class)
 class ProfilesUiTest {
@@ -140,14 +140,76 @@ class ProfilesUiTest {
     }
 
     @Test
-    fun aTelevisionAsksWhoIsWatchingAtStartWhenThereAreSeveralAndBackDoesNotGetPastIt() {
+    fun aTelevisionOpensTheProfileItHadAndAsksWhoIsWatchingOnlyWhenAsked() {
+        // B-016 (DECISIONS.md, 2026-11-20): every device opens the last-used profile, a television included.
         val world = populated()
-        world.library.createProfile("Sam")
+        val sam = world.library.createProfile("Sam")
+        world.library.switchProfile(sam)
         television(world) { app ->
+            awaitText("Recently Added")
+            await("the profiles") { app.profiles.size == 2 }
+            assertNull(app.profileGate, "the last viewer's profile opens without a question")
+            assertEquals("Sam", app.activeProfile?.name)
+            // Asked for, the question can be stepped back from, unlike the one at a log out.
+            runOnIdle { app.askWhoIsWatching() }
+            awaitText("Who's watching?")
+            assertEquals(ProfileGate.Choose(required = false), app.profileGate)
+            assertTrue(runOnIdle { app.dispatch(SemanticAction.BACK) })
+            await("closed") { app.profileGate == null && app.activeProfile?.name == "Sam" }
+        }
+    }
+
+    @Test
+    fun logOutAsksWhoIsWatchingKeepsEverythingAndBackDoesNotGetPastIt() {
+        // B-017: logging out leaves the profile without deleting or signing out of anything.
+        val world = populated()
+        val platform = FakePlatform()
+        val heat = world.movie("Heat").item.id
+        world.library.stopped(heat, 40 * MINUTE, 170 * MINUTE)
+        val main = world.library.profiles().single().id
+        world.library.createProfile("Sam")
+        world.library.setPin(main, "1357", platform.pinKey!!)
+        screen(world, platform) { app ->
+            awaitText("Enter this profile's PIN.")
+            onNode(hasSetTextAction()).performTextInput("1357")
+            await("open") { app.profileGate == null }
+            runOnIdle { app.searchQuery = "a private search"; app.go(Destination.Settings) }
+            awaitText("Log out")
+            assertTrue(saysAnywhere("Switch profile"))
+            onNodeWithText("Log out").performScrollTo().performClick()
             awaitText("Who's watching?")
             assertEquals(ProfileGate.Choose(required = true), app.profileGate)
+            assertEquals("", app.searchQuery, "nothing of the session is left")
+            assertEquals(listOf<Destination>(Destination.Home), app.navigator.path, "the next viewer starts at Home")
             assertFalse(runOnIdle { app.dispatch(SemanticAction.BACK) }, "Back leaves Reflux rather than getting past the question")
-            save("profiles-tv-who")
+            save("profiles-logged-out")
+            // The same profile again asks for its PIN: logging out locked it.
+            runOnIdle { app.chooseProfile(app.profiles.first { it.id == main }) }
+            awaitText("Enter this profile's PIN.")
+            onNode(hasSetTextAction()).performTextInput("1357")
+            await("open again") { app.profileGate == null && app.activeProfile?.id == main }
+            assertEquals(40 * MINUTE, world.library.watchState(heat)?.positionMs, "its history stayed")
+            assertTrue(app.profiles.first { it.id == main }.hasPin, "and its PIN")
+        }
+    }
+
+    @Test
+    fun switchProfileIsOfferedInSettingsAndOnProfilesOnlyOnceThereAreSeveral() {
+        val world = populated()
+        screen(world) { app ->
+            awaitText("Recently Added")
+            runOnIdle { app.go(Destination.Settings) }
+            awaitText("Clear watch history")
+            assertFalse(saysAnywhere("Switch profile"), "one profile is never mentioned")
+            assertFalse(saysAnywhere("Log out"))
+            world.library.createProfile("Sam")
+            runOnIdle { app.go(Destination.Profiles) }
+            await("two profiles") { app.profiles.size == 2 }
+            awaitText("Log out of Main")
+            runOnIdle { app.go(Destination.Settings) }
+            awaitText("Switch profile")
+            onNodeWithText("Switch profile").performScrollTo().performClick()
+            awaitText("Who's watching?")
             runOnIdle { app.chooseProfile(app.profiles.first { it.name == "Sam" }) }
             await("Sam watching") { app.activeProfile?.name == "Sam" && app.profileGate == null }
         }
