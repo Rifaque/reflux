@@ -1395,6 +1395,23 @@ M11 decided the open items of its plan (planning/M11-DISTRIBUTION-PLAN.md, secti
 - **1.0 communication.** "Planned for December 2026", depending on feedback, qualification, and store approval; 10 December is an internal readiness checkpoint and 15 December the release decision, never a promised release date. Each platform publishes through its own path.
 - **No Windows installer in the beta**: none exists or is tested, and building one would change the release; reconsidered for 1.0.
 
+## 2026-11-20 — Phase 2's closure: what is skipped, and two rules from the closing walks
+
+**The owner's decisions (final; not to be reopened in Phase 2).**
+- **B-056** (the brief blank on closing the mini-player) is a minor nitpick, not a Beta 2 blocker. It is skipped and deferred, accepted as a known minor issue, and revisited in a later beta only if reproducible evidence emerges.
+- **The DualSense hot-plug check** is not applicable: the owner has no DualSense. It is not a failure, and no substitute test stands in for it.
+
+**Rules adopted from the closing walks (planning/BETA-BUG-TRACKER.md, B-058 to B-060; for the owner's review at Phase 2's acceptance).**
+- **A panel opened in place takes focus, and Back closes it first (B-060).** Panels are a confirmation, a rename, a PIN panel, and adding or deleting a profile.
+  - For input that shows focus, the panel's first control (the safe one, on a confirmation) takes focus as it appears.
+  - When it closes, focus goes back to what opened it.
+  - Back (a remote's, a controller's B, Escape) closes the innermost open panel before anything else on the page.
+  - This refines B-020's keyboard sequence: Escape lets go of the field, the next Escape closes the panel, and the one after leaves the page. Before, the second left the page with the panel open.
+- **On Linux, the embedded player is held to X11 graphics contexts (B-058).**
+  - Reflux's video window is always an X11 one (through XWayland on a Wayland session). Left to choose, libmpv took a Wayland surface of its own that covered the controls.
+  - A list option a libmpv build rejects for one unknown name is set again with the names it has.
+- **A Search tab clicked with the pointer leaves the typing in the field (B-059).** Backspace then edits the query rather than going Back.
+
 ## 2026-11-20 — F-P4: the owner's decisions on the adaptive keyboard's scope
 
 Recorded in planning/F-P4-ADAPTIVE-KEYBOARD.md (§16, and where each applies):

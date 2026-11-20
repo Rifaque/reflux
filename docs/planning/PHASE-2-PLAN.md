@@ -170,6 +170,33 @@ Then PRIVACY.md, the website, Play's Data safety and Amazon's questionnaire are 
 
 **Owner's decision (2026-11-19, final verification brief): Aptabase is not selected.** Its daily-salted IP-address hash is a privacy trade-off not acceptable for this beta. Statistics stay off; nothing is transmitted from any build; no other provider is added in this pass. The opt-in groundwork (closed schema, consent off by default, the disabled transport) is kept for a later choice (DECISIONS.md, 2026-11-19, "Phase 2 final verification").
 
+## Closure (2026-11-20): ready for the owner's acceptance
+
+The closing walks are recorded in VERIFICATION.md, "Phase 2: closing walks and closure", each labelled by where it ran.
+- **Linux desktop:** in the Ubuntu 26.04 QA VM.
+- **Google TV:** on the emulator.
+- **Phone (2a):** Search on the physical phone first, then the phone emulator once the owner was using the phone.
+
+**Found and fixed in those walks.**
+
+| Issue | What | State |
+| --- | --- | --- |
+| [B-058](BETA-BUG-TRACKER.md#b-058) | Linux on Wayland: the video covered the player's controls (also in the released beta) | Fixed; walked in the Linux VM |
+| [B-059](BETA-BUG-TRACKER.md#b-059) | A Search tab clicked with the mouse took the typing; Backspace then left Search | Fixed; walked in the Linux VM |
+| [B-060](BETA-BUG-TRACKER.md#b-060) | Panels opened in place lost focus to the navigation; Back skipped them | Fixed; walked on the Google TV emulator by hand |
+
+**Skipped by the owner's decision.**
+- **B-056:** deferred, a known minor issue.
+- **The DualSense check:** not applicable, as no DualSense is available.
+
+**Limits, disclosed.**
+- **No physical Linux desktop:** the owner's procedure stands.
+- **No controller in the Linux VM:** VirtualBox's USB passthrough failed. Linux controller input is covered by unit tests.
+- **The final Linux tarball's panel walk:** not captured, because the VM had locked. That code is shared, tested, and walked on TV.
+- **Two older TV walks:** they cannot find their film on this emulator's larger library. Their checks are covered by the new walk, and both passed on the physical Fire TV.
+- **The physical Phone (2a):** walked once. The new phone walk ran on the emulator.
+- **Physical Google TV:** none is available; the emulator stands in for it.
+
 ## Final verification and the follow-up (2026-11-19)
 
 The owner's final verification brief made the Windows PC, the GameSir G7 Pro, the Pad 7 (its PIN given for the session) and the Linux VM available. The follow-up brief approved three more issues. What changed, in order (each issue's entry in the tracker has the detail and the evidence; the runs are in VERIFICATION.md, "Phase 2: final verification"):
@@ -185,5 +212,5 @@ The owner's final verification brief made the Windows PC, the GameSir G7 Pro, th
 | [B-052](BETA-BUG-TRACKER.md#b-052) | RT, or B held, closes the mini-player | Fixed, walked on Windows |
 | [B-053](BETA-BUG-TRACKER.md#b-053) | Details opens on Play for a controller or a remote | Fixed, walked (Windows controller; Fire TV remote) |
 | [B-055](BETA-BUG-TRACKER.md#b-055) | Controller hints: LT hides them; keys in their controller shapes, outlined; calm motion; the hold ring | Fixed, walked ("Looks right") |
-| [B-056](BETA-BUG-TRACKER.md#b-056) | The screen blanks briefly when the mini-player closes (also by mouse, also with the B-002 change off) | Investigating |
+| [B-056](BETA-BUG-TRACKER.md#b-056) | The screen blanks briefly when the mini-player closes (also by mouse, also with the B-002 change off) | Deferred: accepted as a known minor issue (the owner's decision, 2026-11-20) |
 | [B-057](BETA-BUG-TRACKER.md#b-057) | Search redesign: the field leads; All / Movies / Shows as a real filter; the idle page from the library (recent, quick finds with counts, genres); results in sections; a no-results page with ways on | Fixed; walked on the Pad 7 and the Fire TV |

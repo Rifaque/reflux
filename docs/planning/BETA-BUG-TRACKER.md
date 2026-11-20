@@ -56,6 +56,7 @@ As of 2026-11-19. Counts are reconciled against the code, the commits, and VERIF
 | Newly discovered issues (B-043 to B-045) | 3 |
 | Findings added by the owner's Phase 2 brief (B-046 to B-049; the brief's B-043 to B-046, renumbered) | 4 |
 | Registered proposals for Phase 3 (F-P3 Media Quick View, F-P4 Adaptive Virtual Keyboard) | 2 |
+| Found in Phase 2's verification and closing walks (B-050 to B-060; B-051 to B-053 and B-055 from the owner's follow-up, B-057 from the owner's steer) | 11 |
 
 Status of the 47 original findings:
 
@@ -70,7 +71,7 @@ Status of the 47 original findings:
 | Deferred | 0 | |
 | Not Reproduced | 2 | B-015, B-026 |
 
-Newly discovered: B-043 Fixed; B-044 Investigating; B-045 Not Started. Added by the owner's Phase 2 brief: B-046, B-047, B-048, B-049 Fixed. Found in Phase 2's verification: B-050 (controller reconnect crash), B-054 (Reflux keyboard cursor) Fixed. The owner's Phase 2 follow-up: B-051, B-052, B-053 Fixed; B-055 (hints) Fixed; B-056 (blank on closing the mini-player) Investigating. The owner's Search steer: B-057 Fixed. F-P2 (Y toggles the sidebar): Fixed, placed in Phase 2 by the owner on the Windows walk. F-P1, F-P3: Not Started. F-P4 (Adaptive Virtual Keyboard, Phase 3): Not Started, researched and planned (2026-11-20).
+Newly discovered: B-043 Fixed; B-044 Investigating; B-045 Not Started. Added by the owner's Phase 2 brief: B-046, B-047, B-048, B-049 Fixed. Found in Phase 2's verification: B-050 (controller reconnect crash), B-054 (Reflux keyboard cursor) Fixed. The owner's Phase 2 follow-up: B-051, B-052, B-053 Fixed; B-055 (hints) Fixed; B-056 (blank on closing the mini-player) accepted as a known minor issue by the owner's decision (2026-11-20). The owner's Search steer: B-057 Fixed. Found in Phase 2's closing walks (2026-11-20): B-058 (Linux Wayland video over the controls; older than Phase 2), B-059 (Search tab and Backspace), B-060 (in-place panels and focus) Fixed. F-P2 (Y toggles the sidebar): Fixed, placed in Phase 2 by the owner on the Windows walk. F-P1, F-P3: Not Started. F-P4 (Adaptive Virtual Keyboard, Phase 3): Not Started, researched and planned (2026-11-20).
 
 | Phase | Items | Fixed | Investigating / In Progress | Not Reproduced | Not Started | Verified | Owner acceptance |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -129,15 +130,18 @@ Scope, order, dependencies, exit criteria, and the gate: [BETA-2.md](BETA-2.md#t
 | + | [B-048](#b-048) Pull-to-refresh | Fixed (Phone 2a walked; tablet emulator) |
 | + | [B-049](#b-049) Authorised PIN removal | Fixed |
 | + | Forgot PIN (owner's decision) | Implemented (Android system authentication; Keep/Reset elsewhere) |
-| + | [B-050](#b-050) Controller reconnect crash (Windows) | Fixed (walked; a DualSense hot-plug pending) |
+| + | [B-050](#b-050) Controller reconnect crash (Windows) | Fixed (walked; a DualSense hot-plug not applicable: the owner has no DualSense) |
 | + | [B-054](#b-054) Reflux keyboard cursor and held erase | Fixed (walked) |
 | + | [F-P2](#f-p1-and-f-p2) Y toggles the sidebar (owner's decision) | Fixed (walked) |
 | + | [B-051](#b-051) Mouse keyboard in Search (W, L) | Fixed (Windows walked; Linux VM pending) |
 | + | [B-052](#b-052) Close the mini-player: RT or hold B | Fixed (Windows walked) |
 | + | [B-053](#b-053) Details opens on Play | Fixed (Windows and Fire TV walked) |
 | + | [B-055](#b-055) Controller hints: LT, shapes, motion | Fixed (Windows walked) |
-| + | [B-056](#b-056) Blank on closing the mini-player | Investigating |
-| + | [B-057](#b-057) Search redesign | Fixed (automated; device walks in VERIFICATION.md) |
+| + | [B-056](#b-056) Blank on closing the mini-player | Deferred: accepted as a known minor issue (owner's decision; a later beta) |
+| + | [B-057](#b-057) Search redesign | Fixed (automated; Phone 2a physical, phone and Google TV emulators, Linux VM) |
+| + | [B-058](#b-058) Linux on Wayland: the video covered the player's controls | Fixed (Linux VM walked; physical Linux desktop pending, the owner's) |
+| + | [B-059](#b-059) A clicked Search tab took the typing from the field | Fixed (Linux VM walked; automated) |
+| + | [B-060](#b-060) Panels opened in place lost focus, and Back skipped them | Fixed (Google TV emulator walked by hand; automated) |
 | — | [B-042](#b-042) Controller focus and mouse hover conflict | **Pending owner approval** (recommended here, beside B-025); not in the phase until approved. Its cause is recorded in B-025's entry |
 
 **Phase 3: media experience, discovery, Trickplay, and final performance**
@@ -2030,8 +2034,10 @@ The joystick API is asked for every HID game controller, XInput ones included, e
 - **Category:** Bug (rendering) · **Priority:** Medium · **Platforms:** W (seen); others not checked
 - **Components (likely):** `desktop:app` (`VideoSurface`, `VideoOverlay`, `SurfaceCorners`: the video surface and its controls window torn down together); `playback:mpv`
 - **How found:** the owner, closing the mini-player during the follow-up's Windows walk (2026-11-19). By controller (RT or a held B) and by mouse alike: "the screen blanks for a few 100 ms".
-- **Phase:** 2 (found in its verification) · **Status:** Investigating · **Last updated:** 2026-11-19
+- **Phase:** 2 (found in its verification) · **Status:** Deferred (the owner's decision, 2026-11-20: accepted as a known minor issue; skipped in Phase 2, a later beta if evidence comes up) · **Last updated:** 2026-11-20
 - **Related:** B-002, B-052
+
+**Owner's decision (2026-11-20, Phase 2's closure):** a minor nitpick and not a Beta 2 blocker. No further investigation in Phase 2. It stays documented, to be revisited in a later beta if reproducible evidence (an on-screen capture of the blank) comes up. It is not a failure of Phase 2's verification.
 
 **Investigation so far.**
 - **Not today's B-002 change:** the owner saw the same blank in a build with Java2D's Direct3D pipeline forced back on.
@@ -2112,6 +2118,85 @@ Asked for a rethink, not a tweak, the page was rebuilt as **one search line with
 - renders looked at: desktop idle with Recent, phone, television, results, no results.
 
 **Outstanding:** the owner's review.
+
+<a id="b-058"></a>
+### B-058: Linux on a Wayland session: the video covered the player's controls and sat out of place
+
+- **Category:** Bug (playback, platform) · **Priority:** High (Linux) · **Platforms:** L (GNOME on Wayland, Ubuntu's default; Reflux runs through XWayland)
+- **Components:** `desktop:app` (`DesktopPlatform.embeddedOptions`), `playback:mpv` (`MpvPlayer.create`, list options)
+- **How found:** Phase 2's closing Linux VM walk (2026-11-20). In the player, only the controls' ▼ and × showed (above the picture), never the bottom bar. The pointer never brought the controls back, and the picture sat about 22 px low.
+- **Phase:** found in Phase 2's closure and fixed there. It is older than Phase 2: the released `0.9.0-beta.1` does the same in the same VM. Its allocation is the owner's to confirm. · **Status:** Fixed · **Last updated:** 2026-11-20
+- **Related:** B-031, B-002
+
+**Cause (verified).**
+- Reflux gives libmpv its own X11 window (`wid`). On a Wayland session, mpv's GPU output probes Wayland first. It cannot embed into an X11 window, so it made a Wayland surface of its own above Reflux's windows. That surface covered the controls window (which was correct in its own pixels, read with `XGetImage`) and took the pointer.
+- **Shown three ways:**
+  - Reflux's redacted mpv log (`REFLUX_MPV_LOG`): "Initializing GPU context 'auto'" then `'waylandvk'`;
+  - a bare libmpv with an X11 `wid` reports `current-gpu-context = wayland`;
+  - starting Reflux without `WAYLAND_DISPLAY` set put everything right.
+
+**Fix.**
+- On Linux the embedded player is given `gpu-context=x11egl,x11,x11vk`: X11 contexts, EGL first.
+- **One name a build lacks no longer drops the whole list.** Ubuntu's libmpv 0.41 has no `x11` (GLX) context and rejected the list as a whole. So a list option that is rejected (`gpu-context`, `gpu-api`, `vo`) is set again with only the names this libmpv takes, in order.
+
+**Tests:** `EmbeddedOptionsTest` (3), `ListOptionTest` (3).
+
+**Verification (Linux VM, not physical):**
+- under Wayland, mpv's log says "Initializing GPU context 'x11egl'";
+- the full controls show over the picture, and the pointer brings them back;
+- the picture is in place;
+- playback advanced 0:18 → 0:24 over 5 s;
+- pause, seek +10 s, Esc to the mini-player (the picture follows into the dock), and the mini-player's close all work.
+
+**Outstanding:** a physical Linux desktop (the owner's procedure in VERIFICATION.md), with a real GPU, on Wayland and on X11.
+
+<a id="b-059"></a>
+### B-059: A Search tab clicked with the mouse took the typing from the field, and Backspace then left Search
+
+- **Category:** Bug (input) · **Priority:** Medium · **Platforms:** W, L (pointer)
+- **Components:** `ui` (`SearchScreen`: `ScopeTabs`, "Search everything")
+- **How found:** Phase 2's closing Linux VM walk (2026-11-20). Type "night", click the All tab, press Backspace to correct it: Reflux went back to Home. Backspace outside a text field is Back on a desktop (INPUT_MODEL.md), and the click had put focus on the tab.
+- **Phase:** 2 (a regression of B-057's design) · **Status:** Fixed · **Last updated:** 2026-11-20
+- **Related:** B-057, B-020
+
+**Fix.**
+- A tab chosen with the pointer hands the typing back to the field. A controller or the arrows keep focus on the tabs, to move along them.
+- "Search everything" (in the empty state) gives the field its focus back for every input, as the quick finds already did.
+
+**Test:** `SearchDesignTest.aClickedTabLeavesTheTypingInTheField`. It fails with the fix turned off and passes with it.
+
+**Verification (Linux VM, not physical):** with the fix, "night", a click on Movies, then Backspace gives "nigh", still on Search.
+
+<a id="b-060"></a>
+### B-060: Panels opened in place (a confirmation, a rename, a PIN panel) lost focus, and Back skipped them
+
+- **Category:** Bug (input, focus) · **Priority:** High (controller and remote) · **Platforms:** all with directional input (TV, controller, keyboard)
+- **Components:**
+  - `ui`: `Focus.kt` (`takesFocus`, `PanelReturn`/`returnsFocus`); `AppState` (Back closes an open panel first, and its route stays in the app while one is open);
+  - the panels: `ProfilesScreen` (`Confirm`, `ClosesOnBack`, add and delete a profile, the deletion PIN) and `SettingsScreen` (rename, the PIN panels, clear watch history).
+- **How found:** Phase 2's closing Google TV emulator walk (2026-11-20). A on "Clear watch history" showed its confirmation, but focus fell out of the page to the sidebar. B, from there, then left Settings for Home with the confirmation still open.
+- **Phase:** 2 · **Status:** Fixed · **Last updated:** 2026-11-20
+- **Related:** B-025 (the input contract), B-020, B-053
+
+**Cause.**
+- Each panel replaces, in place, the control that opened it. With that control gone, focus fell to the navigation.
+- The panels' first controls were marked `initialFocus()`, which only says where the first directional press should go. It does not move focus.
+- Back had no notion of a panel open on the page: `pane()`'s dismiss is a screen reader's action only.
+
+**Fix.**
+- **On opening:** a panel's first control takes focus as it appears, for input that shows focus. That is "Keep" on a confirmation, the field on a rename or PIN panel, and "Keep PIN" on removal. A pointer or a finger sees nothing change.
+- **On closing:** when it closes (cancelled, kept, or done), focus goes back to the control that opened it.
+- **Back:** Back (a remote's, B, Escape) closes the innermost open panel before anything else on the page, and its route stays in the app while one is open.
+- **B-020's contract, refined:** with a keyboard, the first Escape still lets go of the field. The next one now closes the panel, and the one after leaves the page. Before, the second left the page with the panel open.
+
+**Tests:**
+- `PanelFocusTest` (3: confirmation, rename, PIN), on the television harness;
+- `InteractionContractTest` (B-020's sequence updated as above);
+- `AccessibilityTest` (39), `TelevisionTest` (5).
+
+**Verification (Google TV emulator, by hand with gamepad keys):** A on Clear watch history puts focus on Keep. B closes the confirmation, stays on Settings, and focus is on Clear watch history again.
+
+**Not walked on a device by a test:** on the emulator the accessibility tree runs behind a move, so a walk's check of where focus is pressed once too often. That landed on "Online metadata & artwork", and A turned it on. It was turned back off by hand, and verified off. The device walk therefore leaves Settings alone, and this behaviour is `PanelFocusTest`'s.
 
 ## Regression tracking
 

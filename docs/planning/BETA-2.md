@@ -112,7 +112,7 @@ Also in Phase 2: **Forgot PIN** as the owner decided (Keep profile, Reset profil
 - **Linux rumble:** implemented and tested in a VM.
 - **Aptabase:** not selected.
 
-Open: B-056 (the blank on closing the mini-player, Investigating); a DualSense hot-plug (B-050); the controller on the Fire TV and Android; physical Linux; the Phone 2a; and the owner's acceptance.
+Closure (2026-11-20): the Linux VM, the Google TV emulator and the Phone 2a walks were done (VERIFICATION.md), and B-058, B-059 and B-060 were found and fixed. B-056 is deferred as a known minor issue, and the DualSense check is not applicable (both by the owner's decision). Open: physical Linux (the owner's), and the owner's acceptance.
 
 ### Phase 3: media experience, discovery, Trickplay, and final performance
 
