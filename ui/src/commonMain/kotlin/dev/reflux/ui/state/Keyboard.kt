@@ -55,6 +55,11 @@ sealed class KeyboardKey {
     data object Done : KeyboardKey()
     /** Puts the keyboard away (the desk keyboard's Hide). */
     data object Hide : KeyboardKey()
+    /**
+     * The desk keyboard's Tab: in a search, takes the offered title (the first, or the one focused), as Tab completes in a
+     * terminal; elsewhere it finishes the field, which goes on to the next one.
+     */
+    data object Tab : KeyboardKey()
 }
 
 enum class KeyboardPage { LETTERS, SYMBOLS }
@@ -277,6 +282,11 @@ class KeyboardSession(
             }
             KeyboardKey.Done -> return Outcome.DONE
             KeyboardKey.Hide -> return Outcome.HIDE
+            KeyboardKey.Tab -> return when {
+                kind == InputKind.SEARCH && completions.isNotEmpty() -> complete(completion ?: 0).also { completion = null }
+                kind == InputKind.SEARCH -> Outcome.EDGE
+                else -> Outcome.DONE
+            }
         }
         return Outcome.HANDLED
     }

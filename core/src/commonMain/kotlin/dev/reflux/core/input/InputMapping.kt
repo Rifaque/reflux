@@ -62,8 +62,9 @@ object InputMapping {
                 GamepadButton.DPAD_RIGHT -> SemanticAction.SEEK_FORWARD
                 GamepadButton.SHOULDER_LEFT -> SemanticAction.PREVIOUS
                 GamepadButton.SHOULDER_RIGHT -> SemanticAction.NEXT
-                GamepadButton.TRIGGER_LEFT -> SemanticAction.SPEED_DOWN
-                GamepadButton.TRIGGER_RIGHT -> SemanticAction.SPEED_UP
+                // LT shows and hides the hints here as everywhere (the owner's walk, 2026-11-20); speed is in Options, so
+                // the triggers no longer change it.
+                GamepadButton.TRIGGER_LEFT -> SemanticAction.TOGGLE_HINTS
                 GamepadButton.START, GamepadButton.FACE_NORTH -> SemanticAction.MENU
                 else -> null
             }
@@ -143,6 +144,8 @@ object InputMapping {
             GamepadButton.TRIGGER_RIGHT -> "R2"
             GamepadButton.START -> "Options"
             GamepadButton.SELECT -> "Create"
+            GamepadButton.STICK_LEFT -> "L3"
+            GamepadButton.STICK_RIGHT -> "R3"
             GamepadButton.HOME -> "PS"
             else -> neutralGlyph(button)
         }
@@ -157,6 +160,8 @@ object InputMapping {
             GamepadButton.TRIGGER_RIGHT -> "ZR"
             GamepadButton.START -> "+"
             GamepadButton.SELECT -> "−"
+            GamepadButton.STICK_LEFT -> "LS"
+            GamepadButton.STICK_RIGHT -> "RS"
             else -> neutralGlyph(button)
         }
         // A remote's keys are named for what they do; it has no face buttons.
@@ -177,6 +182,8 @@ object InputMapping {
             GamepadButton.TRIGGER_RIGHT -> "RT"
             GamepadButton.START -> "Menu"
             GamepadButton.SELECT -> "View"
+            GamepadButton.STICK_LEFT -> "LS"
+            GamepadButton.STICK_RIGHT -> "RS"
             else -> neutralGlyph(button)
         }
     }

@@ -42,6 +42,12 @@ class KeyboardModeArbiter(initial: Mode, private var switchedAtMs: Long = Long.M
     /** A click on the keyboard: the key under it is pressed as drawn, then the pointer's presentation is shown. */
     fun clicked(nowMs: Long): Boolean = switchTo(Mode.POINTER, nowMs)
 
+    /**
+     * The pointer became the input in use (the app's own modality: deliberate travel anywhere, or a click). It switches once
+     * settled after the last switch, so a controller's press and an incidental nudge never fight.
+     */
+    fun pointerTookOver(nowMs: Long): Boolean = if (settled(nowMs)) switchTo(Mode.POINTER, nowMs) else false
+
     /** The pointer moved by [dp] (its travel), [overKeyboard] or elsewhere. */
     fun pointerMoved(dp: Float, overKeyboard: Boolean, nowMs: Long): Boolean {
         if (mode == Mode.POINTER) return false

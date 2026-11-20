@@ -324,8 +324,8 @@ class AppState(
     }
 
     /**
-     * Whether the controller's button hints are hidden while browsing (B-055): LT hides them, and then only LT's own hint
-     * stays, to bring them back. Kept across restarts. Shown by default.
+     * Whether the controller's button hints are hidden (B-055), in browsing and in the player alike: LT hides them all, its
+     * own included (the owner's walk, 2026-11-20), and LT brings them back. Kept across restarts. Shown by default.
      */
     var hintsHidden by mutableStateOf(false)
         private set
@@ -1005,7 +1005,12 @@ class AppState(
     fun keyboardPointerTravel(dp: Float) {
         val session = keyboard ?: return
         if (!platform.deskKeyboard || platform.television) return
-        if (keyboardArbiter?.pointerMoved(dp, overKeyboard = true, nowMs = UiClock.nowMs()) == true) session.show(KeyboardMode.POINTER)
+        if (keyboardArbiter?.pointerMoved(dp, overKeyboard = true, nowMs = UiClock.nowMs()) == true) {
+            session.show(KeyboardMode.POINTER)
+            // The hints change with the keyboard, not later on a click: a hints bar leaving under a press moved the keys away
+            // from the pointer before its release, and that first click typed nothing (the owner's walk, 2026-11-20).
+            if (input.modality != InputModality.POINTER) input = modality.onSignal(InputSignal.PointerClick)
+        }
     }
 
     private fun showKeyboardFor(controller: Boolean) {
@@ -1060,11 +1065,9 @@ class AppState(
         }
         if (action in DOCKED_ACTIONS && action != SemanticAction.MINI_PLAYER) return docked?.handle(action) ?: true
         if (action == SemanticAction.FULLSCREEN) return true
-        // A controller's or a remote's press shows the controller's grid first (§7), with focus mapped by key (§9); a
-        // press that only revealed the grid's focus types nothing.
-        val wasPointer = session.mode == KeyboardMode.POINTER
+        // A controller's or a remote's press shows the controller's grid (§7), with focus mapped by key (§9), and acts at once
+        // (the owner's walk, 2026-11-20: a first A that only revealed focus read as a key that did not work).
         showKeyboardFor(controller = true)
-        if (wasPointer && action == SemanticAction.SELECT) return true
         when (session.handle(action)) {
             KeyboardSession.Outcome.DONE -> {
                 keyboard = null
@@ -1128,7 +1131,36 @@ class AppState(
     /** Reports raw input evidence (pointer travel, touches, controller use) from the shell or the UI. */
     fun onSignal(signal: InputSignal) {
         val next = modality.onSignal(signal)
-        if (next != input) input = next
+        if (next != input) {
+            val pointerTookOver = next.modality == InputModality.POINTER && input.modality != InputModality.POINTER
+            input = next
+            // The keyboard follows the hand the hints follow (the owner's walk, 2026-11-20): the pointer taking over anywhere
+            // shows the desk keyboard, never hints for a pointer over a controller's grid. Not on a click's press: the keys
+            // would move under it before its release; a click types its key, then shows the desk keyboard (pressKey).
+            if (pointerTookOver && signal is InputSignal.PointerMove) pointerTookOverKeyboard()
+        }
+    }
+
+    /** The pointer became the input in use while the keyboard is open: its desk presentation, once the arbiter's hold allows. */
+    private fun pointerTookOverKeyboard() {
+        val session = keyboard ?: return
+        if (!platform.deskKeyboard || platform.television || session.mode == KeyboardMode.POINTER) return
+        val arbiter = keyboardArbiter ?: return
+        if (arbiter.pointerTookOver(UiClock.nowMs())) {
+            session.show(KeyboardMode.POINTER)
+        } else {
+            // Within the hold right after a controller's press: shown when it ends, if the pointer is still the input then.
+            scope.launch {
+                kotlinx.coroutines.delay(dev.reflux.core.input.KeyboardModeArbiter.HOLD_MS)
+                if (keyboard === session && input.modality == InputModality.POINTER && arbiter.pointerTookOver(UiClock.nowMs())) session.show(KeyboardMode.POINTER)
+            }
+        }
+    }
+
+    /** A click anywhere on the keyboard's panel (not only on a key) shows the desk presentation, as a click on a key does. */
+    fun keyboardClicked() {
+        if (keyboard == null) return
+        showKeyboardFor(controller = false)
     }
 
     /**
@@ -1187,6 +1219,18 @@ class AppState(
      * Closes what plays in the mini-player, for good (B-052): playback stops and the mini-player goes; focus stays where it
      * was on the page. False when there is no mini-player.
      */
+    /** Whether the mini-player is up with nothing over it, so the right stick's press can bring it back to the full player. */
+    val miniPlayerExpands: Boolean
+        get() = docked != null && watching == null && keyboard == null && profileGate == null && folderPicker == null && !offlineOpen
+
+    /** The mini-player back to the full player (the right stick's press). False when there is no mini-player. */
+    fun expandMiniPlayer(): Boolean {
+        val session = docked ?: return false
+        session.expand()
+        if (fromController) haptics.controller(HapticEvent.CONFIRM)
+        return true
+    }
+
     fun closeMiniPlayer(): Boolean {
         val session = docked ?: return false
         session.close()
@@ -1230,6 +1274,17 @@ class AppState(
             fromController = true
             return try {
                 closeMiniPlayer()
+            } finally {
+                fromController = false
+            }
+        }
+        // Pressing the right stick, the player's own stick (its scenes, B-029), brings the mini-player back to the full player
+        // from wherever focus is (the owner's walk, 2026-11-20). Nothing else uses it, so it never plays, closes, or opens
+        // anything else.
+        if (button == GamepadButton.STICK_RIGHT && miniPlayerExpands) {
+            fromController = true
+            return try {
+                expandMiniPlayer()
             } finally {
                 fromController = false
             }
@@ -1308,6 +1363,11 @@ class AppState(
         }
         // In the system's window there is no Reflux to act on: the window is the picture, and its controls are the system's.
         if (playback?.presentation == PlayerPresentation.SYSTEM) return false
+        // LT's hints, the player's included, are the app's: one preference everywhere.
+        if (action == SemanticAction.TOGGLE_HINTS) {
+            toggleHints()
+            return true
+        }
         watching?.let { return it.handle(action) }
         return when (action) {
             SemanticAction.NAVIGATE_UP, SemanticAction.NAVIGATE_DOWN, SemanticAction.NAVIGATE_LEFT, SemanticAction.NAVIGATE_RIGHT ->

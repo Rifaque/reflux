@@ -135,6 +135,8 @@ internal fun runReflux(
     val platform = DesktopPlatform(environment)
     // Which build wrote what follows (docs/VERSIONING.md).
     environment.diagnostics.record("Reflux ${platform.build.label} started")
+    // B-063: the Linux desktop's scale Reflux applies itself, where the toolkit leaves it out.
+    LinuxDisplayScale.extra.takeIf { it != 1f }?.let { environment.diagnostics.record("The desktop's scale is applied by Reflux: x$it over the toolkit's") }
     dev.reflux.playback.mpv.NumericLocale.adjustedFrom?.let { environment.diagnostics.record("The numeric locale was $it; it is C for libmpv (language and formats are unchanged)") }
     application(exitProcessOnExit = exitProcess) {
         // The last line of defence: a failure nobody handled is written down instead of ending the app.
@@ -154,7 +156,8 @@ internal fun runReflux(
                 }
             }
         }
-        val windowState = rememberWindowState(size = DpSize(1360.dp, 860.dp), position = WindowPosition.Aligned(Alignment.Center))
+        // The window opens at the same size for the eye on a scaled Linux desktop (B-063), within the screen.
+        val windowState = rememberWindowState(size = scaledWindowSize(1360f, 860f), position = WindowPosition.Aligned(Alignment.Center))
 
         // What was playing is saved, and its engine gone, before the process goes away.
         val leave: () -> Unit = {
@@ -182,7 +185,7 @@ internal fun runReflux(
             }
             DisposableEffect(window) {
                 platform.window = window
-                window.minimumSize = Dimension(900, 600)
+                window.minimumSize = scaledWindowSize(900f, 600f).let { Dimension(it.width.value.toInt(), it.height.value.toInt()) }
                 window.background = java.awt.Color(Palette.background.value.toInt(), true)
                 // What shows where the toolkit cuts the native video window out of the page: the video is 401 physical pixels
                 // wide where the toolkit works in whole units of 1.25, so its cut-out is a pixel wider than the video, and the
@@ -262,7 +265,8 @@ internal fun runReflux(
             // beside the page (docs/PLAYBACK.md, "One session, several presentations").
             // The surface is a native window, which is put where it belongs in one move rather than made to travel.
             val placement = rememberVideoPlacement(app, travels = false)
-            Box(Modifier.fillMaxSize().background(RefluxColors.background)) {
+            // At the Linux desktop's own scale where Java's toolkit leaves it out (B-063); unchanged elsewhere.
+            AtDisplayScale { Box(Modifier.fillMaxSize().background(RefluxColors.background)) {
                 RefluxApp(app)
                 platform.video.canvas?.let { canvas ->
                     VideoStage(placement, Modifier.fillMaxSize()) {
@@ -275,7 +279,7 @@ internal fun runReflux(
                         ) }
                     }
                 }
-            }
+            } }
 
             // The controls window lives exactly as long as the video surface, not as long as the session:
             // it must not be torn down while the engine is being torn down (see X11ErrorGuard), and the
@@ -363,4 +367,14 @@ private const val DWMWA_USE_IMMERSIVE_DARK_MODE = 20
 @Suppress("FunctionName")
 private interface Dwm : Library {
     fun DwmSetWindowAttribute(window: Pointer, attribute: Int, value: IntByReference, size: Int): Int
+}
+
+/** [width] x [height] at the desktop's scale where Reflux applies it itself (B-063), at most nine tenths of the screen. */
+internal fun scaledWindowSize(width: Float, height: Float): DpSize {
+    val extra = LinuxDisplayScale.extra
+    if (extra == 1f) return DpSize(width.dp, height.dp)
+    val screen = runCatching { java.awt.GraphicsEnvironment.getLocalGraphicsEnvironment().maximumWindowBounds }.getOrNull()
+    val w = (width * extra).let { if (screen != null) it.coerceAtMost(screen.width * 0.9f) else it }
+    val h = (height * extra).let { if (screen != null) it.coerceAtMost(screen.height * 0.9f) else it }
+    return DpSize(w.dp, h.dp)
 }

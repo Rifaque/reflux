@@ -764,6 +764,7 @@ private fun Chrome(app: AppState, page: PageScroll, rail: RailFocus, navigationI
                         prompts = app.input.controllerFamily?.takeIf { app.namesButtons },
                         onComplete = app::completeOnKeyboard,
                         onPointerTravel = app::keyboardPointerTravel,
+                        onPanelClick = app::keyboardClicked,
                     )
                 }
             }
@@ -1080,7 +1081,7 @@ private fun NavigationItem(
                 horizontalArrangement = Arrangement.spacedBy(14.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Box { if (viewer != null) ProfileMark(viewer, 22.dp, lit = selected) else Icon(icon, size = 20.dp, tint = tint); if (busy) BusyDot(Modifier.align(Alignment.TopEnd)) }
+                Box { if (viewer != null) ProfileMark(viewer, 20.dp, lit = selected) else Icon(icon, size = 20.dp, tint = tint); if (busy) BusyDot(Modifier.align(Alignment.TopEnd)) }
                 if (shown == NavigationLabel.BESIDE) {
                     Text(label, style = if (television) LocalTypography.current.tvLabel else LocalTypography.current.navigation, color = tint, maxLines = 1)
                 }
@@ -1091,7 +1092,7 @@ private fun NavigationItem(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterVertically),
             ) {
-                Box { if (viewer != null) ProfileMark(viewer, 24.dp, lit = selected) else Icon(icon, size = 22.dp, tint = tint); if (busy) BusyDot(Modifier.align(Alignment.TopEnd)) }
+                Box { if (viewer != null) ProfileMark(viewer, 22.dp, lit = selected) else Icon(icon, size = 22.dp, tint = tint); if (busy) BusyDot(Modifier.align(Alignment.TopEnd)) }
                 Text(label, style = LocalTypography.current.navigationCompact, color = tint, maxLines = 1)
             }
         }
@@ -1172,7 +1173,7 @@ private fun ProfileButton(app: AppState) {
             role = Role.Tab,
         ) {
             Box(Modifier.size(44.dp).glass(MaterialRole.FLOATING, CircleShape), contentAlignment = Alignment.Center) {
-                if (who != null) ProfileMark(app.activeProfile, 34.dp, lit = here) else Icon(Icon.PROFILE, size = 22.dp, tint = tabColor(here))
+                if (who != null) ProfileMark(app.activeProfile, 28.dp, lit = here) else Icon(Icon.PROFILE, size = 22.dp, tint = tabColor(here))
             }
         }
         if (busy) DownloadBadge(Modifier.align(Alignment.TopEnd))
@@ -1206,8 +1207,8 @@ internal fun rememberBackHold(app: AppState, family: ControllerFamily): dev.refl
 }
 
 internal fun browsePrompts(app: AppState, family: ControllerFamily): List<Pair<GamepadButton, String>> =
-    // B-055: hidden, the bar keeps only LT's own hint, the way to bring the others back.
-    if (app.hintsHidden) listOf(GamepadButton.TRIGGER_LEFT to "Show hints") else allBrowsePrompts(app, family) + (GamepadButton.TRIGGER_LEFT to "Hide hints")
+    // B-055: hidden, nothing is shown, LT's own hint included (the owner's walk, 2026-11-20); LT brings them back.
+    if (app.hintsHidden) emptyList() else allBrowsePrompts(app, family) + (GamepadButton.TRIGGER_LEFT to "Hide hints")
 
 private fun allBrowsePrompts(app: AppState, family: ControllerFamily): List<Pair<GamepadButton, String>> = listOfNotNull(
     InputMapping.confirmButton(family) to "Select",
@@ -1219,7 +1220,8 @@ private fun allBrowsePrompts(app: AppState, family: ControllerFamily): List<Pair
         else -> null
     },
     (GamepadButton.FACE_NORTH to "Sidebar").takeIf { app.toggleNavigation != null && app.folderPicker == null && !app.offlineOpen },
-    // B-052: with the mini-player up, RT closes it (so does holding Back).
+    // With the mini-player up, the right stick's press brings back the full player, and RT closes it (B-052; so does holding Back).
+    (GamepadButton.STICK_RIGHT to "Full player").takeIf { app.miniPlayerExpands },
     (GamepadButton.TRIGGER_RIGHT to "Close player").takeIf { app.docked != null && app.watching == null },
 )
 

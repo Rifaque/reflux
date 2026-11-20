@@ -348,10 +348,11 @@ class PhaseTwoWalkOnDeviceTest {
         // B-053 with a remote (a television only).
         org.junit.Assume.assumeTrue(television)
         start()
-        until("Home with the film") { app.navigator.current == Destination.Home && says("Jungle Walk") }
+        // Home; the film is in its rows, which since Phase 3 may start below a featured work in progress and Continue Watching.
+        until("Home") { app.navigator.current == Destination.Home }
         // Down from the hero to the row's first card, then OK.
         remote(KeyEvent.KEYCODE_DPAD_DOWN)
-        repeat(4) { if (app.navigator.current == Destination.Home && focusedWords()?.contains("Jungle Walk") != true) remote(KeyEvent.KEYCODE_DPAD_DOWN) }
+        repeat(8) { if (app.navigator.current == Destination.Home && focusedWords()?.contains("Jungle Walk") != true) remote(KeyEvent.KEYCODE_DPAD_DOWN) }
         shot("p2-tv-card-$model")
         remote(KeyEvent.KEYCODE_DPAD_CENTER)
         until("details") { app.navigator.current is Destination.Details }
@@ -471,12 +472,13 @@ class PhaseTwoWalkOnDeviceTest {
         // Phase 2 with a controller on a television (B-039, F-P2, B-053, B-023/B-054, B-055): gamepad buttons from the system.
         org.junit.Assume.assumeTrue(television)
         start()
-        until("Home with the film") { app.navigator.current == Destination.Home && says("Jungle Walk") }
+        // Home; the film is in its rows, which since Phase 3 may start below a featured work in progress and Continue Watching.
+        until("Home") { app.navigator.current == Destination.Home }
         pad(KeyEvent.KEYCODE_DPAD_DOWN)
         until("a controller in hand") { app.input.controllerFamily != null && app.input.modality == dev.reflux.core.input.InputModality.DIRECTIONAL }
         // Down to the film's card (found by where it is: Fire OS leaves a focused card's node without words), A: its page, on
         // Play; nothing plays; B back.
-        repeat(6) { if (!focusIsOn("Jungle Walk")) pad(KeyEvent.KEYCODE_DPAD_DOWN) }
+        repeat(8) { if (!focusIsOn("Jungle Walk")) pad(KeyEvent.KEYCODE_DPAD_DOWN) }
         assertTrue(focusIsOn("Jungle Walk"), "on the film's card")
         pad(KeyEvent.KEYCODE_BUTTON_A)
         until("details") { app.navigator.current is Destination.Details }
@@ -489,10 +491,14 @@ class PhaseTwoWalkOnDeviceTest {
         shot("p2-pad-details-$model")
         pad(KeyEvent.KEYCODE_BUTTON_B)
         until("home") { app.navigator.current == Destination.Home }
-        // X does nothing while browsing (reserved); Y to the sidebar and back.
+        // X on the focused film is its Quick View since Phase 3 (F-P3; this walk said "X does nothing" before it): B closes it
+        // and the page is unchanged. Then Y to the sidebar and back.
         val before = app.navigator.current
         pad(KeyEvent.KEYCODE_BUTTON_X)
-        kotlin.test.assertEquals(before, app.navigator.current, "X does nothing")
+        until("Quick View by X") { app.quickView != null }
+        pad(KeyEvent.KEYCODE_BUTTON_B)
+        until("Quick View closed by B") { app.quickView == null }
+        kotlin.test.assertEquals(before, app.navigator.current, "the page is unchanged")
         pad(KeyEvent.KEYCODE_BUTTON_Y)
         Thread.sleep(500)
         shot("p2-pad-sidebar-$model")
@@ -512,6 +518,8 @@ class PhaseTwoWalkOnDeviceTest {
         // Search: A on the field opens the Reflux keyboard; A types, X erases, B closes it with the text kept.
         instrumentation.runOnMainSync { app.go(Destination.Search) }
         until("the field") { app.navigator.current == Destination.Search && app.textInputActive }
+        // The field takes focus as Search settles (as PhaseThreeWalkOnDeviceTest waits for too).
+        Thread.sleep(800)
         pad(KeyEvent.KEYCODE_BUTTON_A)
         until("the Reflux keyboard") { app.keyboard != null }
         val session = app.keyboard!!

@@ -64,7 +64,8 @@ internal fun QuickViewOverlay(app: AppState, itemId: MediaId) {
     val layout = LocalLayout.current
     val phone = layout.navigation == NavigationStyle.BOTTOM_BAR || layout.navigation == NavigationStyle.COMPACT_RAIL
     Box(
-        Modifier.fillMaxSize().background(RefluxColors.background.copy(alpha = 0.72f)).pointerInput(app) { detectTapGestures { app.closeQuickView() } },
+        // A calm dim behind, not a wash (the owner's walk, 2026-11-20: the page beneath was too blurred and the view too light).
+        Modifier.fillMaxSize().background(RefluxColors.background.copy(alpha = 0.6f)).pointerInput(app) { detectTapGestures { app.closeQuickView() } },
         contentAlignment = Alignment.Center,
     ) {
         // Loading takes a moment at most: nothing is drawn until there is something to say, then it is said whole.
@@ -74,7 +75,9 @@ internal fun QuickViewOverlay(app: AppState, itemId: MediaId) {
             Modifier.widthIn(max = if (layout.formFactor == FormFactor.TV) 760.dp else 640.dp).fillMaxWidth()
                 .padding(horizontal = layout.safeMarginDp.dp + 8.dp, vertical = 24.dp)
                 .absorbsPointer()
-                .glass(MaterialRole.ELEVATED, Shapes.large)
+                // More solid and a little darker than the elevated material, with a lighter blur: it stands out by its own
+                // surface, and what is behind stays calm rather than smeared.
+                .glass(MaterialRole.ELEVATED, Shapes.large, tint = androidx.compose.ui.graphics.lerp(RefluxColors.surface, RefluxColors.background, 0.35f).copy(alpha = 0.9f), blurScale = 0.4f)
                 .pane("Quick view")
                 .verticalScroll(rememberScrollState())
                 .padding(18.dp),

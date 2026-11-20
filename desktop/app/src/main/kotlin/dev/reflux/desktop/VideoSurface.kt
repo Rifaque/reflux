@@ -104,7 +104,7 @@ internal fun VideoOverlay(owner: ComposeWindow, anchor: Component, shown: Boolea
             isTransparent = true
             isResizable = false
             focusableWindowState = false
-            setContent { current() }
+            setContent { AtDisplayScale { current() } }
         }
         fun align() {
             if (!anchor.isShowing || !visible) {

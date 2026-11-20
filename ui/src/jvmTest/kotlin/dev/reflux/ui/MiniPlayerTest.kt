@@ -423,4 +423,47 @@ class MiniPlayerTest {
             await("closed by a held Back") { app.playback == null }
         }
     }
+
+    @Test
+    fun theRightStickBringsTheMiniPlayerBackToTheFullPlayer_andLtHidesThePlayersHintsToo() {
+        // The owner's walk (2026-11-20): one press, from wherever focus is, back to the full player; offered as a hint, and
+        // hidden with every other hint by LT, a preference kept across restarts.
+        val platform = docking()
+        val world = populated()
+        screen(world, platform) { app ->
+            awaitText("Recently Added")
+            runOnIdle { app.onGamepadButton(GamepadButton.DPAD_DOWN, ControllerFamily.XBOX) }
+            playing(app, platform)
+            val session = app.playback!!
+            repeat(3) { round ->
+                runOnIdle { app.onGamepadButton(GamepadButton.FACE_EAST, ControllerFamily.XBOX) }
+                await("the mini-player ($round)") { app.docked != null && exists(dock) }
+                await("offered") { prompted("RS Full player") }
+                // Focus somewhere else on the page first: the press works from wherever it is.
+                runOnIdle { app.onGamepadButton(GamepadButton.DPAD_DOWN, ControllerFamily.XBOX) }
+                runOnIdle { assertTrue(app.onGamepadButton(GamepadButton.STICK_RIGHT, ControllerFamily.XBOX)) }
+                await("the full player ($round)") { app.watching != null && app.docked == null }
+                assertSame(session, app.playback, "the same playback, never a new one")
+                assertEquals(1, platform.players.size)
+            }
+            // In the full player, the press is nothing of the mini-player's.
+            runOnIdle { assertFalse(app.miniPlayerExpands) }
+            // LT hides the player's hints, its own included, and the choice is kept.
+            runOnIdle { app.dispatch(SemanticAction.NAVIGATE_UP) }
+            runOnIdle { app.onGamepadButton(GamepadButton.TRIGGER_LEFT, ControllerFamily.XBOX) }
+            await("hidden") { app.hintsHidden && world.library.setting("controller_hints") == "hidden" }
+            assertTrue(app.watching != null, "LT changed nothing of what plays")
+            assertFalse(prompted("Hide hints"))
+            runOnIdle { app.onGamepadButton(GamepadButton.FACE_EAST, ControllerFamily.XBOX) }
+            await("the mini-player") { app.docked != null }
+            waitForIdle()
+            assertFalse(prompted("Full player"), "hidden hints hide the mini-player's too")
+            runOnIdle { assertTrue(app.onGamepadButton(GamepadButton.STICK_RIGHT, ControllerFamily.XBOX)) }
+            await("still works with the hints hidden") { app.watching != null }
+        }
+        screen(world, platform) { app ->
+            awaitText("Recently Added")
+            await("still hidden after a restart") { app.hintsHidden }
+        }
+    }
 }

@@ -440,7 +440,7 @@ private fun Controls(
             else IconButton(Icon.BACK, "Back to library", { session.close() }, size = chrome.buttonDp.dp, shortcut = "Esc")
         }
         if (compact || !shown) NowPlaying(session, compact = true, chrome, Modifier.weight(1f)) else Spacer(Modifier.weight(1f))
-        if (shown && app.namesButtons && !failed) {
+        if (shown && app.namesButtons && !failed && !app.hintsHidden) {
             val family = app.input.controllerFamily ?: ControllerFamily.GENERIC
             ButtonPrompts(
                 if (open != null) {
@@ -451,6 +451,7 @@ private fun Controls(
                         InputMapping.cancelButton(family) to if (minimizes) "Minimize" else "Back",
                         GamepadButton.START to "Options",
                         (GamepadButton.SHOULDER_RIGHT to "Next").takeIf { session.next != null },
+                        GamepadButton.TRIGGER_LEFT to "Hide hints",
                     )
                 },
                 family,
@@ -696,7 +697,7 @@ private fun Timeline(session: PlaybackSession, state: PlayerState, remote: Boole
             enabled = duration != null,
         )
             if (previewMs != null && duration != null) {
-                TimelinePreview(previews, previewMs, (previewMs.toFloat() / duration).coerceIn(0f, 1f), scrubbing = scrub != null, family = session.controllerFamily())
+                TimelinePreview(previews, previewMs, (previewMs.toFloat() / duration).coerceIn(0f, 1f))
             }
         }
         Text(
@@ -712,19 +713,14 @@ private fun Timeline(session: PlaybackSession, state: PlayerState, remote: Boole
 /**
  * The scene at [positionMs], floating above the timeline at [fraction] of its width (B-030): the version's preview where
  * its source keeps them, with the time beneath; the time alone where it has none, so nothing pretends to be a picture.
- * During the right stick's scene navigation (B-029) it also says how to go there or stay, with [family]'s buttons.
+ * During the right stick's scene navigation (B-029) A goes there and B stays; nothing on screen spells that out.
  */
 @Composable
-private fun TimelinePreview(previews: dev.reflux.ui.state.TrickplayPreviews?, positionMs: Long, fraction: Float, scrubbing: Boolean, family: dev.reflux.core.input.ControllerFamily) {
+private fun TimelinePreview(previews: dev.reflux.ui.state.TrickplayPreviews?, positionMs: Long, fraction: Float) {
     val manifest = previews?.manifest
     val picture = previews?.picture
     val television = LocalLayout.current.formFactor == dev.reflux.design.FormFactor.TV
     val width = if (manifest == null) null else if (television) 260.dp else 200.dp
-    val hint = if (!scrubbing) null else {
-        val go = dev.reflux.core.input.InputMapping.glyph(dev.reflux.core.input.InputMapping.confirmButton(family), family)
-        val stay = dev.reflux.core.input.InputMapping.glyph(dev.reflux.core.input.InputMapping.cancelButton(family), family)
-        "$go Go here, $stay Stay"
-    }
     val gap = with(LocalDensity.current) { 10.dp.roundToPx() }
     val label = Modifier.background(androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.72f), Shapes.small).padding(horizontal = 8.dp, vertical = 3.dp)
     Column(
@@ -761,7 +757,6 @@ private fun TimelinePreview(previews: dev.reflux.ui.state.TrickplayPreviews?, po
             }
         }
         Text(Formatting.clock(positionMs), label, style = LocalTypography.current.captionStrong, color = androidx.compose.ui.graphics.Color.White, maxLines = 1)
-        hint?.let { Text(it, label, style = LocalTypography.current.caption, color = androidx.compose.ui.graphics.Color.White, maxLines = 1) }
     }
 }
 

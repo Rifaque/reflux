@@ -9,13 +9,13 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /**
- * B-055: the controller's hints while browsing. LT hides them, and only LT's own hint stays to bring them back; LT again
- * shows them; the choice is kept. They say only what can be done here and now.
+ * B-055: the controller's hints. LT hides them all, its own included (the owner's walk, 2026-11-20); LT again shows them;
+ * the choice is kept across restarts. They say only what can be done here and now.
  */
 @OptIn(ExperimentalTestApi::class)
 class HintsTest {
     @Test
-    fun ltHidesTheHintsLeavingItsOwnAndBringsThemBack() {
+    fun ltHidesEveryHintAndBringsThemBack() {
         val world = populated()
         screen(world) { app ->
             awaitText("Recently Added")
@@ -23,7 +23,7 @@ class HintsTest {
             await("the hints") { prompted("A Select") && prompted("Y Sidebar") && prompted("LT Hide hints") }
             save("hints-xbox")
             runOnIdle { assertTrue(app.onGamepadButton(GamepadButton.TRIGGER_LEFT, ControllerFamily.XBOX)) }
-            await("hidden but for LT") { prompted("LT Show hints") && !prompted("A Select") && !prompted("Sidebar") }
+            await("all hidden, LT's own too") { !prompted("A Select") && !prompted("Sidebar") && !prompted("LT") }
             waitForIdle()
             save("hints-hidden")
             // Hidden, the buttons still work: Y still goes to the sidebar.
@@ -44,8 +44,9 @@ class HintsTest {
             awaitText("Recently Added")
             await("still hidden after a restart") { app.hintsHidden }
             runOnIdle { app.onGamepadButton(GamepadButton.DPAD_DOWN, ControllerFamily.XBOX) }
-            await("only LT's hint") { prompted("LT Show hints") }
+            waitForIdle()
             assertFalse(prompted("A Select"))
+            assertFalse(prompted("LT"))
             runOnIdle { app.go(Destination.Search) }
             await("search") { app.navigator.current == Destination.Search }
         }
