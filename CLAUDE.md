@@ -5,6 +5,7 @@
 ## Where the work stands
 
 - **Beta 2** is planned in three phases: scope, phase and work order, exit criteria, the owner's defaults, the verification matrix, and the gate are in [docs/planning/BETA-2.md](docs/planning/BETA-2.md). Phase 1 (accepted) is in [docs/planning/PHASE-1-PLAN.md](docs/planning/PHASE-1-PLAN.md); Phase 2 (accepted and closed by the owner, 2026-11-20: its audit, the interaction contract, the plan, the closure) in [docs/planning/PHASE-2-PLAN.md](docs/planning/PHASE-2-PLAN.md).
+- **Phase 3** (the owner's work order, 2026-11-20) is implemented and awaits the owner's review: its state is in BETA-2.md (Phase 3) and VERIFICATION.md ("Phase 3"); B-027, B-038 and B-040 are V1.1 candidates, researched in [docs/planning/V1.1-LIBRARY-RESEARCH.md](docs/planning/V1.1-LIBRARY-RESEARCH.md), not to be implemented without the owner.
 - **Every issue's detail is in [docs/planning/BETA-BUG-TRACKER.md](docs/planning/BETA-BUG-TRACKER.md)** (B-001 to B-042, F-001 to F-005, F-P1/F-P2, and new issues from B-043). Read an issue's entry before working on it and update it *as the work happens*: investigation, cause, fix, tests, each kind of verification, blockers. Code changed without its tracker entry updated is incomplete work. New issues take the next free ID; phase changes and deferrals need the owner's decision.
 - **Beta 2 is not cut, versioned, built for release, or tagged** until Phases 2 and 3 are accepted and the gate holds (DECISIONS.md, 2026-11-19). `0.9.0-beta.1` stays as it is. Versions follow docs/VERSIONING.md, and only when the owner asks.
 - Nothing is merged, pushed, deployed, released, or changed in a store console without the owner's explicit approval for that action.
@@ -35,7 +36,8 @@ No physical Linux desktop and no live Jellyfin server at two addresses are avail
 **Input and haptics rules (Phase 2):**
 - Every text field goes through `Modifier.textEntry`; no screen sets `textInputActive`.
 - Everything felt goes through `Haptics`; `HapticsTest` fails otherwise.
-- X stays free of any browsing meaning (Phase 3's Quick View); Y toggles the sidebar (F-P2); Start opens Sources; RT, or B held, closes the mini-player (B-052); View stays fullscreen; see INPUT_MODEL.md, "Controller mapping".
+- X opens Media Quick View on a focused film or show (F-P3), and a remote's Menu does on a card; Y toggles the sidebar (F-P2); a controller's Start always opens Sources; the right stick moves through scenes in the full player (B-029); RT, or B held, closes the mini-player (B-052); View stays fullscreen; see INPUT_MODEL.md, "Controller mapping".
+- A physical keyboard never presses, lights or moves a key of the Reflux keyboard (F-P4, D5).
 - Desktop input automation goes through a guard: send keys only after checking the foreground window is the Reflux test process (raise it with `AttachThreadInput`, never by sending keys), move the pointer only where Reflux's window is under it, and capture only Reflux's own windows (PrintWindow), never the screen.
 
-**Known intermittents** (not to be "fixed" by weakening the test): `PointerTest.controlsLeaveWhilePlayingAndReturnWithThePointer`; `AboutWindowTest` (fails on unmodified HEAD too). Re-run, and record both runs.
+**Known intermittents** (not to be "fixed" by weakening the test): `PointerTest.controlsLeaveWhilePlayingAndReturnWithThePointer` and `AccessibilityTest.withoutAScreenReaderTheyStillGo` (B-044: the player's chrome mixes the test clock and the wall clock). Re-run, and record both runs. `AboutWindowTest`'s failure was a stale test, fixed in Phase 3 (B-045).

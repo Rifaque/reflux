@@ -14,11 +14,11 @@ import kotlin.test.assertTrue
 
 /** The featured hero (B-014): what the viewer is in the middle of, else a daily pick of the best unwatched, never by title. */
 class FeaturedTest {
-    private fun movie(title: String, id: String = "m-${title.hashCode().toUInt()}", backdrop: Boolean = true, watched: Boolean = false) = LibraryEntry(
+    private fun movie(title: String, id: String = "m-${title.hashCode().toUInt()}", backdrop: Boolean = true, watched: Boolean = false, away: Boolean = false) = LibraryEntry(
         item = Movie(MediaId(id), title, 2000),
         artwork = if (backdrop) mapOf(ArtworkKind.BACKDROP to ArtworkLocator.Remote("https://img/$id.jpg")) else emptyMap(),
         watchState = if (watched) WatchState(MediaId(id), completed = true) else null,
-        availability = Availability.AVAILABLE,
+        availability = if (away) Availability.UNAVAILABLE else Availability.AVAILABLE,
         favorite = false,
     )
 
@@ -55,6 +55,17 @@ class FeaturedTest {
         repeat(10) { day -> assertEquals("Heat", Featured.choose(emptyList(), watched, day.toLong(), "main")!!.item.title) }
         val allWatched = library.map { movie(it.item.title, it.item.id.value, watched = true) }
         assertNotEquals(null, Featured.choose(emptyList(), allWatched, 3, "main"), "with nothing unwatched, the rest are still featured")
+    }
+
+    @Test
+    fun whatCanBePlayedNowComesFirst() {
+        // B-062: a featured work whose source is away offers nothing to press.
+        val mostlyAway = library.map { movie(it.item.title, it.item.id.value, away = it.item.title != "Jaws") }
+        repeat(10) { day -> assertEquals("Jaws", Featured.choose(emptyList(), mostlyAway, day.toLong(), "main")!!.item.title) }
+        val awayHalfway = movie("Zodiac", away = true)
+        val readyHalfway = movie("Heat")
+        assertEquals(readyHalfway, Featured.choose(listOf(awayHalfway, readyHalfway), library, 1, "main"))
+        assertEquals(awayHalfway, Featured.choose(listOf(awayHalfway), emptyList(), 1, "main"), "with nothing else, still featured")
     }
 
     @Test

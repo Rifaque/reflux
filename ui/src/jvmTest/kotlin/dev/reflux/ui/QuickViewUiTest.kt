@@ -108,6 +108,8 @@ class QuickViewUiTest {
             onRoot().performTouchInput { longClick(card.center) }
             await("Quick View") { open() }
             assertEquals(Destination.Home, app.navigator.current)
+            // The system's Back (a phone's gesture) is the app's while Quick View is open, and closes it.
+            assertEquals(dev.reflux.ui.state.BackRoute.APP, app.backRoute)
             save("quick-view-phone")
         }
     }

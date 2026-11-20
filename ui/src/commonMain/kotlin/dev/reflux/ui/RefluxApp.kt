@@ -494,13 +494,17 @@ fun RefluxApp(
                     app.haptics.touch(dev.reflux.ui.state.HapticEvent.CONFIRM)
             }
         }
-        CompositionLocalProvider(
-            LocalFocusEntry provides entry, LocalFocusedControl provides focused, LocalChromeInsets provides insets, LocalPageScroll provides page,
-            dev.reflux.ui.components.LocalQuickView provides { id: dev.reflux.core.model.MediaId ->
+        // One instance for the whole session: a static local given a new value would recompose every page under it.
+        val quickView: (dev.reflux.core.model.MediaId) -> Unit = remember(app, focused, entry) {
+            { id ->
                 // Opened by a pointer or a finger on a card that may not have focus: its place is where focus comes back to.
                 focused.requester?.let { entry.afterPanel = it }
                 app.openQuickView(id)
-            },
+            }
+        }
+        CompositionLocalProvider(
+            LocalFocusEntry provides entry, LocalFocusedControl provides focused, LocalChromeInsets provides insets, LocalPageScroll provides page,
+            dev.reflux.ui.components.LocalQuickView provides quickView,
             LocalSystemBars provides bars, LocalMaterialBackdrop provides materialBackdrop, dev.reflux.ui.components.LocalTextEntry provides textEntry,
             androidx.compose.ui.platform.LocalHapticFeedback provides toolkitHaptics,
         ) {

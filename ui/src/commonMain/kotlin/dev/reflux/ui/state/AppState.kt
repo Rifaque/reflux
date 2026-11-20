@@ -1389,6 +1389,8 @@ class AppState(
         get() {
             if (keyboard != null) return BackRoute.APP
             profileGate?.let { return if (it.backLeaves()) BackRoute.SYSTEM else BackRoute.APP }
+            // Quick View is in front: the system's Back (a gesture, a phone's button) closes it, as B does (F-P3).
+            if (quickView != null) return BackRoute.APP
             val session = playback
             if (session?.presentation == PlayerPresentation.SYSTEM) return BackRoute.SYSTEM
             watching?.let { full ->
