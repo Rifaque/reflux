@@ -2449,3 +2449,10 @@ The owner's "Phase 3 Final Validation & Closure" work order, and the steers give
 - **Result:** BUILD SUCCESSFUL in 15 min 19 s; **1,647 tests, 0 failures, 26 skipped**; Android lint and `verifySharedSources` clean.
 - **Per module:** android 56, core 393, design 43, desktop app 77, desktop engine 52, library 263, Trakt 23, mpv 60, Jellyfin 74, local 6, Plex 25, SMB 10, WebDAV 20, ui 545.
 - **Not run:** the real-window tests (`-Preflux.windowTests`), because they would drive the owner's desktop.
+
+**After the closure: the owner's manual test of the final build (2026-11-20).**
+- **Found:** B-071, B-072 and B-073, each reproduced in a test before its fix (the tracker).
+- **UI and core suites:** 941 tests, 2 failures, both in `SourcesUiTest`: `aServerThatIsAwayOrStopsAnsweringIsRemovedAtOnce` and `aServerThatIsAwayStaysListedAndInTheLibraryAndCanBeSignedInAgain` (timed out waiting).
+  - Rerun alone: 11/11 passed.
+  - They had passed in the full check before these changes, and these changes touch no source code: timing under load, recorded as an intermittent.
+- **The packaged app** was rebuilt and opened on the walk library for the owner's check.

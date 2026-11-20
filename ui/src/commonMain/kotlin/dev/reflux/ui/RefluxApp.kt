@@ -184,6 +184,9 @@ import dev.reflux.ui.screens.SourceLibraryScreen
 /** How many frames a television waits for a new screen to have something to focus. */
 private const val FOCUS_PATIENCE_FRAMES = 30
 
+/** How long Right from the navigation waits for the page just chosen there to offer its start (B-072): about 1.5 s. */
+private const val RAIL_ENTRY_PATIENCE_FRAMES = 90
+
 /** The height of the floating navigation bar. */
 internal val NavigationBarHeight = 56.dp
 
@@ -364,6 +367,9 @@ fun RefluxApp(
                 }
                 // From a rail, Right goes back into the page where focus was in it (each page restores its last focused item).
                 val back = action == SemanticAction.NAVIGATE_RIGHT && sideNavigation && entry.inChrome
+                // The page focus goes to is the one now chosen, even before it is composed (B-072): until the next frame
+                // the entry still named the page that was leaving, and its start was taken, and lost with it.
+                entry.screen = app.navigator.current
                 // Nothing has focus and the page has nothing to start on yet (it is still being read: a large library
                 // takes a moment on its way back to Home). The toolkit's own search would land on the navigation beside
                 // it, which is what made Right from Home "sometimes not enter the content" (B-008). The press waits for
@@ -377,12 +383,29 @@ fun RefluxApp(
                         focus.moveFocus(direction)
                     }
                     true
-                } else entry.enter() || (back && (rail.enterPage() || entry.start())) || entry.leaveChrome(action) || if (action == SemanticAction.NAVIGATE_LEFT && sideNavigation && !entry.inChrome) {
+                } else if (back && (entry.enter() || rail.enterPage(app.navigator.current) || entry.start())) {
+                    true
+                } else if (back) {
+                    // B-072: Right from the navigation just after choosing a destination there, before the page has anything
+                    // to start on (Home reads its library and artwork first). The toolkit's own search then found the page
+                    // that was leaving, and focus went with it. The press waits for the arriving page's start instead,
+                    // and only then falls back to the toolkit, as long as focus is still in the navigation on that page.
+                    val page = app.navigator.current
+                    waiting.launch {
+                        repeat(RAIL_ENTRY_PATIENCE_FRAMES) {
+                            withFrameNanos { }
+                            if (app.navigator.current != page || !entry.inChrome) return@launch
+                            if (entry.start()) return@launch
+                        }
+                        focus.moveFocus(direction)
+                    }
+                    true
+                } else entry.enter() || entry.leaveChrome(action) || if (action == SemanticAction.NAVIGATE_LEFT && sideNavigation && !entry.inChrome) {
                     // Left is toward the rail. The toolkit's search also takes what is only partly to the left (a
                     // button above, in a centred column); whatever is not strictly to the left of where focus was
                     // gives way to the rail, on the destination the viewer is in.
                     val before = rail.focusedBounds
-                    rail.leavingPage(focused)
+                    rail.leavingPage(focused, app.navigator.current)
                     val moved = focus.moveFocus(FocusDirection.Left)
                     val after = rail.focusedBounds
                     if (!entry.inChrome && (!moved || (before != null && after != null && after.right > before.left + 1f))) rail.focusCurrent() || moved else moved
@@ -398,14 +421,15 @@ fun RefluxApp(
                 focused.context().also { opened -> if (opened && card != null) entry.afterPanel = card }
             }
             // Back on a television's destination goes to the navigation first, landing on where the viewer is.
-            app.focusNavigation = { !entry.inChrome && rail.leavingPage(focused).let { rail.focusCurrent() } }
+            app.focusNavigation = { !entry.inChrome && rail.leavingPage(focused, app.navigator.current).let { rail.focusCurrent() } }
             // Y (F-P2): into the navigation, landing on where the viewer is; and from it back to exactly the item that was
             // left, which keeps its row's scroll and the page's state because the page never changed. If that item is gone
             // (another destination was opened from the navigation), the page's own start.
             app.toggleNavigation = if (!sideNavigation) null else {
                 {
-                    if (entry.inChrome) rail.enterPage() || entry.start()
-                    else rail.leavingPage(focused).let { rail.focusCurrent() }
+                    entry.screen = app.navigator.current
+                    if (entry.inChrome) rail.enterPage(app.navigator.current) || entry.start()
+                    else rail.leavingPage(focused, app.navigator.current).let { rail.focusCurrent() }
                 }
             }
             onDispose {
@@ -823,7 +847,8 @@ private fun BoxScope.CompactNavigation(app: AppState) {
     AnimatedVisibility(!(app.textInputActive && app.systemKeyboardShown), Modifier.align(Alignment.BottomCenter).traversal(Traversal.AFTER_PAGE), enter = fadeIn(Motion.controlsShow.tween()), exit = fadeOut(Motion.controlsHide.tween())) {
         Column(Modifier.padding(bottom = 10.dp), horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(8.dp)) {
             // With a controller in hand, what its buttons do here, in that controller's own terms.
-            AnimatedVisibility(app.namesButtons, enter = fadeIn(Motion.inputMorph.tween()), exit = fadeOut(Motion.controlsHide.tween())) {
+            // Hidden hints take the bar with them (B-071): an empty bar was still its frosted pill, a small dot on screen.
+            AnimatedVisibility(app.namesButtons && !app.hintsHidden, enter = fadeIn(Motion.inputMorph.tween()), exit = fadeOut(Motion.controlsHide.tween())) {
                 val family = app.input.controllerFamily ?: ControllerFamily.GENERIC
                 ButtonPrompts(browsePrompts(app, family), family, hold = rememberBackHold(app, family))
             }
@@ -862,16 +887,22 @@ internal class RailFocus {
 
     internal fun focusCurrent(): Boolean = runCatching { current.requestFocus() }.getOrDefault(false)
 
-    /** Where focus was in the page when it left for the navigation. */
+    /** Where focus was in the page when it left for the navigation, and which page that was. */
     private var left: FocusRequester? = null
+    private var leftPage: Any? = null
 
-    /** Remembers where focus is in the page, before it leaves for the navigation. */
-    internal fun leavingPage(focused: FocusedControl) {
+    /** Remembers where focus is in [page], before it leaves for the navigation. */
+    internal fun leavingPage(focused: FocusedControl, page: Any?) {
         left = focused.requester
+        leftPage = page
     }
 
-    /** Back into the page where focus was in it; false when that is gone (another page, a closed panel). */
-    internal fun enterPage(): Boolean = runCatching { left?.requestFocus() ?: false }.getOrDefault(false)
+    /**
+     * Back into [page] where focus was in it; false when that is gone (a closed panel) or was on another page. Another
+     * page's item can still be composed for a moment while that page fades out (B-072): focus put there went with it.
+     */
+    internal fun enterPage(page: Any?): Boolean =
+        leftPage == page && runCatching { left?.requestFocus() ?: false }.getOrDefault(false)
 }
 
 /**
@@ -1138,7 +1169,8 @@ private fun PageBar(app: AppState, modifier: Modifier = Modifier) {
             IconButton(Icon.BACK, "Back", { navigator.back() }, size = 44.dp, glass = true)
         }
         Spacer(Modifier.weight(1f))
-        AnimatedVisibility(visible = app.namesButtons, enter = fadeIn(Motion.inputMorph.tween()), exit = fadeOut(Motion.controlsHide.tween())) {
+        // Hidden hints take the bar with them (B-071).
+        AnimatedVisibility(visible = app.namesButtons && !app.hintsHidden, enter = fadeIn(Motion.inputMorph.tween()), exit = fadeOut(Motion.controlsHide.tween())) {
             val family = app.input.controllerFamily ?: ControllerFamily.GENERIC
             ButtonPrompts(browsePrompts(app, family), family, Modifier.padding(end = 14.dp), hold = rememberBackHold(app, family))
         }
