@@ -2703,7 +2703,7 @@ A second Right always worked. Every slower route tried (by Left or Y, after Quic
 **Phase 4 (2026-11-21).**
 - **What they wait on:** `Harness.await` is Compose's `waitUntil` with `PATIENCE_MS` = 30 s of wall-clock time; the two waits are for the library pipeline (the server's films arriving in `world.library`) and for the notice, both driven by coroutines on real dispatchers, not by the test clock. Under a loaded machine 30 s of wall clock can pass while the software-rendered frames and the scan compete for CPU; the reading above stands and is still not a confirmed cause.
 - **Fresh full run:** `./gradlew check` at the start of Phase 4 (Windows 11, no Docker or emulator running, 16.8 GB free): `:ui:jvmTest` 548 tests, **0 failures**; `SourcesUiTest` passed in the full run. Not reproduced.
-- **Further samples:** the full-tree reruns at Phase 4's end (planning/PHASE-4.md, "Verification") are recorded there.
+- **Second sample:** `./gradlew check --rerun-tasks` at Phase 4's end (every task executed): `:ui:jvmTest` 548, **0 failures**. Two full runs in a row without the failure; with Phase 3's failing run on a machine also running a Jellyfin container, load remains the likeliest reading.
 - **Disposition:** stays **Investigating**, Beta 3 (test infrastructure). No test was changed: lengthening the patience would only hide a slow pipeline, and the fix is to make the wait deterministic (drive the pipeline from the test's dispatcher), which is Beta 3 work.
 
 <a id="b-075"></a>
