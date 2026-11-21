@@ -54,15 +54,16 @@ UI and playback features should consume normalized media entities and source cap
 
 ## Project status
 
-Pre-release, in a beta since 17 November 2026 (`0.9.0-beta.1`: Play closed testing, Amazon Live App Testing, and a public GitHub pre-release for Windows and Linux). The engine (Media Core, sources, identification, metadata, watch state, Best Version, playback, Smart Offline) is implemented and heavily tested, and one experience layer runs on desktop (Windows, Linux), Android phones and tablets, Android TV / Google TV, and Fire TV: point it at a folder or connect a Jellyfin or Plex server or a network share, browse, search, play, and resume on any copy, with a profile of their own for each person who watches. Release builds have been verified on a physical Nothing Phone 2a, Xiaomi Pad 7, and Fire TV Stick 4K Plus, on Windows, and on Linux in a container (docs/VERIFICATION.md). V1 targets Android phones and tablets, Android TV / Google TV, Fire TV (Fire OS), Windows, and Linux, through a public beta first. The Android application ID is `dev.rsxdevelops.reflux`. The plan and what is left are in [docs/ROADMAP.md](docs/history/roadmaps/ROADMAP-M0-M13.md); the current version and how versions work are in [docs/VERSIONING.md](docs/VERSIONING.md); the brand is in [design/brand](design/brand/README.md); the website is [docs/WEBSITE.md](docs/WEBSITE.md).
+Pre-release, in a beta since 17 November 2026; Beta 2 is finished, accepted and frozen, awaiting its release gate (`0.9.0-beta.1`: Play closed testing, Amazon Live App Testing, and a public GitHub pre-release for Windows and Linux). The engine (Media Core, sources, identification, metadata, watch state, Best Version, playback, Smart Offline) is implemented and heavily tested, and one experience layer runs on desktop (Windows, Linux), Android phones and tablets, Android TV / Google TV, and Fire TV: point it at a folder or connect a Jellyfin or Plex server or a network share, browse, search, play, and resume on any copy, with a profile of their own for each person who watches. Release builds have been verified on a physical Nothing Phone 2a, Xiaomi Pad 7, and Fire TV Stick 4K Plus, on Windows, and on Linux in a container (docs/VERIFICATION.md). V1 targets Android phones and tablets, Android TV / Google TV, Fire TV (Fire OS), Windows, and Linux, through a public beta first. The Android application ID is `dev.rsxdevelops.reflux`. The product plan is [docs/ROADMAP.md](docs/ROADMAP.md) and the beta in progress [docs/BETA.md](docs/BETA.md); the current version and how versions work are in [docs/VERSIONING.md](docs/VERSIONING.md); the brand is in [design/brand](design/brand/README.md); the website is [docs/WEBSITE.md](docs/WEBSITE.md).
 
 ## Documentation
 
 - [Product](docs/PRODUCT.md)
 - [Architecture](docs/ARCHITECTURE.md)
-- [Roadmap](docs/history/roadmaps/ROADMAP-M0-M13.md)
+- [Documentation guide](docs/README.md)
+- [Roadmap](docs/ROADMAP.md)
+- [Beta roadmap](docs/BETA.md) and [beta notes](docs/BETA-NOTES.md)
 - [Versioning](docs/VERSIONING.md)
-- [Launch plan: website, demo, beta, stores](docs/history/milestones/LAUNCH.md)
 - [Verification log](docs/VERIFICATION.md)
 - [Changelog](CHANGELOG.md)
 - [Design direction](docs/DESIGN.md)
@@ -71,7 +72,9 @@ Pre-release, in a beta since 17 November 2026 (`0.9.0-beta.1`: Play closed testi
 - [Watch state and version handoff](docs/WATCH_STATE.md)
 - [Smart Offline](docs/OFFLINE.md)
 - [Decision log](docs/DECISIONS.md)
-- [Release readiness](docs/RELEASE.md)
+- [Release process and readiness](docs/RELEASE.md)
+- [Website](docs/WEBSITE.md)
+- [History: archived plans and records](docs/history/README.md)
 
 ## Development
 
