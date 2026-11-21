@@ -119,3 +119,6 @@ export function presentPublished(entries) {
   }
   return records.sort((a, b) => compareVersions(b.version, a.version))
 }
+
+/** True when one of these publication records is this version or newer (the site's "is it out yet", src/released.js). */
+export const releasedIn = (published, version) => (published ?? []).some((r) => compareVersions(r.version, version) >= 0)

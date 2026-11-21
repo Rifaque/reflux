@@ -10,6 +10,8 @@ import Download from './pages/Download.jsx'
 import Testing from './pages/Testing.jsx'
 import { DocArticle, DocsIndex, docSlugs } from './pages/Docs.jsx'
 import Releases from './pages/Releases.jsx'
+import Features from './pages/Features.jsx'
+import Roadmap from './pages/Roadmap.jsx'
 import Support from './pages/Support.jsx'
 import { License, Notices, Privacy, Security } from './pages/Legal.jsx'
 import NotFound from './pages/NotFound.jsx'
@@ -30,12 +32,14 @@ export default function App() {
       <main id="main" tabIndex={-1}>
         <Routes>
           <Route path="/" element={<Home />} />
+          <Route path="/features" element={<Features />} />
           <Route path="/platforms" element={<Platforms />} />
           <Route path="/sources" element={<Sources />} />
           <Route path="/download" element={<Download />} />
           <Route path="/testing" element={<Testing />} />
           <Route path="/docs" element={<DocsIndex />} />
           {docSlugs.map((slug) => <Route key={slug} path={`/docs/${slug}`} element={<DocArticle slug={slug} />} />)}
+          <Route path="/roadmap" element={<Roadmap />} />
           <Route path="/releases" element={<Releases />} />
           <Route path="/support" element={<Support />} />
           <Route path="/privacy" element={<Privacy />} />

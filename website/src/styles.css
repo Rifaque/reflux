@@ -1,4 +1,4 @@
-/* Reflux's website (docs/LAUNCH.md, "Visual direction"; design/brand/README.md). The product's own rule: let the media
+/* Reflux's website (docs/history/milestones/LAUNCH.md, "Visual direction"; design/brand/README.md). The product's own rule: let the media
    be colorful, let the interface be calm, let depth come from layers. Near-black, one typeface, hairlines, and real
    Reflux screens for colour. Glass only on the header that floats over the page. No colour of its own. */
 
@@ -484,3 +484,168 @@ td { color: var(--text-2); min-width: 9rem; }
 @keyframes vt-out { to { opacity: 0; } }
 @keyframes vt-in { from { opacity: 0; transform: translateY(8px); } }
 @media (max-width: 40rem) { .copy-label { display: none; } .copy { width: 27%; } }
+
+/* Roadmap (/roadmap; docs/ROADMAP.md, "Public roadmap source"): the stages on one line that fills as the page is read,
+   resting at the current stage without script or with reduced motion. Status is said in words, never by colour alone. */
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.chip { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.2rem 0.65rem; border-radius: 999px; font-size: 0.74rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; border: 1px solid var(--line-strong); color: var(--text-2); white-space: nowrap; }
+.chip-done { background: var(--text); color: var(--bg); border-color: var(--text); }
+.chip-current { color: var(--text); border-color: var(--text); }
+.chip-current::before { content: ''; width: 0.45rem; height: 0.45rem; border-radius: 50%; background: var(--text); }
+.chip-committed { color: var(--text); }
+.chip-exploring { border-style: dashed; color: var(--text-3); }
+.legend { list-style: none; padding: 0; margin: 0 0 3rem; display: flex; flex-wrap: wrap; gap: 0.6rem 1.5rem; }
+.legend li { display: flex; align-items: center; gap: 0.5rem; }
+.stages { list-style: none; padding: 0; margin: 0; position: relative; }
+.stages[data-current="0"] { --seen: 0.0556; }
+.stages[data-current="1"] { --seen: 0.1667; }
+.stages[data-current="2"] { --seen: 0.2778; }
+.stages[data-current="3"] { --seen: 0.3889; }
+.stages[data-current="4"] { --seen: 0.5000; }
+.stages[data-current="5"] { --seen: 0.6111; }
+.stages[data-current="6"] { --seen: 0.7222; }
+.stages[data-current="7"] { --seen: 0.8333; }
+.stages[data-current="8"] { --seen: 0.9444; }
+.stages::before, .stages::after { content: ''; position: absolute; left: 0.55rem; top: 0.5rem; bottom: 0.5rem; width: 2px; border-radius: 2px; }
+.stages::before { background: var(--line-strong); }
+.stages::after { background: var(--text); transform-origin: top; transform: scaleY(var(--seen)); }
+.stages.live::after { transition: transform 120ms linear; }
+.stage { position: relative; padding: 0 0 2.75rem 2.75rem; }
+.stage-node { position: absolute; left: 0; top: 0.35rem; width: 1.25rem; height: 1.25rem; border-radius: 50%; background: var(--bg); border: 2px solid var(--line-strong); z-index: 1; }
+.stage-done .stage-node { background: var(--text); border-color: var(--text); }
+.stage-current .stage-node { border-color: var(--text); box-shadow: 0 0 0 6px rgba(255, 255, 255, 0.08); }
+.stage-current .stage-node::after { content: ''; position: absolute; inset: 3px; border-radius: 50%; background: var(--text); }
+.stage-exploring .stage-node { border-style: dashed; }
+.stage-card { max-width: 46rem; padding: 1.4rem 1.5rem 1.2rem; border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--bg-raised); }
+.stage-current .stage-card { border-color: var(--line-strong); background: var(--surface); }
+.stage-exploring .stage-card { background: transparent; border-style: dashed; }
+.stage-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem; margin: 0 0 0.75rem; }
+.stage-version { font-size: 0.95rem; font-weight: 800; letter-spacing: -0.01em; }
+.you-are-here { font-size: 0.8rem; color: var(--text-2); font-weight: 600; }
+.stage-card h2 { font-size: clamp(1.4rem, 2.6vw, 1.9rem); margin-bottom: 0.6rem; }
+.stage-summary { color: var(--text-2); }
+.stage-items { margin: 0; padding-left: 1.1rem; color: var(--text-2); display: grid; gap: 0.3rem; }
+.stage-items li::marker { color: var(--text-3); }
+.roadmap-close { margin-top: 1.5rem; display: grid; justify-items: center; gap: 2rem; text-align: center; }
+.roadmap-close .lead { max-width: var(--measure); }
+.egg { position: relative; width: 4.5rem; height: 4.5rem; display: grid; place-items: center; padding: 0.9rem; border-radius: 50%; border: 1px solid transparent; background: transparent; color: var(--text-3); cursor: pointer; transition: color 200ms var(--ease), border-color 200ms var(--ease), transform 200ms var(--ease); }
+.egg[hidden] { display: none; }
+.egg:hover, .egg:focus-visible { color: var(--text); border-color: var(--line-strong); transform: scale(1.04); }
+.egg-mark { width: 100%; height: 100%; }
+.egg-hint { position: absolute; right: -0.15rem; bottom: -0.15rem; font-size: 0.7rem; width: 1.4rem; height: 1.4rem; display: grid; place-items: center; border-radius: 50%; background: var(--surface-2); border: 1px solid var(--line-strong); opacity: 0; transition: opacity 200ms var(--ease); }
+.egg:hover .egg-hint, .egg:focus-visible .egg-hint { opacity: 1; }
+
+/* The reel: the road ahead as a Reflux player (the easter egg). A native modal dialog. */
+.reel { width: min(64rem, calc(100vw - 2 * var(--gutter))); max-height: calc(100vh - 2rem); padding: 0; border: 1px solid var(--line-strong); border-radius: var(--radius-lg); background: #000; color: var(--text); overflow: auto; }
+.reel::backdrop { background: rgba(0, 0, 0, 0.9); }
+.reel-top { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.25rem 0; }
+.reel-title { margin: 0; font-weight: 700; }
+.reel-close { width: 2.5rem; height: 2.5rem; border-radius: 50%; border: 1px solid var(--line-strong); background: transparent; color: var(--text); font-size: 1.4rem; line-height: 1; cursor: pointer; }
+.reel-frame { margin: 1rem 1.25rem 0; min-height: min(56vh, 30rem); border-radius: var(--radius); background: radial-gradient(120% 90% at 85% 15%, #24242b 0%, #0e0e11 55%, #050506 100%); display: flex; flex-direction: column; justify-content: flex-end; padding: clamp(1rem, 4vw, 2.5rem); overflow: hidden; }
+.reel-chapter { margin: 0 0 auto; font-size: 0.78rem; font-weight: 650; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-3); }
+.reel-version { margin: 1.5rem 0 0; font-size: clamp(3rem, 12vw, 7.5rem); font-weight: 800; letter-spacing: -0.05em; line-height: 0.9; }
+.reel-theme { font-size: clamp(1.3rem, 3.4vw, 2.2rem); margin: 0.4rem 0 0.3rem; }
+.reel-status { margin: 0 0 0.6rem; color: var(--text-2); font-weight: 600; }
+.reel-items { margin: 0; padding-left: 1.1rem; color: var(--text-2); columns: 2 18rem; column-gap: 2rem; font-size: 0.95rem; }
+.reel-exploring .reel-version { color: var(--text-2); }
+.reel-controls { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 1rem; padding: 1.25rem; }
+.reel-play { width: 3rem; height: 3rem; border-radius: 50%; border: 0; background: var(--text); color: var(--bg); font-size: 0.95rem; cursor: pointer; }
+.reel-track-wrap { position: relative; padding: 0.75rem 0; }
+.reel-track { position: relative; height: 0.4rem; border-radius: 999px; background: rgba(255, 255, 255, 0.18); }
+.reel-track:focus-visible { outline-offset: 8px; }
+.reel-fill { position: absolute; inset: 0; border-radius: inherit; background: var(--text); transform-origin: left; }
+.reel-fill[data-at="0"] { transform: scaleX(0.0000); }
+.reel-fill[data-at="1"] { transform: scaleX(0.1250); }
+.reel-fill[data-at="2"] { transform: scaleX(0.2500); }
+.reel-fill[data-at="3"] { transform: scaleX(0.3750); }
+.reel-fill[data-at="4"] { transform: scaleX(0.5000); }
+.reel-fill[data-at="5"] { transform: scaleX(0.6250); }
+.reel-fill[data-at="6"] { transform: scaleX(0.7500); }
+.reel-fill[data-at="7"] { transform: scaleX(0.8750); }
+.reel-fill[data-at="8"] { transform: scaleX(1.0000); }
+.reel-mark { position: absolute; top: 50%; width: 1.5rem; height: 1.5rem; margin: -0.75rem 0 0 -0.75rem; padding: 0; border-radius: 50%; background: transparent; border: 0; cursor: pointer; }
+.reel-mark::after { content: ''; position: absolute; inset: 0.45rem; border-radius: 50%; background: #000; border: 2px solid var(--text-2); }
+.reel-mark-done::after { background: var(--text); border-color: var(--text); }
+.reel-mark-exploring::after { border-style: dashed; }
+.reel-mark.is-at::after { inset: 0.2rem; background: var(--text); border-color: var(--text); box-shadow: 0 0 0 5px rgba(255, 255, 255, 0.14); }
+.reel-preview { position: absolute; bottom: 1.6rem; transform: translateX(-50%); width: 9.5rem; aspect-ratio: 16 / 9; border-radius: 10px; border: 1px solid var(--line-strong); background: radial-gradient(120% 90% at 85% 15%, #2a2a31, #0b0b0d); display: grid; align-content: end; padding: 0.55rem 0.7rem; pointer-events: none; box-shadow: 0 18px 40px -12px rgba(0, 0, 0, 0.9); }
+.reel-preview[data-pos="0"] { transform: translateX(-10%); }
+.reel-preview[data-pos="8"] { transform: translateX(-90%); }
+.reel-preview-version { font-size: 1.5rem; font-weight: 800; letter-spacing: -0.03em; line-height: 1; }
+.reel-preview-theme { font-size: 0.72rem; color: var(--text-2); }
+.reel-mark[data-pos="0"], .reel-preview[data-pos="0"] { left: 0.000%; }
+.reel-mark[data-pos="1"], .reel-preview[data-pos="1"] { left: 12.500%; }
+.reel-mark[data-pos="2"], .reel-preview[data-pos="2"] { left: 25.000%; }
+.reel-mark[data-pos="3"], .reel-preview[data-pos="3"] { left: 37.500%; }
+.reel-mark[data-pos="4"], .reel-preview[data-pos="4"] { left: 50.000%; }
+.reel-mark[data-pos="5"], .reel-preview[data-pos="5"] { left: 62.500%; }
+.reel-mark[data-pos="6"], .reel-preview[data-pos="6"] { left: 75.000%; }
+.reel-mark[data-pos="7"], .reel-preview[data-pos="7"] { left: 87.500%; }
+.reel-mark[data-pos="8"], .reel-preview[data-pos="8"] { left: 100.000%; }
+.reel-time { font-variant-numeric: tabular-nums; color: var(--text-2); font-size: 0.85rem; white-space: nowrap; }
+.reel-hints { margin: 0; padding: 0 1.25rem 1.1rem; }
+.reel-hints kbd { font: inherit; font-size: 0.8rem; padding: 0.05rem 0.4rem; border: 1px solid var(--line-strong); border-radius: 5px; }
+@media (max-width: 40rem) { .reel-time { display: none; } .reel-controls { grid-template-columns: auto 1fr; } .reel-items { columns: 1; } .stage { padding-left: 2.25rem; } .stage-card { padding: 1.1rem 1.1rem 1rem; } }
+@media (prefers-reduced-motion: no-preference) {
+  html.motion .reel[open] { animation: reel-in 360ms var(--ease-flow); }
+  html.motion .reel-fill { transition: transform 500ms var(--ease-flow); }
+  html.motion .reel-frame > * { animation: reel-cut 420ms var(--ease-flow); }
+  html.motion .stage-current .stage-node { animation: here 2.4s ease-in-out infinite; }
+}
+@keyframes reel-in { from { opacity: 0; transform: translateY(16px) scale(0.98); } }
+@keyframes reel-cut { from { opacity: 0; transform: translateY(10px); } }
+@keyframes here { 50% { box-shadow: 0 0 0 10px rgba(255, 255, 255, 0.04); } }
+
+/* Features (/features): one idea per section, its real screens beside it; sections alternate sides on wide screens. */
+.features-page .feature { display: grid; gap: 2rem; align-items: center; padding: clamp(2.5rem, 6vw, 5rem) 0; border-top: 1px solid var(--line); }
+.feature-copy { max-width: 34rem; }
+.feature-copy h2 { margin-bottom: 1rem; }
+.feature-copy p { color: var(--text-2); }
+.feature-copy .eyebrow { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem; }
+.feature-shots { display: grid; gap: 1rem; align-items: end; }
+.feature-shots figure { margin: 0; }
+.feature-shots .shot { width: 100%; border-radius: 14px; border: 1px solid var(--line-strong); }
+.shots-2 { grid-template-columns: 1fr; }
+.shots-2 .shot-tall { max-width: 15rem; justify-self: center; }
+@media (min-width: 40rem) { .shots-2:has(.shot-tall) { grid-template-columns: 3fr 1fr; } .shots-2 .shot-tall { max-width: none; } }
+@media (min-width: 60rem) {
+  .features-page .feature { grid-template-columns: 5fr 7fr; gap: 4rem; }
+  .features-page .feature.reverse .feature-copy { order: 2; }
+}
+.soon { font-size: 0.66rem; letter-spacing: 0.05em; padding: 0.15rem 0.55rem; vertical-align: middle; }
+.ticks .soon { margin-left: 0.35rem; }
+.feature-grid { display: grid; gap: 1.5rem; padding: clamp(2.5rem, 6vw, 5rem) 0; border-top: 1px solid var(--line); }
+.feature-grid > div { padding: 1.4rem 1.5rem; border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--bg-raised); }
+.feature-grid h2 { font-size: 1.35rem; margin-bottom: 0.6rem; }
+.feature-grid p { color: var(--text-2); margin: 0; }
+@media (min-width: 48rem) { .feature-grid { grid-template-columns: 1fr 1fr; } }
+.closing-band { text-align: center; padding: clamp(2.5rem, 6vw, 4.5rem) 0 1rem; border-top: 1px solid var(--line); }
+.closing-band .lead { max-width: var(--measure); margin: 1rem auto; }
+
+/* Home: the next stages, from the roadmap's data. */
+.next-stages { list-style: none; padding: 0; margin: 2.5rem 0 2rem; display: grid; gap: 1rem; }
+.next-stages li { padding: 1.3rem 1.4rem; border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--bg-raised); }
+.next-stages h3 { margin: 0 0 0.5rem; }
+.next-stages p:last-child { color: var(--text-2); margin: 0; font-size: 0.95rem; }
+@media (min-width: 48rem) { .next-stages { grid-template-columns: repeat(2, 1fr); } }
+@media (min-width: 72rem) { .next-stages { grid-template-columns: repeat(4, 1fr); } }
+
+/* Roadmap on wide screens: the line in the middle, stages alternating either side of it, each node on the line. */
+@media (min-width: 64rem) {
+  .stages::before, .stages::after { left: calc(50% - 1px); }
+  .stage { width: 50%; padding: 0 3rem 2.5rem 0; }
+  .stage:nth-child(even) { margin-left: 50%; padding: 0 0 2.5rem 3rem; }
+  .stage:nth-child(odd) .stage-card { margin-left: auto; }
+  .stage-node { left: auto; right: -0.625rem; top: 1.6rem; }
+  .stage:nth-child(even) .stage-node { right: auto; left: -0.625rem; }
+  .stage + .stage { margin-top: -6rem; }
+  .stage-card { max-width: 30rem; }
+}
+
+/* Releases: a jump list of versions, and each release's categories as links to its groups. */
+.release-index { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0 0 1rem; }
+.release-index a, .release-groups a { display: inline-flex; align-items: center; gap: 0.45rem; min-height: 2.25rem; padding: 0 0.9rem; border: 1px solid var(--line-strong); border-radius: 999px; font-size: 0.88rem; font-weight: 600; text-decoration: none; }
+.release-index a:hover, .release-groups a:hover { border-color: var(--text-2); }
+.release-groups { list-style: none; padding: 0; margin: 0.5rem 0 1.5rem; display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.release-groups li { max-width: none; }
+.release-group h3 { scroll-margin-top: 5rem; }

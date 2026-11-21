@@ -6,12 +6,14 @@ export const SITE = 'https://reflux.rsxdevelops.dev'
 
 export const routes = [
   { path: '/', title: 'Reflux | Your media, played well', description: 'A free and open-source media player for your own films and shows: local folders, Jellyfin, Plex, and network shares, on Android, Android TV, Fire TV, Windows, and Linux.' },
+  { path: '/features', title: 'Features', description: 'What Reflux does: one library from every source, versions explained, Quick View, a player that puts the picture first, and remotes and controllers.' },
   { path: '/platforms', title: 'Platforms and compatibility', description: 'Where Reflux runs, what each platform needs, and what it plays: formats, HDR, sound, and subtitles, as verified on real devices.' },
   { path: '/sources', title: 'Sources', description: 'Folders on your device, Jellyfin, Plex, Windows and NAS shares (SMB), and web shares (WebDAV): what each needs and what Reflux does with it.' },
   { path: '/download', title: 'Download', description: 'Get the Reflux beta: checksummed downloads for Windows and Linux, and Google Play and Amazon test programmes for Android and Fire TV.' },
   { path: '/testing', title: 'The Reflux beta', description: 'Join the Reflux beta (17 November to 15 December 2026): how to install it on each platform, known issues, reporting a problem, and the 1.0 plan.' },
   { path: '/docs', title: 'Documentation', description: 'How to install Reflux on Windows, Linux, Android, Android TV, and Fire TV, add your sources, and get the most from playback.' },
   ...DOC_PAGES.map((p) => ({ path: p.path, title: p.title, description: p.summary })),
+  { path: '/roadmap', title: 'Roadmap', description: 'Where Reflux is going: what is released, the beta in progress, 1.0, and the plans for 1.1, 1.2, 1.3, 1.5, and 2.0.' },
   { path: '/releases', title: 'Releases', description: 'What changes in Reflux, version by version, from its changelog.' },
   { path: '/support', title: 'Support', description: 'Get help with Reflux, report a problem, and send feedback.' },
   { path: '/privacy', title: 'Privacy', description: 'What Reflux keeps on your device, what it sends and to whom, and what this website does.' },

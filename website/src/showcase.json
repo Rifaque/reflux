@@ -14,13 +14,33 @@
   ],
   "details-tablet": [
    1400,
-   872
+   805
   ],
   "home-phone": [
    640,
    1280
   ],
   "player-tv": [
+   1680,
+   945
+  ],
+  "quickview-phone": [
+   640,
+   1280
+  ],
+  "miniplayer-phone": [
+   640,
+   1280
+  ],
+  "home-tablet": [
+   1600,
+   920
+  ],
+  "quickview-tv": [
+   1680,
+   945
+  ],
+  "keyboard-tv": [
    1680,
    945
   ]

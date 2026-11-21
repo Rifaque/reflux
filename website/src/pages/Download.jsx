@@ -71,7 +71,7 @@ export default function Download() {
       <PageHead eyebrow="Download" title="Get Reflux.">
         <p>
           {latest ? `Reflux ${latest.version}.` : `Reflux ${release.version} is in development and has not been released yet.`}
-          {latest?.version.includes('-') && ' A beta until 15 December 2026; Reflux 1.0 is planned for December.'} Free on every platform,
+          {latest?.version.includes('-') && ' A beta: Reflux 1.0 follows when it is ready (see the roadmap).'} Free on every platform,
           from the places below and nowhere else.
         </p>
       </PageHead>
