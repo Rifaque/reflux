@@ -206,7 +206,10 @@ class EmbeddedPlaybackTest {
 
     private fun episodesFollowEachOther(episodes: List<MediaId>) {
         shell.click("Back")
-        shell.awaitShown("Recently Added")
+        shell.await("Home again") { shell.app.navigator.current == Destination.Home }
+        // The show from its section: with a film in progress Home leads with it and Continue Watching (Phase 2), so
+        // Recently Added can be below the window, where a lazy page has not composed it.
+        shell.click("Shows")
         shell.click("Harbour Lights")
         shell.click("Play S1 · E1")
         awaitPlayer("the first episode to start") { it.status == PlayerStatus.PLAYING }

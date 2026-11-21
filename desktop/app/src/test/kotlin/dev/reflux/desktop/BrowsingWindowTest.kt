@@ -100,13 +100,14 @@ class BrowsingWindowTest {
                 shell.key(KeyEvent.VK_ESCAPE)
                 shell.awaitShown("1 title")
 
-                // Search: a suggestion, results, and clearing.
+                // Search: a suggestion, results, and clearing. Since Phase 2's Search (B-034 to B-037) the idle page
+                // lists its suggestions under "Start with", by title.
                 shell.click("Search")
-                shell.click("favorites")
+                shell.click("Favorites")
                 shell.awaitShown("Paper Moon, 1973")
                 assertFalse(shell.shows("Heat, 1995"))
                 shell.click("Clear search")
-                shell.awaitShown("Try")
+                shell.awaitShown("Start with")
                 assertEquals("", shell.ui { app.searchQuery })
 
                 // Sources is a destination of the sidebar, with pages of its own stacked on it.
@@ -177,7 +178,8 @@ class BrowsingWindowTest {
                 shell.await("the layout to morph") { app.input.modality == InputModality.DIRECTIONAL }
                 assertEquals(ControllerFamily.PLAYSTATION, shell.ui { app.input.controllerFamily })
                 shell.await("the controller's prompts") { shell.prompted("Cross") }
-                shell.await("its Options prompt") { shell.prompted("Options") }
+                // Y, the sidebar, in its family's terms (Phase 2, F-P2; Start still opens Sources, without a prompt).
+                shell.await("its Triangle prompt") { shell.prompted("Triangle Sidebar") }
                 assertEquals(Destination.Home, shell.ui { app.navigator.current })
                 Thread.sleep(500)
                 shell.capture("window-controller")
