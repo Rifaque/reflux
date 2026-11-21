@@ -1,17 +1,75 @@
 # Phase 4: consolidation, product direction, store assets, website, release infrastructure
 
-The execution tracker for Phase 4 (the owner's master prompt of 2026-11-21, "Reflux | Phase 4 Autonomous Mission", from the brief in [history/phases/PHASE-4-HANDOFF.md](../history/phases/PHASE-4-HANDOFF.md)). Each row is marked done only when its evidence exists; runs are in [VERIFICATION.md](../VERIFICATION.md), "Phase 4", and decisions in [DECISIONS.md](../DECISIONS.md), 2026-11-21.
+The execution record for Phase 4 (the owner's master prompt of 2026-11-21, "Reflux | Phase 4 Autonomous Mission", from the brief in [history/phases/PHASE-4-HANDOFF.md](../history/phases/PHASE-4-HANDOFF.md)): what was done in each workstream, its evidence, what is left, and the Beta 2 readiness assessment. Decisions: [DECISIONS.md](../DECISIONS.md), 2026-11-21. Runs: [VERIFICATION.md](../VERIFICATION.md), "Phase 4".
 
-**Phase 4 authorises no release.** Nothing is pushed, merged, tagged, deployed, uploaded to a store, submitted, or announced. Beta 2's scope stays frozen: new findings go to the tracker's Beta 3 backlog.
+**Phase 4 authorises no release.** Nothing was pushed, merged, tagged, deployed, uploaded to a store, submitted, or announced. Beta 2's scope stayed frozen: no product behaviour changed.
 
 ## Baseline (P0, 2026-11-21)
 
 | Item | State |
 | --- | --- |
-| Repository | `Rifaque/reflux` (origin `github.com/Rifaque/reflux`), branch `open-source-gpl` |
+| Repository | `Rifaque/reflux`, branch `open-source-gpl` |
 | HEAD at start | `3aa5964` "docs: Phase 3 accepted and formally closed by the owner" (the expected closure commit) |
-| Working tree at start | Clean: no tracked changes, no untracked files |
-| Devices at start | None attached to adb (the Pad 7, Phone 2a and Fire TV were not connected) |
-| Owner's machine | No game running (checked before every heavy run); 16.8 GB RAM free, 123 GB free on C: |
+| Working tree at start | Clean: no tracked changes, no untracked files; nothing of the owner's to preserve |
+| Devices | None attached to adb (Pad 7, Phone 2a, Fire TV absent); no game running before each heavy run |
+| Hosted CI | Not observable: the branch is local only (never pushed), and the GitHub connector failed to connect this session |
+| Website | Live at reflux.rsxdevelops.dev from `main` (the M11/Beta 1 content); not changed there |
+| Stores | Play closed testing (Beta 1, sent for review 2026-11-17); Amazon Live App Test 1 (submitted 2026-11-17); GitHub `v0.9.0-beta.1` pre-release |
+| Store screenshots | `design/brand/store/screenshots/` (12 raw captures of Beta 1, 2026-11-16); audited in the store-assets design system |
 
-The rest of this file is filled in as the work happens.
+**Fresh `./gradlew check`** (14:20–14:58 IST, Windows 11, JDK by toolchain, live Jellyfin env present): **exit 0**. Executed in this run: `:ui:jvmTest` 548 tests, 0 failures, 1 skipped (`SourcesUiTest` included: **B-074 did not reproduce**); `:desktop:app:test` 77 (15 skipped: window tests off); `:android:app:testDebugUnitTest` 56; Android lint; `verifySharedSources`. Up to date from 2026-11-20 (unchanged inputs, results still on disk, 0 failures): core 393, library 263, design 43, desktop engine 52, mpv 60, jellyfin 74, plex 25, trakt 23, smb 10, webdav 20, local 6. The historical 1,647-test run and Phase 3's 941/2 are history, not this result. The end-of-phase full rerun is under [Verification](#verification).
+
+## Workstreams
+
+| WS | What | State | Evidence |
+| --- | --- | --- | --- |
+| P0 | Baseline and health | Done | Above |
+| P1 | Documentation audit and consolidation | Done | [P1](#p1-documentation) |
+| P2 | Product roadmap and versions | Done | [ROADMAP.md](../ROADMAP.md); [P2](#p2-roadmap) |
+| P3 | LaunchFrame and store screenshots | Done, Fire TV provenance pending the owner | [store-assets/release-0.9.0-beta.2](../../store-assets/release-0.9.0-beta.2/README.md); [P3](#p3-store-assets) |
+| P4 | Website overhaul | Done, not deployed | [P4](#p4-website) |
+| P5 | Distribution | Rehearsed locally; owner steps remain | [P5](#p5-distribution) |
+| P6 | Beta 2 readiness | Assessed: ready with known risks | [Beta 2 readiness](#beta-2-readiness) |
+| P7 | Final review and closure | See [Closure](#closure) | |
+
+## P1 documentation
+
+- **Inventory and audit** (41 Markdown documents in `docs/`, `docs/planning/`, `release/`, the root). Authoritative and current, kept: PRODUCT, ARCHITECTURE, PLAYBACK, INPUT_MODEL, NAVIGATION, METADATA, WATCH_STATE, OFFLINE, DESIGN, PRIVACY, THIRD-PARTY, VERSIONING, WEBSITE, DECISIONS (append-only), the tracker, V1.1 research, the release runbooks. Current but revised: README, AGENTS, CLAUDE, RELEASE (the unified process and platform matrix added), WEBSITE, VERSIONING (changelog categories), CHANGELOG (every release categorised). Historical, archived unchanged: the M0–M13 roadmap, LAUNCH, the M8–M13 rebaseline, the M10 and M11 plans, BETA-2 (with the Phase 3 closure record), the Phase 1 and 2 plans, the F-P4 plan, the Phase 4 handoff, and VERIFICATION's sections before Beta 2. Conflicting or misleading, fixed: ROADMAP's "Current state" (M8–M11 language after the beta had moved to phases); the website's "1.0 planned for December"; CLAUDE.md pointing at Beta 2's plans as current.
+- **Structure:** `docs/README.md` (reading guide; which document wins); `docs/ROADMAP.md` (product); `docs/BETA.md` (beta roadmap); `docs/BETA-NOTES.md` (tester notes); `docs/history/` with `README.md` (the legacy index). Moves by `git mv`, so history follows.
+- **Links:** `tools/docs/check_links.py` (new; relative links and `#anchors`, GitHub slugs and explicit anchors): 341 links before, 0 broken; after: 460, 0 broken. In CI. Code comments citing moved specifications were updated (comment-only changes in 20 files).
+
+## P2 roadmap
+
+[ROADMAP.md](../ROADMAP.md): where Reflux is; the platforms; the path (alpha, Beta 1, Beta 2 current, Beta 3 and RC, V1.0, V1.1, V1.2, V1.3, V1.5, V2.0) with themes and statuses (Completed, Current, Committed, Planned, Under consideration, Long-term vision); V1.0's 17 criteria and today's gaps against them; for each later version, initiatives with user problem, outcome, priority, dependencies, platforms, risk and status; F-003 unscheduled by the owner's decision; not planned; ecosystem notes (2026-11-21); the public roadmap's source (`website/src/roadmap.js`). Rationale: DECISIONS.md, 2026-11-21.
+
+## P3 store assets
+
+- **LaunchFrame:** `claude plugin marketplace add Rifaque/launch-frame` and `claude plugin install launch-frame@launch-frame` (the CLI form of the documented `/plugin` commands; 2.0.0, user scope, enabled). The skill became available as `launch-frame:launch-frame` and was loaded and followed (its SKILL.md and the direction, production, copy and quality-gate references read). Dependencies were present: Python 3.11.9, Pillow 12.3.0, Playwright, Chrome, the Android SDK and emulator.
+- **Targets** (`discover_targets.py`): phone Confirmed; Android TV Confirmed; Fire TV Confirmed (derived); tablet Probable, confirmed at runtime and by `Layout.kt`'s form factors (forced with that evidence); foldable, Chromebook, Wear, Automotive, XR, Fire tablet not selected.
+- **Official requirements rechecked 2026-11-21:** Play's preview-assets page (2–8 per type; tablets ≥ 4, 1,080–7,680 px, 16:9 or 9:16; a 2.3× ratio limit; feature graphic 1024 × 500; TV banner 1280 × 720 required; 4+ screenshots at ≥ 1080 px for promotion) and Amazon's listing page (last modified 2026-11-16: Fire TV screenshots 3–10 at 1920 × 1080, icon 1280 × 720, background 1920 × 1080 required).
+- **Emulators:** `Reflux_Phone` 1080 × 2400 @ 420 dpi; `Reflux_Tablet7` (new) 1920 × 1200 @ 320 dpi = 960 × 600 dp, the tablet rail; `Reflux_Tablet` 2560 × 1600 @ 320 dpi (Pixel Tablet profile), the sidebar; `Reflux_TV` Google TV 1920 × 1080. Demo library: seven Blender open films (CC) on a throwaway local Jellyfin; debug build with no Trakt Client ID.
+- **Produced:** 24 source captures (provenance in `captures.json`, 8 rejected captures recorded with reasons); Google Play phone 6, 7-inch 5, 10-inch 5, TV 6, feature graphic, TV banner; Amazon Fire TV 5, icon, a new logo-free background. Two review rounds (design-system.md's log). `validate_assets.py --final`: exit 0; warnings only for the 10-inch 16:9 size, explained.
+- **Limits:** emulator captures only; Fire TV set from Google TV emulator captures (owner decides: re-capture on the stick, or accept); no Trickplay shot (no previews on the demo server).
+
+## P4 website
+
+- **Audit** (before): sound architecture (prerendered React, release data from the repository, strict CSP, checks for SEO, links and layout); weaknesses: a promised December 1.0, no features overview, no public roadmap, Releases ungrouped for older versions, Beta 1 images.
+- **Changes:** Features page; Roadmap page with the reel (the easter egg); Home's roadmap teaser in place of the dated timeline; categorised Releases with a version index; new product images from the LaunchFrame captures; "Coming in Beta 2" labels driven by publication records; corrected alt text (Google TV emulator images no longer called Fire TV); Download's 1.0 sentence.
+- **Checks (local, 2026-11-21):** `npm audit` 0 vulnerabilities; `npm test` 34/34; `npm run build`; `check-dist` 26 pages, 0 problems; `check-links` 27 pages, 31 external links, 0 broken; `check-layout --screenshots` 26 pages × 7 sizes, 0 problems (screenshots looked at: Home, Features, Roadmap, Releases at desktop and phone); `check-roadmap` 0 problems (no script, keyboard, Escape and focus return, reduced motion, no CSP error); all images load when scrolled.
+- **Not deployed.** The site deploys from `main` (Vercel); it should go out with Beta 2's publication (DECISIONS.md, 2026-11-21).
+
+## P5 distribution
+
+Filled in from the rehearsal below.
+
+## Beta 2 readiness
+
+Filled in at the end of the phase.
+
+## Verification
+
+Filled in at the end of the phase.
+
+## Closure
+
+Filled in at the end of the phase.
