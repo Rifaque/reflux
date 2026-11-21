@@ -1,0 +1,463 @@
+{
+  "repo": ".",
+  "ecosystems": [
+    "android",
+    "desktop"
+  ],
+  "targets": [
+    {
+      "target": "android-phone",
+      "label": "Android phone",
+      "status": "Confirmed",
+      "evidence": [
+        {
+          "strength": "strong",
+          "detail": "android/app/src/main/AndroidManifest.xml: MAIN/LAUNCHER activity"
+        }
+      ],
+      "store_targets": [
+        "google-play/phone"
+      ],
+      "action": "Capture"
+    },
+    {
+      "target": "android-tablet",
+      "label": "Android tablet",
+      "status": "Probable",
+      "evidence": [
+        {
+          "strength": "medium",
+          "detail": "android/app/src/main/kotlin/dev/reflux/android/AndroidPlatform.kt: width-adaptive layout code"
+        },
+        {
+          "strength": "medium",
+          "detail": "design/src/commonMain/kotlin/dev/reflux/design/Layout.kt: app form-factor enum has TABLET"
+        },
+        {
+          "strength": "medium",
+          "detail": "ui/src/commonMain/kotlin/dev/reflux/ui/player/PlayerOverlay.kt: width-adaptive layout code"
+        },
+        {
+          "strength": "medium",
+          "detail": "ui/src/commonMain/kotlin/dev/reflux/ui/screens/SearchScreen.kt: width-adaptive layout code"
+        },
+        {
+          "strength": "weak",
+          "detail": "AGENTS.md: mentions Android tablet"
+        },
+        {
+          "strength": "weak",
+          "detail": "CHANGELOG.md: mentions Android tablet"
+        },
+        {
+          "strength": "weak",
+          "detail": "CLAUDE.md: mentions Android tablet"
+        },
+        {
+          "strength": "weak",
+          "detail": "CONTRIBUTING.md: mentions Android tablet"
+        },
+        {
+          "strength": "weak",
+          "detail": "README.md: mentions Android tablet"
+        },
+        {
+          "strength": "weak",
+          "detail": "docs/ARCHITECTURE.md: mentions Android tablet"
+        },
+        {
+          "strength": "weak",
+          "detail": "docs/DECISIONS.md: mentions Android tablet"
+        },
+        {
+          "strength": "weak",
+          "detail": "docs/DESIGN.md: mentions Android tablet"
+        }
+      ],
+      "store_targets": [
+        "google-play/tablet-7-inch",
+        "google-play/tablet-10-inch"
+      ],
+      "action": "Confirm (runtime check or ask)"
+    },
+    {
+      "target": "android-foldable",
+      "label": "Android foldable",
+      "status": "Unknown",
+      "evidence": [],
+      "store_targets": [
+        "google-play/foldable"
+      ],
+      "action": "Skip"
+    },
+    {
+      "target": "chromebook",
+      "label": "Chromebook",
+      "status": "Unknown",
+      "evidence": [
+        {
+          "strength": "weak",
+          "detail": "android/app/src/main/AndroidManifest.xml: touchscreen not required"
+        }
+      ],
+      "store_targets": [
+        "google-play/chromebook"
+      ],
+      "action": "Skip"
+    },
+    {
+      "target": "android-tv",
+      "label": "Android TV / Google TV",
+      "status": "Confirmed",
+      "evidence": [
+        {
+          "strength": "strong",
+          "detail": "android/app/src/main/AndroidManifest.xml: LEANBACK_LAUNCHER activity"
+        },
+        {
+          "strength": "medium",
+          "detail": "design/src/commonMain/kotlin/dev/reflux/design/Layout.kt: app form-factor enum has TV"
+        },
+        {
+          "strength": "medium",
+          "detail": "android/app/src/main/AndroidManifest.xml: application android:banner set"
+        },
+        {
+          "strength": "medium",
+          "detail": "android/app/src/main/AndroidManifest.xml: uses-feature android.software.leanback required=false"
+        },
+        {
+          "strength": "weak",
+          "detail": "android/app/build.gradle*: dependency for Android TV / Google TV"
+        },
+        {
+          "strength": "weak",
+          "detail": "AGENTS.md: mentions Android TV / Google TV"
+        },
+        {
+          "strength": "weak",
+          "detail": "CHANGELOG.md: mentions Android TV / Google TV"
+        },
+        {
+          "strength": "weak",
+          "detail": "CLAUDE.md: mentions Android TV / Google TV"
+        },
+        {
+          "strength": "weak",
+          "detail": "README.md: mentions Android TV / Google TV"
+        },
+        {
+          "strength": "weak",
+          "detail": "docs/ARCHITECTURE.md: mentions Android TV / Google TV"
+        },
+        {
+          "strength": "weak",
+          "detail": "docs/DECISIONS.md: mentions Android TV / Google TV"
+        },
+        {
+          "strength": "weak",
+          "detail": "docs/DESIGN.md: mentions Android TV / Google TV"
+        }
+      ],
+      "store_targets": [
+        "google-play/tv",
+        "google-play/tv-banner"
+      ],
+      "action": "Capture"
+    },
+    {
+      "target": "wear-os",
+      "label": "Wear OS",
+      "status": "Unknown",
+      "evidence": [],
+      "store_targets": [
+        "google-play/wear-os"
+      ],
+      "action": "Skip"
+    },
+    {
+      "target": "android-automotive",
+      "label": "Android Automotive OS",
+      "status": "Unknown",
+      "evidence": [],
+      "store_targets": [
+        "google-play/automotive"
+      ],
+      "action": "Skip"
+    },
+    {
+      "target": "android-xr",
+      "label": "Android XR",
+      "status": "Unknown",
+      "evidence": [
+        {
+          "strength": "weak",
+          "detail": "docs/DECISIONS.md: mentions Android XR"
+        },
+        {
+          "strength": "weak",
+          "detail": "docs/RELEASE.md: mentions Android XR"
+        },
+        {
+          "strength": "weak",
+          "detail": "docs/history/roadmaps/ROADMAP-M0-M13.md: mentions Android XR"
+        },
+        {
+          "strength": "weak",
+          "detail": "docs/history/verification/VERIFICATION-ALPHA-TO-BETA-1.md: mentions Android XR"
+        },
+        {
+          "strength": "weak",
+          "detail": "release/google-play.md: mentions Android XR"
+        }
+      ],
+      "store_targets": [
+        "google-play/xr"
+      ],
+      "action": "Skip"
+    },
+    {
+      "target": "fire-tv",
+      "label": "Amazon Fire TV",
+      "status": "Confirmed",
+      "evidence": [
+        {
+          "strength": "derived",
+          "detail": "TV app (LEANBACK_LAUNCHER) runs on Fire TV"
+        },
+        {
+          "strength": "derived",
+          "detail": "AGENTS.md: mentions Amazon Appstore; CHANGELOG.md: mentions Amazon Appstore; docs/ARCHITECTURE.md: mentions Amazon Appstore"
+        },
+        {
+          "strength": "weak",
+          "detail": "AGENTS.md: mentions Amazon Fire TV"
+        },
+        {
+          "strength": "weak",
+          "detail": "CHANGELOG.md: mentions Amazon Fire TV"
+        },
+        {
+          "strength": "weak",
+          "detail": "CLAUDE.md: mentions Amazon Fire TV"
+        },
+        {
+          "strength": "weak",
+          "detail": "README.md: mentions Amazon Fire TV"
+        },
+        {
+          "strength": "weak",
+          "detail": "docs/ARCHITECTURE.md: mentions Amazon Fire TV"
+        },
+        {
+          "strength": "weak",
+          "detail": "docs/DECISIONS.md: mentions Amazon Fire TV"
+        },
+        {
+          "strength": "weak",
+          "detail": "docs/PLAYBACK.md: mentions Amazon Fire TV"
+        },
+        {
+          "strength": "weak",
+          "detail": "docs/RELEASE.md: mentions Amazon Fire TV"
+        },
+        {
+          "strength": "weak",
+          "detail": "docs/ROADMAP.md: mentions Amazon Fire TV"
+        },
+        {
+          "strength": "weak",
+          "detail": "docs/VERIFICATION.md: mentions Amazon Fire TV"
+        },
+        {
+          "strength": "weak",
+          "detail": "docs/VERSIONING.md: mentions Amazon Fire TV"
+        },
+        {
+          "strength": "weak",
+          "detail": "docs/WEBSITE.md: mentions Amazon Fire TV"
+        }
+      ],
+      "store_targets": [
+        "amazon-appstore/fire-tv",
+        "amazon-appstore/fire-tv-icon",
+        "amazon-appstore/fire-tv-background"
+      ],
+      "action": "Capture"
+    },
+    {
+      "target": "fire-tablet",
+      "label": "Amazon Fire Tablet",
+      "status": "Unknown",
+      "evidence": [
+        {
+          "strength": "weak",
+          "detail": "docs/history/verification/VERIFICATION-ALPHA-TO-BETA-1.md: mentions Amazon Fire Tablet"
+        },
+        {
+          "strength": "weak",
+          "detail": "release/store-listing.md: mentions Amazon Fire Tablet"
+        }
+      ],
+      "store_targets": [
+        "amazon-appstore/fire-tablet",
+        "amazon-appstore/fire-tablet-icons"
+      ],
+      "action": "Skip"
+    },
+    {
+      "target": "iphone",
+      "label": "iPhone",
+      "status": "Unknown",
+      "evidence": [],
+      "store_targets": [
+        "apple-app-store/iphone"
+      ],
+      "action": "Skip"
+    },
+    {
+      "target": "ipad",
+      "label": "iPad",
+      "status": "Unknown",
+      "evidence": [],
+      "store_targets": [
+        "apple-app-store/ipad"
+      ],
+      "action": "Skip"
+    },
+    {
+      "target": "apple-tv",
+      "label": "Apple TV",
+      "status": "Unknown",
+      "evidence": [
+        {
+          "strength": "weak",
+          "detail": "docs/ROADMAP.md: mentions Apple TV"
+        },
+        {
+          "strength": "weak",
+          "detail": "docs/history/milestones/M8-M13-REBASELINE.md: mentions Apple TV"
+        }
+      ],
+      "store_targets": [
+        "apple-app-store/apple-tv"
+      ],
+      "action": "Skip"
+    },
+    {
+      "target": "apple-watch",
+      "label": "Apple Watch",
+      "status": "Unknown",
+      "evidence": [],
+      "store_targets": [
+        "apple-app-store/apple-watch"
+      ],
+      "action": "Skip"
+    },
+    {
+      "target": "vision-pro",
+      "label": "Apple Vision Pro",
+      "status": "Unknown",
+      "evidence": [],
+      "store_targets": [
+        "apple-app-store/vision-pro"
+      ],
+      "action": "Skip"
+    },
+    {
+      "target": "mac",
+      "label": "Mac",
+      "status": "Unknown",
+      "evidence": [],
+      "store_targets": [
+        "apple-app-store/mac"
+      ],
+      "action": "Skip"
+    },
+    {
+      "target": "desktop",
+      "label": "Desktop (Windows/Linux/macOS app)",
+      "status": "Confirmed",
+      "evidence": [
+        {
+          "strength": "strong",
+          "detail": "desktop/app/build.gradle*: Compose Desktop application"
+        },
+        {
+          "strength": "medium",
+          "detail": "design/src/commonMain/kotlin/dev/reflux/design/Layout.kt: app form-factor enum has DESKTOP"
+        }
+      ],
+      "store_targets": [],
+      "action": "Capture"
+    },
+    {
+      "target": "web",
+      "label": "Web app",
+      "status": "Unknown",
+      "evidence": [
+        {
+          "strength": "weak",
+          "detail": "website/package.json: vite project looks like a website/docs site, not the app"
+        }
+      ],
+      "store_targets": [],
+      "action": "Skip"
+    }
+  ],
+  "facts": {
+    "existing_screenshots": [
+      "design/brand/store/screenshots/ (12 images)"
+    ],
+    "build_entry_points": [
+      "./gradlew"
+    ],
+    "android_app_modules": [
+      "android/app (applicationId not set in this file)"
+    ],
+    "build_variants": [
+      "android/app: buildType debug",
+      "android/app: buildType release"
+    ],
+    "launch_activities": [
+      ".MainActivity (LAUNCHER) [android/app/src/main/AndroidManifest.xml]",
+      ".MainActivity (LEANBACK_LAUNCHER) [android/app/src/main/AndroidManifest.xml]"
+    ],
+    "amazon_intent": [
+      "AGENTS.md: mentions Amazon Appstore",
+      "CHANGELOG.md: mentions Amazon Appstore",
+      "docs/ARCHITECTURE.md: mentions Amazon Appstore",
+      "docs/DECISIONS.md: mentions Amazon Appstore",
+      "docs/PRIVACY.md: mentions Amazon Appstore",
+      "docs/RELEASE.md: mentions Amazon Appstore",
+      "docs/ROADMAP.md: mentions Amazon Appstore",
+      "docs/VERSIONING.md: mentions Amazon Appstore",
+      "docs/WEBSITE.md: mentions Amazon Appstore",
+      "docs/history/milestones/LAUNCH.md: mentions Amazon Appstore",
+      "docs/history/milestones/M11-DISTRIBUTION-PLAN.md: mentions Amazon Appstore",
+      "docs/history/roadmaps/ROADMAP-M0-M13.md: mentions Amazon Appstore",
+      "docs/history/verification/VERIFICATION-ALPHA-TO-BETA-1.md: mentions Amazon Appstore",
+      "release/amazon-appstore.md: mentions Amazon Appstore",
+      "release/store-listing.md: mentions Amazon Appstore"
+    ],
+    "store_intent": [
+      "AGENTS.md: Google Play",
+      "CHANGELOG.md: Google Play",
+      "docs/DECISIONS.md: Google Play",
+      "docs/PRIVACY.md: Google Play",
+      "docs/RELEASE.md: Google Play",
+      "docs/ROADMAP.md: Google Play",
+      "docs/VERSIONING.md: Google Play",
+      "docs/WEBSITE.md: Google Play",
+      "docs/history/milestones/LAUNCH.md: Google Play",
+      "docs/history/milestones/M10-PLAYER-SPEC.md: Google Play",
+      "docs/history/milestones/M11-DISTRIBUTION-PLAN.md: Google Play",
+      "docs/history/milestones/M8-M13-REBASELINE.md: Google Play",
+      "docs/history/roadmaps/ROADMAP-M0-M13.md: Google Play",
+      "docs/history/verification/VERIFICATION-ALPHA-TO-BETA-1.md: Google Play",
+      "release/amazon-appstore.md: Google Play",
+      "release/google-play.md: Google Play",
+      "release/store-listing.md: Google Play"
+    ]
+  }
+}
