@@ -64,7 +64,28 @@ Filled in from the rehearsal below.
 
 ## Beta 2 readiness
 
-Filled in at the end of the phase.
+**Assessment: Ready with known risks.** Every part of Beta 2 that can be prepared without the owner is prepared and checked; what remains is owner action (approval, version, push and hosted CI, publication) and the known risks below. This assessment is not permission to release.
+
+| Category | State | Evidence |
+| --- | --- | --- |
+| Scope | Frozen since 2026-11-20; no product change in Phase 4 (only comments, docs, site, tooling) | Commits in [Closure](#closure); tracker |
+| Phase acceptance | Phases 1–3 accepted by the owner | BETA.md, "The Beta 2 gate" 1–5 |
+| Tracker | Reconciled; B-075 added and fixed; B-074 evidence added | Tracker summary |
+| Tests (local) | Full `check` green at the start; the end-of-phase rerun under [Verification](#verification) | VERIFICATION.md, "Phase 4" |
+| Hosted CI | **Not run**: the branch has never been pushed | Gate step 8, the owner's |
+| Known issues | Disclosed: B-061, B-063 limits, B-056, B-022, B-070, B-074, B-044 | BETA.md, BETA-NOTES.md |
+| Release notes | BETA-NOTES.md (testers); CHANGELOG Unreleased grouped; store text generated (446/500 characters) | P5 |
+| Store artwork | Play and Amazon sets validated | P3 |
+| Website | Overhauled, all checks pass, not deployed; Beta 2 features labelled until a Beta 2 record exists | P4 |
+| Artifacts | Rehearsed: APK, AAB, Windows zip, Linux tarball, libmpv source, SHA256SUMS, manifest, provenance; verified; public set staged | P5 |
+| Installation | Windows: clean extract and checksum; launch not run (it would open on the owner's screen). Linux: clean distributions in containers (P5). Android: unchanged identity and signer chain; Beta 1's install path stands | P5 |
+| Versioning | `0.9.0-beta.1` unchanged; Beta 2 will be `0.9.0-beta.2` with the owner's authorisation | VERSIONING.md |
+| Privacy and legal | Unchanged in Phase 4: statistics off and unsendable (F-004); GPL notices; Trakt attribution; site privacy page unchanged | PRIVACY.md |
+| Release process | Documented end to end with owner gates | RELEASE.md, "Releasing a version" |
+
+**Known risks:** B-061 (a Windows crash after a Direct3D failure, upstream; Investigating); no hosted CI on this branch yet; emulator-only store captures and a Fire TV set from Google TV emulator captures; physical Linux, Steam and a physical Google TV device still unverified; the Windows build unsigned (SmartScreen warning).
+
+**Remaining gates (owner):** review and approve Beta 2 → push the branch and get hosted CI green (and merge per the open-source plan) → authorise `0.9.0-beta.2` (promotion commit and tag) → run the release workflow → publish the GitHub pre-release and write the publication record → upload to Play closed testing and Amazon LAT with the new artwork (decide the Fire TV provenance first) → deploy the website with the record → invite testers.
 
 ## Verification
 

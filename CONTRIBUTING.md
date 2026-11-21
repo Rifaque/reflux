@@ -1,6 +1,6 @@
 # Contributing to Reflux
 
-Reflux is a pre-release working towards a public beta (docs/ROADMAP.md). Contributions should preserve the project's core principles rather than optimize for feature count.
+Reflux is in beta (docs/BETA.md), working towards 1.0 (docs/ROADMAP.md). Contributions should preserve the project's core principles rather than optimize for feature count.
 
 Reflux is free and open-source software under the GNU General Public License, version 3 or later ([LICENSE](LICENSE), [NOTICE](NOTICE)). Contributions are welcome through [issues](https://github.com/Rifaque/reflux/issues) and pull requests.
 
@@ -8,7 +8,7 @@ Reflux is free and open-source software under the GNU General Public License, ve
 - **Third-party code.** Code or assets from elsewhere must carry a license compatible with GPL-3.0-or-later and be named in the pull request; components shipped in builds are listed in `legal/components.txt`, which the build checks.
 - **Security problems** go through [SECURITY.md](SECURITY.md), never a public issue. Other problems: an issue, or support@rsxdevelops.dev.
 - **The name and the logo.** The GPL does not grant the right to use the name Reflux or its logo ([NOTICE](NOTICE)); a modified version must be marked as changed.
-- **During the Beta Season** (docs/ROADMAP.md) only fixes are taken.
+- **During the beta** (docs/BETA.md) only fixes are taken, and Beta 2's scope is frozen.
 
 ## Before contributing
 
@@ -16,7 +16,7 @@ Read:
 
 - [Product](docs/PRODUCT.md)
 - [Architecture](docs/ARCHITECTURE.md)
-- [Roadmap](docs/history/roadmaps/ROADMAP-M0-M13.md)
+- [Roadmap](docs/ROADMAP.md) and [beta](docs/BETA.md)
 - [Versioning](docs/VERSIONING.md) (before touching versions, tags, or release metadata)
 - [Design](docs/DESIGN.md)
 - [Input model](docs/INPUT_MODEL.md)
