@@ -4,7 +4,7 @@ What changes for people using Reflux, version by version. The rules for versions
 
 ## Unreleased
 
-Not in a downloadable build yet: these are in development for the next beta.
+## 0.9.0-beta.2 — 2026-11-21
 
 ### Playback & Media
 
