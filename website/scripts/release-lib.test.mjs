@@ -141,3 +141,13 @@ test('availability: a desktop platform missing from the record is not claimed', 
   assert.equal(rows[4].state, 'not listed')
   assert.equal(rows[4].note, 'Not in Reflux 1.0.0')
 })
+
+// The site's "is this version out" (src/released.js), from publication records only.
+test('a version counts as released only once it or a newer one is published', async () => {
+  const { releasedIn } = await import('./release-lib.mjs')
+  const beta1 = [{ version: '0.9.0-beta.1' }]
+  assert.equal(releasedIn(beta1, '0.9.0-beta.2'), false)
+  assert.equal(releasedIn(beta1, '0.9.0-beta.1'), true)
+  assert.equal(releasedIn([{ version: '1.0.0' }], '0.9.0-beta.2'), true)
+  assert.equal(releasedIn([], '0.9.0-beta.2'), false)
+})

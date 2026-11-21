@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
-import { Out, Shot, Status, Timeline } from '../components.jsx'
+import { Out, Shot, Status } from '../components.jsx'
 import { V1_WINDOW } from '../beta.js'
+import { STAGES, STATUS } from '../roadmap.js'
 import { MarkMotion, useDepth } from '../motion.jsx'
 
 const loop = [
@@ -118,7 +119,7 @@ export default function Home() {
             thumb on a phone, a sidebar on a desktop. Remotes, game controllers, keyboards, and screen readers are all part of the design.
           </p>
         </div>
-        <figure className="screen-tv" data-reveal><Shot name="movies-tv" alt="Reflux on a Fire TV: the Movies grid, with the navigation rail opened by pressing Left on the remote." /></figure>
+        <figure className="screen-tv" data-reveal><Shot name="movies-tv" alt="Reflux on a TV: the Movies grid, with the navigation rail opened by pressing Left on the remote." /></figure>
         <div className="screen-pair" data-reveal data-stagger>
           <figure className="screen-tablet"><Shot name="details-tablet" alt="Reflux on an Android tablet held sideways: Sprite Fright's page, part-watched, with Resume and From the start." /></figure>
           <figure className="screen-phone"><Shot name="home-phone" alt="Reflux on an Android phone held upright: Home, with Coffee Run to resume." /></figure>
@@ -136,7 +137,7 @@ export default function Home() {
             The player's Info list says how something is playing and why.
           </p>
           <p><Link to="/docs/playback" className="more">How playback works</Link></p>
-          <figure className="player-shot"><Shot name="player-tv" alt="Reflux's player on a Fire TV: Elephants Dream playing, with its timeline and the Speed list open beside Info." /></figure>
+          <figure className="player-shot"><Shot name="player-tv" alt="Reflux's player on a TV: Elephants Dream playing, with its title, timeline, Speed, and Info." /></figure>
         </div>
         <div className="split-copy facts" data-reveal>
           <dl>
@@ -157,7 +158,7 @@ export default function Home() {
         <ul className="cards" data-reveal data-stagger>
           {sources.map(([name, text]) => <li key={name}><h3>{name}</h3><p>{text}</p></li>)}
         </ul>
-        <p className="center"><Link to="/sources" className="more">About each source</Link></p>
+        <p className="center"><Link to="/sources" className="more">About each source</Link> · <Link to="/features" className="more">Everything Reflux does</Link></p>
       </section>
 
       <section className="split">
@@ -182,11 +183,20 @@ export default function Home() {
 
       <section className="band">
         <div className="section-head" data-reveal>
-          <p className="eyebrow">The road to 1.0</p>
-          <h2>In beta now. Reflux 1.0 is planned for December.</h2>
+          <p className="eyebrow">What comes next</p>
+          <h2>In beta now. 1.0, then more.</h2>
           <p className="lead">{V1_WINDOW}</p>
         </div>
-        <div data-reveal><Timeline /></div>
+        <ol className="next-stages" data-reveal data-stagger>
+          {STAGES.filter((s) => ['current', 'committed', 'planned'].includes(s.status)).slice(0, 4).map((s) => (
+            <li key={s.id}>
+              <p className="stage-meta"><span className="stage-version">{s.version}</span><span className={`chip chip-${s.status}`}>{STATUS[s.status].label}</span></p>
+              <h3>{s.theme}</h3>
+              <p>{s.summary}</p>
+            </li>
+          ))}
+        </ol>
+        <p className="center"><Link to="/roadmap" className="more">The whole roadmap</Link></p>
       </section>
 
       <section className="closing" data-reveal>

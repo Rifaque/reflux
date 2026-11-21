@@ -57,12 +57,12 @@ export function Out({ href, children, className }) {
 }
 
 const primary = [
+  ['/features', 'Features'],
   ['/platforms', 'Platforms'],
   ['/sources', 'Sources'],
   ['/testing', 'Beta'],
   ['/docs', 'Docs'],
   ['/releases', 'Releases'],
-  ['/support', 'Support'],
 ]
 
 export function Header() {
@@ -82,7 +82,7 @@ export function Header() {
           <nav aria-label="Main">
             {links}
             <NavLink to="/download" viewTransition>Download</NavLink>
-            <NavLink to="/testing" viewTransition>Testing</NavLink>
+            <NavLink to="/support" viewTransition>Support</NavLink>
           </nav>
         </details>
       </div>
@@ -103,10 +103,12 @@ export function Footer() {
         </div>
         <nav aria-label="Product">
           <h2>Product</h2>
+          <Link to="/features" viewTransition>Features</Link>
           <Link to="/platforms" viewTransition>Platforms</Link>
           <Link to="/sources" viewTransition>Sources</Link>
           <Link to="/download" viewTransition>Download</Link>
           <Link to="/releases" viewTransition>Releases</Link>
+          <Link to="/roadmap" viewTransition>Roadmap</Link>
           <Link to="/testing" viewTransition>Beta</Link>
         </nav>
         <nav aria-label="Help">
