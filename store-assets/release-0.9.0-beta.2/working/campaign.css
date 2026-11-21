@@ -1,0 +1,29 @@
+/* Reflux store campaign (design-system.md). Tokens from design/src/commonMain/kotlin/dev/reflux/design/Tokens.kt:
+   background #0A0A0B, text #F5F5F6, secondary #B2B2B8, hairline white at low alpha. Manrope is the brand's wordmark
+   face (OFL, fonts/Manrope-OFL.txt). Colour only ever comes from the media artwork, as in the app. */
+@font-face { font-family: "Manrope"; src: url("fonts/manrope-latin-wght-normal.woff2") format("woff2"); font-weight: 200 800; }
+
+html, body { margin: 0; overflow: hidden; background: #0A0A0B; }
+body { position: relative; font-family: "Manrope", sans-serif; color: #F5F5F6; -webkit-font-smoothing: antialiased; }
+
+/* The atmosphere: the shot's own capture, blurred far past legibility, so each image is tinted by its film. */
+.atmos { position: absolute; inset: -12%; width: 124%; height: 124%; object-fit: cover; filter: blur(90px) saturate(1.15); opacity: 0.55; }
+.veil { position: absolute; inset: 0; background: radial-gradient(120% 90% at 50% 40%, rgba(10, 10, 11, 0.35) 0%, rgba(10, 10, 11, 0.78) 70%, #0A0A0B 100%); }
+body.plain .veil { display: none; }
+
+.frame { position: absolute; overflow: hidden; background: #0A0A0B; box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.12), 0 40px 120px -20px rgba(0, 0, 0, 0.75); }
+.frame.flat { box-shadow: none; }
+.frame img, .rot img { position: absolute; height: auto; max-width: none; display: block; }
+.rot { position: absolute; overflow: hidden; transform: rotate(-90deg); }
+
+.copy { position: absolute; }
+.copy h1 { margin: 0; font-size: var(--h); font-weight: 760; letter-spacing: -0.035em; line-height: 1.04; text-wrap: balance; }
+.copy p { margin: 0.55em 0 0; font-size: calc(var(--h) * 0.42); font-weight: 500; line-height: 1.35; color: #B2B2B8; text-wrap: balance; letter-spacing: -0.005em; }
+.copy.center { text-align: center; }
+.copy .mark { height: calc(var(--h) * 0.5); margin-bottom: calc(var(--h) * 0.42); color: #F5F5F6; }
+.copy.center .mark { display: flex; justify-content: center; }
+.lockup { height: 100%; width: auto; display: block; }
+
+/* The feature graphic: a brighter ground from the artwork (Play advises against a plain dark ground there). */
+body.feature .atmos { opacity: 0.95; filter: blur(60px) saturate(1.3); }
+body.feature .veil { background: linear-gradient(90deg, rgba(10, 10, 11, 0.82) 0%, rgba(10, 10, 11, 0.45) 55%, rgba(10, 10, 11, 0.25) 100%); }
