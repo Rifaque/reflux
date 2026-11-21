@@ -1,6 +1,39 @@
 # Reflux Release Readiness
 
-What stands between the source tree and builds that can be handed to testers and the public, and the checklists each stage must pass. The milestones themselves are in [ROADMAP.md](history/roadmaps/ROADMAP-M0-M13.md) (M6 release engineering, security, and legal; M7 compatibility, performance, and release proof; M8 to M11 profiles, navigation, the player, and distribution; M12 the qualification campaign and the beta; M13 the release candidate and 1.0); version rules are in [VERSIONING.md](VERSIONING.md); the website, beta program, and store tracks are in [history/milestones/LAUNCH.md](history/milestones/LAUNCH.md).
+What stands between the source tree and builds that can be handed to testers and the public: the release process, the platform matrix, and the checklists each stage must pass. The product plan is [ROADMAP.md](ROADMAP.md) and the beta's gate [BETA.md](BETA.md); the milestones that built the release system (M6, M7, M11) are archived in [history/roadmaps/ROADMAP-M0-M13.md](history/roadmaps/ROADMAP-M0-M13.md). The sections after the checklists keep their original names, which code comments cite.
+
+## Releasing a version (the unified process, Phase 4)
+
+One process for every platform, from an approved scope to publication. Steps marked **automated** run in the release workflow (`.github/workflows/release.yml`) or `tools/release/release.py`; steps marked **owner** are never automated, and nothing is published without the owner's explicit approval for that action.
+
+| # | Step | Who / what | Evidence it holds |
+| --- | --- | --- | --- |
+| 1 | Scope and version approved (VERSIONING.md: never changed without the owner's request) | Owner | BETA.md's gate, DECISIONS.md |
+| 2 | Code frozen: the tracker reconciled, no open blocker | Agent, owner accepts | Tracker summary |
+| 3 | CI green on the commit (`ci.yml`: check on Windows and Linux, Android, website, release tools and doc links, workflow lint, secret scan) | Automated | The run |
+| 4 | Promotion commit `release: <version>` (version and changelog heading only) and an annotated tag `v<version>` | Owner authorises; agent prepares | VERSIONING.md |
+| 5 | Release workflow by hand with the tag: Android APK and AAB (R8, signed with the upload key from GitHub's secrets), Windows zip (source-built LGPL libmpv bundled), Linux tarball, libmpv source, `SHA256SUMS`, `manifest.json`, provenance | Automated | Attestations verified in the job |
+| 6 | Artifact validation: identity, package, signer, versions, hashes; the draft verified again on another OS | Automated | `release.py verify`; the verify job |
+| 7 | Release notes and store "What's new" from CHANGELOG.md | Automated (`release.py notes`) | B-075 fix |
+| 8 | Store artwork for the release (`store-assets/release-<version>/`, LaunchFrame) | Agent | `validate_assets.py --final` |
+| 9 | Draft GitHub release (desktop files and records only) | Automated | Draft visible to writers only |
+| 10 | Publish the GitHub release (pre-release for a beta) | **Owner** | Immutable release; `release.py publish-record --github-release` writes `release/published/<version>.json` |
+| 11 | Upload the AAB to the Play track (closed testing for a beta) and the APK to Amazon (Live App Test for a beta), with notes and artwork | **Owner** (runbooks: `release/google-play.md`, `release/amazon-appstore.md`) | Consoles |
+| 12 | Website: the publication record and `release/stores.json` committed; merged to `main`, which Vercel deploys | **Owner** merges | `check-dist` proves the download page matches the record |
+| 13 | Announce to testers (BETA.md, "Beta operations") | **Owner** | — |
+
+### Platform matrix
+
+| Platform | Artifact | Signing | Channel (beta → 1.0) | Install | Upgrade | Owner-only steps |
+| --- | --- | --- | --- | --- | --- | --- |
+| Android phone, tablet, Android TV / Google TV | `reflux-<v>-android.aab` (`dev.rsxdevelops.reflux`, `versionCode` derived, VERSIONING.md) | Upload key in GitHub secrets; Play App Signing | Play closed testing → production (after 12 testers × 14 days) | From Play | Play update, same package and signer | Console upload, rollout, TV form factor review, Watch Next certification |
+| Fire TV (Fire OS 7+, not Vega OS) | `reflux-<v>-android.apk` (the same package and signer) | Same upload key (Amazon re-signs or keeps per its console choice) | Amazon Live App Testing → submission | From the Appstore (Beta Hub for testers) | Appstore update | Console upload, LAT invitations, submission |
+| Windows x64 (10, 11) | `reflux-<v>-windows-x64.zip` with libmpv bundled and its source beside it | **Unsigned** by decision until G-WIN (SmartScreen may warn; SHA-256 and provenance published) | GitHub pre-release → release | Extract and run `Reflux.exe`; nothing installed | Replace the folder; the library lives in `%LOCALAPPDATA%\Reflux` (`DesktopEnvironment.kt`), untouched | Publish the release; G-WIN (signing, installer) before 1.0 |
+| Linux x64 | `reflux-<v>-linux-x64.tar.gz` (needs the distribution's libmpv) | Unsigned archive; SHA-256 and provenance | GitHub pre-release → release | Extract and run `bin/Reflux`; Reflux names the libmpv command when it is missing | Replace the folder; the library lives in `$XDG_DATA_HOME/reflux` (default `~/.local/share/reflux`), untouched | Publish; decide further formats from beta reports (ROADMAP.md, V1.3) |
+
+**Where users get each:** the website's Download page (from the publication record and `release/stores.json`, never typed), which routes Android and TV to the stores and desktop to the GitHub release with checksums.
+
+**Phase 4's rehearsal of this process** (the build, verification and staging steps locally, with the throwaway dry-run key; nothing published): planning/PHASE-4.md, "P5 distribution".
 
 ## Beta entry checklist (`0.9.0-beta.1`)
 
