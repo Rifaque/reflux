@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { Out, Shot, Status } from '../components.jsx'
 import { V1_WINDOW } from '../beta.js'
 import { STAGES, STATUS } from '../roadmap.js'
+import { beta2Out } from '../released.js'
 import { MarkMotion, useDepth } from '../motion.jsx'
 
 const loop = [
@@ -192,7 +193,7 @@ export default function Home() {
             <li key={s.id}>
               <p className="stage-meta"><span className="stage-version">{s.version}</span><span className={`chip chip-${s.status}`}>{STATUS[s.status].label}</span></p>
               <h3>{s.theme}</h3>
-              <p>{s.summary}</p>
+              <p>{beta2Out && s.summaryOut ? s.summaryOut : s.summary}</p>
             </li>
           ))}
         </ol>

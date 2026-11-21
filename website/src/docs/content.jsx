@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom'
 import release from '../generated/release.json'
 import { desktopFile } from '../availability.js'
 import { Code, Note, Tabs } from './blocks.jsx'
+import { beta2Out } from '../released.js'
 
 const latest = release.latest
 const version = latest?.version ?? release.version
@@ -308,10 +309,14 @@ rm -rf ~/.local/share/reflux   # your library too, if you want it gone`}</Code>
       <h2>A profile for each person</h2>
       <p>Each profile keeps its own watch history, favourites, collections, chosen versions, and preferences, and its own Jellyfin and Plex accounts: one person's history is never shown to another. Folders and shares are shared by everyone on the device. Add a profile from the profile entry (on a phone, the button at the top right).</p>
       <h2>Who is watching</h2>
-      <p>With one profile, Reflux never asks. With several, a TV asks who is watching each time it starts; a phone or a computer opens the profile it had.</p>
-      <Note kind="tip"><p>In development for the next beta, not in 0.9.0-beta.1: every device, a TV included, opens the profile used last, and Settings gains Switch profile and Log out. See <Link to="/releases">Releases</Link>.</p></Note>
+      {beta2Out
+        ? <p>With one profile, Reflux never asks. With several, every device, a TV included, opens the profile used last, and Settings has <strong>Switch profile</strong> and <strong>Log out</strong> (logging out keeps everything the profile has and asks for its PIN again).</p>
+        : <>
+          <p>With one profile, Reflux never asks. With several, a TV asks who is watching each time it starts; a phone or a computer opens the profile it had.</p>
+          <Note kind="tip"><p>In development for the next beta, not in 0.9.0-beta.1: every device, a TV included, opens the profile used last, and Settings gains Switch profile and Log out. See <Link to="/releases">Releases</Link>.</p></Note>
+        </>}
       <h2>A PIN</h2>
-      <p>A profile can have a four-digit PIN, asked before it opens. Wrong entries make it wait, longer each time. A PIN keeps a profile private from the others sharing the device; it is not encryption. A forgotten PIN cannot be recovered: <strong>Forgot PIN</strong> starts that profile over, erasing what it kept on this device.</p>
+      <p>A profile can have a four-digit PIN, asked before it opens. Wrong entries make it wait, longer each time. A PIN keeps a profile private from the others sharing the device; it is not encryption. A forgotten PIN cannot be recovered: <strong>Forgot PIN</strong> {beta2Out ? 'lets you keep the profile without its PIN or start it over (erasing what it kept on this device); on Android your device’s own screen lock can remove it.' : 'starts that profile over, erasing what it kept on this device.'}</p>
     </>
   ),
 
