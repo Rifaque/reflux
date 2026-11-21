@@ -26,7 +26,7 @@ import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 /**
- * The M10 probe P1 (docs/planning/M10-PLAYER-SPEC.md, section 3), kept as the regression test of section 5.2: one
+ * The M10 probe P1 (docs/history/milestones/M10-PLAYER-SPEC.md, section 3), kept as the regression test of section 5.2: one
  * `SurfaceView` moves between the whole window and a small box under a playing Media3 engine, five times, and the
  * engine does not notice. The same engine, the same view, one decoder started and never switched off, no surface
  * destroyed, the position only forward, the subtitle track still selected.

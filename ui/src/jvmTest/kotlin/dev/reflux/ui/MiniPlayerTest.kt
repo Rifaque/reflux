@@ -319,7 +319,7 @@ class MiniPlayerTest {
         }
     }
 
-    // A back gesture on its way (docs/planning/M10-PLAYER-SPEC.md, section 4.4) ---------------------------------------
+    // A back gesture on its way (docs/history/milestones/M10-PLAYER-SPEC.md, section 4.4) ---------------------------------------
 
     @Test
     fun aBackGestureInProgressShrinksThePictureAndNothingElseAndCancellingLetsItGo() {

@@ -280,6 +280,11 @@ class Notes(unittest.TestCase):
         self.assertLessEqual(len(release.store_text("- " + "word " * 200)), 500)
         self.assertTrue(release.store_text("- " + "word " * 200).endswith("…"))
 
+    def test_category_headings_are_not_store_items(self):
+        body = "### Playback & Media\n\n- Scene previews on the timeline.\n\n### Navigation & Controllers\n\n- Y goes to the navigation.\n"
+        self.assertEqual(release.plain_text(body), ["Scene previews on the timeline.", "Y goes to the navigation."])
+        self.assertNotIn("#", release.store_text(body))
+
     def test_the_release_notes_carry_the_section_install_pointers_and_verification(self):
         _, body = release.changelog_section(CHANGELOG, "0.9.0-beta.1")
         notes = release.release_notes("0.9.0-beta.1", body)

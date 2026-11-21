@@ -16,7 +16,7 @@ import kotlin.test.assertTrue
 
 /**
  * What a viewer chose for a work's subtitles, kept as a description of the track and matched against each version
- * (docs/planning/M10-PLAYER-SPEC.md, section 9): another version, or the next episode, numbers its tracks otherwise.
+ * (docs/history/milestones/M10-PLAYER-SPEC.md, section 9): another version, or the next episode, numbers its tracks otherwise.
  */
 class SubtitlePreferenceTest {
     private fun track(language: String?, forced: Boolean = false, sdh: Boolean = false) = SubtitleStream(SubtitleFormat.SRT, language, forced = forced, hearingImpaired = sdh)

@@ -15,7 +15,7 @@ Before making substantial changes:
 1. Read `README.md`.
 2. Read the relevant files under `docs/`.
 3. Check `docs/DECISIONS.md` for existing architectural decisions.
-4. Check `docs/ROADMAP.md` for the current milestone. It is the one source of truth for product status and release milestones.
+4. Check `docs/ROADMAP.md` for product status and the version plan, and `docs/BETA.md` for the beta in progress. ROADMAP.md is the one source of truth for product status; `docs/README.md` says which document holds what.
 5. Inspect the existing code before proposing a new abstraction or dependency.
 
 The repository documentation is the product and architecture specification. Keep it current as implementation evolves.
@@ -26,11 +26,14 @@ The repository documentation is the product and architecture specification. Keep
 
 Where things are recorded:
 
-- `docs/ROADMAP.md`: milestones, what is done, what is left, V1 acceptance criteria.
+- `docs/ROADMAP.md`: where Reflux is, the V1.0 criteria, and the versions after 1.0 (V1.1 to V2.0).
+- `docs/BETA.md`: the beta programme: builds, scope, gates, known issues, beta operations. `docs/BETA-NOTES.md`: what testers read.
+- `docs/planning/BETA-BUG-TRACKER.md`: every issue's status and evidence.
 - `docs/VERIFICATION.md`: what was run to verify work, on what, with what result. Verification logs do not go in the roadmap.
-- `docs/RELEASE.md`: what release builds still need, and the beta and release checklists.
-- `docs/LAUNCH.md`: website, demo video, beta program, store tracks.
+- `docs/RELEASE.md`: the release process, the platform matrix, and the release checklists.
+- `docs/WEBSITE.md`: the website. `store-assets/`: store screenshots and graphics per release (LaunchFrame).
 - `docs/DECISIONS.md`: durable product and architecture decisions.
+- `docs/history/`: archived plans, milestone records and older verification. Historical, never current.
 
 ## Core product principles
 
@@ -253,12 +256,12 @@ V1 platform targets:
 
 Not V1: Vega OS (a future compatibility track) and iOS/iPadOS.
 
-The milestones are outcome-based and defined in `docs/ROADMAP.md`: M0 Governance & Rebaseline, M1 Accessibility & Interaction Baseline, M2P Playback Compatibility & Direct Play, M3 Navigation & Source Libraries, M4 Visual System 2.0, M5 Library Depth & Reflux Magic, M6 Release Engineering / Security / Legal, M7 Compatibility, Release Proof, Brand + Website, and Beta/Test Readiness (all complete), then, since the 2026-11-11 rebaseline, M8 Viewer Identity & Profiles, Navigation Structure, Website SEO/Responsive Work, and Release Preparation Foundations, M9 Navigation & Surface System 2.0 (visual refinement of M8's structure; it opens with the desktop mini-player feasibility trial), M10 Player & Playback Experience 2.0, M11 Distribution & Release Surfaces, M12 Qualification Campaign & Beta, M13 Release Candidate & 1.0. The Reflux website is release infrastructure across them; it is live. Work on the next incomplete milestone there. There is no milestone called M2: release engineering is M6. The pre-rebaseline names (M8 Beta, M9 Release Candidate, M10 1.0) appear in older documents; ROADMAP.md's "Earlier numbering" maps them.
+The product moved from milestones to versions in Phase 4 (2026-11-21). The milestones M0 to M11 that built Reflux are complete and archived (`docs/history/roadmaps/ROADMAP-M0-M13.md`, whose "Earlier numbering" maps every older name); M12's qualification and beta continue as the beta programme in `docs/BETA.md`, and M13 (release candidate and 1.0) is V1.0 in `docs/ROADMAP.md`. After 1.0 the plan is by version: V1.1, V1.2, V1.3, V1.5, V2.0. Work on what BETA.md and ROADMAP.md say is next. The Reflux website is release infrastructure; it is live.
 
 ### Milestone execution rules (from the 2026-11-11 rebaseline)
 
-- One master prompt per milestone takes it from implementation through testing, fixes, documentation, verification, and closure; at most one follow-up, and only for a genuine blocker or an essential correction. The beta (M12) runs one prompt per beta build cycle.
-- Run the minimum validation the change needs: targeted tests locally, the full `check` on GitHub CI, device walks once per changed form factor at a milestone's end. The comprehensive cross-platform qualification is M12. Never weaken a test or an assertion to save effort; defer what is not required instead.
+- One master prompt per milestone takes it from implementation through testing, fixes, documentation, verification, and closure; at most one follow-up, and only for a genuine blocker or an essential correction. The beta runs one prompt per beta build cycle.
+- Run the minimum validation the change needs: targeted tests locally, the full `check` on GitHub CI, device walks once per changed form factor at a milestone's end. The comprehensive cross-platform qualification is the beta's (BETA.md). Never weaken a test or an assertion to save effort; defer what is not required instead.
 
 Do not reorder foundational work merely to produce a flashy demo.
 

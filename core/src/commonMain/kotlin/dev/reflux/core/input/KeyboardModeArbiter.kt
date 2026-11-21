@@ -1,7 +1,7 @@
 package dev.reflux.core.input
 
 /**
- * Which presentation the Reflux keyboard shows while it is open (F-P4, planning/F-P4-ADAPTIVE-KEYBOARD.md §7), with
+ * Which presentation the Reflux keyboard shows while it is open (F-P4, history/phases/F-P4-ADAPTIVE-KEYBOARD.md §7), with
  * hysteresis so that incidental input never rearranges the keys under someone:
  * - an explicit act switches at once: a controller button or the D-pad ([controllerPressed]); a click on the keyboard
  *   ([clicked]);

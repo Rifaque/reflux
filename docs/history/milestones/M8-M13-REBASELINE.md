@@ -1,3 +1,5 @@
+> **Historical (archived 2026-11-21, Phase 4).** Kept unchanged as a record; not a current plan. Current documents: [docs/README.md](../../README.md); this archive: [history/README.md](../README.md).
+
 # Reflux M8–M13 Rebaseline
 
 **PROMOTED 2026-11-11.** The owner approved revision 3, and it was folded into `docs/ROADMAP.md`, DECISIONS.md (2026-11-11), and AGENTS.md. ROADMAP.md is the one source of truth for milestones and status. This document remains the research, critique, and specification behind it: section 3.3 is M8's data-model specification, and sections 8 and 18 define each milestone's scope.

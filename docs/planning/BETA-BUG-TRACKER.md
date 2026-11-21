@@ -2,7 +2,7 @@
 
 **Purpose.** The permanent, detailed record of every bug, UX issue, product improvement, feature request, investigation, performance concern, and verification task found in Beta testing and during Beta 2 development: what was reported, what is known, what was done, what was tested and where, and what is left. A future developer or agent should be able to pick up any issue from its entry alone.
 
-**Scope.** B-001 to B-042 and F-001 to F-005 (the owner's original findings), two registered sidebar proposals (F-P1, F-P2), and every issue found since (B-043 onward). Release gates, phase scope, phase order, and exit criteria are **not** here: they are in [BETA-2.md](BETA-2.md), which links back to this file. What each test run was, in full, is in [VERIFICATION.md](../VERIFICATION.md); decisions and their reasons are in [DECISIONS.md](../DECISIONS.md).
+**Scope.** B-001 to B-042 and F-001 to F-005 (the owner's original findings), two registered sidebar proposals (F-P1, F-P2), and every issue found since (B-043 onward). Release gates, phase scope, phase order, and exit criteria are **not** here: they are in [BETA-2.md](../history/phases/BETA-2-PHASES.md), which links back to this file. What each test run was, in full, is in [VERIFICATION.md](../VERIFICATION.md); decisions and their reasons are in [DECISIONS.md](../DECISIONS.md).
 
 **Last updated:** 2026-11-20, Phase 3 implementation (branch `open-source-gpl`; Phase 3's commits from `dcef9fb`). Phase 3's summary and walks: VERIFICATION.md, "Phase 3".
 
@@ -28,7 +28,7 @@
 | **Investigating** | Active investigation, reproduction, diagnosis, or root-cause work. |
 | **In Progress** | Implementation or remediation underway. |
 | **Fixed** | A change has been implemented; full verification may still be outstanding. |
-| **Verified** | The acceptance criteria are satisfied and the verification the [matrix](BETA-2.md#verification-matrix-what-each-item-must-be-verified-on) requires exists. |
+| **Verified** | The acceptance criteria are satisfied and the verification the [matrix](../history/phases/BETA-2-PHASES.md#verification-matrix-what-each-item-must-be-verified-on) requires exists. |
 | **Blocked** | Work cannot proceed because of an identified dependency or blocker. |
 | **Deferred** | Explicitly moved out of current scope by an authorised (owner) decision. |
 | **Not Reproduced** | Investigation has failed to reproduce the issue. This does **not** mean it is resolved. |
@@ -101,7 +101,7 @@ Newly discovered: B-043 Fixed; B-044 Investigating; B-045 Not Started. Added by 
 
 ## Phase overview
 
-Scope, order, dependencies, exit criteria, and the gate: [BETA-2.md](BETA-2.md#the-three-phases-the-owners-order). Status here.
+Scope, order, dependencies, exit criteria, and the gate: [BETA-2.md](../history/phases/BETA-2-PHASES.md#the-three-phases-the-owners-order). Status here.
 
 **Phase 1: reliability, security, data integrity, foundational investigations**
 
@@ -186,7 +186,7 @@ Scope, order, dependencies, exit criteria, and the gate: [BETA-2.md](BETA-2.md#t
 | + | [B-069](#b-069) Quick View look; the Trickplay hint removed | Fixed (in the accepted build) |
 | + | [B-070](#b-070) Steam artwork | Fixed (files only; never applied in Steam: accepted limitation) |
 | + | [B-071](#b-071), [B-072](#b-072), [B-073](#b-073) The empty hint bar; Right from the sidebar into Home; row arrows | **Verified by the owner** (manual test of the rebuilt app) and closed |
-| ✓ | **Phase 3** | **Accepted and formally closed by the owner, 2026-11-20** ([BETA-2.md, "Phase 3 closure"](BETA-2.md#phase-3-closure-2026-11-20-accepted-and-formally-closed-by-the-owner)) |
+| ✓ | **Phase 3** | **Accepted and formally closed by the owner, 2026-11-20** ([BETA-2.md, "Phase 3 closure"](../history/phases/BETA-2-PHASES.md#phase-3-closure-2026-11-20-accepted-and-formally-closed-by-the-owner)) |
 
 **Unassigned or pending:** [F-005](#f-005), [F-P1 and F-P2](#f-p1-and-f-p2) (F-P2 done in Phase 2). After the closure: the [Beta 3 backlog](#beta-3-backlog-from-phase-3s-closure-2026-11-20) (B-061, B-074, B-044, B-056, F-003). See [owner decisions](#unassigned-issues-and-unresolved-owner-decisions).
 
@@ -1620,7 +1620,7 @@ Feature proposals, kept apart from bugs. The confirmed defaults are acceptance c
   - **Android needs a custom Media3 `AudioProcessor`** in the renderer chain: a separate piece of work. `Visualizer` needs the recording permission and is not acceptable.
   - **Passthrough (bitstreamed audio) bypasses filters:** no haptics there, and that must be said.
   - **Validation needs a controller someone can feel,** on each platform: the owner's.
-- **The owner's decision (2026-11-20, Phase 3's closure):** video-synchronised haptics are deferred as a future experimental feature. They are not part of Phase 3 or Beta 2, are not to be implemented, shipped or enabled, and have no release yet. V1.2, V1.3, V1.4 and Version 2 are possible, deliberately undecided, and Phase 4's roadmap work places them ([PHASE-4-HANDOFF.md](PHASE-4-HANDOFF.md)). Before then they need their own research, design, hardware validation, synchronisation investigation, platform analysis, safety controls, and implementation and testing plan. The findings below are kept for that work.
+- **The owner's decision (2026-11-20, Phase 3's closure):** video-synchronised haptics are deferred as a future experimental feature. They are not part of Phase 3 or Beta 2, are not to be implemented, shipped or enabled, and have no release yet. V1.2, V1.3, V1.4 and Version 2 are possible, deliberately undecided, and Phase 4's roadmap work places them ([PHASE-4-HANDOFF.md](../history/phases/PHASE-4-HANDOFF.md)). Before then they need their own research, design, hardware validation, synchronisation investigation, platform analysis, safety controls, and implementation and testing plan. The findings below are kept for that work.
 - **Earlier reasoning (before the owner's decision):** no haptic output was shipped in Phase 3. A setting for a feature that does not exist would misrepresent it (the acceptance requires settings that reflect behaviour), and an unsynchronised rumble is the "fake implementation" the work order rules out. The owner decides whether F-003 moves to a later phase.
 - **Design for when it is scheduled:**
   1. A core `HapticDirector`, pure and tested: onsets from band energy over a running floor; an intensity ceiling; envelopes of at most 150 ms; at most one event per 250 ms; a 2 s cooldown after five in a row; stop on pause, seek, end, error, disconnect, preference off.
@@ -1737,7 +1737,7 @@ Registered in BETA-2.md from the owner's master prompt of 2026-11-19, which numb
 - **How found:** the owner's steer (2026-11-20): research and plan now, implement in Phase 3
 - **Phase:** **3** (the owner's decision) · **Status:** Fixed (automated; Fire TV physical and Google TV emulator grid walks; the owner's Windows walk found B-064 and B-065, fixed in the accepted build) · **Last updated:** 2026-11-20
 - **Related:** B-023, B-051, B-054, B-004, B-011, B-025, B-057, F-P3
-- **Plan (full research, design, acceptance and tests):** [F-P4-ADAPTIVE-KEYBOARD.md](F-P4-ADAPTIVE-KEYBOARD.md)
+- **Plan (full research, design, acceptance and tests):** [F-P4-ADAPTIVE-KEYBOARD.md](../history/phases/F-P4-ADAPTIVE-KEYBOARD.md)
 
 **Problem.** One controller grid serves every input. On a desk the mouse gets the same grid, which looks nothing like a keyboard. The controller grid itself was never designed against evidence, and nothing adapts when the hand changes while the keyboard is open.
 
@@ -2698,6 +2698,22 @@ A second Right always worked. Every slower route tried (by Left or Y, after Quic
 
 **To do (Beta 3):** run them repeatedly under load, find what they wait on, and make the waits deterministic without weakening the test (CLAUDE.md: intermittents are not "fixed" by weakening).
 
+**Phase 4 (2026-11-21).**
+- **What they wait on:** `Harness.await` is Compose's `waitUntil` with `PATIENCE_MS` = 30 s of wall-clock time; the two waits are for the library pipeline (the server's films arriving in `world.library`) and for the notice, both driven by coroutines on real dispatchers, not by the test clock. Under a loaded machine 30 s of wall clock can pass while the software-rendered frames and the scan compete for CPU; the reading above stands and is still not a confirmed cause.
+- **Fresh full run:** `./gradlew check` at the start of Phase 4 (Windows 11, no Docker or emulator running, 16.8 GB free): `:ui:jvmTest` 548 tests, **0 failures**; `SourcesUiTest` passed in the full run. Not reproduced.
+- **Further samples:** the full-tree reruns at Phase 4's end (planning/PHASE-4.md, "Verification") are recorded there.
+- **Disposition:** stays **Investigating**, Beta 3 (test infrastructure). No test was changed: lengthening the patience would only hide a slow pipeline, and the fix is to make the wait deterministic (drive the pipeline from the test's dispatcher), which is Beta 3 work.
+
+<a id="b-075"></a>
+### B-075: Store "What's new" text included category headings
+
+- **Category:** Release tooling (not in the app) · **Priority:** Medium (it would have reached both stores' listings) · **Platforms:** Google Play and Amazon Appstore release notes
+- **Components:** `tools/release/release.py` (`plain_text`, `store_text`)
+- **How found:** 2026-11-21, Phase 4, while grouping every CHANGELOG release under categories: Phase 3 had introduced `###` category headings in Unreleased, and `plain_text` treats any non-empty line that is not a `- ` item as an item, so Beta 2's store text would have begun "• ### Playback & Media".
+- **Phase:** Phase 4 (release infrastructure, in the owner's Phase 4 scope; no product code) · **Status:** Fixed · **Last updated:** 2026-11-21
+
+**Fix.** Lines starting with `#` end the current item and are skipped. **Tests:** `test_category_headings_are_not_store_items` (new); `python -I -m unittest discover -s tools/release -p "test_*.py"`: 48 tests, OK. **Not verified:** a real `release.py notes` run in the release workflow (no release has been cut).
+
 ## Beta 3 backlog (from Phase 3's closure, 2026-11-20)
 
 Phase 3 is closed and Beta 2's fix scope is frozen (DECISIONS.md, 2026-11-20, "Phase 3 accepted and formally closed"). Every bug, UX issue, request or improvement found from now on is entered here, and in its own entry with the next free number, for **Beta 3 or a later release**, unless the owner explicitly authorises it as a critical Beta 2 blocker.
@@ -2708,6 +2724,7 @@ Phase 3 is closed and Beta 2's fix scope is frozen (DECISIONS.md, 2026-11-20, "P
 | [B-061](#b-061) | A Skia crash after a Direct3D failure (Windows, the owner's build) | Investigating; a Beta 3 candidate (the owner places it) |
 | [B-044](#b-044) | Test intermittents mixing the test and wall clocks | Investigating (test infrastructure) |
 | [B-056](#b-056) | Blank on closing the mini-player | Deferred by the owner (a later beta) |
+| [B-075](#b-075) | Store "What's new" included category headings (release tooling) | Fixed in Phase 4 |
 | [F-003](#f-003) | Video-synchronised haptics | Deferred: a future version, **no release assigned**; needs its own research, hardware validation, design and plan first |
 
 ## Regression tracking

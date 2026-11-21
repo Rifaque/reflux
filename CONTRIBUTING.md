@@ -16,7 +16,7 @@ Read:
 
 - [Product](docs/PRODUCT.md)
 - [Architecture](docs/ARCHITECTURE.md)
-- [Roadmap](docs/ROADMAP.md)
+- [Roadmap](docs/history/roadmaps/ROADMAP-M0-M13.md)
 - [Versioning](docs/VERSIONING.md) (before touching versions, tags, or release metadata)
 - [Design](docs/DESIGN.md)
 - [Input model](docs/INPUT_MODEL.md)

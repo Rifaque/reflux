@@ -19,7 +19,7 @@ import org.junit.runner.RunWith
 import java.io.File
 
 /**
- * Not a check: the harness of the device walks (docs/planning/M10-PLAYER-SPEC.md, section 13). It puts a film in the
+ * Not a check: the harness of the device walks (docs/history/milestones/M10-PLAYER-SPEC.md, section 13). It puts a film in the
  * application's own library, opens the application, plays it, and then keeps the application up while a person (or adb)
  * drives it with real gestures, logging what the session says under the tag `M10Walk`. Commands arrive as lines in
  * `files/walk.cmd` of the application (`play`, `collapse`, `expand`, `close`, `stop`), so a walk can put the player where

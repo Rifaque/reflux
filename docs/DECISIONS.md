@@ -613,10 +613,10 @@ Decided: an adapter reports a folder that is there but could not be listed (`Sou
 
 ## 2026-10-17 — Roadmap rebaseline
 
-Decided by the product owner after a read-only audit of the repository at `2a66250`. The Phase 0–18 roadmap was ordered by architectural layer, mixed status, plan, and verification logs, and no longer matched the code: most of its phases were built, while what stands between the tree and a release (signing, packaging, physical validation, legal, a beta) had no place in it. It is replaced by outcome milestones M0–M7 with a parallel website track W0–W4 (ROADMAP.md). Verification history moved to VERIFICATION.md; release and beta checklists are in RELEASE.md; launch tracks in LAUNCH.md.
+Decided by the product owner after a read-only audit of the repository at `2a66250`. The Phase 0–18 roadmap was ordered by architectural layer, mixed status, plan, and verification logs, and no longer matched the code: most of its phases were built, while what stands between the tree and a release (signing, packaging, physical validation, legal, a beta) had no place in it. It is replaced by outcome milestones M0–M7 with a parallel website track W0–W4 (ROADMAP.md). Verification history moved to VERIFICATION.md; release and beta checklists are in RELEASE.md; launch tracks in history/milestones/LAUNCH.md.
 
 - **Beta is a real launch stage** before 1.0: `0.9.0-beta.N` through Google Play closed testing, Amazon's testing path, and desktop downloads, with about 15–20 testers chosen for coverage, then release candidates `0.9.0-rc.N`, then `1.0.0`.
-- **The website (reflux.rsxdevelops.dev) is a launch track**, begun before the beta, beta-facing at M4, and Reflux's permanent home at 1.0. Its visual language is minimal and nearly blank; the product's media provides the color (LAUNCH.md).
+- **The website (reflux.rsxdevelops.dev) is a launch track**, begun before the beta, beta-facing at M4, and Reflux's permanent home at 1.0. Its visual language is minimal and nearly blank; the product's media provides the color (history/milestones/LAUNCH.md).
 - **A product demo video is a beta asset**, required for the beta website.
 - **V1 is what Reflux fundamentally is**, listed in ROADMAP.md (M1) with acceptance criteria; it is neither shrunk to make future features nor grown into everything Reflux may become.
 
@@ -626,7 +626,7 @@ One product version for every platform, declared once (`reflux.version` in `grad
 
 ## 2026-10-17 — Fire TV is a V1 target, separate from Android TV
 
-Fire TV devices running **Fire OS**, distributed through the **Amazon Appstore**, are a V1 platform. They run the same Android application as phones and Google TV, but are a separate target: a different store and review, devices without Google services, different launcher integration, a different device matrix (Fire OS 7 is API 28, Fire OS 8 is API 30; Reflux's `minSdk` is 26, so Fire OS 6 devices are excluded), and their own validation. Documentation never equates Fire TV with Android TV. The developer's Fire TV Stick 4K and Fire TV television are inspected for model and OS before anything is assumed about them (LAUNCH.md, Fire TV plan).
+Fire TV devices running **Fire OS**, distributed through the **Amazon Appstore**, are a V1 platform. They run the same Android application as phones and Google TV, but are a separate target: a different store and review, devices without Google services, different launcher integration, a different device matrix (Fire OS 7 is API 28, Fire OS 8 is API 30; Reflux's `minSdk` is 26, so Fire OS 6 devices are excluded), and their own validation. Documentation never equates Fire TV with Android TV. The developer's Fire TV Stick 4K and Fire TV television are inspected for model and OS before anything is assumed about them (history/milestones/LAUNCH.md, Fire TV plan).
 
 **Vega OS** (Amazon's newer non-Android Fire TV platform, on some recent Fire TV sticks) is not part of V1. Reflux's Android application does not run on it, and a Vega client would be a new shell. It is a future compatibility track, promoted only by an evaluation and an explicit decision.
 
@@ -851,7 +851,7 @@ Reflux had no page that said which build it is, who it credits, or what software
 - **Third-party notices are a checked-in list, checked by the build.** `legal/components.txt` names each component, its license, the texts shown for it (verbatim in `legal/licenses`, taken from the artifacts themselves where they carry them), and which build has it; the `ui` build generates the page's data from it, and `checkThirdPartyNotices` (part of `check`) fails when a shell's release runtime classpath has a module no line covers, or a line covers nothing that shell has. Rejected: a license-report Gradle plugin (a new build dependency whose data comes from POMs, which AndroidX's module metadata often leaves out, and which cannot see what is native: Skia and ICU inside Skiko, libmpv) and a hand-written list in code (nothing would notice it going stale).
 - **A metadata provider's credit belongs to its adapter.** `MetadataProvider.attribution` gives the name, the notice its terms require word for word, its site, and its approved logo as vector data; the About page shows whichever provider is in use, and nothing when there is none. TMDB's is its "Primary short (blue)" logo, drawn from the published SVG's own path and gradient and held to that file by a test, smaller than Reflux's name, with "This product uses the TMDB API but is not endorsed or certified by TMDB." (developer.themoviedb.org FAQ, read 2026-10-19). Its site is named, not linked: televisions have no browser to open it in.
 - **libmpv is listed as what it is today**: the copy on the user's computer, which Reflux loads and does not include, under the LGPL or the GPL depending on how it was built. The LGPL text and a source offer come with the libmpv build Reflux will ship (M2).
-- **Privacy is stated as facts, not as a policy.** The page says what the code does (no account, nothing sent to Reflux's makers, metadata lookups to TMDB, the user's servers see what is played from them), checked against every host the production code names. The privacy policy and a support contact are documents the website will carry (LAUNCH.md, W3); no link is shown until they exist.
+- **Privacy is stated as facts, not as a policy.** The page says what the code does (no account, nothing sent to Reflux's makers, metadata lookups to TMDB, the user's servers see what is played from them), checked against every host the production code names. The privacy policy and a support contact are documents the website will carry (history/milestones/LAUNCH.md, W3); no link is shown until they exist.
 - **Diagnostics are not exposed yet.** The log removes credentials but keeps file paths and the titles of the user's media, and the library diagnostics are lists of titles. An export needs path redaction and a way to hand the text over on each platform (a television has no clipboard to speak of); it comes with the feedback path (RELEASE.md, beta entry).
 - **Reflux's own license is not chosen** (README, RELEASE.md). The page shows it, first, as soon as a `LICENSE` file is in the repository; until then it shows none rather than a guess.
 - **Coming back finds the control on every page.** `FocusEntry` remembered one control for the whole application, so Back two pages deep put focus at the top; it now remembers one per page.
@@ -862,7 +862,7 @@ Reflux had no page that said which build it is, who it credits, or what software
 
 Decided by the product owner. Reflux is not open-source software, and no license to its source code is granted:
 
-- **All rights reserved.** Reflux's own code, documentation, and design belong to RSX Develops, the maker the website already names (LAUNCH.md). The repository's `LICENSE` is a plain ownership notice, `Copyright © 2026 RSX Develops. All rights reserved.`, with a few sentences saying what that means; it is not a license, and it is not a custom legal license drafted to look like one. No MIT, Apache, GPL, LGPL, BSD, or other open-source license applies to Reflux itself.
+- **All rights reserved.** Reflux's own code, documentation, and design belong to RSX Develops, the maker the website already names (history/milestones/LAUNCH.md). The repository's `LICENSE` is a plain ownership notice, `Copyright © 2026 RSX Develops. All rights reserved.`, with a few sentences saying what that means; it is not a license, and it is not a custom legal license drafted to look like one. No MIT, Apache, GPL, LGPL, BSD, or other open-source license applies to Reflux itself.
 - **The source is public on purpose**, as a portfolio and for transparency. Seeing it gives no permission to redistribute it, use it commercially, publish modified versions, sublicense it, build it into another product, or distribute works derived from it.
 - **Third-party software keeps its own licenses.** Every component Reflux is built with stays under the license its authors chose, listed with its full text on the About page (`legal/`, checked by `check`). Reflux's status restricts none of them, and the notice says so.
 - **On the About page**, the copyright line stands with the build, and "Copyright and ownership" is a row of its own, before "Third-party software", leading to the notice. The two never share a row or a page, so neither is read as the other's terms. The page reads the notice from `LICENSE` at build time (the mechanism the About decision already had), so there is one text, not a second copy in code.
@@ -876,7 +876,7 @@ Alternatives rejected: an open-source license (the owner's decision is that Refl
 Decided by the product owner. How Reflux pays for itself at launch:
 
 - **Free, whole, and unlimited.** 1.0 has no price, no subscription, no Pro tier, and no feature gating, and nothing in the core media-player experience is limited to make a paid version look better.
-- **Voluntary donations** are the way to support Reflux at first. Their place is a calm, unobtrusive "Support Reflux" section on the website (LAUNCH.md), not the application: this milestone adds no donation or payment system to the app. The donation destination does not exist yet; choosing a provider and setting it up is a launch-track task. No provider, address, or account is named before it exists.
+- **Voluntary donations** are the way to support Reflux at first. Their place is a calm, unobtrusive "Support Reflux" section on the website (history/milestones/LAUNCH.md), not the application: this milestone adds no donation or payment system to the app. The donation destination does not exist yet; choosing a provider and setting it up is a launch-track task. No provider, address, or account is named before it exists.
 - **Reflux Pro is a possibility for later, not a plan.** If it comes, it would draw on advanced capabilities after V1 (the V1.x and Future candidates in ROADMAP.md). Which ones, if any, is not decided now; that is decided explicitly when those capabilities are understood. V1 functionality is never removed or held back to make room for it.
 - **Nothing is built for it now**: no in-app billing, subscriptions, entitlements, license keys, or payment code. Store listings declare no in-app purchases.
 
@@ -1002,7 +1002,7 @@ Entries before this one, and VERIFICATION.md sections before it, use the numberi
 
 Decided by the product owner. The website was a parallel track (W0–W4) with no milestone responsible for it, which let it become a last-minute landing page before the beta. It is now part of the release roadmap, with no milestone of its own: its foundation (architecture, hosting, deployment, HTTPS, legal and privacy pages, support, release data, documentation structure) belongs to M6; its public product surface, tester hub, documentation, and release information to M7; and M8 does not begin until it meets ten stated conditions (ROADMAP.md). Before a beta, testers need a stable public place to learn what they are testing, get the right build, read its limits, and send feedback; Google Play's tests are joined through links search does not find, and its distribution requires a public privacy policy consistent with the app.
 
-The domain stays reflux.rsxdevelops.dev; the hosting provider is decided in M6, with a static site preferred while nothing needs a backend. The site adds no tracking by default, routes to the stores rather than mirroring them, and downloads desktop builds only because desktop has no store. The W labels remain the names of its deliverables (LAUNCH.md), due at the milestones the roadmap gives them. Plex is in M3's source scope; the site never calls a source supported before the app supports it.
+The domain stays reflux.rsxdevelops.dev; the hosting provider is decided in M6, with a static site preferred while nothing needs a backend. The site adds no tracking by default, routes to the stores rather than mirroring them, and downloads desktop builds only because desktop has no store. The W labels remain the names of its deliverables (history/milestones/LAUNCH.md), due at the milestones the roadmap gives them. Plex is in M3's source scope; the site never calls a source supported before the app supports it.
 
 ## 2026-11-02 — M2P's last decisions
 
@@ -1192,7 +1192,7 @@ The owner kept the Reflux Loop and asked for motion to give it its meaning, for 
 
 ## 2026-11-11 — The milestone rebaseline after M7: profiles first
 
-Real use after M7 found requirements the old M8 (Beta), M9 (Release Candidate), and M10 (1.0) could not absorb: a privacy and correctness defect in account boundaries (signing out of one Jellyfin user and into another left the first user's history visible, and resuming it reported progress to the second user's server account), a navigation shell below the visual bar, a player that weighs on the picture, and the need for real installers and first-party Linux packages. The full research, critique, and two reviews are in `docs/planning/M8-M13-REBASELINE.md` (revision 3), approved by the owner.
+Real use after M7 found requirements the old M8 (Beta), M9 (Release Candidate), and M10 (1.0) could not absorb: a privacy and correctness defect in account boundaries (signing out of one Jellyfin user and into another left the first user's history visible, and resuming it reported progress to the second user's server account), a navigation shell below the visual bar, a player that weighs on the picture, and the need for real installers and first-party Linux packages. The full research, critique, and two reviews are in `docs/history/milestones/M8-M13-REBASELINE.md` (revision 3), approved by the owner.
 
 - **The milestones are now:** M8 Viewer Identity & Profiles, Navigation Structure, Website SEO/Responsive Work, and Release Preparation Foundations; M9 Navigation & Surface System 2.0, M10 Player & Playback Experience 2.0, M11 Distribution & Release Surfaces, M12 Qualification Campaign & Beta, M13 Release Candidate & 1.0. ROADMAP.md maps the old numbers.
 - **Profiles come first** because they are the root of the dependency graph: the navigation's utility area, the player's session ownership, the launcher row, and any later transfer or sync all depend on who the viewer is, and the profile migration is the largest schema change since M3, so it runs longest on real devices before qualification.
@@ -1205,11 +1205,11 @@ Real use after M7 found requirements the old M8 (Beta), M9 (Release Candidate), 
 
 ## 2026-11-11 — Casting: the V1 feasibility gate closes as V1.x
 
-The 2026-10-17 decision made casting a time-boxed V1 feasibility gate, "V1.1 if it fails", decided at the start of the old M8. The 2026-11-11 rebaseline spends the time before the beta on profiles, the navigation and player redesigns, and distribution, so no time-box for casting fits before M12's feature-complete candidate. Per the gate's own rule, casting moves to V1.x (ROADMAP.md, V1.x), and a handoff between Reflux devices is a Reflux 2.0 pillar. This follows the approved plan's recommendation (planning/M8-M13-REBASELINE.md, O-2); the owner can reopen it by a new decision.
+The 2026-10-17 decision made casting a time-boxed V1 feasibility gate, "V1.1 if it fails", decided at the start of the old M8. The 2026-11-11 rebaseline spends the time before the beta on profiles, the navigation and player redesigns, and distribution, so no time-box for casting fits before M12's feature-complete candidate. Per the gate's own rule, casting moves to V1.x (ROADMAP.md, V1.x), and a handoff between Reflux devices is a Reflux 2.0 pillar. This follows the approved plan's recommendation (history/milestones/M8-M13-REBASELINE.md, O-2); the owner can reopen it by a new decision.
 
 ## 2026-11-11 — How M8 makes the viewer the identity boundary
 
-The model is the promoted plan's (planning/M8-M13-REBASELINE.md, section 3.3); these are the choices made building it. The contract is WATCH_STATE.md, "Profiles".
+The model is the promoted plan's (history/milestones/M8-M13-REBASELINE.md, section 3.3); these are the choices made building it. The contract is WATCH_STATE.md, "Profiles".
 
 - **What a profile sees is one flag, recomputed with inclusion** (`version.visible`, `recomputeVisibility`), not a profile parameter added to every query. Inclusion requires it, so every read of the unified library is bound by construction, and the reads of one source's own library require it too. A flag set from the active profile is global state, so it is recomputed in the same transaction as the switch and after every scan, and `ProfileIsolationTest` holds every read model and every query in `Library.sq` to it (a query that reads versions or viewer state without it fails the test until it is bound or listed with a reason). The alternative, a profile argument threaded through some seventy queries and their callers, leaves one forgotten query a leak no test would name.
 - **An account source is one profile's; a source with no account is everyone's.** Whether a connection is a person's account is the connector's to say (`SourceConnector.account`: a Jellyfin user, a Plex account or token; not a share, a folder, or a Plex server open to the network). An account signed in in one profile cannot be signed in from another (`ConnectResult.InAnotherProfile`), because a server account's watch record can only be reconciled with one viewer's history. Two people sharing one server account is the case this gives up; they share one profile instead.
@@ -1235,7 +1235,7 @@ The M8 responsive pass needs every page at real viewport sizes, and keeping it n
 
 ## 2026-11-12 — The desktop mini-player: viable, with an architectural adjustment
 
-M9 opened with the trial the rebaseline asked for (planning/M8-M13-REBASELINE.md, section 8, "Step 0"): can one playback session be shown across the whole window and, while the viewer browses, in a dock, when desktop video is a native child window that libmpv renders into? **Verdict: viable with an architectural adjustment.** Evidence: VERIFICATION.md, "M9: the desktop mini-player trial"; the trial is kept as `MiniPlayerWindowTest`.
+M9 opened with the trial the rebaseline asked for (history/milestones/M8-M13-REBASELINE.md, section 8, "Step 0"): can one playback session be shown across the whole window and, while the viewer browses, in a dock, when desktop video is a native child window that libmpv renders into? **Verdict: viable with an architectural adjustment.** Evidence: VERIFICATION.md, "M9: the desktop mini-player trial"; the trial is kept as `MiniPlayerWindowTest`.
 
 **What was found, on Windows 11 and on Linux (X11) with real libmpv:**
 
@@ -1301,7 +1301,7 @@ The M8 layout check failed on the hosted runner with layout shift up to 0.23 on 
 
 ## 2026-11-13 — M10: one session across the full player, the dock, and the system's window
 
-The M10 planning pass checked the plan against the code after M9 and against Android's current documentation. The specification is `docs/planning/M10-PLAYER-SPEC.md`; these are the durable choices behind it.
+The M10 planning pass checked the plan against the code after M9 and against Android's current documentation. The specification is `docs/history/milestones/M10-PLAYER-SPEC.md`; these are the durable choices behind it.
 
 - **Picture-in-picture is a presentation, `SYSTEM`, beside `FULL` and `MINI`.** It is the same session, engine, reporter, and owner. A separate "in PiP" flag could contradict the session (a dock drawn inside a PiP window), so the shell sets `SYSTEM` only from the platform's confirmed callback. The transient "entering PiP" signal (`isTransitioningToPip`, API 35+) is a shell input that hides the chrome; it is not session state. Expanding returns to `FULL`. Closing the window ends the session with its place recorded: a closed window that came back as a paused dock would surprise the viewer and hold a server's stream open.
 - **No `MediaSessionService`.** Everything M10 does happens while a Reflux activity is visible, full-screen or in PiP. The activity-owned Media3 session already gives the PiP window its controls, and Android 17's background-audio hardening exempts visible activities including PiP. A service is the background-playback feature, which is not approved. Future external control attaches to `PlaybackSession`'s command surface.
@@ -1343,10 +1343,10 @@ The three probes the plan opened with (VERIFICATION.md, "M10") each had a predet
 
 ## 2026-11-13 — M11 distributes what exists: its scope, one release identity, and the Windows gate
 
-M10 is complete (`43f8f5b`, `dbb4840`) with its qualification limits recorded rather than hidden, and the roadmap's next milestone is M11, Distribution & Release Surfaces. The owner's brief for M11 narrows it on purpose; the specification is `docs/planning/M11-DISTRIBUTION-PLAN.md`.
+M10 is complete (`43f8f5b`, `dbb4840`) with its qualification limits recorded rather than hidden, and the roadmap's next milestone is M11, Distribution & Release Surfaces. The owner's brief for M11 narrows it on purpose; the specification is `docs/history/milestones/M11-DISTRIBUTION-PLAN.md`.
 
 - **M11 is not another release-engineering rebuild.** The release system M6 and M7 built (one version in `gradle.properties`; `release.py build` and `verify`; the two-mode release workflow with its attestations and its draft-then-verify release; the signing setup; the listing material; the website's release data) is preserved. M11 closes the seams in it and sets up and rehearses every channel end to end. **Nothing in M11 is public**: no tag, no version change, no push, no published release.
-- **This supersedes the M11 scope of 2026-11-11** (`planning/M8-M13-REBASELINE.md`, section 8) where they differ. The Inno Setup installer and the first-party Linux packages (AppImage, deb, rpm, PKGBUILD, a Linux libmpv build) leave M11: they were new packaging stacks proposed before the existing ZIP and tarball had been used by one tester, and the installer's real obstacle is signing, which has its own gate (below). The large-library baseline and stress harness move to M12's campaign. The metadata provider *gate* stays an owner decision before M12's entry; building a second provider is not M11. The demo video's capture and the website's final content are M11.7; beta operations are *set up* in M11 and *run* in M12. Every older item's disposition is in the plan, section 2. The 2026-11-08 decision (archives with a pinned runtime, not installers yet) stands.
+- **This supersedes the M11 scope of 2026-11-11** (`history/milestones/M8-M13-REBASELINE.md`, section 8) where they differ. The Inno Setup installer and the first-party Linux packages (AppImage, deb, rpm, PKGBUILD, a Linux libmpv build) leave M11: they were new packaging stacks proposed before the existing ZIP and tarball had been used by one tester, and the installer's real obstacle is signing, which has its own gate (below). The large-library baseline and stress harness move to M12's campaign. The metadata provider *gate* stays an owner decision before M12's entry; building a second provider is not M11. The demo video's capture and the website's final content are M11.7; beta operations are *set up* in M11 and *run* in M12. Every older item's disposition is in the plan, section 2. The 2026-11-08 decision (archives with a pinned runtime, not installers yet) stands.
 - **Windows stays the ZIP, unsigned by decision, with a deliberate gate (G-WIN).** The M12 beta may continue with direct GitHub ZIP distribution. Before broad 1.0 public distribution the owner decides between trusted direct signing and Microsoft Store distribution, or records knowing why Reflux stays unsigned. The owner's eligibility check is an M12-midpoint action and the decision is recorded by M13's start. Nothing about signing or Store packaging is implemented in M11.
 - **Linux stays the x64 tarball** that needs the distribution's libmpv (`libmpv2`; Ubuntu 22.04 does not ship it). Distribution packages are V1.x unless the beta shows the tarball cannot serve its users.
 - **One release identity.** commit → version → tag → release-info → artifacts → checksums, manifest, provenance → GitHub release → website and stores. The website reads one release record and is never a second registry. The two hand-copied seams (the published record, the store record) become checked steps. GitHub Releases are the canonical desktop release surface.
@@ -1356,7 +1356,7 @@ M10 is complete (`43f8f5b`, `dbb4840`) with its qualification limits recorded ra
 
 ## 2026-11-15 — M11: store-only Android, a debug identity of its own, and a release record written by the tool
 
-M11 decided the open items of its plan (planning/M11-DISTRIBUTION-PLAN.md, section 3) within the owner's brief, which set store-only Android as the default:
+M11 decided the open items of its plan (history/milestones/M11-DISTRIBUTION-PLAN.md, section 3) within the owner's brief, which set store-only Android as the default:
 
 - **D1, store-only Android.** The public GitHub release carries the Windows ZIP, the Linux tarball, the libmpv source offer, `SHA256SUMS`, `manifest.json`, and `provenance.intoto.json`, and nothing else. The AAB and APK are built, verified, and attested by the same run, are listed in the manifest and the provenance as `"distribution": "store"` (manifest schema 2), and reach Google Play and the Amazon Appstore from the release workflow's `release` artifact, kept 14 days. `SHA256SUMS` lists exactly the public files, so `sha256sum -c SHA256SUMS` passes on a download. Consequence: no Android Developer Console registration is needed (RELEASE.md, "Android developer verification"); if public APKs are ever wanted, that registration comes first.
 - **D2, debug builds have their own identity.** The debug build type has `applicationIdSuffix ".debug"` (`dev.rsxdevelops.reflux.debug`, label "Reflux (debug)", test APK `.debug.test`); only release builds carry `dev.rsxdevelops.reflux`. A side-by-side scratch build overrides `reflux.android.applicationId` and gets the suffix too. The release tool refuses an APK whose package is not exactly the permanent ID, a debuggable one, and, when the repository variable `REFLUX_UPLOAD_CERT_SHA256` is set, one signed by any other key. Installs of the permanent ID made before this (debug- or dry-run-signed) are still on the owner's devices and are removed before the first store install (owner action).
@@ -1395,15 +1395,29 @@ M11 decided the open items of its plan (planning/M11-DISTRIBUTION-PLAN.md, secti
 - **1.0 communication.** "Planned for December 2026", depending on feedback, qualification, and store approval; 10 December is an internal readiness checkpoint and 15 December the release decision, never a promised release date. Each platform publishes through its own path.
 - **No Windows installer in the beta**: none exists or is tested, and building one would change the release; reconsidered for 1.0.
 
+## 2026-11-21 — Phase 4: one home per fact, a product roadmap by version, store assets by LaunchFrame, and a site that never runs ahead of the builds
+
+**Context.** The owner's Phase 4 master prompt (2026-11-21) asked for documentation consolidation, a product roadmap from post-alpha to V2.0, store screenshots through LaunchFrame, a website overhaul with a roadmap and its easter egg, distribution infrastructure, and Beta 2 readiness, autonomously, with Beta 2's scope frozen and nothing published. Record of the work: planning/PHASE-4.md.
+
+**Decisions.**
+- **Documentation.** Current documents stay in `docs/`; superseded plans, milestone records and pre-Beta-2 verification move unchanged (by `git mv`) to `docs/history/`, labelled historical, indexed in `docs/history/README.md`, with every link rewritten and checked (`tools/docs/check_links.py`, now in CI). DECISIONS.md and the tracker are not archived: older decisions still bind, and the tracker is live to 1.0. `docs/README.md` says which document is authoritative for what.
+- **Roadmap.** Milestones (M0–M13) are retired as the planning unit after M11; the beta continues in `docs/BETA.md`, and the product plan is by version in `docs/ROADMAP.md`: V1.0 (stable, no new features; 17 criteria, the 2026-10-17 fifteen plus support and platform decisions), V1.1 your library (B-027, B-038, F-P1, B-040), V1.2 playback depth, V1.3 sources and installation, V1.5 the household (under consideration), V2.0 across devices (vision). No date is promised. F-005 is suggested for V1.5 (the handoff listed it among V1.1 candidates "as the owner places them"; the owner may pull it forward). F-003 stays unscheduled and off the public roadmap.
+- **Beta documents.** `docs/BETA.md` is the beta roadmap (builds, scope, gate, known issues, operations); `docs/BETA-NOTES.md` is what testers read; CHANGELOG.md stays the release notes' source.
+- **Release-note categories.** Every CHANGELOG release groups its items under a fixed list of categories in a fixed order (VERSIONING.md); Beta 1 and alpha 2 were regrouped with every item unchanged. `release.py notes` no longer turns a category heading into a store "What's new" line (B-075).
+- **Store assets.** LaunchFrame (installed as the Claude Code plugin `launch-frame@launch-frame` 2.0.0) is the screenshot workflow; each release's assets live in `store-assets/release-<version>/` with provenance. Captures come from emulators with a Creative Commons demo library; tablets use 16:9 as Play's page asks. The Fire TV set uses Google TV emulator captures, labelled so; the owner decides before upload whether to re-capture on the stick. The Fire TV background no longer carries the logo.
+- **Website.** New Features and Roadmap pages; the roadmap's data (`website/src/roadmap.js`) is ROADMAP.md simplified and changes with it; the easter egg is the roadmap played as a Reflux player, behind the mark at the page's end. The site no longer promises 1.0 for December 2026. A feature that arrives with Beta 2 is labelled "Coming in Beta 2" until a Beta 2 publication record exists (`src/released.js`, from release data), so the site never shows as current what cannot be downloaded. The overhauled site is deployed with Beta 2's publication, by the owner.
+
+**Alternatives rejected.** Splitting DECISIONS.md by period (decisions are cited by date and title; one file keeps them findable); a public roadmap with dates (nothing in the evidence supports one); store screenshots as raw captures (Beta 1's approach: they told no story); making the easter egg a menu item (the brief asks for it to be found).
+
 ## 2026-11-20 — Phase 3 accepted and formally closed
 
 - **The owner accepted and formally closed Phase 3,** after testing the rebuilt application by hand.
 - **Owner-verified and closed:** B-071 (no dot left by hidden hints), B-072 (Right from the sidebar into Home), B-073 (row arrows only for the mouse).
-- **The closure record:** planning/BETA-2.md, "Phase 3 closure". It covers the commits, results, accepted limitations, and the deferred and carried items.
+- **The closure record:** history/phases/BETA-2-PHASES.md, "Phase 3 closure". It covers the commits, results, accepted limitations, and the deferred and carried items.
 - **The latest test run is not wholly green:** 941 tests in the UI and core run, 2 timing-sensitive `SourcesUiTest` failures. They pass 11/11 alone and are registered as B-074 for Beta 3.
 - **Hard freeze:** Beta 2's fix scope is closed. Any bug, UX issue, request or improvement found from now on is recorded for Beta 3 or later (the tracker's Beta 3 backlog), unless the owner explicitly authorises a critical Beta 2 blocker.
 - **F-003 (video haptics)** stays deferred to a future version with no release assigned. No haptics work starts until it has its own research, hardware validation, design and plan.
-- **Phase 4** starts in a fresh session from planning/PHASE-4-HANDOFF.md. Nothing of it was started at the closure.
+- **Phase 4** starts in a fresh session from history/phases/PHASE-4-HANDOFF.md. Nothing of it was started at the closure.
 - **Unchanged:** nothing pushed, merged, tagged, published, deployed or released; no version changed; Beta 2 not cut.
 
 ## 2026-11-20 — Phase 3 closure: video haptics deferred with no release; Phase 4's scope
@@ -1418,7 +1432,7 @@ M11 decided the open items of its plan (planning/M11-DISTRIBUTION-PLAN.md, secti
   - a user-facing website overhaul;
   - Beta 2's contents and the remaining gate;
   - a future roadmap across V1, V1.1, V1.2, V1.3, V1.5 and Version 2 (candidates, not commitments);
-  - a website roadmap easter egg, to be planned and built in Phase 4 (not in Phase 3). [planning/PHASE-4-HANDOFF.md](planning/PHASE-4-HANDOFF.md).
+  - a website roadmap easter egg, to be planned and built in Phase 4 (not in Phase 3). [history/phases/PHASE-4-HANDOFF.md](history/phases/PHASE-4-HANDOFF.md).
 - **The website in Phase 3's closure:**
   - CHANGELOG.md's Unreleased section is grouped for people (`### Playback & Media` …), and the Releases page shows the groups, saying they are not in a downloadable build;
   - the user docs keep describing the downloadable beta, with a note where the next beta changes behaviour;
@@ -1483,7 +1497,7 @@ M11 decided the open items of its plan (planning/M11-DISTRIBUTION-PLAN.md, secti
 
 ## 2026-11-20 — F-P4: the owner's decisions on the adaptive keyboard's scope
 
-Recorded in planning/F-P4-ADAPTIVE-KEYBOARD.md (§16, and where each applies):
+Recorded in history/phases/F-P4-ADAPTIVE-KEYBOARD.md (§16, and where each applies):
 1. **Controller layout:** the refined QWERTY is the default and **only** layout in F-P4. There is no alphabetic option; the layout-as-data architecture keeps more layouts possible if accessibility feedback or testing justifies them.
 2. **Title completions: in F-P4,** deliberately simple, from the user's library only: no network, no AI, no metadata fetching.
    - They update with the query and **never take focus**.
@@ -1497,7 +1511,7 @@ Recorded in planning/F-P4-ADAPTIVE-KEYBOARD.md (§16, and where each applies):
 
 **Owner's decision.** The on-screen keyboard becomes one system with layouts per input that transform live, but **in Phase 3**. Phase 2 only researches and plans it.
 
-**Recommendations recorded for Phase 3** (planning/F-P4-ADAPTIVE-KEYBOARD.md, with evidence and sources; the open questions were decided the same day, in the entry above):
+**Recommendations recorded for Phase 3** (history/phases/F-P4-ADAPTIVE-KEYBOARD.md, with evidence and sources; the open questions were decided the same day, in the entry above):
 - **The controller layout stays QWERTY:** column-aligned, with an action column and wrap, and the existing button shortcuts. Alphabetic is not the default: no controller study shows it beating QWERTY, and the platforms moved from ABC to QWERTY.
 - **The mouse layout is a conventional staggered keyboard,** on Windows and Linux only.
 - **One key identity, one session;** layouts as data; a custom per-key morph rather than experimental shared-element APIs.
@@ -1558,7 +1572,7 @@ Recorded in planning/F-P4-ADAPTIVE-KEYBOARD.md (§16, and where each applies):
 - A remote's Menu key and a controller's Start open Sources while browsing (`SemanticAction.MENU`); Y, since the final verification, toggles the sidebar (F-P2).
 - Quick View's Menu/Options trigger on a focused media item will have to be reconciled with that. Phase 3 decides it, and Phase 2 does not move it.
 
-The requirement is registered as **F-P3** in [planning/BETA-BUG-TRACKER.md](planning/BETA-BUG-TRACKER.md) and in Phase 3 of [planning/BETA-2.md](planning/BETA-2.md).
+The requirement is registered as **F-P3** in [planning/BETA-BUG-TRACKER.md](planning/BETA-BUG-TRACKER.md) and in Phase 3 of [history/phases/BETA-2-PHASES.md](history/phases/BETA-2-PHASES.md).
 
 ## 2026-11-19 — Beta 2, Phase 2 authorised: the IDs of the new findings, Forgot PIN, and the statistics provider
 
@@ -1578,14 +1592,14 @@ The requirement is registered as **F-P3** in [planning/BETA-BUG-TRACKER.md](plan
 - **Forgot PIN** (resolving the open decision of 2026-11-18). The choices are **Keep profile** (nothing changes) and **Reset profile**. Reset profile erases the profile's protected data and its PIN, after a warning and a second confirmation; only that profile is touched.
   - **System authentication.** Where the system can confirm the device's owner, a third choice removes the PIN and keeps the profile's data. Reflux never collects or sees what is entered, and the old PIN is never revealed. A cancelled, failed or unavailable confirmation authorises nothing.
   - **Android phones and tablets (Android 10 and later):** the platform `BiometricPrompt`, with strong biometrics or the screen lock.
-  - **Television, Windows and Linux:** Keep profile and Reset profile only (planning/PHASE-2-PLAN.md, "Forgot PIN: system authentication by platform").
+  - **Television, Windows and Linux:** Keep profile and Reset profile only (history/phases/PHASE-2-PLAN.md, "Forgot PIN: system authentication by platform").
 - **Changing or removing a PIN needs that PIN**, checked in the library in the same transaction as the change (B-049). A first PIN cannot replace an existing one.
 - **Statistics (F-004).** Aptabase is evaluated, not integrated, in Phase 2. Nothing is sent, and the groundwork stays as it is.
 - B-042 stays unassigned. B-016, B-017, B-022 and F-005 are unchanged.
 
 ## 2026-11-19 — A permanent bug tracker beside the phase plan
 
-**Decided by the owner (2026-11-19, the master tracker prompt).** [planning/BETA-BUG-TRACKER.md](planning/BETA-BUG-TRACKER.md) is the permanent, per-issue record of every Beta finding and every issue found since: the original report, reproduction, status, investigation, cause, implementation, tests, verification by kind, evidence, and what is left. [planning/BETA-2.md](planning/BETA-2.md) stays the authority for scope, phase and work order, dependencies, exit criteria, and the gate; the two link to each other and do not repeat each other.
+**Decided by the owner (2026-11-19, the master tracker prompt).** [planning/BETA-BUG-TRACKER.md](planning/BETA-BUG-TRACKER.md) is the permanent, per-issue record of every Beta finding and every issue found since: the original report, reproduction, status, investigation, cause, implementation, tests, verification by kind, evidence, and what is left. [history/phases/BETA-2-PHASES.md](history/phases/BETA-2-PHASES.md) stays the authority for scope, phase and work order, dependencies, exit criteria, and the gate; the two link to each other and do not repeat each other.
 
 - **Eight status words** (Not Started, Investigating, In Progress, Fixed, Verified, Blocked, Deferred, Not Reproduced) replace the register's earlier list. Verification is reported by kind (automated, emulator, physical device, VM or container, regression, owner acceptance); an issue is Verified only when its acceptance criteria and the matrix's checks are met. B-001 therefore reads Fixed, not "Verified on physical device": its server-source case is untested.
 - **Maintained as the work happens:** code changed without its tracker entry updated is incomplete work. IDs are stable; new issues continue from B-043.
@@ -1593,7 +1607,7 @@ The requirement is registered as **F-P3** in [planning/BETA-BUG-TRACKER.md](plan
 
 ## 2026-11-19 — Beta 2: three phases, cut only after the last; the owner's defaults for haptics and statistics
 
-**Decided by the owner (2026-11-19).** The register, the phase plan, and the gate: [planning/BETA-2.md](planning/BETA-2.md).
+**Decided by the owner (2026-11-19).** The register, the phase plan, and the gate: [history/phases/BETA-2-PHASES.md](history/phases/BETA-2-PHASES.md).
 
 - **Beta 2 is cut only after Phases 2 and 3** are implemented, verified, and accepted, and the gate in BETA-2.md holds. Phase 1 alone does not make a build. `0.9.0-beta.1` stays in testing, unchanged, until then.
 - **The phases are outcome groups, in the owner's order:** 1 reliability, security, data integrity, the statistics foundation, and performance baselines; 2 controller and input, focus, text entry, button mapping, interface haptics, and controller rumble; 3 the media experience (separate libraries, sorting and filtering, Trickplay and right-stick Trickplay, video haptics, atmosphere, recommendations, the featured hero), the final performance work, and the statistics' end-to-end verification. One follow-up per phase at most.
@@ -1635,7 +1649,7 @@ The requirement is registered as **F-P3** in [planning/BETA-BUG-TRACKER.md](plan
 
 ## 2026-11-18 — Beta 2, Phase 1: an authorised exception to the Beta Season freeze, and what it decided
 
-**Decided by the owner (2026-11-18): Phase 1 of the Beta 2 cycle is authorised inside the Beta Season.** The freeze above stands for everything else; this is a named exception with a named scope, not its end. Plan, research, critique, and the revised plan: [planning/PHASE-1-PLAN.md](planning/PHASE-1-PLAN.md); what ran: VERIFICATION.md, "Phase 1".
+**Decided by the owner (2026-11-18): Phase 1 of the Beta 2 cycle is authorised inside the Beta Season.** The freeze above stands for everything else; this is a named exception with a named scope, not its end. Plan, research, critique, and the revised plan: [history/phases/PHASE-1-PLAN.md](history/phases/PHASE-1-PLAN.md); what ran: VERIFICATION.md, "Phase 1".
 
 - **Permitted:** the eleven Phase 1 workstreams (profile deletion authorisation B-018; Linux libmpv start-up B-031; the Android frozen frame B-001; the Windows process report B-026; several addresses for one Jellyfin server B-003; unavailable favourites B-033; resolution and HDR labels B-024; the scanning sign's overlap B-005; metadata and search speed B-006; an opt-in statistics foundation; performance baselines) and, added by the owner the same day, bundling libmpv with the Linux tarball (workstream 12). **Not authorised by it:** a version change, a tag, a release, a store upload or promotion, a push, a public website change. Each stays the owner's own decision (VERSIONING.md).
 - **Why the exception:** two security and data defects (B-018, B-003) and two playback failures (B-001, B-031) reported by testers in the season's first days are exactly what a beta exists to find; fixing them in place keeps the beta's evidence about the build people will get.
@@ -1656,7 +1670,7 @@ The requirement is registered as **F-P3** in [planning/BETA-BUG-TRACKER.md](plan
 
 **Linux libmpv cannot be bundled under the LGPL-only rule (workstream 12).** (Superseded in part on 2026-11-19, "Reflux is free and open source under GPL-3.0-or-later": the LGPL-only rule no longer applies to Linux, and the Render API route below is no longer the plan; the finding about mpv's X11 code stands.) mpv's X11 support is GPL-only (mpv 0.42.0, `meson.build`: `x11_opt = get_option('x11').require(get_option('gpl'))`; `video/out/x11_common.c` and `vo_x11.c` are GPL), and `gl-x11`, `egl-x11`, `vdpau`, and `vaapi-x11` depend on it. Reflux's Linux player embeds mpv in an X11 window (`wid`), under Wayland through XWayland, so an LGPL libmpv of Reflux's own cannot show video there, and shipping a GPL libmpv beside proprietary Reflux is a licensing decision the project has refused ("How Reflux builds its Windows libmpv"). **Decided:** the tarball keeps using the distribution's libmpv, the user's own install under the distribution's terms, and says exactly what to install on each distribution (`LinuxPlaybackSetup`, verified in clean Ubuntu 22.04, 24.04, Debian 12, and Fedora 41 containers). **For the owner:** the route to a bundled libmpv that works everywhere is an LGPL libmpv driven through mpv's render API (OpenGL render context, not GPL-gated), with Reflux owning the GL surface on Linux. That replaces the Linux video surface (`VideoSurface`, `X11ErrorGuard`, `wid`): an architecture change for a milestone, not a packaging task. Alternatively, a legal decision about GPL redistribution. Neither is taken here.
 
-**Windows "two Reflux processes" (B-026): not reproduced, and not yet explained.** The packaged `Reflux.exe` is a launcher with the application as its child (two processes named Reflux while it runs). Closed from its window, both went in under a second in every one of 19 runs on the owner's machine, with nothing left. The report's two entries of about 22 MB each after closing match neither a running application nor this pair as measured, so the report stays open (B-026 in [planning/BETA-2.md](planning/BETA-2.md)). No code changed; the procedure for a tester who still sees one after closing is in VERIFICATION.md.
+**Windows "two Reflux processes" (B-026): not reproduced, and not yet explained.** The packaged `Reflux.exe` is a launcher with the application as its child (two processes named Reflux while it runs). Closed from its window, both went in under a second in every one of 19 runs on the owner's machine, with nothing left. The report's two entries of about 22 MB each after closing match neither a running application nor this pair as measured, so the report stays open (B-026 in [history/phases/BETA-2-PHASES.md](history/phases/BETA-2-PHASES.md)). No code changed; the procedure for a tester who still sees one after closing is in VERIFICATION.md.
 
 ## 2026-11-16 — Sources: two actions on the card beside a side navigation; the logo goes Home; the keyboard does not choose the layout
 
@@ -1671,7 +1685,7 @@ The requirement is registered as **F-P3** in [planning/BETA-BUG-TRACKER.md](plan
 
 ## 2026-11-15 — Trakt is the metadata provider (M11 D5)
 
-The owner decided D5 (planning/M11-DISTRIBUTION-PLAN.md, section 3): **TMDB is out; Trakt is Reflux's metadata provider.** This supersedes "TMDB: working non-commercial classification" (2026-11-08), whose clarification request had gone unanswered since it was sent.
+The owner decided D5 (history/milestones/M11-DISTRIBUTION-PLAN.md, section 3): **TMDB is out; Trakt is Reflux's metadata provider.** This supersedes "TMDB: working non-commercial classification" (2026-11-08), whose clarification request had gone unanswered since it was sent.
 
 - **The architecture is unchanged.** Reflux stays provider-neutral at `MetadataProvider`; `metadata:trakt` (`dev.reflux.metadata.trakt.TraktProvider`, provider ID `trakt`) replaces `metadata:tmdb`, which is removed rather than kept beside it. No Trakt type reaches `core`. Matching, evidence, identity, watch state, versions, and the artwork precedence (the user's choice, the source's, embedded, the provider's, inherited, generated) are as they were; Trakt is one provider witness.
 - **Metadata only, no account.** The Standard API with the application's Client ID (`trakt-api-key`, `trakt-api-version: 2`); no client secret is shipped, no OAuth, no Premium. Trakt sign-in, scrobbling, history sync, watchlists, and ratings are future product features, separate from this.

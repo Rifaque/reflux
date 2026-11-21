@@ -39,7 +39,7 @@ class VideoPlacement internal constructor() {
     /**
      * How far a back gesture has gone toward stepping aside (0 to 1), read where the surface is laid out: while it is
      * in progress the picture shrinks in place by [PREVIEW_SCALE], and a cancelled gesture lets it go back by itself
-     * because nothing but this changed (docs/planning/M10-PLAYER-SPEC.md, section 4.4).
+     * because nothing but this changed (docs/history/milestones/M10-PLAYER-SPEC.md, section 4.4).
      */
     internal var preview: () -> Float? = { null }
 

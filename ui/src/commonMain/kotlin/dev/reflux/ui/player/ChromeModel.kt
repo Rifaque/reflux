@@ -4,7 +4,7 @@ import dev.reflux.core.playback.PlayerStatus
 import dev.reflux.ui.state.PlayerPresentation
 
 /**
- * What the full player draws over the picture, as one value (docs/planning/M10-PLAYER-SPEC.md, section 7).
+ * What the full player draws over the picture, as one value (docs/history/milestones/M10-PLAYER-SPEC.md, section 7).
  *
  * It is derived, never stored and never set by a component: the player's state and the viewer's last doing go in, and the
  * layers that may be drawn come out. A layer that a mode does not list is absent, so a loader beside a transport, or a

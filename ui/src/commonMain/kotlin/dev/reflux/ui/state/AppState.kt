@@ -141,7 +141,7 @@ class AppState(
     /**
      * How far a back gesture has gone (0 to 1) toward collapsing the full player into the mini-player, while one is in
      * progress. Only what is drawn follows it: the session changes when the gesture completes, so cancelling it leaves
-     * nothing to restore (docs/planning/M10-PLAYER-SPEC.md, section 4.4).
+     * nothing to restore (docs/history/milestones/M10-PLAYER-SPEC.md, section 4.4).
      */
     var backPreview: Float? by mutableStateOf(null)
 
@@ -1440,7 +1440,7 @@ class AppState(
     }
 
     /**
-     * Who handles Back now, from the state alone (docs/planning/M10-PLAYER-SPEC.md, section 4). The platform shell enables
+     * Who handles Back now, from the state alone (docs/history/milestones/M10-PLAYER-SPEC.md, section 4). The platform shell enables
      * exactly one handler for it, so that where Reflux has nothing to do with Back the system's own runs, back-to-home
      * animation and all. It agrees with `dispatch(BACK)` by construction: [BackRoute.SYSTEM] is exactly where that
      * returns false.

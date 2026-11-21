@@ -143,7 +143,7 @@ interface Platform {
     /**
      * The device's own lock, for a viewer who forgot a profile's PIN to prove they are the device's owner and have the
      * PIN removed without losing the profile (Forgot PIN, DECISIONS.md 2026-11-19). Null where Reflux has no secure way
-     * to ask the system (a television, Windows, Linux: docs/planning/PHASE-2-PLAN.md, "Forgot PIN"); the viewer then
+     * to ask the system (a television, Windows, Linux: docs/history/phases/PHASE-2-PLAN.md, "Forgot PIN"); the viewer then
      * keeps the profile or resets it.
      */
     val systemAuthentication: SystemAuthentication? get() = null

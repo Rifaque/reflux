@@ -1,10 +1,12 @@
+> **Historical (archived 2026-11-21, Phase 4).** Kept unchanged as a record; not a current plan. Current documents: [docs/README.md](../../README.md); this archive: [history/README.md](../README.md).
+
 # M11 — Distribution & Release Surfaces: plan
 
 **Status: authoritative for M11; implemented 2026-11-15** (commits `4c79794`, `4aab2ed`; D1 store-only Android, D2 the `.debug` suffix, D3 immutable releases on the owner's switch, D7 `release.py publish-record`, all in DECISIONS.md, 2026-11-15; evidence and what is still owner-pending in VERIFICATION.md, "M11", and ROADMAP.md, "M11"). Written 2026-11-13, after M10 (`43f8f5b`, `dbb4840`), as a documentation-only planning pass: no application code, build script, workflow, package ID, or version was changed to write it. It replaces the M11 scope in `M8-M13-REBASELINE.md` (section 8, "M11"; sections 3.6 to 3.8) where the two differ, and says where they differ (section 2). The roadmap entry is `ROADMAP.md`, "M11"; the durable decisions are in `DECISIONS.md`, 2026-11-13.
 
 **The sentence M11 exists for:** a hypothetical `0.9.0-beta.1` can be distributed through every intended channel, from one release identity, without any new distribution infrastructure having to be built. M11 makes what already exists *true and connected*; it does not build another release system.
 
-**Read first (the implementer's list):** `AGENTS.md`; `docs/VERSIONING.md` (the protocol and the rules for AI agents: no version change, no tag, no push unless asked); `docs/RELEASE.md` ("Release system", "Signing", "Store readiness (M7)", "Release preparation (M8)"); `docs/LAUNCH.md`; `docs/WEBSITE.md` ("Release data", "Deployment"); `release/README.md`, `release/stores.json`, `release/store-listing.md`; `tools/release/release.py`; `.github/workflows/release.yml`; `docs/PRIVACY.md` ("Store disclosures"); this document.
+**Read first (the implementer's list):** `AGENTS.md`; `docs/VERSIONING.md` (the protocol and the rules for AI agents: no version change, no tag, no push unless asked); `docs/RELEASE.md` ("Release system", "Signing", "Store readiness (M7)", "Release preparation (M8)"); `docs/history/milestones/LAUNCH.md`; `docs/WEBSITE.md` ("Release data", "Deployment"); `release/README.md`, `release/stores.json`, `release/store-listing.md`; `tools/release/release.py`; `.github/workflows/release.yml`; `docs/PRIVACY.md` ("Store disclosures"); this document.
 
 ---
 
@@ -57,7 +59,7 @@ The rebaseline's M11 had seven parts: a branded Windows installer (Inno Setup), 
 | Metadata provider gate (TMDB working classification vs Trakt) | **Decided 2026-11-15: Trakt** (section 3, D5). The owner opened the scope change: `metadata:trakt` replaced `metadata:tmdb` in M11 (DECISIONS.md, "Trakt is the metadata provider"); the store listings and disclosures say Trakt |
 | Large-library baseline and seeded stress harness | **M12**, the campaign's large-library wave (`ROADMAP.md`, M12): it measures a candidate; it does not distribute one |
 | Website's final content | **M11.7** for the release surface; product renders regenerated from the final interface stay in M11.7's scope because the interface is now final (M10 closed) |
-| Demo video | **M11.7**, *owner-tool-gated content*: the shot list and captures are M11's; production waits for the owner's tool (`LAUNCH.md`, W2). It remains one of the ten website conditions for the beta (`ROADMAP.md`, M12) |
+| Demo video | **M11.7**, *owner-tool-gated content*: the shot list and captures are M11's; production waits for the owner's tool (`history/milestones/LAUNCH.md`, W2). It remains one of the ten website conditions for the beta (`ROADMAP.md`, M12) |
 | Beta operations ready | **Split.** The channels, tester routes, and templates are *set up* in M11.2, M11.3, M11.7; *operating* them (recruiting, opt-in, triage) is M12 |
 | `release.py verify` covering an installer; clean-machine installer test | Replaced by: clean-machine install, upgrade, and removal of the **ZIP and tarball** (M11.5, M11.6, M11.8) |
 
@@ -143,7 +145,7 @@ M11 is **setup and rehearsal**. The 12-tester / 14-day campaign is M12's.
 | Content rating | Amazon's own 13-field questionnaire (separate from IARC); drafted answers in `store-listing.md` |
 | **Live App Testing (LAT)** | LAT is the beta path (M12): testers are invited by e-mail and install from the Appstore; several fields are unavailable in the LAT flow (long description, keywords, support contact, privacy among them) and can be completed later. M11 sets up one LAT test with the owner's Fire TV and rehearses an install and an update |
 | **Appstore Beta Hub** | The tester-side app on Fire OS 7+ (and Vega) that redeems LAT invitations and installs beta apps; it syncs with the Amazon account of the device. Tester guidance for the site: install Beta Hub, accept the invitation, sync (Settings → Account & Profile Settings → Sync Amazon Content) if an expected update does not appear, and uninstall a differently signed build first (the "App already installed" error). A sideloaded debug build on the same device blocks the Appstore install: the same package-identity hazard as 4.2 |
-| Submission and review checklist | Amazon's presubmission checklist (app preparation, user data privacy, a physical-device test, install location); the content policy; Fire TV D-pad and remote checks (menu, rewind/fast-forward keys); the test criteria; the launcher icon taken from the listing (the first Appstore build confirms the generic-tile observation, `LAUNCH.md`) |
+| Submission and review checklist | Amazon's presubmission checklist (app preparation, user data privacy, a physical-device test, install location); the content policy; Fire TV D-pad and remote checks (menu, rewind/fast-forward keys); the test criteria; the launcher icon taken from the listing (the first Appstore build confirms the generic-tile observation, `history/milestones/LAUNCH.md`) |
 
 **Gate (M11).** One LAT build installed from the Appstore on the Fire TV Stick, upgraded by a second LAT build, and removed; the privacy and content questionnaires completed or marked with their blocker.
 
@@ -197,7 +199,7 @@ The site is the public entry point for releases and consumes **one** release/pub
 | Install instructions | the M6 desktop notes | Windows (extract, run, update, remove), Linux (6), Android and TV (store route), Fire TV (Beta Hub) |
 | Checksums and provenance | the record and the release | The `SHA256SUMS` link, the verification commands, what an attestation proves |
 | Support, privacy, legal, attribution | existing pages | Re-read against the final build: `PRIVACY.md` store disclosures, third-party notices, Trakt's attribution (D5), libmpv source offer link |
-| Product renders and demo video | the final interface (M10 closed) | Regenerate product renders from the final builds; capture the demo's shot list (`LAUNCH.md`, W2); production waits for the owner's tool |
+| Product renders and demo video | the final interface (M10 closed) | Regenerate product renders from the final builds; capture the demo's shot list (`history/milestones/LAUNCH.md`, W2); production waits for the owner's tool |
 
 **Checks.** The existing site build checks (no `.apk`/`.aab` link, no manifest without commit and checksum, no store record for another package, titles, responsive checks only on pages whose content changed against the M8 baselines); a **stale-record check**: the version shown equals the record's, and the record equals the draft's manifest (D7).
 
@@ -284,7 +286,7 @@ The identity audit (4.2, step 1); the verified artifact set and its attestation 
 | Decide D1, D2, D3 | M11.4, M11.2 | Before the first draft is published |
 | ~~Decide D5~~ Decided 2026-11-15: Trakt. Create the Trakt API app with the development Client ID, make one live lookup, then set the production Client ID as the repository variable `REFLUX_TRAKT_CLIENT_ID` once Trakt grants production access | the first release-mode run (it fails without the variable); M12 entry | Trakt needs a GitHub-verified account before 2027-01-01 and use at least monthly (registrations unused 30 days are deleted); the production app and its Client ID are separate from the development one |
 | Windows signing eligibility check (entity, country; Artifact Signing or an OV certificate; Microsoft Store account requirements) | G-WIN | By M12 midpoint; decision by M13 start |
-| Demo video tool and approval | M11.7 production | `LAUNCH.md` W2 |
+| Demo video tool and approval | M11.7 production | `history/milestones/LAUNCH.md` W2 |
 | Physical Google TV device; a Fire TV television; controllers | M12 waves | Owner hardware |
 | A second Android version for the picture-in-picture rule; a physical remote's held seek | M12 (M10's recorded limits) | Unavailable now |
 

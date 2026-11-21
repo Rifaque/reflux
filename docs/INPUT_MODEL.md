@@ -86,7 +86,7 @@ Touch/pointer/keyboard interaction should still remain possible.
 
 ## Event priority (Beta 2 Phase 2, B-025)
 
-An input goes to the first of these that wants it (the interaction contract; planning/PHASE-2-PLAN.md, Stage B):
+An input goes to the first of these that wants it (the interaction contract; history/phases/PHASE-2-PLAN.md, Stage B):
 
 1. **The active text editor.** This is a field with focus, or the Reflux keyboard bound to one.
    - It takes every key that types or edits: characters, Backspace, Delete, Enter, Space, Left/Right, Home/End.

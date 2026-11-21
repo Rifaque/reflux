@@ -25,7 +25,7 @@ import dev.reflux.ui.theme.Text
 
 /**
  * What Reflux draws in the system's own window (Android's picture-in-picture), over the picture: nothing, but for what the
- * viewer must not miss. The system draws the window's controls, so none are here (docs/planning/M10-PLAYER-SPEC.md, 6.4).
+ * viewer must not miss. The system draws the window's controls, so none are here (docs/history/milestones/M10-PLAYER-SPEC.md, 6.4).
  *
  * - A wait that goes on past the grace: the Reflux loader.
  * - A failure, or "Still watching?": said in words over a dimmed picture; expanding the window shows the player with it.
