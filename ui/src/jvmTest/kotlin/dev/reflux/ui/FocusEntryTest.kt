@@ -3,13 +3,17 @@ package dev.reflux.ui
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.testTag
+import androidx.compose.foundation.text.BasicText
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.assertIsNotFocused
@@ -98,5 +102,43 @@ class FocusEntryTest {
         waitForIdle()
         runOnIdle { assertTrue(entry.start(), "the arriving page's place to come back to is still offered") }
         onNodeWithTag("arriving").assertIsFocused()
+    }
+
+    /**
+     * B-076: an item becomes the one to come back to as soon as it has focus (B-008). If something then recomposes it
+     * (here a counter it shows; on the Downloads page, a copy's state changing) after the viewer has moved on, it must not
+     * take focus back: only an item that was the one to come back to when the page appeared does. Before the fix, the
+     * recomposition entered the return branch and its request put focus back on the line, undoing the viewer's Right.
+     */
+    @Test
+    fun anItemThatBecameTheOneToComeBackToDoesNotTakeFocusBackWhenItRecomposes() = runDesktopComposeUiTest(400, 300) {
+        val entry = FocusEntry().apply { screen = "page" }
+        var tick by mutableStateOf(0)
+        val line = FocusRequester()
+        val action = FocusRequester()
+        // A television: focus is shown, as with a remote or a controller.
+        val layout = AdaptiveLayout.profile(960f, 540f, television = true, modality = InputModality.DIRECTIONAL)
+        setContent {
+            CompositionLocalProvider(LocalFocusEntry provides entry, LocalLayout provides layout, LocalFocusScreen provides "page") {
+                Row {
+                    val back = rememberFocusReturn("line")
+                    Box(Modifier.size(40.dp).then(back.modifier).focusRequester(line).focusable().testTag("line")) { BasicText("$tick") }
+                    Box(Modifier.size(40.dp).focusRequester(action).focusable().testTag("action"))
+                }
+            }
+        }
+        // The page starts on its line, which so becomes the one to come back to…
+        runOnIdle { line.requestFocus() }
+        waitForIdle()
+        onNodeWithTag("line").assertIsFocused()
+        // …the viewer moves to its action…
+        runOnIdle { action.requestFocus() }
+        waitForIdle()
+        onNodeWithTag("action").assertIsFocused()
+        // …and the line recomposes (what it shows changes): focus stays where the viewer put it.
+        runOnIdle { tick++ }
+        waitForIdle()
+        onNodeWithTag("action").assertIsFocused()
+        onNodeWithTag("line").assertIsNotFocused()
     }
 }

@@ -549,3 +549,14 @@ On `open-source-gpl`, the promotion commit `ecce561` (`release: 0.9.0-beta.2`) a
 - **Hosted CI run 44912262295** on `ecce561`: Website, Android, Check (windows-2025), release tools and doc links, workflow lint, secret scan **green**; **Check (ubuntu-24.04) red on both attempts**: `DownloadsUiTest.aRemoteReachesEveryDownloadControlAndFocusComesBack` ("Timed out waiting for focus on its removal"), 548 UI tests, 1 failed. The push's Release rehearsal (run 44912262382) green.
 - **B-076 investigation (Linux CI image, Docker Desktop; containers, not a Linux desktop):** reproduced 2 of 2; passes on Windows 6 of 6; bisected `044c8f0` (last green hosted Linux CI) to `da08741`: first failing commit `77b994c`; eight instrumented runs (BETA-BUG-TRACKER.md, B-076). No fix kept.
 - **Not run:** the release workflow, any store upload, the website deployment.
+
+## B-076 fix (2026-11-22)
+
+The owner's scoped fix before Beta 2's release (BETA-BUG-TRACKER.md, B-076). On `open-source-gpl` above `9604cc5`; still `0.9.0-beta.2`.
+
+- **Reproduced first** in the Linux CI image (Docker Desktop, `reflux-linux-check`; a container, not a Linux desktop): `77b994c` fails `DownloadsUiTest.aRemoteReaches…`.
+- **Intra-commit bisect** (one change reversed per run, the table in B-076): every isolatable `RefluxApp.kt` and `AppState.kt` change still fails; reversing `components/Focus.kt`'s change alone passes.
+- **Regression test** `FocusEntryTest.anItemThatBecameTheOneToComeBackToDoesNotTakeFocusBackWhenItRecomposes`: fails without the fix **on Windows** (physical development machine), passes with it.
+- **With the fix, Linux CI image:** `DownloadsUiTest` 3 of 3 runs pass (all 7 of its tests, the TV-layout remote walk of every download control included); `FocusEntryTest` passes.
+- **With the fix, Windows:** `FocusEntryTest`, `DownloadsUiTest`, `HomeFocusTest`, `DetailsFocusTest`, `NavigationTest`, `TelevisionTest` pass; then the **full `./gradlew check --rerun-tasks`**: 160 tasks executed, **1,651 tests, 0 failures, 26 skipped**, exit 0.
+- **Not run:** the window tests (`-Preflux.windowTests=true`, they open windows on the owner's screen) and devices; the fix changes no Android-specific code. Hosted CI: below, once pushed.

@@ -253,6 +253,10 @@ fun rememberFocusReturn(key: String): FocusReturn {
     val requester = remember { FocusRequester() }
     val screen = LocalFocusScreen.current
     val returning = entry != null && entry.left[screen] == key
+    // Whether it was the one to come back to when it appeared: only then is focus put back on it. An item becomes the one
+    // to come back to by gaining focus (B-008); recomposed later for another reason after the viewer has moved on, it
+    // must not take focus back (B-076: on the Downloads page a remote's Right was undone that way).
+    val cameBackTo = remember(entry, screen) { returning }
     if (returning) {
         val showsFocus = LocalLayout.current.showsFocus
         DisposableEffect(entry, screen) {
@@ -261,7 +265,7 @@ fun rememberFocusReturn(key: String): FocusReturn {
         }
         // Only on the page being come back to: the same item on the page being left has just been activated. Not while
         // focus is on the navigation (a destination chosen there): it stays there until the viewer comes back in.
-        LaunchedEffect(Unit) { if (showsFocus && entry!!.screen == screen && !entry.inChrome) runCatching { requester.requestFocus() } }
+        LaunchedEffect(Unit) { if (cameBackTo && showsFocus && entry!!.screen == screen && !entry.inChrome) runCatching { requester.requestFocus() } }
     }
     // The item with focus is also the one to come back to (B-008): leaving the page by the navigation, the bumpers, or a
     // shortcut, and not only by opening an item, finds it again on return, instead of the page's first control.
