@@ -99,8 +99,42 @@ The execution record for Phase 4 (the owner's master prompt of 2026-11-21, "Refl
 
 ## Verification
 
-Filled in at the end of the phase.
+New results only; the record is VERIFICATION.md, "Phase 4". Historical results (Phase 3's 941/2, the 1,647 run before B-071 to B-073) are not restated as current.
+
+| Check | Result |
+| --- | --- |
+| `./gradlew check` at the start | Exit 0 (681 tests executed, 969 up to date with unchanged inputs; 0 failures) |
+| `./gradlew check --rerun-tasks` at the end | 1,650 tests, 2 failures, 26 skipped; both failures explained and passing on rerun (a doc edit during the run; the live server's late session report) |
+| B-074 (`SourcesUiTest`) | Not reproduced in either full run (548/548 both times); stays Investigating, Beta 3 |
+| Release tools | 49 tests OK |
+| Docs links | 477 links, 0 broken |
+| Website | audit 0; tests 34/34; build; check-dist 0; check-links 0; check-layout 0 (26 × 7); check-roadmap 0 |
+| Workflows, secrets | actionlint clean; gitleaks over 294 commits: no leaks |
+| Store assets | `validate_assets.py --final` exit 0; `captures.py verify` OK |
+| Release rehearsal | 5 artifacts verified; public set staged without APK/AAB; record → Download page |
+| Linux containers | Ubuntu 22.04, 24.04, Debian 12, Fedora 41, Arch: start with and without libmpv |
+| Hosted CI | **Not run** (branch not pushed) |
 
 ## Closure
 
-Filled in at the end of the phase.
+**Phase 4 is complete, with owner-dependent items.** Every in-scope workstream was carried out and checked; what remains needs the owner's accounts, devices, or approval. **Phase 4 does not authorise any release:** Beta 2 still waits for the gate in [BETA.md](../BETA.md).
+
+**Commits** (branch `open-source-gpl`, local, not pushed): `232ef76` documentation consolidation, roadmaps, beta documents, changelog categories, link check, B-075; `684158c` the website; `85d6d26` the store assets; `1aa0ce8` RELEASE.md's process and matrix, CLAUDE.md; `90a42da` B-075's second part; `5491309` README, CONTRIBUTING, readiness; then the P5 and closure records.
+
+**Exit criteria against the evidence.**
+- Documentation: audited, consolidated, authoritative sources named (docs/README.md), history preserved and indexed, links 0 broken, roadmaps written (post-alpha to V2.0, V1.0 criteria), Beta roadmap and notes written. **Done.**
+- LaunchFrame and store assets: installed as a plugin, skill loaded and followed, targets discovered, old screenshots audited, official requirements read today, phone/7"/10"/TV emulators configured (one new), 24 authentic captures with provenance, storyboards and a campaign system, two review rounds, contact and store-scale sheets, validation passing, per-store upload instructions, Fire TV limits stated. **Done**; the Fire TV provenance choice is the owner's.
+- Website: audited, Features and Roadmap pages, the easter egg, categorised releases, new images, privacy and legal unchanged and still accurate, responsive and reduced-motion checks, all checks green. **Done; not deployed.**
+- Distribution: unified process documented, versioning reviewed (unchanged), CI improved (two checks), artifacts rehearsed for every platform, Linux installs checked in containers, Windows package checked without launching, download path proven against a record. **Done locally**; console, signing and publication steps are the owner's.
+- Beta 2: scope frozen, fresh validation run, B-074 disposition recorded, known issues disclosed, notes ready, readiness assessed ("Ready with known risks"). Hosted CI and approval remain. **Done to the gate.**
+
+**Owner-dependent (none blocks Phase 4's own work):**
+1. Approve Beta 2 and authorise `0.9.0-beta.2`; push the branch for hosted CI.
+2. The Fire TV screenshots: re-capture on the stick (recommended) or accept the Google TV emulator captures.
+3. Keep the store-assets commit (`85d6d26`, about 78 MB of images) in Git, or move the folder elsewhere before pushing.
+4. The website: deploy with Beta 2's publication; review the removal of "1.0 in December 2026" from the site.
+5. F-005's placement (ROADMAP.md suggests V1.5; the handoff listed it for V1.1).
+6. G-WIN (Windows signing and installer) before 1.0; the Windows app launch and upgrade check on the owner's machine.
+7. Console checks (Play closed-testing review state, Amazon LAT) were not read this session.
+
+**Next step for Beta 2:** the owner reviews this record and BETA.md's gate, then pushes `open-source-gpl` so hosted CI runs; on green, authorises the version, and the release follows RELEASE.md, "Releasing a version".

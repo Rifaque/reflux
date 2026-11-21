@@ -517,3 +517,24 @@ The owner's "Phase 3 Final Validation & Closure" work order, and the steers give
   - The earlier full `./gradlew check` (1,647 tests, 0 failures, 26 skipped) stands as history; it was before B-071 to B-073.
   - No full check was run again for the closure, which changed documentation only.
 - **Phase 3 is closed:** history/phases/BETA-2-PHASES.md, "Phase 3 closure".
+
+## Phase 4: consolidation, store assets, website, release rehearsal (2026-11-21)
+
+On `open-source-gpl` from `3aa5964` (Phase 3's closure) to the commits listed in planning/PHASE-4.md, "Closure". Machine: the Windows 11 development PC (physical), Docker Desktop 29.9.3 (containers), the Android emulators named below. No physical phone, tablet, Fire TV or Linux desktop was attached or used. Nothing was pushed, published, uploaded or deployed. The work and its decisions: planning/PHASE-4.md; DECISIONS.md, 2026-11-21.
+
+**Automated tests.**
+- Start: `./gradlew check --continue` (Windows): **exit 0**. Executed: `:ui:jvmTest` 548 tests, 0 failures, 1 skipped (`SourcesUiTest` passed: B-074 not reproduced); `:desktop:app:test` 77 (15 skipped, window tests off); `:android:app:testDebugUnitTest` 56; Android lint; `verifySharedSources`. Up to date from 2026-11-20 with unchanged inputs: the other modules' 969 results, 0 failures.
+- End: `./gradlew check --rerun-tasks --continue` (every task executed, 160 of 160; 15 min): **1,650 tests, 2 failures, 26 skipped**; `:ui:jvmTest` 548, 0 failures (`SourcesUiTest` passed again: B-074 not reproduced in a second full run); lint and `verifySharedSources` clean. The two failures, both explained and both passing on rerun: (1) `BuildIdentityTest.theBuildRecordsTheCommitItWasMadeFrom`, the build's "modified" flag against `git status`: documents were being edited in the working tree while the run was in progress; rerun on the clean tree after committing, 1/1. (2) `JellyfinExecutionLiveTest.everyDeliveryIsPlannedNegotiatedPlayedAndConfirmed` against the owner's live server: the remux played (first frame 573 ms, seek 414 ms) but the server's session evidence came back UNKNOWN, twice in a row; after two minutes' rest, 4/4 with the remux confirmed (REMUX, video and audio preserved). The same late session report is on record from M7 (history/verification/VERIFICATION-ALPHA-TO-BETA-1.md). No product code changed in Phase 4.
+- Release tools: `python -I -m unittest discover -s tools/release -p "test_*.py"`: 49 tests, OK (2 new for B-075).
+- Docs: `python -I tools/docs/check_links.py .`: 477 relative links, 0 broken (341 before the consolidation, 0 broken).
+- Website: `npm audit` 0 vulnerabilities; `npm test` 34/34; `npm run build`; `check-dist` 26 pages, 0 problems; `check-links` 31 external links, 0 broken; `check-layout --screenshots` 26 pages × 7 sizes, 0 problems (screenshots looked at); `check-roadmap` 0 problems. Workflows: actionlint 1.7.7 (container), clean. Secrets: gitleaks v8.24.3 over the whole history (294 commits, as CI runs it): no leaks.
+
+**Store screenshots (LaunchFrame 2.0.0; emulators, not physical devices).** `Reflux_Phone` (1080 × 2400, 420 dpi, Android 16), `Reflux_Tablet7` (new: 1920 × 1200, 320 dpi), `Reflux_Tablet` (2560 × 1600, 320 dpi), `Reflux_TV` (Google TV image, 1920 × 1080). Debug build without a Trakt Client ID (checked in its resources); a throwaway Jellyfin 10.10.7 container on localhost with seven Blender open films, removed afterwards with its volume. 24 captures kept, 8 rejected with reasons. `validate_assets.py --final`: exit 0. Details: store-assets/release-0.9.0-beta.2/.
+
+**Release rehearsal (dry-run key; nothing published).** `release.py build` at `85d6d26` and, with the Linux tarball built in the CI container at `1aa0ce8`, `release.py build --add` from a worktree at `1aa0ce8`: 5 artifacts, `verify` and `stage-public` pass, the public set without APK or AAB; `publish-record` into a scratch folder and a website build against it (`check-dist` passes). APK identity checked with `aapt2` and `apksigner`.
+
+**Windows package (physical PC, no launch).** The zip extracted to a scratch folder, 276 files, SHA-256 equal to SHA256SUMS, `Reflux.exe` and `libmpv-2.dll` NotSigned (by decision). Not launched: it would open on the owner's screen.
+
+**Linux package, clean containers (not a desktop).** Under Xvfb, `de_DE.UTF-8`, 25 s each: Ubuntu 22.04, Ubuntu 24.04, Debian 12, Fedora 41 started without libmpv and with the distribution's libmpv; with it, the engine started, set the C numeric locale for libmpv keeping de_DE, and probed decoders (software only, no GPU in a container). Arch started both ways once Mesa and fonts were installed (its base image has neither; no locale data). Not read: the in-app libmpv hint.
+
+**Not verified in Phase 4:** a physical device of any kind; hosted CI (branch not pushed); the Play and Amazon consoles; the Windows app launching; Steam; a physical Linux desktop.
