@@ -47,7 +47,7 @@
 
 ## Executive status summary
 
-**Phase 4 (2026-11-21):** one entry added, **B-075** (release tooling: store "What's new" text), **Fixed**, which makes 83 entries and 57 Fixed (and at the Beta 2 release, **B-076**, Fixed by the owner's scoped fix, 84 entries); B-074 gained Phase 4 evidence (not reproduced in two full runs, see its entry) and stays Investigating. No other status changed: Phase 4 changed no product behaviour. The table below is as of Phase 3's closure.
+**Phase 4 (2026-11-21):** one entry added, **B-075** (release tooling: store "What's new" text), **Fixed**, which makes 83 entries and 57 Fixed (and at the Beta 2 release, **B-076**, Fixed by the owner's scoped fix, **B-077**, a test race, Open for Beta 3, and **B-078**, stale window tests, Fixed: 86 entries); B-074 gained Phase 4 evidence (not reproduced in two full runs, see its entry) and stays Investigating. No other status changed: Phase 4 changed no product behaviour. The table below is as of Phase 3's closure.
 
 **At Phase 3's formal closure (2026-11-20; the owner accepted and closed Phase 3).** Reconciled entry by entry against the code, the commits, VERIFICATION.md, and the owner's confirmations. All 82 entries are B-001 to B-074, F-001 to F-005, F-P1 to F-P4 (F-P1 and F-P2 share one entry, counted once):
 
@@ -2757,6 +2757,30 @@ A second Right always worked. Every slower route tried (by Left or Y, after Quic
 
 **Release decision (2026-11-21, superseded the same day):** first judged not a blocker; then, with hosted CI red on every Linux run, the owner chose a scoped fix before release, so it **blocked Beta 2's gate (step 8)** until fixed; fixed 2026-11-22 (above), the test unchanged.
 
+<a id="b-077"></a>
+### B-077: `MpvEngineTest.theEnginesLogCarriesNoCredentials` can fail with a ConcurrentModificationException (test race)
+
+- **Category:** Test reliability · **Priority:** Low · **Platforms:** seen once, hosted Linux runner
+- **Components:** `playback/mpv` tests only (`MpvEngineTest.kt`, `theEnginesLogCarriesNoCredentials`)
+- **How found:** 2026-11-21, hosted CI run 44934158483 on `9604cc5`, Check (ubuntu-24.04): `:playback:mpv:test` 60 tests, 1 failed: `java.util.ConcurrentModificationException`. It passed in the next run (44941967966 on `dc70958`) and in every local run.
+- **Phase:** Beta 3 (found after the freeze; not covered by the owner's B-076 authorisation) · **Status:** Open · **Last updated:** 2026-11-22
+- **Cause (from the code, not yet reproduced):** the test collects the engine's log lines into `Collections.synchronizedList` from mpv's log thread, and reads it with `lines.none { … }` / `lines.any { … }` (an iteration) without holding the list's lock, while the engine may still be appending; a synchronized list must be iterated under its own lock. The engine and its redaction are not involved: what the test checks (no token in the log) is unaffected.
+- **Fix (Beta 3):** iterate a snapshot taken under the lock (`synchronized(lines) { lines.toList() }`), without loosening what is asserted.
+
+<a id="b-078"></a>
+### B-078: Three real-window tests still expected the interface before Phase 2 (stale tests, CI Linux)
+
+- **Category:** Test maintenance (stale expectations) · **Priority:** High for the release (it blocks hosted CI), none for viewers · **Platforms:** the Linux CI job's "Desktop window tests" step (Xvfb); these tests run nowhere else by default
+- **Components:** `desktop/app` tests only: `BrowsingWindowTest` (`theMouseBrowsesTheRealWindow`, `aControllerBrowsesTheRealWindow`), `EmbeddedPlaybackTest` (`playsInsideTheWindowAndAnswersToTheMouse`)
+- **How found:** 2026-11-22, hosted CI run 44941967966 attempt 2 on `dc70958`: with B-076 fixed, Linux's "Build and test" step passed for the first time since Phase 2 (`BUILD SUCCESSFUL in 51m 32s`), so the window tests after it ran; 77 tests, 3 failed. Every Linux run since `77b994c` had stopped before this step, and Phase 3 ran only `AboutWindowTest` (B-045), so the three had not run since Phase 2.
+- **Phase:** Beta 2 (needed for the release's CI gate; test code only, no product change) · **Status:** Fixed (pending hosted CI) · **Last updated:** 2026-11-22
+- **Cause, each an accepted Phase 2 change the test had not followed** (checked in the code, not assumed):
+  - Search's idle page lists suggestions under "Start with" by title (B-034 to B-037): the test clicked a literal `favorites` and waited for "Try"; the page shows "Favorites" and "Start with".
+  - The page's controller prompts are Select, Back, Y "Sidebar" and LT "Hide hints" (F-P2, B-055); Start (PlayStation: "Options") still opens Sources but is no longer advertised. The test waited for an "Options" prompt.
+  - With a film in progress, Home leads with it (the featured title) and Continue Watching, so Recently Added is below the window, and Home is a lazy list that does not compose rows out of view (the row is still there, `library/Home.kt`). The test waited for "Recently Added" before opening a show.
+- **Fix (tests only):** click "Favorites" and wait for "Start with"; wait for the `Triangle Sidebar` prompt (still a prompt in the controller's family's terms, as the test meant); after Back, wait for Home, then open the show from Shows. Nothing asserted was removed or loosened.
+- **Verification:** reproduced in the Linux CI image (`tools/ci/linux-check.sh window`): 3 failed, the same messages. With the fix, `window 2`: **2 of 2 runs pass**, all three cases executed (not skipped). Hosted CI: VERIFICATION.md, "B-076 fix".
+
 ## Beta 3 backlog (from Phase 3's closure, 2026-11-20)
 
 Phase 3 is closed and Beta 2's fix scope is frozen (DECISIONS.md, 2026-11-20, "Phase 3 accepted and formally closed"). Every bug, UX issue, request or improvement found from now on is entered here, and in its own entry with the next free number, for **Beta 3 or a later release**, unless the owner explicitly authorises it as a critical Beta 2 blocker.
@@ -2767,6 +2791,8 @@ Phase 3 is closed and Beta 2's fix scope is frozen (DECISIONS.md, 2026-11-20, "P
 | [B-061](#b-061) | A Skia crash after a Direct3D failure (Windows, the owner's build) | Investigating; a Beta 3 candidate (the owner places it) |
 | [B-044](#b-044) | Test intermittents mixing the test and wall clocks | Investigating (test infrastructure) |
 | [B-056](#b-056) | Blank on closing the mini-player | Deferred by the owner (a later beta) |
+| [B-078](#b-078) | Three real-window tests expected the interface before Phase 2 (tests only) | Fixed before Beta 2's release |
+| [B-077](#b-077) | `MpvEngineTest`'s credentials-log test can race its log thread (test only) | Open (Beta 3) |
 | [B-076](#b-076) | A remote's Right lost on Downloads just after the list changes (CI, Linux) | Fixed before Beta 2's release (the owner's scoped fix) |
 | [B-075](#b-075) | Store "What's new" included category headings (release tooling) | Fixed in Phase 4 |
 | [F-003](#f-003) | Video-synchronised haptics | Deferred: a future version, **no release assigned**; needs its own research, hardware validation, design and plan first |
