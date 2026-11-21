@@ -9,7 +9,7 @@ Written in Phase 4 (2026-11-21). It replaces [planning/BETA-2.md](history/phases
 | Build | Contents | State |
 | --- | --- | --- |
 | `0.9.0-beta.1` (`versionCode` 90031, tag `v0.9.0-beta.1`, 2026-11-16) | M8 to M11: profiles, the navigation's final structure, Player 2.0, the mini-player, distribution | **In testing**: Play closed testing (sent for review 2026-11-17), Amazon Live App Test 1 (submitted 2026-11-17), GitHub **pre-release** (Windows zip, Linux tarball). Testers: the owner only. Play's 14-day clock not started |
-| `0.9.0-beta.2` | Beta 2's three phases (below) | **Implemented and accepted; frozen; not cut.** Waiting on [the gate](#the-beta-2-gate) |
+| `0.9.0-beta.2` (`versionCode` 90032) | Beta 2's three phases (below) | **Approved and versioned (`ecce561`), not released: held on hosted CI** ([B-076](planning/BETA-BUG-TRACKER.md#b-076)); no tag, no publication |
 | `0.9.0-beta.3` | The [Beta 3 backlog](planning/BETA-BUG-TRACKER.md#beta-3-backlog-from-phase-3s-closure-2026-11-20) and tester reports | Not started |
 | `0.9.0-rc.N` | Feature freeze, blocker fixes only, store submissions | Not started |
 
@@ -41,7 +41,7 @@ Beta 2 (`0.9.0-beta.2`, VERSIONING.md) is built only when every step holds **and
 | 1–5 | Phases 1, 2 and 3 implemented, tested, platform-verified, and accepted | **Done** (owner acceptance 2026-11-19 and 2026-11-20) |
 | 6 | The tracker reconciled: every item with a status and evidence | **Done** at Phase 3's closure; re-checked in Phase 4 |
 | 7 | No open release-blocking bug | **Holds**: no blocker open; B-061 (Skia fallback crash) is Investigating, a Beta 3 candidate |
-| 8 | The full checks green locally and on hosted CI | **Open**: local result in PHASE-4.md; hosted CI needs the branch pushed (the owner's) |
+| 8 | The full checks green locally and on hosted CI | **Open: blocked by B-076.** Local full check green on `ecce561` (1,650 tests, 0 failures); hosted CI run 44912262295: every job green except Check (ubuntu-24.04), one test failing on both attempts |
 | 9 | Cross-platform validation on the matrix's devices | **Done with the accepted limitations** (physical Linux, Steam, the Phone 2a after the final changes) |
 | 10 | The owner's review and approval | **Done**: approved 2026-11-21 (DECISIONS.md, "Beta 2 release") |
 | 11 | The owner's authorisation of the version and build | **Done**: `0.9.0-beta.2` authorised 2026-11-21 |
@@ -84,3 +84,9 @@ Carried from M12's preparation ([history/milestones/LAUNCH.md](history/milestone
 - **The Play clock:** starts when an owner-approved build is on the closed track and 12 testers are opted in (counted from the console, never from replies); recruit 15 or more so a drop-out does not reset it.
 - **Release notes per build:** the version's CHANGELOG.md section through `release.py notes` (both stores' "What's new" and the GitHub draft); BETA-NOTES.md adds highlights, known issues, and what to test.
 - **A new beta** is cut only when permitted fixes justify one (a blocker, a crash or data loss, security or privacy, a critical playback failure, a serious compatibility defect), never for a cosmetic issue.
+
+## Beta 2 release attempt (2026-11-21): held
+
+The owner approved Beta 2 and authorised `0.9.0-beta.2` (DECISIONS.md, "Beta 2 release"). Done: the Fire TV listing captured on the physical stick; the store media moved to a release archive; the promotion commit `ecce561` (`release: 0.9.0-beta.2`; the build derives `versionCode` 90032, Windows 0.9.32, Linux 0.9.0~beta.2); the branch pushed; the local full check green. **Held** because hosted CI's Linux job fails `DownloadsUiTest` deterministically: the first Right after arriving on the Downloads page is lost on Linux timing ([B-076](planning/BETA-BUG-TRACKER.md#b-076), bisected to Phase 2's `77b994c`). The owner chose a scoped fix before release; the investigation narrowed it but no fix held, so none was kept. **Not done:** the tag, the release workflow, the GitHub pre-release, the Play and Amazon uploads, the website's deployment.
+
+**To resume:** fix B-076 (its entry says where to look next), commit, push, and see hosted CI green on every job; then, because a version once tagged is never rebuilt with other contents, the fix goes before the tag on top of `ecce561` (still `0.9.0-beta.2`, since nothing was given to anyone), and the release follows RELEASE.md, "Releasing a version".

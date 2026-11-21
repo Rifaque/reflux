@@ -538,3 +538,14 @@ On `open-source-gpl` from `3aa5964` (Phase 3's closure) to the commits listed in
 **Linux package, clean containers (not a desktop).** Under Xvfb, `de_DE.UTF-8`, 25 s each: Ubuntu 22.04, Ubuntu 24.04, Debian 12, Fedora 41 started without libmpv and with the distribution's libmpv; with it, the engine started, set the C numeric locale for libmpv keeping de_DE, and probed decoders (software only, no GPU in a container). Arch started both ways once Mesa and fonts were installed (its base image has neither; no locale data). Not read: the in-app libmpv hint.
 
 **Not verified in Phase 4:** a physical device of any kind; hosted CI (branch not pushed); the Play and Amazon consoles; the Windows app launching; Steam; a physical Linux desktop.
+
+## Beta 2 release attempt (2026-11-21)
+
+On `open-source-gpl`, the promotion commit `ecce561` (`release: 0.9.0-beta.2`) and the documentation after it. The owner's release mission of 2026-11-21. Nothing was tagged, published, uploaded or deployed.
+
+- **Fire TV captures (physical):** Fire TV Stick 4K Plus `AFTMA08C15`, Fire OS 8.1.8.5, API 30, 1920 × 1080 at 320 dpi, adb over the network; a side-by-side capture build (`dev.rsxdevelops.reflux.shot.debug`), removed afterwards; the stick's store and debug installs untouched. Six captures, five used; `validate_assets.py --final` exit 0.
+- **Version identity:** `./gradlew releaseInfo`: `0.9.0-beta.2`, `versionCode` 90032, Windows 0.9.32, Linux 0.9.0~beta.2, `dev.rsxdevelops.reflux`.
+- **Local full check** on `ecce561` (Windows, every task executed): **1,650 tests, 0 failures, 26 skipped**, exit 0.
+- **Hosted CI run 44912262295** on `ecce561`: Website, Android, Check (windows-2025), release tools and doc links, workflow lint, secret scan **green**; **Check (ubuntu-24.04) red on both attempts**: `DownloadsUiTest.aRemoteReachesEveryDownloadControlAndFocusComesBack` ("Timed out waiting for focus on its removal"), 548 UI tests, 1 failed. The push's Release rehearsal (run 44912262382) green.
+- **B-076 investigation (Linux CI image, Docker Desktop; containers, not a Linux desktop):** reproduced 2 of 2; passes on Windows 6 of 6; bisected `044c8f0` (last green hosted Linux CI) to `da08741`: first failing commit `77b994c`; eight instrumented runs (BETA-BUG-TRACKER.md, B-076). No fix kept.
+- **Not run:** the release workflow, any store upload, the website deployment.
