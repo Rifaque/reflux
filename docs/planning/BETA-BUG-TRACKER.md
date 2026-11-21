@@ -47,7 +47,7 @@
 
 ## Executive status summary
 
-**Phase 4 (2026-11-21):** one entry added, **B-075** (release tooling: store "What's new" text), **Fixed**, which makes 83 entries and 57 Fixed (and at the Beta 2 release, **B-076**, Investigating, 84 entries); B-074 gained Phase 4 evidence (not reproduced in two full runs, see its entry) and stays Investigating. No other status changed: Phase 4 changed no product behaviour. The table below is as of Phase 3's closure.
+**Phase 4 (2026-11-21):** one entry added, **B-075** (release tooling: store "What's new" text), **Fixed**, which makes 83 entries and 57 Fixed (and at the Beta 2 release, **B-076**, Fixed by the owner's scoped fix, 84 entries); B-074 gained Phase 4 evidence (not reproduced in two full runs, see its entry) and stays Investigating. No other status changed: Phase 4 changed no product behaviour. The table below is as of Phase 3's closure.
 
 **At Phase 3's formal closure (2026-11-20; the owner accepted and closed Phase 3).** Reconciled entry by entry against the code, the commits, VERIFICATION.md, and the owner's confirmations. All 82 entries are B-001 to B-074, F-001 to F-005, F-P1 to F-P4 (F-P1 and F-P2 share one entry, counted once):
 
@@ -2724,7 +2724,7 @@ A second Right always worked. Every slower route tried (by Left or Y, after Quic
 - **Category:** Focus timing (TV and controllers) · **Priority:** Low · **Platforms:** found in a test on the hosted Linux runner
 - **Components:** `ui` (`DownloadsUiTest.aRemoteReachesEveryDownloadControlAndFocusComesBack`; the television's focus-entry rule)
 - **How found:** 2026-11-21, hosted CI run 44912262295 on `ecce561` (the `0.9.0-beta.2` promotion): Check (ubuntu-24.04), `:ui:jvmTest` 548 tests, 1 failed: "Timed out waiting for focus on its removal. Instead: [the download's row]" (`DownloadsUiTest.kt:441`), after a second copy was added and the page opened, one Right press did not move focus to the row's removal button in 30 s.
-- **Phase:** Beta 3 (found after the freeze) · **Status:** Investigating · **Last updated:** 2026-11-21
+- **Phase:** Beta 2 (a release blocker by the owner's decision of 2026-11-21: a scoped fix before release) · **Status:** Fixed (pending hosted CI) · **Last updated:** 2026-11-22
 
 **Diagnosis (2026-11-21, Linux CI image locally, `reflux-linux-check`):**
 - **Deterministic on Linux, not intermittent:** the hosted rerun of the failed job failed the same way, and the test failed 2 of 2 in the Linux image locally; it passes on Windows (hosted and local, 6 of 6).
@@ -2736,9 +2736,26 @@ A second Right always worked. Every slower route tried (by Left or Y, after Quic
   - **So:** something in Phase 2's `77b994c` makes the first directional press after this arrival a no-op on Linux timing, while `moveFocus` reports success. Next step: bisect *within* `77b994c` by reverting its `RefluxApp.kt`/`AppState.kt` hunks one at a time in the Linux image (about 3 minutes a run).
 - **Release consequence:** none of the candidate fixes held, so none was kept; under the owner's choice (fix before release) **Beta 2 is held** until this is fixed and hosted CI is green.
 
+**Intra-commit bisect of `77b994c` (2026-11-22, Linux CI image, a throwaway worktree at `77b994c`; one change reversed per run, `DownloadsUiTest.aRemoteReaches…` once each):**
+
+| Reversed (alone) | Result |
+| --- | --- |
+| nothing (baseline `77b994c`) | **Fails** (reproduced) |
+| `RefluxApp.kt`: the directional routing (hunks 3+4, and 4 alone) | Fails |
+| `RefluxApp.kt`: the text-entry bridge (5); the docked chrome condition (6); the keyboard panel (7); the page prompts (10); the activity arc (12+13) | Fails, each |
+| `AppState.kt`: controller dispatch (6); the move's haptic feedback (7) | Fails, each |
+| `RefluxApp.kt` 8+11, 0+1+2; `AppState.kt` 0, 1+2, 3, 4+5+8+9, 10–15 | Do not build alone (later code depends on them); not decisive |
+| `components/Focus.kt` (its whole change in `77b994c`) | **Passes** |
+| `Controls.kt`, `Artwork.kt`, `Platform.kt` | Do not build alone |
+
+- **Cause:** `77b994c` changed `rememberFocusReturn` so an item becomes the one to come back to as soon as it **has focus** (B-008, `onFocusChanged` sets `entry.left`). An item's `returning` used to change only while the page was away; now it flips to true *while the item is on screen*, at its next recomposition after gaining focus. That recomposition enters the return branch for the first time, so its `LaunchedEffect` starts and **requests focus back onto the item**. On the Downloads page the line gains focus on arrival and recomposes as its copy's state settles: on Windows before the test's Right, on Linux's slower timing **after** it, so the Right's move (which `moveFocus` reported as done) was undone. The earlier instrumentation watched only `FocusEntry`'s requests, which is why it saw no programmatic request.
+- **Fix** (`ui/.../components/Focus.kt`, `rememberFocusReturn`): focus is put back on an item only if it was the one to come back to **when it appeared** (`cameBackTo = remember(entry, screen) { returning }`). Coming back to a page composes its items afresh, so that case is unchanged; the item's offer to the focus entry (`DisposableEffect`) is unchanged, so B-008's return still works through it. Five lines; no test changed.
+- **Regression test:** `FocusEntryTest.anItemThatBecameTheOneToComeBackToDoesNotTakeFocusBackWhenItRecomposes`: a television layout, a line and its action; focus on the line, then the action, then the line recomposes. **Fails without the fix on Windows** (focus back on the line), so it reproduces B-076 on every OS without depending on timing; passes with it.
+- **Verification so far (2026-11-22):** Windows: `FocusEntryTest`, `DownloadsUiTest`, `HomeFocusTest`, `DetailsFocusTest`, `NavigationTest`, `TelevisionTest` pass. Linux CI image: `DownloadsUiTest` **3 of 3** pass (was 0 of 2 and failing at every Phase 2 hunk), `FocusEntryTest` passes. The full local check and hosted CI are in VERIFICATION.md, "B-076 fix".
+
 **Evidence so far.** Passed on the hosted Windows runner in the same run, in the local full `check --rerun-tasks` on the same commit (1,650 tests, 0 failures), and 6 of 6 repeated local runs of `DownloadsUiTest` (Windows). No product or test code changed since Phase 3's accepted build. The key was lost, not slow: the likeliest reading (not confirmed) is the same family as the M11 race (history/verification/VERIFICATION-ALPHA-TO-BETA-1.md, "Hosted CI on bf71793"): the page's focus-entry rule placing focus again when its first item changes, after the key had moved it. A failed-job rerun of the CI run is recorded in VERIFICATION.md, "Beta 2 release".
 
-**Release decision (2026-11-21, superseded the same day):** first judged not a blocker; then, with hosted CI red on every Linux run, the owner chose a scoped fix before release, so it **blocks Beta 2's gate (step 8)** until fixed. **To do (Beta 3):** reproduce under load on Linux, find which rule moves focus after the key, make the wait deterministic or fix the rule, without weakening the test.
+**Release decision (2026-11-21, superseded the same day):** first judged not a blocker; then, with hosted CI red on every Linux run, the owner chose a scoped fix before release, so it **blocked Beta 2's gate (step 8)** until fixed; fixed 2026-11-22 (above), the test unchanged.
 
 ## Beta 3 backlog (from Phase 3's closure, 2026-11-20)
 
@@ -2750,7 +2767,7 @@ Phase 3 is closed and Beta 2's fix scope is frozen (DECISIONS.md, 2026-11-20, "P
 | [B-061](#b-061) | A Skia crash after a Direct3D failure (Windows, the owner's build) | Investigating; a Beta 3 candidate (the owner places it) |
 | [B-044](#b-044) | Test intermittents mixing the test and wall clocks | Investigating (test infrastructure) |
 | [B-056](#b-056) | Blank on closing the mini-player | Deferred by the owner (a later beta) |
-| [B-076](#b-076) | A remote's Right lost on Downloads just after the list changes (CI, Linux) | Investigating (Beta 3) |
+| [B-076](#b-076) | A remote's Right lost on Downloads just after the list changes (CI, Linux) | Fixed before Beta 2's release (the owner's scoped fix) |
 | [B-075](#b-075) | Store "What's new" included category headings (release tooling) | Fixed in Phase 4 |
 | [F-003](#f-003) | Video-synchronised haptics | Deferred: a future version, **no release assigned**; needs its own research, hardware validation, design and plan first |
 
