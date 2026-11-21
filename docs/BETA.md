@@ -43,8 +43,8 @@ Beta 2 (`0.9.0-beta.2`, VERSIONING.md) is built only when every step holds **and
 | 7 | No open release-blocking bug | **Holds**: no blocker open; B-061 (Skia fallback crash) is Investigating, a Beta 3 candidate |
 | 8 | The full checks green locally and on hosted CI | **Open**: local result in PHASE-4.md; hosted CI needs the branch pushed (the owner's) |
 | 9 | Cross-platform validation on the matrix's devices | **Done with the accepted limitations** (physical Linux, Steam, the Phone 2a after the final changes) |
-| 10 | The owner's review and approval | **Open** |
-| 11 | The owner's authorisation of the version and build | **Open** |
+| 10 | The owner's review and approval | **Done**: approved 2026-11-21 (DECISIONS.md, "Beta 2 release") |
+| 11 | The owner's authorisation of the version and build | **Done**: `0.9.0-beta.2` authorised 2026-11-21 |
 | 12 | Release notes from CHANGELOG.md's Unreleased | **Prepared** ([BETA-NOTES.md](BETA-NOTES.md); CHANGELOG.md grouped) |
 | 13 | The build and its distribution through the release workflow | **Prepared**: the workflow, store assets and website are ready; nothing run for release (RELEASE.md, "Releasing a version") |
 

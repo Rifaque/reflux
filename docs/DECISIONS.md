@@ -1395,6 +1395,17 @@ M11 decided the open items of its plan (history/milestones/M11-DISTRIBUTION-PLAN
 - **1.0 communication.** "Planned for December 2026", depending on feedback, qualification, and store approval; 10 December is an internal readiness checkpoint and 15 December the release decision, never a promised release date. Each platform publishes through its own path.
 - **No Windows installer in the beta**: none exists or is tested, and building one would change the release; reconsidered for 1.0.
 
+## 2026-11-21 — Beta 2 release: approved and authorised by the owner; store media out of Git
+
+**Context.** The owner's release mission of 2026-11-21 ("Beta 2 Approval, Fire TV Capture & Autonomous Release Mission") approved Beta 2 on the documented gate (BETA.md) and authorised the version `0.9.0-beta.2`, pushing `open-source-gpl`, hosted CI, the release workflow, a GitHub **pre-release**, uploads to Google Play **closed testing** and Amazon **Live App Testing**, and the website's deployment. Not authorised: production in either store, a stable release, 1.0, Beta 3, or any change of product behaviour.
+
+**Decisions.**
+- **Beta 2 is cut as `0.9.0-beta.2`** (`versionCode` 90032, Windows 0.9.32, Linux 0.9.0~beta.2, tag `v0.9.0-beta.2`), from the frozen scope, after the gate's remaining steps hold (hosted CI green, the release workflow's own verification).
+- **Store media live in a release archive, not in Git.** The 94 PNGs of `store-assets/release-0.9.0-beta.2/` (captures, exports, previews: 80.2 MB) are archived as `Reflux-0.9.0-beta.2-store-assets.zip` (owner's copy, and a draft GitHub release visible to writers only); the folder keeps its documents, provenance with hashes, and composition sources (0.32 MB), and `store-assets/**/*.png` is ignored. History is not rewritten: `85d6d26` keeps its images. Not on the Beta 2 GitHub release itself: the release tooling verifies that a public release carries exactly its artifacts, and a store-art archive there would read as a download.
+- **The Fire TV listing uses Fire TV captures.** The stick (AFTMA08C15, Fire OS 8.1.8.5) was reachable; the Amazon set was rebuilt from six captures taken on it with a side-by-side build, replacing the Google TV emulator sources.
+
+**Alternatives rejected.** Rewriting history to drop `85d6d26`'s images (forbidden, and it would break shared commits); Git LFS (not set up; a new dependency for one folder); attaching the archive to the Beta 2 release (it would fail `release.py verify --public` and look like a download).
+
 ## 2026-11-21 — Phase 4: one home per fact, a product roadmap by version, store assets by LaunchFrame, and a site that never runs ahead of the builds
 
 **Context.** The owner's Phase 4 master prompt (2026-11-21) asked for documentation consolidation, a product roadmap from post-alpha to V2.0, store screenshots through LaunchFrame, a website overhaul with a roadmap and its easter egg, distribution infrastructure, and Beta 2 readiness, autonomously, with Beta 2's scope frozen and nothing published. Record of the work: planning/PHASE-4.md.
