@@ -121,11 +121,11 @@ Note: Required for Android TV apps. Distinct from the 320x180 launcher banner in
 
 | File | Size (px) | Format | Mode | KB | Result |
 |---|---|---|---|---|---|
-| 01.png | 1920x1080 | PNG | RGB | 878 | ok |
-| 02.png | 1920x1080 | PNG | RGB | 675 | ok |
-| 03.png | 1920x1080 | PNG | RGB | 227 | ok |
-| 04.png | 1920x1080 | PNG | RGB | 901 | ok |
-| 05.png | 1920x1080 | PNG | RGB | 1991 | ok |
+| 01.png | 1920x1080 | PNG | RGB | 856 | ok |
+| 02.png | 1920x1080 | PNG | RGB | 595 | ok |
+| 03.png | 1920x1080 | PNG | RGB | 222 | ok |
+| 04.png | 1920x1080 | PNG | RGB | 851 | ok |
+| 05.png | 1920x1080 | PNG | RGB | 1918 | ok |
 
 Checked: format PNG/JPEG, exact size list, alpha forbidden, count 3-10, file type vs extension, color mode, naming, duplicates.
 
@@ -144,7 +144,7 @@ Not checked automatically (review by eye):
 
 | File | Size (px) | Format | Mode | KB | Result |
 |---|---|---|---|---|---|
-| 01.png | 1920x1080 | PNG | RGB | 507 | ok |
+| 01.png | 1920x1080 | PNG | RGB | 477 | ok |
 
 Checked: format PNG/JPEG, exact size list, alpha forbidden, count 1-1, file type vs extension, color mode, naming, duplicates.
 
@@ -154,7 +154,7 @@ Not checked automatically (review by eye):
 
 ## Release checks
 
-- **INFO** sources by provenance: auto-captured 24
+- **INFO** sources by provenance: auto-captured 30
 
 ## Not checked automatically (all targets)
 

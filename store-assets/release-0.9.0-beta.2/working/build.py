@@ -23,6 +23,9 @@ SRC = {  # source pixel sizes
     "tablet7-movies": (1920, 1200), "tablet7-player": (1920, 1200),
     "tv-home": (1920, 1080), "tv-quickview": (1920, 1080), "tv-keyboard": (1920, 1080), "tv-movies-rail": (1920, 1080),
     "tv-details": (1920, 1080), "tv-player": (1920, 1080), "tv-movies-focus": (1920, 1080),
+    # Fire TV Stick 4K Plus (AFTMA08C15, Fire OS 8.1.8.5), physical, 2026-11-21: the Amazon set's own captures.
+    "firetv-home": (1920, 1080), "firetv-quickview": (1920, 1080), "firetv-keyboard": (1920, 1080),
+    "firetv-movies-rail": (1920, 1080), "firetv-details": (1920, 1080), "firetv-player": (1920, 1080),
 }
 
 
@@ -124,15 +127,15 @@ SHOTS = {
         (TV, "tv-player", None),  # unaltered capture (Google's TV quality guidance asks for at least one)
     ],
     "amazon-appstore/fire-tv": [
-        (TV, "tv-home", [text("Your media, played well.", "", (96, 84, 1200), 76, mark=True),
-                         frame("tv-home", (180, 250, 1560), radius=24)]),
-        (TV, "tv-quickview", [text("Press Menu for a quick look.", "Play, favourite or download without opening the page.", (96, 330, 520), 70),
-                              frame("tv-quickview", (680, 170, 1240), radius=24)]),
-        (TV, "tv-keyboard", [frame("tv-keyboard", (60, 170, 1180), radius=24),
+        (TV, "firetv-home", [text("Your media, played well.", "", (96, 84, 1200), 76, mark=True),
+                         frame("firetv-home", (180, 250, 1560), radius=24)]),
+        (TV, "firetv-quickview", [text("Press Menu for a quick look.", "Play, favourite or download without opening the page.", (96, 330, 520), 70),
+                              frame("firetv-quickview", (680, 170, 1240), radius=24)]),
+        (TV, "firetv-keyboard", [frame("firetv-keyboard", (60, 170, 1180), radius=24),
                              text("A keyboard made for the remote.", "Matching titles appear as you type.", (1300, 350, 540), 70)]),
-        (TV, "tv-movies-rail", [frame("tv-movies-rail", (180, -40, 1560), radius=24),
+        (TV, "firetv-movies-rail", [frame("firetv-movies-rail", (180, -40, 1560), radius=24),
                                 text("Everything is one press of Left away.", "", (96, 912, 1728), 64, align="center")]),
-        (TV, "tv-player", None),
+        (TV, "firetv-player", None),
     ],
 }
 

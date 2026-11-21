@@ -2,6 +2,8 @@
 
 Made with LaunchFrame 2.0.0 (the Claude Code plugin `launch-frame@launch-frame`) in Phase 4, 2026-11-21. **Generated and validated; nothing uploaded.** Beta 2 is not approved or cut yet (docs/BETA.md); these are ready for its listing update. The folder name is the version these assets are for, not a version cut.
 
+**The images are in the release archive, not in Git:** see [ARCHIVE.md](ARCHIVE.md) to restore them.
+
 ## Status
 
 | Store | Device / asset | Folder | Count | Size (px) | Status |
@@ -12,7 +14,7 @@ Made with LaunchFrame 2.0.0 (the Claude Code plugin `launch-frame@launch-frame`)
 | Google Play | Android TV screenshots | `google-play/tv` | 6 | 1920 × 1080 | validated |
 | Google Play | Feature graphic | `google-play/feature-graphic` | 1 | 1024 × 500 | validated |
 | Google Play | TV banner (brand's own) | `google-play/tv-banner` | 1 | 1280 × 720 | validated |
-| Amazon Appstore | Fire TV screenshots (Google TV emulator sources; see its README) | `amazon-appstore/fire-tv` | 5 | 1920 × 1080 | validated; provenance decision before upload |
+| Amazon Appstore | Fire TV screenshots (captured on a physical Fire TV Stick 4K Plus) | `amazon-appstore/fire-tv` | 5 | 1920 × 1080 | validated |
 | Amazon Appstore | Fire TV icon (brand's own) | `amazon-appstore/fire-tv-icon` | 1 | 1280 × 720 | validated |
 | Amazon Appstore | Fire TV background | `amazon-appstore/fire-tv-background` | 1 | 1920 × 1080 | validated |
 
@@ -48,12 +50,10 @@ python S/validate_assets.py . --final --report validation-report.md
 
 ## Known limitations
 
-- Every source is an emulator capture (phone, two tablets, Google TV); none from a physical device.
-- The Fire TV set is built from Google TV emulator captures, labelled as such (`amazon-appstore/README.md`).
+- The phone, tablet and Google Play TV sources are emulator captures; the Fire TV set's sources are from a physical Fire TV Stick 4K Plus.
 - Trickplay scene previews, a Beta 2 highlight, are not shown: the demo server had none.
 - The demo library is seven films from one demo server, so no shot can prove "every source in one view"; no headline claims it.
 
 ## Remaining tasks (owner)
 
 1. Approve Beta 2, then upload: Play (`google-play/README.md`), Amazon (`amazon-appstore/README.md`).
-2. Decide the Fire TV provenance (re-capture on the stick, or accept).

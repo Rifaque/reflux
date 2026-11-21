@@ -64,3 +64,6 @@ brag-output/
 *.nvram
 .vagrant/
 VirtualBox VMs/
+
+# Store screenshots and graphics per release: generated media live in the release archive (store-assets/<release>/ARCHIVE.md), not in Git.
+store-assets/**/*.png

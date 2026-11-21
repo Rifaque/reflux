@@ -24,9 +24,22 @@ Build: `:android:app:assembleDebug` of `open-source-gpl` (Phase 3's accepted cod
 
 Removed (recorded in `captures.json` history by `captures.py remove`, with reasons): two frames where a tap missed (Home shown instead), a paused portrait player frame, a frame still in the player instead of the mini-player, a "no matches" empty state, a tablet player under the system's one-time hint, and a TV details frame of the wrong film for its label.
 
+## Fire TV session (2026-11-21, later; physical)
+
+Device: Fire TV Stick 4K Plus `AFTMA08C15`, Fire OS 8.1.8.5, API 30, 1920 × 1080 at 320 dpi (physical panel 3840 × 2160), adb over the network. Build: `-Preflux.android.applicationId=dev.rsxdevelops.reflux.shot` (installs as `dev.rsxdevelops.reflux.shot.debug`) so the stick's own Reflux installs were untouched; connected to the same demo server over the LAN; removed afterwards. Every key was sent only while the capture build was in front (a guard checked the focused window).
+
+| # | Screen | How | Status |
+| --- | --- | --- | --- |
+| 25 | Home, focus on Resume | launch | `firetv-home.png` |
+| 26 | Movies with the rail opened by Left | D-pad | `firetv-movies-rail.png` (a first frame with focus on a poster was rejected) |
+| 27 | Quick View by the remote's Menu key | `KEYCODE_MENU` | `firetv-quickview.png` |
+| 28 | Reflux's keyboard, "si" typed, "Sintel" offered | D-pad on Reflux's keyboard | `firetv-keyboard.png` (a first frame with a stray "7" was rejected) |
+| 29 | Elephants Dream's page | D-pad, OK | `firetv-details.png` (not used in the set) |
+| 30 | Player with controls | OK on Play; Up | `firetv-player.png` |
+
 ## Blockers and fallbacks
 
-- **Fire TV:** no Fire TV device was attached (and LaunchFrame has no Fire OS emulator path). The Fire TV set uses the Google TV emulator captures of the same TV interface, labelled as such; see `amazon-appstore/README.md`.
+- **Fire TV:** at first no Fire TV was attached and the set used Google TV emulator captures; the later session above replaced them with captures from the physical stick.
 - **Trickplay previews:** not captured: the demo server has no generated previews, and the videos are still images.
 
 ## Restore

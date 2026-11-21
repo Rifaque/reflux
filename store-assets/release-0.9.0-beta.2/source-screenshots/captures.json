@@ -552,6 +552,144 @@
         "serial": "emulator-5554"
       },
       "target": "google-play/tv"
+    },
+    {
+      "file": "firetv-home.png",
+      "screen": "home",
+      "provenance": "auto-captured",
+      "method": "adb exec-out screencap -p",
+      "width": 1920,
+      "height": 1080,
+      "format": "png",
+      "sha256": "c5460407b729be3c3710897e470f3246bda0c1bcb5010c1db768768691e9b298",
+      "recorded_at": "2026-11-21T13:55:36+00:00",
+      "device": {
+        "model": "AFTMA08C15",
+        "manufacturer": "Amazon",
+        "kind": "fire-tv",
+        "os": "Fire OS",
+        "sdk": "30",
+        "emulator": false,
+        "avd": "",
+        "density": 320,
+        "serial": "192.168.1.13:5555"
+      },
+      "target": "amazon-appstore/fire-tv"
+    },
+    {
+      "file": "firetv-quickview.png",
+      "screen": "quick-view-menu-key",
+      "provenance": "auto-captured",
+      "method": "adb exec-out screencap -p",
+      "width": 1920,
+      "height": 1080,
+      "format": "png",
+      "sha256": "0332c57ccb76d6dd47f66f84cbcc1742b5757c9b938deaab777a2a9c52657ffd",
+      "recorded_at": "2026-11-21T13:56:20+00:00",
+      "device": {
+        "model": "AFTMA08C15",
+        "manufacturer": "Amazon",
+        "kind": "fire-tv",
+        "os": "Fire OS",
+        "sdk": "30",
+        "emulator": false,
+        "avd": "",
+        "density": 320,
+        "serial": "192.168.1.13:5555"
+      },
+      "target": "amazon-appstore/fire-tv"
+    },
+    {
+      "file": "firetv-movies-rail.png",
+      "screen": "movies-rail-open",
+      "provenance": "auto-captured",
+      "method": "adb exec-out screencap -p",
+      "width": 1920,
+      "height": 1080,
+      "format": "png",
+      "sha256": "487d4fbfac8eae707ec05c8f32c5878bf0c5bdf69cf0e5ea6b92d9ee1b95c886",
+      "recorded_at": "2026-11-21T13:56:49+00:00",
+      "device": {
+        "model": "AFTMA08C15",
+        "manufacturer": "Amazon",
+        "kind": "fire-tv",
+        "os": "Fire OS",
+        "sdk": "30",
+        "emulator": false,
+        "avd": "",
+        "density": 320,
+        "serial": "192.168.1.13:5555"
+      },
+      "target": "amazon-appstore/fire-tv"
+    },
+    {
+      "file": "firetv-keyboard.png",
+      "screen": "search-reflux-keyboard",
+      "provenance": "auto-captured",
+      "method": "adb exec-out screencap -p",
+      "width": 1920,
+      "height": 1080,
+      "format": "png",
+      "sha256": "b3cf4d8cd5c2574917f9f8f274e1402795d5739100629849ad3a46e21364aea7",
+      "recorded_at": "2026-11-21T13:58:40+00:00",
+      "device": {
+        "model": "AFTMA08C15",
+        "manufacturer": "Amazon",
+        "kind": "fire-tv",
+        "os": "Fire OS",
+        "sdk": "30",
+        "emulator": false,
+        "avd": "",
+        "density": 320,
+        "serial": "192.168.1.13:5555"
+      },
+      "target": "amazon-appstore/fire-tv"
+    },
+    {
+      "file": "firetv-details.png",
+      "screen": "details-elephants-dream",
+      "provenance": "auto-captured",
+      "method": "adb exec-out screencap -p",
+      "width": 1920,
+      "height": 1080,
+      "format": "png",
+      "sha256": "1d18a4a9859babee90ef3996900eae1b681ae14ba58442c46808f0a7499e6ee3",
+      "recorded_at": "2026-11-21T13:59:46+00:00",
+      "device": {
+        "model": "AFTMA08C15",
+        "manufacturer": "Amazon",
+        "kind": "fire-tv",
+        "os": "Fire OS",
+        "sdk": "30",
+        "emulator": false,
+        "avd": "",
+        "density": 320,
+        "serial": "192.168.1.13:5555"
+      },
+      "target": "amazon-appstore/fire-tv"
+    },
+    {
+      "file": "firetv-player.png",
+      "screen": "player",
+      "provenance": "auto-captured",
+      "method": "adb exec-out screencap -p",
+      "width": 1920,
+      "height": 1080,
+      "format": "png",
+      "sha256": "94dda9484c192aeaded7f733b8cdcdb3523139234d46a72605a9d0c305335b0a",
+      "recorded_at": "2026-11-21T14:00:40+00:00",
+      "device": {
+        "model": "AFTMA08C15",
+        "manufacturer": "Amazon",
+        "kind": "fire-tv",
+        "os": "Fire OS",
+        "sdk": "30",
+        "emulator": false,
+        "avd": "",
+        "density": 320,
+        "serial": "192.168.1.13:5555"
+      },
+      "target": "amazon-appstore/fire-tv"
     }
   ],
   "removed": [
@@ -589,6 +727,16 @@
       "file": "tv-details.png",
       "reason": "shows Big Buck Bunny, labelled as Sintel",
       "at": "2026-11-21T09:33:41+00:00"
+    },
+    {
+      "file": "firetv-movies-rail.png",
+      "reason": "focus on the first poster, not the rail open; label wrong",
+      "at": "2026-11-21T13:56:33+00:00"
+    },
+    {
+      "file": "firetv-keyboard.png",
+      "reason": "a 7 was typed: empty results, not the intended state",
+      "at": "2026-11-21T13:57:51+00:00"
     }
   ]
 }
