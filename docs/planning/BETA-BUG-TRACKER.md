@@ -2712,7 +2712,9 @@ A second Right always worked. Every slower route tried (by Left or Y, after Quic
 - **How found:** 2026-11-21, Phase 4, while grouping every CHANGELOG release under categories: Phase 3 had introduced `###` category headings in Unreleased, and `plain_text` treats any non-empty line that is not a `- ` item as an item, so Beta 2's store text would have begun "• ### Playback & Media".
 - **Phase:** Phase 4 (release infrastructure, in the owner's Phase 4 scope; no product code) · **Status:** Fixed · **Last updated:** 2026-11-21
 
-**Fix.** Lines starting with `#` end the current item and are skipped. **Tests:** `test_category_headings_are_not_store_items` (new); `python -I -m unittest discover -s tools/release -p "test_*.py"`: 48 tests, OK. **Not verified:** a real `release.py notes` run in the release workflow (no release has been cut).
+**Second part (found in the Phase 4 rehearsal).** Unreleased's preface paragraph ("Not in a downloadable build yet…") became the first store bullet; promotion renames only the heading, so it would have shipped too.
+
+**Fix.** Lines starting with `#` end the current item and are skipped; a paragraph before the first item is skipped (a paragraph after the list is still kept, as an existing test requires). **Tests:** `test_category_headings_are_not_store_items`, `test_a_preface_before_the_list_is_not_a_store_item` (new); `python -I -m unittest discover -s tools/release -p "test_*.py"`: 49 tests, OK. **Rehearsed:** `release.py notes --version 0.9.0-beta.2 --allow-unreleased` on the real CHANGELOG: store text 446 of 500 characters, starting with the first change, no heading. **Not verified:** a run in the release workflow (no release has been cut). **For the owner:** Beta 2's long items leave room for two in Play's 500 characters; BETA-NOTES.md's highlights can replace them by hand.
 
 ## Beta 3 backlog (from Phase 3's closure, 2026-11-20)
 

@@ -457,9 +457,11 @@ def plain_text(markdown: str) -> list:
             items.append(current)
         elif line.strip() and current is not None:
             current.append(line.strip())
-        elif line.strip():
+        elif line.strip() and items:  # a paragraph after the list is kept as an item
             current = [line.strip()]
             items.append(current)
+        elif line.strip():  # a preface before the first item (Unreleased's "Not in a downloadable build yet") is not a change
+            current = None
         else:
             current = None
     plain = []

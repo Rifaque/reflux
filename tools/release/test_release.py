@@ -280,6 +280,10 @@ class Notes(unittest.TestCase):
         self.assertLessEqual(len(release.store_text("- " + "word " * 200)), 500)
         self.assertTrue(release.store_text("- " + "word " * 200).endswith("…"))
 
+    def test_a_preface_before_the_list_is_not_a_store_item(self):
+        body = "Not in a downloadable build yet.\n\n- Scene previews.\n  continued.\n"
+        self.assertEqual(release.plain_text(body), ["Scene previews. continued."])
+
     def test_category_headings_are_not_store_items(self):
         body = "### Playback & Media\n\n- Scene previews on the timeline.\n\n### Navigation & Controllers\n\n- Y goes to the navigation.\n"
         self.assertEqual(release.plain_text(body), ["Scene previews on the timeline.", "Y goes to the navigation."])
