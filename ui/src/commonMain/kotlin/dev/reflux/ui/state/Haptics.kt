@@ -47,7 +47,7 @@ interface ControllerRumble {
 }
 
 /**
- * The one way anything in Reflux makes a device vibrate or a controller rumble (F-001, F-002; docs/planning/PHASE-2-PLAN.md,
+ * The one way anything in Reflux makes a device vibrate or a controller rumble (F-001, F-002; docs/history/phases/PHASE-2-PLAN.md,
  * "Haptics"). Every request passes through here, and here alone the viewer's choices are enforced:
  *
  * - **Interface haptics** are **off** until the viewer turns them on. Off, nothing reaches the device's vibrator, by any

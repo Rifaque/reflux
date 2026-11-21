@@ -81,7 +81,7 @@ import kotlin.math.abs
  * remote, the controller's grid with the chosen key lit (it is chosen, not toolkit focus: directions move it, so it
  * never leaves the keyboard for the page behind). Under a pointer on a desk (Windows, Linux), a picture of a physical
  * keyboard in the system's layout, pressed where it is, with nothing left lit. When the hand changes, each key moves
- * and resizes to its place in the other presentation (planning/F-P4-ADAPTIVE-KEYBOARD.md §8); keys only one has fade
+ * and resizes to its place in the other presentation (history/phases/F-P4-ADAPTIVE-KEYBOARD.md §8); keys only one has fade
  * out first and in last; with reduced motion the change is a short crossfade. What is typed, the cursor, Shift and the
  * page are the session's and never change with it.
  *

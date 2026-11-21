@@ -20,7 +20,7 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
- * The activity's end lets go of what plays (docs/planning/M10-PLAYER-SPEC.md, F8). Before M10 an activity that was destroyed
+ * The activity's end lets go of what plays (docs/history/milestones/M10-PLAYER-SPEC.md, F8). Before M10 an activity that was destroyed
  * without finishing (recreated for a change it did not handle, or taken by the system) left its playback running: the engine
  * stayed open and kept the audio focus and the video surface, its place was never recorded, and the next activity started
  * another beside it.

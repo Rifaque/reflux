@@ -15,7 +15,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-/** The chrome is one derived value (docs/planning/M10-PLAYER-SPEC.md, section 7): no combination of facts draws a loader beside controls. */
+/** The chrome is one derived value (docs/history/milestones/M10-PLAYER-SPEC.md, section 7): no combination of facts draws a loader beside controls. */
 class ChromeModelTest {
     private fun facts(
         status: PlayerStatus = PlayerStatus.PLAYING,

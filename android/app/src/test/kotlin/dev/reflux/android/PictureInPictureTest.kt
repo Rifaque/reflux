@@ -8,7 +8,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-/** When leaving the app shrinks it into the system's window, what shape that is, and whether leaving the window was expanding it (docs/planning/M10-PLAYER-SPEC.md, section 6). */
+/** When leaving the app shrinks it into the system's window, what shape that is, and whether leaving the window was expanding it (docs/history/milestones/M10-PLAYER-SPEC.md, section 6). */
 class PictureInPictureTest {
     private fun eligible(
         presentation: PlayerPresentation? = PlayerPresentation.FULL,

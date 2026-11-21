@@ -4,13 +4,13 @@
 
 ## Where the work stands
 
-- **Beta 2** is planned in three phases: scope, phase and work order, exit criteria, the owner's defaults, the verification matrix, and the gate are in [docs/planning/BETA-2.md](docs/planning/BETA-2.md). Phase 1 (accepted) is in [docs/planning/PHASE-1-PLAN.md](docs/planning/PHASE-1-PLAN.md); Phase 2 (accepted and closed by the owner, 2026-11-20: its audit, the interaction contract, the plan, the closure) in [docs/planning/PHASE-2-PLAN.md](docs/planning/PHASE-2-PLAN.md).
+- **Beta 2** is planned in three phases: scope, phase and work order, exit criteria, the owner's defaults, the verification matrix, and the gate are in [docs/planning/BETA-2.md](docs/history/phases/BETA-2-PHASES.md). Phase 1 (accepted) is in [docs/history/phases/PHASE-1-PLAN.md](docs/history/phases/PHASE-1-PLAN.md); Phase 2 (accepted and closed by the owner, 2026-11-20: its audit, the interaction contract, the plan, the closure) in [docs/history/phases/PHASE-2-PLAN.md](docs/history/phases/PHASE-2-PLAN.md).
 - **Phase 3** (the owner's work order, 2026-11-20) is **accepted and formally closed by the owner** (2026-11-20).
   - Its closure record: BETA-2.md, "Phase 3 closure"; the runs: VERIFICATION.md's three "Phase 3" sections.
   - **Hard freeze:** Beta 2's fix scope is closed. Anything found from now on goes to the tracker's Beta 3 backlog, unless the owner authorises a critical Beta 2 blocker.
   - B-027, B-038 and B-040 are V1.1 candidates, researched in [docs/planning/V1.1-LIBRARY-RESEARCH.md](docs/planning/V1.1-LIBRARY-RESEARCH.md), not to be implemented without the owner.
   - F-003 (video haptics) is deferred by the owner with no release assigned.
-- **Phase 4's brief** (documentation consolidation, the website, Beta 2's contents, the roadmap, the roadmap easter egg) is [docs/planning/PHASE-4-HANDOFF.md](docs/planning/PHASE-4-HANDOFF.md). Nothing of it is started without the owner.
+- **Phase 4's brief** (documentation consolidation, the website, Beta 2's contents, the roadmap, the roadmap easter egg) is [docs/history/phases/PHASE-4-HANDOFF.md](docs/history/phases/PHASE-4-HANDOFF.md). Nothing of it is started without the owner.
 - **Every issue's detail is in [docs/planning/BETA-BUG-TRACKER.md](docs/planning/BETA-BUG-TRACKER.md)** (B-001 to B-042, F-001 to F-005, F-P1/F-P2, and new issues from B-043). Read an issue's entry before working on it and update it *as the work happens*: investigation, cause, fix, tests, each kind of verification, blockers. Code changed without its tracker entry updated is incomplete work. New issues take the next free ID; phase changes and deferrals need the owner's decision.
 - **Beta 2 is not cut, versioned, built for release, or tagged** until Phases 2 and 3 are accepted and the gate holds (DECISIONS.md, 2026-11-19). `0.9.0-beta.1` stays as it is. Versions follow docs/VERSIONING.md, and only when the owner asks.
 - Nothing is merged, pushed, deployed, released, or changed in a store console without the owner's explicit approval for that action.

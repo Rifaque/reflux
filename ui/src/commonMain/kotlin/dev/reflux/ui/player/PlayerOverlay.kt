@@ -156,7 +156,7 @@ private val playerTint = Materials.spec(MaterialRole.FLOATING).tint.toColor().co
  * after a pause while the video plays. Chapters, tracks, and speed are one step deeper, in lists that work the same
  * with a pointer, a keyboard, or a controller.
  *
- * What is drawn is one derived value, [chrome], and nothing else decides it (docs/planning/M10-PLAYER-SPEC.md, section
+ * What is drawn is one derived value, [chrome], and nothing else decides it (docs/history/milestones/M10-PLAYER-SPEC.md, section
  * 7): the player's state and the viewer's last doing go in, one deadline is waited for, and each [ChromeMode] has the
  * layers it may draw. While opening or waiting for data it is the Reflux loader and the way out, and nothing that
  * cannot act on a wait.

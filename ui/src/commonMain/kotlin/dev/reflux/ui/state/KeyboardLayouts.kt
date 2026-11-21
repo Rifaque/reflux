@@ -12,7 +12,7 @@ data class PlacedKey(val key: KeyboardKey, val x: Float, val y: Float, val width
 }
 
 /**
- * One presentation of the Reflux keyboard as data (F-P4; planning/F-P4-ADAPTIVE-KEYBOARD.md, §6): every key with its
+ * One presentation of the Reflux keyboard as data (F-P4; history/phases/F-P4-ADAPTIVE-KEYBOARD.md, §6): every key with its
  * rectangle in key units, and the whole [width] by [height]. Built once per mode, kind, page and system layout, and
  * tested without a screen. Keys are identified by what they are ([KeyboardKey] equality), never by where they are, so
  * the same key in two layouts is one key: the morph moves it, and focus follows it.

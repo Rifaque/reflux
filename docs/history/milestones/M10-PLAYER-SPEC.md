@@ -1,3 +1,5 @@
+> **Historical (archived 2026-11-21, Phase 4).** Kept unchanged as a record; not a current plan. Current documents: [docs/README.md](../../README.md); this archive: [history/README.md](../README.md).
+
 # M10 — Player & Playback Experience 2.0: implementation specification
 
 **Status: authoritative for M10.** Written 2026-11-13 in a planning session (Opus 5.5) on `feature/engine-foundation` at `1dbbc11`, after M8 (`212150a`) and M9 (`89075d0`, hosted CI green through `1dbbc11`). No code was changed to write it.

@@ -1,6 +1,8 @@
+> **Historical (archived 2026-11-21, Phase 4).** Kept unchanged as a record; not a current plan. Current documents: [docs/README.md](../../README.md); this archive: [history/README.md](../README.md).
+
 # Reflux Launch Plan
 
-The tracks that take Reflux from a working tree to a public product beside the engineering milestones: the website, the demo video, the beta program, and the store distribution paths. Milestones and their order are in [ROADMAP.md](ROADMAP.md); the checklists a build must pass are in [RELEASE.md](RELEASE.md).
+The tracks that take Reflux from a working tree to a public product beside the engineering milestones: the website, the demo video, the beta program, and the store distribution paths. Milestones and their order are in [ROADMAP.md](../roadmaps/ROADMAP-M0-M13.md); the checklists a build must pass are in [RELEASE.md](../../RELEASE.md).
 
 ## Website: reflux.rsxdevelops.dev
 
@@ -65,7 +67,7 @@ Captures are made after the M12 candidate is frozen, so the film shows the build
 
 - **Size:** about 15–20 testers, chosen from the signup for coverage, not the first to arrive: phones and tablets, at least three Google TV / Android TV devices, at least three Fire TV devices on Fire OS, Windows and Linux desktops, local folders, Jellyfin servers, and SMB shares; at least two testers using controllers.
 - **Channels:** Google Play closed testing (phones, tablets, Google TV) — an email list or Google Group of the testers; the Amazon Appstore's testing path for Fire TV (Live App Testing); desktop packages from the beta site, checksummed.
-- **Versions:** `0.9.0-beta.N` ([VERSIONING.md](VERSIONING.md)); every build has a changelog entry and a tag.
+- **Versions:** `0.9.0-beta.N` ([VERSIONING.md](../../VERSIONING.md)); every build has a changelog entry and a tag.
 - **Feedback:** an in-app "Send feedback" link (to a form or email) next to an export of the diagnostics log, which is already redacted; a short form per beta (what you played, what failed, what confused you). Reports are triaged into blocker / critical / normal / later.
 - **Cadence:** a beta build when there is something worth testing, at most weekly; the changelog says what to look at.
 - **Exit:** the M12 exit criteria in ROADMAP.md.
@@ -133,6 +135,6 @@ Vega OS is tracked separately as a future compatibility track (ROADMAP.md, Platf
 
 ## Distribution (M11)
 
-M11 prepares every channel above and rehearses them end to end without a public release; the beta that uses them is M12 (planning/M11-DISTRIBUTION-PLAN.md). What changes in this plan: the website is the public entry point for releases and reads one release record (M11.7); the demo video's shot list and captures belong to M11.7 with production waiting for the owner's tool (W2); beta *operations* (the tester routes, templates, opt-in links) are set up in M11 and run in M12; the Google Play closed test (twelve testers, fourteen days, if the account is personal) and Amazon Live App Testing with Appstore Beta Hub are M12's campaign, not M11's rehearsal.
+M11 prepares every channel above and rehearses them end to end without a public release; the beta that uses them is M12 (history/milestones/M11-DISTRIBUTION-PLAN.md). What changes in this plan: the website is the public entry point for releases and reads one release record (M11.7); the demo video's shot list and captures belong to M11.7 with production waiting for the owner's tool (W2); beta *operations* (the tester routes, templates, opt-in links) are set up in M11 and run in M12; the Google Play closed test (twelve testers, fourteen days, if the account is personal) and Amazon Live App Testing with Appstore Beta Hub are M12's campaign, not M11's rehearsal.
 
 **Done in M11 (2026-11-15):** the Download page is built only from `release/stores.json` and `release/published/<version>.json`: one availability table (Android and Android TV / Google TV → Google Play; Fire TV → Amazon Appstore; Windows and Linux → the GitHub release), the desktop archives with size, SHA-256, commit, and release link, the libmpv source offer beside the Windows zip, the SmartScreen / Smart App Control and Linux libmpv / Secret Service notes, install / update / removal steps, and the checksum and `gh attestation verify` commands; with no published record it says no public build exists yet. No Android file is ever linked. The tester page shows a store's test link only when `stores.json` records one. Amazon's presubmission and test criteria were re-read and are mapped in `release/amazon-appstore.md`; Beta Hub (Fire OS 7+) redeems invitations, and an update that does not appear is fetched with Settings → Account & Profile Settings → Sync Amazon Content. **Open:** the support e-mail (stores require a support contact), the Privacy page's "pre-release" banner at release, Trakt attribution if D5 chooses it. **Store tracks (2026-11-15):** both listings are saved as drafts in the consoles; the Play internal and closed tracks and Amazon Live App Testing wait for the first release-workflow build signed with the owner's upload key (VERIFICATION.md, "M11 console session").

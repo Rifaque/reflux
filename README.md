@@ -54,15 +54,15 @@ UI and playback features should consume normalized media entities and source cap
 
 ## Project status
 
-Pre-release, in a beta since 17 November 2026 (`0.9.0-beta.1`: Play closed testing, Amazon Live App Testing, and a public GitHub pre-release for Windows and Linux). The engine (Media Core, sources, identification, metadata, watch state, Best Version, playback, Smart Offline) is implemented and heavily tested, and one experience layer runs on desktop (Windows, Linux), Android phones and tablets, Android TV / Google TV, and Fire TV: point it at a folder or connect a Jellyfin or Plex server or a network share, browse, search, play, and resume on any copy, with a profile of their own for each person who watches. Release builds have been verified on a physical Nothing Phone 2a, Xiaomi Pad 7, and Fire TV Stick 4K Plus, on Windows, and on Linux in a container (docs/VERIFICATION.md). V1 targets Android phones and tablets, Android TV / Google TV, Fire TV (Fire OS), Windows, and Linux, through a public beta first. The Android application ID is `dev.rsxdevelops.reflux`. The plan and what is left are in [docs/ROADMAP.md](docs/ROADMAP.md); the current version and how versions work are in [docs/VERSIONING.md](docs/VERSIONING.md); the brand is in [design/brand](design/brand/README.md); the website is [docs/WEBSITE.md](docs/WEBSITE.md).
+Pre-release, in a beta since 17 November 2026 (`0.9.0-beta.1`: Play closed testing, Amazon Live App Testing, and a public GitHub pre-release for Windows and Linux). The engine (Media Core, sources, identification, metadata, watch state, Best Version, playback, Smart Offline) is implemented and heavily tested, and one experience layer runs on desktop (Windows, Linux), Android phones and tablets, Android TV / Google TV, and Fire TV: point it at a folder or connect a Jellyfin or Plex server or a network share, browse, search, play, and resume on any copy, with a profile of their own for each person who watches. Release builds have been verified on a physical Nothing Phone 2a, Xiaomi Pad 7, and Fire TV Stick 4K Plus, on Windows, and on Linux in a container (docs/VERIFICATION.md). V1 targets Android phones and tablets, Android TV / Google TV, Fire TV (Fire OS), Windows, and Linux, through a public beta first. The Android application ID is `dev.rsxdevelops.reflux`. The plan and what is left are in [docs/ROADMAP.md](docs/history/roadmaps/ROADMAP-M0-M13.md); the current version and how versions work are in [docs/VERSIONING.md](docs/VERSIONING.md); the brand is in [design/brand](design/brand/README.md); the website is [docs/WEBSITE.md](docs/WEBSITE.md).
 
 ## Documentation
 
 - [Product](docs/PRODUCT.md)
 - [Architecture](docs/ARCHITECTURE.md)
-- [Roadmap](docs/ROADMAP.md)
+- [Roadmap](docs/history/roadmaps/ROADMAP-M0-M13.md)
 - [Versioning](docs/VERSIONING.md)
-- [Launch plan: website, demo, beta, stores](docs/LAUNCH.md)
+- [Launch plan: website, demo, beta, stores](docs/history/milestones/LAUNCH.md)
 - [Verification log](docs/VERIFICATION.md)
 - [Changelog](CHANGELOG.md)
 - [Design direction](docs/DESIGN.md)
@@ -110,7 +110,7 @@ Playback and probing need libmpv (`libmpv2` on Debian/Ubuntu, `mpv-libs` on Fedo
 
 Reflux is free and open-source software: Copyright © 2026 RSX Develops, licensed under the **GNU General Public License, version 3 or later** (`GPL-3.0-or-later`). The license is [LICENSE](LICENSE), unmodified; Reflux's notice, with its additional terms under section 7 (no right to the Reflux name or logo; modified versions marked as changed), is [NOTICE](NOTICE). You may use, study, change, and share Reflux under those terms. Reflux costs nothing, and no payment or donation unlocks anything.
 
-The third-party software Reflux is built with keeps its own licenses, listed with their texts in [legal/](legal/) and on Reflux's About page; the services it works with (Trakt, Jellyfin, Plex) and their names are their owners'.
+The third-party software Reflux is built with keeps its own licenses, listed with their texts in [legal/](legal) and on Reflux's About page; the services it works with (Trakt, Jellyfin, Plex) and their names are their owners'.
 
 ## Contributing, problems, and security
 

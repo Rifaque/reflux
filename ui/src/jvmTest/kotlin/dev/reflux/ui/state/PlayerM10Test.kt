@@ -26,7 +26,7 @@ import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 /**
- * M10's session contract (docs/planning/M10-PLAYER-SPEC.md): the system's window as a presentation of the one session,
+ * M10's session contract (docs/history/milestones/M10-PLAYER-SPEC.md): the system's window as a presentation of the one session,
  * what Back does from the state alone, a failure that stays where the viewer is, whose a playback is, what a viewer's
  * subtitle choice is kept as, and a held seek key being one seek.
  */

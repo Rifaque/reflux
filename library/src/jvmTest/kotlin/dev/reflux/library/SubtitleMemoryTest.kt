@@ -37,7 +37,7 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 
 /**
- * A viewer's subtitle choice for a work is theirs (docs/planning/M10-PLAYER-SPEC.md, section 9; docs/WATCH_STATE.md,
+ * A viewer's subtitle choice for a work is theirs (docs/history/milestones/M10-PLAYER-SPEC.md, section 9; docs/WATCH_STATE.md,
  * "Profiles"): kept per profile in `profile_setting`, as a description of the track, found again in whichever version or
  * episode is played next, and never read for or written to another profile.
  */

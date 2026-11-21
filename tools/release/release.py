@@ -449,6 +449,9 @@ def plain_text(markdown: str) -> list:
     """A changelog section as plain one-line items: no links, code marks, or emphasis."""
     items, current = [], None
     for line in markdown.splitlines():
+        if line.startswith("#"):  # a category heading ("### Playback & Media") is not an item
+            current = None
+            continue
         if line.startswith("- "):
             current = [line[2:].strip()]
             items.append(current)
