@@ -160,8 +160,8 @@ export function Status() {
 export function Timeline() {
   return (
     <ol className="loop timeline">
-      {TIMELINE.map(([when, what, text], i) => (
-        <li key={what} className={i === 0 ? 'done' : undefined}>
+      {TIMELINE.map(([when, what, text, done]) => (
+        <li key={what} className={done ? 'done' : undefined}>
           <span className="loop-step">{when}</span>
           <h3>{what}</h3>
           <p>{text}</p>

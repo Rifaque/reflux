@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { PageHead } from '../components.jsx'
 import { MarkMotion } from '../motion.jsx'
 import { STAGES, STATUS } from '../roadmap.js'
+import { beta2Out } from '../released.js'
 
 const CURRENT = STAGES.findIndex((s) => s.status === 'current')
 const reduced = () => typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -46,7 +47,7 @@ function Stage({ stage, index }) {
           {index === CURRENT && <span className="you-are-here">You are here</span>}
         </p>
         <h2>{stage.theme}</h2>
-        <p className="stage-summary">{stage.summary}</p>
+        <p className="stage-summary">{beta2Out && stage.summaryOut ? stage.summaryOut : stage.summary}</p>
         <ul className="stage-items">{stage.items.map((item) => <li key={item}>{item}</li>)}</ul>
       </div>
     </li>

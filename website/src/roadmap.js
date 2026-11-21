@@ -45,6 +45,8 @@ export const STAGES = [
     theme: 'Controllers, typing and scenes',
     status: 'current',
     summary: 'Finished and being prepared for testers: the biggest beta yet, with no new features after it until 1.0.',
+    // Shown instead once a Beta 2 publication record exists (src/released.js).
+    summaryOut: 'Out now for testers: the biggest beta yet, and the last with new features before 1.0.',
     items: [
       'Scene previews on the timeline, and the right stick to move through them',
       'One consistent controller layout everywhere, with a quick view on X',

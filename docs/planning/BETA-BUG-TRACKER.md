@@ -47,7 +47,7 @@
 
 ## Executive status summary
 
-**Phase 4 (2026-11-21):** one entry added, **B-075** (release tooling: store "What's new" text), **Fixed**, which makes 83 entries and 57 Fixed; B-074 gained Phase 4 evidence (not reproduced in two full runs, see its entry) and stays Investigating. No other status changed: Phase 4 changed no product behaviour. The table below is as of Phase 3's closure.
+**Phase 4 (2026-11-21):** one entry added, **B-075** (release tooling: store "What's new" text), **Fixed**, which makes 83 entries and 57 Fixed (and at the Beta 2 release, **B-076**, Investigating, 84 entries); B-074 gained Phase 4 evidence (not reproduced in two full runs, see its entry) and stays Investigating. No other status changed: Phase 4 changed no product behaviour. The table below is as of Phase 3's closure.
 
 **At Phase 3's formal closure (2026-11-20; the owner accepted and closed Phase 3).** Reconciled entry by entry against the code, the commits, VERIFICATION.md, and the owner's confirmations. All 82 entries are B-001 to B-074, F-001 to F-005, F-P1 to F-P4 (F-P1 and F-P2 share one entry, counted once):
 
@@ -2718,6 +2718,18 @@ A second Right always worked. Every slower route tried (by Left or Y, after Quic
 
 **Fix.** Lines starting with `#` end the current item and are skipped; a paragraph before the first item is skipped (a paragraph after the list is still kept, as an existing test requires). **Tests:** `test_category_headings_are_not_store_items`, `test_a_preface_before_the_list_is_not_a_store_item` (new); `python -I -m unittest discover -s tools/release -p "test_*.py"`: 49 tests, OK. **Rehearsed:** `release.py notes --version 0.9.0-beta.2 --allow-unreleased` on the real CHANGELOG: store text 446 of 500 characters, starting with the first change, no heading. **Not verified:** a run in the release workflow (no release has been cut). **For the owner:** Beta 2's long items leave room for two in Play's 500 characters; BETA-NOTES.md's highlights can replace them by hand.
 
+<a id="b-076"></a>
+### B-076: On the Downloads page, a remote's Right can be lost just after the list changes (CI, Linux)
+
+- **Category:** Focus timing (TV and controllers) · **Priority:** Low · **Platforms:** found in a test on the hosted Linux runner
+- **Components:** `ui` (`DownloadsUiTest.aRemoteReachesEveryDownloadControlAndFocusComesBack`; the television's focus-entry rule)
+- **How found:** 2026-11-21, hosted CI run 44912262295 on `ecce561` (the `0.9.0-beta.2` promotion): Check (ubuntu-24.04), `:ui:jvmTest` 548 tests, 1 failed: "Timed out waiting for focus on its removal. Instead: [the download's row]" (`DownloadsUiTest.kt:441`), after a second copy was added and the page opened, one Right press did not move focus to the row's removal button in 30 s.
+- **Phase:** Beta 3 (found after the freeze) · **Status:** Investigating · **Last updated:** 2026-11-21
+
+**Evidence so far.** Passed on the hosted Windows runner in the same run, in the local full `check --rerun-tasks` on the same commit (1,650 tests, 0 failures), and 6 of 6 repeated local runs of `DownloadsUiTest` (Windows). No product or test code changed since Phase 3's accepted build. The key was lost, not slow: the likeliest reading (not confirmed) is the same family as the M11 race (history/verification/VERIFICATION-ALPHA-TO-BETA-1.md, "Hosted CI on bf71793"): the page's focus-entry rule placing focus again when its first item changes, after the key had moved it. A failed-job rerun of the CI run is recorded in VERIFICATION.md, "Beta 2 release".
+
+**Release decision (2026-11-21):** not a Beta 2 blocker under the freeze rules: no crash, data loss, security, privacy or playback impact; at worst a viewer presses Right again. **To do (Beta 3):** reproduce under load on Linux, find which rule moves focus after the key, make the wait deterministic or fix the rule, without weakening the test.
+
 ## Beta 3 backlog (from Phase 3's closure, 2026-11-20)
 
 Phase 3 is closed and Beta 2's fix scope is frozen (DECISIONS.md, 2026-11-20, "Phase 3 accepted and formally closed"). Every bug, UX issue, request or improvement found from now on is entered here, and in its own entry with the next free number, for **Beta 3 or a later release**, unless the owner explicitly authorises it as a critical Beta 2 blocker.
@@ -2728,6 +2740,7 @@ Phase 3 is closed and Beta 2's fix scope is frozen (DECISIONS.md, 2026-11-20, "P
 | [B-061](#b-061) | A Skia crash after a Direct3D failure (Windows, the owner's build) | Investigating; a Beta 3 candidate (the owner places it) |
 | [B-044](#b-044) | Test intermittents mixing the test and wall clocks | Investigating (test infrastructure) |
 | [B-056](#b-056) | Blank on closing the mini-player | Deferred by the owner (a later beta) |
+| [B-076](#b-076) | A remote's Right lost on Downloads just after the list changes (CI, Linux) | Investigating (Beta 3) |
 | [B-075](#b-075) | Store "What's new" included category headings (release tooling) | Fixed in Phase 4 |
 | [F-003](#f-003) | Video-synchronised haptics | Deferred: a future version, **no release assigned**; needs its own research, hardware validation, design and plan first |
 
