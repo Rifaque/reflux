@@ -56,6 +56,8 @@ Round 1 (full contact sheet, every set at reduced size, then individual images):
 
 Round 2 (re-rendered sets and the store-scale sheet at 180 px): headlines legible at store scale on every set; no sliced text found; neighbours differ in skeleton (phone: top/bottom headline alternation, bleed vs band vs turned; tablet: left/right/below/above). Remaining by choice: the 10-inch size 2560 × 1440 is not in LaunchFrame's recommended list (it prefers 2560 × 1600), but Play's page (read 2026-11-21) asks for 16:9 landscape for tablets, so 16:9 is kept.
 
+Round 3 (after the Fire TV session): the Amazon set rebuilt from the physical stick's captures with the same storyboard and compositions; looked at as a set and at store scale: the stick's rail capture is cleaner than the emulator's (the grid is not scrolled); no sliced text; `validate_assets.py --final` exit 0.
+
 ## Generated elements
 
 None. No image generation was used; every picture element is a capture or the brand's own files.
