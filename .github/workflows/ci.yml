@@ -18,7 +18,10 @@ jobs:
   check:
     name: Check (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 60
+    # Linux 75 minutes, Windows 60 (B-079, the owner's decision of 2026-11-22). Linux's UI tests render in software on one
+    # core and need 51–60 minutes there, and the window tests 2–4 more; parallel test JVMs halved that but made the hosted
+    # runs less reliable, so they were reverted. Every test still runs and must pass.
+    timeout-minutes: ${{ startsWith(matrix.os, 'ubuntu') && 75 || 60 }}
     strategy:
       fail-fast: false
       matrix:
