@@ -47,7 +47,7 @@
 
 ## Executive status summary
 
-**Phase 4 (2026-11-21):** one entry added, **B-075** (release tooling: store "What's new" text), **Fixed**, which makes 83 entries and 57 Fixed (and at the Beta 2 release, **B-076**, Fixed by the owner's scoped fix, **B-077**, a test race, Open for Beta 3, **B-078**, stale window tests, Fixed, **B-079**, the Linux CI time limit, waiting on the owner, and **B-080**, a live-server test, Open for Beta 3: 88 entries); B-074 gained Phase 4 evidence (not reproduced in two full runs, see its entry) and stays Investigating. No other status changed: Phase 4 changed no product behaviour. The table below is as of Phase 3's closure.
+**Phase 4 (2026-11-21):** one entry added, **B-075** (release tooling: store "What's new" text), **Fixed**, which makes 83 entries and 57 Fixed (and at the Beta 2 release, **B-076**, Fixed by the owner's scoped fix, **B-077**, a test race, Open for Beta 3, **B-078**, stale window tests, Fixed, **B-079**, the Linux CI time limit, Fixed by the owner's decision, and **B-080**, a live-server test, Open for Beta 3: 88 entries); B-074 gained Phase 4 evidence (not reproduced in two full runs, see its entry) and stays Investigating. No other status changed: Phase 4 changed no product behaviour. The table below is as of Phase 3's closure.
 
 **At Phase 3's formal closure (2026-11-20; the owner accepted and closed Phase 3).** Reconciled entry by entry against the code, the commits, VERIFICATION.md, and the owner's confirmations. All 82 entries are B-001 to B-074, F-001 to F-005, F-P1 to F-P4 (F-P1 and F-P2 share one entry, counted once):
 
@@ -2788,7 +2788,7 @@ A second Right always worked. Every slower route tried (by Left or Y, after Quic
 - **Components:** `.github/workflows/ci.yml`, job "Check" on Linux (`timeout-minutes: 60`: "Build and test", then "Desktop window tests")
 - **How found:** 2026-11-21/22, with B-076 and B-078 fixed. Run 44941967966 attempt 1 (`dc70958`): cancelled at 60 min inside "Build and test". Run 44953745884 (`3986850`) attempts 1 and 2: **"Build and test" passed both times** (every test on Linux green), then cancelled at 60 min inside "Desktop window tests" (22:52 and 23:53 UTC). The only Linux job to finish since the fixes (44941967966 attempt 2, 56 min) finished early because three window tests failed fast (B-078).
 - **Measured:** Linux `:ui:jvmTest` alone is 48.6 min of test time over 67 classes (no hang; slowest class 4.4 min); "Build and test" ~51–52 min; the window tests ~4–8 min more on the hosted runner. Before Phase 2 the job's tests were mostly restored from Gradle's cache, so the limit was never approached.
-- **Phase:** Beta 2 (blocks the release's CI gate) · **Status:** **Waiting on the owner**: the optimisation was reverted (less reliable on hosted runners); a timeout increase is recommended (below) · **Last updated:** 2026-11-22
+- **Phase:** Beta 2 (blocks the release's CI gate) · **Status:** Fixed by the owner's decision: Linux's limit 75 minutes, the tests serial as before (pending hosted CI) · **Last updated:** 2026-11-22
 - **Options first offered (none applied):** raise the Linux job's `timeout-minutes` (for example to 90; nothing skipped or loosened, every test still runs and must pass); or move "Desktop window tests" into a job of its own with its own limit; or speed up the UI tests (Beta 3 work, not a release fix).
 - **The owner's decision (2026-11-22):** not to raise the limit first, but to measure and shorten the Linux job, keeping the 60 minutes unless optimisation proves insufficient.
 - **Measurements (2026-11-22; hosted logs of runs 44953745884 and 44941967966, and the Linux CI image limited to 4 CPUs and 14 GB like the runner):**
@@ -2813,7 +2813,8 @@ A second Right always worked. Every slower route tried (by Left or Y, after Quic
   - None of the three had failed with one JVM on the hosted runners; the container at 4 CPUs did not show it (2 of 2 green), so the hosted runners' 4 vCPUs are more contended than the container's.
   - The owner's constraints exclude making the tests less reliable, and rerunning until green would be exactly that; fixing the leak and the timing sensitivity is test-reliability work (B-044, B-074; Beta 3), not a CI performance change. `ui/build.gradle.kts` is back as it was.
 - **Remaining bottleneck (evidence above):** `:ui:jvmTest`, serial: 51.5–57.9 min of "Build and test" on hosted Linux (one run was still in it at 59m45s when the limit stopped it), then the window tests 2–4 min, setup under 1 min: **about 54 to over 64 minutes** in all. No other safe saving exists in the job (compilation ~3 min, cached when it can be).
-- **Recommendation:** raise the Linux Check job's `timeout-minutes` from 60 to **75**: the slowest observed need (over 64 min) plus about 15 % margin; every test still runs and must pass, nothing is skipped or loosened; Windows' jobs finish in 25–30 min, well inside either limit. Parallel test JVMs are a Beta 3 candidate once the leak and B-044/B-074 are fixed. **Not applied: the owner's decision.**
+- **Recommendation:** raise the Linux Check job's `timeout-minutes` from 60 to **75**: the slowest observed need (over 64 min) plus about 15 % margin; every test still runs and must pass, nothing is skipped or loosened; Windows' jobs finish in 25–30 min, well inside either limit. Parallel test JVMs are a Beta 3 candidate once the leak and B-044/B-074 are fixed.
+- **The owner's decision (2026-11-22):** approved 75 minutes for the Linux Check job only; the parallel experiment stays reverted; serial execution and every test kept. **Applied** in `.github/workflows/ci.yml`: `timeout-minutes: ${{ startsWith(matrix.os, 'ubuntu') && 75 || 60 }}` (Windows stays at 60). Nothing else in CI changed.
 
 <a id="b-080"></a>
 ### B-080: `JellyfinExecutionLiveTest`'s remux case can find the server's session unconfirmed (live test, intermittent)
@@ -2836,7 +2837,7 @@ Phase 3 is closed and Beta 2's fix scope is frozen (DECISIONS.md, 2026-11-20, "P
 | [B-044](#b-044) | Test intermittents mixing the test and wall clocks | Investigating (test infrastructure) |
 | [B-056](#b-056) | Blank on closing the mini-player | Deferred by the owner (a later beta) |
 | [B-080](#b-080) | A live-server test's remux case can be unconfirmed (local only) | Open (Beta 3) |
-| [B-079](#b-079) | The Linux CI job no longer fits its 60-minute limit | Waiting on the owner: parallel JVMs reverted (less reliable); 75 min recommended |
+| [B-079](#b-079) | The Linux CI job no longer fits its 60-minute limit | Fixed: Linux's limit 75 min (the owner's decision); parallel JVMs tried and reverted |
 | [B-078](#b-078) | Three real-window tests expected the interface before Phase 2 (tests only) | Fixed before Beta 2's release |
 | [B-077](#b-077) | `MpvEngineTest`'s credentials-log test can race its log thread (test only) | Open (Beta 3) |
 | [B-076](#b-076) | A remote's Right lost on Downloads just after the list changes (CI, Linux) | Fixed before Beta 2's release (the owner's scoped fix) |
