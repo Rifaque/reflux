@@ -130,6 +130,11 @@ tasks.withType<Test>().configureEach {
     // 12 s on a desktop, 45 s in a 4-CPU container, more than a minute on GitHub's runner (M7's first hosted runs).
     // Nothing takes this long when it works, and a test that hangs still fails.
     systemProperty("kotlinx.coroutines.test.default_timeout", "5m")
+    // The test classes run in several JVMs at once (B-079). Each class renders in software on one thread, so one JVM used
+    // about one of a CI runner's four cores, and Linux's job outgrew its 60 minutes. Half the cores, at most four, leaves
+    // room for Gradle, the collector and Skia's threads, so tests that also read the wall clock (B-044) are not starved.
+    // The tests share nothing across processes: no fixed port, file or preference; each world is made in the test.
+    maxParallelForks = (Runtime.getRuntime().availableProcessors() / 2).coerceIn(1, 4)
     // -Preflux.screenshots=<dir> makes the screen tests save what they rendered, for visual review.
     providers.gradleProperty("reflux.screenshots").orNull?.let { systemProperty("reflux.screenshots", it) }
     // -Preflux.showcase=<dir> renders the website's product images (WebsiteShowcaseTest) from the artwork in <dir>/art.

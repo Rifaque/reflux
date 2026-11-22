@@ -47,7 +47,7 @@
 
 ## Executive status summary
 
-**Phase 4 (2026-11-21):** one entry added, **B-075** (release tooling: store "What's new" text), **Fixed**, which makes 83 entries and 57 Fixed (and at the Beta 2 release, **B-076**, Fixed by the owner's scoped fix, **B-077**, a test race, Open for Beta 3, **B-078**, stale window tests, Fixed, and **B-079**, the Linux CI time limit, waiting on the owner: 87 entries); B-074 gained Phase 4 evidence (not reproduced in two full runs, see its entry) and stays Investigating. No other status changed: Phase 4 changed no product behaviour. The table below is as of Phase 3's closure.
+**Phase 4 (2026-11-21):** one entry added, **B-075** (release tooling: store "What's new" text), **Fixed**, which makes 83 entries and 57 Fixed (and at the Beta 2 release, **B-076**, Fixed by the owner's scoped fix, **B-077**, a test race, Open for Beta 3, **B-078**, stale window tests, Fixed, **B-079**, the Linux CI time limit, Fixed, and **B-080**, a live-server test, Open for Beta 3: 88 entries); B-074 gained Phase 4 evidence (not reproduced in two full runs, see its entry) and stays Investigating. No other status changed: Phase 4 changed no product behaviour. The table below is as of Phase 3's closure.
 
 **At Phase 3's formal closure (2026-11-20; the owner accepted and closed Phase 3).** Reconciled entry by entry against the code, the commits, VERIFICATION.md, and the owner's confirmations. All 82 entries are B-001 to B-074, F-001 to F-005, F-P1 to F-P4 (F-P1 and F-P2 share one entry, counted once):
 
@@ -2788,8 +2788,28 @@ A second Right always worked. Every slower route tried (by Left or Y, after Quic
 - **Components:** `.github/workflows/ci.yml`, job "Check" on Linux (`timeout-minutes: 60`: "Build and test", then "Desktop window tests")
 - **How found:** 2026-11-21/22, with B-076 and B-078 fixed. Run 44941967966 attempt 1 (`dc70958`): cancelled at 60 min inside "Build and test". Run 44953745884 (`3986850`) attempts 1 and 2: **"Build and test" passed both times** (every test on Linux green), then cancelled at 60 min inside "Desktop window tests" (22:52 and 23:53 UTC). The only Linux job to finish since the fixes (44941967966 attempt 2, 56 min) finished early because three window tests failed fast (B-078).
 - **Measured:** Linux `:ui:jvmTest` alone is 48.6 min of test time over 67 classes (no hang; slowest class 4.4 min); "Build and test" ~51–52 min; the window tests ~4–8 min more on the hosted runner. Before Phase 2 the job's tests were mostly restored from Gradle's cache, so the limit was never approached.
-- **Phase:** Beta 2 (blocks the release's CI gate) · **Status:** **Waiting on the owner** (a CI configuration change; the owner's instruction of 2026-11-22: no CI configuration change to mask an issue) · **Last updated:** 2026-11-22
-- **Options (none applied):** raise the Linux job's `timeout-minutes` (for example to 90; nothing skipped or loosened, every test still runs and must pass); or move "Desktop window tests" into a job of its own with its own limit; or speed up the UI tests (Beta 3 work, not a release fix).
+- **Phase:** Beta 2 (blocks the release's CI gate) · **Status:** Fixed without a CI configuration change (pending hosted timings) · **Last updated:** 2026-11-22
+- **Options first offered (none applied):** raise the Linux job's `timeout-minutes` (for example to 90; nothing skipped or loosened, every test still runs and must pass); or move "Desktop window tests" into a job of its own with its own limit; or speed up the UI tests (Beta 3 work, not a release fix).
+- **The owner's decision (2026-11-22):** not to raise the limit first, but to measure and shorten the Linux job, keeping the 60 minutes unless optimisation proves insufficient.
+- **Measurements (2026-11-22; hosted logs of runs 44953745884 and 44941967966, and the Linux CI image limited to 4 CPUs and 14 GB like the runner):**
+  - **Per step, hosted:** Linux "Build and test" 51–60 min, window tests 2–4 min, the rest under 1 min; Windows runs the **same Gradle command** in 25–30 min.
+  - **Per task, hosted (gaps between task lines):** `:ui:jvmTest` **54.7 min on Linux, 25.2 min on Windows**; everything else (compilation, the other modules' tests, the CLI) about 3 min on both.
+  - **Per test:** 542 UI tests in both; Linux 1.70× slower overall, **uniformly** (every class 1.6–2.3×; no outlier, no Linux-only wait or timeout). So the cost is per-frame work, not a hot spot.
+  - **Why it did not use the runner:** the test task ran one JVM; sampling the container showed **about 1.06 cores busy** of the 4 allowed. Each class renders in software on one thread.
+  - **Ruled out:** the build cache (working: unchanged inputs come from it, which is why `044c8f0`'s run took 2m43s; on a changed tree nothing can, and compilation is about 3 min); dependency downloads (restored by `setup-gradle`); package installation (20–40 s); the window tests themselves (2–4 min; the step reruns `:desktop:app`'s 77 tests, about 30 s of them not window tests: left as it is, not worth a risk to coverage).
+- **Experiment (the 8 heaviest classes, 103 tests, 4 CPUs):** 1 JVM 927 s; 2 JVMs 548 s (1.69×); 4 JVMs 382 s (2.43×); the same 103 tests passing in each.
+- **Change** (`ui/build.gradle.kts`, the UI module's test task only): `maxParallelForks = (availableProcessors / 2).coerceIn(1, 4)`: two JVMs on a 4-CPU runner, leaving a core for Gradle, the collector and Skia's threads (B-044's tests also read the wall clock). Safe because the UI tests share nothing across processes (no fixed port, file, home directory or preference; each world is made in its test; temporary directories are unique). No test, assertion, step or limit changed; `timeout-minutes` stays 60.
+- **Verification:** the complete Linux job (`linux-check.sh`: `check`, then the window tests) in the CI image on 4 CPUs, **twice, every task executed** (the second with the build cache off): exit 0 both times, **25.8 and 26.4 min**; 1,595 distinct tests in `check` (549 UI), 0 failures, the same two UI skips as hosted CI (AboutUiTest's documented headless-Linux case; WebsiteShowcaseTest, on request); the window tests ran (10 more executed). Windows, the complete `./gradlew check --rerun-tasks`: **32m10s before, 6m31s after** on the development machine (4 JVMs there), 1,651 tests, 0 failures (one earlier run met B-080, unrelated). Hosted timings: VERIFICATION.md, "B-076 fix".
+
+<a id="b-080"></a>
+### B-080: `JellyfinExecutionLiveTest`'s remux case can find the server's session unconfirmed (live test, intermittent)
+
+- **Category:** Test reliability (live server) · **Priority:** Low · **Platforms:** the Windows development machine with a live Jellyfin server configured (`~/.reflux-live/jellyfin.env`); never runs in CI (it skips without a server)
+- **Components:** `desktop/engine` tests only (`JellyfinExecutionLiveTest.everyDeliveryIsPlannedNegotiatedPlayedAndConfirmed`, line 147)
+- **How found:** 2026-11-22, a complete local `check` during B-079's work: "expected PRESERVED but was UNKNOWN" for the remux delivery; its evidence line reads `actual UNKNOWN … unconfirmed CONTAINER VIDEO AUDIO`. The other five deliveries matched their plans. Run alone: failed once, passed once (`actual REMUX, video PRESERVED, audio PRESERVED`); the next complete check passed. It had passed in the morning's check too.
+- **Phase:** Beta 3 (found after the freeze) · **Status:** Open · **Last updated:** 2026-11-22
+- **Not caused by B-079's change:** it failed alone, with no UI test running; the engine and this test are unchanged.
+- **Likely cause (not confirmed):** the test reads the server's account of the session 500 ms after the seek; when the server has not yet registered the remuxed session, Reflux correctly reports the delivery as unconfirmed. To investigate in Beta 3: wait for the server's session facts, as the subtitle case already waits, without loosening what is compared.
 
 ## Beta 3 backlog (from Phase 3's closure, 2026-11-20)
 
@@ -2801,7 +2821,8 @@ Phase 3 is closed and Beta 2's fix scope is frozen (DECISIONS.md, 2026-11-20, "P
 | [B-061](#b-061) | A Skia crash after a Direct3D failure (Windows, the owner's build) | Investigating; a Beta 3 candidate (the owner places it) |
 | [B-044](#b-044) | Test intermittents mixing the test and wall clocks | Investigating (test infrastructure) |
 | [B-056](#b-056) | Blank on closing the mini-player | Deferred by the owner (a later beta) |
-| [B-079](#b-079) | The Linux CI job no longer fits its 60-minute limit | Waiting on the owner (CI configuration) |
+| [B-080](#b-080) | A live-server test's remux case can be unconfirmed (local only) | Open (Beta 3) |
+| [B-079](#b-079) | The Linux CI job no longer fits its 60-minute limit | Fixed: UI tests in two JVMs, the limit unchanged |
 | [B-078](#b-078) | Three real-window tests expected the interface before Phase 2 (tests only) | Fixed before Beta 2's release |
 | [B-077](#b-077) | `MpvEngineTest`'s credentials-log test can race its log thread (test only) | Open (Beta 3) |
 | [B-076](#b-076) | A remote's Right lost on Downloads just after the list changes (CI, Linux) | Fixed before Beta 2's release (the owner's scoped fix) |
