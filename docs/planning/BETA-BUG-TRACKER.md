@@ -47,7 +47,7 @@
 
 ## Executive status summary
 
-**Phase 4 (2026-11-21):** one entry added, **B-075** (release tooling: store "What's new" text), **Fixed**, which makes 83 entries and 57 Fixed (and at the Beta 2 release, **B-076**, Fixed by the owner's scoped fix, **B-077**, a test race, Open for Beta 3, **B-078**, stale window tests, Fixed, **B-079**, the Linux CI time limit, Fixed by the owner's decision, and **B-080**, a live-server test, Open for Beta 3: 88 entries); B-074 gained Phase 4 evidence (not reproduced in two full runs, see its entry) and stays Investigating. No other status changed: Phase 4 changed no product behaviour. The table below is as of Phase 3's closure.
+**Phase 4 (2026-11-21):** one entry added, **B-075** (release tooling: store "What's new" text), **Fixed**, which makes 83 entries and 57 Fixed (and at the Beta 2 release, **B-076**, Fixed by the owner's scoped fix, **B-077**, a test race, Open for Beta 3, **B-078**, stale window tests, Fixed, **B-079**, the Linux CI time limit, Fixed by the owner's decision, **B-080**, a live-server test, and **B-081**, a window-test intermittent, Open for Beta 3: 89 entries); B-074 gained Phase 4 evidence (not reproduced in two full runs, see its entry) and stays Investigating. No other status changed: Phase 4 changed no product behaviour. The table below is as of Phase 3's closure.
 
 **At Phase 3's formal closure (2026-11-20; the owner accepted and closed Phase 3).** Reconciled entry by entry against the code, the commits, VERIFICATION.md, and the owner's confirmations. All 82 entries are B-001 to B-074, F-001 to F-005, F-P1 to F-P4 (F-P1 and F-P2 share one entry, counted once):
 
@@ -2826,6 +2826,15 @@ A second Right always worked. Every slower route tried (by Left or Y, after Quic
 - **Not caused by B-079's change:** it failed alone, with no UI test running; the engine and this test are unchanged.
 - **Likely cause (not confirmed):** the test reads the server's account of the session 500 ms after the seek; when the server has not yet registered the remuxed session, Reflux correctly reports the delivery as unconfirmed. To investigate in Beta 3: wait for the server's session facts, as the subtitle case already waits, without loosening what is compared.
 
+<a id="b-081"></a>
+### B-081: `FirstRunTest` can find the first folder empty (real-window test, intermittent, Linux CI)
+
+- **Category:** Test reliability (window tests) · **Priority:** Low · **Platforms:** hosted Linux runner, "Desktop window tests"
+- **Components:** `desktop/app` tests (`FirstRunTest.choosingAFolderBuildsTheLibraryAndTheNextLaunchRemembersIt`, line 64); possibly the first scan's timing
+- **How found:** 2026-11-22, hosted CI run 45003843008 on `b7d5ba2` (documentation only above `ff98a0d`): "Timed out waiting for \"Recently Added\"… On screen: Nothing to watch here yet, No movies or shows were found in My Media". The same code passed on hosted CI (44994139313 on `ff98a0d`) and in four Linux-image runs (B-078, B-079).
+- **Phase:** Beta 3 (found after the freeze) · **Status:** Open · **Last updated:** 2026-11-22
+- **To investigate (Beta 3):** whether the first scan can run before the test's media is visible, and whether Reflux then picks it up by itself as the empty state promises (a product question, not only a test one); not weakened.
+
 ## Beta 3 backlog (from Phase 3's closure, 2026-11-20)
 
 Phase 3 is closed and Beta 2's fix scope is frozen (DECISIONS.md, 2026-11-20, "Phase 3 accepted and formally closed"). Every bug, UX issue, request or improvement found from now on is entered here, and in its own entry with the next free number, for **Beta 3 or a later release**, unless the owner explicitly authorises it as a critical Beta 2 blocker.
@@ -2836,6 +2845,7 @@ Phase 3 is closed and Beta 2's fix scope is frozen (DECISIONS.md, 2026-11-20, "P
 | [B-061](#b-061) | A Skia crash after a Direct3D failure (Windows, the owner's build) | Investigating; a Beta 3 candidate (the owner places it) |
 | [B-044](#b-044) | Test intermittents mixing the test and wall clocks | Investigating (test infrastructure) |
 | [B-056](#b-056) | Blank on closing the mini-player | Deferred by the owner (a later beta) |
+| [B-081](#b-081) | `FirstRunTest` once found the first folder empty (window test, Linux CI) | Open (Beta 3) |
 | [B-080](#b-080) | A live-server test's remux case can be unconfirmed (local only) | Open (Beta 3) |
 | [B-079](#b-079) | The Linux CI job no longer fits its 60-minute limit | Fixed: Linux's limit 75 min (the owner's decision); parallel JVMs tried and reverted |
 | [B-078](#b-078) | Three real-window tests expected the interface before Phase 2 (tests only) | Fixed before Beta 2's release |
