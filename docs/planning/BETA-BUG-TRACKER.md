@@ -2724,7 +2724,7 @@ A second Right always worked. Every slower route tried (by Left or Y, after Quic
 - **Category:** Focus timing (TV and controllers) · **Priority:** Low · **Platforms:** found in a test on the hosted Linux runner
 - **Components:** `ui` (`DownloadsUiTest.aRemoteReachesEveryDownloadControlAndFocusComesBack`; the television's focus-entry rule)
 - **How found:** 2026-11-21, hosted CI run 44912262295 on `ecce561` (the `0.9.0-beta.2` promotion): Check (ubuntu-24.04), `:ui:jvmTest` 548 tests, 1 failed: "Timed out waiting for focus on its removal. Instead: [the download's row]" (`DownloadsUiTest.kt:441`), after a second copy was added and the page opened, one Right press did not move focus to the row's removal button in 30 s.
-- **Phase:** Beta 2 (a release blocker by the owner's decision of 2026-11-21: a scoped fix before release) · **Status:** Fixed (pending hosted CI) · **Last updated:** 2026-11-22
+- **Phase:** Beta 2 (a release blocker by the owner's decision of 2026-11-21: a scoped fix before release) · **Status:** Fixed (hosted CI green: run 44994139313 on `ff98a0d`) · **Last updated:** 2026-11-22
 
 **Diagnosis (2026-11-21, Linux CI image locally, `reflux-linux-check`):**
 - **Deterministic on Linux, not intermittent:** the hosted rerun of the failed job failed the same way, and the test failed 2 of 2 in the Linux image locally; it passes on Windows (hosted and local, 6 of 6).
@@ -2773,7 +2773,7 @@ A second Right always worked. Every slower route tried (by Left or Y, after Quic
 - **Category:** Test maintenance (stale expectations) · **Priority:** High for the release (it blocks hosted CI), none for viewers · **Platforms:** the Linux CI job's "Desktop window tests" step (Xvfb); these tests run nowhere else by default
 - **Components:** `desktop/app` tests only: `BrowsingWindowTest` (`theMouseBrowsesTheRealWindow`, `aControllerBrowsesTheRealWindow`), `EmbeddedPlaybackTest` (`playsInsideTheWindowAndAnswersToTheMouse`)
 - **How found:** 2026-11-22, hosted CI run 44941967966 attempt 2 on `dc70958`: with B-076 fixed, Linux's "Build and test" step passed for the first time since Phase 2 (`BUILD SUCCESSFUL in 51m 32s`), so the window tests after it ran; 77 tests, 3 failed. Every Linux run since `77b994c` had stopped before this step, and Phase 3 ran only `AboutWindowTest` (B-045), so the three had not run since Phase 2.
-- **Phase:** Beta 2 (needed for the release's CI gate; test code only, no product change) · **Status:** Fixed (pending hosted CI) · **Last updated:** 2026-11-22
+- **Phase:** Beta 2 (needed for the release's CI gate; test code only, no product change) · **Status:** Fixed (hosted CI green: run 44994139313) · **Last updated:** 2026-11-22
 - **Cause, each an accepted Phase 2 change the test had not followed** (checked in the code, not assumed):
   - Search's idle page lists suggestions under "Start with" by title (B-034 to B-037): the test clicked a literal `favorites` and waited for "Try"; the page shows "Favorites" and "Start with".
   - The page's controller prompts are Select, Back, Y "Sidebar" and LT "Hide hints" (F-P2, B-055); Start (PlayStation: "Options") still opens Sources but is no longer advertised. The test waited for an "Options" prompt.
@@ -2788,7 +2788,7 @@ A second Right always worked. Every slower route tried (by Left or Y, after Quic
 - **Components:** `.github/workflows/ci.yml`, job "Check" on Linux (`timeout-minutes: 60`: "Build and test", then "Desktop window tests")
 - **How found:** 2026-11-21/22, with B-076 and B-078 fixed. Run 44941967966 attempt 1 (`dc70958`): cancelled at 60 min inside "Build and test". Run 44953745884 (`3986850`) attempts 1 and 2: **"Build and test" passed both times** (every test on Linux green), then cancelled at 60 min inside "Desktop window tests" (22:52 and 23:53 UTC). The only Linux job to finish since the fixes (44941967966 attempt 2, 56 min) finished early because three window tests failed fast (B-078).
 - **Measured:** Linux `:ui:jvmTest` alone is 48.6 min of test time over 67 classes (no hang; slowest class 4.4 min); "Build and test" ~51–52 min; the window tests ~4–8 min more on the hosted runner. Before Phase 2 the job's tests were mostly restored from Gradle's cache, so the limit was never approached.
-- **Phase:** Beta 2 (blocks the release's CI gate) · **Status:** Fixed by the owner's decision: Linux's limit 75 minutes, the tests serial as before (pending hosted CI) · **Last updated:** 2026-11-22
+- **Phase:** Beta 2 (blocks the release's CI gate) · **Status:** Fixed (hosted CI run 44994139313 on `ff98a0d`: Linux 53.8 min, every job green) · **Last updated:** 2026-11-22
 - **Options first offered (none applied):** raise the Linux job's `timeout-minutes` (for example to 90; nothing skipped or loosened, every test still runs and must pass); or move "Desktop window tests" into a job of its own with its own limit; or speed up the UI tests (Beta 3 work, not a release fix).
 - **The owner's decision (2026-11-22):** not to raise the limit first, but to measure and shorten the Linux job, keeping the 60 minutes unless optimisation proves insufficient.
 - **Measurements (2026-11-22; hosted logs of runs 44953745884 and 44941967966, and the Linux CI image limited to 4 CPUs and 14 GB like the runner):**
