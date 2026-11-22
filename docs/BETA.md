@@ -9,7 +9,7 @@ Written in Phase 4 (2026-11-21). It replaces [planning/BETA-2.md](history/phases
 | Build | Contents | State |
 | --- | --- | --- |
 | `0.9.0-beta.1` (`versionCode` 90031, tag `v0.9.0-beta.1`, 2026-11-16) | M8 to M11: profiles, the navigation's final structure, Player 2.0, the mini-player, distribution | **In testing**: Play closed testing (sent for review 2026-11-17), Amazon Live App Test 1 (submitted 2026-11-17), GitHub **pre-release** (Windows zip, Linux tarball). Testers: the owner only. Play's 14-day clock not started |
-| `0.9.0-beta.2` (`versionCode` 90032, tag `v0.9.0-beta.2` on `ff98a0d`, 2026-11-22) | Beta 2's three phases (below) and the release fixes B-076, B-078, B-079 | **Released to testers**: GitHub **pre-release** (desktop); Amazon Live App Test 1 (submitted 2026-11-22); Google Play closed testing: **upload pending (the owner)**. See [Beta 2 release](#beta-2-release-2026-11-22) |
+| `0.9.0-beta.2` (`versionCode` 90032, tag `v0.9.0-beta.2` on `ff98a0d`, 2026-11-22) | Beta 2's three phases (below) and the release fixes B-076, B-078, B-079 | **In testing since 2026-11-22**: GitHub **pre-release** (desktop); Amazon Live App Test 1 (**Test in-progress**); Google Play closed testing: **upload pending (the owner)**. See [Beta 2 testing](#beta-2-testing-from-2026-11-22) |
 | `0.9.0-beta.3` | The [Beta 3 backlog](planning/BETA-BUG-TRACKER.md#beta-3-backlog-from-phase-3s-closure-2026-11-20) and tester reports | Not started |
 | `0.9.0-rc.N` | Feature freeze, blocker fixes only, store submissions | Not started |
 
@@ -61,6 +61,9 @@ Each is in the tracker with its evidence. User-visible ones are listed for teste
 | B-022 | Windows start-up slower than Android: measured, no optimisation justified yet | Investigating |
 | B-063 | Linux display scale: verified in a VM; KDE's "scaled by the system" and mixed-scale monitors not followed | Fixed, with accepted limits |
 | B-070 | Steam library artwork made, never applied in Steam | Fixed, unverified in Steam |
+| B-077 | `MpvEngineTest`'s credentials-log test can race its log thread (hosted Linux, once; test only) | Open |
+| B-080 | The live-Jellyfin test's remux case can find the server's session unconfirmed (local only) | Open |
+| B-081 | `FirstRunTest` once found the first folder empty (hosted Linux window tests) | Open |
 
 ## From Beta 3 to 1.0
 
@@ -103,3 +106,44 @@ What was done, under the owner's authorisations of 2026-11-21 and 2026-11-22 (DE
 - **Amazon:** Live App Test 1, upcoming version `0.9.0-beta.2`: the APK (90032), Fire TV only (83 devices; no tablets, no Automotive), DRM **No** (the console now asks; Beta 1 had none recorded), the tester group "Reflux", the five Fire TV screenshots and the background captured on the physical stick. **Submitted 2026-11-22** ("Test submitted"); Beta 1 stays in progress until Amazon processes it.
 - **Google Play: not uploaded.** The AAB is 11.9 MB and the browser upload available to the agent is limited to 10 MB; there are no Play API credentials. **Owner step:** Play Console → Reflux → Test and release → Closed testing - Alpha → Create new release → upload `reflux-0.9.0-beta.2-android.aab` from release run 44999770048's `release` artifact (kept 14 days) → release notes: `release-notes` artifact, `store-whats-new.txt` → Next → Save and publish (to the closed track only; never production).
 - **Website:** `main` fast-forwarded to `b7d5ba2` (the record) after CI was green; Vercel deployed it, and the live Download, testing and install pages name Beta 2 (VERIFICATION.md, "Beta 2 release").
+
+## Beta 2 testing (from 2026-11-22)
+
+**Beta 2 testing is active** on the desktop and on Fire TV from 2026-11-22; on Android, Google TV and Android TV it starts when the owner uploads the bundle to Play (below). Checked in the consoles on 2026-11-22:
+
+| Channel | State | Testers | How testers get it |
+| --- | --- | --- | --- |
+| GitHub pre-release (Windows, Linux) | Published, immutable | Anyone with the link | <https://reflux.rsxdevelops.dev/download> |
+| Amazon Live App Test 1 (Fire TV) | `0.9.0-beta.2` **Test in-progress** (Beta 1 no longer listed); 83 Fire TV devices; DRM No (the console reports no Amazon DRM integration in the APK) | Group "Reflux", 1 tester | Appstore Beta Hub / the LAT invitation; Amazon offers the update to accepted testers |
+| Google Play, Closed testing - Alpha | **Still `0.9.0-beta.1` (90031), "Available to selected testers"**; no Beta 2 release, no draft | E-mail list "Reflux Beta", 12 users; feedback to support@rsxdevelops.dev | Opt-in <https://play.google.com/apps/testing/dev.rsxdevelops.reflux>; Beta 2 arrives as an update once uploaded and through Google's review |
+
+**Google Play (owner step).** The agent's browser upload is capped at 10.4 MB a call and the AAB is 11.9 MB (tried 2026-11-22: refused before upload; the empty draft discarded, the track left as it was). Upload the verified bundle from `Documents/Reflux-release-archives/0.9.0-beta.2/release/reflux-0.9.0-beta.2-android.aab` (or run 44999770048's `release` artifact until 2026-12-06): Closed testing - Alpha → Create new release → Upload → release name `90032 (0.9.0-beta.2)` → release notes below → Next → review warnings → Save and publish to the closed track only. Then check the release reads "In review", and later "Available to selected testers".
+
+Release notes for Play (en-US, 420 characters of Play's 500; `store-whats-new.txt` covers only the first two changelog items, so these summarise Beta 2 instead, from CHANGELOG.md):
+
+```
+<en-US>
+Beta 2:
+• Scene previews on the timeline where your Jellyfin (10.9+) or Plex server makes them; the right stick steps through them.
+• One controller layout everywhere: X opens a quick view, Y the navigation, LT hides hints.
+• Redesigned Search with suggestions from your library and real filters.
+• Reflux's own keyboard for remotes and controllers.
+• Many focus, navigation and playback fixes on TV, phones and tablets.
+</en-US>
+```
+
+**Tester announcement.** No e-mail or messaging channel is connected to the agent, so it was **not sent**; the owner sends it (Play's list "Reflux Beta" and the Amazon "Reflux" group, by blind copy so no tester sees another's address; never publicly):
+
+> **Reflux Beta 2 is out! 🚀**
+>
+> Reflux Beta 2 is now available for testing.
+>
+> What's new: scene previews on the timeline; consistent controller navigation with Quick View on X; a redesigned Search; Reflux's own keyboard for remotes and controllers.
+>
+> Get the update: Windows & Linux: https://reflux.rsxdevelops.dev/download. Fire TV: update through your Amazon Live App Test invitation. Android: update through your Google Play testing invitation once Beta 2 is available on the closed testing track.
+>
+> Please report bugs, unexpected behaviour, or anything that feels off through Settings → About. Feedback from real devices is especially valuable during this beta. Thank you for testing Reflux and helping RSX Develops make it better.
+
+**During Beta 2 testing.** Reports come to support@rsxdevelops.dev (Settings → About Reflux has the support report); each becomes a tracker entry with the next free ID, its device and build, and whether it reproduces. Triage as in "Beta operations": blockers before any new build, criticals in the cycle, the rest to the Beta 3 backlog. No features during testing; Beta 3 is not authorised by this. The known issues above (B-077, B-080, B-081 among them) stay open and do not block testing unless new evidence makes one release-critical.
+
+**Release artifacts preserved** in `Documents/Reflux-release-archives/0.9.0-beta.2/` (local, outside the repository): the `release` artifact (APK, AAB, Windows zip, Linux tarball, libmpv source, `SHA256SUMS`, manifest, provenance), `release-notes`, `published-record`, and the `linux` and `libmpv` build intermediates; 18 files, 462 MB, with `README.txt` and `ARCHIVE-SHA256SUMS` (VERIFICATION.md, "Beta 2 testing activation").

@@ -4,7 +4,7 @@ What's new in each beta, written for the people testing it. The complete list of
 
 ## Beta 2 (`0.9.0-beta.2`, 22 November 2026)
 
-**Out for testers.** Windows and Linux: the website's Download page (a GitHub pre-release). Fire TV: Amazon's Live App Test, once Amazon has processed the new build (you are invited as before). Android, Google TV and Android TV: Google Play's closed test, once the build is uploaded and Google's review passes; until then Play still offers Beta 1. Your version is under Settings → About Reflux.
+**Out for testers.** Windows and Linux: the website's Download page (a GitHub pre-release). Fire TV: Amazon's Live App Test (live since 22 November; update through your invitation). Android, Google TV and Android TV: Google Play's closed test, once the build is uploaded and Google's review passes; until then Play still offers Beta 1. Your version is under Settings → About Reflux.
 
 ### Highlights
 
