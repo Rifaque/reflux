@@ -9,7 +9,7 @@ Written in Phase 4 (2026-11-21). It replaces [planning/BETA-2.md](history/phases
 | Build | Contents | State |
 | --- | --- | --- |
 | `0.9.0-beta.1` (`versionCode` 90031, tag `v0.9.0-beta.1`, 2026-11-16) | M8 to M11: profiles, the navigation's final structure, Player 2.0, the mini-player, distribution | **In testing**: Play closed testing (sent for review 2026-11-17), Amazon Live App Test 1 (submitted 2026-11-17), GitHub **pre-release** (Windows zip, Linux tarball). Testers: the owner only. Play's 14-day clock not started |
-| `0.9.0-beta.2` (`versionCode` 90032) | Beta 2's three phases (below) | **Approved and versioned (`ecce561`), not released: held on hosted CI** ([B-076](planning/BETA-BUG-TRACKER.md#b-076)); no tag, no publication |
+| `0.9.0-beta.2` (`versionCode` 90032, tag `v0.9.0-beta.2` on `ff98a0d`, 2026-11-22) | Beta 2's three phases (below) and the release fixes B-076, B-078, B-079 | **Released to testers**: GitHub **pre-release** (desktop); Amazon Live App Test 1 (submitted 2026-11-22); Google Play closed testing: **upload pending (the owner)**. See [Beta 2 release](#beta-2-release-2026-11-22) |
 | `0.9.0-beta.3` | The [Beta 3 backlog](planning/BETA-BUG-TRACKER.md#beta-3-backlog-from-phase-3s-closure-2026-11-20) and tester reports | Not started |
 | `0.9.0-rc.N` | Feature freeze, blocker fixes only, store submissions | Not started |
 
@@ -46,7 +46,7 @@ Beta 2 (`0.9.0-beta.2`, VERSIONING.md) is built only when every step holds **and
 | 10 | The owner's review and approval | **Done**: approved 2026-11-21 (DECISIONS.md, "Beta 2 release") |
 | 11 | The owner's authorisation of the version and build | **Done**: `0.9.0-beta.2` authorised 2026-11-21 |
 | 12 | Release notes from CHANGELOG.md's Unreleased | **Prepared** ([BETA-NOTES.md](BETA-NOTES.md); CHANGELOG.md grouped) |
-| 13 | The build and its distribution through the release workflow | **Prepared**: the workflow, store assets and website are ready; nothing run for release (RELEASE.md, "Releasing a version") |
+| 13 | The build and its distribution through the release workflow | **Done 2026-11-22** (release run 44999770048; [Beta 2 release](#beta-2-release-2026-11-22)), apart from the Play upload (the owner's) |
 
 ## Known issues carried to Beta 3
 
@@ -90,3 +90,16 @@ Carried from M12's preparation ([history/milestones/LAUNCH.md](history/milestone
 The owner approved Beta 2 and authorised `0.9.0-beta.2` (DECISIONS.md, "Beta 2 release"). Done: the Fire TV listing captured on the physical stick; the store media moved to a release archive; the promotion commit `ecce561` (`release: 0.9.0-beta.2`; the build derives `versionCode` 90032, Windows 0.9.32, Linux 0.9.0~beta.2); the branch pushed; the local full check green. **Held** because hosted CI's Linux job fails `DownloadsUiTest` deterministically: the first Right after arriving on the Downloads page is lost on Linux timing ([B-076](planning/BETA-BUG-TRACKER.md#b-076), bisected to Phase 2's `77b994c`). The owner chose a scoped fix before release; the investigation narrowed it but no fix held, so none was kept. **Not done:** the tag, the release workflow, the GitHub pre-release, the Play and Amazon uploads, the website's deployment.
 
 **To resume:** fix B-076 (its entry says where to look next), commit, push, and see hosted CI green on every job; then, because a version once tagged is never rebuilt with other contents, the fix goes before the tag on top of `ecce561` (still `0.9.0-beta.2`, since nothing was given to anyone), and the release follows RELEASE.md, "Releasing a version".
+
+## Beta 2 release (2026-11-22)
+
+What was done, under the owner's authorisations of 2026-11-21 and 2026-11-22 (DECISIONS.md, "Beta 2 release"; the mission's messages):
+
+- **Fixes before the tag** (the owner's choice: fix, then release): B-076 (a focus fix with its regression test), B-078 (three real-window tests brought up to Phase 2), B-079 (Linux CI's limit 75 minutes after a measured investigation; parallel test JVMs tried and reverted). Hosted CI run 44994139313 on `ff98a0d`: **every job green**.
+- **`main`**: fast-forwarded `044c8f0..ff98a0d` (no merge commit, no force), as the release workflow requires.
+- **Tag** `v0.9.0-beta.2` (annotated) on `ff98a0d`. **Release workflow** run 44999770048: green on all five jobs, the draft verified independently on another OS.
+- **Checked by hand:** `release.py verify` on the full artifact set (5) and on the public draft (3, `--public`); `SHA256SUMS`; `apksigner`: the APK's signer `288c3810…3b1370`, equal to `REFLUX_UPLOAD_CERT_SHA256`; `aapt2`: `dev.rsxdevelops.reflux`, `versionCode` 90032, `0.9.0-beta.2`; `gh attestation verify` on all five artifacts, built by `release.yml` at `refs/tags/v0.9.0-beta.2`. No APK or AAB in the public release.
+- **GitHub:** published as a **pre-release**, not latest (no stable release exists), immutable: <https://github.com/Rifaque/reflux/releases/tag/v0.9.0-beta.2>. Publication record `release/published/0.9.0-beta.2.json` (identical to the workflow's `published-record`).
+- **Amazon:** Live App Test 1, upcoming version `0.9.0-beta.2`: the APK (90032), Fire TV only (83 devices; no tablets, no Automotive), DRM **No** (the console now asks; Beta 1 had none recorded), the tester group "Reflux", the five Fire TV screenshots and the background captured on the physical stick. **Submitted 2026-11-22** ("Test submitted"); Beta 1 stays in progress until Amazon processes it.
+- **Google Play: not uploaded.** The AAB is 11.9 MB and the browser upload available to the agent is limited to 10 MB; there are no Play API credentials. **Owner step:** Play Console → Reflux → Test and release → Closed testing - Alpha → Create new release → upload `reflux-0.9.0-beta.2-android.aab` from release run 44999770048's `release` artifact (kept 14 days) → release notes: `release-notes` artifact, `store-whats-new.txt` → Next → Save and publish (to the closed track only; never production).
+- **Website:** deployed from `main` once the publication record is there (VERIFICATION.md, "Beta 2 release").

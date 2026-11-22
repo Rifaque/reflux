@@ -2,9 +2,9 @@
 
 What's new in each beta, written for the people testing it. The complete list of changes is [CHANGELOG.md](../CHANGELOG.md) (the stores' "What's new" comes from it); the programme and its gates are [BETA.md](BETA.md); tracker IDs are kept out of these notes on purpose.
 
-## Beta 2 (`0.9.0-beta.2`): prepared, not released
+## Beta 2 (`0.9.0-beta.2`, 22 November 2026)
 
-**Not downloadable yet.** Beta 2 is waiting for the owner's approval; until it is published, everything below is in development and Beta 1 is the build to test.
+**Out for testers.** Windows and Linux: the website's Download page (a GitHub pre-release). Fire TV: Amazon's Live App Test, once Amazon has processed the new build (you are invited as before). Android, Google TV and Android TV: Google Play's closed test, once the build is uploaded and Google's review passes; until then Play still offers Beta 1. Your version is under Settings → About Reflux.
 
 ### Highlights
 

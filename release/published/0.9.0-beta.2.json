@@ -1,0 +1,82 @@
+{
+  "schema": 2,
+  "product": "Reflux",
+  "publisher": "RSX Develops",
+  "version": "0.9.0-beta.2",
+  "versionCode": 90032,
+  "windowsVersion": "0.9.32",
+  "linuxVersion": "0.9.0~beta.2",
+  "channel": "beta",
+  "androidPackage": "dev.rsxdevelops.reflux",
+  "commit": "ff98a0dd3aa14375468cddc3a4e27891e6d763c9",
+  "repository": "https://github.com/Rifaque/reflux",
+  "tag": "v0.9.0-beta.2",
+  "builtAt": "2026-11-22T08:04:20Z",
+  "builder": "github-actions",
+  "metadataProvider": {
+    "name": "trakt",
+    "clientId": "client id supplied"
+  },
+  "artifacts": [
+    {
+      "name": "reflux-0.9.0-beta.2-android.apk",
+      "platform": "android",
+      "arch": "universal",
+      "kind": "apk",
+      "size": 6782825,
+      "sha256": "40f2e37deb6847670db82c81ad6214b5876abb42e2f6e82c6f80fada2dfae766",
+      "android": {
+        "package": "dev.rsxdevelops.reflux",
+        "versionCode": 90032,
+        "versionName": "0.9.0-beta.2",
+        "targetSdk": 36,
+        "debuggable": false,
+        "signerSha256": "288c3810d9509c9732fccc333ff17813db4a73a228ca2f6773b148537c3b1370"
+      },
+      "distribution": "store"
+    },
+    {
+      "name": "reflux-0.9.0-beta.2-android.aab",
+      "platform": "android",
+      "arch": "universal",
+      "kind": "aab",
+      "size": 11880133,
+      "sha256": "48f1cb442880f67e9ff7330cf763f0b517851ccf8c12d431d37df528b4e87faa",
+      "android": {
+        "package": "dev.rsxdevelops.reflux",
+        "versionCode": 90032,
+        "versionName": "0.9.0-beta.2"
+      },
+      "distribution": "store"
+    },
+    {
+      "name": "reflux-0.9.0-beta.2-windows-x64.zip",
+      "platform": "windows",
+      "arch": "x64",
+      "kind": "zip",
+      "size": 107265524,
+      "sha256": "e13115a4290ef8a6284e73541dbaabfa979e88a3b1a2c9cde1661895278c6d76",
+      "signed": false,
+      "distribution": "github-release"
+    },
+    {
+      "name": "reflux-0.9.0-beta.2-libmpv-source.tar.xz",
+      "platform": "source",
+      "arch": "any",
+      "kind": "source",
+      "size": 62568712,
+      "sha256": "53853ac9089204270fcd4db16ce6e3d5660af0f41dde765c3fb12a489d1c9bfa",
+      "of": "libmpv-2.dll in the Windows archive",
+      "distribution": "github-release"
+    },
+    {
+      "name": "reflux-0.9.0-beta.2-linux-x64.tar.gz",
+      "platform": "linux",
+      "arch": "x64",
+      "kind": "tar.gz",
+      "size": 92587840,
+      "sha256": "0c490d827a856aee89c6253bf0f331ace202e15fcc1b253f4370249fb4dd48e2",
+      "distribution": "github-release"
+    }
+  ]
+}

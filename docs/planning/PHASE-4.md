@@ -142,3 +142,5 @@ New results only; the record is VERIFICATION.md, "Phase 4". Historical results (
 ## Follow-through: the Beta 2 release attempt (2026-11-21, after the closure)
 
 Recorded here so the closure above stays as it was. The owner's release mission (2026-11-21) approved Beta 2 and authorised its release; what happened is in BETA.md, "Beta 2 release attempt", and VERIFICATION.md, "Beta 2 release attempt". In short: the store media moved to the release archive (ARCHIVE.md), the Fire TV set re-captured on the physical stick, `0.9.0-beta.2` committed and pushed; **held** on hosted CI's Linux job (B-076), with the owner's choice of a scoped fix before release not yet achieved.
+
+**Completed 2026-11-22:** with B-076, B-078 and B-079 fixed and hosted CI green, `0.9.0-beta.2` was tagged on `ff98a0d`, built and verified by the release workflow, published as a GitHub pre-release, and submitted to Amazon Live App Testing; the Play upload is the owner's (the AAB is over the agent's upload limit). BETA.md, "Beta 2 release (2026-11-22)".
