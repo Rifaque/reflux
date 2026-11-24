@@ -313,3 +313,46 @@ The audit's first decision here ("ready to retire") was wrong: it rested on a ne
 **NOT READY TO RETIRE CACHYOS** until the owner has launched Reflux, played a film, and seen the picture and its controls together, working, with no detached blank controls window. Since CACHY-011 the picture is drawn in Reflux's own scene, the controls over the real video; that too is for the owner to judge.
 
 **Retired by the owner (2026-11-24).** The owner played the integrated player on the real desktop and reported it working, fullscreen included, then the mini-player's square corners (fixed in `1da6aaf`, verified only in the nested Hyprland), and chose to retire CachyOS and continue on Windows. **The Linux player is not accepted:** its acceptance, and the corner fix's check on a real Linux desktop, wait for the next Linux machine. Nothing is merged into `main`.
+
+## Windows acceptance audit (2026-11-24)
+
+The owner's Windows-led acceptance audit of this branch. Every test result, with where it ran, is in [VERIFICATION.md](../VERIFICATION.md), "Windows acceptance audit of `cachyos-final-audit`". Nothing here is accepted or merged: acceptance and the merge are the owner's.
+
+**Git.** `origin/main` = `main` = `1d65dcf` (unmoved); `origin/cachyos-final-audit` = `fec8a4a` at the start, six linear commits on `1d65dcf`, no merge commits, no tags, no local-only commits; working tree clean. This audit adds one commit: B-091's fix; B-093's and B-097's test fixes; B-091 to B-097 in the tracker; this section; VERIFICATION.md. Pushed normally to the branch. The branch stays a fast-forward of `main`.
+
+**Hosted CI on `fec8a4a`.** CI 45416718643: everything PASS except the Linux check (two player window tests, both on the fallback renderer: B-092). Release rehearsal 45416718996: PASS. The Linux renderer was never exercised by hosted CI: the runner has no OpenGL, so Skiko draws in software and every playback takes `linux-x11-shape-fallback` (its log says so). Hosted CI's Windows job skips the window tests; they were run on the Windows machine instead.
+
+### Review of the change set
+
+- **The integrated Linux renderer (CACHY-011; `LinuxGlVideo`, `SkikoGl`, `MpvGlRender`, `GlibcTrim`, `DesktopPlatform`, `Main.kt`).** Sound in its main path: libmpv renders inside Compose's draw on the event thread, Skiko's context current, into a texture Skia adopts (Skia deletes it with its image); the framebuffer is Reflux's; `BLOCK_FOR_TARGET_TIME` 0, so the event thread never waits for a frame; Skia's GL state is reset after every libmpv call; the update callback only posts a redraw, is detached before the render context is freed, and its JNA callbacks are held for the context's life; the render context is made before the file opens and freed in a draw before the engine closes; no CPU read-back of frames (decoding itself copies on Mesa: `vaapi-copy`, as recorded in CACHY-011). Skiko's internals are reached in one guarded adapter, each step checked, nothing cached, the version pinned by a unit test; a failure is logged with the fallback's name and reason, and the fallback is never logged as the integrated renderer. Linux only: `glVideo` is null elsewhere, `SHAPED_VIDEO` is false off Linux, the `--add-opens` flag is added only when building on Linux. **One edge to note (not changed):** when Skiko replaces its context mid-playback (`context !== skia` in `draw`), the old render context is freed with the *new* context current, which libmpv's rule does not allow; rare (a context replacement), worth a look on Linux.
+- **The mini-player's rounded video (`pictureClip`, `1da6aaf`).** Correct as code: the integrated picture's canvas itself is clipped to `RoundedCornerShape(placement.pictureRadius)`, the dock's radius; no clip at radius 0 (the full player); nothing drawn over the corners, no extra copy or window. Used only on the Linux integrated path; Windows keeps its own corners (`SurfaceCorners`, the window region), and `MiniPlayerWindowTest` (which checks them) passes on Windows. Not seen on a real Linux desktop (as CACHY-011 says). Nit: its KDoc was inserted between `pictureRim`'s KDoc and `pictureRim`, leaving that comment detached.
+- **The sidebar (F-P1, CACHY-004).** As described: Start (≡) toggles the sidebar where there is one (`NavigationStyle.collapsible` is only `SIDEBAR`), Sources elsewhere (the tablet's rail, TV rail, phone), with `MENU`'s own conditions; Y unchanged; the sidebar's name is the pointer's toggle. **Found: B-091**, a regression: Start with Quick View open did nothing (it had closed it); fixed and tested. Nit: a comment in `NavigationRail` still says "the button at its foot".
+- **The keyboard and PIN pad (CACHY-005, -006) and the hints (B-087).** The shortcut moves are complete on every platform: the left stick's press is read on Android (`KEYCODE_BUTTON_THUMBL`), Windows (XInput `0x0040`) and Linux (`BTN_THUMBL`); the keyboard's hints name LS and LT; the page's hints hide while it is open. Seen on the Google TV emulator.
+- **Quick View (B-082).** `quickViewModel` and the details page share `showSummary` and `showDetail`/`showOutline` share one season ordering, so they cannot drift; a film or episode still uses `detailsModel`. Not timed on Windows or a device in this audit.
+- **The desktop entry (CACHY-001).** `install-desktop-entry` writes one file in the user's own applications folder, atomically (`.tmp` then `mv`), repeatably; `--remove` deletes that one file; the archive carries it only when not Windows. Nit: a folder path containing a newline would write a broken entry.
+
+### Classification (for the owner's decision; Beta 2 stays frozen)
+
+| Kind | Items |
+| --- | --- |
+| Bug fixes, verified | B-082 Quick View (automated; Linux timed) · B-083 Linux window identity (Linux) · B-087 hints while typing · **B-091** Start closes Quick View again (this audit) |
+| Linux player (architectural, Beta 3-class in size) | B-084 / CACHY-002 / CACHY-011 the integrated renderer and the mini-player's rounded video: reviewed here; verified only on the retired CachyOS desktop; the fallback has an open defect (B-092) |
+| Features, verified, the owner's decision | F-P1 the sidebar shrink and Start's new meaning · `bin/install-desktop-entry` |
+| Redesigns, verified, the owner's decision | B-085 the compact keyboard and LS/LT shortcuts · B-086 the PIN pad |
+| Test fixes, verified (pre-existing failures, not the branch's) | B-093 the Pad 7 Search walk (physical Pad 7 5/5) · B-097 the live-server film (Windows, live server) |
+| Environment | B-089 (fonts), B-095 (emulator data) |
+| Open | B-092 (Linux fallback dock layer), B-094 (Fire TV path playback, unattributed), B-096 (Android accessibility bounds on Search with the keyboard up, pre-existing), B-088 (Android small box, needs the owner's film), B-090 (pre-existing) |
+| Regressions introduced by the branch, unresolved | **B-092** on the Linux fallback only |
+
+**Separation, if the owner keeps the redesigns out:** F-P1 and B-091 go together (B-091 exists only because of F-P1); B-087 is independent; B-085/B-086 are one file's layout (`RefluxKeyboard.kt`) and one mapping (`InputMapping`, the keyboard's LS/LT), separable by reverting those hunks.
+
+### Remaining for the owner's final CachyOS session
+
+1. **B-092:** on the real desktop, log where the fallback's dock layer is laid out (`Main.kt` ~358–362) and whether the integrated path's (`Main.kt:313`) is placed the same way; fix the layout, not the test; then hosted CI's Linux window tests (`MiniPlayerWindowTest`, `PlayerChromeResizeTest`) green.
+2. The mini-player's rounded video on the real desktop, during the docking animation and at a fractional scale (CACHY-011).
+3. The owner's acceptance of the integrated player (B-084), and the edge noted above (a context replaced mid-playback).
+4. The dock pin and relaunch from `bin/install-desktop-entry` (CACHY-001), if a dock is at hand.
+
+**For the owner elsewhere:** B-088's procedure on the phone with the film that shows it; a physical controller on Windows (Start, Y, LS, LT, RT); Start on Quick View on the physical TV; the decisions above. The branch's debug build is installed beside the store build on the phone, Pad 7 and Fire TV (the store build untouched).
+
+**Verdict of this audit: CONDITIONAL.** No unresolved regression on Windows or Android; B-091 fixed; the Windows and Pad 7 failures found (B-097, B-093) researched to their causes and fixed in their tests, the product defect B-093 uncovered recorded (B-096). Outstanding: B-092 (a branch regression on the Linux fallback, hosted Linux CI red), the Linux player's owner acceptance on a real desktop, and the owner's release-scope decisions.

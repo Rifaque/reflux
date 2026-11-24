@@ -158,6 +158,23 @@ class PhaseTwoWalkOnDeviceTest {
         send(MotionEvent.ACTION_UP, x1, y1, SystemClock.uptimeMillis())
     }
 
+    /**
+     * Puts away the system keyboard Search brings up as it opens, once it is up, and stays on Search (B-093). While the keyboard
+     * is up on the Xiaomi Pad 7 (landscape), Android's accessibility tree places Search's index about 200 px below where it is
+     * drawn (B-096), so a tap at a node's reported centre misses it there; a finger on the drawn words works (measured). With the
+     * keyboard down, the tree and the drawing agree. The keyboard rises a moment after the page settles, so it is waited for:
+     * Back before it is up would leave Search. A device where none comes goes on after [patienceMs].
+     */
+    private fun keyboardAway(patienceMs: Long = 3_000) {
+        val end = System.currentTimeMillis() + patienceMs
+        while (!imeShown() && System.currentTimeMillis() < end) Thread.sleep(100)
+        if (!imeShown()) return
+        back()
+        until("the keyboard put away", 5_000) { !imeShown() }
+        until("still on Search") { app.navigator.current == Destination.Search }
+        Thread.sleep(300)
+    }
+
     private fun back() {
         instrumentation.uiAutomation.performGlobalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_BACK)
         Thread.sleep(700)
@@ -668,7 +685,9 @@ class PhaseTwoWalkOnDeviceTest {
         }
         until("the index") { says("Start with") }
         Thread.sleep(800)
-        // A suggestion asks its question: the query is filled and the film is found.
+        // A suggestion asks its question: the query is filled and the film is found. Search came with the system keyboard up;
+        // it is put away first, so the suggestion is where accessibility says it is (B-093, B-096).
+        keyboardAway()
         tap(assertNotNull(withWords("Not seen yet")?.let { var n: AccessibilityNodeInfo? = it; while (n != null && !n.isClickable) n = n.parent; n }))
         until("asked") { app.searchQuery.isNotBlank() }
         until("found") { says("Jungle Walk") && says("result") }

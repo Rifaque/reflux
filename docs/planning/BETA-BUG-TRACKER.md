@@ -2940,6 +2940,91 @@ A second Right always worked. Every slower route tried (by Left or Y, after Quic
 - **Evidence:** on CachyOS, in a nested Hyprland that floats Reflux's windows, the test fails at the same step **on an untouched `1d65dcf` worktree and on the branch alike**: the page shows the film's details and its Back button, Back is clicked, and Home never comes. So it is not caused by the audit's changes. Hosted CI passed the same test on `ff98a0d` (2026-11-22), so it depends on timing or the window manager.
 - **To investigate:** whether Back is lost while the closing player's windows (the dock and its controls window) are still going, which a person clicking quickly after Stop could meet too.
 
+### B-091: A controller's Start no longer closed Quick View (regression on `cachyos-final-audit`)
+
+- **Category:** Bug (regression introduced by the branch) · **Priority:** Medium · **Platforms:** every platform with a controller (desktop, Android tablet and phone with a controller, Android TV, Fire TV with a game controller); a remote's or keyboard's Menu was not affected
+- **Components:** `ui` `AppState.dispatch` (Quick View's own actions); `core` `InputMapping` (Start while browsing)
+- **How found:** the Windows acceptance audit of `cachyos-final-audit` (2026-11-24), by source review: F-P1 (CACHY-004, `17aba72`) mapped Start while browsing from `MENU` to the new `COLLAPSE_NAVIGATION`, but Quick View's dispatch closed itself only on `BACK`, `CONTEXT` and `MENU`, and swallowed everything else. So Start with Quick View open did nothing, where before it closed it; INPUT_MODEL.md's own table ("Profile gate, panels": Start "Closes Quick View") still said it did.
+- **Phase:** found in the audit of a review branch, before any release; fixed on that branch · **Status:** Fixed (automated) · **Last updated:** 2026-11-24
+- **Fix:** Quick View also closes on `COLLAPSE_NAVIGATION` (`AppState.kt`), as it did on `MENU`. It neither shrinks the sidebar behind it nor opens Sources.
+- **Regression test:** `QuickViewUiTest.aControllersStartClosesQuickView_withoutTouchingTheSidebarOrSources` (a 1440 × 900 desk with a sidebar, and a television): **failed before the fix** (Windows 11, "Timed out waiting for closed by Start" at the desk), **passes after**; `QuickViewUiTest`, `SidebarCollapseTest`, `DirectionalInputTest` PASS on Windows 11 after it.
+- **Device check:** on the **Google TV emulator** (`Reflux_TV`, Android 16, the branch's debug build with this fix; an emulator, not a physical TV): Movies, a film's card focused, a remote's Menu (`keyevent 82`) opened Quick View; a controller's Start (`keyevent 108`, BUTTON_START) closed it, and Reflux stayed on Movies, not Sources. **Physical Fire TV, phone and Pad 7:** the debug build with the fix installed and their device walks run (VERIFICATION.md, "Windows acceptance audit"); none of those walks presses Start with Quick View open, so B-091's press itself was not made on a physical device.
+
+### B-092: Linux player window tests fail intermittently on the shaped-window fallback (`linux-x11-shape-fallback`)
+
+- **Category:** Bug or test synchronisation (to be told apart) · **Priority:** Medium (blocks a green hosted Linux CI on `cachyos-final-audit`) · **Platforms:** Linux desktop where Skiko does not draw with OpenGL (hosted CI's Xvfb; WSL2 Xvfb), so the player takes the fallback, not the integrated picture
+- **Components:** `desktop/app` `Main.kt` (the shaped native surface in the layered pane, the controls composed beneath it); tests `MiniPlayerWindowTest.comesBackToTheWholePlayer` (line 291), `PlayerChromeResizeTest.realMouseDrag` (line 58, `Shell.controlsSize()` null), `WindowHarness.pictureArea`
+- **How found:** hosted CI run 45416718643 on `fec8a4a` (Linux "Desktop window tests": 96 run, 2 failed, 12 skipped), read by the Windows acceptance audit (2026-11-24). Every playback in that run logged `Video renderer: linux-x11-shape-fallback (Skiko 0.150.1 draws with SOFTWARE_FAST, not OpenGL)`. The fallback path has never passed the hosted window tests: on `0377cab` (run 45379331219) the Linux job stopped earlier (`MpvEngineTest`, a `ConcurrentModificationException`), and `d3d60a7`'s run (45409542762) was cancelled.
+- **Phase:** found in the audit of a review branch · **Status:** Investigating · **Last updated:** 2026-11-24
+- **Evidence (WSL2 Ubuntu 24.04, a VM: Xvfb, openbox and xcompmgr as CI has them, no display or sound reachable):** both tests PASS once on the fallback; then `MiniPlayerWindowTest` with `EmbeddedPlaybackTest` and `PlayerChromeResizeTest` repeated (`--rerun-tasks`): run 1 PASS, run 2 `MiniPlayerWindowTest` FAIL at line 291, run 3 the same (stopped early). `MiniPlayerWindowTest` is therefore **intermittent on the fallback, 2 failures in 4**, failing where hosted CI failed. `PlayerChromeResizeTest` failed only on hosted CI so far.
+- **What fails:** "Timed out waiting for a click on the picture to bring the player back": the session stays `MINI`, docked at its place, with nothing over the surface. The test sends one click at the docked picture's centre, routed to Compose beneath the surface (the surface's input shape is empty). With the overlay window (Windows, and Linux before this branch) the click goes to the window over the surface, which exists only once it is aligned. On the fallback, `covered()` is true as soon as the native surface shows, so the test does not wait for Compose's `MiniPlayerSurface` to be laid out where the click lands.
+- **First hypothesis (disproved):** that the click came before the docked controls were laid out.
+- **Diagnosis (WSL2, the same environment, 2026-11-24):** temporary logging, in the WSL clone only and never committed (reverted afterwards), of each press and release the harness dispatches (target component, point), of every pointer event reaching the fallback's dock layer (`MiniPlayerSurface`, `Main.kt:361`, on the `Initial` pass, before any child can consume it), of its tap, and of where it is laid out (`boundsInWindow`). `MiniPlayerWindowTest` ×6: **6 PASS** (none reproduced the failure with the logging in place), all `linux-x11-shape-fallback`. In **every** run:
+  - the click on the picture was delivered to Compose's `SkiaLayer` at the docked picture's centre (window px 1168, 678; the picture at 1008, 588, 320 × 180);
+  - **the fallback's dock layer received no pointer event at all** (0 events, 0 taps in all six runs);
+  - it was laid out as a **226 × 33 box at (1014, 786), below the picture**, never over it (24 of 27 layouts in run 1; the others at (1254, 926) and (822, 626), the same size).
+  So the click on the docked picture falls through to whatever `RefluxApp` draws beneath it, which usually brings the player back (the test passes) and sometimes does not (the failures). The fault is that **the fallback's dock layer is not laid out over the picture**, not the test's timing.
+- **Not yet known:** why `MiniPlayerSurface` gets 226 × 33 below the picture inside the fallback's `VideoStage` (`Main.kt` ~358–362: a second `VideoStage` beside the one that places the surface), and what beneath the picture takes the click when the player comes back. Whether the integrated picture's dock layer (`Main.kt:313`, the same pattern) is placed the same way was not checked (no OpenGL in WSL's Xvfb). Hovering the docked picture on the fallback is likely affected too (the layer's fullscreen icon), not checked.
+- **Next (for the owner's CachyOS session):** log the same on a real desktop, for both renderers; find why the stage sizes the layer so; fix the layout, not the test. The test is not to be weakened.
+- **Scope:** the integrated picture (`linux-mpv-gl-integrated`) is what a Linux desktop with OpenGL uses; the fallback is for where it cannot be set up. Windows (its controls window) and Android are not on this path: `MiniPlayerWindowTest` passes on Windows 11 (2026-11-24).
+- **Status:** Investigating (cause narrowed, not fixed). Left for the owner's final CachyOS session, by the owner's decision.
+
+### B-093: On the Xiaomi Pad 7, the Search walk's tap on a suggestion does not fill the query (pre-existing)
+
+- **Category:** Bug or test input (to be told apart) · **Priority:** Low · **Platforms:** Xiaomi Pad 7 (HyperOS, Android 16), physical
+- **Components:** `android` test `PhaseTwoWalkOnDeviceTest.searchOnAPhoneFindsNarrowsEditsAndKeepsItsQuery` (line 673, "Timed out waiting for asked"); Search's suggestions ("Not seen yet")
+- **How found:** the Windows acceptance audit of `cachyos-final-audit` (2026-11-24), on the physical Pad 7. The test was added late in Phase 2 and verified then only on the phone emulator (VERIFICATION.md, Phase 2); there was no earlier Pad 7 result for it.
+- **Phase:** found in the audit of a review branch; fixed on that branch (a test fix; the product defect it uncovered is B-096) · **Status:** Fixed (physical Pad 7) · **Last updated:** 2026-11-25
+- **Evidence (physical Pad 7, the same device and session, only the debug app swapped):** the branch's debug build fails it **6 of 6**; the untouched baseline `1d65dcf` fails it **4 of 5**, at the same step with the same message. So it is **not caused by the branch**. It passes on the physical Nothing Phone (2a) (this audit) and on the phone emulator (Phase 2). Every other test of the Pad 7 set passes (below).
+- **Investigation (physical Pad 7, landscape 1164 × 777 dp; screen recordings of the run, temporary logging in the test, removed afterwards):**
+  1. Search opens with its field focused and the system keyboard up (by design on a touchscreen: `showsKeyboardOnFocus`); the keyboard rises about half a second **after** the page has settled, and takes about half the height.
+  2. Taps were not landing on the suggestion: UiAutomation's window list is empty here (no keyboard window to measure), and a scroll of the page into view moved the suggestion but the tap at its reported centre still did nothing.
+  3. Decisive experiment, keyboard up: a tap on the "Not seen yet" text at its **reported** centre does nothing; the "Movies" tab's reported bounds were in the status bar; a tap at the **drawn** position of the words (from a screenshot at that moment) **works** (query `unwatched`). Keyboard down: the reported and drawn positions agree, and the same reported-centre tap works.
+  So the cause: **while the system keyboard is up, the accessibility tree reports Search's index about 200 px below where it is drawn** (text drawn at about y 681–731, reported 899–954; still so after a second's rest). The test taps where accessibility says. A person's finger, on the drawn words, is not affected. The reporting defect is recorded as B-096.
+- **Fix (test, `PhaseTwoWalkOnDeviceTest`):** before tapping the suggestion the walk puts the system keyboard away (`keyboardAway()`): it waits for the keyboard to be up (Back before then would leave Search), presses Back, and checks it is still on Search. The step's purpose (a suggestion asks its question, by touch) is unchanged; the keyboard's own walk is `searchKeepsItsNavigationAndBackTellsTheKeyboardFromLeaving`.
+- **After (physical Pad 7):** the test **5 of 5** PASS; the whole class **11/11** (7 run, 4 TV-only skipped). Phone emulator: `PhaseTwoWalk` 11/11 twice (its Search failures in B-095 had the same cause).
+
+### B-094: Fire TV: `TelevisionOnDeviceTest`'s playback from a chosen path intermittently does not start (unattributed)
+
+- **Category:** Bug or test environment (to be told apart) · **Priority:** Medium (playback on Fire TV) · **Platforms:** Fire TV Stick 4K Plus (Fire OS, Android 11), physical
+- **Components:** `android` test `TelevisionOnDeviceTest.aFolderChosenByItsPathBecomesALibraryThatPlaysAndSurvivesItsStorage` ("Timed out waiting for playback from a path"; the player in `ERROR` once and `PAUSED` at 0 once)
+- **How found:** the Windows acceptance audit of `cachyos-final-audit` (2026-11-24), on the physical Fire TV.
+- **Phase:** Beta 3 · **Status:** Open (unattributed) · **Last updated:** 2026-11-24
+- **Evidence:** the branch's debug build failed it in its first **3** runs and passed the next **3** (3 of 6); the untouched baseline passed **4 of 4**, run between them. The branch changes no Android code (`android/` is untouched; the shared player changes are `Modifier.cutsVideo()`, which does nothing without a provider, and only Linux provides one), and the branch's failures were all in the runs that started on a debug data directory left by an older debug build. Neither "caused by the branch" nor "pre-existing" is shown: recorded as unattributed.
+- **Also seen and explained:** `PhaseTwoWalkOnDeviceTest` failed 5 TV walks twice on the Fire TV's old debug data ("Timed out waiting for Home" and similar); after the baseline had run on the same device, the branch passed **11/11** (the baseline also 11/11). Recorded as the old data's state, not a product failure.
+- **To investigate:** a clean debug data directory, then repeated runs of both builds; the player's error on the `ERROR` run.
+
+### B-095: On the phone and tablet emulators, three device walks fail on the baseline as on the branch (emulator data)
+
+- **Category:** Test environment (to be told apart from a bug) · **Priority:** Low · **Platforms:** `Reflux_Phone` and `Reflux_Tablet7` emulators (Android 16); **not** the physical Nothing Phone (2a) or Pad 7, where the same classes pass (B-093 apart)
+- **Components:** `android` tests `PhaseThreeWalkOnDeviceTest.quickViewOpensOnAFilmAndBackClosesIt` ("Timed out waiting for a card on Home", line 166), `PhaseTwoWalkOnDeviceTest.searchOnAPhoneFindsNarrowsEditsAndKeepsItsQuery`, `…searchKeepsItsNavigationAndBackTellsTheKeyboardFromLeaving`
+- **How found:** the Windows acceptance audit of `cachyos-final-audit` (2026-11-24), emulator runs.
+- **Phase:** Beta 3 · **Status:** Open (pre-existing) · **Last updated:** 2026-11-24
+- **Evidence (the same emulator and data, only the debug app swapped, two runs each):** `Reflux_Tablet7`: baseline `1d65dcf` fails all three, 2 of 2; the branch the same three, 2 of 2. `Reflux_Phone`: baseline fails `quickViewOpens…` 2 of 2 and one Search walk in each run; the branch `quickViewOpens…` 2 of 2 and one Search walk in one run. **Not caused by the branch.**
+- **Likely cause of `quickViewOpens…` (not confirmed):** the emulators' debug libraries are seeded by earlier sessions, and Home's first cards are landscape Continue Watching cards; the test's card filter requires a portrait card (`width < height`).
+- **After B-093's test fix (2026-11-25):** `Reflux_Phone`: `PhaseTwoWalk` **11/11 twice** (its Search failures shared B-093's cause); `quickViewOpens…` still fails (2 of 2). `Reflux_Tablet7` (960 × 600 dp): both Search walks still fail 2 of 2, with a different message from the start ("actual value is null": the suggestion node not found at all), so a cause of their own; `quickViewOpens…` still fails.
+- **To investigate:** a clean debug data directory on the emulators; the test's card filter; why the tablet emulator's Search has no "Not seen yet" node.
+
+### B-096: Android: while the system keyboard is up, the accessibility tree places Search's index about 200 px below where it is drawn
+
+- **Category:** Accessibility bug · **Priority:** Medium (TalkBack users) · **Platforms:** Android; measured on the Xiaomi Pad 7 (HyperOS, Android 16, landscape); other devices not measured
+- **Components:** `ui` `SearchScreen` (the idle index in its `LazyVerticalGrid`), the shell's keyboard padding (`MainActivity`: `windowInsetsPadding(WindowInsets.ime…)` around the page; `adjustResize`); Compose's accessibility bounds
+- **How found:** B-093's investigation (2026-11-25).
+- **Phase:** Beta 3 · **Status:** Open (pre-existing: the baseline behaves the same) · **Last updated:** 2026-11-25
+- **Evidence (physical Pad 7):** with the keyboard up, "Not seen yet" drawn at about y 681–731 px (screenshot at the moment) and reported by accessibility at 899–954, a second later still; the "Movies" tab reported in the status bar; a tap at the reported centre does nothing, a tap at the drawn words fills the query. With the keyboard down, reported and drawn positions agree.
+- **Impact:** TalkBack's focus outline and its double-tap target on Search would be misplaced while the system keyboard is up; a sighted finger is not affected.
+- **Not known:** the mechanism (whether the reported bounds lag the page's resize or scroll while the keyboard animates in, or are computed against the window before its keyboard inset); whether a phone shows it. Not changed blind: to be measured with TalkBack on a device, then fixed with a test of its own.
+
+### B-097: `PlannedPlaybackWindowTest` named a film that has left the live test server
+
+- **Category:** Test fixture · **Priority:** Low · **Platforms:** Windows (the live-server window test; run only where `~/.reflux-live/jellyfin.env` names a server)
+- **Components:** `desktop/app` test `PlannedPlaybackWindowTest.aPlanIsCarriedOutInTheRealWindow`
+- **How found:** the Windows acceptance audit (2026-11-24): `NoSuchElementException` (no film titled "Mission: Impossible - Fallout").
+- **Phase:** found in the audit of a review branch; fixed on that branch · **Status:** Fixed (Windows 11, the live server) · **Last updated:** 2026-11-25
+- **Investigation:** a temporary test (never committed; removed from both scratch worktrees) connected as the test does and printed counts and two titles only: the branch and the baseline sync identically (one scan report, `added=999`, 181 films, 38 shows, 814 episodes); "Mickey 17" present, nothing titled "Mission" at all. The Jellyfin read pages by 500 until the server's own `TotalRecordCount` (no cap), so the film is not among what the server lists for this account: the test failed on the baseline as on the branch. (The branch's first sync took 170 s against a cold server; warm, 8.4 s, as the baseline's 8.1 s.) 66 of the server's films have a non-forced PGS track.
+- **Fix:** the test still prefers Fallout where the server has it; otherwise it takes the first film, by title, with what its steps need, not a name: a non-forced PGS track **and** only AC-3 or E-AC-3 audio (the stand-in device has neither, so the plan's `AUDIO_CONVERSION` holds whichever track plays). A first version that asked only for PGS chose a film that plays directly (`DIRECT_PLAY`) and failed the plan's check, so the audio condition is required. With none suitable it fails saying so.
+- **After (Windows 11, physical, the live server):** PASS in 98 s on *American Assassin*: planned `AUDIO_CONVERSION` = actual, the other language from its place, the PGS subtitle extracted with the picture running (picture by 7 s, subtitle by 35 s).
+
 ## Beta 3 backlog (from Phase 3's closure, 2026-11-20)
 
 Phase 3 is closed and Beta 2's fix scope is frozen (DECISIONS.md, 2026-11-20, "Phase 3 accepted and formally closed"). Every bug, UX issue, request or improvement found from now on is entered here, and in its own entry with the next free number, for **Beta 3 or a later release**, unless the owner explicitly authorises it as a critical Beta 2 blocker.
@@ -2954,6 +3039,13 @@ Phase 3 is closed and Beta 2's fix scope is frozen (DECISIONS.md, 2026-11-20, "P
 | [B-088](#b-088) | Android: a film in a small box with black on all four sides | Blocked (no device in the CachyOS audit) |
 | [B-089](#b-089) | Two phone-layout UI tests depend on the machine's default font | Open (test reliability) |
 | [B-090](#b-090) | After the dock's Stop, Back on the details page did not return Home (window test; baseline too) | Open |
+| [B-091](#b-091) | A controller's Start no longer closed Quick View (regression on `cachyos-final-audit`) | Fixed on the branch (automated) |
+| [B-092](#b-092) | Linux player window tests intermittent on the shaped-window fallback: the dock layer is not laid out over the picture | Investigating (for the owner's CachyOS session) |
+| [B-093](#b-093) | Pad 7: the Search walk's tap on a suggestion did not fill the query (baseline too) | Fixed on the branch (test; physical Pad 7) |
+| [B-094](#b-094) | Fire TV: playback from a chosen path intermittently does not start in `TelevisionOnDeviceTest` | Open (unattributed) |
+| [B-095](#b-095) | Phone and tablet emulators: device walks fail on the baseline as on the branch | Open (pre-existing, emulator data; the phone's Search part fixed by B-093) |
+| [B-096](#b-096) | Android: with the system keyboard up, accessibility places Search's index about 200 px below where it is drawn | Open (pre-existing; accessibility) |
+| [B-097](#b-097) | `PlannedPlaybackWindowTest` named a film that has left the live test server | Fixed on the branch (test; Windows, live server) |
 | [B-084](#b-084) | Hyprland: the player as two windows (video without controls, controls on a blank panel) | Fixed: one window on Linux; the owner's check pending |
 | [B-080](#b-080) | A live-server test's remux case can be unconfirmed (local only) | Open (Beta 3) |
 | [B-079](#b-079) | The Linux CI job no longer fits its 60-minute limit | Fixed: Linux's limit 75 min (the owner's decision); parallel JVMs tried and reverted |

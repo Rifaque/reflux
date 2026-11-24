@@ -85,9 +85,25 @@ class PlannedPlaybackWindowTest {
         val request = ConnectionRequest(settings!!.getValue("REFLUX_JELLYFIN_TEST"), settings["REFLUX_JELLYFIN_TEST_USER"], settings["REFLUX_JELLYFIN_TEST_PASSWORD"])
         assertIs<ConnectResult.Connected>(runBlocking { environment.connections.connect(ConnectionKind.SERVER, request) })
         runBlocking { environment.pipeline.refresh() }
-        val film = environment.library.movies().first { it.item.title == "Mission: Impossible - Fallout" }.item.id
+        // A film whose picture subtitles (PGS) the server must extract, and whose audio this stand-in device (no AC-3, no E-AC-3)
+        // must have converted, as the plan's step expects. "Mission: Impossible - Fallout" was the one chosen, and is still
+        // preferred where the server has it; it has since left the test server (the Windows acceptance audit, 2026-11-24: the
+        // sync reads every item the server lists, 181 films, and it is not among them, on the baseline as on the branch).
+        // Otherwise the first film, by title, that has what the steps need: a PGS track that is not forced, and only AC-3 or
+        // E-AC-3 audio (whichever track the planner takes is converted).
+        fun suits(id: MediaId): Boolean {
+            val stream = environment.library.versions(id).firstOrNull()?.version?.stream ?: return false
+            return stream.subtitles.any { it.format == SubtitleFormat.PGS && !it.forced } &&
+                stream.audio.isNotEmpty() && stream.audio.all { it.codec == AudioCodec.AC3 || it.codec == AudioCodec.EAC3 }
+        }
+        val movies = environment.library.movies().sortedBy { it.item.title }
+        val film = assertNotNull(
+            (movies.firstOrNull { it.item.title == "Mission: Impossible - Fallout" } ?: movies.firstOrNull { suits(it.item.id) })?.item?.id,
+            "the live server has a film with a PGS subtitle that is not forced and only AC-3 or E-AC-3 audio",
+        )
+        println("PGS film: ${environment.library.movies().first { it.item.id == film }.item.title}")
         val subtitles = environment.library.versions(film).first().version.stream.subtitles
-        // The last: this server answers 404 for the film's other PGS tracks, which the first load shows being reported.
+        // The last: Fallout's server answers 404 for its other PGS tracks, which the first load shows being reported.
         val pgs = subtitles.indexOfLast { it.format == SubtitleFormat.PGS && !it.forced }
         // Two languages, and AC-3, which this stand-in device must have converted.
         val languages = environment.library.movies().first { it.item.title == "Mickey 17" }.item.id

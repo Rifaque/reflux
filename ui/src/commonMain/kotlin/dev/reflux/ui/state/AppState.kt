@@ -1368,10 +1368,11 @@ class AppState(
                 else -> true
             }
         }
-        // Quick View is in front of the page (F-P3): Back, X, or Menu closes it; the arrows and Select are its own.
+        // Quick View is in front of the page (F-P3): Back, X, or Menu closes it, and so does a controller's Start, which was
+        // Menu before it was given the sidebar (F-P1); the arrows and Select are its own.
         quickView?.let {
             return when (action) {
-                SemanticAction.BACK, SemanticAction.CONTEXT, SemanticAction.MENU -> true.also { closeQuickView() }
+                SemanticAction.BACK, SemanticAction.CONTEXT, SemanticAction.MENU, SemanticAction.COLLAPSE_NAVIGATION -> true.also { closeQuickView() }
                 SemanticAction.NAVIGATE_UP, SemanticAction.NAVIGATE_DOWN, SemanticAction.NAVIGATE_LEFT, SemanticAction.NAVIGATE_RIGHT ->
                     (moveFocus?.invoke(action) ?: false).also { moved -> feelMove(moved) }
                 SemanticAction.SELECT -> (activateFocused?.invoke() ?: false).also(::feelChoice)

@@ -135,6 +135,38 @@ class QuickViewUiTest {
         }
     }
 
+    /**
+     * A controller's Start closes Quick View, as Menu did before Start was given the sidebar (F-P1; INPUT_MODEL.md, "Profile
+     * gate, panels"), on a desk with a sidebar and on a television alike; it neither shrinks the sidebar behind it nor opens
+     * Sources. Found by the Windows acceptance audit of `cachyos-final-audit` (2026-11-24): Start had become a no-op there.
+     */
+    @Test
+    fun aControllersStartClosesQuickView_withoutTouchingTheSidebarOrSources() {
+        screen(populated(), width = 1440, height = 900) { app ->
+            awaitText("Recently Added")
+            press(app, GamepadButton.DPAD_DOWN)
+            press(app, GamepadButton.DPAD_DOWN)
+            press(app, GamepadButton.FACE_WEST)
+            await("Quick View") { open() }
+            press(app, GamepadButton.START)
+            await("closed by Start") { !open() }
+            assertFalse(app.navigationCollapsed, "the sidebar behind it was not shrunk")
+            assertEquals(Destination.Home, app.navigator.current)
+        }
+        television(populated()) { app ->
+            awaitText("Recently Added")
+            runOnIdle { app.onKey(Key.ARROW_DOWN) }
+            runOnIdle { app.onKey(Key.ARROW_DOWN) }
+            mainClock.advanceTimeBy(400)
+            waitForIdle()
+            runOnIdle { app.onKey(Key.MENU) }
+            await("Quick View") { open() }
+            press(app, GamepadButton.START)
+            await("closed by Start") { !open() }
+            assertEquals(Destination.Home, app.navigator.current, "Start closed it rather than opening Sources")
+        }
+    }
+
     @Test
     fun xWithNoFilmOrShowFocusedDoesNothing() {
         screen(populated(), width = 1440, height = 900) { app ->
