@@ -138,7 +138,8 @@ Severity: Critical · High · Medium · Low. Priority: P1 (fix now) · P2 · P3.
 - **Regression tests:** `SidebarCollapseTest` (4): Start shrinks and expands without moving focus and opens nothing, the page moves into the 140 dp given back, Y and Down still work in the shrunk sidebar, the choice survives a restart, a tablet-sized window keeps Start on Sources, the name toggles for a pointer and a finger with no other button, and Y never shrinks it (5 in all). `DirectionalInputTest.theSourcesPageIsAButtonAwayAndBackIsTheWayOut` reached Sources with Start; on a desktop window it now goes through the sidebar (Y, Down to Sources, A, Right into the page) and checks the same page behaviour.
 - **Before / after:** [sidebar-collapsed-controller.png](cachyos-audit/sidebar-collapsed-controller.png) (render, 1440 × 900).
 - **Physical controller:** the GameSir G7 Pro is read by Reflux's Linux reader as `XBOX`, with `7=START`, `3=FACE_NORTH`, `9=STICK_LEFT` (`PhysicalControllerProbeTest`, read only). Pressing them: **Blocked (needs a person)**. Android TV, Fire TV, tablet and Windows walks: **Blocked (no device)**.
-- **Status:** **Fixed** (automated, renders, controller read on physical Linux).
+- **Final behaviour (after the owner's correction, commit `0377cab`):** with a pointer, a finger or a keyboard, **Reflux's mark and name at the head of the sidebar** shrink it to its icons and widen it again; shrunk, the mark stays there to bring it back; there is **no other expand or shrink button** (the one at the sidebar's foot was removed). With a controller, **Start (≡)** shrinks and widens it; **Y only moves focus** between the sidebar and the highlighted content and **never** shrinks it. Where there is no sidebar (the tablet's rail, the TV rail, the phone's bar) nothing changed: Start still opens Sources there.
+- **Status:** **Fixed** (automated, renders, controller read on physical Linux). A Beta 3-class feature (F-P1), not a Beta 2 bug fix: see "What kind of change each is".
 
 ### CACHY-005: The Reflux keyboard was too large, repeated the field and covered the results; Xbox-style shortcuts; dropdown or docked (BUGs F and G) · B-085
 
@@ -252,6 +253,44 @@ Nothing here was run on Windows. To check there:
 - **The details page of a long show**: the next slowest screen; worth a timing on Windows and the Fire TV.
 - **B-061** (Skia after a Direct3D failure) and **B-056** (blank on closing the mini-player) remain the Windows items carried to Beta 3.
 
+## Final state and Windows handover (2026-11-24, CachyOS retired by the owner)
+
+The owner is retiring this CachyOS installation and continuing on Windows. Everything below is on GitHub on `cachyos-final-audit`; nothing needed is left only on the laptop.
+
+**Git.** `cachyos-final-audit` descends from `main` = `1d65dcf` by fast-forward (`main` untouched, never merged). Its commits, oldest first:
+
+| Commit | What |
+| --- | --- |
+| `17aba72` | The audit's fixes and Beta 3-class changes: Quick View (CACHY-003), Linux window identity and desktop entry (CACHY-001), the sidebar shrink (CACHY-004), the compact keyboard (CACHY-005), the PIN pad (CACHY-006), the typing hints (CACHY-008) |
+| `2d65eb5` | Documentation: hosted CI results; B-090 |
+| `0377cab` | The Linux player as one window, its native surface shaped around the controls (CACHY-002); the sidebar's name as its toggle (the owner's correction) |
+| `d3d60a7` | The Linux picture drawn in Reflux's own scene through libmpv's render API (CACHY-011) |
+| `1da6aaf` | The docked video clipped to the dock's rounded corners (CACHY-011) |
+| (this record) | Documentation only: this section, the sidebar's final behaviour |
+
+**The Linux player, in brief.** (1) Two windows (video, then a transparent controls window over it) failed on the owner's desktop: XWayland with the NVIDIA card open delivered windows **without alpha**, so the controls window was an opaque black panel, and as a second toplevel it floated, tiled and moved on its own (CACHY-002). (2) The interim fix made it one window, the native video surface shaped (X SHAPE) around controls drawn beneath it: correct, but the picture was cut away under the controls (black bands), which the owner rejected. (3) The final design (CACHY-011): libmpv's OpenGL render API renders each frame inside Compose's draw, in **Skiko's own GLX context**, into a texture Skia adopts and draws; the player's gradient and controls are composed over the real picture. Ownership, renderer selection (`linux-mpv-gl-integrated`, else `linux-x11-shape-fallback` with the reason in the log), the reflection pinned to Skiko 0.150.1 (`SkikoGl`), decoding (`vaapi-copy` on Mesa: hardware decoding with a copy back through memory, zero-copy VA-API being impossible with GLX, measured; zero-copy `nvdec` with Skiko on NVIDIA's OpenGL, measured), the measurements (1080p H.264 and HEVC, 4K HEVC, 4K HEVC 10-bit: 0 dropped, A/V ~0, CPU 21–74% of one core) and the limits are in CACHY-011.
+
+**Mini-player.** After the owner's own test the docked video was square inside the rounded card; `1da6aaf` clips the video's canvas to the dock's own radius (`pictureClip`; 0, so no clip, in the full player). Evidence: [integrated-mini-player-rounded.png](cachyos-audit/integrated-mini-player-rounded.png), [integrated-mini-player-corners.png](cachyos-audit/integrated-mini-player-corners.png), from the floating nested Hyprland (not the owner's real desktop). The package (`packageDesktopArchive`) was rebuilt from `1da6aaf` (a local test build, version unchanged, not distributed). Not seen on the real desktop: the dock's corners during the docking animation, and at a fractional display scale.
+
+**Sidebar.** As in CACHY-004, "Final behaviour".
+
+**Tests (each with where it ran).** Physical Linux desktop (the owner's laptop, real Hyprland): the walk, lifecycle and performance runs of CACHY-011, and the owner's own play-through of the integrated player and fullscreen (reported working, then the mini-player's corners). Automated on this machine: `core` 393, `design` 43, `library` 263, `playback:mpv` 62, `desktop:engine` 52 PASS; `ui` 566 with the 2 baseline B-089 failures; desktop window tests 96 with the same 5 tiling failures as at `0377cab`; the three player tests PASS in the floating nested Hyprland. Not run anywhere here: Windows, Android phone, tablet, Android TV and Fire TV (no machine or device), a controller pressed by a person, minimise and restore, HDR, power on battery. **Hosted CI on `d3d60a7`** (run 45409542762), at the time of the final push: the Windows check, Android, Website, documentation links, secret scan and workflow lint PASS; **the Linux check still running** (pushing the next commit may cancel it: this workflow cancels a branch's run in progress). The Release rehearsal on `d3d60a7` (45409542295) PASS. The run on the final commit was not waited for: its result is for the Windows session to read.
+
+**For the Windows session, in order.** It is a review branch; nothing here is accepted.
+
+1. Fetch and check out `cachyos-final-audit`; verify `git merge-base --is-ancestor 1d65dcf origin/cachyos-final-audit`, and that `main` is still `1d65dcf`.
+2. Read the hosted CI of the branch's last commit (and, if it was cancelled, `d3d60a7`'s Linux check); investigate any failure first.
+3. Inspect every commit above and the whole diff against `main`; keep the classification in "What kind of change each is".
+4. Audit the Linux renderer's code (`LinuxGlVideo.kt`, `SkikoGl.kt`, `MpvGlRender.kt`, `GlibcTrim.kt`, `DesktopPlatform.kt`, `Main.kt`): ownership, the release path, the reflection, the fallback. It cannot run on Windows; its Linux verification is in CACHY-011 and VERIFICATION.md.
+5. Windows: build, `./gradlew check`, the window tests (`-Preflux.windowTests=true`) and a walk of the player: the Windows path is meant to be unchanged (the `SwingPanel` surface and its controls window; `pictureClip` is used only by the Linux integrated picture). Then "Windows preparation" above.
+6. Android phone, tablet, Android TV and Fire TV: builds, tests, and the physical devices where available (CACHY-004's Start on the rail, CACHY-005, CACHY-006, CACHY-007's small box).
+7. Review the mini-player clip's code (`VideoSurface.kt`, `Main.kt`).
+8. Decide with the owner where each Beta 3-class change belongs; Beta 2 stays frozen.
+9. Cross-platform regression runs; record results in VERIFICATION.md with their environments.
+10. Only after the owner's review and approval: prepare a fast-forward of `main` to the reviewed commit. Not before.
+
+**Left on this laptop (nothing the repository needs).** A JDK (Temurin 21) at `~/.local/share/jdks/jdk-21.0.13.1+2`, installed for this session; the session's scratch folder under `/tmp/claude-1000/` (test media, captures, logs, a copy of the owner's Reflux data used for tests, the nested Hyprland configuration); built packages under `desktop/app/build/`. The session's Hyprland window rules were runtime-only (`hyprctl eval`), each redeclared to match nothing; nothing was written to the Hyprland configuration. All of it can go with the installation.
+
 ## Session notes
 
 - **The 30-second slip (2026-11-24, first `HyprlandWalkTest` run).** The runtime rule meant to keep test windows on workspace 9 matched `worker-org-gradle.*`, but AWT named the test JVM's windows `kotlin-concurrent-ThreadsKt$…`. The walk's two windows opened tiled on workspace 4 next to the owner's terminal, played a test card, and closed by themselves. No input went to any other application. The rule was widened before the next run, and every later run was checked to be on workspace 9.
@@ -272,3 +311,5 @@ Every result, with its environment, is in [VERIFICATION.md](../VERIFICATION.md),
 The audit's first decision here ("ready to retire") was wrong: it rested on a nested-Hyprland check that did not show what the real desktop shows, and the owner rejected the audit. The player has since been fixed and walked on the real desktop (CACHY-002), but **the owner accepts CachyOS only after checking the complete playback experience personally**, and has asked that it not be declared ready before that.
 
 **NOT READY TO RETIRE CACHYOS** until the owner has launched Reflux, played a film, and seen the picture and its controls together, working, with no detached blank controls window. Since CACHY-011 the picture is drawn in Reflux's own scene, the controls over the real video; that too is for the owner to judge.
+
+**Retired by the owner (2026-11-24).** The owner played the integrated player on the real desktop and reported it working, fullscreen included, then the mini-player's square corners (fixed in `1da6aaf`, verified only in the nested Hyprland), and chose to retire CachyOS and continue on Windows. **The Linux player is not accepted:** its acceptance, and the corner fix's check on a real Linux desktop, wait for the next Linux machine. Nothing is merged into `main`.
