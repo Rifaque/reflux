@@ -2695,7 +2695,7 @@ A second Right always worked. Every slower route tried (by Left or Y, after Quic
 - **Category:** Test reliability (not a product bug) · **Priority:** Low · **Platforms:** the test machine (Windows)
 - **Components:** `ui` tests (`SourcesUiTest`)
 - **How found:** 2026-11-20, the UI and core run after B-071 to B-073 (941 tests, 2 failures).
-- **Phase:** **Beta 3** (test infrastructure; registered at Phase 3's closure, after the freeze) · **Status:** Investigating · **Last updated:** 2026-11-20
+- **Phase:** **Beta 3** (test infrastructure; registered at Phase 3's closure, after the freeze) · **Status:** Investigating (cause not found; the wait now reports its state) · **Last updated:** 2026-11-25
 - **Related:** B-044 (the other known intermittents)
 
 **Observed.** `aServerThatIsAwayOrStopsAnsweringIsRemovedAtOnce` ("Timed out waiting for the server's films") and `aServerThatIsAwayStaysListedAndInTheLibraryAndCanBeSignedInAgain` ("Timed out waiting for the notice") failed in the full `:ui:jvmTest :core:jvmTest` run.
@@ -2711,6 +2711,14 @@ A second Right always worked. Every slower route tried (by Left or Y, after Quic
 - **Fresh full run:** `./gradlew check` at the start of Phase 4 (Windows 11, no Docker or emulator running, 16.8 GB free): `:ui:jvmTest` 548 tests, **0 failures**; `SourcesUiTest` passed in the full run. Not reproduced.
 - **Second sample:** `./gradlew check --rerun-tasks` at Phase 4's end (every task executed): `:ui:jvmTest` 548, **0 failures**. Two full runs in a row without the failure; with Phase 3's failing run on a machine also running a Jellyfin container, load remains the likeliest reading.
 - **Disposition:** stays **Investigating**, Beta 3 (test infrastructure). No test was changed: lengthening the patience would only hide a slow pipeline, and the fix is to make the wait deterministic (drive the pipeline from the test's dispatcher), which is Beta 3 work.
+
+**The Windows acceptance audit (2026-11-24/25).**
+- **Seen again, on Linux this time:** hosted CI run 45460552173 on `cachyos-final-audit` at `4be4c45`, Check (ubuntu-24.04), `:ui:allTests` 567, 1 failed: `aServerThatIsAwayOrStopsAnsweringIsRemovedAtOnce`, "Timed out waiting for the server's films" (line 533) after 30 s. The class's other tests took 2.7 to 22 s each on that runner. The branch changes nothing this test exercises (sources, the connect form, the pipeline).
+- **Measured (Windows 11, a temporary probe in the test, removed afterwards: the pipeline's activity, the sources, the films and the notice every 20 ms from the sign-in):** unloaded, the films arrive **1.5 s** after the form is filled (sign-in 1 s, the source listed at 1.2 s, its scan at 1.5 s); the startup refresh had ended before the test reached the form. **Pinned to one CPU core** (the whole build, `start /affinity 0x1`, `--no-daemon`), three runs: **1.4 to 1.8 s**. The **full `:ui:jvmTest :core:jvmTest` run pinned to two cores**, twice (15 to 16 min each): **under 0.5 s**, both PASS. With the full `./gradlew check` earlier in the audit: **8 of 8 PASS** here.
+- **Ruled out, by reading and by those measurements:** CPU load on the test (it barely slows at one core); state left in `HomeNetwork` by another test (`world()` resets it; `AccessibilityTest` only reads it; the UI tests run one at a time); a refresh dropped while another runs (`LibraryPipeline.refresh` queues behind one lock and joins a waiting request for the same source; nothing is dropped); the startup refresh holding that lock (over before the form here; its enrichment cannot wait: `FakeCatalog` has no delays and `ProviderGate` throws at once while resting); work left by earlier tests in the same JVM (the full suites on two cores did not slow it).
+- **Not found:** the cause. The wait at line 533, unlike its twin at line 552, said nothing of the app's state when it timed out, so no failure so far has left evidence of where it stuck.
+- **Changed:** the wait now reports, on timeout, where the app is, the pipeline's activity, each source with its availability, the films counted, the notice and the platform's reports (as line 552 already did). The patience is unchanged (30 s): not weakened. This is an investigation step, not a fix.
+- **Next:** read that state from the next hosted Linux failure; until then, re-run and record both runs (CLAUDE.md, "Known intermittents").
 
 <a id="b-075"></a>
 ### B-075: Store "What's new" text included category headings
@@ -2940,6 +2948,7 @@ A second Right always worked. Every slower route tried (by Left or Y, after Quic
 - **Evidence:** on CachyOS, in a nested Hyprland that floats Reflux's windows, the test fails at the same step **on an untouched `1d65dcf` worktree and on the branch alike**: the page shows the film's details and its Back button, Back is clicked, and Home never comes. So it is not caused by the audit's changes. Hosted CI passed the same test on `ff98a0d` (2026-11-22), so it depends on timing or the window manager.
 - **To investigate:** whether Back is lost while the closing player's windows (the dock and its controls window) are still going, which a person clicking quickly after Stop could meet too.
 
+<a id="b-091"></a>
 ### B-091: A controller's Start no longer closed Quick View (regression on `cachyos-final-audit`)
 
 - **Category:** Bug (regression introduced by the branch) · **Priority:** Medium · **Platforms:** every platform with a controller (desktop, Android tablet and phone with a controller, Android TV, Fire TV with a game controller); a remote's or keyboard's Menu was not affected
@@ -2950,6 +2959,7 @@ A second Right always worked. Every slower route tried (by Left or Y, after Quic
 - **Regression test:** `QuickViewUiTest.aControllersStartClosesQuickView_withoutTouchingTheSidebarOrSources` (a 1440 × 900 desk with a sidebar, and a television): **failed before the fix** (Windows 11, "Timed out waiting for closed by Start" at the desk), **passes after**; `QuickViewUiTest`, `SidebarCollapseTest`, `DirectionalInputTest` PASS on Windows 11 after it.
 - **Device check:** on the **Google TV emulator** (`Reflux_TV`, Android 16, the branch's debug build with this fix; an emulator, not a physical TV): Movies, a film's card focused, a remote's Menu (`keyevent 82`) opened Quick View; a controller's Start (`keyevent 108`, BUTTON_START) closed it, and Reflux stayed on Movies, not Sources. **Physical Fire TV, phone and Pad 7:** the debug build with the fix installed and their device walks run (VERIFICATION.md, "Windows acceptance audit"); none of those walks presses Start with Quick View open, so B-091's press itself was not made on a physical device.
 
+<a id="b-092"></a>
 ### B-092: Linux player window tests fail intermittently on the shaped-window fallback (`linux-x11-shape-fallback`)
 
 - **Category:** Bug or test synchronisation (to be told apart) · **Priority:** Medium (blocks a green hosted Linux CI on `cachyos-final-audit`) · **Platforms:** Linux desktop where Skiko does not draw with OpenGL (hosted CI's Xvfb; WSL2 Xvfb), so the player takes the fallback, not the integrated picture
@@ -2969,6 +2979,7 @@ A second Right always worked. Every slower route tried (by Left or Y, after Quic
 - **Scope:** the integrated picture (`linux-mpv-gl-integrated`) is what a Linux desktop with OpenGL uses; the fallback is for where it cannot be set up. Windows (its controls window) and Android are not on this path: `MiniPlayerWindowTest` passes on Windows 11 (2026-11-24).
 - **Status:** Investigating (cause narrowed, not fixed). Left for the owner's final CachyOS session, by the owner's decision.
 
+<a id="b-093"></a>
 ### B-093: On the Xiaomi Pad 7, the Search walk's tap on a suggestion does not fill the query (pre-existing)
 
 - **Category:** Bug or test input (to be told apart) · **Priority:** Low · **Platforms:** Xiaomi Pad 7 (HyperOS, Android 16), physical
@@ -2984,6 +2995,7 @@ A second Right always worked. Every slower route tried (by Left or Y, after Quic
 - **Fix (test, `PhaseTwoWalkOnDeviceTest`):** before tapping the suggestion the walk puts the system keyboard away (`keyboardAway()`): it waits for the keyboard to be up (Back before then would leave Search), presses Back, and checks it is still on Search. The step's purpose (a suggestion asks its question, by touch) is unchanged; the keyboard's own walk is `searchKeepsItsNavigationAndBackTellsTheKeyboardFromLeaving`.
 - **After (physical Pad 7):** the test **5 of 5** PASS; the whole class **11/11** (7 run, 4 TV-only skipped). Phone emulator: `PhaseTwoWalk` 11/11 twice (its Search failures in B-095 had the same cause).
 
+<a id="b-094"></a>
 ### B-094: Fire TV: `TelevisionOnDeviceTest`'s playback from a chosen path intermittently does not start (unattributed)
 
 - **Category:** Bug or test environment (to be told apart) · **Priority:** Medium (playback on Fire TV) · **Platforms:** Fire TV Stick 4K Plus (Fire OS, Android 11), physical
@@ -2994,6 +3006,7 @@ A second Right always worked. Every slower route tried (by Left or Y, after Quic
 - **Also seen and explained:** `PhaseTwoWalkOnDeviceTest` failed 5 TV walks twice on the Fire TV's old debug data ("Timed out waiting for Home" and similar); after the baseline had run on the same device, the branch passed **11/11** (the baseline also 11/11). Recorded as the old data's state, not a product failure.
 - **To investigate:** a clean debug data directory, then repeated runs of both builds; the player's error on the `ERROR` run.
 
+<a id="b-095"></a>
 ### B-095: On the phone and tablet emulators, three device walks fail on the baseline as on the branch (emulator data)
 
 - **Category:** Test environment (to be told apart from a bug) · **Priority:** Low · **Platforms:** `Reflux_Phone` and `Reflux_Tablet7` emulators (Android 16); **not** the physical Nothing Phone (2a) or Pad 7, where the same classes pass (B-093 apart)
@@ -3005,6 +3018,7 @@ A second Right always worked. Every slower route tried (by Left or Y, after Quic
 - **After B-093's test fix (2026-11-25):** `Reflux_Phone`: `PhaseTwoWalk` **11/11 twice** (its Search failures shared B-093's cause); `quickViewOpens…` still fails (2 of 2). `Reflux_Tablet7` (960 × 600 dp): both Search walks still fail 2 of 2, with a different message from the start ("actual value is null": the suggestion node not found at all), so a cause of their own; `quickViewOpens…` still fails.
 - **To investigate:** a clean debug data directory on the emulators; the test's card filter; why the tablet emulator's Search has no "Not seen yet" node.
 
+<a id="b-096"></a>
 ### B-096: Android: while the system keyboard is up, the accessibility tree places Search's index about 200 px below where it is drawn
 
 - **Category:** Accessibility bug · **Priority:** Medium (TalkBack users) · **Platforms:** Android; measured on the Xiaomi Pad 7 (HyperOS, Android 16, landscape); other devices not measured
@@ -3015,6 +3029,7 @@ A second Right always worked. Every slower route tried (by Left or Y, after Quic
 - **Impact:** TalkBack's focus outline and its double-tap target on Search would be misplaced while the system keyboard is up; a sighted finger is not affected.
 - **Not known:** the mechanism (whether the reported bounds lag the page's resize or scroll while the keyboard animates in, or are computed against the window before its keyboard inset); whether a phone shows it. Not changed blind: to be measured with TalkBack on a device, then fixed with a test of its own.
 
+<a id="b-097"></a>
 ### B-097: `PlannedPlaybackWindowTest` named a film that has left the live test server
 
 - **Category:** Test fixture · **Priority:** Low · **Platforms:** Windows (the live-server window test; run only where `~/.reflux-live/jellyfin.env` names a server)
@@ -3025,13 +3040,24 @@ A second Right always worked. Every slower route tried (by Left or Y, after Quic
 - **Fix:** the test still prefers Fallout where the server has it; otherwise it takes the first film, by title, with what its steps need, not a name: a non-forced PGS track **and** only AC-3 or E-AC-3 audio (the stand-in device has neither, so the plan's `AUDIO_CONVERSION` holds whichever track plays). A first version that asked only for PGS chose a film that plays directly (`DIRECT_PLAY`) and failed the plan's check, so the audio condition is required. With none suitable it fails saying so.
 - **After (Windows 11, physical, the live server):** PASS in 98 s on *American Assassin*: planned `AUDIO_CONVERSION` = actual, the other language from its place, the PGS subtitle extracted with the picture running (picture by 7 s, subtitle by 35 s).
 
+<a id="b-098"></a>
+### B-098: The website's link check failed CI whenever gnu.org dropped one connection from a runner
+
+- **Category:** CI reliability (the check, not the site) · **Priority:** Low · **Platforms:** hosted CI (the Website job)
+- **Components:** `website/scripts/check-links.mjs` (external links)
+- **How found:** CI run 45460552173 on `4be4c45` (2026-11-24): "unreachable https://www.gnu.org/licenses/gpl-3.0.html", 1 of 31 external links. The site is unchanged by the branch, and the same job passed on `fec8a4a` the day before.
+- **Phase:** found in the audit of a review branch; fixed on that branch · **Status:** Fixed (local; hosted CI to confirm) · **Last updated:** 2026-11-25
+- **Research:** the link is valid: the checker's own request (Node `fetch`, its user agent) answers **200 in about 1 s** from the Windows machine, and `curl` likewise. gnu.org has failed on GitHub's runners before and passed on the next run (VERIFICATION.md: runs on `dc70958`/`3986850`, "gnu.org reachable again" on `2f59c37`, and run 45345526419), and the `LICENSE` download from gnu.org was once "reset by the network". The checker asked each link **once** and turned any thrown error into a bare "unreachable", so the log never said why.
+- **Fix:** a link is asked up to **three times, only on a transient failure** (no answer at all, or a 5xx), with a short back-off; each attempt has a 20 s timeout; the error and its cause code are printed. A 4xx, or no answer after the last attempt, fails exactly as before: not weakened.
+- **Verification (Windows 11):** the site's 27 pages, 31 external links, **0 broken**; fault injection, a host that does not exist: retried twice, then **unreachable** with `ENOTFOUND` (still a failure); the website's `npm test` 34/34.
+
 ## Beta 3 backlog (from Phase 3's closure, 2026-11-20)
 
 Phase 3 is closed and Beta 2's fix scope is frozen (DECISIONS.md, 2026-11-20, "Phase 3 accepted and formally closed"). Every bug, UX issue, request or improvement found from now on is entered here, and in its own entry with the next free number, for **Beta 3 or a later release**, unless the owner explicitly authorises it as a critical Beta 2 blocker.
 
 | Item | What | Status |
 | --- | --- | --- |
-| [B-074](#b-074) | Two `SourcesUiTest` cases time out under the full run | Investigating (test reliability) |
+| [B-074](#b-074) | Two `SourcesUiTest` cases time out under the full run (seen on hosted Linux 2026-11-24) | Investigating (not reproduced in 8 runs here; the wait now reports its state) |
 | [B-061](#b-061) | A Skia crash after a Direct3D failure (Windows, the owner's build) | Investigating; a Beta 3 candidate (the owner places it) |
 | [B-044](#b-044) | Test intermittents mixing the test and wall clocks | Investigating (test infrastructure) |
 | [B-056](#b-056) | Blank on closing the mini-player | Deferred by the owner (a later beta) |
@@ -3046,6 +3072,7 @@ Phase 3 is closed and Beta 2's fix scope is frozen (DECISIONS.md, 2026-11-20, "P
 | [B-095](#b-095) | Phone and tablet emulators: device walks fail on the baseline as on the branch | Open (pre-existing, emulator data; the phone's Search part fixed by B-093) |
 | [B-096](#b-096) | Android: with the system keyboard up, accessibility places Search's index about 200 px below where it is drawn | Open (pre-existing; accessibility) |
 | [B-097](#b-097) | `PlannedPlaybackWindowTest` named a film that has left the live test server | Fixed on the branch (test; Windows, live server) |
+| [B-098](#b-098) | The website's link check failed CI whenever gnu.org dropped one connection from a runner | Fixed on the branch (transient failures retried; hosted CI to confirm) |
 | [B-084](#b-084) | Hyprland: the player as two windows (video without controls, controls on a blank panel) | Fixed: one window on Linux; the owner's check pending |
 | [B-080](#b-080) | A live-server test's remux case can be unconfirmed (local only) | Open (Beta 3) |
 | [B-079](#b-079) | The Linux CI job no longer fits its 60-minute limit | Fixed: Linux's limit 75 min (the owner's decision); parallel JVMs tried and reverted |

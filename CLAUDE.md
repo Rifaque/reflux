@@ -2,6 +2,16 @@
 
 **Read [AGENTS.md](AGENTS.md) first.** It is the project's instructions for every agent: mission, principles, architecture rules, workflow, quality bar, and the documents that are the source of truth. This file only adds what is specific to working here with Claude Code: where the work stands and the machines it is tested on.
 
+### Contributor Attribution Policy
+- Never add Claude, Anthropic, any AI agent, AI assistant, or yourself as a contributor, author, co-author, committer, or sign-off in any repository metadata.
+- Never add `Co-Authored-By` trailers, AI attribution lines, bot identities, or AI-related credits to commit messages.
+- Never add yourself to `CONTRIBUTORS`, `AUTHORS`, `README`, release notes, changelogs, package metadata, copyright notices, or other project attribution records.
+- All commits and project contributions must be attributed solely according to the repository's existing human author identity and the actual human contributors.
+- Do not modify Git author/committer identity or attribution settings to introduce an AI identity.
+- This policy applies to every Claude session, subagent, spawned agent, and future AI-assisted workflow operating in this repository.
+
+**Enforcement:** Treat this as a mandatory, repository-wide instruction. Preserve it across future edits to `CLAUDE.md`. Do not remove, weaken, or override it unless the repository owner explicitly requests it.
+
 ## Where the work stands
 
 - **Start from [docs/README.md](docs/README.md)** (which document is authoritative for what). Product status and the version plan (V1.0 criteria, V1.1 to V2.0): [docs/ROADMAP.md](docs/ROADMAP.md). The beta (builds, Beta 2's frozen scope and gate, known issues, beta operations): [docs/BETA.md](docs/BETA.md). Archived plans and records (Beta 2's three phase plans and the Phase 3 closure record among them) are under [docs/history/](docs/history/README.md): history, never current.

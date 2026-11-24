@@ -530,7 +530,11 @@ class SourcesUiTest {
             runOnIdle { app.navigator.open(Destination.Connect(ConnectionKind.SERVER)) }
             awaitText("Connect to Jellyfin")
             signIn("secret")
-            await("the server's films") { world.library.movies().any { it.item.title == "Ronin" } }
+            // B-074: this wait has timed out on hosted CI (Linux, 2026-11-24) and nowhere else (8 runs on Windows, loaded and
+            // pinned to one or two cores, the films in under 2 s). What the app was doing is said if it does again.
+            await("the server's films", { "at ${app.navigator.current}, pipeline ${world.pipeline.activity.value}, sources ${world.library.sources().map { it.displayName + "/" + it.availability }}, films ${world.library.movies().size}, notice ${app.notice}, reports ${platform.causes}" }) {
+                world.library.movies().any { it.item.title == "Ronin" }
+            }
 
             // Away: the removal does not depend on it.
             HomeNetwork.serverUp = false
