@@ -608,6 +608,27 @@ The owner's brief for a last session on the CachyOS laptop; full record in [plan
 | Walks with a person: controller presses, the dock pin | **NOT RUN** (BLOCKED: need the owner) |
 | **Hosted CI on the branch** (`cachyos-final-audit` at `17aba72`, run 45345526419) | Attempt 1: Android (unit tests, lint, platform API, minified release) PASS; secret scan, workflow lint, release tools and documentation links PASS; Windows check FAIL (`SourcesUiTest.aServerThatIsAwayOrStopsAnsweringIsRemovedAtOnce`, the known B-074 intermittent); Linux check: `check` PASS, desktop window tests FAIL (`EmbeddedPlaybackTest` at "Home again", B-090, which fails the same way on an untouched `1d65dcf` here); Website FAIL (`https://www.gnu.org/licenses/gpl-3.0.html` unreachable from the runner; 200 from the laptop; `main` passed it on 2026-11-23; `website/` unchanged). **Attempt 2 (failed jobs re-run): Windows check PASS, Linux check PASS (window tests included); Website FAIL again on the same external link** |
 
+### The Linux picture in Reflux's own scene (CACHY-011, 2026-11-24)
+
+**Environment:** the owner's physical laptop (CachyOS, Hyprland 0.57.2, XWayland; Intel Arrow Lake (Mesa) drawing Skiko's GLX context, RTX 5060 Laptop on the HDMI monitor), Skiko 0.150.1, libmpv 0.42. "Real desktop" = a test workspace (3) on the HDMI monitor, the owner's approved procedure (monitor state recorded before and restored after: eDP-1 on 5 focused, HDMI-A-1 on 4; captures of Reflux's window only). "Hidden" = workspace 9, shown on no monitor. No emulator, VM or container results here.
+
+| What | Result |
+| --- | --- |
+| Renderer selected (every run since the selection fix) | `linux-mpv-gl-integrated`, render context made **before** the engine opens a file (log order), `vo=libmpv`; never `linux-x11-shape-fallback` unless forced |
+| Orientation, aspect, colour | Test card timecode upright at top left; 16:9 pillarboxed and letterboxed correctly; `bt.709` limited range |
+| `HyprlandWalkTest`, real desktop (14 states) | PASS: playing, controls hidden, floating, resized, paused, sought, fullscreen and back, workspace move and back, mini-player, dark scene with controls, speed menu open; one Reflux window throughout; the picture under the controls in every capture |
+| `IntegratedPlayerLifecycleTest` | PASS real desktop (8 playbacks) and hidden (20 playbacks, fullscreen toggles, one closed on a hidden workspace): render contexts made = released, no failure, RSS 589–760 MB (was rising ~12 MB a playback before `malloc_trim`) |
+| `IntegratedPlayerPerfTest`, real desktop | 1080p H.264 and HEVC, 4K HEVC, 4K HEVC 10-bit: `vaapi-copy`, 0 dropped, A/V ~0.000003 s, CPU 23/21/42/74% of one core; native window (hidden) `vaapi` 3–5%; Skiko on NVIDIA (hidden) zero-copy `nvdec` 14% at 4K 10-bit |
+| Zero-copy VA-API in Skiko's GLX context | Refused by libmpv (`hwdec-current=no`): a documented limit |
+| `MpvGlRenderTest` (real libmpv), `LinuxGlVideoTest` | PASS 2, 5 |
+| `:core:jvmTest`, `:design:jvmTest`, `:library:jvmTest`, `:playback:mpv:test`, `:desktop:engine:test` | PASS: 393, 43, 263 (1 skipped), 62 (1 skipped), 52 (18 opt-in skipped) |
+| `:ui:jvmTest` (full) | 566, **2 FAIL**: the B-089 pair, identical on the untouched baseline (this change touches no `ui` code) |
+| `:desktop:app:test` with real windows, real session (workspace 9) | 96 tests, **5 FAIL**, the same five as at `0377cab` for the same reasons (Hyprland's tiling ignores the sizes asked for; the other screen's display); the integrated picture reached each of them first |
+| The three player window tests where resizes are honoured (a nested Hyprland that floats Reflux's windows) | PASS: `EmbeddedPlaybackTest` (7 playbacks), `MiniPlayerWindowTest` (2), `PlayerChromeResizeTest` (1), every one `linux-mpv-gl-integrated` (from the test logs) |
+| `packageDesktopArchive` (local test build, version unchanged) | Built, 92,702,389 bytes; not played as a package |
+| Not run | Minimise/restore (no minimise in this Hyprland), display change, HDR, power on battery (RAPL root-only), audio/subtitle menus and a controller on the real desktop; Windows and Android (no machine or device here) |
+| The owner's own check | **Pending** |
+
 ### The player as one window on Linux, after the owner rejected the audit (2026-11-24)
 
 The owner found the player broken on the real CachyOS desktop (a video window without controls, a controls window with a blank background). **Environment:** the same physical laptop and Hyprland session; a test workspace on the HDMI monitor with the owner's approval (monitors recorded and restored around every run); captures limited to Reflux's own window rectangle, taken only while the test workspace was shown; the session's runtime rules neutralised. Record: [planning/CACHYOS-FINAL-AUDIT-LEDGER.md](planning/CACHYOS-FINAL-AUDIT-LEDGER.md), CACHY-002.

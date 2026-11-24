@@ -436,7 +436,18 @@ class MiniPlayerWindowTest {
 
     private fun screens(): List<Rectangle> = GraphicsEnvironment.getLocalGraphicsEnvironment().screenDevices.map { it.defaultConfiguration.bounds }
 
+    /**
+     * The Linux integrated picture (B-084) is drawn by Compose in the window, not a native surface: it stands here as one
+     * component, the same for the whole test (as the picture is), placed where Compose last laid the picture out.
+     */
+    private val drawnPicture = object : Component() {}
+
     private fun surfaces(): List<Component> {
+        shell.integratedPicture?.let { drawn ->
+            val scale = scale()
+            drawnPicture.setBounds((drawn.left / scale).toInt(), (drawn.top / scale).toInt(), Math.round(drawn.width / scale).toInt(), Math.round(drawn.height / scale).toInt())
+            return listOf(drawnPicture)
+        }
         val found = ArrayList<Component>()
         fun walk(component: Component) {
             if (component.name == VideoSurface.NAME && component.isShowing) found += component
@@ -453,6 +464,7 @@ class MiniPlayerWindowTest {
     /** Where the video surface is in the window's content, in the window's pixels. Must run on the UI thread. */
     private fun surfaceInWindow(): Rectangle {
         val surface = surfaces().singleOrNull() ?: return Rectangle()
+        shell.integratedPicture?.let { return Rectangle(Math.round(it.left), Math.round(it.top), Math.round(it.width), Math.round(it.height)) }
         val origin = SwingUtilities.convertPoint(surface, 0, 0, shell.window.contentPane)
         val scale = scale()
         return Rectangle(Math.round(origin.x * scale).toInt(), Math.round(origin.y * scale).toInt(), Math.round(surface.width * scale).toInt(), Math.round(surface.height * scale).toInt())
@@ -484,7 +496,8 @@ class MiniPlayerWindowTest {
     /** Whether the overlay window is exactly over the surface. Must run on the UI thread. */
     private fun covered(): Boolean {
         val surface = surfaces().singleOrNull() ?: return false
-        // Linux (B-084): the controls are in the window, over the surface; there is no other window to line up.
+        // Linux (B-084): the controls are in the window, over the picture; there is no other window to line up.
+        if (surface === drawnPicture) return shell.overlay == null
         if (SHAPED_VIDEO) return surface.isShowing && shell.overlay == null
         val overlay = shell.overlay ?: return false
         return surface.locationOnScreen == overlay.locationOnScreen && surface.size == overlay.size
@@ -493,7 +506,7 @@ class MiniPlayerWindowTest {
     private fun describe(): String {
         val surface = surfaces().singleOrNull()
         return "frame=${shell.app.videoFrame} presentation=${shell.app.playback?.presentation} surface=${surfaceInWindow()} whole=${wholeWindow()} " +
-            "surfaceOnScreen=${surface?.let { runCatching { it.locationOnScreen }.getOrNull() }} overlay=${shell.overlay?.bounds} window=${shell.window.bounds} fullscreen=${shell.app.platform.fullscreen}"
+            "surfaceOnScreen=${surface?.takeIf { it !== drawnPicture }?.let { runCatching { it.locationOnScreen }.getOrNull() }} overlay=${shell.overlay?.bounds} window=${shell.window.bounds} fullscreen=${shell.app.platform.fullscreen}"
     }
 
     private fun restored(now: Rectangle, before: Rectangle): Boolean =

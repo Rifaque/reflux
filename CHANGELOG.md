@@ -6,6 +6,7 @@ What changes for people using Reflux, version by version. The rules for versions
 
 ### Playback & Media
 
+- On Linux, the picture is drawn in Reflux's own window, with the player's controls, title and timeline over the moving picture under a soft gradient, as on the other platforms, instead of beside black bands; decoding stays in hardware (copied back through memory on Intel and AMD graphics; without a copy on NVIDIA's). The previous native video window is kept only as a fallback, named in the diagnostics log.
 - On Linux, the player is one window: the picture and its controls stay together whatever the desktop does with windows (tiling, floating, moving to another workspace), and the controls no longer appear on a black panel over the picture on desktops whose windows have no transparency.
 
 ### Navigation & Controllers

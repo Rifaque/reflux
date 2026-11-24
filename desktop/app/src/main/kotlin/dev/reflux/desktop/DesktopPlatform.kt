@@ -146,7 +146,39 @@ internal class DesktopPlatform(private val environment: DesktopEnvironment) : Pl
         this.fullscreen = fullscreen
     }
 
+    /**
+     * The Linux picture drawn by Compose through libmpv's render API (B-084), made once the window is known; null elsewhere.
+     * [glPlaying] says whether the engine now playing draws that way (else the native video window does, as the fallback).
+     */
+    val glVideo: LinuxGlVideo?
+        get() = madeGlVideo ?: if (LINUX) window?.let { LinuxGlVideo(it, environment.diagnostics::record) }?.also { madeGlVideo = it } else null
+
+    private var madeGlVideo: LinuxGlVideo? = null
+
+    var glPlaying: Boolean by mutableStateOf(false)
+        private set
+
     override suspend fun createPlayer(): Player? {
+        // Linux: the engine renders into the window's own scene where Skiko draws it with OpenGL; otherwise its own window.
+        val gl = glVideo
+        if (LINUX && gl == null) environment.diagnostics.record("Video renderer: ${LinuxGlVideo.FALLBACK} (the window was not known yet)")
+        if (LINUX && gl != null && !gl.available) environment.diagnostics.record("Video renderer: ${LinuxGlVideo.FALLBACK} (${gl.unavailableReason()})")
+        if (LINUX && gl?.available == true && System.getenv("REFLUX_NATIVE_VIDEO_WINDOW") == null) {
+            val info = window?.let(SkikoGl::renderInfo)
+            val hwdec = System.getenv("REFLUX_RENDER_HWDEC") ?: renderedHwdec(info)
+            val player = withContext(Dispatchers.IO) { environment.createPlayer(RENDERED_OPTIONS + ("hwdec" to hwdec)) }
+            val engine = player as? dev.reflux.playback.mpv.MpvPlayer
+            // The picture's canvas is composed while glPlaying, and the render context is made in its first draw, before the
+            // engine is given anything to play (LinuxGlVideo.attach).
+            if (engine != null) glPlaying = true
+            if (engine != null && gl.attach(engine)) {
+                environment.diagnostics.record("Video renderer: ${LinuxGlVideo.RENDERER} (libmpv render API into Skiko ${SkikoGl.version}'s OpenGL context, vo=libmpv, hwdec=$hwdec)")
+                return engine
+            }
+            glPlaying = false
+            withContext(Dispatchers.IO) { player?.close() }
+            report("Video renderer: ${LinuxGlVideo.FALLBACK} (the integrated picture could not be set up" + (dev.reflux.playback.mpv.MpvPlayer.lastFailure?.let { ": $it" } ?: "") + ")")
+        }
         val surface = video.show() ?: run {
             report("The video surface was not created in time")
             return null
@@ -171,6 +203,23 @@ internal class DesktopPlatform(private val environment: DesktopEnvironment) : Pl
     }
 
     override suspend fun releasePlayer(player: Player) {
+        if (glPlaying) {
+            // The render context goes first, with OpenGL current, as libmpv requires; then the engine.
+            try {
+                glVideo?.release()
+            } finally {
+                // The engine is closed whatever happened to the release.
+                withContext(kotlinx.coroutines.NonCancellable + Dispatchers.IO) {
+                    player.close()
+                    // The engine decoded into frame pools in system memory (copy-back decoding), on threads of its own; glibc
+                    // keeps what they freed in its per-thread arenas. Handed back now, so playback after playback does not
+                    // add up (measured 2026-11-24, CACHY-011).
+                    GlibcTrim.trim()
+                }
+                glPlaying = false
+            }
+            return
+        }
         // The engine leaves the surface before the surface goes away.
         try {
             withContext(Dispatchers.IO) { x11Errors?.closely { player.close() } ?: player.close() }
@@ -223,6 +272,23 @@ internal class DesktopPlatform(private val environment: DesktopEnvironment) : Pl
             if (linux) put("gpu-context", X11_CONTEXTS)
             if (guarded) put("force-window", "yes")
         }
+
+        /**
+         * The engine for the Linux picture drawn in Reflux's scene (LinuxGlVideo): no window of its own, its frames rendered
+         * through libmpv's render API, hardware decoding where the machine has it.
+         */
+        val RENDERED_OPTIONS: Map<String, String> = EMBEDDED_OPTIONS + mapOf("vo" to "libmpv")
+
+        /**
+         * The decoding asked for with the integrated picture, by the OpenGL Skiko draws with ([info], its render info). Skiko
+         * draws with GLX, and mpv's zero-copy hand-over of VA-API frames needs EGL, so on Mesa (Intel, AMD) only copying
+         * decoders work there; mpv's own order would take nvdec-copy first, waking a second (NVIDIA) GPU to decode frames that
+         * are then copied across to the one that draws. Decoding on the GPU that draws (vaapi-copy) costs least and leaves the
+         * other asleep. On NVIDIA's OpenGL, CUDA's interop works with GLX: auto-safe finds nvdec without a copy.
+         * Measured 2026-11-24 (CACHY-011, docs/planning/CACHYOS-FINAL-AUDIT-LEDGER.md).
+         */
+        internal fun renderedHwdec(info: String?): String =
+            if (info?.contains("NVIDIA", ignoreCase = true) == true) "auto-safe" else "vaapi-copy,auto-copy-safe"
 
         /** mpv's X11 GPU contexts, in order: EGL, then GLX, then Vulkan. */
         const val X11_CONTEXTS = "x11egl,x11,x11vk"

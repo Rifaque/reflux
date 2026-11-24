@@ -75,6 +75,11 @@ if mine and mine[0]['workspace']['id'] in shown:
         val media = root.resolve("Media").createDirectories()
         val movie = media.resolve("Test Card (2020)/Test.Card.2020.mkv")
         SampleMedia.video(movie, seconds = 120, size = "1920x1080", rate = 24)
+        // A dark scene, to see the controls' scrim over a picture with little light in it.
+        val night = media.resolve("Night Scene (2020)/Night.Scene.2020.mkv").also { it.parent.createDirectories() }
+        ProcessBuilder("ffmpeg", "-y", "-loglevel", "error", "-f", "lavfi", "-i", "testsrc2=duration=60:size=1920x1080:rate=24,colorlevels=romax=0.12:gomax=0.12:bomax=0.12",
+            "-f", "lavfi", "-i", "sine=frequency=220:duration=60", "-c:v", "libx264", "-preset", "ultrafast", "-pix_fmt", "yuv420p", "-c:a", "aac", night.toString())
+            .inheritIO().start().waitFor()
         val environment = DesktopEnvironment(root.resolve("data"))
         environment.addLocalFolder(media)
         runBlocking { environment.pipeline.refresh() }
@@ -91,6 +96,10 @@ if mine and mine[0]['workspace']['id'] in shown:
             shell.await("playback") { shell.app.playback?.state?.value?.let { it.status == PlayerStatus.PLAYING && it.positionMs > 1_000 } == true }
             shell.hoverSurface(0.5f, 0.5f)
             record("02-playing-tiled")
+            // Left alone, the controls fade and the picture is whole.
+            runCatching { shell.await("the controls to fade", timeoutMs = 15_000) { !shell.shows("Timeline", exact = false) } }
+            record("02b-controls-hidden")
+            shell.hoverSurface(0.5f, 0.5f)
             window("hl.dsp.window.float({ action = \"toggle\", window = \"PID\" })")
             record("03-floating")
             window("hl.dsp.window.resize({ x = 1100, y = 700, window = \"PID\" })")
@@ -111,8 +120,23 @@ if mine and mine[0]['workspace']['id'] in shown:
             record("09b-back-on-its-workspace")
             shell.key(java.awt.event.KeyEvent.VK_ESCAPE)
             record("10-mini-player")
+            runCatching { shell.app.playback?.close() }
+            shell.await("the test card closed") { shell.app.playback == null }
+            shell.click("Home")
+            shell.awaitShown("Recently Added")
+            shell.click("Night Scene, 2020")
+            shell.awaitShown("Version")
+            shell.click("Play")
+            shell.await("the dark scene playing") { shell.app.playback?.state?.value?.let { it.status == PlayerStatus.PLAYING && it.positionMs > 1_000 } == true }
+            shell.hoverSurface(0.5f, 0.5f)
+            record("11-dark-controls")
+            shell.click("Playback speed", exact = false)
+            record("12-menu-open")
+            shell.key(java.awt.event.KeyEvent.VK_ESCAPE)
         } finally {
             shell.close()
+            // The diagnostics log says which renderer drew the picture (linux-mpv-gl-integrated or linux-x11-shape-fallback).
+            runCatching { environment.diagnostics.file.toFile().copyTo(File(out, "diagnostics.log"), overwrite = true) }
             root.toFile().deleteRecursively()
         }
     }

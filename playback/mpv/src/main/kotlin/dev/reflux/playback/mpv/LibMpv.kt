@@ -38,12 +38,19 @@ internal interface LibMpv : Library {
             }
             for (name in NAMES) {
                 val library = runCatching { Native.load(name, LibMpv::class.java) }.getOrNull()
-                if (library != null) return library
+                if (library != null) {
+                    loadedName = name
+                    return library
+                }
             }
             return null
         }
 
         private val NAMES = listOf("mpv", "mpv-2", "libmpv-2", "libmpv.so.2", "libmpv.so.1")
+
+        /** The name libmpv was last loaded by, for other bindings to the same library (MpvGlRender). */
+        @Volatile
+        internal var loadedName: String = NAMES.first()
 
         const val FORMAT_NONE = 0
         const val FORMAT_STRING = 1

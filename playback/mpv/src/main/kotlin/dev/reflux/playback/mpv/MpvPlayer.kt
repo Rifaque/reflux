@@ -91,6 +91,15 @@ class MpvPlayer private constructor(
         command("stop")
     }
 
+    /** One of the engine's properties as text (`hwdec-current`, `current-vo`, `frame-drop-count`...), for diagnostics; read only. */
+    fun property(name: String): String? = if (closed) null else mpv.getString(handle, name)
+
+    /** The engine's handle, for its render context (MpvGlRender). */
+    internal val handlePointer: Pointer get() = handle
+
+    /** The name its library was loaded by. */
+    internal val libraryName: String get() = LibMpv.loadedName
+
     override fun close() {
         if (closed) return
         closed = true

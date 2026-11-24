@@ -93,14 +93,23 @@ class EmbeddedPlaybackTest {
         assertEquals(listOf("eng", "jpn"), state.audioTracks.map { it.language })
         assertEquals(listOf("Intro", "Chapter 1", "Chapter 2"), state.chapters.map { it.title })
 
-        val surface = assertNotNull(shell.find { it.name == VideoSurface.NAME && it.isShowing })
-        if (SHAPED_VIDEO) {
+        shell.await("the picture") { shell.integratedPicture != null || shell.find { it.name == VideoSurface.NAME && it.isShowing } != null }
+        val drawn = shell.integratedPicture
+        val surface = if (drawn != null) null else assertNotNull(shell.find { it.name == VideoSurface.NAME && it.isShowing })
+        if (drawn != null) {
+            // Linux, integrated (B-084): the picture is drawn by Compose in the player's own window, the controls over it; no
+            // native video surface and no window for the controls.
+            assertNull(shell.overlay, "no window of its own for the controls")
+            assertNull(shell.find { it.name == VideoSurface.NAME && it.isShowing }, "no native video surface")
+            assertTrue(drawn.width > 0 && drawn.height > 0, "the picture is laid out: $drawn")
+        } else if (SHAPED_VIDEO && surface != null) {
             // Linux (B-084): one window. The surface is the window's own native child, and the controls are drawn in the window.
             assertNull(shell.overlay, "no window of its own for the controls")
             shell.ui { assertSame(shell.window.layeredPane, surface.parent, "the surface is in the player's own window") }
         } else {
             // The controls live in a transparent window that covers the video surface exactly and never takes focus.
             val overlay = assertNotNull(shell.overlay)
+            surface!!
             shell.ui {
                 assertEquals(surface.locationOnScreen, overlay.locationOnScreen)
                 assertEquals(surface.size, overlay.size)
@@ -162,18 +171,26 @@ class EmbeddedPlaybackTest {
 
     private fun fullscreenKeepsPlaying(windowed: java.awt.Rectangle) {
         val window = shell.window
-        val surface = assertNotNull(shell.find { it.name == VideoSurface.NAME && it.isShowing })
+        // Linux, integrated (B-084): the picture Compose draws stands for the native surface; its size in the window's units.
+        val drawn = shell.integratedPicture != null
+        val surface = if (drawn) null else assertNotNull(shell.find { it.name == VideoSurface.NAME && it.isShowing })
+        fun pictureSize(): java.awt.Dimension? = if (drawn) shell.controlsSize() else surface?.size
         shell.hoverSurface(0.5f, 0.5f)
         shell.click("Fullscreen")
         shell.await("fullscreen", state = {
-            "window=${window.bounds} insets=${window.insets} screen=${window.graphicsConfiguration.bounds} surface=${surface.size} overlay=${shell.overlay?.bounds}"
+            "window=${window.bounds} insets=${window.insets} screen=${window.graphicsConfiguration.bounds} picture=${pictureSize()} drawn=${shell.integratedPicture} overlay=${shell.overlay?.bounds}"
         }) {
-            // The whole screen, and the same surface still under the controls. On Windows the frame is gone
+            // The whole screen, and the same picture still under the controls. On Windows the frame is gone
             // too; on X11 the window manager keeps it off screen and the content fills the display.
             val screen = window.graphicsConfiguration.bounds
-            val framed = if (isWindows) window.bounds == screen && window.insets.top == 0 else surface.locationOnScreen == screen.location
-            shell.app.platform.fullscreen && framed && surface.width >= screen.width && surface.height >= screen.height &&
-                shell.controlsSize() == surface.size
+            val size = pictureSize() ?: return@await false
+            val framed = when {
+                isWindows -> window.bounds == screen && window.insets.top == 0
+                drawn -> window.contentPane.locationOnScreen == screen.location && shell.integratedPicture?.let { it.left <= 1f && it.top <= 1f } == true
+                else -> surface!!.locationOnScreen == screen.location
+            }
+            shell.app.platform.fullscreen && framed && size.width >= screen.width - 1 && size.height >= screen.height - 1 &&
+                (drawn && shell.overlay == null || shell.controlsSize() == size)
         }
         val before = position
         awaitPlayer("playback to continue in fullscreen") { it.status == PlayerStatus.PLAYING && it.positionMs > before + 800 }
@@ -244,6 +261,7 @@ class EmbeddedPlaybackTest {
         shell.ui { shell.app.play(episode) }
         awaitPlayer("playback to start") { it.status == PlayerStatus.PLAYING }
         fun covered(): Boolean {
+            if (shell.integratedPicture != null) return shell.overlay == null
             val surface = shell.find { it.name == VideoSurface.NAME && it.isShowing } ?: return false
             // Linux (B-084): the controls are in the window over the surface; there is no other window to line up.
             if (SHAPED_VIDEO) return shell.overlay == null

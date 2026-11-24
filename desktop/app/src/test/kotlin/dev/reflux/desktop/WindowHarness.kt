@@ -73,12 +73,16 @@ internal class Shell(environment: DesktopEnvironment, gamepads: GamepadReader? =
     val app: AppState get() = running.app
     val window: ComposeWindow get() = running.window
 
+    /** Where the Linux integrated picture is (B-084, window pixels), while Compose draws it; null with a native video surface. */
+    val integratedPicture: androidx.compose.ui.geometry.Rect? get() = running.integratedPicture()
+
     /** The player's controls window, while something plays; none on Linux, where the controls are in [window] (B-084). */
     val overlay: ComposeDialog? get() = window.ownedWindows.filterIsInstance<ComposeDialog>().firstOrNull { it.isShowing }
 
     /** The size of what the controls cover: their own window's, or on Linux, where they are in [window], the video surface's. */
     fun controlsSize(): java.awt.Dimension? = ui {
-        overlay?.size ?: if (SHAPED_VIDEO) find(window) { it.name == VideoSurface.NAME && it.isShowing }?.size else null
+        overlay?.size ?: integratedPicture?.let { java.awt.Dimension((it.width / scale()).toInt(), (it.height / scale()).toInt()) }
+            ?: if (SHAPED_VIDEO) find(window) { it.name == VideoSurface.NAME && it.isShowing }?.size else null
     }
 
     val exited: Boolean get() = !thread.isAlive
@@ -277,9 +281,15 @@ internal class Shell(environment: DesktopEnvironment, gamepads: GamepadReader? =
      * Where the picture is, in the pixels of the window that takes its pointer input: the controls window over it, or on Linux
      * (B-084), where the controls are in the main window beneath the shaped surface, the video surface's own place in that window.
      */
+    private fun scale(): Float = window.graphicsConfiguration.defaultTransform.scaleX.toFloat()
+
     private fun pictureArea(): Pair<Window, Rect> = ui {
         val over = overlay
-        if (over != null || !SHAPED_VIDEO) {
+        val drawn = integratedPicture
+        if (drawn != null) {
+            // Drawn by Compose in the window (B-084): Compose's own pixels, as the events are given in.
+            window to drawn
+        } else if (over != null || !SHAPED_VIDEO) {
             val surface = over ?: window
             val pane = content(surface)
             val scale = surface.graphicsConfiguration.defaultTransform.scaleX.toFloat()

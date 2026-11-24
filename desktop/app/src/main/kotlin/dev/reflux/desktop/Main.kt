@@ -76,6 +76,8 @@ import dev.reflux.ui.player.LocalVideoCutouts
 import dev.reflux.ui.player.VideoCutouts
 import androidx.compose.ui.unit.toSize
 import androidx.compose.ui.layout.positionInWindow
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 
 fun main() {
     StartupTrace.mark("main")
@@ -126,7 +128,13 @@ internal fun newerLibraryMessage(e: dev.reflux.library.NewerLibraryException): S
         "Library: ${e.file}\n(library format ${e.found}; this version of Reflux understands up to ${e.supported})"
 
 /** A running desktop shell, for end-to-end tests that drive the real window. */
-internal class RunningReflux(val app: AppState, val window: ComposeWindow, val exit: () -> Unit)
+internal class RunningReflux(
+    val app: AppState,
+    val window: ComposeWindow,
+    val exit: () -> Unit,
+    /** Where the Linux integrated picture is drawn, in the window's pixels, while it is (B-084); null otherwise. For tests. */
+    val integratedPicture: () -> androidx.compose.ui.geometry.Rect? = { null },
+)
 
 /**
  * Runs the desktop shell on [environment] until its window is closed.
@@ -263,7 +271,7 @@ internal fun runReflux(
                     override fun windowGainedFocus(event: WindowEvent) = platform.refreshAccessibility()
                 }
                 window.addWindowFocusListener(settings)
-                onStarted(RunningReflux(app, window, leave))
+                onStarted(RunningReflux(app, window, leave) { platform.glVideo?.placed?.takeIf { platform.glPlaying } })
                 onDispose {
                     window.removeWindowFocusListener(settings)
                     displays.close()
@@ -283,8 +291,31 @@ internal fun runReflux(
             val cutouts = remember { if (SHAPED_VIDEO) VideoCutouts() else null }
             var surfaceBounds by remember { mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
             // At the Linux desktop's own scale where Java's toolkit leaves it out (B-063); unchanged elsewhere.
-            AtDisplayScale { CompositionLocalProvider(LocalVideoCutouts provides cutouts) { Box(Modifier.fillMaxSize().background(RefluxColors.background)) {
+            val glVideo = platform.glVideo
+            val rendered = platform.glPlaying && glVideo != null
+            // The native window's holes are only for the fallback; a picture Compose draws needs none.
+            AtDisplayScale { CompositionLocalProvider(LocalVideoCutouts provides cutouts.takeUnless { rendered }) { Box(Modifier.fillMaxSize().background(RefluxColors.background)) {
                 RefluxApp(app)
+                if (rendered && glVideo != null) {
+                    // B-084: the picture is part of this scene, drawn by Compose from libmpv's render API; the player's own
+                    // controls, scrims and subtitles are composed over it as on Android, and the page never shows through.
+                    val session = app.playback
+                    VideoStage(placement, Modifier.fillMaxSize()) {
+                        androidx.compose.foundation.Canvas(Modifier.fillMaxSize().background(Color.Black).onGloballyPositioned {
+                            glVideo.placed = androidx.compose.ui.geometry.Rect(it.positionInWindow(), it.size.toSize())
+                        }) {
+                            // A new frame changes this, so only the picture is drawn again.
+                            glVideo.frames
+                            drawIntoCanvas { canvas -> glVideo.draw(canvas.nativeCanvas, size.width.toInt(), size.height.toInt()) }
+                        }
+                        if (session != null && app.videoFrame != VideoFrame.Hidden && !(session.presentation == PlayerPresentation.FULL && placement.full)) {
+                            MiniPlayerSurface(app, session, Modifier.pictureRim(placement.pictureRadius), silent = false)
+                        }
+                    }
+                    if (session != null && session.presentation == PlayerPresentation.FULL && placement.full) {
+                        PlayerOverlay(app, session, hiddenCursor = HiddenCursor)
+                    }
+                }
                 platform.video.canvas?.let { canvas ->
                     if (cutouts == null) {
                         VideoStage(placement, Modifier.fillMaxSize()) {

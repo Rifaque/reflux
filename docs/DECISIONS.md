@@ -1395,6 +1395,20 @@ M11 decided the open items of its plan (history/milestones/M11-DISTRIBUTION-PLAN
 - **1.0 communication.** "Planned for December 2026", depending on feedback, qualification, and store approval; 10 December is an internal readiness checkpoint and 15 December the release decision, never a promised release date. Each platform publishes through its own path.
 - **No Windows installer in the beta**: none exists or is tested, and building one would change the release; reconsidered for 1.0.
 
+## 2026-11-24 (latest) — The Linux picture is drawn in Reflux's own scene through libmpv's render API; the shaped window is only the fallback
+
+Supersedes, for Linux, the entry below's "where the controls show, the picture is cut away" (the owner rejected the black bands).
+
+**Context.** The owner's brief "Replace the Linux Black-Band Player with a Proper Integrated Compose Player": the picture visible under a natural gradient with the controls over it, one window, no read-back, no silent fallback, the native path kept as a labelled fallback until this is verified. Measured on the owner's laptop (CACHY-011): Skiko 0.150.1 draws with GLX on the event thread; libmpv 0.42 has the OpenGL render API.
+
+**Decisions.**
+- **One context.** libmpv renders each frame, inside Compose's draw and with Skiko's context current, into a texture Skia adopts and draws; the player's overlay is composed over it. No producer context, no sharing, no threads. A separate libmpv context in Skiko's share group was built and measured: it changed neither memory nor correctness, so it was not kept.
+- **The render context exists before the engine opens a file**, and is freed in a draw before the engine closes; either waits for a draw and forces one (Skiko's public `renderImmediately`) when none comes.
+- **Skiko's internals in one adapter** (`SkikoGl`), pinned to the Skiko verified (a unit test fails on a change), and where it fails the playback uses the shaped native window, named in the log: `linux-mpv-gl-integrated` or `linux-x11-shape-fallback` and why.
+- **Decoding by the GPU that draws:** `vaapi-copy` first on Mesa (Skiko's GLX rules out mpv's zero-copy VA-API, which needs EGL), `auto-safe` on NVIDIA's OpenGL (zero-copy `nvdec`). The copy on Mesa is accepted and documented, not hidden; making it zero-copy needs Skiko on EGL.
+- **`malloc_trim(0)` after the engine closes on Linux**: the copy-back frame pools otherwise stay in glibc's arenas (~12 MB a playback, measured).
+- **Windows, Android, Android TV and Fire TV unchanged.**
+
 ## 2026-11-24 (later) — The Linux player is one window, its surface shaped around the controls; the sidebar's name is its toggle
 
 Supersedes, in the entry below, "the desktop player stays two windows for now" and the sidebar's button at its foot.
