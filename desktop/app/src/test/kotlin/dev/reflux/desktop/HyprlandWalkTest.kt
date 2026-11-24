@@ -120,6 +120,9 @@ if mine and mine[0]['workspace']['id'] in shown:
             record("09b-back-on-its-workspace")
             shell.key(java.awt.event.KeyEvent.VK_ESCAPE)
             record("10-mini-player")
+            // Later frames in the dock, to see the picture kept inside its rounded corners as it plays.
+            Thread.sleep(1_500)
+            record("10b-mini-player-later")
             runCatching { shell.app.playback?.close() }
             shell.await("the test card closed") { shell.app.playback == null }
             shell.click("Home")

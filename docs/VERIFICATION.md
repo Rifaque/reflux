@@ -626,6 +626,7 @@ The owner's brief for a last session on the CachyOS laptop; full record in [plan
 | `:desktop:app:test` with real windows, real session (workspace 9) | 96 tests, **5 FAIL**, the same five as at `0377cab` for the same reasons (Hyprland's tiling ignores the sizes asked for; the other screen's display); the integrated picture reached each of them first |
 | The three player window tests where resizes are honoured (a nested Hyprland that floats Reflux's windows) | PASS: `EmbeddedPlaybackTest` (7 playbacks), `MiniPlayerWindowTest` (2), `PlayerChromeResizeTest` (1), every one `linux-mpv-gl-integrated` (from the test logs) |
 | `packageDesktopArchive` (local test build, version unchanged) | Built, 92,702,389 bytes; not played as a package |
+| The docked video's rounded corners (after the owner's report), **nested Hyprland** (floating), not the real desktop | Two dock frames 1.5 s apart: all four corners clipped to the dock's radius, no video outside; `HyprlandWalkTest`, `MiniPlayerWindowTest`, `EmbeddedPlaybackTest`, `LinuxGlVideoTest` (5) PASS, every playback `linux-mpv-gl-integrated` |
 | Not run | Minimise/restore (no minimise in this Hyprland), display change, HDR, power on battery (RAPL root-only), audio/subtitle menus and a controller on the real desktop; Windows and Android (no machine or device here) |
 | The owner's own check | **Pending** |
 

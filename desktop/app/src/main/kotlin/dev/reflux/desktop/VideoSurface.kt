@@ -152,6 +152,13 @@ internal fun VideoOverlay(owner: ComposeWindow, anchor: Component, shown: Boolea
  * each corner, centred on the edge of the surface's window region. A region's edge is hard; this antialiased rim is what the
  * eye sees (the black is the picture box's own colour). It draws arcs only, so the straight edges get no frame line.
  */
+/**
+ * The picture's own rounded shape where Compose draws it (the Linux integrated picture, B-084): the dock's corner radius, the
+ * one [pictureRim] uses, as a clip on the drawing itself, so every frame of the video, and the black behind it, stays inside
+ * the rounded box. Nothing is drawn over the corners. No clip where the radius is nothing (the full player).
+ */
+internal fun Modifier.pictureClip(radius: Dp): Modifier = if (radius.value <= 0f) this else clip(RoundedCornerShape(radius))
+
 internal fun Modifier.pictureRim(radius: Dp): Modifier =
     if (radius.value <= 0f) this else clip(RoundedCornerShape(radius)).drawWithContent {
         drawContent()

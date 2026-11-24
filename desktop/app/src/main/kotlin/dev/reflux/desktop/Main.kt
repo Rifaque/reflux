@@ -301,7 +301,8 @@ internal fun runReflux(
                     // controls, scrims and subtitles are composed over it as on Android, and the page never shows through.
                     val session = app.playback
                     VideoStage(placement, Modifier.fillMaxSize()) {
-                        androidx.compose.foundation.Canvas(Modifier.fillMaxSize().background(Color.Black).onGloballyPositioned {
+                        // Clipped to the picture's shape (the dock's rounded corners), so each frame is drawn inside it.
+                        androidx.compose.foundation.Canvas(Modifier.fillMaxSize().pictureClip(placement.pictureRadius).background(Color.Black).onGloballyPositioned {
                             glVideo.placed = androidx.compose.ui.geometry.Rect(it.positionInWindow(), it.size.toSize())
                         }) {
                             // A new frame changes this, so only the picture is drawn again.
