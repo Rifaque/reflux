@@ -21,6 +21,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
+import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 /**
@@ -92,17 +93,23 @@ class EmbeddedPlaybackTest {
         assertEquals(listOf("eng", "jpn"), state.audioTracks.map { it.language })
         assertEquals(listOf("Intro", "Chapter 1", "Chapter 2"), state.chapters.map { it.title })
 
-        // The controls live in a transparent window that covers the video surface exactly and never takes focus.
         val surface = assertNotNull(shell.find { it.name == VideoSurface.NAME && it.isShowing })
-        val overlay = assertNotNull(shell.overlay)
-        shell.ui {
-            assertEquals(surface.locationOnScreen, overlay.locationOnScreen)
-            assertEquals(surface.size, overlay.size)
-            assertFalse(overlay.focusableWindowState)
+        if (SHAPED_VIDEO) {
+            // Linux (B-084): one window. The surface is the window's own native child, and the controls are drawn in the window.
+            assertNull(shell.overlay, "no window of its own for the controls")
+            shell.ui { assertSame(shell.window.layeredPane, surface.parent, "the surface is in the player's own window") }
+        } else {
+            // The controls live in a transparent window that covers the video surface exactly and never takes focus.
+            val overlay = assertNotNull(shell.overlay)
+            shell.ui {
+                assertEquals(surface.locationOnScreen, overlay.locationOnScreen)
+                assertEquals(surface.size, overlay.size)
+                assertFalse(overlay.focusableWindowState)
+            }
         }
         shell.capture("window-playing")?.let { assertTrue(colors(it) > 8, "the video is visible inside the window") }
         // The system itself sends pointer input over the video to the controls, not through them.
-        if (isWindows) assertTrue(WindowsHitTest.receivesPointer(overlay), "the controls window is what the pointer hits")
+        if (isWindows) assertTrue(WindowsHitTest.receivesPointer(assertNotNull(shell.overlay)), "the controls window is what the pointer hits")
     }
 
     private fun controlsAnswerToTheMouse() {
@@ -166,7 +173,7 @@ class EmbeddedPlaybackTest {
             val screen = window.graphicsConfiguration.bounds
             val framed = if (isWindows) window.bounds == screen && window.insets.top == 0 else surface.locationOnScreen == screen.location
             shell.app.platform.fullscreen && framed && surface.width >= screen.width && surface.height >= screen.height &&
-                shell.overlay?.size == surface.size
+                shell.controlsSize() == surface.size
         }
         val before = position
         awaitPlayer("playback to continue in fullscreen") { it.status == PlayerStatus.PLAYING && it.positionMs > before + 800 }
@@ -238,6 +245,8 @@ class EmbeddedPlaybackTest {
         awaitPlayer("playback to start") { it.status == PlayerStatus.PLAYING }
         fun covered(): Boolean {
             val surface = shell.find { it.name == VideoSurface.NAME && it.isShowing } ?: return false
+            // Linux (B-084): the controls are in the window over the surface; there is no other window to line up.
+            if (SHAPED_VIDEO) return shell.overlay == null
             val overlay = shell.overlay ?: return false
             return surface.locationOnScreen == overlay.locationOnScreen && surface.size == overlay.size
         }
@@ -247,10 +256,10 @@ class EmbeddedPlaybackTest {
         val before = shell.ui { shell.window.size }
         shell.ui { shell.window.setSize(before.width - 220, before.height - 140) }
         shell.await("the controls to follow the smaller window") {
-            covered() && shell.overlay!!.width < before.width - 150
+            covered() && shell.controlsSize()!!.width < before.width - 150
         }
         shell.ui { shell.window.size = before }
-        shell.await("the controls to follow the window back") { covered() && shell.overlay!!.width > before.width - 60 }
+        shell.await("the controls to follow the window back") { covered() && shell.controlsSize()!!.width > before.width - 60 }
 
         // Closing and playing again in the same breath: the second playback waits for the first engine to
         // let go, then gets a surface of its own with the controls over it.

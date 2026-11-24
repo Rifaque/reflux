@@ -6,12 +6,12 @@ What changes for people using Reflux, version by version. The rules for versions
 
 ### Playback & Media
 
-- On Hyprland and other Linux desktops that blur or dim windows, a window rule for `reflux` (opacity 1.0 override, no blur) keeps the picture sharp and solid; the testing notes say how.
+- On Linux, the player is one window: the picture and its controls stay together whatever the desktop does with windows (tiling, floating, moving to another workspace), and the controls no longer appear on a black panel over the picture on desktops whose windows have no transparency.
 
 ### Navigation & Controllers
 
 - Quick view opens at once on shows with many seasons; it used to wait for every episode's details first.
-- On a controller, Start (≡) now shrinks the sidebar to its icons and back, without moving where you are; Y still takes you into it. With a mouse or a finger, the button at the foot of the sidebar does the same, and Reflux remembers your choice. Where there is no sidebar (a tablet's or TV's rail, a phone), Start still opens Sources.
+- On a controller, Start (≡) now shrinks the sidebar to its icons and back, without moving where you are; Y still only takes you into the sidebar and back. With a mouse, a finger or a keyboard, choose the Reflux name at the top of the sidebar to do the same, and Reflux remembers your choice. Where there is no sidebar (a tablet's or TV's rail, a phone), Start still opens Sources.
 
 ### Search & Typing
 

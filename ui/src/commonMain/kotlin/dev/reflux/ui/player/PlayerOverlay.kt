@@ -324,7 +324,7 @@ fun PlayerOverlay(app: AppState, session: PlaybackSession, modifier: Modifier = 
                     Controls(app, session, state, drawn, hover, chrome, { scrubbing = it }) { bar = it }
                 }
             }
-            if (layers.loader) Spinner(Modifier.align(Alignment.Center))
+            if (layers.loader) Spinner(Modifier.align(Alignment.Center).cutsVideo())
             // Said as it happens, from a node that was already here.
             Box(Modifier.announces(if (mode == ChromeMode.LOADING) (if (bufferingSince != null) "Buffering" else "Loading ${session.title}") else null))
 
@@ -338,7 +338,7 @@ fun PlayerOverlay(app: AppState, session: PlaybackSession, modifier: Modifier = 
                     // The page's own notice is beneath the video, so what is said while playing is said here.
                     var shown by remember { mutableStateOf("") }
                     app.notice?.let { shown = it }
-                    Box(Modifier.widthIn(max = 560.dp).glass(MaterialRole.MODAL, CircleShape, tint = playerTint.copy(alpha = 0.92f)).absorbsPointer().padding(horizontal = 22.dp, vertical = 12.dp)) {
+                    Box(Modifier.cutsVideo().widthIn(max = 560.dp).glass(MaterialRole.MODAL, CircleShape, tint = playerTint.copy(alpha = 0.92f)).absorbsPointer().padding(horizontal = 22.dp, vertical = 12.dp)) {
                         Text(shown, style = LocalTypography.current.bodyStrong, maxLines = 2)
                     }
                 }
@@ -349,11 +349,11 @@ fun PlayerOverlay(app: AppState, session: PlaybackSession, modifier: Modifier = 
             val prompt = session.upNext
             val segment = session.skippable(state)
             when {
-                layers.failure && error != null -> Failure(session, error, Modifier.align(Alignment.Center).padding(horizontal = layout.safeMarginDp.dp))
-                layers.upNext && prompt != null -> UpNextCard(session, prompt, corner)
+                layers.failure && error != null -> Failure(session, error, Modifier.align(Alignment.Center).padding(horizontal = layout.safeMarginDp.dp).cutsVideo())
+                layers.upNext && prompt != null -> UpNextCard(session, prompt, corner.cutsVideo())
                 // With a remote, up is what takes the offer; the arrow says so.
                 layers.skipOffer && segment != null && session.menu == null ->
-                    Button(skipLabel(segment), { session.skip(segment) }, corner, icon = Icon.CHEVRON_UP.takeIf { remote }, style = ButtonStyle.PRIMARY)
+                    Button(skipLabel(segment), { session.skip(segment) }, corner.cutsVideo(), icon = Icon.CHEVRON_UP.takeIf { remote }, style = ButtonStyle.PRIMARY)
             }
         }
     }
@@ -430,7 +430,7 @@ private fun Controls(
     // middle of the picture; elsewhere it is above the bar, and comes to the top while the bar is not there.
     val minimizes = controls.back && layers.minimize && app.miniPlayerAvailable
     Row(
-        Modifier.align(Alignment.TopStart).fillMaxWidth().padding(horizontal = margin, vertical = chrome.topPaddingDp.dp).hoverable(hover),
+        Modifier.align(Alignment.TopStart).fillMaxWidth().cutsVideo().padding(horizontal = margin, vertical = chrome.topPaddingDp.dp).hoverable(hover),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -467,7 +467,7 @@ private fun Controls(
         // A tablet's picture is larger and its thumbs further apart; the cluster grows with it, not with the screen.
         val seek = if (compact) 56.dp else 64.dp
         val play = if (compact) 72.dp else 84.dp
-        Box(Modifier.align(Alignment.Center), contentAlignment = Alignment.Center) {
+        Box(Modifier.align(Alignment.Center).cutsVideo(), contentAlignment = Alignment.Center) {
             Box(Modifier.size(if (compact) 240.dp else 300.dp, if (compact) 120.dp else 150.dp).background(Brush.radialGradient(listOf(Color.Black.copy(alpha = if (solid) 0.5f else 0.3f), Color.Transparent))))
             Row(horizontalArrangement = Arrangement.spacedBy(if (compact) 28.dp else 44.dp), verticalAlignment = Alignment.CenterVertically) {
                 IconButton(Icon.REWIND, "Back 10 seconds", { session.handle(SemanticAction.SEEK_BACKWARD) }, size = seek, iconSize = if (compact) 28.dp else 32.dp, tint = RefluxColors.contentSecondary)
@@ -551,6 +551,7 @@ private fun Controls(
 
     Column(
         Modifier.align(Alignment.BottomCenter).padding(horizontal = margin).padding(bottom = if (compact) 8.dp else chrome.bottomPaddingDp.dp).widthIn(max = chrome.barMaxWidthDp.dp)
+            .cutsVideo()
             .onGloballyPositioned { bottom ->
                 // The share of the window this block covers (what is playing, the bar, an open list), and a
                 // little air: subtitles are kept above it.
@@ -730,6 +731,8 @@ private fun TimelinePreview(previews: dev.reflux.ui.state.TrickplayPreviews?, po
                 val x = (constraints.maxWidth * fraction - placeable.width / 2f).toInt().coerceIn(0, (constraints.maxWidth - placeable.width).coerceAtLeast(0))
                 layout(constraints.maxWidth, 0) { placeable.place(x, -placeable.height - gap) }
             }
+            // After the layout above, so the preview's own size and place are what is cut, not the zero height it reports.
+            .cutsVideo()
             .testTag(TRICKPLAY_PREVIEW)
             .clearAndSetSemantics { },
         horizontalAlignment = Alignment.CenterHorizontally,

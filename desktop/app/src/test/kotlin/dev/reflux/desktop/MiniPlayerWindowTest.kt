@@ -197,6 +197,16 @@ class MiniPlayerWindowTest {
     }
 
     private fun nothingTakesFocusOrStaysOnTop(session: PlaybackSession) {
+        // Linux (B-084): the mini-player is drawn in the Reflux window itself; there is no window of its own to check.
+        if (SHAPED_VIDEO) {
+            assertNull(shell.overlay)
+            shell.ui {
+                val active = KeyboardFocusManager.getCurrentKeyboardFocusManager().activeWindow
+                assertTrue(active == null || active === shell.window, "the active window is the page's, or another application's: ${active?.javaClass?.simpleName}")
+            }
+            assertSame(session, shell.ui { shell.app.playback })
+            return
+        }
         val overlay = assertNotNull(shell.overlay)
         shell.ui {
             // An owned window is on top exactly when its owner is (this harness puts its own window there to be seen):
@@ -474,6 +484,8 @@ class MiniPlayerWindowTest {
     /** Whether the overlay window is exactly over the surface. Must run on the UI thread. */
     private fun covered(): Boolean {
         val surface = surfaces().singleOrNull() ?: return false
+        // Linux (B-084): the controls are in the window, over the surface; there is no other window to line up.
+        if (SHAPED_VIDEO) return surface.isShowing && shell.overlay == null
         val overlay = shell.overlay ?: return false
         return surface.locationOnScreen == overlay.locationOnScreen && surface.size == overlay.size
     }

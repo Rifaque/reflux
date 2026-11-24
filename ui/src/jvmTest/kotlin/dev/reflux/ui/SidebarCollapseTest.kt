@@ -9,6 +9,8 @@ import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isFocused
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.click
 import dev.reflux.core.input.ControllerFamily
 import dev.reflux.core.input.GamepadButton
 import dev.reflux.design.NavigationStyle
@@ -111,14 +113,36 @@ class SidebarCollapseTest {
     }
 
     @Test
-    fun aPointerHasAButtonForIt() {
+    fun theSidebarsNameShrinksAndExpandsItForAPointerAndAFinger() {
+        // The owner's correction (2026-11-24): no button of its own; Reflux's name at the head of the sidebar is the toggle,
+        // and while shrunk the mark alone is there to bring it back. Nothing else is a toggle.
         screen(populated()) { app ->
             awaitText("Recently Added")
-            onNode(hasContentDescription("Shrink sidebar")).performClick()
+            assertTrue(onAllNodes(hasContentDescription("Shrink sidebar")).fetchSemanticsNodes().isEmpty(), "no separate button")
+            onNode(hasContentDescription(BRAND_SHRINK_NAME)).performClick()
             await("shrunk") { app.navigationCollapsed }
+            assertEquals(Destination.Home, app.navigator.current, "the name did not go Home")
+            assertTrue(onAllNodes(hasContentDescription("Expand sidebar")).fetchSemanticsNodes().isEmpty(), "no separate button")
             save("sidebar-collapsed-pointer")
-            onNode(hasContentDescription("Expand sidebar")).performClick()
+            onNode(hasContentDescription(BRAND_EXPAND_NAME)).performTouchInput { click() }
             await("full") { !app.navigationCollapsed }
+        }
+    }
+
+    @Test
+    fun yMovesFocusAndNeverShrinksTheSidebar() {
+        screen(populated()) { app ->
+            awaitText("Recently Added")
+            press(app, GamepadButton.DPAD_DOWN)
+            val card = focusedName()
+            repeat(2) {
+                press(app, GamepadButton.FACE_NORTH)
+                await("in the sidebar") { focusedName() == "Home" }
+                assertFalse(app.navigationCollapsed, "Y does not shrink it")
+                press(app, GamepadButton.FACE_NORTH)
+                await("back") { focusedName() == card }
+                assertFalse(app.navigationCollapsed)
+            }
         }
     }
 }

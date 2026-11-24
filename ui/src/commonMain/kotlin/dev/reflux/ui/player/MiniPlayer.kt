@@ -252,10 +252,11 @@ fun MiniPlayerSurface(app: AppState, session: PlaybackSession, modifier: Modifie
             contentAlignment = Alignment.Center,
         ) {
             // After the same grace as the player's: a seek or a moment's buffering is not a wait to show.
-            if (waiting) RefluxLoader(size = 28.dp, delayMs = ChromeClock.LOADING_GRACE_MS)
+            if (waiting) RefluxLoader(Modifier.cutsVideo(), size = 28.dp, delayMs = ChromeClock.LOADING_GRACE_MS)
             AnimatedVisibility(hovered && !waiting, enter = fadeIn(Motion.focusChange.tween()), exit = fadeOut(Motion.focusChange.tween())) {
                 Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.38f)), contentAlignment = Alignment.Center) {
-                    Icon(Icon.FULLSCREEN, size = 26.dp)
+                    // Where the picture is a shaped native window (Linux), only the icon is seen through it, not a dimmed picture.
+                    Icon(Icon.FULLSCREEN, Modifier.cutsVideo(), size = 26.dp)
                 }
             }
         }

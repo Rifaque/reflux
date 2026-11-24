@@ -127,8 +127,10 @@ class SourcesInlineAndBrandHomeTest {
     }
 
     @Test
-    fun refluxsNameGoesHomeOnATabletAndADesktop() {
-        for ((width, height) in listOf(1180 to 820, 1440 to 900)) {
+    fun refluxsNameGoesHomeOnATablet() {
+        // A tablet's rail keeps its name as the way Home; a desktop's sidebar name shrinks the sidebar instead (F-P1,
+        // the owner's correction of 2026-11-24: SidebarCollapseTest).
+        for ((width, height) in listOf(1180 to 820)) {
             screen(populated(), width = width, height = height) { app ->
                 awaitText("Recently Added")
                 val profile = app.activeProfile
@@ -166,7 +168,8 @@ class SourcesInlineAndBrandHomeTest {
     @Test
     fun goingHomeByTheNameLeavesPlaybackInTheDock() {
         val platform = FakePlatform(docksVideo = true)
-        screen(populated(), platform) { app ->
+        // On a tablet, whose rail's name goes Home (a desktop's sidebar name shrinks the sidebar: F-P1).
+        screen(populated(), platform, width = 1180, height = 820) { app ->
             awaitText("Recently Added")
             runOnIdle { app.play(app.library.movies().first { it.item.title == "Heat" }.item.id) }
             await("the player") { platform.players.isNotEmpty() && app.playback != null }

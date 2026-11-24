@@ -33,13 +33,33 @@ class HyprlandWalkTest {
         File(dir, "$step.clients.json").writeText(clients)
         // Inside a nested Hyprland (REFLUX_WALK_OUTPUT names its output) the compositor's whole picture is ours to capture.
         System.getenv("REFLUX_WALK_OUTPUT")?.let { sh("grim", "-o", it, File(dir, "$step.composite.png").path) }
+        // On a desktop someone uses (REFLUX_WALK_REGION=1): what the compositor shows of Reflux's own window and nothing else, and
+        // only while the monitor still shows the workspace it is on; otherwise nothing is captured (a skipped mark instead). A
+        // window on a hidden workspace gets no frame callbacks, so its own buffer (below) can be stale.
+        if (System.getenv("REFLUX_WALK_REGION") == "1") {
+            val region = sh("python3", "-I", "-c", WINDOW_REGION, File(dir, "$step.clients.json").path, "$pid", sh("hyprctl", "monitors", "-j")).trim()
+            if (region.isNotEmpty()) sh("grim", "-g", region, File(dir, "$step.region.png").path) else File(dir, "$step.region-skipped").writeText("not on a shown workspace")
+        }
         // Every toplevel of this process, each on its own: the main window and, while playing, the controls window.
         val ids = sh("python3", "-I", "-c", "import json,sys\nfor c in json.load(open(sys.argv[1])):\n  if c['pid']==int(sys.argv[2]): print(c['stableId'])", File(dir, "$step.clients.json").path, "$pid")
         ids.lines().filter { it.isNotBlank() }.forEachIndexed { i, id ->
             val file = File(dir, "$step.toplevel$i.png").path
-            // grim names a toplevel by Hyprland's stable id, written in hexadecimal.
-            sh("grim", "-T", "0x" + id.trim(), file)
+            // grim names a toplevel by Hyprland's stable id; which spelling it takes has varied, so both are tried.
+            sh("grim", "-T", id.trim(), file)
+            if (!File(file).exists()) sh("grim", "-T", "0x" + id.trim(), file)
         }
+    }
+
+    private companion object {
+        /** The region (`x,y wxh`) of this process's player window, when the workspace it is on is the one its monitor shows. */
+        const val WINDOW_REGION = """
+import json,sys
+clients=json.load(open(sys.argv[1])); pid=int(sys.argv[2]); monitors=json.loads(sys.argv[3])
+shown={m['activeWorkspace']['id'] for m in monitors}
+mine=[c for c in clients if c['pid']==pid and c['title']=='Reflux']
+if mine and mine[0]['workspace']['id'] in shown:
+    c=mine[0]; print(f"{c['at'][0]},{c['at'][1]} {c['size'][0]}x{c['size'][1]}")
+"""
     }
 
     private fun window(dispatch: String) {
@@ -61,6 +81,9 @@ class HyprlandWalkTest {
         val shell = Shell(environment)
         try {
             shell.awaitShown("Recently Added")
+            // The workspace the player starts on, to come back to after the move.
+            val home = sh("python3", "-I", "-c", "import json,sys\nfor c in json.loads(sys.argv[1]):\n  if c['pid']==int(sys.argv[2]): print(c['workspace']['id']); break",
+                sh("hyprctl", "clients", "-j"), "${ProcessHandle.current().pid()}").trim()
             record("01-home")
             shell.click("Test Card, 2020")
             shell.awaitShown("Version")
@@ -84,7 +107,8 @@ class HyprlandWalkTest {
             record("08-windowed-again")
             window("hl.dsp.window.move({ workspace = \"8\", follow = false, window = \"PID\" })")
             record("09-other-workspace")
-            window("hl.dsp.window.move({ workspace = \"9\", follow = false, window = \"PID\" })")
+            window("hl.dsp.window.move({ workspace = \"$home\", follow = false, window = \"PID\" })")
+            record("09b-back-on-its-workspace")
             shell.key(java.awt.event.KeyEvent.VK_ESCAPE)
             record("10-mini-player")
         } finally {

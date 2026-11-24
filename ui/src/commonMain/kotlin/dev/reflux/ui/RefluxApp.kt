@@ -91,7 +91,6 @@ import androidx.compose.ui.unit.em
 import dev.reflux.core.input.ControllerFamily
 import dev.reflux.core.input.GamepadButton
 import dev.reflux.core.input.InputMapping
-import dev.reflux.core.input.InputModality
 import dev.reflux.core.input.InputSignal
 import dev.reflux.core.input.SemanticAction
 import dev.reflux.design.AdaptiveLayout
@@ -978,11 +977,12 @@ private fun NavigationRail(app: AppState, style: NavigationStyle, focus: RailFoc
             // On a tablet and a desktop it is also the way Home, as a website's name is: the same as choosing Home (the
             // stack back to Home alone, playback and the library untouched). A television's rail is left as it was.
             when (style) {
-                // Shrunk, the mark alone, as on a tablet's rail.
+                // A sidebar's name shrinks it to its icons and widens it again (F-P1, the owner's correction of 2026-11-24): the
+                // lockup while it is full, the mark alone while it is shrunk, which is how a pointer or a finger brings it back.
                 NavigationStyle.SIDEBAR -> if (collapsed) {
-                    BrandHome(app, Modifier.padding(top = 2.dp, bottom = 12.dp)) { RefluxMark(Modifier.padding(6.dp), size = 26.dp) }
+                    BrandToggle(app, collapsed = true, Modifier.padding(top = 2.dp, bottom = 12.dp)) { RefluxMark(Modifier.padding(6.dp), size = 26.dp) }
                 } else {
-                    BrandHome(app, Modifier.padding(start = 4.dp, top = 2.dp, bottom = 12.dp)) {
+                    BrandToggle(app, collapsed = false, Modifier.padding(start = 4.dp, top = 2.dp, bottom = 12.dp)) {
                         RefluxLockup(Modifier.padding(horizontal = 6.dp, vertical = 6.dp), height = 22.dp)
                     }
                 }
@@ -1040,19 +1040,6 @@ private fun NavigationRail(app: AppState, style: NavigationStyle, focus: RailFoc
                     viewer,
                 ) { app.go(destination) }
             }
-            // F-P1: a pointer's or a finger's way to shrink the sidebar and back; a controller has Start for it, so this is no
-            // stop for focus, and the destinations above keep their order.
-            if (style == NavigationStyle.SIDEBAR && layout.modality != InputModality.DIRECTIONAL) {
-                IconButton(
-                    if (collapsed) Icon.CHEVRON_RIGHT else Icon.BACK,
-                    if (collapsed) "Expand sidebar" else "Shrink sidebar",
-                    { app.toggleNavigationCollapsed() },
-                    Modifier.padding(start = if (collapsed) 0.dp else 4.dp, top = 4.dp).focusProperties { canFocus = false },
-                    size = 32.dp,
-                    tint = RefluxColors.contentTertiary,
-                    lit = false,
-                )
-            }
         }
     }
 }
@@ -1076,6 +1063,29 @@ private fun BrandHome(app: AppState, modifier: Modifier, mark: @Composable () ->
 
 /** What the navigation's Reflux mark is called to a screen reader, and found by in tests. */
 internal const val BRAND_HOME_NAME = "Reflux, Home"
+
+/**
+ * Reflux's name at the head of a sidebar, which shrinks the sidebar to its icons and widens it again (F-P1): a button named for
+ * what it does next, a stop for a keyboard (above Home), lit when pointed at like the destinations beneath it. A controller's
+ * Start (≡) does the same; Y only moves focus between the sidebar and the page.
+ */
+@Composable
+private fun BrandToggle(app: AppState, collapsed: Boolean, modifier: Modifier, mark: @Composable () -> Unit) {
+    val name = if (collapsed) BRAND_EXPAND_NAME else BRAND_SHRINK_NAME
+    Pressable(
+        { app.toggleNavigationCollapsed() },
+        modifier.semantics { contentDescription = name },
+        Shapes.medium,
+        lift = 0f,
+        actionLabel = if (collapsed) "expand the sidebar" else "shrink the sidebar",
+    ) { active ->
+        Box(Modifier.background(States.layer(if (active) 0.06f else 0f)).clearAndSetSemantics { }) { mark() }
+    }
+}
+
+/** What a sidebar's Reflux name is called while the sidebar is full, and while it is shrunk (F-P1). */
+internal const val BRAND_SHRINK_NAME = "Reflux, shrink sidebar"
+internal const val BRAND_EXPAND_NAME = "Reflux, expand sidebar"
 
 /** The utility area's one entry in a phone's rail: named as on the phone held upright, lit while the viewer is anywhere in it. */
 @Composable

@@ -140,7 +140,8 @@ class ShellSurfaceTest {
         // A desktop's sidebar carries the lockup, named once. The shell is the product's: the maker is credited in About, not here.
         screen(populated()) { _ ->
             awaitText("Recently Added")
-            assertEquals(1, onAllNodesWithContentDescription(BRAND_HOME_NAME).fetchSemanticsNodes().size)
+            // There it is the sidebar's shrink control (F-P1); a tablet's rail's name goes Home.
+            assertEquals(1, onAllNodesWithContentDescription(BRAND_SHRINK_NAME).fetchSemanticsNodes().size)
             assertTrue(onAllNodesWithText("Made by RSX Develops").fetchSemanticsNodes().isEmpty(), "the maker is not credited in the navigation")
         }
         // A phone has no room for it, and nothing stands in for it.

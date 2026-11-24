@@ -73,8 +73,13 @@ internal class Shell(environment: DesktopEnvironment, gamepads: GamepadReader? =
     val app: AppState get() = running.app
     val window: ComposeWindow get() = running.window
 
-    /** The player's controls window, while something plays. */
+    /** The player's controls window, while something plays; none on Linux, where the controls are in [window] (B-084). */
     val overlay: ComposeDialog? get() = window.ownedWindows.filterIsInstance<ComposeDialog>().firstOrNull { it.isShowing }
+
+    /** The size of what the controls cover: their own window's, or on Linux, where they are in [window], the video surface's. */
+    fun controlsSize(): java.awt.Dimension? = ui {
+        overlay?.size ?: if (SHAPED_VIDEO) find(window) { it.name == VideoSurface.NAME && it.isShowing }?.size else null
+    }
 
     val exited: Boolean get() = !thread.isAlive
 
@@ -261,12 +266,31 @@ internal class Shell(environment: DesktopEnvironment, gamepads: GamepadReader? =
 
     /** Moves the pointer over the frontmost surface (the video, or the page), which brings hidden player controls back. */
     fun hoverSurface(fractionX: Float, fractionY: Float) {
-        val surface = overlay ?: window
+        val (surface, area) = pictureArea()
         ui {
+            mouse(surface, MouseEvent.MOUSE_MOVED, area.left + area.width * fractionX - 12f, area.top + area.height * fractionY)
+            mouse(surface, MouseEvent.MOUSE_MOVED, area.left + area.width * fractionX, area.top + area.height * fractionY)
+        }
+    }
+
+    /**
+     * Where the picture is, in the pixels of the window that takes its pointer input: the controls window over it, or on Linux
+     * (B-084), where the controls are in the main window beneath the shaped surface, the video surface's own place in that window.
+     */
+    private fun pictureArea(): Pair<Window, Rect> = ui {
+        val over = overlay
+        if (over != null || !SHAPED_VIDEO) {
+            val surface = over ?: window
             val pane = content(surface)
             val scale = surface.graphicsConfiguration.defaultTransform.scaleX.toFloat()
-            mouse(surface, MouseEvent.MOUSE_MOVED, pane.width * scale * fractionX - 12f, pane.height * scale * fractionY)
-            mouse(surface, MouseEvent.MOUSE_MOVED, pane.width * scale * fractionX, pane.height * scale * fractionY)
+            surface to Rect(0f, 0f, pane.width * scale, pane.height * scale)
+        } else {
+            val pane = content(window)
+            val scale = window.graphicsConfiguration.defaultTransform.scaleX.toFloat()
+            val video = find(window) { it.name == VideoSurface.NAME && it.isShowing }
+            val at = video?.let { javax.swing.SwingUtilities.convertPoint(it.parent, it.location, pane) }
+            if (video == null || at == null) window to Rect(0f, 0f, pane.width * scale, pane.height * scale)
+            else window to Rect(at.x * scale, at.y * scale, (at.x + video.width) * scale, (at.y + video.height) * scale)
         }
     }
 
@@ -296,10 +320,8 @@ internal class Shell(environment: DesktopEnvironment, gamepads: GamepadReader? =
 
     /** Clicks a point of the frontmost surface given as fractions of its size: the video, or the page. */
     fun clickSurface(fractionX: Float, fractionY: Float, times: Int = 1) {
-        val surface = overlay ?: window
-        val (width, height) = ui { content(surface).let { it.width to it.height } }
-        val scale = surface.graphicsConfiguration.defaultTransform.scaleX.toFloat()
-        repeat(times) { clickAt(surface, width * scale * fractionX, height * scale * fractionY) }
+        val (surface, area) = pictureArea()
+        repeat(times) { clickAt(surface, area.left + area.width * fractionX, area.top + area.height * fractionY) }
     }
 
     /** Presses on [text] at [from] of its width, drags to [to], and releases. */

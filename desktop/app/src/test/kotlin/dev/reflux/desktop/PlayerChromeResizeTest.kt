@@ -55,7 +55,7 @@ class PlayerChromeResizeTest {
         robot.mouseMove(origin.x + 1014 - 3, origin.y + 677 - 3)
         robot.mousePress(java.awt.event.InputEvent.BUTTON1_DOWN_MASK)
         try {
-            fun contentDp() = shell.ui { shell.overlay?.size }!!
+            fun contentDp() = shell.controlsSize()!!
             fun dragToWidth(widthDp: Int, heightDp: Int) {
                 var guard = 0
                 while (guard++ < 400) {

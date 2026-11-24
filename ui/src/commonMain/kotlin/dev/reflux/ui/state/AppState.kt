@@ -332,8 +332,8 @@ class AppState(
         private set
 
     /**
-     * Whether the sidebar is shrunk to its icons (F-P1): Start (≡) on a controller, or the sidebar's own button, toggles it, and
-     * focus stays where it was. Kept across restarts. Only a sidebar shrinks ([NavigationStyle.collapsible]); full by default.
+     * Whether the sidebar is shrunk to its icons (F-P1): Start (≡) on a controller, or Reflux's name at the head of the sidebar,
+     * toggles it, and focus stays where it was; Y never does. Kept across restarts. Only a sidebar shrinks ([NavigationStyle.collapsible]); full by default.
      */
     var navigationCollapsed by mutableStateOf(false)
         private set

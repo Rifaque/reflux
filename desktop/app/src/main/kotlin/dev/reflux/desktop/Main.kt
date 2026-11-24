@@ -67,6 +67,15 @@ import java.awt.event.WindowAdapter
 import java.awt.event.WindowEvent
 import java.awt.image.BufferedImage
 import javax.swing.SwingUtilities
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.layout.onGloballyPositioned
+import dev.reflux.ui.player.LocalVideoCutouts
+import dev.reflux.ui.player.VideoCutouts
+import androidx.compose.ui.unit.toSize
+import androidx.compose.ui.layout.positionInWindow
 
 fun main() {
     StartupTrace.mark("main")
@@ -269,26 +278,74 @@ internal fun runReflux(
             // beside the page (docs/PLAYBACK.md, "One session, several presentations").
             // The surface is a native window, which is put where it belongs in one move rather than made to travel.
             val placement = rememberVideoPlacement(app, travels = false)
+            // B-084: on Linux the player is this one window: the controls are drawn here, beneath the video surface, which is
+            // shaped around them (LinuxVideoShape). Elsewhere they are a window of their own over the surface (VideoOverlay).
+            val cutouts = remember { if (SHAPED_VIDEO) VideoCutouts() else null }
+            var surfaceBounds by remember { mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
             // At the Linux desktop's own scale where Java's toolkit leaves it out (B-063); unchanged elsewhere.
-            AtDisplayScale { Box(Modifier.fillMaxSize().background(RefluxColors.background)) {
+            AtDisplayScale { CompositionLocalProvider(LocalVideoCutouts provides cutouts) { Box(Modifier.fillMaxSize().background(RefluxColors.background)) {
                 RefluxApp(app)
                 platform.video.canvas?.let { canvas ->
-                    VideoStage(placement, Modifier.fillMaxSize()) {
-                        key(canvas) { SwingPanel(
-                            factory = { canvas },
-                            modifier = Modifier.fillMaxSize(),
-                            // The toolkit's holder paints a light panel colour in the corners the picture's region cuts away
-                            // (SurfaceCorners); there it paints what the dock's glass is instead.
-                            update = { (it.parent as? javax.swing.JComponent)?.apply { isOpaque = true; background = DockGlass } },
-                        ) }
+                    if (cutouts == null) {
+                        VideoStage(placement, Modifier.fillMaxSize()) {
+                            key(canvas) { SwingPanel(
+                                factory = { canvas },
+                                modifier = Modifier.fillMaxSize(),
+                                // The toolkit's holder paints a light panel colour in the corners the picture's region cuts away
+                                // (SurfaceCorners); there it paints what the dock's glass is instead.
+                                update = { (it.parent as? javax.swing.JComponent)?.apply { isOpaque = true; background = DockGlass } },
+                            ) }
+                        }
+                    } else {
+                        // B-084: the stage only says where the picture goes. The surface is not a SwingPanel here: Compose keeps a
+                        // SwingPanel's area clear of everything it draws, so the controls beneath could never be seen through the
+                        // surface's holes. It is the window's own native child instead, put where the stage is.
+                        VideoStage(placement, Modifier.fillMaxSize()) {
+                            // Black beneath the picture, as a surface's own backing is: what a hole shows is the controls over
+                            // black, never the page under the player.
+                            Box(Modifier.fillMaxSize().background(if (app.videoFrame != VideoFrame.Hidden) Color.Black else Color.Transparent).onGloballyPositioned {
+                                // Unclipped: out of sight the stage puts the picture beyond the window's edge, and the surface goes there too.
+                                surfaceBounds = androidx.compose.ui.geometry.Rect(it.positionInWindow(), it.size.toSize())
+                            })
+                        }
+                        DisposableEffect(canvas) {
+                            val pane = window.layeredPane
+                            pane.add(canvas, javax.swing.JLayeredPane.PALETTE_LAYER)
+                            onDispose {
+                                pane.remove(canvas)
+                                pane.repaint()
+                            }
+                        }
+                        val placed = surfaceBounds
+                        SideEffect { placeSurface(canvas, placed) }
+                    }
+                    if (cutouts != null) {
+                        // As Android lays its player out: the dock's own surface over the picture, the full player's controls over
+                        // the window. Here they are beneath the native surface, and seen where it is cut away for them.
+                        val session = app.playback
+                        val shown = app.videoFrame != VideoFrame.Hidden
+                        if (session != null && shown && !(session.presentation == PlayerPresentation.FULL && placement.full)) {
+                            VideoStage(placement, Modifier.fillMaxSize()) {
+                                MiniPlayerSurface(app, session, Modifier.pictureRim(placement.pictureRadius), silent = false)
+                            }
+                        }
+                        if (session != null && shown && session.presentation == PlayerPresentation.FULL && placement.full) {
+                            PlayerOverlay(app, session, hiddenCursor = HiddenCursor)
+                        }
+                        val shape = remember(canvas) { LinuxVideoShape(canvas) }
+                        DisposableEffect(shape) { onDispose { shape.close() } }
+                        // Read here, so that a change of what is drawn over the picture, or of where it is, reshapes the surface.
+                        val holes = cutouts.rects
+                        val bounds = surfaceBounds
+                        SideEffect { shape.update(holes, bounds) }
                     }
                 }
-            } }
+            } } }
 
             // The controls window lives exactly as long as the video surface, not as long as the session:
             // it must not be torn down while the engine is being torn down (see X11ErrorGuard), and the
             // surface only goes away once the engine has.
-            platform.video.canvas?.let { canvas ->
+            if (!SHAPED_VIDEO) platform.video.canvas?.let { canvas ->
                 // The picture's corners follow the dock's: a region on the surface's window, and a rim over it (SurfaceCorners).
                 val corners = remember(canvas) { SurfaceCorners(canvas, window) }
                 DisposableEffect(corners) { onDispose { corners.close() } }
@@ -313,6 +370,26 @@ internal fun runReflux(
         }
     }
 }
+
+/**
+ * Puts the Linux video surface at [bounds] (the window's pixels, as Compose lays the stage out), in the toolkit's units. Out of
+ * sight the stage puts it beyond the window's edge, as it does a SwingPanel's.
+ */
+private fun placeSurface(canvas: java.awt.Canvas, bounds: androidx.compose.ui.geometry.Rect?) {
+    if (bounds == null) return
+    val scale = canvas.graphicsConfiguration?.defaultTransform?.scaleX ?: 1.0
+    val x = (bounds.left / scale).toInt()
+    val y = (bounds.top / scale).toInt()
+    val width = (bounds.width / scale).toInt().coerceAtLeast(1)
+    val height = (bounds.height / scale).toInt().coerceAtLeast(1)
+    if (canvas.x != x || canvas.y != y || canvas.width != width || canvas.height != height) canvas.setBounds(x, y, width, height)
+}
+
+/**
+ * Whether the player is one window whose video surface is shaped around the controls drawn beneath it (Linux: B-084), rather
+ * than the surface with a transparent controls window over it (Windows), which needs a compositor that keeps a window's alpha.
+ */
+internal val SHAPED_VIDEO: Boolean = System.getProperty("os.name").orEmpty().startsWith("Linux")
 
 /** What the dock's glass is, flat: the page's colour with the surface's tint over it, as FLOATING material lays it (design/Material.kt). */
 private val DockGlass: java.awt.Color = run {

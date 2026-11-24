@@ -64,7 +64,7 @@ Each is in the tracker with its evidence. User-visible ones are listed for teste
 | B-077 | `MpvEngineTest`'s credentials-log test can race its log thread (hosted Linux, once; test only) | Open |
 | B-080 | The live-Jellyfin test's remux case can find the server's session unconfirmed (local only) | Open |
 | B-081 | `FirstRunTest` once found the first folder empty (hosted Linux window tests) | Open |
-| B-084 | Hyprland: the player's controls window stays behind on a workspace move (blur and opacity mitigated by a window rule since the CachyOS audit) | Known limitation |
+| B-084 | Hyprland: in Beta 2 the player is two windows (video without controls, controls on a blank panel where windows lose alpha); one window after Beta 2 | Fixed after Beta 2 (the owner's check pending) |
 | B-088 | Android: a film sometimes in a small box with black on all four sides (no device in the CachyOS audit) | Blocked |
 
 ## From Beta 3 to 1.0
