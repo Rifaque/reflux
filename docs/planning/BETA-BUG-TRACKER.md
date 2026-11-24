@@ -49,7 +49,7 @@
 
 **Phase 4 (2026-11-21):** one entry added, **B-075** (release tooling: store "What's new" text), **Fixed**, which makes 83 entries and 57 Fixed (and at the Beta 2 release, **B-076**, Fixed by the owner's scoped fix, **B-077**, a test race, Open for Beta 3, **B-078**, stale window tests, Fixed, **B-079**, the Linux CI time limit, Fixed by the owner's decision, **B-080**, a live-server test, and **B-081**, a window-test intermittent, Open for Beta 3: 89 entries); B-074 gained Phase 4 evidence (not reproduced in two full runs, see its entry) and stays Investigating. No other status changed: Phase 4 changed no product behaviour. The table below is as of Phase 3's closure.
 
-**The CachyOS final audit (2026-11-24, the owner's brief):** of these, only B-082, B-083 and B-087 are bug fixes; F-P1 (the sidebar shrink), B-085 (the keyboard redesign) and B-086 (the PIN pad) are features and redesigns of the kind Beta 2's freeze sends to Beta 3, done on the brief and for the owner to place in a release (the ledger's "What kind of change each is"). eight entries added, which makes **97**: B-082, B-083, B-085, B-086, B-087 **Fixed**; B-084 **Fixed in part** (a known limitation remains); B-088 **Blocked** (no device); B-089 **Open** (test reliability, pre-existing). F-P1 Not Started → **Fixed**. The session's own record is [CACHYOS-FINAL-AUDIT-LEDGER.md](CACHYOS-FINAL-AUDIT-LEDGER.md).
+**The CachyOS final audit (2026-11-24, the owner's brief):** of these, only B-082, B-083 and B-087 are bug fixes; F-P1 (the sidebar shrink), B-085 (the keyboard redesign) and B-086 (the PIN pad) are features and redesigns of the kind Beta 2's freeze sends to Beta 3, done on the brief and for the owner to place in a release (the ledger's "What kind of change each is"). nine entries added, which makes **98**: B-082, B-083, B-085, B-086, B-087 **Fixed**; B-084 **Fixed in part** (a known limitation remains); B-088 **Blocked** (no device); B-089 **Open** (test reliability, pre-existing); B-090 **Open** (pre-existing, reproduced on the baseline). F-P1 Not Started → **Fixed**. The session's own record is [CACHYOS-FINAL-AUDIT-LEDGER.md](CACHYOS-FINAL-AUDIT-LEDGER.md).
 
 **At Phase 3's formal closure (2026-11-20; the owner accepted and closed Phase 3).** Reconciled entry by entry against the code, the commits, VERIFICATION.md, and the owner's confirmations. All 82 entries are B-001 to B-074, F-001 to F-005, F-P1 to F-P4 (F-P1 and F-P2 share one entry, counted once):
 
@@ -2928,6 +2928,16 @@ A second Right always worked. Every slower route tried (by Left or Y, after Quic
 - **Evidence:** both fail alone and in the full run, **and identically on an untouched worktree of `1d65dcf`**, so the session's changes are not their cause; hosted CI passed them on `ff98a0d`. Reflux ships no font on desktop, so Skia uses the system's default sans (`fc-match sans-serif` → Noto Sans here): the first test's four actions measured 16–292 dp for the two buttons and wrapped the other two to a second line in a 412-dp phone layout.
 - **To do (Beta 3):** pin a font for UI tests (or ship one), rather than loosen either assertion; check whether the second test's timeout has the same cause.
 
+<a id="b-090"></a>
+### B-090: After the dock's Stop, the details page's Back did not return Home (real-window test, reproduced on the baseline)
+
+- **Category:** Bug or test timing (to be told apart) · **Priority:** Medium · **Platforms:** Linux desktop (hosted CI's openbox; a nested Hyprland whose rule floats Reflux's windows)
+- **Components:** `desktop/app` test `EmbeddedPlaybackTest.playsInsideTheWindowAndAnswersToTheMouse` (line 209, "Home again"); the shell's Back after playback ends from the mini-player
+- **How found:** hosted CI on the `cachyos-final-audit` branch (run 45345526419, Linux "Desktop window tests"), then reproduced on CachyOS. CACHY-010 in [the CachyOS audit ledger](CACHYOS-FINAL-AUDIT-LEDGER.md).
+- **Phase:** Beta 3 · **Status:** Open · **Last updated:** 2026-11-24
+- **Evidence:** on CachyOS, in a nested Hyprland that floats Reflux's windows, the test fails at the same step **on an untouched `1d65dcf` worktree and on the branch alike**: the page shows the film's details and its Back button, Back is clicked, and Home never comes. So it is not caused by the audit's changes. Hosted CI passed the same test on `ff98a0d` (2026-11-22), so it depends on timing or the window manager.
+- **To investigate:** whether Back is lost while the closing player's windows (the dock and its controls window) are still going, which a person clicking quickly after Stop could meet too.
+
 ## Beta 3 backlog (from Phase 3's closure, 2026-11-20)
 
 Phase 3 is closed and Beta 2's fix scope is frozen (DECISIONS.md, 2026-11-20, "Phase 3 accepted and formally closed"). Every bug, UX issue, request or improvement found from now on is entered here, and in its own entry with the next free number, for **Beta 3 or a later release**, unless the owner explicitly authorises it as a critical Beta 2 blocker.
@@ -2941,6 +2951,7 @@ Phase 3 is closed and Beta 2's fix scope is frozen (DECISIONS.md, 2026-11-20, "P
 | [B-081](#b-081) | `FirstRunTest` once found the first folder empty (window test, Linux CI) | Open (Beta 3) |
 | [B-088](#b-088) | Android: a film in a small box with black on all four sides | Blocked (no device in the CachyOS audit) |
 | [B-089](#b-089) | Two phone-layout UI tests depend on the machine's default font | Open (test reliability) |
+| [B-090](#b-090) | After the dock's Stop, Back on the details page did not return Home (window test; baseline too) | Open |
 | [B-084](#b-084) | Hyprland: the controls window does not follow a workspace move (one window for video and controls is the fix) | Known limitation; mitigated by a window rule |
 | [B-080](#b-080) | A live-server test's remux case can be unconfirmed (local only) | Open (Beta 3) |
 | [B-079](#b-079) | The Linux CI job no longer fits its 60-minute limit | Fixed: Linux's limit 75 min (the owner's decision); parallel JVMs tried and reverted |
@@ -3036,5 +3047,5 @@ Machines (CLAUDE.md, "Testing environment"): Windows 11 development machine (phy
 - **New and Fixed:** B-082 (Quick View on a long show), B-083 (Linux window class and desktop entry), B-085 (a compact keyboard, Xbox-style shortcuts), B-086 (the PIN pad), B-087 (page hints under the keyboard).
 - **New, Fixed in part:** B-084 (Hyprland: blur and opacity over the picture, mitigated by a rule the new class allows; the workspace move a known limitation).
 - **New, Blocked:** B-088 (Android: a small box with black all round; no device in the session).
-- **New, Open:** B-089 (two phone-layout UI tests depend on the machine's default font; pre-existing, fail identically on the baseline).
+- **New, Open:** B-089 (two phone-layout UI tests depend on the machine's default font; pre-existing, fail identically on the baseline); B-090 (after the dock's Stop, Back did not return Home in a window test; reproduced on the baseline).
 - **F-P1:** Not Started → Fixed, as the owner specified it (Start shrinks the sidebar). | Claude (agent), for the owner |

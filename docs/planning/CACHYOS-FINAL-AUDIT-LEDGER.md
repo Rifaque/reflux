@@ -16,7 +16,7 @@ Beta 2's fix scope was frozen on 2026-11-20 (anything new to the Beta 3 backlog 
 | **Feature additions** (Beta 3-class) | CACHY-004 the sidebar shrinks to its icons, and Start's meaning changed for it (F-P1, a registered proposal never scheduled; it reverses decisions of 2026-11-11 and 2026-11-20) · CACHY-001's `bin/install-desktop-entry` (a new packaging feature) |
 | **UX redesigns** (Beta 3-class) | CACHY-005 the compact keyboard, its field preview only when needed, and its remapped shortcuts (LS Shift, LT &123; RT no longer symbols) · CACHY-006 the PIN pad's own size |
 | **Environmental workarounds** | CACHY-002 a documented Hyprland window rule for `reflux`; nothing in Reflux changed for it beyond CACHY-001's class |
-| **Incomplete or blocked** | CACHY-002's workspace move (a known limitation; needs one-window rendering) · CACHY-007 Android's small box (no device) · CACHY-009 two font-dependent UI tests (pre-existing) · the dock pin check, every controller press, every Android, TV and Windows walk (no device or needs a person) |
+| **Incomplete or blocked** | CACHY-010 a Back lost after the dock's Stop (pre-existing) · CACHY-002's workspace move (a known limitation; needs one-window rendering) · CACHY-007 Android's small box (no device) · CACHY-009 two font-dependent UI tests (pre-existing) · the dock pin check, every controller press, every Android, TV and Windows walk (no device or needs a person) |
 
 ## Environment fingerprint
 
@@ -159,6 +159,13 @@ Severity: Critical · High · Medium · Low. Priority: P1 (fix now) · P2 · P3.
 - **Likely cause:** Reflux ships no desktop font; Skia uses the system's default sans, Noto Sans here (`fc-match`), wider than the CI image's. Environment-dependent tests, not a phone defect (phones use Android's own font).
 - **Not weakened.** **Status:** **Environmental** (test reliability), carried to Beta 3.
 
+### CACHY-010: After the dock's Stop, the details page's Back did not return Home (window test) · B-090
+
+- **Severity / priority / confidence:** Medium · P2 · Medium (pre-existing: High)
+- **Found:** hosted CI on this branch: the Linux "Desktop window tests" failed only `EmbeddedPlaybackTest` at "Timed out waiting for Home again" (line 209). On CachyOS the tiled runs failed earlier (CACHY-009's companions), so a nested Hyprland that floats Reflux's windows was used to reach the step.
+- **Baseline:** in that nested Hyprland the test fails at the same step with the same screen **on an untouched `1d65dcf` worktree and on this branch**: not caused by this session. Hosted CI passed it on `ff98a0d`.
+- **Status:** **Open** (pre-existing; timing- or window-manager-dependent; possibly a real lost Back right after Stop, to be told apart in Beta 3).
+
 ## Environment findings
 
 | Area | Finding | Classification |
@@ -222,7 +229,7 @@ Nothing here was run on Windows. To check there:
 
 ## Testing
 
-Every result, with its environment, is in [VERIFICATION.md](../VERIFICATION.md), "CachyOS final audit". In short: `core` 393, `design` 43, `library` 263 (1 skipped): PASS. `ui` 563: 2 FAIL, both pre-existing and font-dependent (CACHY-009; identical on the untouched baseline). Desktop with real windows on physical Hyprland: 83, 6 FAIL, identical with the same messages on the untouched baseline (Hyprland's tiling overrides the sizes and moves those tests ask for); every new or changed test PASS. Packaging PASS. Documentation links PASS. Android and Windows: NOT RUN (no SDK, device or Windows here). Physical controller presses and the dock pin: NOT RUN (need the owner).
+Every result, with its environment, is in [VERIFICATION.md](../VERIFICATION.md), "CachyOS final audit". In short: `core` 393, `design` 43, `library` 263 (1 skipped): PASS. `ui` 563: 2 FAIL, both pre-existing and font-dependent (CACHY-009; identical on the untouched baseline). Desktop with real windows on physical Hyprland: 83, 6 FAIL, identical with the same messages on the untouched baseline (Hyprland's tiling overrides the sizes and moves those tests ask for); every new or changed test PASS. Packaging PASS. Documentation links PASS. Android and Windows: NOT RUN on this machine (no SDK, device or Windows here). **Hosted CI on the branch** (run 45345526419): Android unit tests, lint and release build PASS; the Windows and Linux checks PASS on re-run (the first attempt's failures were B-074 on Windows and B-090 on Linux, both pre-existing intermittents); the Website job FAILS on one external link (gnu.org refusing the runner; unchanged site; passed on `main` the day before). Physical controller presses and the dock pin: NOT RUN (need the owner).
 
 ## CachyOS retirement decision
 
