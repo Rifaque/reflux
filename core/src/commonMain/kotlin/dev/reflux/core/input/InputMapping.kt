@@ -26,9 +26,10 @@ object InputMapping {
                 GamepadButton.DPAD_DOWN -> SemanticAction.NAVIGATE_DOWN
                 GamepadButton.DPAD_LEFT -> SemanticAction.NAVIGATE_LEFT
                 GamepadButton.DPAD_RIGHT -> SemanticAction.NAVIGATE_RIGHT
-                // Y goes to the navigation and back (F-P2); Start, like a remote's Menu, opens Sources.
+                // Y goes to the navigation and back (F-P2). Start (≡) shrinks the sidebar to its icons and back, focus staying put
+                // (F-P1, CACHY-004); where there is no sidebar it opens Sources, as a remote's Menu does off a card.
                 GamepadButton.FACE_NORTH -> SemanticAction.TOGGLE_NAVIGATION
-                GamepadButton.START -> SemanticAction.MENU
+                GamepadButton.START -> SemanticAction.COLLAPSE_NAVIGATION
                 // X is the focused item's contextual action: Media Quick View (F-P3, the owner's decision of 2026-11-19).
                 GamepadButton.FACE_WEST -> SemanticAction.CONTEXT
                 // LT hides the hints and brings them back (B-055); RT is the mini-player's close (AppState, B-052).
@@ -40,7 +41,7 @@ object InputMapping {
             }
             // The Reflux keyboard (B-023): the D-pad moves among its keys, confirm types one, and the other buttons
             // are the editing a console keyboard gives them: X erases, Y is a space, the bumpers move the cursor, the
-            // triggers change case and page, and Start finishes. No destination, section, or Menu while typing.
+            // left stick's press changes case, LT the page, and Start finishes. No destination, section, or Menu while typing.
             InputContext.TEXT_ENTRY -> when (button) {
                 GamepadButton.DPAD_UP -> SemanticAction.NAVIGATE_UP
                 GamepadButton.DPAD_DOWN -> SemanticAction.NAVIGATE_DOWN
@@ -50,8 +51,10 @@ object InputMapping {
                 GamepadButton.FACE_NORTH -> SemanticAction.TEXT_SPACE
                 GamepadButton.SHOULDER_LEFT -> SemanticAction.CURSOR_BACK
                 GamepadButton.SHOULDER_RIGHT -> SemanticAction.CURSOR_FORWARD
-                GamepadButton.TRIGGER_LEFT -> SemanticAction.TEXT_SHIFT
-                GamepadButton.TRIGGER_RIGHT -> SemanticAction.TEXT_SYMBOLS
+                // As on an Xbox's keyboard (the owner's CachyOS audit brief, 2026-11-24; CACHY-005): the left stick's press is
+                // Shift (once, then locked, then off) and LT the numbers and symbols page.
+                GamepadButton.STICK_LEFT -> SemanticAction.TEXT_SHIFT
+                GamepadButton.TRIGGER_LEFT -> SemanticAction.TEXT_SYMBOLS
                 GamepadButton.START -> SemanticAction.TEXT_DONE
                 else -> null
             }

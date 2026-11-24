@@ -96,9 +96,17 @@ val prepareLibmpv = tasks.register<PrepareLibmpv>("prepareLibmpv") {
     output.set(layout.buildDirectory.dir("packaging/resources"))
 }
 
+/**
+ * The one toolkit field Reflux sets on X11 (LinuxWindowClass.kt). Only where that toolkit exists: packages are built on the OS
+ * they are for, and elsewhere the JVM would warn at every start that `sun.awt.X11` is not in `java.desktop`.
+ */
+val linuxWindowClassOpens = if (System.getProperty("os.name").startsWith("Linux")) listOf("--add-opens", "java.desktop/sun.awt.X11=ALL-UNNAMED") else emptyList()
+
 compose.desktop {
     application {
         mainClass = "dev.reflux.desktop.MainKt"
+        // CACHY-001: lets Reflux name its X11 window class (LinuxWindowClass.kt), which docks and desktop entries match.
+        jvmArgs += linuxWindowClassOpens
         // The Java runtime packed with the application: a pinned LTS (Eclipse Temurin 21) from the Gradle toolchain,
         // provisioned the same way on every machine, never whichever JDK happens to be installed.
         javaHome = javaToolchains.launcherFor {
@@ -148,7 +156,8 @@ val packageDesktopArchive = tasks.register("packageDesktopArchive") {
     val notice = rootProject.layout.projectDirectory.file("LICENSE")
     val ownNotice = rootProject.layout.projectDirectory.file("NOTICE")
     val offer = layout.projectDirectory.file("packaging/libmpv-SOURCE-OFFER.txt")
-    inputs.dir(image); inputs.dir(legal); inputs.file(notice); inputs.file(ownNotice); inputs.file(offer)
+    val desktopEntry = layout.projectDirectory.file("packaging/linux/install-desktop-entry")
+    inputs.dir(image); inputs.dir(legal); inputs.file(notice); inputs.file(ownNotice); inputs.file(offer); inputs.file(desktopEntry)
     outputs.file(output)
     doLast {
         val staging = temporaryDir.resolve(name).apply { deleteRecursively(); mkdirs() }
@@ -162,6 +171,8 @@ val packageDesktopArchive = tasks.register("packageDesktopArchive") {
         ownNotice.asFile.copyTo(staging.resolve("NOTICE.txt"))
         legal.asFile.copyRecursively(staging.resolve("third-party"))
         if (windows) offer.asFile.copyTo(staging.resolve("third-party/libmpv-SOURCE-OFFER.txt"))
+        // CACHY-001: adds Reflux to the applications menu with its icon, matched to its window (bin/install-desktop-entry).
+        if (!windows) desktopEntry.asFile.copyTo(staging.resolve("bin/install-desktop-entry")).setExecutable(true, false)
         val archive = output.get().asFile.apply { parentFile.mkdirs(); delete() }
         if (windows) {
             // Fixed timestamps and order, so the same tree packs to the same bytes.
@@ -181,6 +192,7 @@ val packageDesktopArchive = tasks.register("packageDesktopArchive") {
 }
 
 tasks.withType<Test>().configureEach {
+    jvmArgs(linuxWindowClassOpens)
     // Tests that open real windows run only on request: -Preflux.windowTests=true (and -Preflux.controller=true
     // for the one that needs a person holding a controller).
     for (name in listOf("reflux.windowTests", "reflux.screenshots", "reflux.controller")) {

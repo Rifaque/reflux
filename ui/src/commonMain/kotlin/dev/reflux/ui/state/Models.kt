@@ -255,24 +255,19 @@ internal fun Library.detailsModel(
                 )
             }
             if (seasons.none { it.episodes.isNotEmpty() }) return null
-            val next = detail.nextUp ?: (detail.seasons.firstOrNull { it.season.number > 0 } ?: detail.seasons.firstOrNull())
-                ?.episodes?.firstOrNull()?.item as? Episode
-            val started = detail.nextUp != null
+            val summary = showSummary(entry, detail.seasons.map { it.season to it.episodes.map { e -> e.item as Episode } }, detail.nextUp)
+            val next = summary.next
             DetailsModel(
                 card = card,
                 overview = metadata?.overview,
                 tagline = metadata?.tagline,
-                // When it aired, on what, and how much of it there is: what a show is, said once.
-                facts = listOfNotNull(Formatting.airedYears(metadata?.releaseDate?.year ?: Formatting.year(item), metadata?.endDate?.year)) +
-                    Formatting.facts(entry, runtimeMinutes = null).drop(if (Formatting.year(item) != null) 1 else 0) +
-                    listOfNotNull(metadata?.studios?.firstOrNull()) +
-                    listOfNotNull(seasons.count { it.season.number > 0 }.takeIf { it > 0 }?.let { if (it == 1) "1 season" else "$it seasons" }),
+                facts = summary.facts,
                 genres = metadata?.genres.orEmpty(),
                 badges = emptyList(),
                 backdrop = entry.artwork[ArtworkKind.BACKDROP],
                 credits = cast(itemId),
                 playId = next?.id,
-                playLabel = next?.let { (if (started) "Continue " else "Play ") + Formatting.episodeNumber(it) } ?: "Play",
+                playLabel = summary.playLabel,
                 resumes = false,
                 versions = emptyList(),
                 bestReason = null,
@@ -340,6 +335,57 @@ internal fun Library.detailsModel(
         }
         else -> null
     }
+}
+
+/** What a show's page and its Quick View both say of it: its facts, and what its main button plays and says. */
+private class ShowSummary(val facts: List<String>, val next: Episode?, val playLabel: String)
+
+private fun showSummary(entry: dev.reflux.library.LibraryEntry, seasons: List<Pair<dev.reflux.core.model.Season, List<Episode>>>, nextUp: Episode?): ShowSummary {
+    val item = entry.item
+    val metadata = entry.metadata
+    val next = nextUp ?: (seasons.firstOrNull { it.first.number > 0 } ?: seasons.firstOrNull())?.second?.firstOrNull()
+    val started = nextUp != null
+    return ShowSummary(
+        // When it aired, on what, and how much of it there is: what a show is, said once.
+        facts = listOfNotNull(Formatting.airedYears(metadata?.releaseDate?.year ?: Formatting.year(item), metadata?.endDate?.year)) +
+            Formatting.facts(entry, runtimeMinutes = null).drop(if (Formatting.year(item) != null) 1 else 0) +
+            listOfNotNull(metadata?.studios?.firstOrNull()) +
+            listOfNotNull(seasons.count { it.first.number > 0 }.takeIf { it > 0 }?.let { if (it == 1) "1 season" else "$it seasons" }),
+        next = next,
+        playLabel = next?.let { (if (started) "Continue " else "Play ") + Formatting.episodeNumber(it) } ?: "Play",
+    )
+}
+
+/** What Media Quick View shows of a work (F-P3): a summary and its main action, nothing per episode. */
+internal data class QuickViewModel(
+    val card: MediaCard,
+    val overview: String?,
+    val tagline: String?,
+    val facts: List<String>,
+    val genres: List<String>,
+    val playId: MediaId?,
+    val playLabel: String,
+)
+
+/**
+ * Quick View's summary of a work, or null when it is not in the library: what [detailsModel] says of it, without reading
+ * every episode's entry for a show (CACHY-003: on a 171-episode show that was most of the wait).
+ */
+internal fun Library.quickViewModel(
+    itemId: MediaId,
+    device: DeviceCapabilities,
+    preferences: TrackPreferences? = null,
+    sourceCapabilities: (SourceId) -> Set<SourceCapability> = { emptySet() },
+): QuickViewModel? {
+    val outline = showOutline(itemId)
+    if (outline == null) {
+        val details = detailsModel(itemId, device, preferences, sourceCapabilities) ?: return null
+        return QuickViewModel(details.card, details.overview, details.tagline, details.facts, details.genres, details.playId, details.playLabel)
+    }
+    if (outline.seasons.none { it.second.isNotEmpty() }) return null
+    val entry = outline.show
+    val summary = showSummary(entry, outline.seasons, outline.nextUp)
+    return QuickViewModel(cards(listOf(entry)).single(), entry.metadata?.overview, entry.metadata?.tagline, summary.facts, entry.metadata?.genres.orEmpty(), summary.next?.id, summary.playLabel)
 }
 
 /**

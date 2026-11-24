@@ -245,6 +245,7 @@ class AppState(
         }
         scope.launch { runCatching { read { this.onlineMetadata } }.getOrNull()?.let { onlineMetadata = it } }
         scope.launch { runCatching { read { setting(CONTROLLER_HINTS) } }.getOrNull()?.let { hintsHidden = it == "hidden" } }
+        scope.launch { runCatching { read { setting(NAVIGATION_COLLAPSED) } }.getOrNull()?.let { navigationCollapsed = it == "collapsed" } }
         // Who is watching is known, or asked, from the moment Reflux opens (docs/WATCH_STATE.md, "Profiles").
         scope.launch { askWhoIsWatchingAtStart() }
     }
@@ -329,6 +330,22 @@ class AppState(
      */
     var hintsHidden by mutableStateOf(false)
         private set
+
+    /**
+     * Whether the sidebar is shrunk to its icons (F-P1): Start (≡) on a controller, or the sidebar's own button, toggles it, and
+     * focus stays where it was. Kept across restarts. Only a sidebar shrinks ([NavigationStyle.collapsible]); full by default.
+     */
+    var navigationCollapsed by mutableStateOf(false)
+        private set
+
+    /** Whether the navigation in view is one that shrinks (a sidebar beside the page); set by the shell. */
+    internal var navigationCollapsible by mutableStateOf(false)
+
+    fun toggleNavigationCollapsed(): Job {
+        navigationCollapsed = !navigationCollapsed
+        val collapsed = navigationCollapsed
+        return attempt("That couldn't be saved. Try again.") { read { setSetting(NAVIGATION_COLLAPSED, if (collapsed) "collapsed" else null) } }
+    }
 
     fun toggleHints(): Job {
         hintsHidden = !hintsHidden
@@ -1406,6 +1423,18 @@ class AppState(
                 true
             }
             SemanticAction.CONTEXT -> folderPicker == null && !offlineOpen && focusedContext?.invoke() == true
+            // Start (≡): the sidebar's size, where there is a sidebar; Sources where there is none, as before (F-P1).
+            SemanticAction.COLLAPSE_NAVIGATION -> {
+                if (folderPicker == null && !offlineOpen) {
+                    if (navigationCollapsible) {
+                        toggleNavigationCollapsed()
+                        if (fromController) haptics.controller(HapticEvent.NAVIGATE)
+                    } else {
+                        toggleSources()
+                    }
+                }
+                true
+            }
             SemanticAction.TOGGLE_HINTS -> {
                 toggleHints()
                 true
@@ -1875,6 +1904,7 @@ class AppState(
         /** What a session in the mini-player still answers to while the viewer browses. */
         /** The device setting that keeps the controller's hints hidden (B-055); absent: shown. */
         const val CONTROLLER_HINTS = "controller_hints"
+        const val NAVIGATION_COLLAPSED = "navigation_collapsed"
 
         /** What a held controller button keeps doing on the Reflux keyboard: erasing, and moving the cursor. */
         val HELD_TYPING = setOf(SemanticAction.TEXT_ERASE, SemanticAction.CURSOR_BACK, SemanticAction.CURSOR_FORWARD)

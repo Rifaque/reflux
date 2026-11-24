@@ -4,7 +4,7 @@
 
 **Scope.** B-001 to B-042 and F-001 to F-005 (the owner's original findings), two registered sidebar proposals (F-P1, F-P2), and every issue found since (B-043 onward). Release gates, phase scope, phase order, and exit criteria are **not** here: they are in [BETA-2.md](../history/phases/BETA-2-PHASES.md), which links back to this file. What each test run was, in full, is in [VERIFICATION.md](../VERIFICATION.md); decisions and their reasons are in [DECISIONS.md](../DECISIONS.md).
 
-**Last updated:** 2026-11-20, Phase 3 implementation (branch `open-source-gpl`; Phase 3's commits from `dcef9fb`). Phase 3's summary and walks: VERIFICATION.md, "Phase 3".
+**Last updated:** 2026-11-24, the owner's CachyOS final audit (B-082 to B-088, F-P1; [its ledger](CACHYOS-FINAL-AUDIT-LEDGER.md)). Before that, 2026-11-20, Phase 3 implementation (branch `open-source-gpl`; Phase 3's commits from `dcef9fb`). Phase 3's summary and walks: VERIFICATION.md, "Phase 3".
 
 ## Contents
 
@@ -48,6 +48,8 @@
 ## Executive status summary
 
 **Phase 4 (2026-11-21):** one entry added, **B-075** (release tooling: store "What's new" text), **Fixed**, which makes 83 entries and 57 Fixed (and at the Beta 2 release, **B-076**, Fixed by the owner's scoped fix, **B-077**, a test race, Open for Beta 3, **B-078**, stale window tests, Fixed, **B-079**, the Linux CI time limit, Fixed by the owner's decision, **B-080**, a live-server test, and **B-081**, a window-test intermittent, Open for Beta 3: 89 entries); B-074 gained Phase 4 evidence (not reproduced in two full runs, see its entry) and stays Investigating. No other status changed: Phase 4 changed no product behaviour. The table below is as of Phase 3's closure.
+
+**The CachyOS final audit (2026-11-24, the owner's brief):** of these, only B-082, B-083 and B-087 are bug fixes; F-P1 (the sidebar shrink), B-085 (the keyboard redesign) and B-086 (the PIN pad) are features and redesigns of the kind Beta 2's freeze sends to Beta 3, done on the brief and for the owner to place in a release (the ledger's "What kind of change each is"). eight entries added, which makes **97**: B-082, B-083, B-085, B-086, B-087 **Fixed**; B-084 **Fixed in part** (a known limitation remains); B-088 **Blocked** (no device); B-089 **Open** (test reliability, pre-existing). F-P1 Not Started → **Fixed**. The session's own record is [CACHYOS-FINAL-AUDIT-LEDGER.md](CACHYOS-FINAL-AUDIT-LEDGER.md).
 
 **At Phase 3's formal closure (2026-11-20; the owner accepted and closed Phase 3).** Reconciled entry by entry against the code, the commits, VERIFICATION.md, and the owner's confirmations. All 82 entries are B-001 to B-074, F-001 to F-005, F-P1 to F-P4 (F-P1 and F-P2 share one entry, counted once):
 
@@ -1688,7 +1690,11 @@ Feature proposals, kept apart from bugs. The confirmed defaults are acceptance c
 
 Registered in BETA-2.md from the owner's master prompt of 2026-11-19, which numbered them F-005 and F-006; those numbers clash with the findings document's F-005, so they are held as F-P1 and F-P2 until the owner numbers them. Not counted in the 47 original findings.
 
-- **F-P1 Collapsible sidebar.** Expanded (icon and label) and collapsed (icons only); cross-platform and accessible; desktop, phone, tablet, Android TV, and Fire TV considered separately; preference persisted where appropriate; transitions tested; no one behaviour or size forced on every form factor. **Phase:** owner to confirm (Phase 3 in the master prompt; absent from the updated phase plan). **Status:** Not Started.
+- **F-P1 Collapsible sidebar.** Expanded (icon and label) and collapsed (icons only); cross-platform and accessible; desktop, phone, tablet, Android TV, and Fire TV considered separately; preference persisted where appropriate; transitions tested; no one behaviour or size forced on every form factor. **Phase:** the owner's CachyOS audit brief (2026-11-24), which specified it. **Status:** Fixed (automated and renders; walks with a controller outstanding).
+  - **As specified:** a controller's Start (≡) toggles the sidebar between icons with names and icons alone, focus staying where it is; Y still goes into it. Phone unchanged.
+  - **Implementation:** `SemanticAction.COLLAPSE_NAVIGATION` (Start while browsing); `AppState.navigationCollapsed`, kept as a setting; `LayoutProfile.navigationWidthDp` (76 dp shrunk), which the page's insets, the page bar and the grid's columns follow; the shrunk sidebar shows the mark and the icons, each destination keeping its name for a screen reader; a pointer's or finger's button at its foot (not a focus stop). Only `SIDEBAR` shrinks: a tablet's rail (the Pad 7, about 1164 dp, is always one) already has small icons with names beneath, and a television's rail is icons until focused; there Start opens Sources as before. Hints: "Shrink sidebar" or "Expand sidebar".
+  - **Tests:** `SidebarCollapseTest` (4, new: Start shrinks and expands without moving focus, Y and the sidebar still work shrunk, the choice survives a restart, a tablet-sized window keeps Start on Sources, the pointer's button); `DirectionalInputTest.theSourcesPageIsAButtonAwayAndBackIsTheWayOut` now reaches Sources through the sidebar (Start shrinks it there). Renders looked at.
+  - **Ledger:** CACHY-004 in [the CachyOS audit ledger](CACHYOS-FINAL-AUDIT-LEDGER.md).
 - **F-P2 Sidebar focus toggle with Y.** With a controller, Y moves focus to the sidebar and Y again returns it to the exact previous item, selection and scroll kept, repeated toggles not resetting state, no shortcut conflicts, an unavailable previous item handled; developed and tested with F-P1, and to be reconciled with B-039 (whose proposed Y is the same). **Phase:** 2 (the owner's decision on the Windows controller walk, 2026-11-19, confirmed again on the follow-up: "Y was supposed to be for opening up the sidebar"). **Status:** Fixed (walked on Windows with a physical controller).
   - **Implementation:** `SemanticAction.TOGGLE_NAVIGATION` for a controller's Y while browsing. `RefluxApp` remembers the item left (`RailFocus.leavingPage`) and returns to it (`enterPage`), falling back to the page's start when that item is gone. It applies where the navigation is beside the page; there is none to toggle with a phone's bottom bar.
   - **Sources:** Start, and a remote's Menu, still open Sources. Hints say "Y Sidebar". A light tick is felt on the controller.
@@ -2835,6 +2841,93 @@ A second Right always worked. Every slower route tried (by Left or Y, after Quic
 - **Phase:** Beta 3 (found after the freeze) · **Status:** Open · **Last updated:** 2026-11-22
 - **To investigate (Beta 3):** whether the first scan can run before the test's media is visible, and whether Reflux then picks it up by itself as the empty state promises (a product question, not only a test one); not weakened.
 
+<a id="b-082"></a>
+### B-082: Quick View waited for every episode of a long show
+
+- **Category:** Performance · **Priority:** Medium · **Platforms:** all (shared UI); measured on the CachyOS laptop (physical Linux)
+- **Components:** `ui` (`QuickView.kt`, `state/Models.kt`), `library` (`Library.showOutline`)
+- **How found:** the owner's CachyOS audit brief (2026-11-24): Quick View took about 5 to 6 seconds on *The Vampire Diaries* (8 seasons) and *The Originals* (5 seasons). CACHY-003 in [the CachyOS audit ledger](CACHYOS-FINAL-AUDIT-LEDGER.md).
+- **Phase:** the owner's CachyOS audit (authorised in the brief) · **Status:** Fixed · **Last updated:** 2026-11-24
+- **Cause (measured):** Quick View built the whole details page model: an entry (artwork, watch state, metadata, availability) for the show, every season and every episode, a card per episode, the cast and version choices, none of which it shows. About 1 ms an episode on a fast desktop; many times that on a tablet or a Fire TV.
+- **Fix:** `Library.showOutline` (seasons and episodes as plain items, with Next Up, an entry only for the show) and `quickViewModel`, which shares the show's facts and main-button label with the details page (`showSummary`).
+- **Measured (same method before and after):** the model, on a copy of the owner's library: 143–161 → 6–7 ms (171 episodes), 77–84 → 4–5 ms (92), 39–41 → 3 ms (42). In the real shell (pane shown, polled every 80 ms): cold 813 → 202 ms and warm 242 → 81–84 ms for *The Vampire Diaries*.
+- **Tests:** `QuickViewModelTest` (3, new: Quick View says exactly what the details page says, a started show included); `QuickViewUiTest` (6) and `DetailsFocusTest` (3) pass. Opt-in measurements: `QuickViewTimingTest`, `QuickViewWalkTest`.
+- **Outstanding:** timing on the Pad 7 and the Fire TV (no device attached in the session).
+
+<a id="b-083"></a>
+### B-083: On Linux the dock showed no Reflux icon: the window had no stable class and the archive no desktop entry
+
+- **Category:** Bug (platform integration) · **Priority:** Medium · **Platforms:** Linux (found on Hyprland, XWayland)
+- **Components:** `desktop/app` (`LinuxWindowClass.kt`, `Main.kt`, `build.gradle.kts`), `desktop/app/packaging/linux/install-desktop-entry`
+- **How found:** the owner's CachyOS audit brief (BUG D). CACHY-001 in [the CachyOS audit ledger](CACHYOS-FINAL-AUDIT-LEDGER.md).
+- **Phase:** the owner's CachyOS audit · **Status:** Fixed · **Last updated:** 2026-11-24
+- **Cause (verified):** the portable Beta 2 window's class was `dev-reflux-desktop-MainKt` (the toolkit's default, from the Java main class; under tests another), and the archive shipped no `.desktop` file, so nothing could match the window to Reflux's icon.
+- **Fix:** Reflux names its X11 windows `reflux` (with `--add-opens java.desktop/sun.awt.X11`; without it Reflux runs as before and says so in its log). The Linux archive has `bin/install-desktop-entry` (and `--remove`), which writes a per-user `reflux.desktop`: `StartupWMClass=reflux`, the archive's icon, the Exec path quoted as the specification says; a folder path with `%` is refused with a reason, since GLib's launchers cannot start it.
+- **Tests:** `LinuxDesktopEntryTest` (3, new); the entry was also checked with `desktop-file-validate` and opened and launched through GLib (`Gio.DesktopAppInfo`) from paths with spaces, `$`, quotes, backquotes and backslashes.
+- **Verified (physical Linux, Hyprland 0.57.2):** a development build's two windows are class `reflux` (`hyprctl clients`).
+- **Outstanding:** pinning the entry in a dock and relaunching from it (the owner's procedure in VERIFICATION.md: it needs the owner's own dock).
+
+<a id="b-084"></a>
+### B-084: On Hyprland the player is two windows: blur and translucency over the picture, controls left behind on a workspace move
+
+- **Category:** Bug (platform, rendering) · **Priority:** High on tiling compositors · **Platforms:** Linux, Hyprland (likely other compositors that blur or dim every window)
+- **Components:** `desktop/app` (`VideoSurface.kt`, `VideoOverlay`); compositor configuration
+- **How found:** the owner's CachyOS audit brief (BUG C). CACHY-002 in [the CachyOS audit ledger](CACHYOS-FINAL-AUDIT-LEDGER.md).
+- **Phase:** the owner's CachyOS audit · **Status:** Fixed in part (mitigated; the workspace move is a known limitation) · **Last updated:** 2026-11-24
+- **Cause (verified):** video is libmpv's X11 child window in the main window and the controls a transparent window of their own (DECISIONS.md). Hyprland manages that second window as a floating window: its global opacity (0.95 active, 0.85 inactive) and blur are drawn over the picture (the picture looks soft and doubled, the desktop shows through), it can be dragged off the picture, and it stays on the workspace when the player's window is moved to another. Recorded per state (`HyprlandWalkTest`: tiled, floating, resized, paused, seeked, fullscreen, other workspace, mini-player) and seen whole in a nested Hyprland with the owner's look.
+- **Fix:** with B-083 the windows have a class a rule can name; a rule like those the owner keeps for mpv and VLC (`opacity = "1.0 override", no_blur = true` for class `reflux`) gives one sharp, opaque player, verified in the nested Hyprland (all ten states). Documented for testers.
+- **Not fixed:** the controls window does not follow a move to another workspace. The fix is one window for video and controls (libmpv's render API), architecture work for a later version (DECISIONS.md, 2026-11-24).
+- **Outstanding:** the owner's own configuration is the owner's to change; nothing was written to it.
+
+<a id="b-085"></a>
+### B-085: The Reflux keyboard was too large, repeated the field, and hid the results; Xbox-style shortcuts
+
+- **Category:** UX · **Priority:** Medium · **Platforms:** every platform where the Reflux keyboard is used (controller, remote, desk)
+- **Components:** `ui` (`RefluxKeyboard.kt`, `RefluxApp.kt`, `TextEntry.kt`, `state/Keyboard.kt`), `core` (`InputMapping`)
+- **How found:** the owner's CachyOS audit brief (BUGs F and G). CACHY-005 in [the CachyOS audit ledger](CACHYOS-FINAL-AUDIT-LEDGER.md).
+- **Phase:** the owner's CachyOS audit · **Status:** Fixed · **Last updated:** 2026-11-24
+- **Before (renders):** a panel up to 980 dp wide with blank glass beside its keys, a copy of the field under Search's own field, and on a television a panel over the tabs and every result.
+- **Fix:** the panel is as wide as its keys (about 660 dp at a desk, 600 dp on a television), with smaller keys (unit 74 → 56 dp at a desk, 66 → 50 on a television; height 46 → 40) and gaps (6 → 4); the typed text is shown in the keyboard only where the panel would cover the field (the field reports where it is), and is still said to a screen reader; suggestions kept; hints wrap on a narrow panel. Shortcuts as on an Xbox: the left stick's press is Shift, LT the &123 page (RT no longer is). Docked rather than dropped down from the field: DECISIONS.md, 2026-11-24.
+- **Tests:** `KeyboardRendersTest` (6 renders, looked at); the keyboard and interaction suites in the full UI run.
+- **Outstanding:** walks with a controller on a television, a tablet and a desk (no controller or device in the session).
+
+<a id="b-086"></a>
+### B-086: The PIN pad was a small pad in a wide panel
+
+- **Category:** UX · **Priority:** Low · **Platforms:** all · **Components:** `ui` (`RefluxKeyboard.kt`)
+- **How found:** the owner's CachyOS audit brief (BUG H). CACHY-006 in [the CachyOS audit ledger](CACHYOS-FINAL-AUDIT-LEDGER.md).
+- **Phase:** the owner's CachyOS audit · **Status:** Fixed · **Last updated:** 2026-11-24
+- **Fix:** the PIN pad is sized by its own design: three keys across (68 dp at a desk, 60 on a television, 76 on a phone), the panel as wide as them (420 → about 224 dp at a desk), hints in two rows within its width, no copy of the profile gate's own PIN field.
+- **Tests:** `KeyboardRendersTest` (`pin-pad-desk`, `pin-pad-tv`, `pin-gate-desk`, looked at); `InteractionContractTest.aPinIsEnteredWithAControllerOverTheQuestionOfWhoIsWatching`.
+
+<a id="b-087"></a>
+### B-087: While the Reflux keyboard was open, the page's hints still named browsing's buttons
+
+- **Category:** Bug (UX) · **Priority:** Low · **Platforms:** all with a controller · **Components:** `ui` (`RefluxApp.kt`)
+- **How found:** the session's keyboard renders (2026-11-24): "Y Sidebar" stayed at the top of the page while Y typed a space. CACHY-008 in [the CachyOS audit ledger](CACHYOS-FINAL-AUDIT-LEDGER.md).
+- **Phase:** the owner's CachyOS audit · **Status:** Fixed · **Last updated:** 2026-11-24
+- **Fix:** the page's hint bars step aside while the keyboard is open; the keyboard names its own buttons.
+
+<a id="b-088"></a>
+### B-088: Android: a film sometimes plays in a small box with black on all four sides
+
+- **Category:** Bug (playback, Android) · **Priority:** Medium · **Platforms:** Android phones (reported); other Android devices to check
+- **Components:** `android/app` (`MainActivity.VideoLayer`, `Media3Player`)
+- **How found:** the owner's CachyOS audit brief (BUG E). CACHY-007 in [the CachyOS audit ledger](CACHYOS-FINAL-AUDIT-LEDGER.md).
+- **Phase:** Beta 3 (no device in the session) · **Status:** Blocked (no device) · **Last updated:** 2026-11-24
+- **Analysis (code only):** the picture is laid out at its own shape (pixel aspect included) and centred, so a correctly flagged film is boxed on two sides at most. Black on all four sides means a picture smaller than the box both ways: a source with bars of its own (a windowboxed encode), or a surface buffer (`setFixedSize`) that disagrees with what the decoder renders (rotation or crop metadata).
+- **Procedure (needs the phone and the film):** a screenshot; `adb shell dumpsys SurfaceFlinger` (the video layer's buffer and display size); `ffmpeg -i <file> -vf cropdetect -frames:v 300 -f null -` on the same file (bars in the source). Then either a zoom to fill (a source with bars) or a surface fix (a mismatch), with a test of its own.
+
+<a id="b-089"></a>
+### B-089: Two phone-layout UI tests depend on the machine's default font (fail on CachyOS, pass on hosted CI)
+
+- **Category:** Test reliability · **Priority:** Low · **Platforms:** the desktop JVM test run on a machine whose default sans font is wider (CachyOS: Noto Sans)
+- **Components:** `ui` tests `DetailActionsLayoutTest.withAFingerAllFourActionsStillSitOnOneLine`, `EpisodeVersionsUiTest.theVersionsAreBeneathTheEpisodeOnAPhone`
+- **How found:** the CachyOS audit's full UI run (2026-11-24). CACHY-009 in [the CachyOS audit ledger](CACHYOS-FINAL-AUDIT-LEDGER.md).
+- **Phase:** Beta 3 · **Status:** Open · **Last updated:** 2026-11-24
+- **Evidence:** both fail alone and in the full run, **and identically on an untouched worktree of `1d65dcf`**, so the session's changes are not their cause; hosted CI passed them on `ff98a0d`. Reflux ships no font on desktop, so Skia uses the system's default sans (`fc-match sans-serif` → Noto Sans here): the first test's four actions measured 16–292 dp for the two buttons and wrapped the other two to a second line in a 412-dp phone layout.
+- **To do (Beta 3):** pin a font for UI tests (or ship one), rather than loosen either assertion; check whether the second test's timeout has the same cause.
+
 ## Beta 3 backlog (from Phase 3's closure, 2026-11-20)
 
 Phase 3 is closed and Beta 2's fix scope is frozen (DECISIONS.md, 2026-11-20, "Phase 3 accepted and formally closed"). Every bug, UX issue, request or improvement found from now on is entered here, and in its own entry with the next free number, for **Beta 3 or a later release**, unless the owner explicitly authorises it as a critical Beta 2 blocker.
@@ -2846,6 +2939,9 @@ Phase 3 is closed and Beta 2's fix scope is frozen (DECISIONS.md, 2026-11-20, "P
 | [B-044](#b-044) | Test intermittents mixing the test and wall clocks | Investigating (test infrastructure) |
 | [B-056](#b-056) | Blank on closing the mini-player | Deferred by the owner (a later beta) |
 | [B-081](#b-081) | `FirstRunTest` once found the first folder empty (window test, Linux CI) | Open (Beta 3) |
+| [B-088](#b-088) | Android: a film in a small box with black on all four sides | Blocked (no device in the CachyOS audit) |
+| [B-089](#b-089) | Two phone-layout UI tests depend on the machine's default font | Open (test reliability) |
+| [B-084](#b-084) | Hyprland: the controls window does not follow a workspace move (one window for video and controls is the fix) | Known limitation; mitigated by a window rule |
 | [B-080](#b-080) | A live-server test's remux case can be unconfirmed (local only) | Open (Beta 3) |
 | [B-079](#b-079) | The Linux CI job no longer fits its 60-minute limit | Fixed: Linux's limit 75 min (the owner's decision); parallel JVMs tried and reverted |
 | [B-078](#b-078) | Three real-window tests expected the interface before Phase 2 (tests only) | Fixed before Beta 2's release |
@@ -2936,3 +3032,9 @@ Machines (CLAUDE.md, "Testing environment"): Windows 11 development machine (phy
 - **New:** B-074, the two timing-sensitive `SourcesUiTest` cases, for Beta 3.
 - **Freeze:** a Beta 3 backlog section opened. New findings go there unless the owner authorises a critical Beta 2 blocker.
 - **Counts:** 82 entries: 11 Verified, 56 Fixed, 5 Investigating, 1 In Progress, 2 Deferred, 5 Not Started, 2 Not Reproduced. | Claude (agent), for the owner |
+| 2026-11-24 | **The owner's CachyOS final audit** (the owner's brief authorised these fixes inside Beta 2's freeze; DECISIONS.md, 2026-11-24; [the ledger](CACHYOS-FINAL-AUDIT-LEDGER.md)).
+- **New and Fixed:** B-082 (Quick View on a long show), B-083 (Linux window class and desktop entry), B-085 (a compact keyboard, Xbox-style shortcuts), B-086 (the PIN pad), B-087 (page hints under the keyboard).
+- **New, Fixed in part:** B-084 (Hyprland: blur and opacity over the picture, mitigated by a rule the new class allows; the workspace move a known limitation).
+- **New, Blocked:** B-088 (Android: a small box with black all round; no device in the session).
+- **New, Open:** B-089 (two phone-layout UI tests depend on the machine's default font; pre-existing, fail identically on the baseline).
+- **F-P1:** Not Started → Fixed, as the owner specified it (Start shrinks the sidebar). | Claude (agent), for the owner |

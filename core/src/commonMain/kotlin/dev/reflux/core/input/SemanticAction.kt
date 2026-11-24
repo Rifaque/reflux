@@ -42,6 +42,13 @@ enum class SemanticAction {
     TOGGLE_NAVIGATION,
 
     /**
+     * The sidebar between its full width (icons and names) and its icons alone, focus staying where it is (F-P1; the
+     * owner's CachyOS audit brief, 2026-11-24): a controller's Start/Menu (≡) while browsing. Where there is no sidebar to
+     * shrink (a tablet's rail, a television's, a phone), it opens Sources, as Start did before.
+     */
+    COLLAPSE_NAVIGATION,
+
+    /**
      * The focused item's contextual action (F-P3): Media Quick View for a focused film or show. A controller's X, a
      * pointer's right-click, a long touch, and a remote's Menu on a focused card. With no media item focused it does
      * nothing.

@@ -37,6 +37,14 @@ enum class NavigationStyle {
             SIDEBAR -> 216f
             TV_RAIL -> 64f
         }
+
+    /** Whether the viewer can shrink it to its icons (F-P1): only the sidebar, whose names take room beside them. */
+    val collapsible: Boolean get() = this == SIDEBAR
+
+    companion object {
+        /** A collapsed sidebar's width, in dp: its icons alone (F-P1). */
+        const val COLLAPSED_SIDEBAR_DP = 76f
+    }
 }
 
 /** How the mini-player is laid out in its dock. */
@@ -104,7 +112,12 @@ data class LayoutProfile(
     val navigation: NavigationStyle = NavigationStyle.BOTTOM_BAR,
     /** The mini-player's dock in this window; null where there is none (a television). */
     val dock: MiniPlayerDock? = null,
+    /** How much of the window's width the navigation keeps now, in dp: less than [NavigationStyle.widthDp] while collapsed (F-P1). */
+    val navigationWidthDp: Float = navigation.widthDp,
 ) {
+    /** Whether the sidebar is shrunk to its icons (F-P1). */
+    val navigationCollapsed: Boolean get() = navigationWidthDp < navigation.widthDp
+
     val posterHeightDp: Float get() = posterWidthDp * 1.5f
 
     /**
@@ -129,7 +142,8 @@ object AdaptiveLayout {
         else -> FormFactor.DESKTOP
     }
 
-    fun profile(widthDp: Float, heightDp: Float, television: Boolean, modality: InputModality): LayoutProfile {
+    /** @param navigationCollapsed the viewer's choice to shrink the sidebar to its icons (F-P1); only a sidebar can be. */
+    fun profile(widthDp: Float, heightDp: Float, television: Boolean, modality: InputModality, navigationCollapsed: Boolean = false): LayoutProfile {
         val formFactor = formFactor(widthDp, heightDp, television)
         val directional = modality == InputModality.DIRECTIONAL
         val basePoster = when (formFactor) {
@@ -158,8 +172,9 @@ object AdaptiveLayout {
             FormFactor.TABLET -> NavigationStyle.RAIL
             FormFactor.DESKTOP -> NavigationStyle.SIDEBAR
         }
+        val navigationWidth = if (navigationCollapsed && navigation.collapsible) NavigationStyle.COLLAPSED_SIDEBAR_DP else navigation.widthDp
         // Pages start to the right of a navigation that runs down the side.
-        val usable = widthDp - navigation.widthDp - 2 * margin
+        val usable = widthDp - navigationWidth - 2 * margin
         val columns = maxOf(2, ((usable + gutter) / (posterWidth + gutter)).toInt())
         return LayoutProfile(
             formFactor = formFactor,
@@ -188,6 +203,7 @@ object AdaptiveLayout {
             showsFocus = directional || modality == InputModality.KEYBOARD,
             navigation = navigation,
             dock = dock(navigation, widthDp),
+            navigationWidthDp = navigationWidth,
         )
     }
 

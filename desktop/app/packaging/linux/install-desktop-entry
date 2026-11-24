@@ -1,0 +1,53 @@
+#!/bin/sh
+# Adds Reflux to your applications menu, for you only: a desktop entry pointing at this folder's bin/Reflux, with
+# Reflux's icon, named so that docks and task bars show Reflux's icon on its window and group it with the entry
+# (the window class is "reflux"). Run it again after moving the folder. Nothing outside your own data folder is touched.
+#
+#   bin/install-desktop-entry            add (or update) the entry
+#   bin/install-desktop-entry --remove   take it away again
+set -eu
+
+here=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd -P)
+applications="${XDG_DATA_HOME:-$HOME/.local/share}/applications"
+entry="$applications/reflux.desktop"
+
+if [ "${1:-}" = "--remove" ]; then
+    rm -f -- "$entry"
+    command -v update-desktop-database >/dev/null 2>&1 && update-desktop-database -q "$applications" || true
+    echo "Removed $entry"
+    exit 0
+fi
+
+if [ ! -x "$here/bin/Reflux" ] || [ ! -f "$here/lib/Reflux.png" ]; then
+    echo "This does not look like an extracted Reflux folder: $here" >&2
+    exit 1
+fi
+case "$here" in
+    # Written as %% in a desktop entry, which GLib's launchers look for literally before expanding it: the entry would not start.
+    *%*) echo "Reflux's folder path contains a %, which application menus cannot start from. Move the folder and run this again." >&2; exit 1 ;;
+esac
+
+# The Desktop Entry Specification's quoting for Exec: the path in double quotes; ", `, $ and \ escaped with a backslash,
+# itself written twice because a string's own escapes are read first ("\\$" is a literal $); and % doubled.
+quote() { printf '"%s"' "$(printf '%s' "$1" | sed -e 's/\\/\\\\\\\\/g' -e 's/["`$]/\\\\&/g' -e 's/%/%%/g')"; }
+# Icon is a plain string: only a backslash needs escaping there.
+plain() { printf '%s' "$1" | sed -e 's/\\/\\\\/g'; }
+
+mkdir -p -- "$applications"
+cat > "$entry.tmp" <<EOF
+[Desktop Entry]
+Type=Application
+Name=Reflux
+GenericName=Media Player
+Comment=Play and organise your own films and shows
+Exec=$(quote "$here/bin/Reflux")
+Icon=$(plain "$here/lib/Reflux.png")
+Terminal=false
+StartupNotify=false
+StartupWMClass=reflux
+Categories=AudioVideo;Video;Player;
+Keywords=movies;films;shows;tv;player;jellyfin;plex;
+EOF
+mv -f -- "$entry.tmp" "$entry"
+command -v update-desktop-database >/dev/null 2>&1 && update-desktop-database -q "$applications" || true
+echo "Added $entry"

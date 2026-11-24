@@ -39,7 +39,7 @@ import dev.reflux.ui.components.pane
 import dev.reflux.ui.components.takesFocus
 import dev.reflux.ui.state.AppState
 import dev.reflux.ui.state.Destination
-import dev.reflux.ui.state.detailsModel
+import dev.reflux.ui.state.quickViewModel
 import dev.reflux.ui.state.libraryState
 import dev.reflux.ui.state.offlineState
 import dev.reflux.ui.state.offlineStatus
@@ -59,7 +59,7 @@ import dev.reflux.ui.theme.glass
  */
 @Composable
 internal fun QuickViewOverlay(app: AppState, itemId: MediaId) {
-    val loaded by app.libraryState(itemId) { QuickViewLoaded(detailsModel(itemId, app.platform.device, app.viewer, app.sourceCapabilities)) }
+    val loaded by app.libraryState(itemId) { QuickViewLoaded(quickViewModel(itemId, app.platform.device, app.viewer, app.sourceCapabilities)) }
     val offline by app.offlineState(itemId) { app.platform.offline?.let { offlineStatus(itemId, it, dev.reflux.library.LibraryScope.Unified) } }
     val layout = LocalLayout.current
     val phone = layout.navigation == NavigationStyle.BOTTOM_BAR || layout.navigation == NavigationStyle.COMPACT_RAIL
@@ -133,4 +133,4 @@ internal fun QuickViewOverlay(app: AppState, itemId: MediaId) {
     }
 }
 
-private class QuickViewLoaded(val details: dev.reflux.ui.state.DetailsModel?)
+private class QuickViewLoaded(val details: dev.reflux.ui.state.QuickViewModel?)

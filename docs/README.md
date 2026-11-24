@@ -21,6 +21,7 @@ A reading guide: which document holds what, and which one wins when two seem to 
 | | [planning/BETA-BUG-TRACKER.md](planning/BETA-BUG-TRACKER.md) | **Every issue's status** and evidence (B-001 onward, F-001 onward) |
 | | [planning/PHASE-4.md](planning/PHASE-4.md) | Phase 4's work, readiness assessment and closure |
 | | [planning/V1.1-LIBRARY-RESEARCH.md](planning/V1.1-LIBRARY-RESEARCH.md) | The researched V1.1 library work |
+| | [planning/CACHYOS-FINAL-AUDIT-LEDGER.md](planning/CACHYOS-FINAL-AUDIT-LEDGER.md) | The CachyOS final audit (2026-11-24): its issues, evidence and verification |
 | Technical reference | [ARCHITECTURE.md](ARCHITECTURE.md) | Layers, Media Core, local-first state, sources |
 | | [PLAYBACK.md](PLAYBACK.md) | Capabilities, the planner, execution, diagnostics, Trickplay |
 | | [INPUT_MODEL.md](INPUT_MODEL.md) | Semantic actions, controller mapping, text entry, haptics |

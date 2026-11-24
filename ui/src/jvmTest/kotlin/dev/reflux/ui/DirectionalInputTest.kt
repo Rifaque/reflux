@@ -135,10 +135,21 @@ class DirectionalInputTest {
     fun theSourcesPageIsAButtonAwayAndBackIsTheWayOut() = screen(populated()) { app ->
         awaitText("Recently Added")
         press(app, GamepadButton.DPAD_DOWN)
-        assertTrue(press(app, GamepadButton.START))
+        // Beside a sidebar, Start (≡) shrinks it (F-P1, CACHY-004); Sources is in the sidebar, which Y reaches (F-P2).
+        assertTrue(press(app, GamepadButton.FACE_NORTH))
+        fun focusedName() = runCatching {
+            val node = onNode(isFocused()).fetchSemanticsNode()
+            node.config.getOrNull(SemanticsProperties.ContentDescription)?.firstOrNull()
+                ?: node.config.getOrNull(SemanticsProperties.Text)?.firstOrNull()?.text
+                ?: node.children.firstNotNullOfOrNull { it.config.getOrNull(SemanticsProperties.Text)?.firstOrNull()?.text }
+        }.getOrNull()
+        repeat(10) { if (focusedName() != "Sources") press(app, GamepadButton.DPAD_DOWN) }
+        assertEquals("Sources", focusedName())
+        press(app, GamepadButton.FACE_SOUTH)
         awaitText("Add media")
         assertEquals(Destination.Sources, app.navigator.current)
-        press(app, GamepadButton.DPAD_DOWN)
+        // Chosen from the sidebar, focus stays there (INPUT_MODEL.md); Right goes into the page, at its first control.
+        press(app, GamepadButton.DPAD_RIGHT)
         onNodeWithText("Add media").assertIsFocused()
         // Down to the folder's card, Select opens it, and its actions are reachable below it.
         press(app, GamepadButton.DPAD_DOWN)

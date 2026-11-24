@@ -23,6 +23,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -89,6 +92,8 @@ import kotlin.math.abs
  * @param onComplete a title completion chosen by a pointer or a finger.
  * @param onPointerTravel the pointer moved over the keyboard by this many dp (for the presentation's arbiter, §7).
  * @param prompts what the controller's buttons do here, in its own terms, or null without a controller in hand.
+ * @param fieldShown whether the field being typed into is in sight above the keyboard: then the keyboard does not repeat it
+ *   (CACHY-005, the owner's brief: Search's own field already shows what is typed), keeping only its words for a screen reader.
  */
 @Composable
 fun RefluxKeyboard(
@@ -99,23 +104,44 @@ fun RefluxKeyboard(
     onComplete: (Int) -> Unit = {},
     onPointerTravel: (Float) -> Unit = {},
     onPanelClick: () -> Unit = {},
+    fieldShown: Boolean = false,
+    /** Told the panel's top edge, in root coordinates (px), as it is laid out. */
+    panelTop: (Float) -> Unit = {},
 ) {
     val layout = LocalLayout.current
     val shown = session.layout
     val controller = session.mode == KeyboardMode.CONTROLLER
+    val pin = session.kind == InputKind.PIN
+    val tv = layout.formFactor == FormFactor.TV
+    val phone = layout.formFactor == FormFactor.PHONE
+    // CACHY-005 (the owner's brief, 2026-11-24): a compact keyboard, as an Xbox's is, that leaves the page behind it in sight.
+    // Keys are still comfortable targets for a finger on a phone; elsewhere they are sized to be read and chosen.
     val keyHeight = when {
-        layout.formFactor == FormFactor.TV -> 40.dp
-        layout.formFactor == FormFactor.PHONE -> 44.dp
-        controller -> 46.dp
+        pin -> if (tv) 38.dp else 44.dp
+        phone -> 44.dp
+        tv -> 36.dp
         else -> 40.dp
     }
-    // A key unit: the controller's keys are larger targets; a desk keyboard is a desk keyboard's proportions (u ≈ 40 dp).
-    val maxUnit = if (controller) (if (layout.formFactor == FormFactor.TV) 66.dp else 74.dp) else 42.dp
+    // A key unit: the controller's grid keys; a desk keyboard is a desk keyboard's proportions (u ≈ 40 dp). The PIN pad is
+    // sized by its own design, three keys across (CACHY-006), never a share of a full keyboard's width.
+    val maxUnit = when {
+        pin -> if (tv) 60.dp else if (phone) 76.dp else 68.dp
+        !controller -> 42.dp
+        tv -> 50.dp
+        else -> 56.dp
+    }
     val travel by rememberUpdatedState(onPointerTravel)
     val panelClick by rememberUpdatedState(onPanelClick)
     val density = LocalDensity.current
+    val pad = 10.dp
+    BoxWithConstraints(modifier.fillMaxWidth(), contentAlignment = Alignment.BottomCenter) {
+    val unit = minOf((maxWidth - pad * 2) / shown.width, maxUnit)
+    // The panel is as wide as its keys: no margins of empty glass beside them.
+    val content = unit * shown.width
+    val panelWidth by animateDpAsState(minOf(content + pad * 2, maxWidth), spring(dampingRatio = 0.9f, stiffness = 500f))
     Column(
-        modifier.widthIn(max = if (session.kind == InputKind.PIN) 420.dp else 980.dp).fillMaxWidth()
+        Modifier.width(panelWidth)
+            .onGloballyPositioned { panelTop(it.boundsInRoot().top) }
             .glass(MaterialRole.MODAL, Shapes.xlarge).absorbsPointer()
             .pane("Keyboard, ${session.label}")
             .pointerInput(Unit) {
@@ -141,34 +167,49 @@ fun RefluxKeyboard(
                     }
                 }
             }
-            .padding(14.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+            .padding(pad),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         Box(Modifier.fillMaxWidth()) {
-            Preview(session)
+            Preview(session, drawn = !fieldShown)
             shown.note?.let { note ->
                 Text(note, Modifier.align(Alignment.TopEnd).padding(8.dp).semantics { testTag = "keyboard-note" }, style = LocalTypography.current.caption, color = RefluxColors.contentTertiary, maxLines = 1)
             }
         }
         if (session.completions.isNotEmpty()) Completions(session, onComplete)
-        BoxWithConstraints(Modifier.fillMaxWidth()) {
-            val unit = minOf(maxWidth / shown.width, maxUnit)
-            KeyField(session, shown, unit, keyHeight, onKey)
-        }
+        KeyField(session, shown, unit, keyHeight, onKey)
         if (prompts != null) {
             val list = buildList {
                 add(InputMapping.cancelButton(prompts) to "Close")
                 add(GamepadButton.FACE_WEST to "Erase")
-                if (session.kind != InputKind.PIN) add(GamepadButton.FACE_NORTH to "Space")
+                if (!pin) {
+                    add(GamepadButton.FACE_NORTH to "Space")
+                    // As an Xbox's keyboard (CACHY-005): the left stick's press for capitals, LT for numbers and symbols.
+                    add(GamepadButton.STICK_LEFT to "Shift")
+                    add(GamepadButton.TRIGGER_LEFT to if (session.page == KeyboardPage.LETTERS) "&123" else "ABC")
+                }
                 add(GamepadButton.START to "Done")
             }
-            ButtonPrompts(list, prompts, Modifier.padding(top = 2.dp), floating = false)
+            // As many hints in a row as the panel holds, the rest beneath, centred: a phone's or a PIN pad's narrow panel
+            // wraps them rather than cutting them off or growing wider than its keys (CACHY-005, CACHY-006).
+            val perRow = maxOf(2, ((panelWidth - pad * 2) / HINT_WIDTH).toInt())
+            if (list.size <= perRow) {
+                ButtonPrompts(list, prompts, Modifier.padding(top = 2.dp), floating = false)
+            } else {
+                Column(Modifier.fillMaxWidth().padding(top = 2.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    list.chunked(perRow).forEach { row -> ButtonPrompts(row, prompts, floating = false) }
+                }
+            }
         }
+    }
     }
 }
 
+/** About how wide one button hint is ("X Erase"), for wrapping them in a narrow panel. */
+private val HINT_WIDTH = 92.dp
+
 /** The gap between keys. */
-private val KEY_GAP = 6.dp
+private val KEY_GAP = 4.dp
 
 /**
  * Every key of [shown] at its place, [unit] wide and [keyHeight] tall a unit. Keys are composed by identity, so a key
@@ -287,15 +328,22 @@ private fun Completions(session: KeyboardSession, onComplete: (Int) -> Unit) {
     }
 }
 
-/** The field's name and its text so far, with the cursor where typing goes. */
+/**
+ * The field's name and its text so far, with the cursor where typing goes. Not [drawn] while the field itself is in sight
+ * (CACHY-005): then it is only what a screen reader says, and takes no room.
+ */
 @Composable
-private fun Preview(session: KeyboardSession) {
+private fun Preview(session: KeyboardSession, drawn: Boolean = true) {
     val text = session.text
     val shown = if (session.secret) "•".repeat(text.length) else text
     val at = session.cursor.coerceIn(0, shown.length)
+    val said = Modifier.semantics { contentDescription = if (session.secret) "${session.label}, ${text.length} characters" else "${session.label}, $text"; testTag = "keyboard-text:" + (if (session.secret) shown else text) + "|" + at }
+    if (!drawn) {
+        Box(said.size(0.dp))
+        return
+    }
     Column(
-        Modifier.fillMaxWidth().clip(Shapes.medium).background(States.layer(0.06f)).padding(horizontal = 14.dp, vertical = 8.dp)
-            .semantics { contentDescription = if (session.secret) "${session.label}, ${text.length} characters" else "${session.label}, $text"; testTag = "keyboard-text:" + (if (session.secret) shown else text) + "|" + at },
+        Modifier.fillMaxWidth().clip(Shapes.medium).background(States.layer(0.06f)).padding(horizontal = 14.dp, vertical = 8.dp).then(said),
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
         Text(session.label, style = LocalTypography.current.caption, color = RefluxColors.contentTertiary, maxLines = 1)

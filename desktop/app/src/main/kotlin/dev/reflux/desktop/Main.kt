@@ -138,6 +138,10 @@ internal fun runReflux(
     // B-063: the Linux desktop's scale Reflux applies itself, where the toolkit leaves it out.
     LinuxDisplayScale.extra.takeIf { it != 1f }?.let { environment.diagnostics.record("The desktop's scale is applied by Reflux: x$it over the toolkit's") }
     dev.reflux.playback.mpv.NumericLocale.adjustedFrom?.let { environment.diagnostics.record("The numeric locale was $it; it is C for libmpv (language and formats are unchanged)") }
+    // CACHY-001: before the first window, so docks and desktop entries can tell Reflux's windows apart.
+    if (System.getProperty("os.name").orEmpty().startsWith("Linux") && !nameTheWindowClass()) {
+        environment.diagnostics.record("The window class could not be set; docks may not show Reflux's icon")
+    }
     application(exitProcessOnExit = exitProcess) {
         // The last line of defence: a failure nobody handled is written down instead of ending the app.
         val scope = rememberCoroutineScope { CoroutineExceptionHandler { _, error -> platform.report("An unexpected error was not handled", error) } }

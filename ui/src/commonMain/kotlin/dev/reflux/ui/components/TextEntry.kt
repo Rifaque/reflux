@@ -12,6 +12,8 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
@@ -120,10 +122,12 @@ internal fun Modifier.textEntry(
     val finish by rememberUpdatedState(onDone)
     val name by rememberUpdatedState(label)
     var focused by remember { mutableStateOf(false) }
+    // Where the field is, so the keyboard repeats it only when it would cover it (CACHY-005).
+    val place = remember { arrayOfNulls<androidx.compose.ui.geometry.Rect>(1) }
     val open = remember(entry, kind) {
         {
             keyboard?.hide()
-            entry?.open(KeyboardRequest(self, name, kind, { text }, { write(it) }, { finish() }))
+            entry?.open(KeyboardRequest(self, name, kind, { text }, { write(it) }, { finish() }, { place[0] }))
             Unit
         }
     }
@@ -154,7 +158,7 @@ internal fun Modifier.textEntry(
             keyboard?.hide()
         }
     }
-    return onFocusChanged {
+    return onGloballyPositioned { place[0] = it.boundsInRoot() }.onFocusChanged {
         focused = it.isFocused
         entry?.focused(self, it.isFocused)
     }.onPreviewKeyEvent { event ->

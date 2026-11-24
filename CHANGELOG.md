@@ -4,6 +4,25 @@ What changes for people using Reflux, version by version. The rules for versions
 
 ## Unreleased
 
+### Playback & Media
+
+- On Hyprland and other Linux desktops that blur or dim windows, a window rule for `reflux` (opacity 1.0 override, no blur) keeps the picture sharp and solid; the testing notes say how.
+
+### Navigation & Controllers
+
+- Quick view opens at once on shows with many seasons; it used to wait for every episode's details first.
+- On a controller, Start (≡) now shrinks the sidebar to its icons and back, without moving where you are; Y still takes you into it. With a mouse or a finger, the button at the foot of the sidebar does the same, and Reflux remembers your choice. Where there is no sidebar (a tablet's or TV's rail, a phone), Start still opens Sources.
+
+### Search & Typing
+
+- The on-screen keyboard is smaller and only as wide as its keys, so search results stay in sight. It no longer repeats the search field above it, and keeps its title suggestions.
+- As on an Xbox keyboard, press the left stick for capitals and LT for numbers and symbols. While the keyboard is open, only its own button hints are shown.
+- The PIN pad is a compact number pad of its own instead of a small pad in a wide panel.
+
+### Platforms & Installation
+
+- On Linux, Reflux's windows are named `reflux`, so docks and task bars can show Reflux's icon and group its window, and `bin/install-desktop-entry` in the download adds Reflux to your applications menu with its icon (`--remove` takes it away).
+
 ## 0.9.0-beta.2 — 2026-11-21
 
 ### Playback & Media

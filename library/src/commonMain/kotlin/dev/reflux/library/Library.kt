@@ -386,17 +386,33 @@ class Library(
     /** A show with its seasons and episodes as [scope] has them: a source's page lists only what is on that source. */
     fun showDetail(showId: MediaId, scope: LibraryScope = LibraryScope.Unified): ShowDetail? {
         val show = item(showId) as? Show ?: return null
-        val seasons = queries.presentSeasonsOfShow(showId.value, scope.sourceValue, scope.sectionValue).executeAsList().map { it.toModel() as Season }
-        val ordered = seasons.sortedBy { if (it.number == 0) Int.MAX_VALUE else it.number }.map { season ->
-            season to queries.presentEpisodesOfSeason(season.id.value, scope.sourceValue, scope.sectionValue).executeAsList()
-                .map { it.toModel() as Episode }.sortedWith(NextUp.episodeOrder)
-        }
+        val ordered = orderedSeasons(showId, scope)
         // The show, its seasons, and their episodes in one read: each read of entries costs its queries once.
         val all = entries(listOf(show) + ordered.flatMap { (season, episodes) -> listOf(season) + episodes }, scope).associateBy { it.item.id }
         val seasonDetails = ordered.map { (season, episodes) -> SeasonDetail(season, all.getValue(season.id), episodes.map { all.getValue(it.id) }) }
         val allEpisodes = seasonDetails.flatMap { detail -> detail.episodes.map { it.item as Episode } }
         return ShowDetail(all.getValue(show.id), seasonDetails, NextUp.of(allEpisodes, watchStates()))
     }
+
+    /**
+     * A show as a summary needs it (Media Quick View): its own entry, its seasons and episodes as plain items in viewing order,
+     * and what to play next. [showDetail] also reads every season's and episode's entry (artwork, watch state, availability),
+     * which costs about a millisecond an episode; a long show made Quick View wait for all of it (CACHY-003).
+     */
+    fun showOutline(showId: MediaId, scope: LibraryScope = LibraryScope.Unified): ShowOutline? {
+        val show = item(showId) as? Show ?: return null
+        val ordered = orderedSeasons(showId, scope)
+        return ShowOutline(entries(listOf(show), scope).single(), ordered, NextUp.of(ordered.flatMap { it.second }, watchStates()))
+    }
+
+    /** A show's seasons in [scope], specials last, each with its episodes in viewing order. */
+    private fun orderedSeasons(showId: MediaId, scope: LibraryScope): List<Pair<Season, List<Episode>>> =
+        queries.presentSeasonsOfShow(showId.value, scope.sourceValue, scope.sectionValue).executeAsList().map { it.toModel() as Season }
+            .sortedBy { if (it.number == 0) Int.MAX_VALUE else it.number }
+            .map { season ->
+                season to queries.presentEpisodesOfSeason(season.id.value, scope.sourceValue, scope.sectionValue).executeAsList()
+                    .map { it.toModel() as Episode }.sortedWith(NextUp.episodeOrder)
+            }
 
     /** The versions of a playable work in [scope], with source state, in stable order. */
     fun versions(itemId: MediaId, scope: LibraryScope = LibraryScope.Unified): List<VersionInfo> =

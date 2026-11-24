@@ -76,6 +76,8 @@ What's new in each beta, written for the people testing it. The complete list of
 
 - Windows: on a few machines Reflux can crash after the graphics driver fails to start Direct3D (being investigated).
 - Linux: on KDE with "Scaled by the system", and with two monitors at different scales, Reflux may look too large.
+- Linux on Hyprland (and other desktops that blur or dim every window): the player's controls are a window of their own, so the picture can look soft or see-through. Add a window rule for Reflux as you would for mpv, for example in Hyprland's Lua configuration `hl.window_rule({ match = { class = "^(reflux|dev-reflux-desktop-MainKt)$" }, opacity = "1.0 override", no_blur = true })` (Beta 2's windows are named `dev-reflux-desktop-MainKt`; later builds' `reflux`). Moving the playing window to another workspace leaves its controls behind for now.
+- Android: a film can sometimes play in a small box with black on every side (being investigated; a screenshot and the film's name help).
 - A short blank frame can appear when the mini-player closes.
 - Windows starts more slowly than Android.
 - Scene previews need your server to have made them; local files have none yet.

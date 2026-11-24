@@ -202,11 +202,12 @@ class BrowsingWindowTest {
                 pad.stick(1f, 0f, holdMs = 1_200)
                 assertEquals(start, shell.ui { app.revision }, "navigation alone changes nothing in the library")
 
-                // Options opens the sources page; Circle goes back.
+                // Options shrinks the sidebar to its icons and back, staying on the page (F-P1, CACHY-004).
                 pad.press(GamepadButton.START)
-                shell.await("the sources page") { app.navigator.current == Destination.Sources }
-                pad.press(GamepadButton.FACE_EAST)
-                shell.await("back from the sources page") { app.navigator.current == Destination.Home }
+                shell.await("the sidebar shrunk") { shell.ui { app.navigationCollapsed } && shell.prompted("Expand sidebar") }
+                pad.press(GamepadButton.START)
+                shell.await("the sidebar full again") { shell.ui { !app.navigationCollapsed } }
+                assertEquals(Destination.Home, shell.ui { app.navigator.current }, "Options opened nothing")
 
                 // Create toggles fullscreen, in the real window.
                 pad.press(GamepadButton.SELECT)

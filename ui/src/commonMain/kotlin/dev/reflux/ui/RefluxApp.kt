@@ -91,6 +91,7 @@ import androidx.compose.ui.unit.em
 import dev.reflux.core.input.ControllerFamily
 import dev.reflux.core.input.GamepadButton
 import dev.reflux.core.input.InputMapping
+import dev.reflux.core.input.InputModality
 import dev.reflux.core.input.InputSignal
 import dev.reflux.core.input.SemanticAction
 import dev.reflux.design.AdaptiveLayout
@@ -255,14 +256,14 @@ internal val PageBarHeight = 64.dp
 /** How far below the top bar its scrim fades out, once a page has scrolled. */
 internal val TopBarScrimFade = 24.dp
 
-private fun chromeInsets(navigation: NavigationStyle, onSection: Boolean, prompts: Boolean, bars: SystemBars, artworkPage: Boolean, dock: MiniPlayerDock? = null): ChromeInsets {
+private fun chromeInsets(navigation: NavigationStyle, onSection: Boolean, prompts: Boolean, bars: SystemBars, artworkPage: Boolean, dock: MiniPlayerDock? = null, navigationWidth: Float = navigation.widthDp): ChromeInsets {
     val insets = when (navigation) {
         // A page reached from somewhere has a way back in its top corner; with a controller in hand, its
         // button prompts sit above the sections, and the page ends clear of them too.
         NavigationStyle.BOTTOM_BAR -> ChromeInsets(top = if (onSection) 20.dp else 72.dp, bottom = 10.dp + NavigationBarHeight + 28.dp + if (prompts) 52.dp else 0.dp)
         // A remote has its own Back: a television's pages start close to the top of its safe area.
-        NavigationStyle.TV_RAIL -> ChromeInsets(top = 36.dp, bottom = 32.dp, start = navigation.widthDp.dp)
-        else -> ChromeInsets(top = PageBarHeight, bottom = 32.dp, start = navigation.widthDp.dp)
+        NavigationStyle.TV_RAIL -> ChromeInsets(top = 36.dp, bottom = 32.dp, start = navigationWidth.dp)
+        else -> ChromeInsets(top = PageBarHeight, bottom = 32.dp, start = navigationWidth.dp)
     }
     // Edge to edge: the page is drawn under the system's bars, and its content starts clear of them.
     // A page ends clear of the mini-player too, while something plays there: its last row scrolls out from under it.
@@ -279,7 +280,7 @@ private fun chromeInsets(navigation: NavigationStyle, onSection: Boolean, prompt
 @Composable
 fun RefluxTheme(app: AppState, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
     BoxWithConstraints(modifier.fillMaxSize()) {
-        val target = AdaptiveLayout.profile(maxWidth.value, maxHeight.value, app.platform.television, app.input.modality)
+        val target = AdaptiveLayout.profile(maxWidth.value, maxHeight.value, app.platform.television, app.input.modality, app.navigationCollapsed)
         val accessibility = app.platform.accessibility
         val roles = if (accessibility.highContrast) ColorRoles.RefluxHighContrast else ColorRoles.Reflux
         // Internal, never a setting: what this device can draw, and what the viewer's system asks for.
@@ -356,6 +357,9 @@ fun RefluxApp(
         val focused = remember { FocusedControl() }
         val rail = remember { RailFocus() }
         val sideNavigation = LocalLayout.current.navigation.vertical
+        // F-P1: Start (≡) shrinks the sidebar where there is one; elsewhere it opens Sources, as it did.
+        val collapsible = LocalLayout.current.navigation.collapsible
+        SideEffect { app.navigationCollapsible = collapsible }
         val waiting = androidx.compose.runtime.rememberCoroutineScope()
         DisposableEffect(app, focus, sideNavigation) {
             app.moveFocus = { action ->
@@ -450,7 +454,7 @@ fun RefluxApp(
         // BASIC the page stays beside the navigation, which is the cleaner layout there.
         val artworkPage = tier.artworkUnderNavigation && opensOnArtwork(app.navigator.current)
         val dock = layout.dock?.takeIf { app.docked != null }
-        val insets = chromeInsets(layout.navigation, app.navigator.current is Destination.Section, app.namesButtons, bars, artworkPage, dock)
+        val insets = chromeInsets(layout.navigation, app.navigator.current is Destination.Section, app.namesButtons, bars, artworkPage, dock, layout.navigationWidthDp)
         // A television is only ever operated through focus, so something always has it: when a screen
         // appears, or what had focus goes away, it lands where the user left off or on the main action.
         if (layout.formFactor == FormFactor.TV) {
@@ -556,7 +560,7 @@ fun RefluxApp(
                             val named = accessibleTitle(destination)
                             // Each page keeps its own place while it leaves: one that opens on artwork reaches under the
                             // navigation, the others start beside it.
-                            val own = chromeInsets(layout.navigation, destination is Destination.Section, app.namesButtons, bars, tier.artworkUnderNavigation && opensOnArtwork(destination), dock)
+                            val own = chromeInsets(layout.navigation, destination is Destination.Section, app.namesButtons, bars, tier.artworkUnderNavigation && opensOnArtwork(destination), dock, layout.navigationWidthDp)
                             Box(
                                 Modifier.fillMaxSize().padding(start = own.start - own.contentStart).traversal(Traversal.PAGE).inert(leaving || behind)
                                     .then(if (named != null) Modifier.pane(named) else Modifier)
@@ -655,7 +659,7 @@ private fun Chrome(app: AppState, page: PageScroll, rail: RailFocus, navigationI
         if (app.profileGate == null && !bottomBar) LimitedTextSize(NAVIGATION_TEXT_LIMIT) {
             Box(Modifier.fillMaxSize().padding(start = bars.start, end = bars.end).inert(navigationInert)) {
                 NavigationRail(app, layout.navigation, rail, Modifier.align(Alignment.TopStart).padding(top = bars.top, bottom = bars.bottom).traversal(Traversal.BEFORE_PAGE))
-                PageBar(app, Modifier.align(Alignment.TopStart).padding(start = layout.navigation.widthDp.dp, top = bars.top).traversal(Traversal.BEFORE_PAGE))
+                PageBar(app, Modifier.align(Alignment.TopStart).padding(start = layout.navigationWidthDp.dp, top = bars.top).traversal(Traversal.BEFORE_PAGE))
             }
         }
     Box(Modifier.fillMaxSize().then(keyboard)) {
@@ -737,7 +741,7 @@ private fun Chrome(app: AppState, page: PageScroll, rail: RailFocus, navigationI
                         val aboveDock = if (bottomBar && docked != null) (docked.heightDp + MiniPlayerDock.GAP_DP).dp else 0.dp
                         val besideDock = if (!bottomBar && docked != null) (docked.widthDp + MiniPlayerDock.GAP_DP).dp else 0.dp
                         Modifier.align(Alignment.BottomCenter).padding(bottom = (if (bottomBar) 10.dp + NavigationBarHeight + 14.dp else 32.dp) + aboveDock)
-                            .padding(start = layout.navigation.widthDp.dp, end = besideDock)
+                            .padding(start = layout.navigationWidthDp.dp, end = besideDock)
                     }
                 ).announces(app.notice.takeUnless { noticeInert }),
                 transitionSpec = {
@@ -774,6 +778,10 @@ private fun Chrome(app: AppState, page: PageScroll, rail: RailFocus, navigationI
             exit = fadeOut(Motion.sheetExit.tween()),
         ) {
             typing?.let { session ->
+                // CACHY-005: where the panel's top is, so it repeats the field only when it would cover it. Until it is
+                // measured, it does (the cautious way); a field above the panel's top, wholly in the window, is in sight.
+                var panelTop by remember(session) { mutableStateOf<Float?>(null) }
+                val fieldShown = session.request.bounds()?.let { field -> panelTop?.let { top -> field.top >= 0f && field.bottom <= top } } == true
                 Box(Modifier.fillMaxWidth().padding(start = bars.start + 12.dp, end = bars.end + 12.dp, bottom = bars.bottom + 12.dp), contentAlignment = Alignment.BottomCenter) {
                     // Title completions as the query changes (D2), on Search's own typing pause; never taking focus.
                     if (session.kind == dev.reflux.ui.state.InputKind.SEARCH) {
@@ -789,6 +797,8 @@ private fun Chrome(app: AppState, page: PageScroll, rail: RailFocus, navigationI
                         onComplete = app::completeOnKeyboard,
                         onPointerTravel = app::keyboardPointerTravel,
                         onPanelClick = app::keyboardClicked,
+                        fieldShown = fieldShown,
+                        panelTop = { panelTop = it },
                     )
                 }
             }
@@ -848,7 +858,8 @@ private fun BoxScope.CompactNavigation(app: AppState) {
         Column(Modifier.padding(bottom = 10.dp), horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(8.dp)) {
             // With a controller in hand, what its buttons do here, in that controller's own terms.
             // Hidden hints take the bar with them (B-071): an empty bar was still its frosted pill, a small dot on screen.
-            AnimatedVisibility(app.namesButtons && !app.hintsHidden, enter = fadeIn(Motion.inputMorph.tween()), exit = fadeOut(Motion.controlsHide.tween())) {
+            // While the Reflux keyboard is open its own hints say what the buttons do (CACHY-005).
+            AnimatedVisibility(app.namesButtons && !app.hintsHidden && app.keyboard == null, enter = fadeIn(Motion.inputMorph.tween()), exit = fadeOut(Motion.controlsHide.tween())) {
                 val family = app.input.controllerFamily ?: ControllerFamily.GENERIC
                 ButtonPrompts(browsePrompts(app, family), family, hold = rememberBackHold(app, family))
             }
@@ -922,8 +933,11 @@ private fun NavigationRail(app: AppState, style: NavigationStyle, focus: RailFoc
     var focused by remember { mutableStateOf(false) }
     // A television's rail widens over the page while it has focus, to say what each icon is.
     val open = television && focused
+    // F-P1: a sidebar the viewer shrank to its icons (Start, or the button at its foot).
+    val layout = LocalLayout.current
+    val collapsed = style == NavigationStyle.SIDEBAR && layout.navigationCollapsed
     val motion = LocalMotion.current
-    val width by animateDpAsState(if (open) TV_RAIL_OPEN else style.widthDp.dp, motion.railExpand.tween())
+    val width by animateDpAsState(if (open) TV_RAIL_OPEN else layout.navigationWidthDp.dp, motion.railExpand.tween())
     val openness by animateFloatAsState(if (open) 1f else 0f, motion.railExpand.tween())
     Box(
         modifier.fillMaxHeight().width(width)
@@ -957,15 +971,20 @@ private fun NavigationRail(app: AppState, style: NavigationStyle, focus: RailFoc
                 // Where the viewer is: one lit shape with a bar at its leading edge, which travels between destinations.
                 .selectionMark(track, marked, radius = if (compact) null else Radius.MEDIUM.dp, bar = !compact),
             verticalArrangement = Arrangement.spacedBy(if (style == NavigationStyle.SIDEBAR) 4.dp else 6.dp),
-            horizontalAlignment = if (style == NavigationStyle.SIDEBAR || open) Alignment.Start else Alignment.CenterHorizontally,
+            horizontalAlignment = if ((style == NavigationStyle.SIDEBAR && !collapsed) || open) Alignment.Start else Alignment.CenterHorizontally,
         ) {
             // Reflux says its own name where there is room to: the lockup on a desktop, the mark alone on a tablet, and
             // on a television the mark, joined by the wordmark while the rail is open. A phone's rail has no room.
             // On a tablet and a desktop it is also the way Home, as a website's name is: the same as choosing Home (the
             // stack back to Home alone, playback and the library untouched). A television's rail is left as it was.
             when (style) {
-                NavigationStyle.SIDEBAR -> BrandHome(app, Modifier.padding(start = 4.dp, top = 2.dp, bottom = 12.dp)) {
-                    RefluxLockup(Modifier.padding(horizontal = 6.dp, vertical = 6.dp), height = 22.dp)
+                // Shrunk, the mark alone, as on a tablet's rail.
+                NavigationStyle.SIDEBAR -> if (collapsed) {
+                    BrandHome(app, Modifier.padding(top = 2.dp, bottom = 12.dp)) { RefluxMark(Modifier.padding(6.dp), size = 26.dp) }
+                } else {
+                    BrandHome(app, Modifier.padding(start = 4.dp, top = 2.dp, bottom = 12.dp)) {
+                        RefluxLockup(Modifier.padding(horizontal = 6.dp, vertical = 6.dp), height = 22.dp)
+                    }
                 }
                 // The same height as the mark alone had (44), so the destinations beneath stay where they were.
                 NavigationStyle.RAIL -> BrandHome(app, Modifier.padding(bottom = 6.dp)) {
@@ -982,6 +1001,8 @@ private fun NavigationRail(app: AppState, style: NavigationStyle, focus: RailFoc
                 else -> Unit
             }
             val shown = when {
+                // Shrunk, each destination keeps its place and its name for a screen reader; only the words go.
+                collapsed -> NavigationLabel.HIDDEN
                 style == NavigationStyle.SIDEBAR -> NavigationLabel.BESIDE
                 style == NavigationStyle.RAIL -> NavigationLabel.BENEATH
                 // A television's item stays one focusable thing whether its name shows or not, so focus never
@@ -1018,6 +1039,19 @@ private fun NavigationRail(app: AppState, style: NavigationStyle, focus: RailFoc
                     Modifier.selectionPlace(track, destination),
                     viewer,
                 ) { app.go(destination) }
+            }
+            // F-P1: a pointer's or a finger's way to shrink the sidebar and back; a controller has Start for it, so this is no
+            // stop for focus, and the destinations above keep their order.
+            if (style == NavigationStyle.SIDEBAR && layout.modality != InputModality.DIRECTIONAL) {
+                IconButton(
+                    if (collapsed) Icon.CHEVRON_RIGHT else Icon.BACK,
+                    if (collapsed) "Expand sidebar" else "Shrink sidebar",
+                    { app.toggleNavigationCollapsed() },
+                    Modifier.padding(start = if (collapsed) 0.dp else 4.dp, top = 4.dp).focusProperties { canFocus = false },
+                    size = 32.dp,
+                    tint = RefluxColors.contentTertiary,
+                    lit = false,
+                )
             }
         }
     }
@@ -1109,7 +1143,8 @@ private fun NavigationItem(
         if (shown == NavigationLabel.BESIDE || shown == NavigationLabel.HIDDEN) {
             Row(
                 background.fillMaxWidth().heightIn(min = maxOf(layout.minTargetDp.dp, 44.dp)).padding(horizontal = 10.dp),
-                horizontalArrangement = Arrangement.spacedBy(14.dp),
+                // A shrunk sidebar's icons sit in the middle of their row; a television's stay where its names begin.
+                horizontalArrangement = if (shown == NavigationLabel.HIDDEN && !television) Arrangement.Center else Arrangement.spacedBy(14.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Box { if (viewer != null) ProfileMark(viewer, 20.dp, lit = selected) else Icon(icon, size = 20.dp, tint = tint); if (busy) BusyDot(Modifier.align(Alignment.TopEnd)) }
@@ -1170,7 +1205,8 @@ private fun PageBar(app: AppState, modifier: Modifier = Modifier) {
         }
         Spacer(Modifier.weight(1f))
         // Hidden hints take the bar with them (B-071).
-        AnimatedVisibility(visible = app.namesButtons && !app.hintsHidden, enter = fadeIn(Motion.inputMorph.tween()), exit = fadeOut(Motion.controlsHide.tween())) {
+        // While the Reflux keyboard is open its own hints say what the buttons do (CACHY-005).
+        AnimatedVisibility(visible = app.namesButtons && !app.hintsHidden && app.keyboard == null, enter = fadeIn(Motion.inputMorph.tween()), exit = fadeOut(Motion.controlsHide.tween())) {
             val family = app.input.controllerFamily ?: ControllerFamily.GENERIC
             ButtonPrompts(browsePrompts(app, family), family, Modifier.padding(end = 14.dp), hold = rememberBackHold(app, family))
         }
@@ -1240,7 +1276,8 @@ internal fun rememberBackHold(app: AppState, family: ControllerFamily): dev.refl
 
 internal fun browsePrompts(app: AppState, family: ControllerFamily): List<Pair<GamepadButton, String>> =
     // B-055: hidden, nothing is shown, LT's own hint included (the owner's walk, 2026-11-20); LT brings them back.
-    if (app.hintsHidden) emptyList() else allBrowsePrompts(app, family) + (GamepadButton.TRIGGER_LEFT to "Hide hints")
+    // While the Reflux keyboard is open its buttons are the keyboard's, which says them itself (CACHY-005).
+    if (app.hintsHidden || app.keyboard != null) emptyList() else allBrowsePrompts(app, family) + (GamepadButton.TRIGGER_LEFT to "Hide hints")
 
 private fun allBrowsePrompts(app: AppState, family: ControllerFamily): List<Pair<GamepadButton, String>> = listOfNotNull(
     InputMapping.confirmButton(family) to "Select",
@@ -1252,6 +1289,8 @@ private fun allBrowsePrompts(app: AppState, family: ControllerFamily): List<Pair
         else -> null
     },
     (GamepadButton.FACE_NORTH to "Sidebar").takeIf { app.toggleNavigation != null && app.folderPicker == null && !app.offlineOpen },
+    // F-P1: Start (≡) shrinks the sidebar to its icons and back.
+    (GamepadButton.START to if (app.navigationCollapsed) "Expand sidebar" else "Shrink sidebar").takeIf { app.navigationCollapsible && app.folderPicker == null && !app.offlineOpen },
     // With the mini-player up, the right stick's press brings back the full player, and RT closes it (B-052; so does holding Back).
     (GamepadButton.STICK_RIGHT to "Full player").takeIf { app.miniPlayerExpands },
     (GamepadButton.TRIGGER_RIGHT to "Close player").takeIf { app.docked != null && app.watching == null },

@@ -23,6 +23,8 @@ class KeyboardRequest(
     val write: (String) -> Unit,
     /** The field's own action: go on to the next field, search, connect. */
     val done: () -> Unit,
+    /** Where the field is in the window (root coordinates, px), while it is laid out; null where unknown (CACHY-005). */
+    val bounds: () -> androidx.compose.ui.geometry.Rect? = { null },
 )
 
 /**

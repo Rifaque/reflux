@@ -85,6 +85,14 @@ data class ShowDetail(
     val nextUp: Episode?,
 )
 
+/** A show without its seasons' and episodes' entries ([Library.showOutline]): what a summary of it needs. */
+data class ShowOutline(
+    val show: LibraryEntry,
+    val seasons: List<Pair<Season, List<Episode>>>,
+    /** The episode to play next, if the show has been started and not finished. */
+    val nextUp: Episode?,
+)
+
 /** Outcome of scanning one source. */
 data class ScanReport(
     val sourceId: SourceId,

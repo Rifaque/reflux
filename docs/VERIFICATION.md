@@ -587,3 +587,22 @@ The owner's scoped fix before Beta 2's release (BETA-BUG-TRACKER.md, B-076). On 
 - **Google Play (console, read):** Closed testing - Alpha: 90031 (0.9.0-beta.1) "Available to selected testers", 178 countries; testers: e-mail list "Reflux Beta", 12 users; feedback support@rsxdevelops.dev; web opt-in `https://play.google.com/apps/testing/dev.rsxdevelops.reflux`. **Upload attempted and refused by the agent's tool** (10.4 MB per call; the AAB is 11.9 MB); the empty draft discarded; the track unchanged afterwards. No production release.
 - **Amazon (console, read):** Live App Test 1: `0.9.0-beta.2`, FOS, started 2026-11-22, **Test in-progress**; Beta 1 no longer listed; tester group "Reflux" (1 tester). App list: current (public) version "Not Submitted": nothing in production.
 - **Announcement:** not sent (no authorised channel connected to the agent); the text is in BETA.md, "Beta 2 testing".
+
+## CachyOS final audit (2026-11-24)
+
+The owner's brief for a last session on the CachyOS laptop; full record in [planning/CACHYOS-FINAL-AUDIT-LEDGER.md](planning/CACHYOS-FINAL-AUDIT-LEDGER.md). **Environment:** physical laptop, CachyOS (kernel 7.3.5), Hyprland 0.57.2 on Wayland, Reflux through XWayland, Intel Arrow Lake iGPU + NVIDIA RTX 5060 Max-Q, libmpv from mpv 0.42.0 (VA-API hardware decoding), Temurin 21.0.13 (user-local), a GameSir G7 Pro controller (read only). No Android device, emulator or SDK; no Windows machine. Every run used copies of the owner's data or temporary libraries; Reflux's windows were kept on workspace 9.
+
+| What | Result |
+| --- | --- |
+| `:core:jvmTest` | PASS, 393 tests |
+| `:design:jvmTest` | PASS, 43 tests |
+| `:library:jvmTest` | PASS, 263 tests (1 skipped: the opt-in live-server test) |
+| `:ui:jvmTest` (full) | **FAIL: 563 tests, 2 failed, 1 skipped.** The two (`DetailActionsLayoutTest.withAFingerAllFourActionsStillSitOnOneLine`, `EpisodeVersionsUiTest.theVersionsAreBeneathTheEpisodeOnAPhone`) fail identically on an untouched worktree of `1d65dcf` on this machine: font-dependent, pre-existing (B-089). Every other test passed, the new ones included (`QuickViewModelTest` 3, `SidebarCollapseTest` 4, `KeyboardRendersTest` 6) |
+| `:desktop:app:test` + `:desktop:engine:test`, real-window tests on (`-Preflux.windowTests=true`), helpers stubbed as CI does, physical Hyprland | **FAIL: 83 tests, 6 failed, 10 skipped (app); engine 52, 0 failed, 18 skipped.** The same six fail with the same messages on an untouched `1d65dcf` worktree run the same way: Hyprland's tiling overrides the window sizes and moves these tests ask for (`PlayerChromeResizeTest`, `MiniPlayerWindowTest`, `CapabilitiesWindowTest`, `BrowsingWindowTest.theMouseBrowsesTheRealWindow`, `EmbeddedPlaybackTest`, `OfflineWindowTest`). Pass on both: `FirstRunTest` (onboarding), `BrowsingWindowTest.aControllerBrowsesTheRealWindow` (updated for Start shrinking the sidebar), `LinuxDesktopEntryTest` (3, new), `ToolkitPreparationTest`, the rest |
+| `:desktop:app:packageDesktopArchive` | PASS (a development archive, not published): `bin/install-desktop-entry` included and executable; `--add-opens java.desktop/sun.awt.X11` in `Reflux.cfg`; launched from its desktop entry through GLib, its window is class `reflux` |
+| `python -I tools/docs/check_links.py .` | PASS, 480 links, 0 broken |
+| Quick View timing (opt-in harnesses on a copy of the owner's library) | Model 143–161 → 6–7 ms (171 episodes); shell cold 813 → 202 ms, warm 242 → 81–84 ms |
+| Hyprland walk, physical and nested (ten player states) | Two toplevels confirmed; blur over the picture with the owner's look; a `reflux` window rule gives a sharp, opaque player in all ten states; the workspace move leaves the controls behind (known limitation) |
+| Android build, unit and instrumented tests | **NOT RUN** (no SDK or device); left to CI and the owner's devices |
+| Windows | **NOT RUN** (the owner's separate session) |
+| Walks with a person: controller presses, the dock pin | **NOT RUN** (BLOCKED: need the owner) |
