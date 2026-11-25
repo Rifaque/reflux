@@ -2777,9 +2777,10 @@ A second Right always worked. Every slower route tried (by Left or Y, after Quic
 - **Category:** Test reliability · **Priority:** Low · **Platforms:** seen once, hosted Linux runner
 - **Components:** `playback/mpv` tests only (`MpvEngineTest.kt`, `theEnginesLogCarriesNoCredentials`)
 - **How found:** 2026-11-21, hosted CI run 44934158483 on `9604cc5`, Check (ubuntu-24.04): `:playback:mpv:test` 60 tests, 1 failed: `java.util.ConcurrentModificationException`. It passed in the next run (44941967966 on `dc70958`) and in every local run.
-- **Phase:** Beta 3 (found after the freeze; not covered by the owner's B-076 authorisation) · **Status:** Open · **Last updated:** 2026-11-22
+- **Phase:** Beta 3 (found after the freeze; not covered by the owner's B-076 authorisation) · **Status:** Open (seen three times on hosted Linux) · **Last updated:** 2026-11-25
 - **Cause (from the code, not yet reproduced):** the test collects the engine's log lines into `Collections.synchronizedList` from mpv's log thread, and reads it with `lines.none { … }` / `lines.any { … }` (an iteration) without holding the list's lock, while the engine may still be appending; a synchronized list must be iterated under its own lock. The engine and its redaction are not involved: what the test checks (no token in the log) is unaffected.
 - **Fix (Beta 3):** iterate a snapshot taken under the lock (`synchronized(lines) { lines.toList() }`), without loosening what is asserted.
+- **Seen again (2026-11-25):** hosted CI on `406382b`, the Linux check's first attempt (CI 45585080925): `theEnginesLogCarriesNoCredentials` FAILED with a `ConcurrentModificationException` (reported at line 512, Kotlin's inline mapping of `lines.none { … }`), so the window tests after it did not run; the re-run of the job passed. Also the cause of the stop on `0377cab` (CACHYOS-FINAL-AUDIT-LEDGER.md). Still Beta 3 by the tracker; it now blocks a green hosted Linux check now and then: a candidate for the owner to authorise early.
 
 <a id="b-078"></a>
 ### B-078: Three real-window tests still expected the interface before Phase 2 (stale tests, CI Linux)
@@ -2976,6 +2977,7 @@ A second Right always worked. Every slower route tried (by Left or Y, after Quic
 - **After (Xvfb `:99`, CI-identical):** the failing sequence **8 of 8** `MiniPlayerWindowTest` PASS (one run had a failure in `EmbeddedPlaybackTest` or `FirstRunTest`, its result file not kept: not attributed); the whole window suite **3 of 3 PASS** (101 tests, 14 skipped, 0 failed), then, after the tolerance change, see VERIFICATION.md. **Physical Linux (the owner's laptop, Hyprland, workspace 2 or 3 shown on the laptop's screen):** `MiniPlayerWindowTest` on the fallback (`REFLUX_NATIVE_VIDEO_WINDOW=1`) and on the integrated picture, **2 of 2 each**. First version of the stricter wait compared the dock's bounds exactly and **failed on Hyprland** (the window came back 861 px high instead of 860): corrected to the tolerance above.
 - **Not weakened:** no assertion removed or loosened beyond the tolerance `docked()` already had; no sleep added; nothing skipped.
 - **Hosted CI on `99fff18` (run 45576109106): Check (ubuntu-24.04) PASS**, the desktop window tests on the fallback included: the first green hosted Linux check on this branch.
+- **Hosted CI on `406382b` (CI 45585080925, Release 45585081047): every job PASS**, the Linux check on its second attempt (the first stopped before the window tests on B-077, in `playback:mpv`); the window tests on the fallback passed. Final state; no CI was run after it (the closure, 2026-11-25).
 
 <a id="b-093"></a>
 ### B-093: On the Xiaomi Pad 7, the Search walk's tap on a suggestion does not fill the query (pre-existing)

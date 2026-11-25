@@ -10,7 +10,7 @@ Written in Phase 4 (2026-11-21). It replaces [planning/BETA-2.md](history/phases
 | --- | --- | --- |
 | `0.9.0-beta.1` (`versionCode` 90031, tag `v0.9.0-beta.1`, 2026-11-16) | M8 to M11: profiles, the navigation's final structure, Player 2.0, the mini-player, distribution | **In testing**: Play closed testing (sent for review 2026-11-17), Amazon Live App Test 1 (submitted 2026-11-17), GitHub **pre-release** (Windows zip, Linux tarball). Testers: the owner only. Play's 14-day clock not started |
 | `0.9.0-beta.2` (`versionCode` 90032, tag `v0.9.0-beta.2` on `ff98a0d`, 2026-11-22) | Beta 2's three phases (below) and the release fixes B-076, B-078, B-079 | **In testing since 2026-11-22**: GitHub **pre-release** (desktop); Amazon Live App Test 1 (**Test in-progress**); Google Play closed testing: **upload pending (the owner)**. See [Beta 2 testing](#beta-2-testing-from-2026-11-22) |
-| `0.9.0-beta.3` | The [Beta 3 backlog](planning/BETA-BUG-TRACKER.md#beta-3-backlog-from-phase-3s-closure-2026-11-20) and tester reports | Not started |
+| `0.9.0-beta.3` | The [Beta 3 backlog](planning/BETA-BUG-TRACKER.md#beta-3-backlog-from-phase-3s-closure-2026-11-20) and tester reports | Not started; the `beta-3` branch (2026-11-25) holds the CachyOS audit's Beta 3 work (F-P1 with B-091, B-085, B-086), not yet separated from `cachyos-final-audit` (ledger, "Closure") |
 | `0.9.0-rc.N` | Feature freeze, blocker fixes only, store submissions | Not started |
 
 ## Beta 2: scope (frozen since 2026-11-20)

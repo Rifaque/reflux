@@ -1395,6 +1395,18 @@ M11 decided the open items of its plan (history/milestones/M11-DISTRIBUTION-PLAN
 - **1.0 communication.** "Planned for December 2026", depending on feedback, qualification, and store approval; 10 December is an internal readiness checkpoint and 15 December the release decision, never a promised release date. Each platform publishes through its own path.
 - **No Windows installer in the beta**: none exists or is tested, and building one would change the release; reconsidered for 1.0.
 
+## 2026-11-25 — The final CachyOS session and its closure: Reflux keeps its own Linux desktop entry; a `beta-3` branch; the separation deferred to a tested session
+
+**Context.** The owner brought the CachyOS laptop back for one session (B-092, the mini-player's corners, the integrated renderer, the dock) and then closed the CachyOS work before the drive is wiped for Ubuntu. Record: docs/planning/CACHYOS-FINAL-AUDIT-LEDGER.md ("The owner's final CachyOS session", "Closure"), docs/CACHYOS-FINAL-HANDOVER.md.
+
+**Decisions.**
+- **A packaged Reflux on Linux writes its own desktop entry (B-102), the owner's choice.** On Wayland a dock finds a window's icon only through a desktop entry, so without one Reflux showed a generic icon until `bin/install-desktop-entry` had been run. Reflux now writes the installer's entry itself at start, and `Reflux.desktop` beside `bin/`; an entry someone made or edited is left alone, and one Reflux wrote and someone removed is not put back. **This reverses** "It is not written by Reflux itself on first run" (2026-11-24): respecting removal and someone's own entry keeps the viewer's choice. Its release, with the installer's, is still the owner's decision.
+- **The CI-identical virtual display** (Xvfb, openbox, xcompmgr), from packages extracted into the session's scratch folder, nothing installed system-wide, was used at the owner's request for B-092.
+- **A `beta-3` branch** is created from `cachyos-final-audit` at the closure commit, preserving the Beta 3 work (F-P1 with B-091, B-085, B-086).
+- **The separation of that work out of `cachyos-final-audit` is deferred** to a session that can test it: it needs hand edits across shared files (not reverts) and the full suites and hosted CI, which the closure forbade. `cachyos-final-audit`'s code stays `406382b`, verified by hosted CI. The recipe is in the ledger, "Closure".
+- **No CI after `406382b`:** the closure commit changes documentation only and is pushed with `[skip ci]`, by the owner's instruction.
+- **Still the owner's:** the integrated Linux player's acceptance, the desktop entry's release, B-103 (a second launch), and the merge.
+
 ## 2026-11-24 (latest) — The Linux picture is drawn in Reflux's own scene through libmpv's render API; the shaped window is only the fallback
 
 Supersedes, for Linux, the entry below's "where the controls show, the picture is cut away" (the owner rejected the black bands).
