@@ -96,7 +96,8 @@ class LinuxDesktopEntryTest {
         val moved = Files.move(folder, folder.resolveSibling("Reflux moved"))
         val after = LinuxDesktopEntry.keep(moved.resolve("bin/Reflux"), home, refluxData, os = "Linux")
         assertTrue(after.orEmpty().contains("updated"), after)
-        assertTrue("Exec=\"$moved/bin/Reflux\"" in Files.readString(target))
+        // The whole entry for the new folder (its quoting checked against the script's above), whatever the host's paths look like.
+        assertEquals(LinuxDesktopEntry.entry(moved), Files.readString(target))
         // Removed by the person (install-desktop-entry --remove): not put back.
         Files.delete(target)
         LinuxDesktopEntry.keep(moved.resolve("bin/Reflux"), home, refluxData, os = "Linux")
