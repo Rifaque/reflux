@@ -31,8 +31,15 @@ for (const [page, s] of Object.entries(html)) {
 const ATTEMPTS = 3
 const ask = (link) => fetch(link, { redirect: 'follow', headers: { 'User-Agent': 'reflux-website-link-check' }, signal: AbortSignal.timeout(20_000) })
 const why = (e) => [e?.name, e?.message, e?.cause?.code ?? e?.cause?.message].filter(Boolean).join(': ')
+// Hosts not asked from CI, each by the owner's decision, with the reason (B-098). Only these exact hosts; every other external
+// link is checked as above. gnu.org: GitHub-hosted runners cannot connect to it (ETIMEDOUT on every attempt, on fresh runners
+// too, 2026-11-25) while it answers 200 from the owner's machine; the site serves the GPL's full text itself at /license.
+const NOT_ASKED = new Map([['gnu.org', 'unreachable from GitHub-hosted runners (B-098)'], ['www.gnu.org', 'unreachable from GitHub-hosted runners (B-098)']])
+let notAsked = 0
 if (!process.argv.includes('--offline')) {
   for (const link of external) {
+    const reason = NOT_ASKED.get(new URL(link).hostname)
+    if (reason) { console.log('not asked', link, '-', reason); notAsked++; continue }
     for (let attempt = 1; ; attempt++) {
       try {
         const r = await ask(link)
@@ -47,5 +54,5 @@ if (!process.argv.includes('--offline')) {
     }
   }
 }
-console.log(`${Object.keys(html).length} pages, ${external.size} external links checked, ${failed} broken`)
+console.log(`${Object.keys(html).length} pages, ${external.size - notAsked} external links checked, ${notAsked} not asked (listed above), ${failed} broken`)
 process.exit(failed ? 1 : 0)
