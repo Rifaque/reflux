@@ -134,6 +134,8 @@ internal class RunningReflux(
     val exit: () -> Unit,
     /** Where the Linux integrated picture is drawn, in the window's pixels, while it is (B-084); null otherwise. For tests. */
     val integratedPicture: () -> androidx.compose.ui.geometry.Rect? = { null },
+    /** Frames the Linux integrated picture has rendered in this playback (B-084); null without it. For tests. */
+    val integratedFrames: () -> Int? = { null },
 )
 
 /**
@@ -159,6 +161,10 @@ internal fun runReflux(
     if (System.getProperty("os.name").orEmpty().startsWith("Linux") && !nameTheWindowClass()) {
         environment.diagnostics.record("The window class could not be set; docks may not show Reflux's icon")
     }
+    // A dock finds Reflux's logo only through its desktop entry: a packaged Reflux keeps one (LinuxDesktopEntry).
+    runCatching {
+        LinuxDesktopEntry.keep(LinuxDesktopEntry.launcher(), LinuxDesktopEntry.dataHome(), environment.diagnostics.file.parent)
+    }.getOrNull()?.let(environment.diagnostics::record)
     application(exitProcessOnExit = exitProcess) {
         // The last line of defence: a failure nobody handled is written down instead of ending the app.
         val scope = rememberCoroutineScope { CoroutineExceptionHandler { _, error -> platform.report("An unexpected error was not handled", error) } }
@@ -271,7 +277,7 @@ internal fun runReflux(
                     override fun windowGainedFocus(event: WindowEvent) = platform.refreshAccessibility()
                 }
                 window.addWindowFocusListener(settings)
-                onStarted(RunningReflux(app, window, leave) { platform.glVideo?.placed?.takeIf { platform.glPlaying } })
+                onStarted(RunningReflux(app, window, leave, { platform.glVideo?.placed?.takeIf { platform.glPlaying } }) { platform.glVideo?.renderedFrames?.takeIf { platform.glPlaying } })
                 onDispose {
                     window.removeWindowFocusListener(settings)
                     displays.close()
@@ -337,7 +343,13 @@ internal fun runReflux(
                             // black, never the page under the player.
                             Box(Modifier.fillMaxSize().background(if (app.videoFrame != VideoFrame.Hidden) Color.Black else Color.Transparent).onGloballyPositioned {
                                 // Unclipped: out of sight the stage puts the picture beyond the window's edge, and the surface goes there too.
-                                surfaceBounds = androidx.compose.ui.geometry.Rect(it.positionInWindow(), it.size.toSize())
+                                val placed = androidx.compose.ui.geometry.Rect(it.positionInWindow(), it.size.toSize())
+                                // B-092: put in this layout pass, with the dock's own surface (MiniPlayerSurface, below), which the same
+                                // stage places in the same pass. Waiting for the recomposition the state change brings left the picture
+                                // a frame or more behind where its controls already were (after a resize, a move into the dock): a click
+                                // on the picture one saw went to the page beneath. The state still reshapes the surface (below).
+                                placeSurface(canvas, placed)
+                                surfaceBounds = placed
                             })
                         }
                         DisposableEffect(canvas) {

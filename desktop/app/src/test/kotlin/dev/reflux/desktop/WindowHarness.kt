@@ -76,6 +76,9 @@ internal class Shell(environment: DesktopEnvironment, gamepads: GamepadReader? =
     /** Where the Linux integrated picture is (B-084, window pixels), while Compose draws it; null with a native video surface. */
     val integratedPicture: androidx.compose.ui.geometry.Rect? get() = running.integratedPicture()
 
+    /** Frames the Linux integrated picture has rendered in this playback; null without it (B-084). */
+    val integratedFrames: Int? get() = ui { running.integratedFrames() }
+
     /** The player's controls window, while something plays; none on Linux, where the controls are in [window] (B-084). */
     val overlay: ComposeDialog? get() = window.ownedWindows.filterIsInstance<ComposeDialog>().firstOrNull { it.isShowing }
 
@@ -269,12 +272,11 @@ internal class Shell(environment: DesktopEnvironment, gamepads: GamepadReader? =
     }
 
     /** Moves the pointer over the frontmost surface (the video, or the page), which brings hidden player controls back. */
-    fun hoverSurface(fractionX: Float, fractionY: Float) {
+    fun hoverSurface(fractionX: Float, fractionY: Float) = ui {
+        // B-092: where the picture is and the pointer's move, in one pass of the UI thread: a frame between them may move the picture.
         val (surface, area) = pictureArea()
-        ui {
-            mouse(surface, MouseEvent.MOUSE_MOVED, area.left + area.width * fractionX - 12f, area.top + area.height * fractionY)
-            mouse(surface, MouseEvent.MOUSE_MOVED, area.left + area.width * fractionX, area.top + area.height * fractionY)
-        }
+        mouse(surface, MouseEvent.MOUSE_MOVED, area.left + area.width * fractionX - 12f, area.top + area.height * fractionY)
+        mouse(surface, MouseEvent.MOUSE_MOVED, area.left + area.width * fractionX, area.top + area.height * fractionY)
     }
 
     /**
@@ -329,9 +331,14 @@ internal class Shell(environment: DesktopEnvironment, gamepads: GamepadReader? =
     }
 
     /** Clicks a point of the frontmost surface given as fractions of its size: the video, or the page. */
-    fun clickSurface(fractionX: Float, fractionY: Float, times: Int = 1) {
-        val (surface, area) = pictureArea()
-        repeat(times) { clickAt(surface, area.left + area.width * fractionX, area.top + area.height * fractionY) }
+    fun clickSurface(fractionX: Float, fractionY: Float, times: Int = 1) = repeat(times) {
+        // B-092: the picture is read where it is and clicked there in the same pass of the UI thread, as a person clicks what is
+        // on screen. Read in one pass and clicked in the next, a frame between them could move the dock, and the click went to
+        // where the picture had been.
+        ui {
+            val (surface, area) = pictureArea()
+            clickAt(surface, area.left + area.width * fractionX, area.top + area.height * fractionY)
+        }
     }
 
     /** Presses on [text] at [from] of its width, drags to [to], and releases. */

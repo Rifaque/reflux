@@ -254,10 +254,18 @@ class MiniPlayerWindowTest {
 
     private fun theDockFollowsTheWindow(session: PlaybackSession) {
         val before = shell.ui { shell.window.bounds }
+        // B-092: the dock's place itself must change and come back. A smaller window alone was not enough: right after the resize,
+        // before Reflux had laid itself out again, the old dock and the old surface still agreed, and the walk went on while the
+        // dock was still moving.
+        val dock = shell.ui { (shell.app.videoFrame as VideoFrame.Docked).bounds }
         shell.ui { shell.window.setSize(before.width - 240, before.height - 160) }
-        shell.await("the dock to follow a smaller window", state = ::describe) { shell.window.width < before.width - 150 && docked() && covered() }
+        shell.await("the dock to follow a smaller window", state = ::describe) {
+            shell.window.width < before.width - 150 && (shell.app.videoFrame as? VideoFrame.Docked)?.bounds.let { it != null && !near(it, dock) } && docked() && covered()
+        }
         shell.ui { shell.window.bounds = before }
-        shell.await("the dock to follow the window back", state = ::describe) { shell.window.width > before.width - 60 && docked() && covered() }
+        shell.await("the dock to follow the window back", state = ::describe) {
+            shell.window.width > before.width - 60 && (shell.app.videoFrame as? VideoFrame.Docked)?.bounds.let { it != null && near(it, dock) } && docked() && covered()
+        }
         assertEquals(PlayerStatus.PLAYING, state.status)
         assertSame(session, shell.ui { shell.app.playback })
     }
@@ -482,6 +490,12 @@ class MiniPlayerWindowTest {
         val whole = wholeWindow()
         val tolerance = (2 * scale()).toInt() + 2
         return abs(surface.x) <= tolerance && abs(surface.y) <= tolerance && abs(surface.width - whole.width) <= tolerance && abs(surface.height - whole.height) <= tolerance
+    }
+
+    /** Whether two places of the dock are the same, within what a window manager's own rounding moves it (as [docked]). */
+    private fun near(a: androidx.compose.ui.geometry.Rect, b: androidx.compose.ui.geometry.Rect): Boolean {
+        val tolerance = (2 * scale()).toFloat() + 2f
+        return abs(a.left - b.left) <= tolerance && abs(a.top - b.top) <= tolerance && abs(a.width - b.width) <= tolerance && abs(a.height - b.height) <= tolerance
     }
 
     /** Whether the surface is where the dock's picture box is, at rest. Must run on the UI thread. */

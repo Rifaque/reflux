@@ -104,7 +104,10 @@ class PlayerChromeResizeTest {
     fun theControlsFollowTheWindowWhileItIsResizedAndPlaybackNeverNoticesIt() {
         assumeTrue("window tests not requested", windowTestsRequested)
         assumeTrue("libmpv and ffmpeg are needed", needs("libmpv and ffmpeg", SampleMedia.available))
-        SampleMedia.video(film, seconds = 150)
+        // B-092: the film must outlast the walk. It was 150 s, and the walk takes about 150 s alone and 175 s in the whole window
+        // suite (measured on Xvfb, 2026-11-25), longer on a hosted runner: the film ended, the player closed as it should, and the
+        // walk failed for want of a player (hosted CI's NullPointerException at the drag, "Pause" never shown here).
+        SampleMedia.video(film, seconds = 600)
         val environment = DesktopEnvironment(root.resolve("data"))
         environment.addLocalFolder(media)
         runBlocking { environment.pipeline.refresh() }

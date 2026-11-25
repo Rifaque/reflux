@@ -91,6 +91,12 @@ class MpvPlayer private constructor(
         command("stop")
     }
 
+    /**
+     * Selects video track [trackId] again. libmpv turns video off when a render context is freed during playback; the Linux
+     * integrated picture asks for it back after making the render context again in a new OpenGL context (LinuxGlVideo).
+     */
+    fun selectVideo(trackId: String) = setProperty("vid", trackId)
+
     /** One of the engine's properties as text (`hwdec-current`, `current-vo`, `frame-drop-count`...), for diagnostics; read only. */
     fun property(name: String): String? = if (closed) null else mpv.getString(handle, name)
 

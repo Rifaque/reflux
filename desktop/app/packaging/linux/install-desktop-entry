@@ -1,7 +1,8 @@
 #!/bin/sh
 # Adds Reflux to your applications menu, for you only: a desktop entry pointing at this folder's bin/Reflux, with
 # Reflux's icon, named so that docks and task bars show Reflux's icon on its window and group it with the entry
-# (the window class is "reflux"). Run it again after moving the folder. Nothing outside your own data folder is touched.
+# (the window class is "reflux"). Reflux itself writes the same entry when it starts, and updates it after the folder moves;
+# this script is for doing it without starting Reflux. Nothing outside your own data folder is touched.
 #
 #   bin/install-desktop-entry            add (or update) the entry
 #   bin/install-desktop-entry --remove   take it away again
@@ -47,6 +48,7 @@ StartupNotify=false
 StartupWMClass=reflux
 Categories=AudioVideo;Video;Player;
 Keywords=movies;films;shows;tv;player;jellyfin;plex;
+X-Reflux-Managed=true
 EOF
 mv -f -- "$entry.tmp" "$entry"
 command -v update-desktop-database >/dev/null 2>&1 && update-desktop-database -q "$applications" || true

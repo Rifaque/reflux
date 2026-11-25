@@ -7,6 +7,7 @@ import com.sun.jna.Function
 import com.sun.jna.Library
 import com.sun.jna.Memory
 import com.sun.jna.Native
+import com.sun.jna.NativeLong
 import com.sun.jna.Pointer
 import dev.reflux.playback.mpv.MpvGlRender
 import dev.reflux.playback.mpv.MpvPlayer
@@ -162,13 +163,14 @@ internal class LinuxGlVideo(private val window: Component, private val log: (Str
         val engine = player ?: return false
         draws++
         val gl = gl ?: return fail("OpenGL (libGL) could not be loaded")
-        val skia = SkikoGl.directContext(window) ?: return fail("Skiko's OpenGL context was not reachable (Skiko ${SkikoGl.version})")
+        val skia = SkikoGl.directContext(window) ?: return unreachable()
         // A context Skiko replaced takes the texture with it: everything is made again in the new one.
+        var videoToRestore: String? = null
         if (context !== skia) {
-            render?.free()
-            render = null
-            image?.close()
-            image = null
+            if (context != null) {
+                videoToRestore = engine.property("vid")?.takeIf { it != "no" && it != "auto" }
+                replaced(gl)
+            }
             texture = 0
             framebuffer = 0
             context = skia
@@ -180,6 +182,11 @@ internal class LinuxGlVideo(private val window: Component, private val log: (Str
                 ?: return fail("libmpv's render context could not be made: ${MpvPlayer.lastFailure}")
             log("$RENDERER: libmpv render context made in Skiko's OpenGL context (Skiko ${SkikoGl.version}" +
                 (if (SkikoGl.version != SkikoGl.TESTED_VERSION) ", untested; verified with ${SkikoGl.TESTED_VERSION}" else "") + ")")
+            // libmpv turned the picture off when the old render context was freed mid-playback; it comes back in the new one.
+            videoToRestore?.let {
+                engine.selectVideo(it)
+                log("$RENDERER: Skiko replaced its OpenGL context during playback; the render context was made again in the new one and video track $it selected again")
+            }
         }
         val mpv = render!!
         attaching?.complete(true)
@@ -226,6 +233,45 @@ internal class LinuxGlVideo(private val window: Component, private val log: (Str
         return true
     }
 
+    /**
+     * Skiko replaced its OpenGL context (a new redrawer): the old one, and every object libmpv and the texture had in it, is
+     * already destroyed (`LinuxOpenGLRedrawer.dispose` closes its Skia context, then destroys the GLX context). Freeing them with
+     * the **new** context current would run libmpv's `glDelete*` there, on names that may now be Skia's own objects, and so would
+     * closing the image (it holds the last reference to the old Skia context, whose teardown deletes its resources). So they are
+     * let go with **no** context current, where OpenGL's calls do nothing (B-084, the context-replacement edge), and Skiko's
+     * context is made current again before anything else is drawn.
+     */
+    private fun replaced(gl: Gl) {
+        val current = gl.release()
+        try {
+            render?.free()
+            render = null
+            image?.close()
+            image = null
+        } finally {
+            current?.let(gl::restore)
+        }
+    }
+
+    /**
+     * Skiko's context could not be reached in this draw. Before the playback's render context exists it never will be (Skiko's
+     * internals differ): a failure, and the playback takes the fallback. After it, this is Skiko between two contexts (a draw
+     * while it replaces its redrawer, seen 2026-11-25): this frame is skipped and the next draw makes the picture again, without
+     * condemning the integrated picture for the playbacks after.
+     */
+    private fun unreachable(): Boolean {
+        val reason = "Skiko's OpenGL context was not reachable (Skiko ${SkikoGl.version})"
+        if (render == null && attaching != null) return fail(reason)
+        if (!unreachableLogged) {
+            unreachableLogged = true
+            log("$RENDERER: $reason in one draw, Skiko between contexts; the picture is made again in the next")
+        }
+        requestDraw()
+        return false
+    }
+
+    private var unreachableLogged = false
+
     /** The integrated picture cannot be drawn: said once, loudly; the next playback uses the native window. */
     private fun fail(reason: String): Boolean {
         if (!failed) log("$RENDERER failed: $reason. " + if (attaching != null) "This playback uses $FALLBACK." else "This playback shows no picture; the next one uses $FALLBACK.")
@@ -253,6 +299,9 @@ internal class LinuxGlVideo(private val window: Component, private val log: (Str
 
     private var renderErrorLogged = false
     private var rendered = 0
+
+    /** Frames rendered in this playback, for tests. Read on the event thread. */
+    internal val renderedFrames: Int get() = rendered
     private var lastReport: String? = null
 
     /** What decoded and what drew, from the engine itself, for the log: proof of the path, not an assumption about it. */
@@ -274,6 +323,7 @@ internal class LinuxGlVideo(private val window: Component, private val log: (Str
         updates.set(0)
         lastReport = null
         renderErrorLogged = false
+        unreachableLogged = false
     }
 
     /**
@@ -324,11 +374,31 @@ internal class LinuxGlVideo(private val window: Component, private val log: (Str
             fn("glFramebufferTexture2D").invoke(arrayOf(target, attachment, texTarget, texture, level))
         fun checkFramebufferStatus(target: Int): Int = fn("glCheckFramebufferStatus").invokeInt(arrayOf(target))
         fun deleteFramebuffer(id: Int) = fn("glDeleteFramebuffers").invoke(arrayOf(1, scratch.apply { setInt(0, id) }))
+
+        /** The GLX context current on this thread, which is then made not current; null when there was none. */
+        fun release(): Current? {
+            val context = glx.glXGetCurrentContext() ?: return null
+            val display = glx.glXGetCurrentDisplay() ?: return null
+            val current = Current(display, glx.glXGetCurrentDrawable(), context)
+            glx.glXMakeCurrent(display, NativeLong(0), null)
+            return current
+        }
+
+        /** Makes [current] (from [release]) current again. */
+        fun restore(current: Current) {
+            glx.glXMakeCurrent(current.display, current.drawable, current.context)
+        }
     }
+
+    private class Current(val display: Pointer, val drawable: NativeLong, val context: Pointer)
 
     @Suppress("FunctionName")
     private interface Glx : Library {
         fun glXGetProcAddressARB(name: String): Pointer?
+        fun glXGetCurrentContext(): Pointer?
+        fun glXGetCurrentDisplay(): Pointer?
+        fun glXGetCurrentDrawable(): NativeLong
+        fun glXMakeCurrent(display: Pointer, drawable: NativeLong, context: Pointer?): Int
     }
 
     companion object {
