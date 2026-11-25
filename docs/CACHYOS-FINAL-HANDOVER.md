@@ -1,14 +1,14 @@
 # CachyOS final handover (2026-11-25)
 
-The owner's CachyOS laptop was the only physical Linux desktop Reflux was developed and verified on. Its drive is to be wiped for Ubuntu. This page keeps what that machine knew and what an Ubuntu session needs to carry on. Every value here was read on the machine on 2026-11-25; what could not be read is marked **unknown**. The audit's record is [planning/CACHYOS-FINAL-AUDIT-LEDGER.md](planning/CACHYOS-FINAL-AUDIT-LEDGER.md); test results are in [VERIFICATION.md](VERIFICATION.md); issues in [planning/BETA-BUG-TRACKER.md](planning/BETA-BUG-TRACKER.md).
+The owner's CachyOS laptop was the only physical Linux desktop Reflux was developed and verified on. Its drive is to be wiped for Ubuntu. This page keeps what that machine knew and what an Ubuntu session needs to carry on. Every value here was read on the machine on 2026-11-25; what could not be read is marked **unknown**. The audit's record is [planning/CACHYOS-FINAL-AUDIT-LEDGER.md](planning/CACHYOS-FINAL-AUDIT-LEDGER.md); test results are in [VERIFICATION.md](VERIFICATION.md); issues in [planning/BETA-BUG-TRACKER.md](planning/BETA-BUG-TRACKER.md). **The procedure for the move itself** (what to keep before the wipe, the packages to install, the playback acceptance checklist) is [UBUNTU-TRANSITION.md](UBUNTU-TRANSITION.md).
 
 ## Where the work is
 
 | Branch | Commit | What it is |
 | --- | --- | --- |
 | `main` | `1d65dcf` | Untouched; Beta 2 as released |
-| `cachyos-final-audit` | the closure commit on `406382b` | The review branch: everything from the CachyOS and Windows audits. Its code is exactly `406382b`, whose hosted CI passed in full (CI 45585080925, Release 45585081047). **The Beta 3 features are still in it**: separating them needs hand edits and full test runs (the ledger, "Closure"). |
-| `beta-3` | the same closure commit | Created from the audit branch so the Beta 3 work (F-P1 with B-091, B-085, B-086) is preserved on a branch of its own whatever is done to the review branch. |
+| `cachyos-final-audit` | `5de9fae` (the closure commit on `406382b`; checked from Windows 2026-11-25) | The review branch: everything from the CachyOS and Windows audits. Its code is exactly `406382b`, whose hosted CI passed in full (CI 45585080925, Release 45585081047). **The Beta 3 features are still in it**: separating them needs hand edits and full test runs (the ledger, "Closure"). |
+| `beta-3` | created at `5de9fae`, the same commit; since then only documentation commits (the Windows repository audit, 2026-11-25), so the same code | Created from the audit branch so the Beta 3 work (F-P1 with B-091, B-085, B-086) is preserved on a branch of its own whatever is done to the review branch. |
 
 Nothing of the project is kept only on this machine: no stash, no untracked work; build outputs (`build/`, `.gradle/`) and the session's scratch folder are disposable.
 
@@ -39,11 +39,11 @@ Nothing of the project is kept only on this machine: no stash, no untracked work
 
 ## Build and run on Linux
 
-Runtime needs only the distribution's libmpv (Ubuntu: `libmpv2`); the archive carries its own Java runtime. To build and test:
+Runtime needs only the distribution's libmpv (Ubuntu: `libmpv2`), and `secret-tool` (Ubuntu: `libsecret-tools`) for server sign-ins in the keyring; the archive carries its own Java runtime. To build and test:
 
 1. A JDK 21 (any vendor; the Gradle wrapper fetches nothing else system-wide).
 2. libmpv and FFmpeg (Ubuntu: `libmpv2`, `ffmpeg`; the window tests make sample films with `ffmpeg`).
-3. `./gradlew check` (unit tests); `./gradlew :desktop:app:packageDesktopArchive` builds `desktop/app/build/release/reflux-<version>-linux-x64.tar.gz` (Linux only; it adds `--add-opens java.desktop/sun.awt.X11=ALL-UNNAMED` for the window class).
+3. `./gradlew check` (unit tests; set `FONTCONFIG_FILE=$PWD/tools/ci/fonts.conf` and install `fonts-liberation` as hosted CI does: without them Linux measures text with a wider default font, the likely, not yet confirmed, cause of B-089's two failures); `./gradlew :desktop:app:packageDesktopArchive` builds `desktop/app/build/release/reflux-<version>-linux-x64.tar.gz` (Linux only; it adds `--add-opens java.desktop/sun.awt.X11=ALL-UNNAMED` for the window class).
 4. **Desktop entry:** from an extracted archive, `bin/install-desktop-entry` writes `~/.local/share/applications/reflux.desktop` (`--remove` takes it away). On the review branch a packaged Reflux also writes that entry itself at start, and `Reflux.desktop` beside `bin/` (B-102); an entry someone made, or removed, is respected.
 
 ## Hyprland notes

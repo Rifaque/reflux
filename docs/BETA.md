@@ -10,7 +10,7 @@ Written in Phase 4 (2026-11-21). It replaces [planning/BETA-2.md](history/phases
 | --- | --- | --- |
 | `0.9.0-beta.1` (`versionCode` 90031, tag `v0.9.0-beta.1`, 2026-11-16) | M8 to M11: profiles, the navigation's final structure, Player 2.0, the mini-player, distribution | **In testing**: Play closed testing (sent for review 2026-11-17), Amazon Live App Test 1 (submitted 2026-11-17), GitHub **pre-release** (Windows zip, Linux tarball). Testers: the owner only. Play's 14-day clock not started |
 | `0.9.0-beta.2` (`versionCode` 90032, tag `v0.9.0-beta.2` on `ff98a0d`, 2026-11-22) | Beta 2's three phases (below) and the release fixes B-076, B-078, B-079 | **In testing since 2026-11-22**: GitHub **pre-release** (desktop); Amazon Live App Test 1 (**Test in-progress**); Google Play closed testing: **upload pending (the owner)**. See [Beta 2 testing](#beta-2-testing-from-2026-11-22) |
-| `0.9.0-beta.3` | The [Beta 3 backlog](planning/BETA-BUG-TRACKER.md#beta-3-backlog-from-phase-3s-closure-2026-11-20) and tester reports | Not started; the `beta-3` branch (2026-11-25) holds the CachyOS audit's Beta 3 work (F-P1 with B-091, B-085, B-086), not yet separated from `cachyos-final-audit` (ledger, "Closure") |
+| `0.9.0-beta.3` | The [Beta 3 backlog](planning/BETA-BUG-TRACKER.md#beta-3-backlog-from-phase-3s-closure-2026-11-20) and tester reports | Not started; the `beta-3` branch (2026-11-25, from `cachyos-final-audit`'s `5de9fae`; the same code, `406382b`) holds the CachyOS audit's Beta 3 work (F-P1 with B-091, B-085, B-086), not yet separated from `cachyos-final-audit` (ledger, "Closure" and "Windows repository audit") |
 | `0.9.0-rc.N` | Feature freeze, blocker fixes only, store submissions | Not started |
 
 ## Beta 2: scope (frozen since 2026-11-20)
@@ -64,8 +64,16 @@ Each is in the tracker with its evidence. User-visible ones are listed for teste
 | B-077 | `MpvEngineTest`'s credentials-log test can race its log thread (hosted Linux, once; test only) | Open |
 | B-080 | The live-Jellyfin test's remux case can find the server's session unconfirmed (local only) | Open |
 | B-081 | `FirstRunTest` once found the first folder empty (hosted Linux window tests) | Open |
-| B-084 | Hyprland: in Beta 2 the player is two windows (video without controls, controls on a blank panel where windows lose alpha); one window after Beta 2 | Fixed after Beta 2 (the owner's check pending) |
-| B-088 | Android: a film sometimes in a small box with black on all four sides (no device in the CachyOS audit) | Blocked |
+| B-084 | Linux: in Beta 2 the player is two windows (video without controls, controls on a blank panel where the compositor gets no alpha, as on Hyprland with a hybrid GPU) | Fixed on `cachyos-final-audit`, not in a release: the picture drawn in Reflux's own scene; verified on one machine; the owner's acceptance and release placement pending; next validated on Ubuntu ([UBUNTU-TRANSITION.md](UBUNTU-TRANSITION.md)) |
+| B-088 | Android: a film sometimes in a small box with black on all four sides (no device in the CachyOS audit) | Blocked (needs the owner's film on the phone) |
+| B-083, B-102 | Linux: no Reflux logo on the dock or in the file manager (no desktop entry in the archive) | Fixed on `cachyos-final-audit`, not in a release; placement the owner's |
+| B-090 | After the mini-player's Stop, Back on the details page did not return Home (window test; on `1d65dcf` too) | Open (pre-existing; bug or test timing) |
+| B-096 | Android: with the system keyboard up, TalkBack places Search's index about 200 px below where it is drawn (Pad 7) | Open (pre-existing; accessibility) |
+| B-101 | Linux: once, a closed Reflux stayed running without a window | Open (not reproduced) |
+| B-103 | Linux: launching Reflux again opens a second Reflux | Open (the owner's decision) |
+| B-089, B-094, B-095 | Test reliability: two font-dependent layout tests off CI; a Fire TV path-playback walk (unattributed); emulator walks on seeded data | Open (tests, not seen by testers) |
+
+The review branch `cachyos-final-audit` and `beta-3` hold every fix found since the release (B-082 onward), none of it released; where each belongs: [the tracker's placement table](planning/BETA-BUG-TRACKER.md#review-branch-work-and-its-release-placement-2026-11-25). Findings from Beta 2 testing are entered as the tracker says ([Entering Beta 2 testing findings](planning/BETA-BUG-TRACKER.md#entering-beta-2-testing-findings)).
 
 ## From Beta 3 to 1.0
 
