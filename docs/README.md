@@ -25,6 +25,7 @@ A reading guide: which document holds what, and which one wins when two seem to 
 | | [CACHYOS-FINAL-HANDOVER.md](CACHYOS-FINAL-HANDOVER.md) | The CachyOS laptop's environment and how to carry the Linux work on to Ubuntu |
 | | [UBUNTU-TRANSITION.md](UBUNTU-TRANSITION.md) | The move to Ubuntu: what to keep before the wipe, the development setup, and the Linux playback acceptance checklist |
 | | [UBUNTU-VALIDATION-REPORT.md](UBUNTU-VALIDATION-REPORT.md) | The Ubuntu laptop's environment, libmpv compatibility, and the Linux player's validation there (2026-11-26) |
+| | [planning/BETA-3-INTEGRATION-AUDIT.md](planning/BETA-3-INTEGRATION-AUDIT.md) | The Ubuntu validation merged into `beta-3`, the Windows CI failure of run 45785524870 diagnosed (B-105), and the tests run (2026-11-26) |
 | Technical reference | [ARCHITECTURE.md](ARCHITECTURE.md) | Layers, Media Core, local-first state, sources |
 | | [PLAYBACK.md](PLAYBACK.md) | Capabilities, the planner, execution, diagnostics, Trickplay |
 | | [INPUT_MODEL.md](INPUT_MODEL.md) | Semantic actions, controller mapping, text entry, haptics |

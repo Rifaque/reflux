@@ -734,3 +734,16 @@ The owner's laptop after its move from CachyOS: **physical**, Ubuntu 26.04.1 LTS
 | Software decoding, device change while playing, keyring sign-in, rounded mini-player corners (visual), dock icon (visual) | | NOT TESTED |
 
 A covered XWayland window is presented at about one frame a second on GNOME: real-desktop perf and window runs count only with the window visible (the report, section 4).
+
+## Beta 3 integration (2026-11-26)
+
+`cachyos-final-audit`'s Ubuntu validation (`76b526a`) merged into `beta-3` (`8eaf79c`), and the Windows CI failure of run 45785524870 diagnosed and fixed in the test (B-105, `cbd28ca`). Full record: [planning/BETA-3-INTEGRATION-AUDIT.md](planning/BETA-3-INTEGRATION-AUDIT.md). Production code unchanged (that of `406382b`). Not pushed; no hosted CI.
+
+| Check | Environment | Result |
+| --- | --- | --- |
+| `LocalFolderSourceTest.watchesForNewMediaIncludingNewFolders` before the fix: alone ×15; every core busy ×12 | Windows 11, physical | 15/15 PASS; **8/12 FAIL** (timeout at line 94, as on CI); with a 5 s wait (experiment) 12/12 PASS |
+| The same after the fix: every core busy ×12; negative control (new subfolders not registered, reverted) | Windows 11, physical | **12/12 PASS**; the mutant FAILS (line 111) |
+| `./gradlew check --continue`, then the nine up-to-date test tasks with `--rerun` | Windows 11, physical | **BUILD SUCCESSFUL**; 1,695 tests, 0 failed, 37 skipped (window and Linux-only tests skipped, not requested); Beta 3's feature tests 56/56 |
+| `:sources:local:test :playback:mpv:test :desktop:engine:test :desktop:app:test`, clean clone, `REFLUX_REQUIRE_ENGINE_TESTS=true`, CI font | WSL2 Ubuntu 24.04.4 (**VM**), libmpv2 0.37.0 | **BUILD SUCCESSFUL**: 6 / 62 (1 skipped) / 52 (18 skipped) / 101 (23 skipped), 0 failed; `LinuxDesktopEntryTest` 6/6 |
+| Documentation links | Windows 11 | PASS (count in the audit, section 7) |
+| Window tests, physical Linux, Android devices, hosted CI | | NOT RUN (the audit, section 7) |
