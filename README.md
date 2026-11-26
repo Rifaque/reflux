@@ -86,6 +86,7 @@ Which document holds what, and which one wins when two seem to disagree. Each fa
 | | [product/DESIGN.md](docs/product/DESIGN.md) | The visual system and motion |
 | | [product/V1.1-LIBRARY-RESEARCH.md](docs/product/V1.1-LIBRARY-RESEARCH.md) | The researched V1.1 library work (not to be built without the owner) |
 | Engineering | [engineering/ARCHITECTURE.md](docs/engineering/ARCHITECTURE.md) | Layers, Media Core, local-first state, sources, the module layout |
+| | [engineering/CI-PERFORMANCE-AUDIT.md](docs/engineering/CI-PERFORMANCE-AUDIT.md) | The CI workflows' performance baseline, bottleneck analysis and optimisation record: what was measured, changed and deferred, and why |
 | Beta and release | [release/BETA.md](docs/release/BETA.md) | The beta programme: builds, Beta 2's scope and gate, known issues, beta operations |
 | | [release/BETA-NOTES.md](docs/release/BETA-NOTES.md) | What testers read about each beta |
 | | [release/RELEASE.md](docs/release/RELEASE.md) | The release process, platform matrix, signing, artifacts, checklists |
