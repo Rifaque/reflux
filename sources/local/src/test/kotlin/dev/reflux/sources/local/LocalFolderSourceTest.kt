@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.test.runTest
 import java.nio.file.Files
 import java.nio.file.Path
@@ -89,7 +90,15 @@ class LocalFolderSourceTest {
         val signals = Channel<Unit>(Channel.UNLIMITED)
         val job = launch(Dispatchers.IO) { source.changes().collect { signals.send(it) } }
         try {
-            delay(300) // let the watcher register
+            // The watcher registers once collection has started, on another thread, so a fixed wait can end before it
+            // does and the first file then goes unseen (B-105: a loaded CI runner). Wait until it demonstrably reports,
+            // by rewriting a file that is already there, then start from no pending signal.
+            withTimeout(10_000) {
+                var write = 0
+                do file("Movies/existing.mkv", "${write++}") while (withTimeoutOrNull(200) { signals.receive() } == null)
+            }
+            delay(300)
+            while (signals.tryReceive().isSuccess) Unit
             file("Movies/Heat (1995).mkv")
             withTimeout(10_000) { signals.receive() }
             while (signals.tryReceive().isSuccess) Unit

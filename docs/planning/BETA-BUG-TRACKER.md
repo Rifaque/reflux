@@ -53,6 +53,8 @@
 
 **The Windows acceptance audit (2026-11-24) and the owner's final CachyOS session (2026-11-25):** thirteen entries added, which makes **111** (B-001 to B-103, F-001 to F-005, F-P1 to F-P4). Fixed on the review branch `cachyos-final-audit`: B-091 (a regression the branch introduced, Start on Quick View), B-092 (Linux fallback window tests: test synchronisation, plus a one-frame production lag), B-093 and B-097 (test fixes), B-099 (the integrated renderer's context replacement), B-102 (Reflux keeps its own Linux desktop entry, a feature by the owner's choice); B-098 **Resolved** by the owner's decision. Open: B-094 (Fire TV, unattributed), B-095 (emulator data, pre-existing), B-096 (Android accessibility, pre-existing), B-100 (fallback square corners, pre-existing), B-101 (not reproduced), B-103 (the owner's decision). None of the review branch's fixes is in a released build; `main` is Beta 2 as released (`1d65dcf`). Where each belongs: [Review-branch work and its release placement](#review-branch-work-and-its-release-placement-2026-11-25).
 
+**The Ubuntu validation and the Beta 3 integration (2026-11-26):** two entries added, which makes **113** (B-001 to B-105, F-001 to F-005, F-P1 to F-P4): B-104 (Linux integrated player decodes on the NVIDIA GPU; Open, cause established, fix proposed) and B-105 (a Windows CI test race; Fixed, test only).
+
 **At Phase 3's formal closure (2026-11-20; the owner accepted and closed Phase 3).** Reconciled entry by entry against the code, the commits, VERIFICATION.md, and the owner's confirmations. All 82 entries are B-001 to B-074, F-001 to F-005, F-P1 to F-P4 (F-P1 and F-P2 share one entry, counted once):
 
 | Status | Count | Entries |
@@ -3134,6 +3136,20 @@ A second Right always worked. Every slower route tried (by Left or Y, after Quic
 - **Proposed fix (Beta 3, for the owner to place):** pass libmpv's `vaapi-device` the render node of the GPU Skiko draws with (the node whose PCI vendor matches the OpenGL vendor Skiko reports, from `/sys/class/drm/renderD*/device/vendor`), and keep today's request where none matches; a unit test for the node choice, and a perf walk on this laptop showing `vaapi-copy` and NVIDIA idle.
 - **Related:** the start-up decoding probe (`MpvDecodeProbe`, `auto-copy-safe`, the same on `main`) also initializes CUDA on the NVIDIA GPU at every start (the test JVM is listed by `nvidia-smi` as a compute process); whether that alone keeps the GPU awake could not be measured here (the external monitor is wired to the NVIDIA GPU, which keeps it active).
 
+<a id="b-105"></a>
+### B-105: `LocalFolderSourceTest.watchesForNewMediaIncludingNewFolders` waited a fixed 300 ms for the folder watcher to register (test race, Windows CI)
+
+- **Category:** Test race · **Priority:** Medium (it fails the hosted Windows check, which stops the build) · **Platforms:** seen on hosted Windows CI; reproduced on Windows 11 under CPU load; any platform in principle
+- **Components:** `sources/local` test `LocalFolderSourceTest.watchesForNewMediaIncludingNewFolders`; `LocalFolderSource.changes()` (unchanged)
+- **How found:** hosted CI run 45785524870 on `cachyos-final-audit` at `76b526a` (a documentation-only commit), job 139791205394, Check (windows-2025), Windows Server 2025, Temurin 21.0.13, Gradle 9.7.1: `:sources:local:test` FAILED, `TimeoutCancellationException: Timed out waiting for 10000 ms` at `LocalFolderSourceTest.kt:94`, the **first** wait; 6 tests, 1 failed. CI does not pass `--continue`, so the build stopped there and the remaining tasks (the UI tests among them) did not run; the window-test step was skipped. Every other job of the run passed.
+- **Phase:** Beta 3 (found in the Beta 3 integration, [BETA-3-INTEGRATION-AUDIT.md](BETA-3-INTEGRATION-AUDIT.md)) · **Status:** Fixed (test only; Windows 11, physical; hosted CI not yet run on the fix) · **Last updated:** 2026-11-26
+- **Not caused by the Linux work:** the production tree of `76b526a` is identical to `406382b`'s, on which every CI job passed (run 45585080925); `sources/local` was last changed on 2026-10-18 (`c8b5820`). No earlier failure of this test in the reachable CI history (the failed runs since 2026-11-13 were checked; each failed on something else, already tracked).
+- **Cause:** `changes()` registers its `WatchService` inside `callbackFlow`, once collection has started on `Dispatchers.IO`; the test waited a fixed `delay(300)` and then created the first file. When starting the collector takes longer than 300 ms (a loaded runner: the failure came while `:ui:compileKotlinJvm` and other tasks ran beside it), the file is created before the folder is watched, no event is ever reported, and the 10 s wait times out. Every later wait in the test comes after the watcher has reported, which is why only the first one failed.
+- **Reproduced (Windows 11, physical, the development machine):** in isolation 15 of 15 passed; with every core busy (40 spinning shells on 20 logical processors) **8 of 12 failed**, the same exception at the same line. **Mechanism confirmed:** with the wait lengthened to 5 s (an experiment, not committed) 12 of 12 passed under the same load.
+- **Fix (test only):** the fixed wait is replaced by a handshake: rewrite the already-present `Movies/existing.mkv` until the watcher reports (each try 200 ms, at most 10 s), then let events settle and drain them, as the test already does between its steps. Nothing asserted is removed or loosened: a new file, a new folder, a file in that folder, and an ignored `.txt` are checked as before.
+- **After (Windows 11, physical):** the class 6 of 6; the test under the same load **12 of 12**. **Negative control:** with the watcher no longer registering new subfolders (product code changed temporarily, reverted) the test **fails** (timeout at the wait for the file in the new folder), so the handshake does not hide a broken watcher.
+- **Question, not verified:** in the app, the library's initial refresh and the watcher start independently (`AppState.start`, `LibraryPipeline.watch`), so a file added in the moment before the watcher registers would presumably wait for the next refresh. Not observed, not measured; recorded for the owner, not changed.
+
 ## Beta 3 backlog (from Phase 3's closure, 2026-11-20)
 
 Phase 3 is closed and Beta 2's fix scope is frozen (DECISIONS.md, 2026-11-20, "Phase 3 accepted and formally closed"). Every bug, UX issue, request or improvement found from now on is entered here, and in its own entry with the next free number, for **Beta 3 or a later release**, unless the owner explicitly authorises it as a critical Beta 2 blocker.
@@ -3162,6 +3178,7 @@ Phase 3 is closed and Beta 2's fix scope is frozen (DECISIONS.md, 2026-11-20, "P
 | [B-102](#b-102) | Linux: no logo on the dock or in the file manager until `install-desktop-entry` had run | Fixed on the branch (Reflux keeps its own entry; the owner's choice) |
 | [B-103](#b-103) | Linux: launching Reflux again opens a second Reflux | Open (the owner's decision) |
 | [B-104](#b-104) | Linux integrated player: `vaapi-copy` opens the first render node (the NVIDIA GPU on the Ubuntu laptop), so decoding wakes NVIDIA | Open (cause established; fix proposed) |
+| [B-105](#b-105) | `LocalFolderSourceTest` waited a fixed 300 ms for the folder watcher (Windows CI test race) | Fixed (test only; hosted CI not yet run on the fix) |
 | [B-084](#b-084) | Hyprland: the player as two windows (video without controls, controls on a blank panel) | Fixed on the branch: the integrated renderer, the shaped window its fallback (physical Linux, one machine); the owner's acceptance and release placement pending; validated on Ubuntu 26.04.1 (physical, GNOME, 2026-11-26) |
 | [F-P1](#f-p1-and-f-p2) | A controller's Start (≡) shrinks the sidebar to its icons; Reflux's name toggles it (with B-091, which exists only because of it) | Fixed on the branch; **Beta 3** by the closure's recommendation (the owner places it); still on `cachyos-final-audit`, to be separated |
 | [B-085](#b-085) | The compact keyboard and its LS (Shift) / LT (&123) shortcuts | Fixed on the branch; **Beta 3** by recommendation; to be separated |
@@ -3193,7 +3210,7 @@ Everything from the CachyOS and Windows audits is on `cachyos-final-audit` and `
 
 The next phase is systematic Beta 2 testing (after Ubuntu is set up and its major playback blockers fixed). Each finding:
 
-- takes the **next free ID: B-105** onward (F-006 onward only for a feature, once the owner numbers it);
+- takes the **next free ID: B-106** onward (F-006 onward only for a feature, once the owner numbers it);
 - gets its own entry under "Newly discovered issues" with an `<a id="b-nnn">` anchor (CI's link check fails without one), the fields the entries above use (Category, Priority, Platforms, Components, How found, Phase, Status, Last updated), and **the build it was seen on** (`0.9.0-beta.2` as released, or a branch and commit) and **the device or environment**, physical, emulator or VM said plainly;
 - says whether it reproduces on `1d65dcf` (Beta 2 as released) before it is called a regression of anything newer;
 - goes to this backlog for Beta 3 unless the owner authorises it as a critical Beta 2 blocker (the freeze; BETA.md, "Beta operations", for the triage levels);
@@ -3302,3 +3319,6 @@ Machines (CLAUDE.md, "Testing environment"): Windows 11 development machine (phy
 | 2026-11-25 | **Windows repository audit before Ubuntu** (documentation only, no code, no runs).
 - **Reconciled:** B-083 (the dock pin done in the final session), B-084 (the corners checked on the real desktop; acceptance and placement still open), B-092 (hosted CI recorded in its status), B-099 (verification limits written down), B-089 (a lead: the CachyOS runs did not use CI's pinned test font; status unchanged until a run). Header, executive summary and this history brought up to B-103 (111 entries).
 - **Added:** the Beta 3 backlog rows for F-P1, B-085, B-086; [the review-branch work's placement](#review-branch-work-and-its-release-placement-2026-11-25); [how Beta 2 testing findings are entered](#entering-beta-2-testing-findings) (next free ID B-104). | For the owner's review |
+| 2026-11-26 | **The Beta 3 integration** ([BETA-3-INTEGRATION-AUDIT.md](BETA-3-INTEGRATION-AUDIT.md)): `cachyos-final-audit`'s Ubuntu validation (`76b526a`: B-104 and the Ubuntu bullets on B-077, B-084, B-089, B-092, B-099, B-101 to B-103) merged into `beta-3`, both branches' bullets kept; B-084's backlog row says it was validated on Ubuntu.
+- **New and Fixed (test only):** B-105 (the Windows CI failure of run 45785524870: a test race, reproduced under load, fixed with a handshake, negative control).
+- Next free ID **B-106**. | For the owner's review |
