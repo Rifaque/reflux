@@ -23,6 +23,7 @@ A reading guide: which document holds what, and which one wins when two seem to 
 | | [planning/V1.1-LIBRARY-RESEARCH.md](planning/V1.1-LIBRARY-RESEARCH.md) | The researched V1.1 library work |
 | | [planning/CACHYOS-FINAL-AUDIT-LEDGER.md](planning/CACHYOS-FINAL-AUDIT-LEDGER.md) | The CachyOS final audit (2026-11-24 and 25): its issues, evidence, verification and closure |
 | | [CACHYOS-FINAL-HANDOVER.md](CACHYOS-FINAL-HANDOVER.md) | The CachyOS laptop's environment and how to carry the Linux work on to Ubuntu |
+| | [UBUNTU-VALIDATION-REPORT.md](UBUNTU-VALIDATION-REPORT.md) | The Ubuntu laptop's environment, libmpv compatibility, and the Linux player's validation there (2026-11-26) |
 | Technical reference | [ARCHITECTURE.md](ARCHITECTURE.md) | Layers, Media Core, local-first state, sources |
 | | [PLAYBACK.md](PLAYBACK.md) | Capabilities, the planner, execution, diagnostics, Trickplay |
 | | [INPUT_MODEL.md](INPUT_MODEL.md) | Semantic actions, controller mapping, text entry, haptics |

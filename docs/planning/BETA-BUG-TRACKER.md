@@ -4,7 +4,7 @@
 
 **Scope.** B-001 to B-042 and F-001 to F-005 (the owner's original findings), two registered sidebar proposals (F-P1, F-P2), and every issue found since (B-043 onward). Release gates, phase scope, phase order, and exit criteria are **not** here: they are in [BETA-2.md](../history/phases/BETA-2-PHASES.md), which links back to this file. What each test run was, in full, is in [VERIFICATION.md](../VERIFICATION.md); decisions and their reasons are in [DECISIONS.md](../DECISIONS.md).
 
-**Last updated:** 2026-11-24, the owner's CachyOS final audit (B-082 to B-088, F-P1; [its ledger](CACHYOS-FINAL-AUDIT-LEDGER.md)). Before that, 2026-11-20, Phase 3 implementation (branch `open-source-gpl`; Phase 3's commits from `dcef9fb`). Phase 3's summary and walks: VERIFICATION.md, "Phase 3".
+**Last updated:** 2026-11-26, the Ubuntu validation (B-104; Ubuntu results on B-077, B-084, B-089, B-092, B-099, B-101 to B-103; [UBUNTU-VALIDATION-REPORT.md](../UBUNTU-VALIDATION-REPORT.md)). Before that, 2026-11-24, the owner's CachyOS final audit (B-082 to B-088, F-P1; [its ledger](CACHYOS-FINAL-AUDIT-LEDGER.md)). Before that, 2026-11-20, Phase 3 implementation (branch `open-source-gpl`; Phase 3's commits from `dcef9fb`). Phase 3's summary and walks: VERIFICATION.md, "Phase 3".
 
 ## Contents
 
@@ -2781,6 +2781,7 @@ A second Right always worked. Every slower route tried (by Left or Y, after Quic
 - **Cause (from the code, not yet reproduced):** the test collects the engine's log lines into `Collections.synchronizedList` from mpv's log thread, and reads it with `lines.none { … }` / `lines.any { … }` (an iteration) without holding the list's lock, while the engine may still be appending; a synchronized list must be iterated under its own lock. The engine and its redaction are not involved: what the test checks (no token in the log) is unaffected.
 - **Fix (Beta 3):** iterate a snapshot taken under the lock (`synchronized(lines) { lines.toList() }`), without loosening what is asserted.
 - **Seen again (2026-11-25):** hosted CI on `406382b`, the Linux check's first attempt (CI 45585080925): `theEnginesLogCarriesNoCredentials` FAILED with a `ConcurrentModificationException` (reported at line 512, Kotlin's inline mapping of `lines.none { … }`), so the window tests after it did not run; the re-run of the job passed. Also the cause of the stop on `0377cab` (CACHYOS-FINAL-AUDIT-LEDGER.md). Still Beta 3 by the tracker; it now blocks a green hosted Linux check now and then: a candidate for the owner to authorise early.
+- **Ubuntu (2026-11-26):** passed in the CI-equivalent unit check on the owner's laptop under Ubuntu 26.04.1 (one run; it is intermittent, so this decides nothing). Still open. [UBUNTU-VALIDATION-REPORT.md](../UBUNTU-VALIDATION-REPORT.md)
 
 <a id="b-078"></a>
 ### B-078: Three real-window tests still expected the interface before Phase 2 (stale tests, CI Linux)
@@ -2889,6 +2890,7 @@ A second Right always worked. Every slower route tried (by Left or Y, after Quic
 - **Verified on the owner's real desktop** (Hyprland, a test workspace on the HDMI monitor, captures of Reflux's window only): playing tiled, floating, resized, paused, seeked, fullscreen and back, moved to another workspace and back, and the mini-player: one window throughout, a sharp picture, the controls over it, nothing left on a workspace.
 - **Superseded on Linux (2026-11-24, CACHY-011):** the owner rejected the black bands. The picture is now drawn by Compose: libmpv's render API renders into a texture in Skiko's own OpenGL context, inside Compose's draw, and Skia draws it under the player's overlay (`MpvGlRender.kt`, `LinuxGlVideo.kt`, `SkikoGl.kt`, `GlibcTrim.kt`; `DesktopPlatform.kt`, `Main.kt`). The shaped window above is kept only as the fallback, named in the log (`linux-x11-shape-fallback`). Found and fixed while verifying: the renderer chosen before the window existed; the picture upside down; a playback with sound and no picture (the render context made after the file opened); decoding on the NVIDIA GPU for a picture drawn on the Intel one; ~12 MB of malloc arenas kept per playback. Decoding on Mesa is copy-back (`vaapi-copy`): zero-copy VA-API needs EGL and Skiko uses GLX (measured: `hwdec=vaapi` falls to software); on NVIDIA's OpenGL it is zero-copy `nvdec`. Tests: `MpvGlRenderTest` 2, `LinuxGlVideoTest` 5, opt-in `IntegratedPlayerLifecycleTest` and `IntegratedPlayerPerfTest`; `HyprlandWalkTest` +3 steps; `EmbeddedPlaybackTest` and `MiniPlayerWindowTest` branch for a drawn picture. Verified on the owner's real desktop (VERIFICATION.md, "The Linux picture in Reflux's own scene"); measurements and limits in CACHYOS-FINAL-AUDIT-LEDGER.md, CACHY-011. Then, from the owner's test: the docked video kept square corners inside the rounded card; the video canvas is now clipped to the dock's own radius (`pictureClip`), verified in the floating nested Hyprland (CACHY-011).
 - **Outstanding:** the owner's acceptance of the Linux player (the owner played it on the CachyOS desktop and reported it working, then the corners, fixed in `1da6aaf`); CachyOS was retired on 2026-11-24, so the acceptance and the corner fix's real-desktop check wait for the next Linux machine. Not merged into `main`.
+- **Ubuntu (2026-11-26), physical laptop, GNOME 50.1 on Wayland (XWayland), Mesa 26.0.8, libmpv 0.41.0:** the integrated picture was selected for every playback and drew on Intel's Mesa (ARL), 0 dropped frames with the window visible, A/V ~0, the lifecycle walk 8 of 8 contexts released; decoding went to NVIDIA instead of `vaapi-copy` on Intel (new: [B-104](#b-104)). Covered XWayland windows are throttled to ~1 fps, which a perf walk must not mistake for dropped frames. [UBUNTU-VALIDATION-REPORT.md](../UBUNTU-VALIDATION-REPORT.md), section 4
 
 <a id="b-085"></a>
 ### B-085: The Reflux keyboard was too large, repeated the field, and hid the results; Xbox-style shortcuts
@@ -2938,6 +2940,7 @@ A second Right always worked. Every slower route tried (by Left or Y, after Quic
 - **Phase:** Beta 3 · **Status:** Open · **Last updated:** 2026-11-24
 - **Evidence:** both fail alone and in the full run, **and identically on an untouched worktree of `1d65dcf`**, so the session's changes are not their cause; hosted CI passed them on `ff98a0d`. Reflux ships no font on desktop, so Skia uses the system's default sans (`fc-match sans-serif` → Noto Sans here): the first test's four actions measured 16–292 dp for the two buttons and wrapped the other two to a second line in a 412-dp phone layout.
 - **To do (Beta 3):** pin a font for UI tests (or ship one), rather than loosen either assertion; check whether the second test's timeout has the same cause.
+- **Ubuntu (2026-11-26):** both tests **pass** on the owner's laptop under Ubuntu 26.04.1 with `FONTCONFIG_FILE=tools/ci/fonts.conf`, as on hosted CI; the font remains the cause found on CachyOS. Still open for Beta 3 (pin a font for UI tests). [UBUNTU-VALIDATION-REPORT.md](../UBUNTU-VALIDATION-REPORT.md)
 
 <a id="b-090"></a>
 ### B-090: After the dock's Stop, the details page's Back did not return Home (real-window test, reproduced on the baseline)
@@ -2978,6 +2981,7 @@ A second Right always worked. Every slower route tried (by Left or Y, after Quic
 - **Not weakened:** no assertion removed or loosened beyond the tolerance `docked()` already had; no sleep added; nothing skipped.
 - **Hosted CI on `99fff18` (run 45576109106): Check (ubuntu-24.04) PASS**, the desktop window tests on the fallback included: the first green hosted Linux check on this branch.
 - **Hosted CI on `406382b` (CI 45585080925, Release 45585081047): every job PASS**, the Linux check on its second attempt (the first stopped before the window tests on B-077, in `playback:mpv`); the window tests on the fallback passed. Final state; no CI was run after it (the closure, 2026-11-25).
+- **Ubuntu (2026-11-26):** the window suite on a CI-identical Xvfb (verified clean environment) **passed**; `MiniPlayerWindowTest` and `PlayerChromeResizeTest` passed there, and `MiniPlayerWindowTest` on the real GNOME session. With GNOME's session variables inherited, one playback per Xvfb suite stayed in `LOADING` (2 of 2 suites, different tests; not attributed; recorded in the report as Finding 2, not under this ID). On the real GNOME session `PlayerChromeResizeTest` cannot get its exact window size (mutter rounds an odd height; pre-existing test assumption, the report's Finding 3). [UBUNTU-VALIDATION-REPORT.md](../UBUNTU-VALIDATION-REPORT.md)
 
 <a id="b-093"></a>
 ### B-093: On the Xiaomi Pad 7, the Search walk's tap on a suggestion does not fill the query (pre-existing)
@@ -3068,6 +3072,7 @@ A second Right always worked. Every slower route tried (by Left or Y, after Quic
 - **Fix:** on a replacement, the old render context and image are let go with **no** GLX context current (`glXGetCurrent*`, `glXMakeCurrent(dpy, None, NULL)`, then the previous context made current again), where OpenGL calls do nothing; the video track in use is selected again once the new render context exists (`MpvPlayer.selectVideo`); a draw that cannot reach the context after the render context exists skips that frame and asks for the next (logged once), and fails only while the playback's render context has never been made.
 - **Test:** `IntegratedContextReplacementTest` (window test, Linux with OpenGL; skips on the fallback): plays a film, makes Skiko replace its redrawer through its own recovery path, and requires a new context, the "selected again" log line, **frames rendered in the new context**, playback going on, nothing failed, two render contexts made and one released.
 - **Verified (physical Linux: the owner's CachyOS laptop, Hyprland, Intel Arc Mesa, workspace 3 shown on the laptop's screen, no sound device):** before the fourth part's fix the test failed on "nothing failed" (the transient `fail`) while the picture did come back; after: **PASS 4 of 4**. **Negative control:** with `selectVideo` taken out, the test **FAILS** ("Timed out waiting for frames rendered in the new context"): without it the picture never comes back.
+- **Ubuntu (2026-11-26), physical laptop, GNOME on Wayland:** `IntegratedContextReplacementTest` **passed** on the real session (window visible). [UBUNTU-VALIDATION-REPORT.md](../UBUNTU-VALIDATION-REPORT.md)
 
 <a id="b-100"></a>
 ### B-100: Linux fallback player: the mini-player's video has square corners (pre-existing)
@@ -3087,6 +3092,7 @@ A second Right always worked. Every slower route tried (by Left or Y, after Quic
 - **Phase:** Beta 3 · **Status:** Open (not reproduced: 1 of 2 tries; the same walk again, both exited; and every other close in the session exited) · **Last updated:** 2026-11-25
 - **Known:** the exit path (`leave` → `finishPlayback` → `exitApplication`, `exitProcessOnExit`) is unchanged from `main`; no playback had run in that instance. A process that keeps its AWT threads, refuses an attach and ignores SIGTERM looks stuck inside the JVM's shutdown (a shutdown hook or a native call). **Not known:** which; whether `main` does it too.
 - **Next:** repeat two-instance launch and close with output to a file, and take `kill -QUIT` the moment one lingers.
+- **Ubuntu (2026-11-26):** not reproduced: the packaged archive, four rounds of two instances closed through the window manager (`wmctrl -c`) on GNOME, **8 of 8 processes exited within 2 s**. Still open (unattributed). [UBUNTU-VALIDATION-REPORT.md](../UBUNTU-VALIDATION-REPORT.md)
 
 <a id="b-102"></a>
 ### B-102: Linux: Reflux's logo missing on the dock and in the file manager until `install-desktop-entry` was run
@@ -3100,6 +3106,7 @@ A second Right always worked. Every slower route tried (by Left or Y, after Quic
 - **Verified (physical Linux, the owner's laptop, Noctalia's dock and Dolphin, 2026-11-25):** the packaged archive started with **no** entry anywhere and nothing pinned: Reflux added its entry and `Reflux.desktop` beside `bin/` (logged), the dock showed **Reflux's logo** for the running window from this first launch, and Dolphin showed the logo on `Reflux.desktop` in the extracted folder; Reflux exited when its window was closed. The entry and the mark were removed afterwards, leaving the owner's system as it was.
 - **Hosted CI on `99fff18`:** the Windows check failed one of these tests (line 99 compared the `Exec` line with a raw path; a Windows path's backslashes are doubled by the quoting, correctly): the test now compares the whole entry for the moved folder. The product code was unchanged.
 - **Tests:** `LinuxDesktopEntryTest` 6/6: the entry equals the script's for a folder name with `$`, quotes, a backtick and a backslash; not written off Linux or outside a package; added once, unchanged on the next start, updated after a move, not re-added after removal, someone's own entry untouched; a path a menu cannot start from gets none.
+- **Ubuntu (2026-11-26), GNOME 50.1:** the packaged archive's first start wrote `~/.local/share/applications/reflux.desktop` (valid by `desktop-file-validate`, `StartupWMClass=reflux`) and `Reflux.desktop` beside `bin/`; the window's class is `reflux`. The dock icon was not looked at. The entry was removed afterwards (`install-desktop-entry --remove`). [UBUNTU-VALIDATION-REPORT.md](../UBUNTU-VALIDATION-REPORT.md)
 
 <a id="b-103"></a>
 ### B-103: Linux: launching Reflux again opens a second Reflux (observation)
@@ -3107,6 +3114,19 @@ A second Right always worked. Every slower route tried (by Left or Y, after Quic
 - **Category:** Behaviour (for the owner) · **Priority:** Low · **Platforms:** Linux (seen); not checked elsewhere
 - **How found:** the dock walk (2026-11-25): a second launch from the desktop entry started a second process with its own window (the dock counted "2"), rather than bringing the first forward. Reflux has no single-instance handling (none in the code, on `main` either).
 - **Phase:** Beta 3 · **Status:** Open (the owner's decision whether a second launch should focus the first) · **Last updated:** 2026-11-25
+- **Ubuntu (2026-11-26):** the same on GNOME: a second launch opened a second Reflux. Unchanged (the owner's decision).
+
+<a id="b-104"></a>
+### B-104: Linux integrated player: `vaapi-copy` opens the first render node, which on the Ubuntu laptop is the NVIDIA GPU, so decoding wakes NVIDIA
+
+- **Category:** Bug (power and efficiency; playback works) · **Priority:** Medium · **Platforms:** Linux desktop with the integrated picture on a hybrid laptop whose discrete GPU owns `/dev/dri/renderD128` (seen: the owner's laptop on Ubuntu 26.04.1; not seen on the same laptop under CachyOS)
+- **Components:** `desktop/app` `DesktopPlatform.renderedHwdec` (asks `vaapi-copy,auto-copy-safe` on Mesa); libmpv's VA-API device choice
+- **How found:** the Ubuntu validation (2026-11-26, [UBUNTU-VALIDATION-REPORT.md](../UBUNTU-VALIDATION-REPORT.md)), `IntegratedPlayerPerfTest` on the real GNOME session: the integrated picture drew on Intel's Mesa (as designed), but every file decoded with **`nvdec-copy`** (1080p H.264, 1080p HEVC 10-bit, 4K HEVC); NVIDIA's power rose from 6.7 W (library shown) to 11.6–12.0 W while playing. On CachyOS the same walk gave `vaapi-copy` on Intel (CACHY-011).
+- **Phase:** Beta 3 (found after the freeze; not a playback blocker) · **Status:** Open (cause established; fix proposed, not implemented) · **Last updated:** 2026-11-26
+- **Cause (measured):** on this Ubuntu install the NVIDIA GPU is `card1`/`renderD128` and the Intel GPU `card2`/`renderD129`. libmpv's `vaapi-copy` makes its own VA display on the default DRM render node, `renderD128`: libva looks for `nvidia_drv_video.so` there and fails ("Failed to initialize VAAPI"), so `auto-copy-safe` takes `nvdec-copy`. `mpv --hwdec=vaapi-copy` (the same libmpv 0.41.0) reproduces it; with `--vaapi-device=/dev/dri/renderD129` VA-API initializes with Intel's iHD driver at once. `vainfo` agrees (`renderD128`: `vaInitialize failed`; `renderD129`: iHD 26.1.2, H.264/HEVC/VP9/AV1 decode). So the design's assumption, "decode on the GPU that draws (`vaapi-copy`) and leave the other asleep", silently fails wherever the drawing GPU is not the first render node.
+- **Impact:** none on the picture or sound (hardware decoding, no dropped decoder frames, A/V sync ~0); the NVIDIA GPU is woken for every playback (about +5 W on this laptop, which matters on battery). Not a regression of the released player (`main`'s Linux player uses its own window and `hwdec=auto-safe`, with no device chosen either).
+- **Proposed fix (Beta 3, for the owner to place):** pass libmpv's `vaapi-device` the render node of the GPU Skiko draws with (the node whose PCI vendor matches the OpenGL vendor Skiko reports, from `/sys/class/drm/renderD*/device/vendor`), and keep today's request where none matches; a unit test for the node choice, and a perf walk on this laptop showing `vaapi-copy` and NVIDIA idle.
+- **Related:** the start-up decoding probe (`MpvDecodeProbe`, `auto-copy-safe`, the same on `main`) also initializes CUDA on the NVIDIA GPU at every start (the test JVM is listed by `nvidia-smi` as a compute process); whether that alone keeps the GPU awake could not be measured here (the external monitor is wired to the NVIDIA GPU, which keeps it active).
 
 ## Beta 3 backlog (from Phase 3's closure, 2026-11-20)
 
@@ -3135,6 +3155,7 @@ Phase 3 is closed and Beta 2's fix scope is frozen (DECISIONS.md, 2026-11-20, "P
 | [B-101](#b-101) | Once, a closed Reflux stayed running without a window | Open (unattributed; not reproduced) |
 | [B-102](#b-102) | Linux: no logo on the dock or in the file manager until `install-desktop-entry` had run | Fixed on the branch (Reflux keeps its own entry; the owner's choice) |
 | [B-103](#b-103) | Linux: launching Reflux again opens a second Reflux | Open (the owner's decision) |
+| [B-104](#b-104) | Linux integrated player: `vaapi-copy` opens the first render node (the NVIDIA GPU on the Ubuntu laptop), so decoding wakes NVIDIA | Open (cause established; fix proposed) |
 | [B-084](#b-084) | Hyprland: the player as two windows (video without controls, controls on a blank panel) | Fixed: one window on Linux; the owner's check pending |
 | [B-080](#b-080) | A live-server test's remux case can be unconfirmed (local only) | Open (Beta 3) |
 | [B-079](#b-079) | The Linux CI job no longer fits its 60-minute limit | Fixed: Linux's limit 75 min (the owner's decision); parallel JVMs tried and reverted |

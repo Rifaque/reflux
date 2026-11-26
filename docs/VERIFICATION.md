@@ -700,3 +700,23 @@ On the owner's CachyOS laptop (Hyprland 0.57.2 with Noctalia's shell, eDP-1 2560
 **Hosted CI on `99fff18`** (CI 45576109106, Release 45576109022): **Check (ubuntu-24.04) PASS**: build and tests, then the desktop window tests on Xvfb (`linux-x11-shape-fallback`), BUILD SUCCESSFUL, no failure: B-092's two tests green on hosted CI for the first time on this branch. Android, Website, documentation links, secret scan, workflow lint **PASS**; release rehearsal **PASS** (Windows libmpv, Linux archive, Android/Windows/provenance; draft-release jobs skipped by design). **Check (windows-2025) FAIL**: one test, `LinuxDesktopEntryTest.aPackagedRefluxKeepsItsEntryAndAFolderLauncher` line 99, written for this session: it compared the entry's `Exec` line with a raw path, and a Windows temporary path has backslashes, which the entry's quoting (correctly) doubles. The product code was right; the test now compares the whole entry with `LinuxDesktopEntry.entry(folder)` for the moved folder, as its earlier line does (which passed on that runner); 6/6 here. Every other Windows test passed (`desktop:app` 101, 1 failed, 27 skipped).
 
 **Hosted CI on `406382b`** (CI 45585080925, Release 45585081047), the final commit of the CachyOS work: **every job PASS**: Check (windows-2025) (the B-102 test fix confirmed), Check (ubuntu-24.04) on its **second attempt** (the first: `MpvEngineTest.theEnginesLogCarriesNoCredentials` ConcurrentModificationException, B-077, a known test race, so the window tests did not run; the job's re-run passed, build and tests 51 min 54 s, desktop window tests 4 min 54 s), Android, Website, documentation links, secret scan, workflow lint; release rehearsal **PASS**. No hosted CI was run after this (the closure session of 2026-11-25 pushed with `[skip ci]`, by the owner's instruction): the closure commit changes documentation only.
+
+## Ubuntu validation (2026-11-26)
+
+The owner's laptop after its move from CachyOS: **physical**, Ubuntu 26.04.1 LTS, kernel 7.0.0-44, GNOME 50.1 on Wayland (Reflux through XWayland), Intel Arrow Lake (Mesa 26.0.8, iHD 26.1.2) and NVIDIA RTX 5060 Laptop (595.99.02 open), libmpv 0.41.0, OpenJDK 21.0.13.1. Branch `cachyos-final-audit` at `5de9fae` (code `406382b`); no production code changed. Full record, with the environment, research, commands and evidence: [UBUNTU-VALIDATION-REPORT.md](UBUNTU-VALIDATION-REPORT.md).
+
+| Check | Environment | Result |
+| --- | --- | --- |
+| libmpv 0.41 against the code (symbols, options, properties, render API) | physical | PASS: compatible |
+| `./gradlew check :tools:cli:installDist -Preflux.android=false` with `FONTCONFIG_FILE`, `REFLUX_REQUIRE_ENGINE_TESTS=true` | physical, no display | PASS: 1,639 tests, 0 failed, 49 skipped (B-089's pair passes) |
+| Window suite, Xvfb `:99` + openbox + xcompmgr, verified CI-like environment | virtual display on the physical laptop | PASS |
+| Window suite, Xvfb, GNOME session variables inherited | virtual display on the physical laptop | FAIL 2 of 2 runs: `FirstRunTest` (GTK look-and-feel; identical on `main`), and one playback per run stuck in `LOADING` (unattributed) |
+| Window suite, the real GNOME session, windows visible | **physical Linux desktop** | 101 tests, 2 failed (`FirstRunTest`; `PlayerChromeResizeTest`: mutter rounds the odd 677-pixel height), 13 skipped; every playback test PASS, `IntegratedContextReplacementTest` (B-099) PASS |
+| Integrated renderer, perf walk, 7 files (H.264, HEVC 8/10-bit, 4K HEVC, VP9, AV1; MKV, MP4, WebM) | **physical Linux desktop** | Drawn on Intel, 0 dropped frames (VP9: 23 in one sample), A/V ~0; decoded with `nvdec-copy` on NVIDIA instead of `vaapi-copy` on Intel (**B-104**) |
+| Fallback renderer (`REFLUX_NATIVE_VIDEO_WINDOW=1`), perf walk | **physical Linux desktop** | PASS: zero-copy `vaapi` on Intel, 0 dropped, A/V ~0 |
+| `IntegratedPlayerLifecycleTest`, 8 rounds | **physical Linux desktop** | PASS: 8 contexts made and released, memory levels off |
+| Sound through PipeWire (both renderers) | **physical Linux desktop** | PASS: the `mpv` stream running and the test tone at the default output (RMS measured) |
+| Packaged archive: window class, desktop entry (B-102), second launch (B-103), closing (B-101) | **physical Linux desktop** | PASS: `reflux`; entry written and valid; a second Reflux opens (as recorded); 8 of 8 processes exited within 2 s |
+| Software decoding, device change while playing, keyring sign-in, rounded mini-player corners (visual), dock icon (visual) | | NOT TESTED |
+
+A covered XWayland window is presented at about one frame a second on GNOME: real-desktop perf and window runs count only with the window visible (the report, section 4).
