@@ -19,8 +19,8 @@ jobs:
     name: Check (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     # Linux 75 minutes, Windows 60 (B-079, the owner's decision of 2026-11-22). Linux's UI tests render in software on one
-    # core and need 51–60 minutes there, and the window tests 2–4 more; parallel test JVMs halved that but made the hosted
-    # runs less reliable, so they were reverted. Every test still runs and must pass.
+    # core and need 51–60 minutes there (the window tests, 2–5 minutes more, now run in a job of their own); parallel test
+    # JVMs halved that but made the hosted runs less reliable, so they were reverted. Every test still runs and must pass.
     timeout-minutes: ${{ startsWith(matrix.os, 'ubuntu') && 75 || 60 }}
     strategy:
       fail-fast: false
@@ -73,17 +73,50 @@ jobs:
           FONTCONFIG_FILE: ${{ runner.os == 'Linux' && format('{0}/tools/ci/fonts.conf', github.workspace) || '' }}
         run: ./gradlew check :tools:cli:installDist -Preflux.android=false --stacktrace
 
-      # The real desktop shell in a real window, on a virtual display. tools/ci/linux-check.sh runs these same
-      # two steps in a container, for reproducing this job locally.
-      - name: Desktop window tests
-        if: runner.os == 'Linux'
-        run: tools/ci/desktop-window-tests.sh --stacktrace
-
       - name: Upload test reports
         if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: test-reports-${{ matrix.os }}
+          path: '**/build/reports/tests/'
+
+  # The real desktop shell in real windows, on a virtual display: Linux only (the Windows runner has no display for
+  # them). Its own runner, beside "Check", instead of a step after it, so it no longer adds its minutes to the Linux
+  # check's (docs/engineering/CI-PERFORMANCE-AUDIT.md, L3). The same script, the same Gradle task and JVM as before,
+  # the same environment as the Linux check (engine tests required; no FONTCONFIG_FILE, as before). tools/ci/
+  # linux-check.sh still runs "Build and test" and these together in a container, for reproducing CI locally.
+  window-tests:
+    name: Desktop window tests (ubuntu-24.04)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      REFLUX_REQUIRE_ENGINE_TESTS: true
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
+        with:
+          cache-read-only: ${{ !(github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/beta-3')) }}
+      - name: Install libmpv, FFmpeg, and a virtual desktop
+        run: sudo apt-get update && xargs -a tools/ci/linux-packages.txt sudo apt-get install -y --no-install-recommends
+      - name: Fingerprint the test environment
+        shell: bash
+        run: |
+          environment="$ImageOS $ImageVersion $RUNNER_ARCH"
+          # shellcheck disable=SC2016 # ${Package} and ${Version} are dpkg-query's format fields, not shell variables
+          environment+=$'\n'$(xargs -a tools/ci/linux-packages.txt dpkg-query -W -f='${Package} ${Version}\n')
+          printf '%s\n' "$environment"
+          echo "REFLUX_TEST_ENVIRONMENT=$(printf '%s\n' "$environment" | sha256sum | cut -c1-16)" >> "$GITHUB_ENV"
+      - name: Desktop window tests
+        run: tools/ci/desktop-window-tests.sh --stacktrace
+      - name: Upload test reports
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: test-reports-window-tests
           path: '**/build/reports/tests/'
 
   android:
@@ -178,3 +211,30 @@ jobs:
       # Reviewed findings (fake values in tests) are listed in .gitleaksignore; anything else fails.
       - name: gitleaks over the whole history
         run: docker run --rm -v "$PWD:/repo:ro" zricethezav/gitleaks:v8.24.3 git /repo --redact --no-banner --gitleaks-ignore-path /repo/.gitleaksignore
+
+  # One check that stands for all of them (docs/engineering/CI-PERFORMANCE-AUDIT.md, S2): it runs whatever happened to
+  # the others and passes only if every job above succeeded. Failed, cancelled or skipped all count against it (no job
+  # here is skipped on purpose; the Windows check has no window-test step, and the window tests are a Linux job), so a
+  # missing or skipped job can never pass for green. Branch protection should require this check, by its name.
+  all-checks:
+    name: All checks passed
+    if: always()
+    needs: [check, window-tests, android, website, release-tools, workflows, secrets]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Every job succeeded
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: |
+          python3 -I - <<'PY'
+          import json, os, sys
+          results = {job: value["result"] for job, value in json.loads(os.environ["RESULTS"]).items()}
+          for job, result in sorted(results.items()):
+              print(f"{job}: {result}")
+          expected = {"check", "window-tests", "android", "website", "release-tools", "workflows", "secrets"}
+          if set(results) != expected:
+              sys.exit(f"the jobs reported are not the jobs expected: {sorted(set(results) ^ expected)}")
+          failed = sorted(job for job, result in results.items() if result != "success")
+          sys.exit(f"not successful: {', '.join(failed)}" if failed else 0)
+          PY
