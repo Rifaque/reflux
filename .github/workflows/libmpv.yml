@@ -8,6 +8,7 @@ on:
     paths:
       - tools/libmpv/**
       - desktop/app/packaging/libmpv-windows.properties
+      - tools/ci/fetch_libmpv_sources.py
       - .github/workflows/libmpv.yml
   workflow_dispatch:
 
@@ -21,11 +22,21 @@ jobs:
     timeout-minutes: 120
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # Every source archive is kept only with the SHA-256 in sources.txt: a wrong download is deleted and fetched again,
+      # at most three times, and what the server sent is described (zlib.net has sent other bytes as a success; the CI
+      # performance audit, section 5). The verified archives are the build's /cache, read-only; build.sh checks each
+      # digest again before unpacking. The build itself is never cached here: this workflow proves the pins reproduce.
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/libmpv-sources
+          key: libmpv-sources-${{ hashFiles('tools/libmpv/sources.txt') }}
+      - name: Fetch and verify the sources
+        run: python3 -I tools/ci/fetch_libmpv_sources.py tools/libmpv/sources.txt "$RUNNER_TEMP/libmpv-sources"
       - name: Build
         run: |
           docker build -t reflux-libmpv tools/libmpv
           mkdir -p build/libmpv
-          docker run --rm -v "$PWD:/src:ro" -v "$PWD/build/libmpv:/out" reflux-libmpv
+          docker run --rm -v "$PWD:/src:ro" -v "$PWD/build/libmpv:/out" -v "$RUNNER_TEMP/libmpv-sources:/cache:ro" reflux-libmpv
       - name: Compare with the pin
         run: |
           pin() { sed -n "s/^$1=//p" desktop/app/packaging/libmpv-windows.properties; }

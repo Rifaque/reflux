@@ -43,11 +43,22 @@ jobs:
         with:
           path: build/libmpv
           key: libmpv-${{ hashFiles('tools/libmpv/**', 'desktop/app/packaging/libmpv-windows.properties') }}
+      # On a miss, every source archive is fetched and kept only with the SHA-256 in sources.txt (a wrong download is
+      # deleted and fetched again, at most three times, and described), then given to the build read-only as its
+      # /cache, where build.sh checks each digest again before unpacking. Verified archives are cached by that list.
+      - if: steps.cache.outputs.cache-hit != 'true'
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/libmpv-sources
+          key: libmpv-sources-${{ hashFiles('tools/libmpv/sources.txt') }}
+      - if: steps.cache.outputs.cache-hit != 'true'
+        name: Fetch and verify the libmpv sources
+        run: python3 -I tools/ci/fetch_libmpv_sources.py tools/libmpv/sources.txt "$RUNNER_TEMP/libmpv-sources"
       - if: steps.cache.outputs.cache-hit != 'true'
         run: |
           docker build -t reflux-libmpv tools/libmpv
           mkdir -p build/libmpv
-          docker run --rm -v "$PWD:/src:ro" -v "$PWD/build/libmpv:/out" reflux-libmpv
+          docker run --rm -v "$PWD:/src:ro" -v "$PWD/build/libmpv:/out" -v "$RUNNER_TEMP/libmpv-sources:/cache:ro" reflux-libmpv
       - run: |
           pin() { sed -n "s/^$1=//p" desktop/app/packaging/libmpv-windows.properties; }
           echo "$(pin dllSha256)  build/libmpv/libmpv-2.dll" | sha256sum -c

@@ -153,6 +153,8 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - run: python3 -I -m unittest discover -s tools/release -p 'test_*.py' -v
+      # The libmpv source fetcher and the release workflow's libmpv cache key (tools/ci).
+      - run: python3 -I -m unittest discover -s tools/ci -p 'test_*.py' -v
       # Every relative link and #anchor in the repository's Markdown reaches its file and heading (README.md).
       - run: python3 -I tools/docs/check_links.py .
 
