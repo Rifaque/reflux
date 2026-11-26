@@ -1,4 +1,4 @@
-# Every source Reflux's Windows libmpv is built from (docs/release/RELEASE.md, "libmpv on Windows"). One line per archive:
+# Every source Reflux's Windows libmpv is built from (docs/RELEASE.md, "libmpv on Windows"). One line per archive:
 #   name  version  sha256  url
 # fetch.sh downloads each into the source cache and refuses one whose SHA-256 differs; the release's source bundle
 # (reflux-<version>-libmpv-source.tar.xz) holds these exact archives beside the scripts that built them.

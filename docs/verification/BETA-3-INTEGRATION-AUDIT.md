@@ -171,3 +171,9 @@ All on `beta-3` at `cbd28ca` (the merge plus B-105's fix). Production code is th
 - **Ready for systematic Beta 2 bug fixing:** yes. *Update (2026-11-26):* the caveat written here (no hosted CI yet) is resolved: hosted CI on the pushed `beta-3` (`54c21a4`) passed every applicable job on its first attempt, the Windows check included.
 - **The Windows CI failure:** **resolved locally**: diagnosed, reproduced, fixed in the test without weakening it, verified on Windows under load and on Linux (WSL2), and confirmed on hosted CI (`54c21a4`, CI 45811843168). It was a test race, not a regression from the Linux work.
 - **Before Beta 3 is release-ready:** section 8.
+
+## 11. Follow-up: the next push (2026-11-26)
+
+*Added later the same day; the sections above stand as written.*
+
+The documentation reorganisation (`b823a74`, [its report](../history/verification/DOCUMENTATION-REORGANIZATION-REPORT.md)) was pushed on top of `54c21a4`. Its hosted runs: CI [45829860032](https://github.com/Rifaque/reflux/actions/runs/45829860032) failed on the Linux check with **B-077** (`MpvEngineTest.theEnginesLogCarriesNoCredentials`, `ConcurrentModificationException`, its fourth occurrence on hosted Linux), so that job's window tests did not run; every other CI job passed, the Windows check (with B-105's test) included. The release rehearsal [45829860004](https://github.com/Rifaque/reflux/actions/runs/45829860004) failed in "Windows libmpv from source" because the reorganisation's comment edits had changed four inputs of the pinned LGPL source bundle, and the separate "Windows libmpv" workflow [45829859927](https://github.com/Rifaque/reflux/actions/runs/45829859927) failed on a transient zlib download. Neither failure involves this integration's code; the correction restores the four files to `54c21a4` (the report above, "Correction after the push").

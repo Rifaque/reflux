@@ -2778,14 +2778,15 @@ A second Right always worked. Every slower route tried (by Left or Y, after Quic
 <a id="b-077"></a>
 ### B-077: `MpvEngineTest.theEnginesLogCarriesNoCredentials` can fail with a ConcurrentModificationException (test race)
 
-- **Category:** Test reliability · **Priority:** Low · **Platforms:** seen once, hosted Linux runner
+- **Category:** Test reliability · **Priority:** Low · **Platforms:** hosted Linux runner (four times by 2026-11-26)
 - **Components:** `playback/mpv` tests only (`MpvEngineTest.kt`, `theEnginesLogCarriesNoCredentials`)
 - **How found:** 2026-11-21, hosted CI run 44934158483 on `9604cc5`, Check (ubuntu-24.04): `:playback:mpv:test` 60 tests, 1 failed: `java.util.ConcurrentModificationException`. It passed in the next run (44941967966 on `dc70958`) and in every local run.
-- **Phase:** Beta 3 (found after the freeze; not covered by the owner's B-076 authorisation) · **Status:** Open (seen three times on hosted Linux) · **Last updated:** 2026-11-25
+- **Phase:** Beta 3 (found after the freeze; not covered by the owner's B-076 authorisation) · **Status:** Open (seen four times on hosted Linux) · **Last updated:** 2026-11-26
 - **Cause (from the code, not yet reproduced):** the test collects the engine's log lines into `Collections.synchronizedList` from mpv's log thread, and reads it with `lines.none { … }` / `lines.any { … }` (an iteration) without holding the list's lock, while the engine may still be appending; a synchronized list must be iterated under its own lock. The engine and its redaction are not involved: what the test checks (no token in the log) is unaffected.
 - **Fix (Beta 3):** iterate a snapshot taken under the lock (`synchronized(lines) { lines.toList() }`), without loosening what is asserted.
 - **Seen again (2026-11-25):** hosted CI on `406382b`, the Linux check's first attempt (CI 45585080925): `theEnginesLogCarriesNoCredentials` FAILED with a `ConcurrentModificationException` (reported at line 512, Kotlin's inline mapping of `lines.none { … }`), so the window tests after it did not run; the re-run of the job passed. Also the cause of the stop on `0377cab` (CACHYOS-FINAL-AUDIT-LEDGER.md). Still Beta 3 by the tracker; it now blocks a green hosted Linux check now and then: a candidate for the owner to authorise early.
 - **Ubuntu (2026-11-26):** passed in the CI-equivalent unit check on the owner's laptop under Ubuntu 26.04.1 (one run; it is intermittent, so this decides nothing). Still open. [UBUNTU-VALIDATION-REPORT.md](verification/UBUNTU-VALIDATION-REPORT.md)
+- **Seen again (2026-11-26), the fourth time on hosted Linux:** CI [45829860032](https://github.com/Rifaque/reflux/actions/runs/45829860032) on `b823a74` (a documentation commit; `MpvEngineTest.kt` unchanged since `406382b`), Check (ubuntu-24.04): `theEnginesLogCarriesNoCredentials` FAILED, `ConcurrentModificationException` at `MpvEngineTest.kt:512`, as on `406382b`; the build stopped, so the desktop window tests did not run. Not re-run (the owner's instruction: no retry to obtain a green result). The occurrences: CI 44934158483 (`9604cc5`), the stop on `0377cab` (CI 45379331219), CI 45585080925 (`406382b`, first attempt), CI 45829860032 (`b823a74`). The specified fix is unchanged and not implemented.
 
 <a id="b-078"></a>
 ### B-078: Three real-window tests still expected the interface before Phase 2 (stale tests, CI Linux)
@@ -3323,3 +3324,4 @@ Machines (CLAUDE.md, "Testing environment"): Windows 11 development machine (phy
 | 2026-11-26 | **The Beta 3 integration** ([BETA-3-INTEGRATION-AUDIT.md](verification/BETA-3-INTEGRATION-AUDIT.md)): `cachyos-final-audit`'s Ubuntu validation (`76b526a`: B-104 and the Ubuntu bullets on B-077, B-084, B-089, B-092, B-099, B-101 to B-103) merged into `beta-3`, both branches' bullets kept; B-084's backlog row says it was validated on Ubuntu.
 - **New and Fixed (test only):** B-105 (the Windows CI failure of run 45785524870: a test race, reproduced under load, fixed with a handshake, negative control).
 - Next free ID **B-106**. | For the owner's review |
+| 2026-11-26 | **After the documentation reorganisation's push (`b823a74`).** B-077 seen a fourth time on hosted Linux (CI 45829860032); still Open. The release rehearsal's libmpv source-bundle failure and its correction are not a tracker issue: a documentation change's mistake, recorded in the reorganisation report and VERIFICATION.md. | For the owner's review |

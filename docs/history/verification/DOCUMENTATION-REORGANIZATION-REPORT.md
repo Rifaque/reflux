@@ -81,3 +81,19 @@ Newly archived, each with a status note at its top: `history/phases/PHASE-4.md`,
 ## Remaining questions
 
 None from the reorganisation itself. The open product and release decisions are where they were: the tracker's Beta 3 backlog, and the ledger's "Closure".
+
+## Correction after the push (2026-11-26)
+
+*Added after the reorganisation was committed (`b823a74`) and pushed; the sections above are left as they were written.*
+
+**What went wrong.** Four files changed by the path-only update are not only documentation: `tools/libmpv/Dockerfile`, `build.sh`, `sources.txt` and `README.md` are copied into the LGPL corresponding-source bundle of Reflux's Windows libmpv (`tools/libmpv/build.sh`, "The complete corresponding source"), and that bundle's SHA-256 is pinned in `desktop/app/packaging/libmpv-windows.properties` (`sourceSha256`). Their comment edits changed the bundle, so it no longer matched the pin, and the release rehearsal's "Windows libmpv from source" failed on `b823a74` (run [45829860004](https://github.com/Rifaque/reflux/actions/runs/45829860004): the rebuilt DLL `e52f3f45…` matched its pin; the bundle was `70c934e3…` against the pinned `53853ac9…`). The statements above that no release configuration changed were wrong for these four files: nothing *reads* them as documents, but they are release inputs.
+
+**The correction.** A separate commit after `b823a74` restores the four files byte for byte to `54c21a4` (the blobs are identical: `6a5fc070` Dockerfile, `a70bb6e2` build.sh, `3b45b6da` sources.txt, `061950d0` README.md). They are **deliberate exceptions** to the path update: they keep citing the old paths (`docs/RELEASE.md`, `docs/THIRD-PARTY.md`, `docs/VERIFICATION.md`), because changing a word in them changes a pinned, shipped artifact. Neither pin, nor any other release configuration, changed.
+
+**Proof** (WSL2 Ubuntu 24.04, a VM; GNU tar 1.35 and XZ Utils 5.4.5, the build image's distribution): the bundle from the last green release rehearsal ([45811843105](https://github.com/Rifaque/reflux/actions/runs/45811843105), on `54c21a4`) hashes to the pin, `53853ac9…`. Re-packed with `build.sh`'s own flags it gives `53853ac9…` again (the re-pack is byte-faithful); with `b823a74`'s four files it gives exactly the failed run's `70c934e3…` (those four files were the whole cause); with the restored files, `53853ac9…`. The DLL pin, `e52f3f45…`, is untouched by these files.
+
+**After the correction**, measured from `54c21a4`: outside Markdown, **172 files and 311 lines** (from 175 and 314: the three non-Markdown files restored, with their 3 lines); `tools/libmpv/README.md`, a Markdown file, is restored too (3 lines). The three documented exceptions are unchanged.
+
+**Also on `b823a74`**, not caused by the reorganisation:
+- The "Windows libmpv" workflow (run [45829859927](https://github.com/Rifaque/reflux/actions/runs/45829859927), which runs whenever `tools/libmpv/` changes) failed earlier, at the download of `zlib-1.3.1.tar.gz`: CI received bytes hashing `5ea058da…` against the pinned `9a93b2b7…`, and `build.sh` refused them. A transient download anomaly: the release rehearsal downloaded the same archive correctly at the same time, and three downloads on 2026-11-26 all matched the pin. It is a different failure from the bundle pin above.
+- The CI's Linux check (run [45829860032](https://github.com/Rifaque/reflux/actions/runs/45829860032)) failed on B-077, the known test race.

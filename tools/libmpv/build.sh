@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Builds libmpv-2.dll for Windows x64 from the archives in sources.txt, LGPL only (docs/release/RELEASE.md, "libmpv on
+# Builds libmpv-2.dll for Windows x64 from the archives in sources.txt, LGPL only (docs/RELEASE.md, "libmpv on
 # Windows"). Runs in the image from tools/libmpv/Dockerfile, with the repository at /src (read-only), the output at
 # /out, and a download cache at /cache. Every dependency is linked statically into the one DLL, as Reflux ships it.
 #
