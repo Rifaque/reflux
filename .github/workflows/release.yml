@@ -37,12 +37,16 @@ jobs:
         with:
           ref: ${{ inputs.tag || github.sha }}
       # The build is reproducible and pinned (tools/libmpv/README.md), so an earlier build of the same recipe is
-      # reused; whatever is restored must still match the pinned SHA-256s below, or the job fails.
+      # reused; whatever is restored must still match the pinned SHA-256s below, or the job fails. The key covers the
+      # build's definition and both pins, not comments or the README (tools/ci/libmpv_cache_key.sh says why).
+      - name: The libmpv build's cache key
+        id: key
+        run: echo "value=$(bash tools/ci/libmpv_cache_key.sh)" >> "$GITHUB_OUTPUT"
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         id: cache
         with:
           path: build/libmpv
-          key: libmpv-${{ hashFiles('tools/libmpv/**', 'desktop/app/packaging/libmpv-windows.properties') }}
+          key: ${{ steps.key.outputs.value }}
       # On a miss, every source archive is fetched and kept only with the SHA-256 in sources.txt (a wrong download is
       # deleted and fetched again, at most three times, and described), then given to the build read-only as its
       # /cache, where build.sh checks each digest again before unpacking. Verified archives are cached by that list.
