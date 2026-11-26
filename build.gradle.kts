@@ -230,7 +230,9 @@ subprojects {
     }
     tasks.withType<Test>().configureEach {
         for (name in trackedTestEnvironment) inputs.property("env.$name", providers.environmentVariable(name).orElse(""))
-        val fontconfig = providers.environmentVariable("FONTCONFIG_FILE")
+        // A blank value is no file: CI's Windows check sets FONTCONFIG_FILE to '' (Linux-only setting), and an empty path
+        // is not a file Gradle can fingerprint (CI 45881492615).
+        val fontconfig = providers.environmentVariable("FONTCONFIG_FILE").filter { it.isNotBlank() }
         inputs.property("env.FONTCONFIG_FILE.set", fontconfig.map { true }.orElse(false))
         inputs.files(fontconfig.map { listOf(it) }.orElse(emptyList())).withPathSensitivity(PathSensitivity.NONE)
             .withPropertyName("env.FONTCONFIG_FILE.contents")
