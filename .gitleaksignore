@@ -5,3 +5,11 @@ a9a46928ee24a92f19d676bd475f0b716c1b366c:playback/mpv/src/test/kotlin/dev/reflux
 4bb920ed1f0ac1f21a4b03c249e851f1e104bd96:tools/ci/share-test-servers.sh:curl-auth-user:35
 8121c8b2a021aa48f32bf1878a82d5df8b6984d7:desktop/engine/src/test/kotlin/dev/reflux/desktop/engine/DesktopEnvironmentTest.kt:generic-api-key:121
 5542d88404645810a2e357608f7230ee3c4fc70f:ui/src/jvmTest/kotlin/dev/reflux/ui/SupportReportUiTest.kt:generic-api-key:28
+# The same six reviewed findings in the commits rewritten on 2026-11-27 (AI attribution trailers removed; trees unchanged;
+# docs/history/verification/COMMIT-MAP-2026-11-27.md). The lines above stay: the release tags still reach the original commits.
+03ede4e300931764c7040148aef50bd6c8060599:core/src/commonTest/kotlin/dev/reflux/core/net/RedactionTest.kt:generic-api-key:37
+37f3006d19fc605bbc449292898fdf9f63a795a3:desktop/engine/src/test/kotlin/dev/reflux/desktop/engine/DesktopEnvironmentTest.kt:generic-api-key:121
+542fe3f598987545f30c131c323be7f79725009e:tools/ci/share-test-servers.sh:curl-auth-user:35
+5aa2c291792fafb9ae439a5d7fcbeda9a203a48d:ui/src/jvmTest/kotlin/dev/reflux/ui/SupportReportUiTest.kt:generic-api-key:28
+b66ba7bae2ee145d6f8f7a7560d2f2c09540856a:core/src/commonTest/kotlin/dev/reflux/core/playback/PlaybackReportTest.kt:generic-api-key:112
+e9cfc2162dd14c54c0deb6172e72af9495a9eb1d:playback/mpv/src/test/kotlin/dev/reflux/playback/mpv/MpvEngineTest.kt:generic-api-key:131
