@@ -214,10 +214,35 @@ val verifySharedSources by tasks.registering {
     }
 }
 
+// What a test's result depends on beyond its classes and system properties, so the build cache (written by CI on
+// main and beta-3) never hands back a result made in another environment (docs/engineering/CI-PERFORMANCE-AUDIT.md, L2).
+// Tracked, never secret: these variables, the fontconfig file's contents, and REFLUX_TEST_ENVIRONMENT (CI's runner image
+// and system packages, libmpv among them).
+val trackedTestEnvironment = listOf(
+    "REFLUX_REQUIRE_ENGINE_TESTS", "REFLUX_TEST_ENVIRONMENT", "LANG", "LC_ALL", "DISPLAY", "WAYLAND_DISPLAY",
+    "XDG_SESSION_TYPE", "XDG_CURRENT_DESKTOP", "GDK_SCALE", "REFLUX_SCALE", "REFLUX_RENDER_HWDEC", "REFLUX_NATIVE_VIDEO_WINDOW",
+)
+
 subprojects {
     if (developmentNatives != null) {
         tasks.withType<Test>().configureEach { systemProperty("jna.library.path", developmentNatives) }
         tasks.withType<JavaExec>().configureEach { systemProperty("jna.library.path", developmentNatives) }
+    }
+    tasks.withType<Test>().configureEach {
+        for (name in trackedTestEnvironment) inputs.property("env.$name", providers.environmentVariable(name).orElse(""))
+        val fontconfig = providers.environmentVariable("FONTCONFIG_FILE")
+        inputs.property("env.FONTCONFIG_FILE.set", fontconfig.map { true }.orElse(false))
+        inputs.files(fontconfig.map { listOf(it) }.orElse(emptyList())).withPathSensitivity(PathSensitivity.NONE)
+            .withPropertyName("env.FONTCONFIG_FILE.contents")
+        // Any other REFLUX_ variable (an opt-in walk, a live server, its credentials) or a live-server folder means a run
+        // that is never stored in or taken from the cache, nor up to date; their values are only looked at, never inputs.
+        val tracked = trackedTestEnvironment.toList()
+        val untracked = {
+            System.getenv().keys.any { it.startsWith("REFLUX_") && it !in tracked } ||
+                File(System.getProperty("user.home"), ".reflux-live").isDirectory
+        }
+        outputs.doNotCacheIf("opt-in, live-server or credential environment present") { untracked() }
+        outputs.upToDateWhen { !untracked() }
     }
     tasks.matching { it.name == "check" }.configureEach { dependsOn(":verifySharedSources") }
 }
