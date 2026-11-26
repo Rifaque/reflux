@@ -57,6 +57,8 @@
 
 **The CI performance work (2026-11-26):** one entry added, which makes **114** (B-001 to B-106, F-001 to F-005, F-P1 to F-P4): B-106 (`AppState`'s start-up coroutines and construction order; a test race, Investigating).
 
+**The attribution cleanup and the testing handoff (2026-11-27):** one entry added, which makes **115** (B-001 to B-107, F-001 to F-005, F-P1 to F-P4): B-107 (`SilentSourceTest`, an intermittent window test, Open).
+
 **At Phase 3's formal closure (2026-11-20; the owner accepted and closed Phase 3).** Reconciled entry by entry against the code, the commits, VERIFICATION.md, and the owner's confirmations. All 82 entries are B-001 to B-074, F-001 to F-005, F-P1 to F-P4 (F-P1 and F-P2 share one entry, counted once):
 
 | Status | Count | Entries |
@@ -3170,6 +3172,16 @@ A second Right always worked. Every slower route tried (by Left or Y, after Quic
 - **Proposed fix (not implemented; the owner places it):** (1) `AppState`: launch the start-up coroutines only after every property is initialised: move that `init` block to the end of the class body (property initialisers and `init` blocks run in order), or start them from a method called after construction. This removes the hazard at its source, for both instances found. (2) `VisualSystemTest.kt:167`: give the extra scope a handler that fails the test that made it (or build it from the test's own scope), so a coroutine's error is reported where it happens, not by the next test. (3) Keep the probe's check as a regression test once (1) is in: many constructions on `Dispatchers.Default`, no exception.
 - **Splitting the UI tests (S1 in [the CI performance audit](engineering/CI-PERFORMANCE-AUDIT.md)) waits for this fix.**
 
+<a id="b-107"></a>
+### B-107: `SilentSourceTest.dataReturningOnTheHeldConnectionClearsTheFailureAndPlaybackGoesOn` failed once in CI's window tests (intermittent)
+
+- **Category:** Test reliability · **Priority:** Low · **Platforms:** hosted Linux CI (the window-test job, Xvfb, the shaped-window fallback)
+- **Components:** `desktop/app` test `SilentSourceTest` (unchanged since `0fbae46`, 2026-10-16)
+- **How found:** CI [45897629306](https://github.com/Rifaque/reflux/actions/runs/45897629306) attempt 1, on `10177a3` (the gitleaks fingerprint commit after the attribution cleanup; code identical to `0bd84c9`), job "Desktop window tests (ubuntu-24.04)": `java.lang.AssertionError at SilentSourceTest.kt:118` (101 tests, 1 failed, 14 skipped). Line 118 is `assertNotNull(world.app.playback?.error)`, after the source is made to stall and 30 s of the test's virtual time are advanced while the real libmpv engine runs on the wall clock.
+- **Phase:** Beta 3 · **Status:** Open (intermittent; not reproduced) · **Last updated:** 2026-11-27
+- **Evidence:** the same job on identical code passed on `fdb68c7` (45881492615), `0bd84c9` (45891073808), `0efc15e` (45894717175, before it was superseded) and in this run's **attempt 2** (the failed jobs re-run once, to classify the failure, both attempts recorded here). The runner environment differed from the previous run only by a binutils security update (`2.42-4ubuntu2.10` to `.11`; libmpv, FFmpeg, Mesa and fonts the same), which is why the test environment fingerprint changed and the Linux check re-ran its tests (`docs/engineering/CI-PERFORMANCE-AUDIT.md`, L2). Locally, WSL2 Ubuntu 24.04 (a VM) on Xvfb with libmpv 0.37.0: the class 10 times, **20 of 20** executions passed; that is the class alone, not the whole suite in one JVM as CI runs it.
+- **Suspected, not established:** the test mixes the test clock and the wall clock, the pattern of [B-044](#b-044); a busier runner could leave the engine short of the state the advanced virtual time assumes. No fix proposed until it is reproduced or understood.
+
 ## Beta 3 backlog (from Phase 3's closure, 2026-11-20)
 
 Phase 3 is closed and Beta 2's fix scope is frozen (DECISIONS.md, 2026-11-20, "Phase 3 accepted and formally closed"). Every bug, UX issue, request or improvement found from now on is entered here, and in its own entry with the next free number, for **Beta 3 or a later release**, unless the owner explicitly authorises it as a critical Beta 2 blocker.
@@ -3200,6 +3212,7 @@ Phase 3 is closed and Beta 2's fix scope is frozen (DECISIONS.md, 2026-11-20, "P
 | [B-104](#b-104) | Linux integrated player: `vaapi-copy` opens the first render node (the NVIDIA GPU on the Ubuntu laptop), so decoding wakes NVIDIA | Open (cause established; fix proposed) |
 | [B-105](#b-105) | `LocalFolderSourceTest` waited a fixed 300 ms for the folder watcher (Windows CI test race) | Fixed (test only; hosted CI passed on `54c21a4`) |
 | [B-106](#b-106) | `AppState`'s start-up coroutines can touch members not yet initialised; seen as `VisualSystemTest`'s `UncaughtExceptionsBeforeTest` | Investigating (cause reproduced; fix proposed) |
+| [B-107](#b-107) | `SilentSourceTest` failed once in CI's window tests | Open (intermittent; not reproduced) |
 | [B-084](#b-084) | Hyprland: the player as two windows (video without controls, controls on a blank panel) | Fixed on the branch: the integrated renderer, the shaped window its fallback (physical Linux, one machine); the owner's acceptance and release placement pending; validated on Ubuntu 26.04.1 (physical, GNOME, 2026-11-26) |
 | [F-P1](#f-p1-and-f-p2) | A controller's Start (≡) shrinks the sidebar to its icons; Reflux's name toggles it (with B-091, which exists only because of it) | Fixed on the branch; **Beta 3** by the closure's recommendation (the owner places it); still on `cachyos-final-audit`, to be separated |
 | [B-085](#b-085) | The compact keyboard and its LS (Shift) / LT (&123) shortcuts | Fixed on the branch; **Beta 3** by recommendation; to be separated |
@@ -3231,7 +3244,7 @@ Everything from the CachyOS and Windows audits is on `cachyos-final-audit` and `
 
 The next phase is systematic Beta 2 testing (after Ubuntu is set up and its major playback blockers fixed). Each finding:
 
-- takes the **next free ID: B-107** onward (F-006 onward only for a feature, once the owner numbers it);
+- takes the **next free ID: B-108** onward (F-006 onward only for a feature, once the owner numbers it);
 - gets its own entry under "Newly discovered issues" with an `<a id="b-nnn">` anchor (CI's link check fails without one), the fields the entries above use (Category, Priority, Platforms, Components, How found, Phase, Status, Last updated), and **the build it was seen on** (`0.9.0-beta.2` as released, or a branch and commit) and **the device or environment**, physical, emulator or VM said plainly;
 - says whether it reproduces on `1d65dcf` (Beta 2 as released) before it is called a regression of anything newer;
 - goes to this backlog for Beta 3 unless the owner authorises it as a critical Beta 2 blocker (the freeze; BETA.md, "Beta operations", for the triage levels);
@@ -3345,3 +3358,4 @@ Machines (CLAUDE.md, "Testing environment"): Windows 11 development machine (phy
 - Next free ID **B-106**. | For the owner's review |
 | 2026-11-26 | **After the documentation reorganisation's push (`b823a74`).** B-077 seen a fourth time on hosted Linux (CI 45829860032); still Open. The release rehearsal's libmpv source-bundle failure and its correction are not a tracker issue: a documentation change's mistake, recorded in the reorganisation report and VERIFICATION.md. | For the owner's review |
 | 2026-11-26 | **The CI performance work** ([CI-PERFORMANCE-AUDIT.md](engineering/CI-PERFORMANCE-AUDIT.md)). New, Investigating: B-106 (the `VisualSystemTest` failure of CI 45853439508; cause reproduced, fix proposed, not implemented). B-079 points to it. Next free ID **B-107**. | For the owner's review |
+| 2026-11-27 | **The attribution cleanup and the testing handoff.** New, Open: B-107 (`SilentSourceTest`, intermittent; CI 45897629306 attempt 1 failed, attempt 2 passed; 20 of 20 locally). Next free ID **B-108**. Commit hashes in this tracker are those before the cleanup: [COMMIT-MAP-2026-11-27.md](history/verification/COMMIT-MAP-2026-11-27.md). | For the owner's review |

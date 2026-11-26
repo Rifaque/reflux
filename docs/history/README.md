@@ -44,6 +44,7 @@ The roadmap before 2026-10-17 (the Phase 0–18 plan) is in Git history only; th
 | File | What it was |
 | --- | --- |
 | [verification/VERIFICATION-ALPHA-TO-BETA-1.md](verification/VERIFICATION-ALPHA-TO-BETA-1.md) | Every verification section from the first desktop slice (2026-10-08) to the Beta Season's start (2026-11-17): M0 to M11, the release rehearsals, Beta 1's cut. Test counts are the counts of their day |
+| [verification/COMMIT-MAP-2026-11-27.md](verification/COMMIT-MAP-2026-11-27.md) | Old and new hashes of every commit rewritten on 2026-11-27 to remove AI attribution trailers: find a commit the documents cite by its old hash |
 | [verification/DOCUMENTATION-REORGANIZATION-REPORT.md](verification/DOCUMENTATION-REORGANIZATION-REPORT.md) | The documentation reorganisation of 2026-11-26: what moved where, what was folded or removed, and why |
 
 ## What was not archived, and why

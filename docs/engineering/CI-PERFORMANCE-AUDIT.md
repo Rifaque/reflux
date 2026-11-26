@@ -254,6 +254,19 @@ On history: `54c21a4` and `9e5769e` (which differ only in a properties comment) 
 - **Full local Gradle check** with `build.gradle.kts`'s change (`./gradlew check --continue`, Windows 11, physical; `~/.reflux-live` present, so every test task executed, none from a cache): 21m05s, **1,695 tests, 37 skipped: the same count and skips as before the change**, all 14 test tasks run, 1 failure: `JellyfinExecutionLiveTest.everyDeliveryIsPlannedNegotiatedPlayedAndConfirmed`, an `HttpTimeoutException` from the live test server (a test that runs only where `~/.reflux-live` names one; it passed on 2026-11-26 with the same code). Re-run alone minutes later: **4 of 4 passed**. Recorded as a transient live-server timeout, both runs kept here; not a defect of this change, which can only make such a test run rather than come from a cache.
 - **No test removed or weakened:** the only test files added are `tools/ci`'s two; no test file under a module changed (`git diff 9e5769e --stat -- '*/src/*Test*'` is empty).
 
+### Hosted measurements (2026-11-27)
+
+Old commit hashes; [the commit map](../history/verification/COMMIT-MAP-2026-11-27.md) has the new ones.
+
+| Run | Linux check | Window tests | Windows check | CI wall | What it shows |
+| --- | --- | --- | --- | --- | --- |
+| 45811843168 (`54c21a4`, before) | 57m42s (window tests inside) | in the check | 31m43s | 57m45s | the baseline |
+| 45881492615 (`fdb68c7`, first run with L1–L5) | 51m56s | 8m00s, its own job | failed in 2m25s (the L2 defect, fixed in `0bd84c9`) | 52m04s | the first cache-writing run: 0 tasks from cache, as expected |
+| 45891073808 (`0bd84c9`) | **1m53s** | 8m18s | 27m00s | **27m08s** | every Linux unit-test task `FROM-CACHE` with the same environment fingerprint: L1 and L2 working; Windows is now the critical path |
+| 45897629306 (`10177a3`) | 50m21s | 6m34s (attempt 2) | 55 s (from cache) | 50m54s | a binutils security update changed the fingerprint, so the Linux tests ran in full: L2 refusing a result from another environment, as designed |
+
+So a push with unchanged inputs and an unchanged runner environment now finishes CI in about 27 minutes (Windows' check), down from 58; any change to the code the UI tests depend on, or to the runner's packages, still costs the full Linux run. One sample each; the release rehearsal's libmpv job took 15 s from cache with the new key. The window-test job's extra cost is its own setup and compile (about 1–3 minutes beside the check).
+
 ### Remaining risks
 
 - **Cache storage:** `beta-3` writing Gradle caches uses the repository's GitHub cache quota (10 GB, least recently used evicted first), beside `main`'s.

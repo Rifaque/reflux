@@ -89,6 +89,7 @@ Which document holds what, and which one wins when two seem to disagree. Each fa
 | | [engineering/CI-PERFORMANCE-AUDIT.md](docs/engineering/CI-PERFORMANCE-AUDIT.md) | The CI workflows' performance baseline, bottleneck analysis and optimisation record: what was measured, changed and deferred, and why |
 | Beta and release | [release/BETA.md](docs/release/BETA.md) | The beta programme: builds, Beta 2's scope and gate, known issues, beta operations |
 | | [release/BETA-NOTES.md](docs/release/BETA-NOTES.md) | What testers read about each beta |
+| | [release/BETA-3-TESTING.md](docs/release/BETA-3-TESTING.md) | **The testing freeze from 2026-11-27**: what is under test, how to build it, what to test, the known issues, how findings are triaged |
 | | [release/RELEASE.md](docs/release/RELEASE.md) | The release process, platform matrix, signing, artifacts, checklists |
 | | [release/VERSIONING.md](docs/release/VERSIONING.md) | Version numbers, tags, the changelog (mandatory before any version change) |
 | | [release/PRIVACY.md](docs/release/PRIVACY.md) | What is kept and sent; store disclosures |
