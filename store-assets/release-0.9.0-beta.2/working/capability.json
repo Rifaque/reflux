@@ -63,15 +63,15 @@
         },
         {
           "strength": "weak",
-          "detail": "docs/ARCHITECTURE.md: mentions Android tablet"
+          "detail": "docs/engineering/ARCHITECTURE.md: mentions Android tablet"
         },
         {
           "strength": "weak",
-          "detail": "docs/DECISIONS.md: mentions Android tablet"
+          "detail": "docs/decisions/DECISIONS.md: mentions Android tablet"
         },
         {
           "strength": "weak",
-          "detail": "docs/DESIGN.md: mentions Android tablet"
+          "detail": "docs/product/DESIGN.md: mentions Android tablet"
         }
       ],
       "store_targets": [
@@ -148,15 +148,15 @@
         },
         {
           "strength": "weak",
-          "detail": "docs/ARCHITECTURE.md: mentions Android TV / Google TV"
+          "detail": "docs/engineering/ARCHITECTURE.md: mentions Android TV / Google TV"
         },
         {
           "strength": "weak",
-          "detail": "docs/DECISIONS.md: mentions Android TV / Google TV"
+          "detail": "docs/decisions/DECISIONS.md: mentions Android TV / Google TV"
         },
         {
           "strength": "weak",
-          "detail": "docs/DESIGN.md: mentions Android TV / Google TV"
+          "detail": "docs/product/DESIGN.md: mentions Android TV / Google TV"
         }
       ],
       "store_targets": [
@@ -192,11 +192,11 @@
       "evidence": [
         {
           "strength": "weak",
-          "detail": "docs/DECISIONS.md: mentions Android XR"
+          "detail": "docs/decisions/DECISIONS.md: mentions Android XR"
         },
         {
           "strength": "weak",
-          "detail": "docs/RELEASE.md: mentions Android XR"
+          "detail": "docs/release/RELEASE.md: mentions Android XR"
         },
         {
           "strength": "weak",
@@ -227,7 +227,7 @@
         },
         {
           "strength": "derived",
-          "detail": "AGENTS.md: mentions Amazon Appstore; CHANGELOG.md: mentions Amazon Appstore; docs/ARCHITECTURE.md: mentions Amazon Appstore"
+          "detail": "AGENTS.md: mentions Amazon Appstore; CHANGELOG.md: mentions Amazon Appstore; docs/engineering/ARCHITECTURE.md: mentions Amazon Appstore"
         },
         {
           "strength": "weak",
@@ -247,19 +247,19 @@
         },
         {
           "strength": "weak",
-          "detail": "docs/ARCHITECTURE.md: mentions Amazon Fire TV"
+          "detail": "docs/engineering/ARCHITECTURE.md: mentions Amazon Fire TV"
         },
         {
           "strength": "weak",
-          "detail": "docs/DECISIONS.md: mentions Amazon Fire TV"
+          "detail": "docs/decisions/DECISIONS.md: mentions Amazon Fire TV"
         },
         {
           "strength": "weak",
-          "detail": "docs/PLAYBACK.md: mentions Amazon Fire TV"
+          "detail": "docs/product/PLAYBACK.md: mentions Amazon Fire TV"
         },
         {
           "strength": "weak",
-          "detail": "docs/RELEASE.md: mentions Amazon Fire TV"
+          "detail": "docs/release/RELEASE.md: mentions Amazon Fire TV"
         },
         {
           "strength": "weak",
@@ -267,15 +267,15 @@
         },
         {
           "strength": "weak",
-          "detail": "docs/VERIFICATION.md: mentions Amazon Fire TV"
+          "detail": "docs/verification/VERIFICATION.md: mentions Amazon Fire TV"
         },
         {
           "strength": "weak",
-          "detail": "docs/VERSIONING.md: mentions Amazon Fire TV"
+          "detail": "docs/release/VERSIONING.md: mentions Amazon Fire TV"
         },
         {
           "strength": "weak",
-          "detail": "docs/WEBSITE.md: mentions Amazon Fire TV"
+          "detail": "docs/release/WEBSITE.md: mentions Amazon Fire TV"
         }
       ],
       "store_targets": [
@@ -426,13 +426,13 @@
     "amazon_intent": [
       "AGENTS.md: mentions Amazon Appstore",
       "CHANGELOG.md: mentions Amazon Appstore",
-      "docs/ARCHITECTURE.md: mentions Amazon Appstore",
-      "docs/DECISIONS.md: mentions Amazon Appstore",
-      "docs/PRIVACY.md: mentions Amazon Appstore",
-      "docs/RELEASE.md: mentions Amazon Appstore",
+      "docs/engineering/ARCHITECTURE.md: mentions Amazon Appstore",
+      "docs/decisions/DECISIONS.md: mentions Amazon Appstore",
+      "docs/release/PRIVACY.md: mentions Amazon Appstore",
+      "docs/release/RELEASE.md: mentions Amazon Appstore",
       "docs/ROADMAP.md: mentions Amazon Appstore",
-      "docs/VERSIONING.md: mentions Amazon Appstore",
-      "docs/WEBSITE.md: mentions Amazon Appstore",
+      "docs/release/VERSIONING.md: mentions Amazon Appstore",
+      "docs/release/WEBSITE.md: mentions Amazon Appstore",
       "docs/history/milestones/LAUNCH.md: mentions Amazon Appstore",
       "docs/history/milestones/M11-DISTRIBUTION-PLAN.md: mentions Amazon Appstore",
       "docs/history/roadmaps/ROADMAP-M0-M13.md: mentions Amazon Appstore",
@@ -443,12 +443,12 @@
     "store_intent": [
       "AGENTS.md: Google Play",
       "CHANGELOG.md: Google Play",
-      "docs/DECISIONS.md: Google Play",
-      "docs/PRIVACY.md: Google Play",
-      "docs/RELEASE.md: Google Play",
+      "docs/decisions/DECISIONS.md: Google Play",
+      "docs/release/PRIVACY.md: Google Play",
+      "docs/release/RELEASE.md: Google Play",
       "docs/ROADMAP.md: Google Play",
-      "docs/VERSIONING.md: Google Play",
-      "docs/WEBSITE.md: Google Play",
+      "docs/release/VERSIONING.md: Google Play",
+      "docs/release/WEBSITE.md: Google Play",
       "docs/history/milestones/LAUNCH.md: Google Play",
       "docs/history/milestones/M10-PLAYER-SPEC.md: Google Play",
       "docs/history/milestones/M11-DISTRIBUTION-PLAN.md: Google Play",

@@ -48,7 +48,7 @@ class LibraryDepthLiveTest {
             library.addSource(server, "live")
             val (report, scanTime) = measureTimedValue { library.scan(server) }
             assertEquals(ScanReport.Status.COMPLETED, report.status)
-            // M4 scanned this server in about 3 s; describing it must not make that much slower (docs/VERIFICATION.md).
+            // M4 scanned this server in about 3 s; describing it must not make that much slower (docs/verification/VERIFICATION.md).
             assertTrue(scanTime.inWholeSeconds < 15, "scan took $scanTime")
             assertEquals(setOf("GET"), methods, "reading a library changes nothing on the server")
 

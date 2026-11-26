@@ -216,7 +216,7 @@ internal class PlanApplier(private val queries: LibraryQueries, private val now:
 
     /**
      * Which source and library each version belongs to, and whether it takes part in the unified library
-     * (docs/NAVIGATION.md). Run after anything that adds or moves versions, and after inclusion changes.
+     * (docs/product/NAVIGATION.md). Run after anything that adds or moves versions, and after inclusion changes.
      */
     fun recomputeLibraries() {
         queries.recomputeVersionLibraries()

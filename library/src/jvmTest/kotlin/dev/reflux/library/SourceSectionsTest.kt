@@ -109,7 +109,7 @@ private object MirrorSeal : ConfigSeal {
     override fun sealed(stored: String) = stored.startsWith("sealed:")
 }
 
-/** Sources and their libraries in the unified library: inclusion, browsing a source, and their independence (docs/NAVIGATION.md). */
+/** Sources and their libraries in the unified library: inclusion, browsing a source, and their independence (docs/product/NAVIGATION.md). */
 class SourceSectionsTest {
     private val library = Library(testDatabase()) { 1_790_000_000_000L }
     private val registry = SourceRegistry(mapOf("shelves" to { record -> Shelves(MirrorSeal.open(record.config)) }))

@@ -1,4 +1,4 @@
-// Structured data for search engines (docs/WEBSITE.md, "Search"): JSON-LD in each prerendered page. It says only what
+// Structured data for search engines (docs/release/WEBSITE.md, "Search"): JSON-LD in each prerendered page. It says only what
 // the site can substantiate: who makes Reflux, what the site is, what Reflux is and where it runs, and where a page
 // sits. No rating, review, download count, or price other than free is ever claimed (Google's guidelines for
 // software apps require real ones, and Reflux has none to show).

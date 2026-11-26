@@ -1,7 +1,7 @@
 package dev.reflux.core.profile
 
 /**
- * The rules of a profile's optional PIN (docs/WATCH_STATE.md, "Profiles"): four digits that keep one viewer's
+ * The rules of a profile's optional PIN (docs/product/WATCH_STATE.md, "Profiles"): four digits that keep one viewer's
  * profile private from another on a shared device. It is a privacy lock, not a credential: ten thousand values
  * cannot resist a determined guesser who can read the device's storage, so its strength is in what is enforced
  * here (how fast guesses may come) and in the key the platform keeps for checking it, never in its length.

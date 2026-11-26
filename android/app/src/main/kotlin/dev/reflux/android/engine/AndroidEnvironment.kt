@@ -181,12 +181,12 @@ class AndroidEnvironment(context: Context, dataDirectory: File = context.filesDi
     }
 
     init {
-        // Which build wrote what follows (docs/VERSIONING.md).
+        // Which build wrote what follows (docs/release/VERSIONING.md).
         report("Reflux ${build.label} started")
         // Whatever an earlier version stored in the open is sealed before anything else reads it.
         connections.sealStored()
         connections.migrateExcludedSections()
-        // Sources from before profiles become the first profile's or shared (docs/WATCH_STATE.md, "Profiles").
+        // Sources from before profiles become the first profile's or shared (docs/product/WATCH_STATE.md, "Profiles").
         connections.adoptProfiles()
     }
 
@@ -337,7 +337,7 @@ class AndroidEnvironment(context: Context, dataDirectory: File = context.filesDi
     }
 }
 
-/** How Reflux names itself to the servers it talks to, with the one product version (docs/VERSIONING.md). */
+/** How Reflux names itself to the servers it talks to, with the one product version (docs/release/VERSIONING.md). */
 private val USER_AGENT = "Reflux/${RefluxBuild.VERSION} (Android)"
 
 /** Written into the package's assets by the build (`generateBuildIdentity`). */

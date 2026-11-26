@@ -34,7 +34,7 @@ import kotlin.test.assertTrue
  * Runs when a server is named ([LiveJellyfin]) and holds an HEVC 10-bit, E-AC-3, Matroska file it can really serve:
  * a listed file may be gone from the server's disk, so each is tried. Starts a few seconds of each conversion
  * and stops it. The direct-play test reports a playback at position zero to that user's account.
- * Prints what it observed, without addresses or keys, for docs/VERIFICATION.md.
+ * Prints what it observed, without addresses or keys, for docs/verification/VERIFICATION.md.
  */
 class JellyfinTruthLiveTest {
     private val http = JdkHttpFetcher()
@@ -166,7 +166,7 @@ class JellyfinTruthLiveTest {
         val (server, url) = connect("reflux-truth-auth-test") ?: return@runBlocking assumeTrue("no live Jellyfin server named", false)
         val version = server.reference()
         val itemId = version.path.split('/')[1]
-        // The static stream takes anyone (docs/PLAYBACK.md, section 3); this address needs a valid token.
+        // The static stream takes anyone (docs/product/PLAYBACK.md, section 3); this address needs a valid token.
         val checked = "$url/Items/$itemId/Download"
         val headers = server.playbackTarget(version.path).headers
         assertEquals(401, http.send(HttpRequest(checked, headers = mapOf("Range" to "bytes=0-1023"))).status, "the control: refused without a token")

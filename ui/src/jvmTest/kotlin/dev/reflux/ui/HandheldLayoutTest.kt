@@ -74,7 +74,7 @@ class HandheldLayoutTest {
 
     @Test
     fun thePhonesTopCornerIsTheUtilityAreasOneEntry() {
-        // The utility area on a phone held upright (docs/NAVIGATION.md, section 1): one entry at the top right, the
+        // The utility area on a phone held upright (docs/product/NAVIGATION.md, section 1): one entry at the top right, the
         // profile, which leads to Downloads, Sources, and Settings; on a common phone and on a small one.
         for ((width, height) in listOf(phoneWidth to phoneHeight, 320 to 640)) {
             val offline = OfflineWorld()

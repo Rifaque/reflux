@@ -1,4 +1,4 @@
-# What Reflux is built on and works with, as the About page credits it ("Credits and technology"; docs/RELEASE.md,
+# What Reflux is built on and works with, as the About page credits it ("Credits and technology"; docs/release/RELEASE.md,
 # "Third-party notices"). Names and roles only: no logos, and nothing that reads as an endorsement.
 #
 # One line each, four fields separated by "|":

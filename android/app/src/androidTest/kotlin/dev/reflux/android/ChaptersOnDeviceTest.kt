@@ -18,7 +18,7 @@ import kotlin.test.assertTrue
 import dev.reflux.core.playback.Chapter as PlayerChapter
 
 /**
- * Chapters on Android are what Media3 reads out of the file (docs/PLAYBACK.md, section 18); Reflux only turns its `Chapter`
+ * Chapters on Android are what Media3 reads out of the file (docs/product/PLAYBACK.md, section 18); Reflux only turns its `Chapter`
  * metadata into the chapters the player's list and timeline use. Reflux parses no file. A film Media3 describes no
  * chapters of has none.
  */

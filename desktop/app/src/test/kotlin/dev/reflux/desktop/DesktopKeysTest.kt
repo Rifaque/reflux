@@ -14,7 +14,7 @@ import kotlin.test.assertTrue
 
 /**
  * Media keys and held keys, at the desktop shell's edge: the toolkit's key events become the product's keys, which the
- * input model already maps (docs/INPUT_MODEL.md); no playback code sees a platform's key number.
+ * input model already maps (docs/product/INPUT_MODEL.md); no playback code sees a platform's key number.
  */
 class DesktopKeysTest {
     private val source = object : Component() {}

@@ -88,9 +88,9 @@ Media work (movie, episode)
            +-- Source B
 ```
 
-A copy kept on the device for watching offline is one more entry under "Version / cut", in a source of Reflux's own. It is never a work of its own ([OFFLINE.md](OFFLINE.md)).
+A copy kept on the device for watching offline is one more entry under "Version / cut", in a source of Reflux's own. It is never a work of its own ([OFFLINE.md](../product/OFFLINE.md)).
 
-**Playback progress follows the media work, not the physical file or source.** A work has one watch state per profile, owned by Reflux; its position is carried to whichever version plays next, and never blindly onto a different cut. Sources that keep their own watch state are reconciled with it, not obeyed. The contract is in [WATCH_STATE.md](WATCH_STATE.md).
+**Playback progress follows the media work, not the physical file or source.** A work has one watch state per profile, owned by Reflux; its position is carried to whichever version plays next, and never blindly onto a different cut. Sources that keep their own watch state are reconciled with it, not obeyed. The contract is in [WATCH_STATE.md](../product/WATCH_STATE.md).
 
 ## Local-first state
 
@@ -111,7 +111,7 @@ A disconnected source should not erase the user's understanding of their library
 
 ### Profiles (M8)
 
-The viewer is the identity boundary of an installation: a **profile**, local, never an account. Media truth (works, versions, metadata, artwork, Identify's corrections, shared sources, server addresses) is the installation's; what a viewer does (watch state, favorites, collections, pinned versions, preferences, server accounts, copies of those accounts' media) is one profile's, keyed by `profile_id` in every table that holds it. Each Jellyfin and Plex account is its own source, owned by one profile, signed in as a device identity of its own; reconciliation runs per account with its owner's state; a playback writes to the profile it started in; and what a profile can see is one flag recomputed with inclusion (`version.visible`), so every read is bound to it. The contract is in [WATCH_STATE.md](WATCH_STATE.md), "Profiles"; the navigation's utility area is where profiles are switched and managed ([NAVIGATION.md](NAVIGATION.md)).
+The viewer is the identity boundary of an installation: a **profile**, local, never an account. Media truth (works, versions, metadata, artwork, Identify's corrections, shared sources, server addresses) is the installation's; what a viewer does (watch state, favorites, collections, pinned versions, preferences, server accounts, copies of those accounts' media) is one profile's, keyed by `profile_id` in every table that holds it. Each Jellyfin and Plex account is its own source, owned by one profile, signed in as a device identity of its own; reconciliation runs per account with its owner's state; a playback writes to the profile it started in; and what a profile can see is one flag recomputed with inclusion (`version.visible`), so every read is bound to it. The contract is in [WATCH_STATE.md](../product/WATCH_STATE.md), "Profiles"; the navigation's utility area is where profiles are switched and managed ([NAVIGATION.md](../product/NAVIGATION.md)).
 
 ## Source abstraction
 

@@ -23,7 +23,7 @@ import kotlin.test.assertNotEquals
 import kotlin.test.assertTrue
 
 /**
- * Two accounts on one real Jellyfin server, from one Reflux installation (M8; docs/WATCH_STATE.md, "Profiles").
+ * Two accounts on one real Jellyfin server, from one Reflux installation (M8; docs/product/WATCH_STATE.md, "Profiles").
  *
  * Observes, and does not assume, what the server does when two accounts sign in from one device identity (how every
  * account signed in before M8), and checks what per-account identities guarantee: both accounts stay signed in, and

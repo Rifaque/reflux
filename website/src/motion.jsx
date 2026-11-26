@@ -1,4 +1,4 @@
-// Reflux's motion on the web (docs/DESIGN.md, "Motion language"): the mark drawing itself, reveals, and the product's
+// Reflux's motion on the web (docs/product/DESIGN.md, "Motion language"): the mark drawing itself, reveals, and the product's
 // depth. Browser features only (CSS animation, IntersectionObserver, the View Transition API through React Router);
 // everything here gives way to prefers-reduced-motion, where the CSS shows the finished state at once.
 import { useEffect, useRef } from 'react'

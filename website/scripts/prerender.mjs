@@ -1,4 +1,4 @@
-// Writes every page of the site as its own HTML file (docs/WEBSITE.md, "Architecture"): the app rendered on the server
+// Writes every page of the site as its own HTML file (docs/release/WEBSITE.md, "Architecture"): the app rendered on the server
 // side for each route in src/routes.js, with that page's title, description, canonical address, sharing card, and
 // structured data, plus 404.html, sitemap.xml (with each page's last change, where git can say), and robots.txt.
 // The browser's script then takes the page over. Run after both Vite builds (npm run build).

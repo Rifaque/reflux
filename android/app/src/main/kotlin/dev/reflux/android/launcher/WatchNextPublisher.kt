@@ -74,7 +74,7 @@ class WatchNextPublisher(
     }
 
     private fun update() {
-        // The active profile's, naming it; nothing for a profile with a PIN (docs/WATCH_STATE.md, "Profiles").
+        // The active profile's, naming it; nothing for a profile with a PIN (docs/product/WATCH_STATE.md, "Profiles").
         val programs = WatchNext.programs(library)
         val artwork = programs.associate { it.key to it.artwork?.let { art -> artworkUri(art) } }
         // A row is compared by what it shows, the picture included: artwork that arrives later is written then.

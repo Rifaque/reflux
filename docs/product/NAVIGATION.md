@@ -15,7 +15,7 @@ Four primary destinations, the library itself, and a **utility area**, the same 
 | Downloads | Utility | Every copy kept on this device (only where the platform keeps copies) |
 | Sources | Utility | Every source, its state, its libraries, inclusion, and the way into each source's own library |
 | Settings | Utility | The open profile's own settings (its name, its PIN, clearing its watch history), the device's (online lookups, Media Atmosphere), and the way to About |
-| Profiles | Utility | Who is watching: the profiles, switching, adding one, deleting another (docs/WATCH_STATE.md, "Profiles"). On a phone, also the way to Downloads, Sources, and Settings |
+| Profiles | Utility | Who is watching: the profiles, switching, adding one, deleting another (docs/product/WATCH_STATE.md, "Profiles"). On a phone, also the way to Downloads, Sources, and Settings |
 
 Each is a **section** of the navigator: choosing one replaces whatever was stacked above the previous section. Home is the root. Everything else (a work's page, a listing, a source's library, forms) stacks above the section it was opened from.
 
@@ -149,7 +149,7 @@ The player is a takeover above the current page, never a page itself. While it i
 
 ### The mini-player (M9)
 
-Where a device has one, what is playing can step aside into the **mini-player** while the viewer browses: the same session, shown in the navigation's dock (docs/PLAYBACK.md, section 18; DECISIONS.md, 2026-11-12). It is on the desktop and, since M10, on phones and tablets; a television has none.
+Where a device has one, what is playing can step aside into the **mini-player** while the viewer browses: the same session, shown in the navigation's dock (docs/product/PLAYBACK.md, section 18; DECISIONS.md, 2026-11-12). It is on the desktop and, since M10, on phones and tablets; a television has none.
 
 | Window | The dock |
 | --- | --- |

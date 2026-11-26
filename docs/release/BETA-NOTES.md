@@ -1,6 +1,6 @@
 # Reflux Beta Notes
 
-What's new in each beta, written for the people testing it. The complete list of changes is [CHANGELOG.md](../CHANGELOG.md) (the stores' "What's new" comes from it); the programme and its gates are [BETA.md](BETA.md); tracker IDs are kept out of these notes on purpose.
+What's new in each beta, written for the people testing it. The complete list of changes is [CHANGELOG.md](../../CHANGELOG.md) (the stores' "What's new" comes from it); the programme and its gates are [BETA.md](BETA.md); tracker IDs are kept out of these notes on purpose.
 
 ## Beta 2 (`0.9.0-beta.2`, 22 November 2026)
 

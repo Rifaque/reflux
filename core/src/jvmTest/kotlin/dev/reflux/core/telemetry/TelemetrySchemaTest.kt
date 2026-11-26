@@ -6,7 +6,7 @@ import kotlin.test.assertTrue
 /**
  * The schema itself cannot carry anything private: every field of every event is the build's context, a closed set,
  * or a bucket. A field of another type (a String, a number, a list) added later fails this test, and with it the
- * privacy review it would need (docs/PRIVACY.md, "Opt-in technical statistics").
+ * privacy review it would need (docs/release/PRIVACY.md, "Opt-in technical statistics").
  */
 class TelemetrySchemaTest {
     @Test

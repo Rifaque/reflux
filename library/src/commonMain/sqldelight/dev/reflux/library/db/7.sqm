@@ -1,4 +1,4 @@
--- Viewer identity and profiles (M8; docs/WATCH_STATE.md, "Profiles"). Everything a viewer does belongs to a profile;
+-- Viewer identity and profiles (M8; docs/product/WATCH_STATE.md, "Profiles"). Everything a viewer does belongs to a profile;
 -- what a library held before belongs to the one it starts with ('default'). Sources a person signed in to (a
 -- Jellyfin user, a Plex account) become that profile's; folders and shares stay shared. No media file is touched.
 -- Kept within SQLite 3.18: tables whose key gains the profile are rebuilt, not altered.

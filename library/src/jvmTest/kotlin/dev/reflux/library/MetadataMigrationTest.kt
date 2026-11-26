@@ -12,7 +12,7 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
- * Migration 6 (docs/METADATA.md): a library from before it opens with its watch state, sources, pins, metadata,
+ * Migration 6 (docs/product/METADATA.md): a library from before it opens with its watch state, sources, pins, metadata,
  * and settings as they were, and gains what M5 keeps.
  */
 class MetadataMigrationTest {

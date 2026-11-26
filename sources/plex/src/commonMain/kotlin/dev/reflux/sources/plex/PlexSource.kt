@@ -45,7 +45,7 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.serialization.json.JsonObject
 
 /**
- * A Plex Media Server as a catalog source (docs/NAVIGATION.md, section 6): its film and show libraries, each work
+ * A Plex Media Server as a catalog source (docs/product/NAVIGATION.md, section 6): its film and show libraries, each work
  * already identified by the server, played and kept from the files themselves. Plex is an adapter like any other:
  * its works join the unified library through the same identity rules, Best Version, planner, and engines.
  *
@@ -437,7 +437,7 @@ class PlexSource(
          * The same server for the same account is the same source, however it was reached. A connection made with a
          * token alone has no account name to be told apart by, so it is told apart by a SHA-256 digest of its token:
          * two tokens are two sources, the same token again is the same source, and a server reached without signing in
-         * is a third. The token itself is never part of an identifier (docs/WATCH_STATE.md, "Profiles").
+         * is a third. The token itself is never part of an identifier (docs/product/WATCH_STATE.md, "Profiles").
          */
         fun idOf(credentials: PlexCredentials): SourceId {
             val who = when {

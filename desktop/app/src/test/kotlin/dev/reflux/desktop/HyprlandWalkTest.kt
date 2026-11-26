@@ -17,7 +17,7 @@ import kotlin.test.Test
  * someone is using, keep its windows off their screen (a runtime rule, e.g. `hyprctl eval 'hl.window_rule({ match = { class =
  * "^(reflux)$" }, workspace = "9 silent" })'`) and its sample tone out of their ears (`PULSE_SERVER=unix:/nonexistent`), or
  * run it in a nested Hyprland (`WAYLAND_DISPLAY`, `DISPLAY` and `HYPRLAND_INSTANCE_SIGNATURE` of that one, and
- * REFLUX_WALK_OUTPUT=<its output>, which adds the compositor's whole picture). docs/planning/CACHYOS-FINAL-AUDIT-LEDGER.md, CACHY-002.
+ * REFLUX_WALK_OUTPUT=<its output>, which adds the compositor's whole picture). docs/verification/CACHYOS-FINAL-AUDIT-LEDGER.md, CACHY-002.
  */
 class HyprlandWalkTest {
     private val out: File? = System.getenv("REFLUX_HYPRLAND_WALK")?.let(::File)

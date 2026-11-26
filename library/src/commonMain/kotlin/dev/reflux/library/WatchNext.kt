@@ -23,7 +23,7 @@ object WatchNext {
         continuations.sortedByDescending { it.lastEngagedAtEpochMs }.take(LIMIT).mapNotNull(::program)
 
     /**
-     * What the launcher's row should show (docs/WATCH_STATE.md, "Profiles"): the active profile's Continue Watching,
+     * What the launcher's row should show (docs/product/WATCH_STATE.md, "Profiles"): the active profile's Continue Watching,
      * each program naming that profile so that its card opens in it. A profile with a PIN shows nothing there: the
      * launcher is outside the lock, so a private profile's viewing is not put in front of whoever holds the remote.
      */

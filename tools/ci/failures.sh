@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# What failed in a GitHub Actions run, in a few lines (docs/VERIFICATION.md, "How M8+ reads CI"): the failed jobs, the
+# What failed in a GitHub Actions run, in a few lines (docs/verification/VERIFICATION.md, "How M8+ reads CI"): the failed jobs, the
 # failed test classes and methods, and the first assertion or error of each. Reading CI then costs a summary, not a log.
 #
 #   tools/ci/failures.sh <run-id>        (or a run's URL; needs the GitHub CLI, signed in)

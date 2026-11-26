@@ -115,7 +115,7 @@ fun Library.downloads(): List<Download> = queries.allDownloads().executeAsList()
 
 /**
  * The downloads the active profile sees, oldest first: copies from sources every profile shares, and from its own
- * accounts. A copy of another profile's account is that profile's (docs/WATCH_STATE.md, "Profiles").
+ * accounts. A copy of another profile's account is that profile's (docs/product/WATCH_STATE.md, "Profiles").
  */
 fun Library.visibleDownloads(): List<Download> = queries.visibleDownloads().executeAsList().map { it.toModel() }
 
@@ -179,7 +179,7 @@ fun SourceRecord.isDownloads(): Boolean = type == DownloadsSource.TYPE
 
 /**
  * The sources the active profile sees that the user added: those every profile shares, and its own accounts
- * (docs/WATCH_STATE.md, "Profiles"). Where downloads are kept is Reflux's own and is not one of them.
+ * (docs/product/WATCH_STATE.md, "Profiles"). Where downloads are kept is Reflux's own and is not one of them.
  */
 fun Library.userSources(): List<SourceRecord> = visibleSources().filterNot { it.isDownloads() }
 

@@ -12,7 +12,7 @@ import kotlinx.serialization.json.intOrNull
 import kotlin.random.Random
 
 /**
- * Keeps Reflux inside Trakt's limits for one Client ID and address (docs/METADATA.md, "Requests"), on top of the
+ * Keeps Reflux inside Trakt's limits for one Client ID and address (docs/product/METADATA.md, "Requests"), on top of the
  * library's provider gate, which already asks one question at a time and never the same one twice.
  *
  * - **A budget.** Requests draw from a bucket of [limit] requests refilled evenly over [periodMs] (Trakt's

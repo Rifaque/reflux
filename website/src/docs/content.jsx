@@ -1,6 +1,6 @@
 // The documentation's pages: what each says. Their order, titles, and addresses are src/docs/pages.js. Everything here
 // describes the published build (release.latest), not unreleased work; a fact about a platform is one that was checked
-// (docs/VERIFICATION.md). Linux package names were read from each distribution's own repositories on 2026-11-19.
+// (docs/verification/VERIFICATION.md). Linux package names were read from each distribution's own repositories on 2026-11-19.
 import { Link } from 'react-router-dom'
 import release from '../generated/release.json'
 import { desktopFile } from '../availability.js'

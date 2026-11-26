@@ -26,7 +26,7 @@ sealed interface SubtitleChoice {
 
 /**
  * What the planner is asked about. Facts are the [version]'s, the source is only what it declares, and the client is
- * passed beside this: the four kinds of thing in docs/PLAYBACK.md stay apart.
+ * passed beside this: the four kinds of thing in docs/product/PLAYBACK.md stay apart.
  */
 data class PlaybackRequirements(
     val version: MediaVersion,
@@ -136,7 +136,7 @@ data class PlannedPlayback(
 
 /**
  * The least destructive viable way to play a version. Pure and deterministic; the order of its rules is in
- * docs/PLAYBACK.md, section 7. Unknown never causes a conversion and never blocks: it is tried, and named in
+ * docs/product/PLAYBACK.md, section 7. Unknown never causes a conversion and never blocks: it is tried, and named in
  * [PlannedPlayback.unverified]. Whether something is playable at all comes from [PlaybackAssessor], the one answer
  * to that question; the planner decides what to do about it.
  */

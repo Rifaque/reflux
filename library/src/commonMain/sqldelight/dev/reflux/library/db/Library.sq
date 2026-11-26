@@ -13,19 +13,19 @@ CREATE TABLE source (
     added_at INTEGER NOT NULL,
     last_scan_at INTEGER,
     last_available_at INTEGER,
-    -- Whether the source takes part in the unified library (docs/NAVIGATION.md). Never changed by availability.
+    -- Whether the source takes part in the unified library (docs/product/NAVIGATION.md). Never changed by availability.
     included INTEGER NOT NULL DEFAULT 1,
     -- The source answered but no longer accepts Reflux's sign-in: signing in again is the way back.
     sign_in_required INTEGER NOT NULL DEFAULT 0,
     -- The server address it was reached at, entered once and shared by every profile (server_endpoint).
     endpoint_id TEXT,
-    -- The profile whose account this is (docs/WATCH_STATE.md, "Profiles"); null for a source every profile shares.
+    -- The profile whose account this is (docs/product/WATCH_STATE.md, "Profiles"); null for a source every profile shares.
     profile_id TEXT,
     -- The profile whose watch state this source's own records are reconciled with; null when it keeps none.
     sync_profile_id TEXT
 );
 
--- Local viewers of this installation (docs/WATCH_STATE.md, "Profiles"). Exactly one is active.
+-- Local viewers of this installation (docs/product/WATCH_STATE.md, "Profiles"). Exactly one is active.
 CREATE TABLE profile (
     id TEXT NOT NULL PRIMARY KEY,
     name TEXT NOT NULL,
@@ -456,7 +456,7 @@ UPDATE version SET
       version.library_section)
     ELSE version.section END;
 
--- Whether the active profile sees each version (docs/WATCH_STATE.md, "Profiles"): its library's source is shared
+-- Whether the active profile sees each version (docs/product/WATCH_STATE.md, "Profiles"): its library's source is shared
 -- or the profile's own account, and a copy kept on the device came from a shared source or from the profile's.
 recomputeVisibility:
 UPDATE version SET visible = CASE
@@ -517,7 +517,7 @@ WHERE year IS NOT NULL AND kind = 'SHOW' AND EXISTS (
 );
 
 -- The queries below take a scope: with :source null, the unified library (included versions); otherwise one
--- source, or one :section of it (docs/NAVIGATION.md, section 4).
+-- source, or one :section of it (docs/product/NAVIGATION.md, section 4).
 presentMovies:
 SELECT item.* FROM item LEFT JOIN metadata ON metadata.item_id = item.id
 WHERE item.kind = 'MOVIE' AND EXISTS (SELECT 1 FROM version WHERE version.item_id = item.id AND ((:source IS NULL AND version.included = 1) OR (version.visible = 1 AND version.library_source_id = :source AND (:section IS NULL OR version.library_section = :section))))

@@ -198,7 +198,7 @@ class MainActivity : ComponentActivity() {
 
     /**
      * A Watch Next card names a work and the profile whose Continue Watching it was; Reflux opens it in that profile
-     * and plays it from where that viewer is (docs/WATCH_STATE.md, "Profiles").
+     * and plays it from where that viewer is (docs/product/WATCH_STATE.md, "Profiles").
      */
     private fun continueFromLauncher(intent: Intent?) {
         val target = WatchNextLink.target(intent?.dataString) ?: return
@@ -292,7 +292,7 @@ class MainActivity : ComponentActivity() {
             RefluxApp(app, page, bars = bars, keyboard = Modifier.windowInsetsPadding(WindowInsets.ime.exclude(WindowInsets.systemBars)))
             // Video is a platform surface beneath the controls: the engine keeps its direct path to the display. One surface
             // for the whole of a playback, put where the experience layer says (the window, the dock, out of sight) by
-            // laying it out, never by making another (docs/PLAYBACK.md, "One session, several presentations").
+            // laying it out, never by making another (docs/product/PLAYBACK.md, "One session, several presentations").
             if (player != null) {
                 VideoStage(placement, Modifier.fillMaxSize()) {
                     Box(Modifier.fillMaxSize()) {
@@ -376,7 +376,7 @@ class MainActivity : ComponentActivity() {
         if (event.action == KeyEvent.ACTION_DOWN) {
             val handled = when {
                 button != null -> app.onGamepadButton(button, Input.family(event.device))
-                // A held key repeats as presses with a count: a held seek is one seek (docs/INPUT_MODEL.md).
+                // A held key repeats as presses with a count: a held seek is one seek (docs/product/INPUT_MODEL.md).
                 else -> Input.key(event)?.let { app.onKey(it, repeat = event.repeatCount > 0) } ?: false
             }
             if (handled) return true

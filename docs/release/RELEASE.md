@@ -1,6 +1,6 @@
 # Reflux Release Readiness
 
-What stands between the source tree and builds that can be handed to testers and the public: the release process, the platform matrix, and the checklists each stage must pass. The product plan is [ROADMAP.md](ROADMAP.md) and the beta's gate [BETA.md](BETA.md); the milestones that built the release system (M6, M7, M11) are archived in [history/roadmaps/ROADMAP-M0-M13.md](history/roadmaps/ROADMAP-M0-M13.md). The sections after the checklists keep their original names, which code comments cite.
+What stands between the source tree and builds that can be handed to testers and the public: the release process, the platform matrix, and the checklists each stage must pass. The product plan is [ROADMAP.md](../ROADMAP.md) and the beta's gate [BETA.md](BETA.md); the milestones that built the release system (M6, M7, M11) are archived in [history/roadmaps/ROADMAP-M0-M13.md](../history/roadmaps/ROADMAP-M0-M13.md). The sections after the checklists keep their original names, which code comments cite.
 
 ## Releasing a version (the unified process, Phase 4)
 
@@ -33,7 +33,7 @@ One process for every platform, from an approved scope to publication. Steps mar
 
 **Where users get each:** the website's Download page (from the publication record and `release/stores.json`, never typed), which routes Android and TV to the stores and desktop to the GitHub release with checksums.
 
-**Phase 4's rehearsal of this process** (the build, verification and staging steps locally, with the throwaway dry-run key; nothing published): planning/PHASE-4.md, "P5 distribution".
+**Phase 4's rehearsal of this process** (the build, verification and staging steps locally, with the throwaway dry-run key; nothing published): history/phases/PHASE-4.md, "P5 distribution".
 
 ## Beta entry checklist (`0.9.0-beta.1`)
 
@@ -320,7 +320,7 @@ Questions for legal advice before builds go to people outside the project. None 
 
 ## Distribution (M11)
 
-Specified in [history/milestones/M11-DISTRIBUTION-PLAN.md](history/milestones/M11-DISTRIBUTION-PLAN.md); decided in DECISIONS.md, 2026-11-13 and 2026-11-15; evidence in VERIFICATION.md, "M11".
+Specified in [history/milestones/M11-DISTRIBUTION-PLAN.md](../history/milestones/M11-DISTRIBUTION-PLAN.md); decided in DECISIONS.md, 2026-11-13 and 2026-11-15; evidence in VERIFICATION.md, "M11".
 
 - **The release contract.** One chain, with no hand-typed seam: `reflux.version` → the `release: <version>` commit → the annotated tag `v<version>` (on `main` or `hotfix/<version>`; the workflow refuses anything else) → `release-info.json` → the artifacts → `SHA256SUMS`, `manifest.json`, `provenance.intoto.json` → the draft GitHub release (verified on another OS) → `release/published/<version>.json` (written by `release.py publish-record`, committed by a person, **never edited**) → the website → the store listings, whose "What's new" is `release.py notes`' text from the same `CHANGELOG.md` section. `release/stores.json` is the one hand-kept record (a console's state), checked by the website build.
 - **Channels.** Android phones, tablets, Android TV, Google TV: Google Play (the AAB). Fire TV on Fire OS: the Amazon Appstore (the APK). Windows and Linux: the GitHub release, linked from the website. **No Android file is a GitHub release asset** (D1); the AAB and APK are taken from the workflow's `release` artifact within its 14 days.

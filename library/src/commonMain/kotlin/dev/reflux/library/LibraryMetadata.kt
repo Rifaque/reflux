@@ -56,7 +56,7 @@ suspend fun Library.refreshStaleMetadata(
 const val ONLINE_METADATA: String = "metadata.online"
 
 /**
- * Whether Reflux may look up metadata and artwork online (docs/METADATA.md, "Online lookups"). On unless the
+ * Whether Reflux may look up metadata and artwork online (docs/product/METADATA.md, "Online lookups"). On unless the
  * viewer turned it off. Off, nothing is sent to a metadata provider: what sources say, what was fetched before,
  * and the file names are what the library shows, and nothing already known is forgotten.
  */

@@ -541,7 +541,7 @@ class FakePlayer(override val capabilities: DeviceCapabilities) : Player {
         mutable.update { it.copy(status = PlayerStatus.ERROR, failure = failure, error = message) }
 }
 
-/** A PIN key held in memory, as a shell's secure store would hold one (docs/WATCH_STATE.md, "Profiles"). */
+/** A PIN key held in memory, as a shell's secure store would hold one (docs/product/WATCH_STATE.md, "Profiles"). */
 class TestPinKey : dev.reflux.library.PinKey {
     private val key = ByteArray(32) { (it * 7).toByte() }
     override fun mac(data: ByteArray): ByteArray = javax.crypto.Mac.getInstance("HmacSHA256").run {

@@ -1,4 +1,4 @@
-> **Historical (archived 2026-11-21, Phase 4).** Kept unchanged as a record; not a current plan. Current documents: [docs/README.md](../../README.md); this archive: [history/README.md](../README.md).
+> **Historical (archived 2026-11-21, Phase 4).** Kept unchanged as a record; not a current plan. Current documents: [docs/README.md](../../../README.md#documentation); this archive: [history/README.md](../README.md).
 
 # M11 — Distribution & Release Surfaces: plan
 

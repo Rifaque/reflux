@@ -18,7 +18,7 @@ import kotlin.time.TimeSource
 
 /**
  * Stands between Reflux and a metadata provider so that a large library never becomes a storm of requests
- * (docs/METADATA.md, "Requests"):
+ * (docs/product/METADATA.md, "Requests"):
  *
  * - **Coalescing.** The same question asked while it is being answered waits for that answer, and is asked once.
  * - **A short memory.** An answer is kept for [memoryMs] (the Identify page searching again, a details page

@@ -1,6 +1,6 @@
 name: Release
 
-# Two modes (docs/RELEASE.md, "Release system"):
+# Two modes (docs/release/RELEASE.md, "Release system"):
 #
 # - Rehearsal, on every push: the release built from the pushed commit exactly as a release is (Reflux's Windows libmpv
 #   from source, the Android APK and bundle, the Windows and Linux archives, the libmpv source bundle, SHA256SUMS, the
@@ -84,7 +84,7 @@ jobs:
         env:
           REFLUX_TRAKT_CLIENT_ID: ${{ vars.REFLUX_TRAKT_CLIENT_ID }}
         run: |
-          [ -n "${REFLUX_TRAKT_CLIENT_ID// /}" ] || { echo "::error::a release needs the repository variable REFLUX_TRAKT_CLIENT_ID (Trakt's production Client ID; docs/RELEASE.md, \"Metadata provider\")"; exit 1; }
+          [ -n "${REFLUX_TRAKT_CLIENT_ID// /}" ] || { echo "::error::a release needs the repository variable REFLUX_TRAKT_CLIENT_ID (Trakt's production Client ID; docs/release/RELEASE.md, \"Metadata provider\")"; exit 1; }
       - run: ./gradlew --no-configuration-cache releaseInfo :desktop:app:packageDesktopArchive -Preflux.android=false
         env:
           REFLUX_TRAKT_CLIENT_ID: ${{ inputs.tag != '' && vars.REFLUX_TRAKT_CLIENT_ID || '' }}
@@ -144,7 +144,7 @@ jobs:
           name: libmpv
           path: build/libmpv
       # The tag is v<reflux.version>, an annotated tag, on the commit this run built, and that commit is on main
-      # (docs/VERSIONING.md). release.py build checks the first three again from the Gradle release identity.
+      # (docs/release/VERSIONING.md). release.py build checks the first three again from the Gradle release identity.
       - name: The tag is the version
         if: inputs.tag != ''
         shell: bash
@@ -155,10 +155,10 @@ jobs:
           test "v$version" = "$TAG" || { echo "tag $TAG is not v$version"; exit 1; }
           test "$(git cat-file -t "refs/tags/$TAG")" = tag || { echo "tag $TAG is not an annotated tag"; exit 1; }
           test "$(git rev-parse "$TAG^{commit}")" = "$(git rev-parse HEAD)" || { echo "tag $TAG is not the checked-out commit"; exit 1; }
-          # On main, or on its own hotfix branch (docs/VERSIONING.md, "Hotfixes": hotfix/<version>).
+          # On main, or on its own hotfix branch (docs/release/VERSIONING.md, "Hotfixes": hotfix/<version>).
           git merge-base --is-ancestor HEAD origin/main || git merge-base --is-ancestor HEAD "origin/hotfix/$version" 2>/dev/null \
             || { echo "$TAG is neither on main nor on hotfix/$version"; exit 1; }
-      # A release: the upload key lives only in GitHub's encrypted secrets (docs/RELEASE.md, "Signing"); it is written
+      # A release: the upload key lives only in GitHub's encrypted secrets (docs/release/RELEASE.md, "Signing"); it is written
       # to the runner's temporary folder, passed to the build as REFLUX_SIGNING_* through a file, and never printed.
       - name: Build, sign, checksum, and describe (release)
         if: inputs.tag != ''
@@ -315,7 +315,7 @@ jobs:
             gh attestation verify "$f" --repo "$GITHUB_REPOSITORY" --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/release.yml"
           done
           python3 -I tools/release/release.py verify dl --public
-      # The publication record (docs/RELEASE.md): written by the tool from the verified manifest, compared with the
+      # The publication record (docs/release/RELEASE.md): written by the tool from the verified manifest, compared with the
       # digests GitHub holds, and kept as an artifact for the `release: record` commit; nothing here commits it.
       - name: The publication record
         env:

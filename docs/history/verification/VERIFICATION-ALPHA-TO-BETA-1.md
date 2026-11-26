@@ -1,8 +1,8 @@
 # Reflux Verification Log: alpha to Beta 1 (2026-10-08 to 2026-11-17)
 
-**Historical.** The verification sections from the first desktop slice to the Beta Season's start, moved here unchanged from docs/VERIFICATION.md in Phase 4 (2026-11-21). Section names are as they were, so a reference such as "VERIFICATION.md, 'M11'" in an older document is found here. The current log is [VERIFICATION.md](../../VERIFICATION.md).
+**Historical.** The verification sections from the first desktop slice to the Beta Season's start, moved here unchanged from docs/VERIFICATION.md in Phase 4 (2026-11-21). Section names are as they were, so a reference such as "VERIFICATION.md, 'M11'" in an older document is found here. The current log is [VERIFICATION.md](../../verification/VERIFICATION.md).
 
-What was run, on what, and with what result. This is history, not plan: the product roadmap is [ROADMAP.md](../roadmaps/ROADMAP-M0-M13.md), and what a release still needs is [RELEASE.md](../../RELEASE.md).
+What was run, on what, and with what result. This is history, not plan: the product roadmap is [ROADMAP.md](../roadmaps/ROADMAP-M0-M13.md), and what a release still needs is [RELEASE.md](../../release/RELEASE.md).
 
 Rules for adding to it:
 

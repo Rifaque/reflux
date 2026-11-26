@@ -5,7 +5,7 @@ import androidx.compose.ui.geometry.Rect
 /**
  * How one [PlaybackSession] is shown. A presentation is never a playback of its own: the session, its engine, its
  * plan, its watch reporting, and the profile it belongs to are the same in every one of them, and moving between
- * them touches none of that (docs/PLAYBACK.md, "One session, several presentations").
+ * them touches none of that (docs/product/PLAYBACK.md, "One session, several presentations").
  */
 enum class PlayerPresentation {
     /** The player has the screen: its controls over the picture, everything behind it inert. */

@@ -1,6 +1,6 @@
 # Reflux's Windows libmpv
 
-Reflux for Windows plays through `libmpv-2.dll`, built here from source (DECISIONS.md, 2026-11-08, "Reflux builds its own Windows libmpv before public distribution"; docs/RELEASE.md, "libmpv on Windows").
+Reflux for Windows plays through `libmpv-2.dll`, built here from source (DECISIONS.md, 2026-11-08, "Reflux builds its own Windows libmpv before public distribution"; docs/release/RELEASE.md, "libmpv on Windows").
 
 | File | What it is |
 | --- | --- |
@@ -19,7 +19,7 @@ docker run --rm -v "$PWD:/src:ro" -v "$PWD/build/libmpv:/out" -v reflux-libmpv-c
 
 ## What is in it, and under which license
 
-mpv (libmpv only, `-Dgpl=false`), FFmpeg (LGPL: no `--enable-gpl`, `--enable-version3`, or `--enable-nonfree`; external libraries dav1d and zlib only; Windows' own Schannel, D3D11VA, and DXVA2), libplacebo, libass, FreeType, FriBidi, HarfBuzz, dav1d, zlib, shaderc with glslang and SPIRV-Tools, and SPIRV-Cross, linked statically, with the GCC runtime and winpthreads. The DLL as a whole is LGPL-2.1-or-later; each part's license is in `legal/components.txt` ("libmpv (Windows build)") and docs/THIRD-PARTY.md. No source is patched.
+mpv (libmpv only, `-Dgpl=false`), FFmpeg (LGPL: no `--enable-gpl`, `--enable-version3`, or `--enable-nonfree`; external libraries dav1d and zlib only; Windows' own Schannel, D3D11VA, and DXVA2), libplacebo, libass, FreeType, FriBidi, HarfBuzz, dav1d, zlib, shaderc with glslang and SPIRV-Tools, and SPIRV-Cross, linked statically, with the GCC runtime and winpthreads. The DLL as a whole is LGPL-2.1-or-later; each part's license is in `legal/components.txt` ("libmpv (Windows build)") and docs/release/THIRD-PARTY.md. No source is patched.
 
 The script fails if FFmpeg's configuration reports anything but "LGPL version 2.1 or later", if mpv's says anything but `gpl=false`, or if the DLL imports anything Windows does not provide.
 
@@ -27,4 +27,4 @@ Left out on purpose: Lua and JavaScript (Reflux uses no mpv scripts), libcurl (F
 
 ## Changing it
 
-A new version of anything is a release decision: change the line in `sources.txt` (with the archive's SHA-256), rebuild, run the engine tests against the new DLL (`.reflux/native/`), and record it in `legal/components.txt`, docs/THIRD-PARTY.md, and docs/VERIFICATION.md.
+A new version of anything is a release decision: change the line in `sources.txt` (with the archive's SHA-256), rebuild, run the engine tests against the new DLL (`.reflux/native/`), and record it in `legal/components.txt`, docs/release/THIRD-PARTY.md, and docs/verification/VERIFICATION.md.

@@ -74,7 +74,7 @@ enum class MetadataField { TITLE, ORIGINAL_TITLE, OVERVIEW, TAGLINE, GENRES, RUN
 data class ResolvedDescription(val description: Description, val provenance: Map<MetadataField, Provenance>)
 
 /**
- * Field-level, deterministic resolution of a work's description from its witnesses (docs/METADATA.md,
+ * Field-level, deterministic resolution of a work's description from its witnesses (docs/product/METADATA.md,
  * "Provenance and precedence").
  *
  * - **Names** ([MetadataField.TITLE], [MetadataField.ORIGINAL_TITLE]) follow identity: the user's choice, then a
@@ -131,7 +131,7 @@ object MetadataResolver {
     }
 }
 
-/** How strongly a work's provider entry is known, strongest first (docs/METADATA.md, "Matching evidence"). */
+/** How strongly a work's provider entry is known, strongest first (docs/product/METADATA.md, "Matching evidence"). */
 enum class MatchEvidence {
     /** Chosen by the user in the Identify flow. */
     USER,
@@ -153,7 +153,7 @@ enum class MatchEvidence {
 data class ArtworkOffer(val kind: ArtworkKind, val locator: ArtworkLocator, val provenance: Provenance, val order: Int = 0)
 
 /**
- * Which picture of each kind a work shows (docs/METADATA.md, "Artwork precedence"): the user's choice, then the
+ * Which picture of each kind a work shows (docs/product/METADATA.md, "Artwork precedence"): the user's choice, then the
  * sources' own (the oldest source first), then artwork embedded or kept locally, then a provider's. Borrowing
  * from the parent and the generated treatment come after, where a picture is drawn ([Authority.INHERITED],
  * [Authority.FALLBACK]). The cache is how a chosen picture is delivered, never a reason to choose one.

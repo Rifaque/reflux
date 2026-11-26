@@ -62,7 +62,7 @@ class AboutUiTest {
     fun aboutIsReachedFromSettingsAndSaysWhichBuildThisIs() {
         for ((width, height) in listOf(1440 to 900, 412 to 915)) screen(populated(), width = width, height = height) { app ->
             awaitText("Recently Added")
-            // About is in the utility area, under Settings (docs/NAVIGATION.md, section 1).
+            // About is in the utility area, under Settings (docs/product/NAVIGATION.md, section 1).
             runOnIdle { app.go(Destination.Settings) }
             // The version alone on the way there; the build on the page.
             awaitText("Version ${RefluxBuild.VERSION}, privacy, help, licenses, and credits")

@@ -100,7 +100,7 @@ class Media3Player(context: Context, override val capabilities: DeviceCapabiliti
 
     /**
      * How the video decoder has been used, for proving that moving the picture between presentations does not disturb it
-     * (docs/PLAYBACK.md, section 18): decoders started, times video was switched off, and frames dropped. Read on any thread.
+     * (docs/product/PLAYBACK.md, section 18): decoders started, times video was switched off, and frames dropped. Read on any thread.
      */
     @Volatile
     var decoderStarts = 0
@@ -502,7 +502,7 @@ class Media3Player(context: Context, override val capabilities: DeviceCapabiliti
         /**
          * Media3's own answer. While it prepares, its window is a stand-in that says not seekable about media it has
          * not read, and that is not an answer. A Matroska file whose first SeekHead only points at a second one really
-         * is not seekable here: its extractor does not follow the chain to the cues (docs/PLAYBACK.md, section 15).
+         * is not seekable here: its extractor does not follow the chain to the cues (docs/product/PLAYBACK.md, section 15).
          */
         internal fun seekableOf(placeholder: Boolean, seekable: Boolean): Boolean? = if (placeholder) null else seekable
 

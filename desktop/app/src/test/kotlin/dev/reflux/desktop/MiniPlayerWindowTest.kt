@@ -33,7 +33,7 @@ import kotlin.test.assertTrue
 /**
  * The desktop mini-player, in the real shell with a real engine: one playback session, shown across the whole window
  * or in the navigation's dock while the viewer browses, with libmpv rendering into the same native child window
- * throughout (docs/DECISIONS.md, 2026-11-12, "The desktop mini-player"). This is the feasibility trial that opened M9,
+ * throughout (docs/decisions/DECISIONS.md, 2026-11-12, "The desktop mini-player"). This is the feasibility trial that opened M9,
  * kept as the regression test of what it found.
  *
  * It opens a window, so it only runs on request: `./gradlew :desktop:app:test -Preflux.windowTests=true` on a machine

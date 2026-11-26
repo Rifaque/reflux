@@ -1,4 +1,4 @@
--- Library depth (docs/METADATA.md): what a source itself says about a work, kept apart from a provider's and
+-- Library depth (docs/product/METADATA.md): what a source itself says about a work, kept apart from a provider's and
 -- resolved field by field; how a provider entry was found; a show's last air date and networks. Nothing here is
 -- watch state, a source's connection, or a download; none of it touches a media file.
 ALTER TABLE metadata ADD COLUMN match_evidence TEXT;

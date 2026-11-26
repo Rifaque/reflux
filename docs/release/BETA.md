@@ -1,8 +1,8 @@
 # Reflux Beta Roadmap
 
-The beta programme from `0.9.0-beta.1` to the release candidate: what each beta contains, its gate, its known issues, and what 1.0 still needs from it. The product plan after 1.0 is [ROADMAP.md](ROADMAP.md); each issue's full record (report, investigation, fix, tests, evidence) is the [tracker](planning/BETA-BUG-TRACKER.md); what testers read is [BETA-NOTES.md](BETA-NOTES.md). Statuses live only in the tracker; this file links to them.
+The beta programme from `0.9.0-beta.1` to the release candidate: what each beta contains, its gate, its known issues, and what 1.0 still needs from it. The product plan after 1.0 is [ROADMAP.md](../ROADMAP.md); each issue's full record (report, investigation, fix, tests, evidence) is the [tracker](../BETA-BUG-TRACKER.md); what testers read is [BETA-NOTES.md](BETA-NOTES.md). Statuses live only in the tracker; this file links to them.
 
-Written in Phase 4 (2026-11-21). It replaces [planning/BETA-2.md](history/phases/BETA-2-PHASES.md) (archived unchanged, with the three phases' work orders, exit criteria and the Phase 3 closure record) as the current account of the beta.
+Written in Phase 4 (2026-11-21). It replaces [planning/BETA-2.md](../history/phases/BETA-2-PHASES.md) (archived unchanged, with the three phases' work orders, exit criteria and the Phase 3 closure record) as the current account of the beta.
 
 ## Builds
 
@@ -10,16 +10,16 @@ Written in Phase 4 (2026-11-21). It replaces [planning/BETA-2.md](history/phases
 | --- | --- | --- |
 | `0.9.0-beta.1` (`versionCode` 90031, tag `v0.9.0-beta.1`, 2026-11-16) | M8 to M11: profiles, the navigation's final structure, Player 2.0, the mini-player, distribution | **In testing**: Play closed testing (sent for review 2026-11-17), Amazon Live App Test 1 (submitted 2026-11-17), GitHub **pre-release** (Windows zip, Linux tarball). Testers: the owner only. Play's 14-day clock not started |
 | `0.9.0-beta.2` (`versionCode` 90032, tag `v0.9.0-beta.2` on `ff98a0d`, 2026-11-22) | Beta 2's three phases (below) and the release fixes B-076, B-078, B-079 | **In testing since 2026-11-22**: GitHub **pre-release** (desktop); Amazon Live App Test 1 (**Test in-progress**); Google Play closed testing: **upload pending (the owner)**. See [Beta 2 testing](#beta-2-testing-from-2026-11-22) |
-| `0.9.0-beta.3` | The [Beta 3 backlog](planning/BETA-BUG-TRACKER.md#beta-3-backlog-from-phase-3s-closure-2026-11-20) and tester reports | Not started; the `beta-3` branch (2026-11-25, from `cachyos-final-audit`'s `5de9fae`; the same code, `406382b`) holds the CachyOS audit's Beta 3 work (F-P1 with B-091, B-085, B-086), not yet separated from `cachyos-final-audit` (ledger, "Closure" and "Windows repository audit") |
+| `0.9.0-beta.3` | The [Beta 3 backlog](../BETA-BUG-TRACKER.md#beta-3-backlog-from-phase-3s-closure-2026-11-20) and tester reports | Not started; the `beta-3` branch (2026-11-25, from `cachyos-final-audit`'s `5de9fae`; the same code, `406382b`) holds the CachyOS audit's Beta 3 work (F-P1 with B-091, B-085, B-086), not yet separated from `cachyos-final-audit` (ledger, "Closure" and "Windows repository audit") |
 | `0.9.0-rc.N` | Feature freeze, blocker fixes only, store submissions | Not started |
 
 ## Beta 2: scope (frozen since 2026-11-20)
 
-Three phases, each accepted by the owner: **Phase 1** (accepted 2026-11-19) reliability, security, data integrity, telemetry consent groundwork, performance baselines; **Phase 2** (accepted and closed 2026-11-20) controller, focus, interaction, text input, haptics; **Phase 3** (accepted and formally closed 2026-11-20) media experience, Trickplay, Quick View, the featured hero, Atmosphere, the adaptive keyboard, profile entry. Work orders, exit criteria and closure records: [history/phases/BETA-2-PHASES.md](history/phases/BETA-2-PHASES.md), [PHASE-1-PLAN.md](history/phases/PHASE-1-PLAN.md), [PHASE-2-PLAN.md](history/phases/PHASE-2-PLAN.md).
+Three phases, each accepted by the owner: **Phase 1** (accepted 2026-11-19) reliability, security, data integrity, telemetry consent groundwork, performance baselines; **Phase 2** (accepted and closed 2026-11-20) controller, focus, interaction, text input, haptics; **Phase 3** (accepted and formally closed 2026-11-20) media experience, Trickplay, Quick View, the featured hero, Atmosphere, the adaptive keyboard, profile entry. Work orders, exit criteria and closure records: [history/phases/BETA-2-PHASES.md](../history/phases/BETA-2-PHASES.md), [PHASE-1-PLAN.md](../history/phases/PHASE-1-PLAN.md), [PHASE-2-PLAN.md](../history/phases/PHASE-2-PLAN.md).
 
 **The freeze.** Beta 2's fix scope is closed. Anything found from now on goes to the Beta 3 backlog unless the owner authorises a critical Beta 2 blocker. Phase 4 (documentation, roadmap, store assets, website, release infrastructure) changes no product behaviour.
 
-**What testers get** (by area; the user-facing list is CHANGELOG.md's Unreleased section, and the tracker IDs behind each are in the tracker's [phase overview](planning/BETA-BUG-TRACKER.md#phase-overview)):
+**What testers get** (by area; the user-facing list is CHANGELOG.md's Unreleased section, and the tracker IDs behind each are in the tracker's [phase overview](../BETA-BUG-TRACKER.md#phase-overview)):
 
 | Area | In Beta 2 |
 | --- | --- |
@@ -34,7 +34,7 @@ Three phases, each accepted by the owner: **Phase 1** (accepted 2026-11-19) reli
 
 ## The Beta 2 gate
 
-Beta 2 (`0.9.0-beta.2`, VERSIONING.md) is built only when every step holds **and the owner approves it**. State on 2026-11-21 (evidence: [planning/PHASE-4.md](planning/PHASE-4.md), "Beta 2 readiness"):
+Beta 2 (`0.9.0-beta.2`, VERSIONING.md) is built only when every step holds **and the owner approves it**. State on 2026-11-21 (evidence: [PHASE-4.md](../history/phases/PHASE-4.md), "Beta 2 readiness"):
 
 | # | Step | State |
 | --- | --- | --- |
@@ -64,7 +64,7 @@ Each is in the tracker with its evidence. User-visible ones are listed for teste
 | B-077 | `MpvEngineTest`'s credentials-log test can race its log thread (hosted Linux, once; test only) | Open |
 | B-080 | The live-Jellyfin test's remux case can find the server's session unconfirmed (local only) | Open |
 | B-081 | `FirstRunTest` once found the first folder empty (hosted Linux window tests) | Open |
-| B-084 | Linux: in Beta 2 the player is two windows (video without controls, controls on a blank panel where the compositor gets no alpha, as on Hyprland with a hybrid GPU) | Fixed on `cachyos-final-audit`, not in a release: the picture drawn in Reflux's own scene; verified on one machine; the owner's acceptance and release placement pending; next validated on Ubuntu ([UBUNTU-TRANSITION.md](UBUNTU-TRANSITION.md)) |
+| B-084 | Linux: in Beta 2 the player is two windows (video without controls, controls on a blank panel where the compositor gets no alpha, as on Hyprland with a hybrid GPU) | Fixed on `cachyos-final-audit`, not in a release: the picture drawn in Reflux's own scene; verified on one machine; the owner's acceptance and release placement pending; next validated on Ubuntu ([UBUNTU-TRANSITION.md](../history/linux/UBUNTU-TRANSITION.md)) |
 | B-088 | Android: a film sometimes in a small box with black on all four sides (no device in the CachyOS audit) | Blocked (needs the owner's film on the phone) |
 | B-083, B-102 | Linux: no Reflux logo on the dock or in the file manager (no desktop entry in the archive) | Fixed on `cachyos-final-audit`, not in a release; placement the owner's |
 | B-090 | After the mini-player's Stop, Back on the details page did not return Home (window test; on `1d65dcf` too) | Open (pre-existing; bug or test timing) |
@@ -73,11 +73,11 @@ Each is in the tracker with its evidence. User-visible ones are listed for teste
 | B-103 | Linux: launching Reflux again opens a second Reflux | Open (the owner's decision) |
 | B-089, B-094, B-095 | Test reliability: two font-dependent layout tests off CI; a Fire TV path-playback walk (unattributed); emulator walks on seeded data | Open (tests, not seen by testers) |
 
-The review branch `cachyos-final-audit` and `beta-3` hold every fix found since the release (B-082 onward), none of it released; where each belongs: [the tracker's placement table](planning/BETA-BUG-TRACKER.md#review-branch-work-and-its-release-placement-2026-11-25). Findings from Beta 2 testing are entered as the tracker says ([Entering Beta 2 testing findings](planning/BETA-BUG-TRACKER.md#entering-beta-2-testing-findings)).
+The review branch `cachyos-final-audit` and `beta-3` hold every fix found since the release (B-082 onward), none of it released; where each belongs: [the tracker's placement table](../BETA-BUG-TRACKER.md#review-branch-work-and-its-release-placement-2026-11-25). Findings from Beta 2 testing are entered as the tracker says ([Entering Beta 2 testing findings](../BETA-BUG-TRACKER.md#entering-beta-2-testing-findings)).
 
 ## From Beta 3 to 1.0
 
-What the beta still has to prove for the [V1.0 criteria](ROADMAP.md#v10-criteria), in order:
+What the beta still has to prove for the [V1.0 criteria](../ROADMAP.md#v10-criteria), in order:
 
 1. **Testers on real hardware** (the size target: 15–20 testers, at least 3 on Google TV, 3 on Fire TV, 2 with controllers). The project holds no physical Google TV device and one Fire TV stick.
 2. **Play's production access:** 12 testers opted in for 14 continuous days on an approved closed-track build ([Beta operations](#beta-operations)).
@@ -89,7 +89,7 @@ What the beta still has to prove for the [V1.0 criteria](ROADMAP.md#v10-criteria
 
 ## Beta operations
 
-Carried from M12's preparation ([history/milestones/LAUNCH.md](history/milestones/LAUNCH.md), "Beta operations", which keeps the full texts).
+Carried from M12's preparation ([history/milestones/LAUNCH.md](../history/milestones/LAUNCH.md), "Beta operations", which keeps the full texts).
 
 - **Channels:** Play closed testing (testers' Google accounts; the opt-in link appears on the website only once `release/stores.json` records it); Amazon Live App Testing (testers' Amazon e-mails; installed through Appstore Beta Hub, `release/amazon-appstore.md`); Windows and Linux from the website's Download page, from the verified release record only.
 - **Feedback:** one route, support@rsxdevelops.dev, with the device, the build (Settings → About Reflux) and the support report; GitHub issues stay open but are public and secondary.
@@ -100,7 +100,7 @@ Carried from M12's preparation ([history/milestones/LAUNCH.md](history/milestone
 
 ## Beta 2 release attempt (2026-11-21): held
 
-The owner approved Beta 2 and authorised `0.9.0-beta.2` (DECISIONS.md, "Beta 2 release"). Done: the Fire TV listing captured on the physical stick; the store media moved to a release archive; the promotion commit `ecce561` (`release: 0.9.0-beta.2`; the build derives `versionCode` 90032, Windows 0.9.32, Linux 0.9.0~beta.2); the branch pushed; the local full check green. **Held** because hosted CI's Linux job fails `DownloadsUiTest` deterministically: the first Right after arriving on the Downloads page is lost on Linux timing ([B-076](planning/BETA-BUG-TRACKER.md#b-076), bisected to Phase 2's `77b994c`). The owner chose a scoped fix before release; the investigation narrowed it but no fix held, so none was kept. **Not done:** the tag, the release workflow, the GitHub pre-release, the Play and Amazon uploads, the website's deployment.
+The owner approved Beta 2 and authorised `0.9.0-beta.2` (DECISIONS.md, "Beta 2 release"). Done: the Fire TV listing captured on the physical stick; the store media moved to a release archive; the promotion commit `ecce561` (`release: 0.9.0-beta.2`; the build derives `versionCode` 90032, Windows 0.9.32, Linux 0.9.0~beta.2); the branch pushed; the local full check green. **Held** because hosted CI's Linux job fails `DownloadsUiTest` deterministically: the first Right after arriving on the Downloads page is lost on Linux timing ([B-076](../BETA-BUG-TRACKER.md#b-076), bisected to Phase 2's `77b994c`). The owner chose a scoped fix before release; the investigation narrowed it but no fix held, so none was kept. **Not done:** the tag, the release workflow, the GitHub pre-release, the Play and Amazon uploads, the website's deployment.
 
 **To resume:** fix B-076 (its entry says where to look next), commit, push, and see hosted CI green on every job; then, because a version once tagged is never rebuilt with other contents, the fix goes before the tag on top of `ecce561` (still `0.9.0-beta.2`, since nothing was given to anyone), and the release follows RELEASE.md, "Releasing a version".
 

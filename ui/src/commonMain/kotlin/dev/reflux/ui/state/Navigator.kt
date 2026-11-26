@@ -9,7 +9,7 @@ import dev.reflux.library.LibraryScope
 
 /** A place in the browsing experience. Playback is not a destination: it sits above whatever is open. */
 sealed interface Destination {
-    /** The global destinations (docs/NAVIGATION.md, section 1): each is reached from the navigation, everywhere. */
+    /** The global destinations (docs/product/NAVIGATION.md, section 1): each is reached from the navigation, everywhere. */
     sealed interface Section : Destination
 
     data object Home : Section
@@ -25,7 +25,7 @@ sealed interface Destination {
 
     /**
      * Reflux's settings: the device's (online lookups, Media Atmosphere) and the active profile's own (its name, its
-     * PIN, clearing its watch history), and the way to About. Part of the utility area (docs/NAVIGATION.md, section 1).
+     * PIN, clearing its watch history), and the way to About. Part of the utility area (docs/product/NAVIGATION.md, section 1).
      */
     data object Settings : Section
 
@@ -38,7 +38,7 @@ sealed interface Destination {
 
     /**
      * A work's page. [scope] is where it was opened from: the unified library, or a source's own library, whose
-     * page lists and plays only that source's copies (docs/NAVIGATION.md, section 4).
+     * page lists and plays only that source's copies (docs/product/NAVIGATION.md, section 4).
      */
     data class Details(val itemId: MediaId, val scope: LibraryScope = LibraryScope.Unified) : Destination
 
@@ -76,11 +76,11 @@ sealed interface Destination {
     data class Notice(val name: String) : Destination
 }
 
-/** The primary destinations (docs/NAVIGATION.md, section 1): the library itself, in the navigation's order. */
+/** The primary destinations (docs/product/NAVIGATION.md, section 1): the library itself, in the navigation's order. */
 val PrimaryDestinations: List<Destination.Section> = listOf(Destination.Home, Destination.Movies, Destination.Shows, Destination.Search)
 
 /**
- * The utility area (docs/NAVIGATION.md, section 1): managing where the library comes from, what is kept on the device,
+ * The utility area (docs/product/NAVIGATION.md, section 1): managing where the library comes from, what is kept on the device,
  * settings, and who is watching. At the foot of a rail or sidebar; on a phone, behind the profile entry at the top.
  */
 val UtilityDestinations: List<Destination.Section> = listOf(Destination.Downloads, Destination.Sources, Destination.Settings, Destination.Profiles)
@@ -97,7 +97,7 @@ val Destination.aboutSources: Boolean
         this is Destination.About || this is Destination.Notices || this is Destination.Credits || this is Destination.Notice
 
 /**
- * Back-stack navigation (docs/NAVIGATION.md, section 2). Home is always the root: another section replaces
+ * Back-stack navigation (docs/product/NAVIGATION.md, section 2). Home is always the root: another section replaces
  * whatever was above Home, pages stack on top of the section they were opened from, and Back unwinds one step
  * at a time until Home.
  */

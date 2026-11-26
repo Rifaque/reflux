@@ -202,7 +202,7 @@ internal object ArtworkSamples {
  * The tone of the page around a work. With Media Atmosphere off (the default) it is the plain page: artwork is
  * the color on screen and the interface around it stays neutral. With it on, the page is washed with the
  * atmosphere of its [image] or, while there is none, of the backdrop generated for [title]; grey artwork leaves it
- * neutral. Only ever a background: controls, navigation, and focus stay neutral whatever the artwork (docs/DESIGN.md).
+ * neutral. Only ever a background: controls, navigation, and focus stay neutral whatever the artwork (docs/product/DESIGN.md).
  */
 @Composable
 fun rememberPageTone(image: ImageBitmap?, title: String, atmosphere: Boolean): Color {

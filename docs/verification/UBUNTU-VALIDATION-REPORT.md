@@ -1,6 +1,6 @@
 # Ubuntu validation report (2026-11-26)
 
-**What this is.** The first validation of Reflux on the owner's laptop after it moved from CachyOS to Ubuntu: the environment as measured, the compatibility research, the automated baseline, and the real-desktop playback checks of the Linux player. It follows the checklist in `docs/UBUNTU-TRANSITION.md` (on the `beta-3` branch; written before the install) and the knowledge in [CACHYOS-FINAL-HANDOVER.md](CACHYOS-FINAL-HANDOVER.md). Results are also recorded in [VERIFICATION.md](VERIFICATION.md) ("Ubuntu validation"); issues in [planning/BETA-BUG-TRACKER.md](planning/BETA-BUG-TRACKER.md).
+**What this is.** The first validation of Reflux on the owner's laptop after it moved from CachyOS to Ubuntu: the environment as measured, the compatibility research, the automated baseline, and the real-desktop playback checks of the Linux player. It follows the checklist in `docs/history/linux/UBUNTU-TRANSITION.md` (on the `beta-3` branch; written before the install) and the knowledge in [CACHYOS-FINAL-HANDOVER.md](../history/linux/CACHYOS-FINAL-HANDOVER.md). Results are also recorded in [VERIFICATION.md](VERIFICATION.md) ("Ubuntu validation"); issues in [BETA-BUG-TRACKER.md](../BETA-BUG-TRACKER.md).
 
 **Kind of environment.** Unless a line says otherwise, everything here ran on the **physical laptop** (Ubuntu installed on its own drive). The window tests marked "Xvfb" ran on a **virtual X display on that physical laptop**, which is CI's environment, not a desktop; they are never counted as real-desktop results.
 
@@ -177,7 +177,7 @@ Visible run: **101 tests, 2 failed, 13 skipped** (2 min 21 s): `FirstRunTest` (F
 
 | ID | What | Kind | Status |
 | --- | --- | --- | --- |
-| [B-104](planning/BETA-BUG-TRACKER.md#b-104) | Integrated picture decodes on NVIDIA (`vaapi-copy` opens `renderD128`, NVIDIA's node here) | Product (power; playback works) | Open, cause established, fix proposed (Beta 3) |
+| [B-104](../BETA-BUG-TRACKER.md#b-104) | Integrated picture decodes on NVIDIA (`vaapi-copy` opens `renderD128`, NVIDIA's node here) | Product (power; playback works) | Open, cause established, fix proposed (Beta 3) |
 | Finding 1 | `FirstRunTest` fails with GNOME's `XDG_CURRENT_DESKTOP` on Xvfb (GTK look-and-feel); intermittent on the real session | Test harness / environment, pre-existing (`main` fails identically) | Recorded here; run the suite on GNOME with the CI-like environment |
 | Finding 2 | One playback per GNOME-environment Xvfb suite stayed in `LOADING` | Unknown | Open, not attributed; not seen in the CI-like suite, the reduced runs, libmpv alone, or on the real desktop |
 | Finding 3 | `PlayerChromeResizeTest`'s exact 1014 × 677 vs mutter's even-pixel rounding | Test assumption, pre-existing | Recorded here; for the owner |

@@ -4,8 +4,8 @@ import dev.reflux.core.playback.PlayerStatus
 import dev.reflux.ui.state.PlayerPresentation
 
 /**
- * What Android's picture-in-picture needs decided, as pure functions the activity only carries out (docs/planning/
- * M10-PLAYER-SPEC.md, section 6): when leaving the app may shrink it into a window, what shape that window is, and whether
+ * What Android's picture-in-picture needs decided, as pure functions the activity only carries out (docs/history/
+ * milestones/M10-PLAYER-SPEC.md, section 6): when leaving the app may shrink it into a window, what shape that window is, and whether
  * the window the viewer has just left was expanded or closed.
  */
 internal object PictureInPicture {

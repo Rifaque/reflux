@@ -83,14 +83,14 @@ interface SourceConnector {
     /**
      * Whose account [config] signs in as, when it is one person's account on a server (a Jellyfin user, a Plex
      * account or token): such a connection belongs to the profile that made it and is never seen by another
-     * (docs/WATCH_STATE.md, "Profiles"). Null for a connection everyone on the device shares: a folder, a share,
+     * (docs/product/WATCH_STATE.md, "Profiles"). Null for a connection everyone on the device shares: a folder, a share,
      * a server that lets the local network in without signing in. Never a password or a token.
      */
     fun account(config: String): String? = null
 
     /**
      * Libraries a connection stored before M3 left out of reading altogether. Inclusion now belongs to the library
-     * (docs/NAVIGATION.md), so these are moved there once and cleared with [withoutExcludedSections].
+     * (docs/product/NAVIGATION.md), so these are moved there once and cleared with [withoutExcludedSections].
      */
     fun excludedSections(config: String): Set<String> = emptySet()
 
@@ -136,7 +136,7 @@ data class SourceSection(val id: String, val name: String, val kind: SectionKind
 /**
  * A source made of libraries (a media server's). Every library is read, so each can be browsed on its own;
  * which of them take part in the unified library is the library's to decide, never the adapter's
- * (docs/NAVIGATION.md). A catalog source says which library each entry is in ([CatalogEntry.section]).
+ * (docs/product/NAVIGATION.md). A catalog source says which library each entry is in ([CatalogEntry.section]).
  */
 interface SectionedSource : MediaSource {
     /** The libraries there are now. Throws [SourceUnavailableException] when the source cannot be reached. */

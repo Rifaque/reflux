@@ -2,7 +2,7 @@ package dev.reflux.core.playback
 
 /**
  * Why a playback is what it is, in a viewer's words: what was decided, what the server and the engine then did, and
- * whether the two agree (docs/PLAYBACK.md, section 9). It reads the plan, the evidence, and the engine, and decides
+ * whether the two agree (docs/product/PLAYBACK.md, section 9). It reads the plan, the evidence, and the engine, and decides
  * nothing. It names formats and decoders, never an address, a key, or a token.
  */
 object PlaybackReport {

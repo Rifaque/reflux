@@ -22,7 +22,7 @@ import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 /**
- * One playback session, several presentations (docs/PLAYBACK.md, "One session, several presentations"): the full
+ * One playback session, several presentations (docs/product/PLAYBACK.md, "One session, several presentations"): the full
  * player and the mini-player are two ways of showing the same session. Moving between them makes no engine, plans
  * nothing, loads nothing, and changes neither what is recorded nor whose it is.
  */

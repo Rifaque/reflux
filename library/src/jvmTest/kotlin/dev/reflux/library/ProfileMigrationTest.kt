@@ -14,7 +14,7 @@ import kotlin.test.assertTrue
 import kotlin.test.fail
 
 /**
- * Migration 7 (M8; docs/WATCH_STATE.md, "Profiles"): a library from before profiles opens with everything it had,
+ * Migration 7 (M8; docs/product/WATCH_STATE.md, "Profiles"): a library from before profiles opens with everything it had,
  * as the one profile it starts with; and the schema keeps every viewer's state keyed by profile.
  */
 class ProfileMigrationTest {
@@ -102,7 +102,7 @@ class ProfileMigrationTest {
     }
 
     private companion object {
-        /** What one viewer did or chose (docs/WATCH_STATE.md, "Profiles"). */
+        /** What one viewer did or chose (docs/product/WATCH_STATE.md, "Profiles"). */
         val VIEWER_STATE = setOf(
             "watch_state", "watch_sync", "favorite", "version_preference", "user_collection", "user_collection_item", "profile_setting",
         )

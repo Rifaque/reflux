@@ -3,7 +3,7 @@ plugins {
 }
 
 // What this build is, for code that reports it (an About page, a server's client list). Generated from the one
-// declared version (docs/VERSIONING.md), so no source file declares a version of its own.
+// declared version (docs/release/VERSIONING.md), so no source file declares a version of its own.
 val generateBuildInfo by tasks.registering {
     val version = providers.gradleProperty("reflux.version")
     val output = layout.buildDirectory.dir("generated/buildInfo")
@@ -16,7 +16,7 @@ val generateBuildInfo by tasks.registering {
             """
             |package dev.reflux.core
             |
-            |/** What this build of Reflux is (docs/VERSIONING.md). Generated from `reflux.version`; never edited. */
+            |/** What this build of Reflux is (docs/release/VERSIONING.md). Generated from `reflux.version`; never edited. */
             |object RefluxBuild {
             |    const val VERSION: String = "${version.get()}"
             |}

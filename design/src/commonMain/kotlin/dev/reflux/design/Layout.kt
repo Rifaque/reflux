@@ -5,7 +5,7 @@ import dev.reflux.core.input.InputModality
 enum class FormFactor { PHONE, TABLET, DESKTOP, TV }
 
 /**
- * Where the global navigation sits (docs/NAVIGATION.md, section 3). The destinations are the same everywhere;
+ * Where the global navigation sits (docs/product/NAVIGATION.md, section 3). The destinations are the same everywhere;
  * only their place and how much of each is shown change.
  */
 enum class NavigationStyle {
@@ -57,7 +57,7 @@ enum class DockStyle {
 }
 
 /**
- * Where what is playing sits while the viewer browses: the mini-player's dock (docs/NAVIGATION.md, section 8). The
+ * Where what is playing sits while the viewer browses: the mini-player's dock (docs/product/NAVIGATION.md, section 8). The
  * dock is part of the navigation's own layer: above the phone's bar, or in the bottom corner of the page beside a
  * rail or a sidebar. Whether a device presents playback there at all is the platform's to say, not the layout's.
  */

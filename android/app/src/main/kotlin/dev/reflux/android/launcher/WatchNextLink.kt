@@ -7,7 +7,7 @@ import java.net.URLEncoder
 
 /**
  * The link a Watch Next program opens Reflux with: the work it continues, and the profile whose Continue Watching it
- * was (docs/WATCH_STATE.md, "Profiles"), so that it opens in that profile without asking who is watching. Links
+ * was (docs/product/WATCH_STATE.md, "Profiles"), so that it opens in that profile without asking who is watching. Links
  * written before profiles name only the work; they open in the profile that is active.
  */
 object WatchNextLink {

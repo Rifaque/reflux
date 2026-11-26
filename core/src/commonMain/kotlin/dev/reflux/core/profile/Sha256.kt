@@ -3,7 +3,7 @@ package dev.reflux.core.profile
 /**
  * SHA-256 (FIPS 180-4), in the shared code: where something secret (a server's token) has to become part of an
  * identifier, only a cryptographic digest of it may, so that the identifier says nothing about the secret
- * (docs/WATCH_STATE.md, "Profiles"). [dev.reflux.core.model.StableIds] is for identifiers of things that are not
+ * (docs/product/WATCH_STATE.md, "Profiles"). [dev.reflux.core.model.StableIds] is for identifiers of things that are not
  * secret; it is not this.
  */
 object Sha256 {

@@ -16,7 +16,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /**
- * The support report as a person gets it (docs/RELEASE.md, "Diagnostics export"): from About, only when asked,
+ * The support report as a person gets it (docs/release/RELEASE.md, "Diagnostics export"): from About, only when asked,
  * handed to them by the platform, and with nothing in it that names their media, their servers, or them.
  */
 @OptIn(ExperimentalTestApi::class)

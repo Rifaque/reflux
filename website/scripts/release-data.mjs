@@ -1,4 +1,4 @@
-// Builds the website's release data from the repository (docs/WEBSITE.md, "Release data"). The site never types a
+// Builds the website's release data from the repository (docs/release/WEBSITE.md, "Release data"). The site never types a
 // version, an artifact name, a checksum, or a download address: they come from here.
 //
 //   gradle.properties          the product version in development (reflux.version)

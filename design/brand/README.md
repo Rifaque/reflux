@@ -1,6 +1,6 @@
 # Reflux brand
 
-The identity of Reflux: one mark, one wordmark, one lockup, and the rules for using them. Decision and reasoning: docs/DECISIONS.md, 2026-11-08, "The Reflux mark".
+The identity of Reflux: one mark, one wordmark, one lockup, and the rules for using them. Decision and reasoning: docs/decisions/DECISIONS.md, 2026-11-08, "The Reflux mark".
 
 ## The mark: the Reflux Loop
 

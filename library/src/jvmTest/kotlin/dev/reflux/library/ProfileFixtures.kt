@@ -25,7 +25,7 @@ import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
 
 /**
- * Fixtures for the profile tests (M8; docs/WATCH_STATE.md, "Profiles"), kept for M12's qualification to reuse: a media
+ * Fixtures for the profile tests (M8; docs/product/WATCH_STATE.md, "Profiles"), kept for M12's qualification to reuse: a media
  * server where each person signs in with their own account, its connector, and a PIN key held in memory.
  */
 internal object AccountServers {

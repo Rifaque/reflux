@@ -93,7 +93,7 @@ internal class MetadataSync(database: RefluxDatabase, private val now: () -> Lon
     }
 
     /**
-     * Looks up one movie or show, strongest evidence first (docs/METADATA.md, "Matching evidence"): the entry the
+     * Looks up one movie or show, strongest evidence first (docs/product/METADATA.md, "Matching evidence"): the entry the
      * user chose, then one already matched (a refresh re-reads it and never searches again, so a weaker guess
      * cannot replace it), then IDs in names or from a server, then a title search. [pinned] forces an entry (from
      * the Identify flow).

@@ -5,7 +5,7 @@ import dev.reflux.core.source.SourceCapability
 
 /**
  * A library read as a compatibility matrix: its distinct kinds of media, each with what [PlaybackPlanner] answers for
- * one device. It decides nothing and is not read by playback. It is how evidence is gathered (docs/PLAYBACK.md,
+ * one device. It decides nothing and is not read by playback. It is how evidence is gathered (docs/product/PLAYBACK.md,
  * section 15), so a real walk plays each kind once instead of a thousand files or a chosen few.
  */
 object PlaybackSurvey {

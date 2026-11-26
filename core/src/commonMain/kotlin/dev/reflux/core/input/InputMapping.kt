@@ -1,7 +1,7 @@
 package dev.reflux.core.input
 
 /**
- * Default physical-to-semantic mappings. They must work well with no configuration (docs/INPUT_MODEL.md).
+ * Default physical-to-semantic mappings. They must work well with no configuration (docs/product/INPUT_MODEL.md).
  *
  * Confirm/cancel follow each family's convention: Nintendo confirms with the east button (A),
  * PlayStation and Xbox with the south button (Cross / A).

@@ -25,7 +25,7 @@ import java.io.File
 import kotlin.test.Test
 
 /**
- * The website's product images (docs/WEBSITE.md, "Product images"): the real experience layer, rendered offscreen
+ * The website's product images (docs/release/WEBSITE.md, "Product images"): the real experience layer, rendered offscreen
  * over a library of the Blender Foundation's open films with their own Creative Commons artwork, never commercial
  * titles. Runs only when asked:
  *

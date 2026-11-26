@@ -21,7 +21,7 @@ value class SourceId(val value: String) {
 }
 
 /**
- * A local viewer of this installation (docs/WATCH_STATE.md, "Profiles"): whose watch history, favorites,
+ * A local viewer of this installation (docs/product/WATCH_STATE.md, "Profiles"): whose watch history, favorites,
  * collections, pinned versions, preferences, and server accounts something is. Never shared between devices.
  */
 @JvmInline

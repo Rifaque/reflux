@@ -3,7 +3,7 @@ package dev.reflux.design
 import kotlin.math.pow
 
 /**
- * Material roles (docs/DESIGN.md). Each communicates depth and interaction, not decoration. Functional material
+ * Material roles (docs/product/DESIGN.md). Each communicates depth and interaction, not decoration. Functional material
  * (glass) is for what floats above the media: navigation, bars, sheets, panels, notices, transient controls. It is
  * never put on cards, rows, posters, or whole backgrounds.
  */

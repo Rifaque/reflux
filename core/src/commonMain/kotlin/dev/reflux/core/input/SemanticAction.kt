@@ -27,7 +27,7 @@ enum class SemanticAction {
     /** Moves what is playing between the full player and the mini-player, where the device has one. */
     MINI_PLAYER,
 
-    /** The global destinations (docs/NAVIGATION.md), reached directly. */
+    /** The global destinations (docs/product/NAVIGATION.md), reached directly. */
     GO_HOME,
     GO_MOVIES,
     GO_SHOWS,

@@ -1,4 +1,4 @@
-// Checks every link on the built pages (docs/WEBSITE.md, "Checks"): internal links must reach a page or a file of
+// Checks every link on the built pages (docs/release/WEBSITE.md, "Checks"): internal links must reach a page or a file of
 // the site (and an #anchor an element on it), external links must be HTTPS and answer. Run after npm run build:
 // node scripts/check-links.mjs [--offline]
 import { readFileSync, existsSync, readdirSync } from 'node:fs'

@@ -1,4 +1,4 @@
-// Where each platform stands, from the data the build read (docs/WEBSITE.md, "Release data"): the store records and
+// Where each platform stands, from the data the build read (docs/release/WEBSITE.md, "Release data"): the store records and
 // the newest publication record. Plain and free of React, so the page and its tests share it.
 
 export const STATE_LABELS = { 'not listed': 'Not listed yet', testing: 'Beta, by invitation', available: 'Available', beta: 'Beta download' }

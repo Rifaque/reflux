@@ -2,7 +2,7 @@
 
 ## Evidence reviewed
 
-`design/src/commonMain/kotlin/dev/reflux/design/Tokens.kt` and `Roles.kt` (colour roles), `docs/DESIGN.md` (Visual System 2.0, Media Atmosphere, "let the media be colorful, let the interface be calm"), `design/brand/` (mark, lockup, Manrope, brand README), the website's tokens (`website/src/styles.css`), `scan_brand.py` and `extract_palette.py` over the 24 captures (pixel-weighted luminance 0.08: a dark UI whose only colour is artwork).
+`design/src/commonMain/kotlin/dev/reflux/design/Tokens.kt` and `Roles.kt` (colour roles), `docs/product/DESIGN.md` (Visual System 2.0, Media Atmosphere, "let the media be colorful, let the interface be calm"), `design/brand/` (mark, lockup, Manrope, brand README), the website's tokens (`website/src/styles.css`), `scan_brand.py` and `extract_palette.py` over the 24 captures (pixel-weighted luminance 0.08: a dark UI whose only colour is artwork).
 
 ## Visual DNA
 

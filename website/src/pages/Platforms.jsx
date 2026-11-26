@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 import release from '../generated/release.json'
 import { PageHead } from '../components.jsx'
 
-// Each platform's needs and how it is distributed (docs/ROADMAP.md, Platforms; docs/RELEASE.md).
+// Each platform's needs and how it is distributed (docs/ROADMAP.md, Platforms; docs/release/RELEASE.md).
 const platforms = [
   { name: 'Android phones and tablets', needs: 'Android 8.0 or later', from: 'Google Play (closed beta until 1.0)', notes: 'Folders are chosen with the system picker, one at a time, read-only. Picture-in-picture where the device offers it.' },
   { name: 'Android TV and Google TV', needs: 'Android 8.0 or later', from: 'Google Play (closed beta until 1.0)', notes: 'Built for the remote. What you are watching and your next episodes appear in the home screen’s Watch Next row.' },
@@ -11,7 +11,7 @@ const platforms = [
   { name: 'Linux', needs: '64-bit, with your distribution’s libmpv', from: 'GitHub Release, linked from Download', notes: 'Runs on X11 and through XWayland. One command installs libmpv: the Linux guide has it for Ubuntu, Debian, Mint, Fedora, and Arch.' },
 ]
 
-// What was seen playing on real devices and the Google TV emulator (docs/PLAYBACK.md, section 17), and nothing more.
+// What was seen playing on real devices and the Google TV emulator (docs/product/PLAYBACK.md, section 17), and nothing more.
 // "Not decoded*": the device cannot play it; from a Jellyfin server that part is converted (see the note under the table).
 const rows = [
   ['H.264 and HEVC (8-bit) to 1080p', 'Yes', 'Yes', 'Yes', 'Yes'],

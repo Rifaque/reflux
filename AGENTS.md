@@ -14,25 +14,25 @@ Before making substantial changes:
 
 1. Read `README.md`.
 2. Read the relevant files under `docs/`.
-3. Check `docs/DECISIONS.md` for existing architectural decisions.
-4. Check `docs/ROADMAP.md` for product status and the version plan, and `docs/BETA.md` for the beta in progress. ROADMAP.md is the one source of truth for product status; `docs/README.md` says which document holds what.
+3. Check `docs/decisions/DECISIONS.md` for existing architectural decisions.
+4. Check `docs/ROADMAP.md` for product status and the version plan, and `docs/release/BETA.md` for the beta in progress. ROADMAP.md is the one source of truth for product status; the root `README.md`, "Documentation", says which document holds what.
 5. Inspect the existing code before proposing a new abstraction or dependency.
 
 The repository documentation is the product and architecture specification. Keep it current as implementation evolves.
 
 ## Versions and releases
 
-**Before changing anything about versions or releases, read `docs/VERSIONING.md` and follow it.** That covers `reflux.version` in `gradle.properties`, Android `versionCode`/`versionName`, desktop package versions, `CHANGELOG.md` release headings, Git tags, and store or package metadata. In particular: never change the version unless the user explicitly asks for a build or release to be cut, never write a `versionCode` by hand, never reuse a version, and never create or push tags unless asked. Add user-visible changes to `CHANGELOG.md` under `Unreleased` as part of the change that makes them.
+**Before changing anything about versions or releases, read `docs/release/VERSIONING.md` and follow it.** That covers `reflux.version` in `gradle.properties`, Android `versionCode`/`versionName`, desktop package versions, `CHANGELOG.md` release headings, Git tags, and store or package metadata. In particular: never change the version unless the user explicitly asks for a build or release to be cut, never write a `versionCode` by hand, never reuse a version, and never create or push tags unless asked. Add user-visible changes to `CHANGELOG.md` under `Unreleased` as part of the change that makes them.
 
 Where things are recorded:
 
 - `docs/ROADMAP.md`: where Reflux is, the V1.0 criteria, and the versions after 1.0 (V1.1 to V2.0).
-- `docs/BETA.md`: the beta programme: builds, scope, gates, known issues, beta operations. `docs/BETA-NOTES.md`: what testers read.
-- `docs/planning/BETA-BUG-TRACKER.md`: every issue's status and evidence.
-- `docs/VERIFICATION.md`: what was run to verify work, on what, with what result. Verification logs do not go in the roadmap.
-- `docs/RELEASE.md`: the release process, the platform matrix, and the release checklists.
-- `docs/WEBSITE.md`: the website. `store-assets/`: store screenshots and graphics per release (LaunchFrame).
-- `docs/DECISIONS.md`: durable product and architecture decisions.
+- `docs/release/BETA.md`: the beta programme: builds, scope, gates, known issues, beta operations. `docs/release/BETA-NOTES.md`: what testers read.
+- `docs/BETA-BUG-TRACKER.md`: every issue's status and evidence.
+- `docs/verification/VERIFICATION.md`: what was run to verify work, on what, with what result. Verification logs do not go in the roadmap.
+- `docs/release/RELEASE.md`: the release process, the platform matrix, and the release checklists.
+- `docs/release/WEBSITE.md`: the website. `store-assets/`: store screenshots and graphics per release (LaunchFrame).
+- `docs/decisions/DECISIONS.md`: durable product and architecture decisions.
 - `docs/history/`: archived plans, milestone records and older verification. Historical, never current.
 
 ## Core product principles
@@ -226,7 +226,7 @@ A feature is complete when its intended behavior is implemented, tested, documen
 
 Update documentation when code changes invalidate or extend architectural decisions.
 
-Use `docs/DECISIONS.md` for durable product or architecture decisions.
+Use `docs/decisions/DECISIONS.md` for durable product or architecture decisions.
 
 Use the roadmap to record milestone completion or scope changes.
 
@@ -256,7 +256,7 @@ V1 platform targets:
 
 Not V1: Vega OS (a future compatibility track) and iOS/iPadOS.
 
-The product moved from milestones to versions in Phase 4 (2026-11-21). The milestones M0 to M11 that built Reflux are complete and archived (`docs/history/roadmaps/ROADMAP-M0-M13.md`, whose "Earlier numbering" maps every older name); M12's qualification and beta continue as the beta programme in `docs/BETA.md`, and M13 (release candidate and 1.0) is V1.0 in `docs/ROADMAP.md`. After 1.0 the plan is by version: V1.1, V1.2, V1.3, V1.5, V2.0. Work on what BETA.md and ROADMAP.md say is next. The Reflux website is release infrastructure; it is live.
+The product moved from milestones to versions in Phase 4 (2026-11-21). The milestones M0 to M11 that built Reflux are complete and archived (`docs/history/roadmaps/ROADMAP-M0-M13.md`, whose "Earlier numbering" maps every older name); M12's qualification and beta continue as the beta programme in `docs/release/BETA.md`, and M13 (release candidate and 1.0) is V1.0 in `docs/ROADMAP.md`. After 1.0 the plan is by version: V1.1, V1.2, V1.3, V1.5, V2.0. Work on what BETA.md and ROADMAP.md say is next. The Reflux website is release infrastructure; it is live.
 
 ### Milestone execution rules (from the 2026-11-11 rebaseline)
 

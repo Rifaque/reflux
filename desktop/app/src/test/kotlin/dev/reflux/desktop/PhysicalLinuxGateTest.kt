@@ -26,7 +26,7 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 /**
- * The physical Linux gate of M2P.4 (docs/VERIFICATION.md). Run by `tools/live/physical-linux-gate.sh`, on request only.
+ * The physical Linux gate of M2P.4 (docs/verification/VERIFICATION.md). Run by `tools/live/physical-linux-gate.sh`, on request only.
  *
  * Asked for anywhere that is not a real Linux machine, it fails rather than skips: a container, WSL, a virtual display,
  * or a machine without a sound card or a render node proves nothing, and must not look as though it does.

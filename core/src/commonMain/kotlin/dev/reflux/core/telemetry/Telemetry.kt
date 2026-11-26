@@ -1,8 +1,8 @@
 package dev.reflux.core.telemetry
 
 /**
- * The opt-in technical statistics foundation (Phase 1; docs/DECISIONS.md, 2026-11-18, "Opt-in technical statistics";
- * docs/PRIVACY.md). Nothing here sends anything: the only transport builds have is [TelemetryTransport.Disabled], and
+ * The opt-in technical statistics foundation (Phase 1; docs/decisions/DECISIONS.md, 2026-11-18, "Opt-in technical statistics";
+ * docs/release/PRIVACY.md). Nothing here sends anything: the only transport builds have is [TelemetryTransport.Disabled], and
  * a real one is added only once the owner has approved a provider and its data contract.
  *
  * The rules this code enforces, so that no caller can break them:
@@ -95,7 +95,7 @@ interface ConsentStore {
 }
 
 /**
- * Where events would go. Only [Disabled] exists until a provider is approved (docs/DECISIONS.md): with it, every
+ * Where events would go. Only [Disabled] exists until a provider is approved (docs/decisions/DECISIONS.md): with it, every
  * event is dropped where it stands and nothing touches the network.
  */
 fun interface TelemetryTransport {

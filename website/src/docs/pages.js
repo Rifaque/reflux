@@ -1,4 +1,4 @@
-// The documentation's pages, in reading order, grouped as the sidebar shows them (docs/WEBSITE.md, "Documentation").
+// The documentation's pages, in reading order, grouped as the sidebar shows them (docs/release/WEBSITE.md, "Documentation").
 // Plain data with no JSX: the routes, the prerendered files, the sitemap, and the link check read this list, and
 // src/docs/content.jsx gives each page its body. A slug never changes once published: it is the page's address.
 

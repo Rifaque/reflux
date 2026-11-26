@@ -9,7 +9,7 @@ import kotlin.test.Test
 import kotlin.test.assertTrue
 
 /**
- * B-006's repeatable fixture (docs/VERIFICATION.md, "Phase 1"): a real library scanned from a folder of ordinary names,
+ * B-006's repeatable fixture (docs/verification/VERIFICATION.md, "Phase 1"): a real library scanned from a folder of ordinary names,
  * 1,000 films and 200 shows of 50 episodes (11,000 files), and how long local search takes on it. Only with
  * `-Preflux.perf=true`; numbers go to the console and to `build/perf/search.txt`. No network, no metadata provider:
  * this is local search alone, the part Reflux controls end to end.

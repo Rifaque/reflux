@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# The physical Linux gate of M2P.4 (docs/VERIFICATION.md), from a checkout on a real Linux machine, in a graphical
+# The physical Linux gate of M2P.4 (docs/verification/VERIFICATION.md), from a checkout on a real Linux machine, in a graphical
 # session at that machine:
 #
 #     tools/live/physical-linux-gate.sh [evidence directory]

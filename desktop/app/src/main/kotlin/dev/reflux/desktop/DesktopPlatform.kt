@@ -285,7 +285,7 @@ internal class DesktopPlatform(private val environment: DesktopEnvironment) : Pl
          * decoders work there; mpv's own order would take nvdec-copy first, waking a second (NVIDIA) GPU to decode frames that
          * are then copied across to the one that draws. Decoding on the GPU that draws (vaapi-copy) costs least and leaves the
          * other asleep. On NVIDIA's OpenGL, CUDA's interop works with GLX: auto-safe finds nvdec without a copy.
-         * Measured 2026-11-24 (CACHY-011, docs/planning/CACHYOS-FINAL-AUDIT-LEDGER.md).
+         * Measured 2026-11-24 (CACHY-011, docs/verification/CACHYOS-FINAL-AUDIT-LEDGER.md).
          */
         internal fun renderedHwdec(info: String?): String =
             if (info?.contains("NVIDIA", ignoreCase = true) == true) "auto-safe" else "vaapi-copy,auto-copy-safe"

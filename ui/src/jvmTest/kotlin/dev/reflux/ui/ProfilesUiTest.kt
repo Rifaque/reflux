@@ -25,7 +25,7 @@ import kotlin.test.assertTrue
 private const val MINUTE = 60_000L
 
 /**
- * Profiles in the experience layer (M8; docs/WATCH_STATE.md, "Profiles", and docs/NAVIGATION.md, section 1): one
+ * Profiles in the experience layer (M8; docs/product/WATCH_STATE.md, "Profiles", and docs/product/NAVIGATION.md, section 1): one
  * profile is never mentioned, a second is a viewer of its own, a PIN is asked for, every device opens the
  * last-used profile, logging out asks who is watching, a playback stays with the profile it was for, and clearing history asks first.
  */

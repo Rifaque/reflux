@@ -40,7 +40,7 @@ import androidx.compose.ui.platform.LocalDensity
 
 /**
  * The content that glass materials float above. It is recorded as it draws, so materials can blur what is
- * behind them (docs/DESIGN.md: blur applies to what is behind a material, never to its own content).
+ * behind them (docs/product/DESIGN.md: blur applies to what is behind a material, never to its own content).
  */
 class GlassBackdrop internal constructor(internal val layer: GraphicsLayer) {
     /** Advances whenever the backdrop is redrawn, so the materials above it redraw too. */
@@ -97,7 +97,7 @@ class MaterialBackdrop {
 val LocalMaterialBackdrop = staticCompositionLocalOf<MaterialBackdrop?> { null }
 
 /**
- * Draws functional material (docs/DESIGN.md, "Material system"): as the device's [MaterialTier] allows, the blurred
+ * Draws functional material (docs/product/DESIGN.md, "Material system"): as the device's [MaterialTier] allows, the blurred
  * backdrop (inside a [GlassScene] overlay), a tint, a top-lit hairline highlight, and a shadow. The tint is raised
  * until secondary text stays readable over what is behind it, so material never costs legibility; on BASIC it is
  * opaque. A change of strength (the artwork behind changing) is a short transition, not a jump.

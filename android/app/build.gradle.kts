@@ -14,7 +14,7 @@ android {
         applicationId = rootProject.extra["reflux.applicationId"] as String
         minSdk = 26
         targetSdk = 36
-        // Both derive from reflux.version (docs/VERSIONING.md); never set them here.
+        // Both derive from reflux.version (docs/release/VERSIONING.md); never set them here.
         versionCode = rootProject.extra["reflux.versionCode"] as Int
         versionName = rootProject.extra["reflux.version"] as String
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -30,7 +30,7 @@ android {
         providers.gradleProperty("reflux.jellyfin").orNull?.takeIf { it.isNotBlank() }?.let { testInstrumentationRunnerArguments["refluxJellyfin"] = it }
     }
 
-    // A release is signed only with a key that lives outside the repository (docs/RELEASE.md, "Signing"): a
+    // A release is signed only with a key that lives outside the repository (docs/release/RELEASE.md, "Signing"): a
     // keystore named by REFLUX_SIGNING_STORE_FILE, or `reflux.signing.*` properties in the user's own
     // ~/.gradle/gradle.properties. Without one, a release builds unsigned, and the release tooling refuses it.
     val signing = listOf("STORE_FILE", "STORE_PASSWORD", "KEY_ALIAS", "KEY_PASSWORD").associateWith { key ->
@@ -116,7 +116,7 @@ abstract class GenerateTestMedia : DefaultTask() {
             )
         }
         // A film of three seconds with three chapters, as Matroska and as MP4: what Media3 reads chapters out of
-        // (docs/PLAYBACK.md, section 18). The same chapters for both; clip.mp4 is the film that has none.
+        // (docs/product/PLAYBACK.md, section 18). The same chapters for both; clip.mp4 is the film that has none.
         val chapterList = output.get().file("chapters.ffmetadata").asFile
         chapterList.writeText(
             ";FFMETADATA1\n" + listOf("Opening", "The heist", "Aftermath").withIndex().joinToString("") { (index, title) ->
@@ -153,7 +153,7 @@ abstract class GenerateTestMedia : DefaultTask() {
                 )
             }
         }
-        // Formats the real library lacks, each answering one question (docs/PLAYBACK.md, section 16). The desktop's
+        // Formats the real library lacks, each answering one question (docs/product/PLAYBACK.md, section 16). The desktop's
         // FormatFixtures makes the same files from the same arguments.
         for ((name, arguments) in formatFixtures) {
             exec.exec { commandLine(listOf("ffmpeg", "-loglevel", "error", "-y") + arguments + output.get().file(name).asFile.path) }
@@ -212,7 +212,7 @@ val generateTestMedia = tasks.register<GenerateTestMedia>("generateTestMedia") {
     output.set(layout.buildDirectory.dir("generated/testMedia"))
 }
 
-/** The commit this build is from (docs/VERSIONING.md, "Build metadata"), as an asset the About page reads. */
+/** The commit this build is from (docs/release/VERSIONING.md, "Build metadata"), as an asset the About page reads. */
 abstract class GenerateBuildIdentity : DefaultTask() {
     @get:Input
     abstract val identity: Property<String>

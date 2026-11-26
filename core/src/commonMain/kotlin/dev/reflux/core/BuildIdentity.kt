@@ -1,7 +1,7 @@
 package dev.reflux.core
 
 /**
- * Which build of Reflux this is (docs/VERSIONING.md, "Build metadata"): the product version, the commit it was
+ * Which build of Reflux this is (docs/release/VERSIONING.md, "Build metadata"): the product version, the commit it was
  * built from, and whether the tree had changes. Shown on the About page and at the top of the diagnostics log.
  */
 data class BuildIdentity(

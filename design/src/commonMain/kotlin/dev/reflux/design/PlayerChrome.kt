@@ -6,7 +6,7 @@ package dev.reflux.design
  * or fullscreen one gets controls, clocks and a timeline that read from the seat.
  *
  * Handhelds and televisions are [BASELINE] whatever their size: their controls are sized by thumbs and distance, and they do
- * not grow with the screen (docs/DESIGN.md, "The player").
+ * not grow with the screen (docs/product/DESIGN.md, "The player").
  */
 enum class PlayerChromeTier { BASELINE, COMPACT, STANDARD, LARGE }
 

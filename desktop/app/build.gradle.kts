@@ -24,7 +24,7 @@ dependencies {
     testImplementation(project(":sources:local"))
 }
 
-// The commit this build is from (docs/VERSIONING.md, "Build metadata"), read by the About page and the
+// The commit this build is from (docs/release/VERSIONING.md, "Build metadata"), read by the About page and the
 // diagnostics log. The version itself comes from core's generated RefluxBuild.
 val generateBuildIdentity by tasks.registering {
     @Suppress("UNCHECKED_CAST")
@@ -55,8 +55,8 @@ val generateProviderCredential by tasks.registering {
 }
 sourceSets.main { resources.srcDir(generateBuildIdentity); resources.srcDir(generateProviderCredential) }
 
-// Release packaging (docs/RELEASE.md, "Desktop artifacts"). The version and every number derived from it come
-// from the root build (docs/VERSIONING.md); nothing here declares one.
+// Release packaging (docs/release/RELEASE.md, "Desktop artifacts"). The version and every number derived from it come
+// from the root build (docs/release/VERSIONING.md); nothing here declares one.
 val refluxVersion = rootProject.extra["reflux.version"] as String
 val windows = System.getProperty("os.name").startsWith("Windows")
 val libmpvPin = Properties().apply { file("packaging/libmpv-windows.properties").reader().use(::load) }
@@ -140,7 +140,7 @@ compose.desktop {
 if (windows) tasks.matching { it.name == "prepareAppResources" }.configureEach { dependsOn(prepareLibmpv) }
 
 /**
- * The desktop release archive for this machine's OS (docs/RELEASE.md, "Desktop artifacts"): the application with its
+ * The desktop release archive for this machine's OS (docs/release/RELEASE.md, "Desktop artifacts"): the application with its
  * own Java runtime (and, on Windows, libmpv), Reflux's notice, the third-party license texts, and the libmpv
  * source offer, named `reflux-<version>-<os>-x64`. Not minified: the desktop keeps JNA's interfaces as they are.
  */

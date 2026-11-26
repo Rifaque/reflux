@@ -20,7 +20,7 @@ data class SourceLibrary(
 )
 
 /**
- * Whether a source, and each of its libraries, take part in the unified library (docs/NAVIGATION.md, section 5).
+ * Whether a source, and each of its libraries, take part in the unified library (docs/product/NAVIGATION.md, section 5).
  * Nothing here says whether the source is connected or reachable: those are separate questions.
  */
 data class SourceInclusion(
@@ -76,7 +76,7 @@ fun Library.setLibraryIncluded(id: SourceId, section: String, included: Boolean)
 }
 
 /**
- * Libraries a connection left out before inclusion belonged to the library (docs/NAVIGATION.md): kept as
+ * Libraries a connection left out before inclusion belonged to the library (docs/product/NAVIGATION.md): kept as
  * excluded libraries, so the viewer's choice holds, while every library is read again to be browsed.
  */
 fun Library.excludeLibraries(id: SourceId, sections: Set<String>) = database.transaction {

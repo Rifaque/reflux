@@ -96,7 +96,7 @@ class Library(
     /**
      * What title search searches (B-006), made once and kept until anything it is made of changes: a work, a version or
      * what a profile sees of it, a description, a source. Measured on 11,000 playables, making it was nearly all of a
-     * search's time, and it was made again for every keystroke (docs/VERIFICATION.md, "Phase 1"). [searchGeneration]
+     * search's time, and it was made again for every keystroke (docs/verification/VERIFICATION.md, "Phase 1"). [searchGeneration]
      * counts the changes, so that a set made while one happened is never kept.
      */
     @Volatile
@@ -147,7 +147,7 @@ class Library(
     fun removeSource(id: SourceId) = database.transaction {
         writer.apply(ScanPlan(id, emptyList(), emptyList(), emptyList(), emptyMap()))
         queries.deleteWatchSyncOfSource(id.value)
-        // Its inclusion goes with it: added again, it starts included (docs/NAVIGATION.md, section 5).
+        // Its inclusion goes with it: added again, it starts included (docs/product/NAVIGATION.md, section 5).
         queries.deleteSourceSectionsOf(id.value)
         queries.deleteExcludedSectionsOf(id.value)
         queries.deleteSource(id.value)

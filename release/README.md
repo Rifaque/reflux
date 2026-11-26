@@ -1,7 +1,7 @@
 # Release records
 
 What has been published, kept in the repository so that everything else reads it rather than repeating it
-(docs/RELEASE.md, "Release system"):
+(docs/release/RELEASE.md, "Release system"):
 
 - `published/<version>.json`: the manifest of a version given to anyone outside CI, byte for byte as
   `tools/release/release.py build` wrote it (schema 2: version, channel, commit, every artifact with its SHA-256 and

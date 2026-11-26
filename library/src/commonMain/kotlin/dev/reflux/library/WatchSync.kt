@@ -31,7 +31,7 @@ class SyncingWatchReporter(
     private val scope: CoroutineScope,
     /**
      * Whose playback this is: the profile active when it started. Every report goes there, whichever profile is
-     * active by the time it is made, so a playback never changes hands (docs/WATCH_STATE.md, "Profiles").
+     * active by the time it is made, so a playback never changes hands (docs/product/WATCH_STATE.md, "Profiles").
      */
     val profile: ProfileId = library.activeProfile(),
 ) : WatchReporter {

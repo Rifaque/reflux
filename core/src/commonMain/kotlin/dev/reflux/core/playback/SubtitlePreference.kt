@@ -4,7 +4,7 @@ import dev.reflux.core.model.ExternalSubtitle
 
 /**
  * What a viewer chose for a work's subtitles, kept as a description of the track and never as its position: another
- * version of the work, or the next episode, numbers its tracks differently (docs/WATCH_STATE.md, "Profiles").
+ * version of the work, or the next episode, numbers its tracks differently (docs/product/WATCH_STATE.md, "Profiles").
  *
  * Stored per profile and per work as text ([encode], [decode]); the planner matches it against each version's tracks.
  */

@@ -16,7 +16,7 @@ import kotlinx.serialization.json.contentOrNull
  * What Reflux asks of `Items/{id}/PlaybackInfo`.
  *
  * The default is what Reflux does today and no more: it takes the file as it is, and it claims no subtitle format,
- * because nothing yet says what this client can draw. This is not capability negotiation (docs/PLAYBACK.md,
+ * because nothing yet says what this client can draw. This is not capability negotiation (docs/product/PLAYBACK.md,
  * section 8); [deviceProfile] is a parameter so that tests can see what a server does with other clients.
  *
  * @param deviceProfile Jellyfin's `DeviceProfile`, as JSON.

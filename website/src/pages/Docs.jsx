@@ -1,4 +1,4 @@
-// The documentation portal (docs/WEBSITE.md, "Documentation"): a sidebar of every page in groups, search over every
+// The documentation portal (docs/release/WEBSITE.md, "Documentation"): a sidebar of every page in groups, search over every
 // page's words, breadcrumbs, the page's own contents, and the pages before and after it. Everything is rendered on the
 // server: the sidebar is a list of links, the narrow screen's menu a native disclosure, so the documentation reads and
 // navigates without JavaScript; search and the copy buttons are what JavaScript adds.

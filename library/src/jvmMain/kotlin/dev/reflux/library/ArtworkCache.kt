@@ -26,7 +26,7 @@ import kotlin.io.path.isRegularFile
 import kotlin.io.path.listDirectoryEntries
 
 /**
- * A disk cache of artwork images, so posters and backdrops stay visible while offline (docs/METADATA.md,
+ * A disk cache of artwork images, so posters and backdrops stay visible while offline (docs/product/METADATA.md,
  * "Artwork cache").
  *
  * Remote images are downloaded; images inside sources (e.g. `poster.jpg` on a USB drive) are copied, so they

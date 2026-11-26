@@ -4,7 +4,7 @@ import dev.reflux.core.model.ProfileId
 
 /**
  * Where the launcher cards a viewer removed are remembered: per profile and work, so that one viewer taking a card
- * off the launcher never keeps another viewer's card for the same work off it (docs/WATCH_STATE.md, "Profiles").
+ * off the launcher never keeps another viewer's card for the same work off it (docs/product/WATCH_STATE.md, "Profiles").
  */
 object WatchNextDismissals {
     private const val SEPARATOR = "\u001F"

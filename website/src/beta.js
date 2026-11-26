@@ -1,4 +1,4 @@
-// The beta season and the road to 1.0, as docs/BETA.md states them. Dates are a plan, not a promise: the site always
+// The beta season and the road to 1.0, as docs/release/BETA.md states them. Dates are a plan, not a promise: the site always
 // says what 1.0 depends on. The version, artifacts, and store states come from the release
 // data (scripts/release-data.mjs), never from here.
 
@@ -9,7 +9,7 @@ export const SEASON = { start: '17 November 2026', end: '15 December 2026' }
 
 export const SUPPORT = 'support@rsxdevelops.dev'
 
-/** The steps from the beta to 1.0 (docs/BETA.md). The first has happened; the rest are a plan, with no date promised. */
+/** The steps from the beta to 1.0 (docs/release/BETA.md). The first has happened; the rest are a plan, with no date promised. */
 export const TIMELINE = [
   ['17 November', 'The beta opens', 'Reflux 0.9.0-beta.1 for testers on Android, Fire TV, Windows, and Linux.', true],
   beta2Out

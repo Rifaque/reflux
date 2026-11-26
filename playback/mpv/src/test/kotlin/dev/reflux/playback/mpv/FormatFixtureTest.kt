@@ -32,7 +32,7 @@ import kotlin.test.assertTrue
 
 /**
  * The formats the real library lacks, through the whole local path on the desktop engine: what the probe reads, what
- * the assessor and planner say, and what libmpv then does (docs/PLAYBACK.md, section 16). Needs FFmpeg and libmpv.
+ * the assessor and planner say, and what libmpv then does (docs/product/PLAYBACK.md, section 16). Needs FFmpeg and libmpv.
  */
 class FormatFixtureTest {
     private val expected = mapOf(

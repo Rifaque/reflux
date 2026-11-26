@@ -5,7 +5,7 @@ import java.util.concurrent.TimeUnit
 
 /**
  * Formats the real library does not have, made small and deterministic by FFmpeg to answer one question each
- * (docs/PLAYBACK.md, section 16). The Android build makes the same files from the same arguments
+ * (docs/product/PLAYBACK.md, section 16). The Android build makes the same files from the same arguments
  * (`android/app/build.gradle.kts`, `GenerateTestMedia`). Never media of anyone's: test pictures and tones.
  */
 object FormatFixtures {

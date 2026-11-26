@@ -4,7 +4,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
-/** How a build names itself (docs/VERSIONING.md, "Build metadata"). */
+/** How a build names itself (docs/release/VERSIONING.md, "Build metadata"). */
 class BuildIdentityTest {
     @Test
     fun theLabelIsTheVersionWithTheCommitAndWhetherTheTreeHadChanges() {

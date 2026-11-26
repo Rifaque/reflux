@@ -7,7 +7,7 @@
    fallback face and then re-flowed every line when Manrope arrived, a layout shift of up to 0.23 on long pages.
    The Latin file is preloaded on every page (scripts/prerender.mjs), and Chromium holds the first paint briefly for a
    preloaded optional font, so the page is drawn once, in Manrope; if the file is late, the page stays in the
-   fallback face rather than jump (docs/DECISIONS.md, 2026-11-12). */
+   fallback face rather than jump (docs/decisions/DECISIONS.md, 2026-11-12). */
 @font-face { font-family: 'Manrope Variable'; font-style: normal; font-display: optional; font-weight: 200 800; src: url('../node_modules/@fontsource-variable/manrope/files/manrope-cyrillic-ext-wght-normal.woff2') format('woff2-variations'); unicode-range: U+0460-052F,U+1C80-1C8A,U+20B4,U+2DE0-2DFF,U+A640-A69F,U+FE2E-FE2F; }
 @font-face { font-family: 'Manrope Variable'; font-style: normal; font-display: optional; font-weight: 200 800; src: url('../node_modules/@fontsource-variable/manrope/files/manrope-cyrillic-wght-normal.woff2') format('woff2-variations'); unicode-range: U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116; }
 @font-face { font-family: 'Manrope Variable'; font-style: normal; font-display: optional; font-weight: 200 800; src: url('../node_modules/@fontsource-variable/manrope/files/manrope-greek-wght-normal.woff2') format('woff2-variations'); unicode-range: U+0370-0377,U+037A-037F,U+0384-038A,U+038C,U+038E-03A1,U+03A3-03FF; }
@@ -236,7 +236,7 @@ td { color: var(--text-2); min-width: 9rem; }
 
 .visually-hidden { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 
-/* Download: one card per platform (docs/WEBSITE.md, "Download"). */
+/* Download: one card per platform (docs/release/WEBSITE.md, "Download"). */
 .platform-cards { list-style: none; padding: 0; margin: 0; display: grid; gap: 1rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 21rem), 1fr)); }
 .platform-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 1.6rem 1.6rem 1.4rem; display: flex; flex-direction: column; gap: 0.9rem; max-width: none !important; scroll-margin-top: 6rem; }
 .platform-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.75rem; }
@@ -373,7 +373,7 @@ td { color: var(--text-2); min-width: 9rem; }
 .publisher-terms { margin: 0 0 1.5rem; }
 
 /* ---------------------------------------------------------------------------------------------------------------
-   Motion language (docs/DESIGN.md, "Motion language"). A calm base, the product moving most, one shared vocabulary:
+   Motion language (docs/product/DESIGN.md, "Motion language"). A calm base, the product moving most, one shared vocabulary:
    brand (the mark drawing itself), reveal, depth, media, feedback, navigation. html.motion is set by the script, so a
    page without it, and anyone asking for reduced motion, sees every element in its finished state at once.
    --------------------------------------------------------------------------------------------------------------- */

@@ -19,7 +19,7 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-/** The answers are trimmed from what a real Jellyfin 12.2.0 server sent (docs/PLAYBACK.md, section 3). */
+/** The answers are trimmed from what a real Jellyfin 12.2.0 server sent (docs/product/PLAYBACK.md, section 3). */
 class JellyfinPlaybackTest {
     private val path = "items/m1/sources/s1"
     private val requests = mutableListOf<HttpRequest>()

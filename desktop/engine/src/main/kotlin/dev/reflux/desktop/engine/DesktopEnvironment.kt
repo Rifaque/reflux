@@ -145,7 +145,7 @@ class DesktopEnvironment(
         // A connection an earlier version wrote into the database is moved into the credential store first.
         connections.sealStored()
         connections.migrateExcludedSections()
-        // Sources from before profiles become the first profile's or shared (docs/WATCH_STATE.md, "Profiles").
+        // Sources from before profiles become the first profile's or shared (docs/product/WATCH_STATE.md, "Profiles").
         connections.adoptProfiles()
     }
 
@@ -178,7 +178,7 @@ class DesktopEnvironment(
     fun source(id: SourceId): MediaSource? = registry.resolve(id)
 
     /**
-     * What this machine can show and decode, as observed (docs/DECISIONS.md, "Desktop capabilities are observed,
+     * What this machine can show and decode, as observed (docs/decisions/DECISIONS.md, "Desktop capabilities are observed,
      * not declared"). Starts from the default screen and nothing known of hardware decoding; the shell tells it
      * which display the window is on, and [probeDecoding] and every playback what the engine decodes.
      */
@@ -205,7 +205,7 @@ class DesktopEnvironment(
     }
 
     /**
-     * Smart Offline on this machine, with the same planner and rules as everywhere (docs/OFFLINE.md). Copies are
+     * Smart Offline on this machine, with the same planner and rules as everywhere (docs/product/OFFLINE.md). Copies are
      * made while Reflux is running; one that was cut short continues from where it was the next time Reflux
      * starts (see [startOffline]).
      */
@@ -294,7 +294,7 @@ class DesktopEnvironment(
     private fun hostName(): String = runCatching { java.net.InetAddress.getLocalHost().hostName }.getOrNull()?.takeIf { it.isNotBlank() } ?: "desktop"
 }
 
-/** How Reflux names itself to the servers it talks to, with the one product version (docs/VERSIONING.md). */
+/** How Reflux names itself to the servers it talks to, with the one product version (docs/release/VERSIONING.md). */
 private val USER_AGENT = "Reflux/${RefluxBuild.VERSION}"
 
 /** The metadata provider's Client ID the build packed in, if it did. */

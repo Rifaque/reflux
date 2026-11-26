@@ -5,12 +5,12 @@ import java.nio.file.Path
 
 /**
  * What a Linux machine without libmpv is told to install, for its own distribution (Phase 1, workstream 12;
- * docs/RELEASE.md, "libmpv on Linux"). Reflux for Linux cannot carry a libmpv of its own: mpv's X11 support, which
+ * docs/release/RELEASE.md, "libmpv on Linux"). Reflux for Linux cannot carry a libmpv of its own: mpv's X11 support, which
  * Reflux's video window uses, is GPL-only (mpv's meson.build: `x11` requires `gpl`), and Reflux ships only LGPL code
  * (DECISIONS.md, 2026-11-18). The distribution's own package is the user's install, under the distribution's terms.
  *
  * Each command was run in a clean container of that distribution and the packaged tarball then played
- * (docs/VERIFICATION.md, "Phase 1"); a distribution not listed gets the general sentence.
+ * (docs/verification/VERIFICATION.md, "Phase 1"); a distribution not listed gets the general sentence.
  */
 internal object LinuxPlaybackSetup {
     /** The hint for the distribution [osRelease] (the text of `/etc/os-release`) describes. */

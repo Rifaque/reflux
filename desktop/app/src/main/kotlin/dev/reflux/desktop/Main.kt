@@ -152,7 +152,7 @@ internal fun runReflux(
     onStarted: (RunningReflux) -> Unit = {},
 ) {
     val platform = DesktopPlatform(environment)
-    // Which build wrote what follows (docs/VERSIONING.md).
+    // Which build wrote what follows (docs/release/VERSIONING.md).
     environment.diagnostics.record("Reflux ${platform.build.label} started")
     // B-063: the Linux desktop's scale Reflux applies itself, where the toolkit leaves it out.
     LinuxDisplayScale.extra.takeIf { it != 1f }?.let { environment.diagnostics.record("The desktop's scale is applied by Reflux: x$it over the toolkit's") }
@@ -289,7 +289,7 @@ internal fun runReflux(
             }
 
             // Where the one video surface is: the whole window under the full player, or in the mini-player's dock
-            // beside the page (docs/PLAYBACK.md, "One session, several presentations").
+            // beside the page (docs/product/PLAYBACK.md, "One session, several presentations").
             // The surface is a native window, which is put where it belongs in one move rather than made to travel.
             val placement = rememberVideoPlacement(app, travels = false)
             // B-084: on Linux the player is this one window: the controls are drawn here, beneath the video surface, which is

@@ -1,6 +1,6 @@
 # Changelog
 
-What changes for people using Reflux, version by version. The rules for versions and for this file are in [docs/VERSIONING.md](docs/VERSIONING.md). `0.9.0-beta.1` is the first build given to people outside the project (a beta, from 17 November 2026). Each release groups its changes under the same categories, in the same order (docs/VERSIONING.md, "Tags, changelog, and promotion").
+What changes for people using Reflux, version by version. The rules for versions and for this file are in [docs/release/VERSIONING.md](docs/release/VERSIONING.md). `0.9.0-beta.1` is the first build given to people outside the project (a beta, from 17 November 2026). Each release groups its changes under the same categories, in the same order (docs/release/VERSIONING.md, "Tags, changelog, and promotion").
 
 ## Unreleased
 

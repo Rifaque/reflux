@@ -1,8 +1,8 @@
-> **Historical (archived 2026-11-21, Phase 4).** Kept unchanged as a record; not a current plan. Current documents: [docs/README.md](../../README.md); this archive: [history/README.md](../README.md).
+> **Historical (archived 2026-11-21, Phase 4).** Kept unchanged as a record; not a current plan. Current documents: [docs/README.md](../../../README.md#documentation); this archive: [history/README.md](../README.md).
 
 # Beta 2: the bug and feature register, the three phases, and the gate
 
-The authoritative record of Beta 2's **scope, phase order, work order, dependencies, exit criteria, and gate** (DECISIONS.md, 2026-11-19, "Beta 2 is cut only after Phases 2 and 3"). **Each issue's detail lives in [BETA-BUG-TRACKER.md](../../planning/BETA-BUG-TRACKER.md)**: the original report, reproduction, status, investigation, implementation, tests, verification by kind, evidence, and what is left. ROADMAP.md says where the work stands and links here; VERIFICATION.md holds the runs. Nothing is repeated between them.
+The authoritative record of Beta 2's **scope, phase order, work order, dependencies, exit criteria, and gate** (DECISIONS.md, 2026-11-19, "Beta 2 is cut only after Phases 2 and 3"). **Each issue's detail lives in [BETA-BUG-TRACKER.md](../../BETA-BUG-TRACKER.md)**: the original report, reproduction, status, investigation, implementation, tests, verification by kind, evidence, and what is left. ROADMAP.md says where the work stands and links here; VERIFICATION.md holds the runs. Nothing is repeated between them.
 
 **Beta 2 is not cut, built, or versioned** until the gate at the end of this file holds and the owner approves it. `0.9.0-beta.1` (`versionCode` 90031, tag `v0.9.0-beta.1`) stays in testing, untouched.
 
@@ -22,7 +22,7 @@ The authoritative record of Beta 2's **scope, phase order, work order, dependenc
 | **2** | Controller, focus, interaction, input, and haptics | B-025, B-008, B-007, B-004, B-019 + B-020 + B-021, B-023, B-011, B-039 + B-012, F-002, F-001, B-036, B-034, B-035, B-037, B-010, B-009 + B-032, B-002, B-015, B-013 |
 | **3** | Media experience, discovery, Trickplay, and final performance | B-027, B-038, B-030, B-029, F-003, B-028, B-040, B-014, B-041 (final optimisation and comparison), F-004 (final validation) |
 
-Phases are implemented, tested, documented, and reviewed **in order**; none is skipped, and no release build or Beta 2 release is started while any phase is incomplete or awaiting acceptance. One follow-up per phase at most, for a genuine blocker or an essential correction (AGENTS.md, milestone execution rules). Each issue's status: the tracker's [phase overview](../../planning/BETA-BUG-TRACKER.md#phase-overview).
+Phases are implemented, tested, documented, and reviewed **in order**; none is skipped, and no release build or Beta 2 release is started while any phase is incomplete or awaiting acceptance. One follow-up per phase at most, for a genuine blocker or an essential correction (AGENTS.md, milestone execution rules). Each issue's status: the tracker's [phase overview](../../BETA-BUG-TRACKER.md#phase-overview).
 
 ### Phase 1: reliability, security, data integrity, foundational investigations
 
@@ -157,9 +157,9 @@ Closure (2026-11-20): the Linux VM, the Google TV emulator and the Phone 2a walk
 
 *State (2026-11-20): **accepted and formally closed by the owner**; see [Phase 3 closure](#phase-3-closure-2026-11-20-accepted-and-formally-closed-by-the-owner) below. Before the closure:* The owner's Phase 3 work order of 2026-11-20 set the executed scope:
 - **In scope:** B-016, B-017, a bug sweep (B-042 included), B-030, B-029, F-P3, B-014, B-028, F-P4, F-003 (conditional on feasibility), B-041, B-022, F-004.
-- **Out of scope as V1.1 candidates:** B-027, B-038, B-040 (researched only: [V1.1-LIBRARY-RESEARCH.md](../../planning/V1.1-LIBRARY-RESEARCH.md)).
+- **Out of scope as V1.1 candidates:** B-027, B-038, B-040 (researched only: [V1.1-LIBRARY-RESEARCH.md](../../product/V1.1-LIBRARY-RESEARCH.md)).
 
-Evidence: the tracker's [phase overview](../../planning/BETA-BUG-TRACKER.md#phase-overview) and VERIFICATION.md, "Phase 3". Against the exit criteria:
+Evidence: the tracker's [phase overview](../../BETA-BUG-TRACKER.md#phase-overview) and VERIFICATION.md, "Phase 3". Against the exit criteria:
 - **Media-experience features:** implemented and reviewed: Trickplay, the stick, Quick View, the hero, Atmosphere, the keyboard.
 - **Sorting and filtering:** not in this phase (V1.1, by the work order).
 - **Trickplay:**
@@ -182,7 +182,7 @@ Evidence: the tracker's [phase overview](../../planning/BETA-BUG-TRACKER.md#phas
 
 ### Phase 3 closure (2026-11-20): accepted and formally closed by the owner
 
-**The owner accepted and formally closed Phase 3 on 2026-11-20,** after testing the final build by hand (DECISIONS.md, 2026-11-20, "Phase 3 accepted and formally closed"). Each issue's record is in the [tracker](../../planning/BETA-BUG-TRACKER.md#phase-overview), and the runs in VERIFICATION.md under "Phase 3", "Phase 3: final validation and closure" and "Phase 3: owner acceptance and formal closure". This record is not repeated there.
+**The owner accepted and formally closed Phase 3 on 2026-11-20,** after testing the final build by hand (DECISIONS.md, 2026-11-20, "Phase 3 accepted and formally closed"). Each issue's record is in the [tracker](../../BETA-BUG-TRACKER.md#phase-overview), and the runs in VERIFICATION.md under "Phase 3", "Phase 3: final validation and closure" and "Phase 3: owner acceptance and formal closure". This record is not repeated there.
 
 **Commits** (branch `open-source-gpl`, local only):
 
@@ -248,13 +248,13 @@ Evidence: the tracker's [phase overview](../../planning/BETA-BUG-TRACKER.md#phas
 - **F-004:** stays In Progress by design: no provider without the owner.
 - **F-005 and F-P1:** unassigned.
 
-**The freeze.** From the closure, Beta 2's fix scope is frozen. New findings go to the tracker's [Beta 3 backlog](../../planning/BETA-BUG-TRACKER.md#beta-3-backlog-from-phase-3s-closure-2026-11-20), unless the owner explicitly authorises a critical Beta 2 blocker.
+**The freeze.** From the closure, Beta 2's fix scope is frozen. New findings go to the tracker's [Beta 3 backlog](../../BETA-BUG-TRACKER.md#beta-3-backlog-from-phase-3s-closure-2026-11-20), unless the owner explicitly authorises a critical Beta 2 blocker.
 
 **Next.** Phase 4 starts in a fresh session from [PHASE-4-HANDOFF.md](PHASE-4-HANDOFF.md). Beta 2 is still not cut: the [gate](#the-beta-2-gate) remains.
 
 ### Reconciliation: what the allocations do not settle (owner decisions; nothing moved)
 
-The tracker's [owner-decision table](../../planning/BETA-BUG-TRACKER.md#unassigned-issues-and-unresolved-owner-decisions) holds each one's options and reasoning.
+The tracker's [owner-decision table](../../BETA-BUG-TRACKER.md#unassigned-issues-and-unresolved-owner-decisions) holds each one's options and reasoning.
 
 | Item | Finding | Recommendation, not applied |
 | --- | --- | --- |
@@ -270,7 +270,7 @@ The tracker's [owner-decision table](../../planning/BETA-BUG-TRACKER.md#unassign
 
 ## Status words
 
-The tracker's eight: Not Started · Investigating · In Progress · Fixed · Verified · Blocked · Deferred · Not Reproduced ([definitions](../../planning/BETA-BUG-TRACKER.md#status-definitions-and-how-this-tracker-is-kept)). Verification is reported by kind (automated, emulator, physical device, desktop/OS in a VM or container, regression, owner acceptance), never merged. Statuses are kept only in the tracker.
+The tracker's eight: Not Started · Investigating · In Progress · Fixed · Verified · Blocked · Deferred · Not Reproduced ([definitions](../../BETA-BUG-TRACKER.md#status-definitions-and-how-this-tracker-is-kept)). Verification is reported by kind (automated, emulator, physical device, desktop/OS in a VM or container, regression, owner acceptance), never merged. Statuses are kept only in the tracker.
 
 ## The register: bugs
 
@@ -278,62 +278,62 @@ Platforms: **P** Android phone, **T** Android tablet, **TV** Android TV / Google
 
 | ID | Title | Priority (original) | Platforms | Phase |
 | --- | --- | --- | --- | --- |
-| [B-001](../../planning/BETA-BUG-TRACKER.md#b-001) | Video frame stuck while audio continues | High, provisional | P T TV F | 1 |
-| [B-002](../../planning/BETA-BUG-TRACKER.md#b-002) | Playback controls disappear after moving window between monitors | Medium | W | 2 |
-| [B-003](../../planning/BETA-BUG-TRACKER.md#b-003) | Multiple Jellyfin addresses overwrite each other | Medium | all | 1 |
-| [B-004](../../planning/BETA-BUG-TRACKER.md#b-004) | Source configuration and controller input unreliable | Medium | TV | 2 |
-| [B-005](../../planning/BETA-BUG-TRACKER.md#b-005) | Library scan status toast overlaps interface | Low–Medium | P T | 1 |
-| [B-006](../../planning/BETA-BUG-TRACKER.md#b-006) | Metadata/search loading feels slow | Low–Medium | P W | 1 |
-| [B-007](../../planning/BETA-BUG-TRACKER.md#b-007) | Home D-pad navigation skips or mishandles See All | Medium | W (TV?) | 2 |
-| [B-008](../../planning/BETA-BUG-TRACKER.md#b-008) | Returning Home can leave controller navigation stuck | Medium | W | 2 |
-| [B-009](../../planning/BETA-BUG-TRACKER.md#b-009) | Focus outline obscures movie titles | Medium | W F TV | 2 |
-| [B-010](../../planning/BETA-BUG-TRACKER.md#b-010) | Search suggestions have poor focus spacing and clipping | Medium | W | 2 |
-| [B-011](../../planning/BETA-BUG-TRACKER.md#b-011) | Controller search has no usable on-screen keyboard | Medium | W TV | 2 |
-| [B-012](../../planning/BETA-BUG-TRACKER.md#b-012) | Controller shortcuts incomplete or unclear | Low | W | 2 |
-| [B-013](../../planning/BETA-BUG-TRACKER.md#b-013) | Home hero does not restore its full position after scrolling | Medium | W | 2 |
-| [B-014](../../planning/BETA-BUG-TRACKER.md#b-014) | Home hero appears to show one alphabetically selected movie | Low, design question | all | 3 |
-| [B-015](../../planning/BETA-BUG-TRACKER.md#b-015) | Poster rows have inconsistent vertical alignment or clipping | Low | W | 2 |
-| [B-016](../../planning/BETA-BUG-TRACKER.md#b-016) | App opens last-used profile instead of profile selection | Medium | W L P T | **unallocated** |
-| [B-017](../../planning/BETA-BUG-TRACKER.md#b-017) | No obvious way to log out or switch active profile | Medium | all | **unallocated** |
-| [B-018](../../planning/BETA-BUG-TRACKER.md#b-018) | Profiles can be deleted without proving ownership | Critical, security | all | 1 |
-| [B-019](../../planning/BETA-BUG-TRACKER.md#b-019) | Backspace in profile PIN input triggers Home | Medium | W L | 2 |
-| [B-020](../../planning/BETA-BUG-TRACKER.md#b-020) | Backspace in profile-name input triggers Home | Medium | W L | 2 |
-| [B-021](../../planning/BETA-BUG-TRACKER.md#b-021) | Backspace behaviour inconsistent across input fields | Medium | W L | 2 |
-| [B-022](../../planning/BETA-BUG-TRACKER.md#b-022) | Windows startup slower than Android | Low–Medium | W | **unallocated** (see B-041) |
-| [B-023](../../planning/BETA-BUG-TRACKER.md#b-023) | Reflux-designed on-screen keyboard for controller input | High, UX requirement | W T (TV to assess) | 2 |
-| [B-024](../../planning/BETA-BUG-TRACKER.md#b-024) | Conflicting resolution values in version description | Medium, provisional | W | 1 |
-| [B-025](../../planning/BETA-BUG-TRACKER.md#b-025) | Controller support robust across the whole app | High, UX requirement | W TV F P T | 2 |
-| [B-026](../../planning/BETA-BUG-TRACKER.md#b-026) | Reflux remains as a Windows background process after closing | Medium, provisional | W | 1 |
-| [B-027](../../planning/BETA-BUG-TRACKER.md#b-027) | Preserve and expose separate Jellyfin libraries | V1.1 requirement → Beta 2 by the owner's plan (confirmation requested) | all | 3 |
-| [B-028](../../planning/BETA-BUG-TRACKER.md#b-028) | Media atmosphere changes have little or no visible effect | Medium, provisional | all | 3 |
-| [B-029](../../planning/BETA-BUG-TRACKER.md#b-029) | Right analogue stick has no useful playback navigation | Medium, UX requirement | controllers | 3 (after B-030) |
-| [B-030](../../planning/BETA-BUG-TRACKER.md#b-030) | Trickplay preview thumbnails are missing | High, playback UX requirement | W L TV F P T | 3 |
-| [B-031](../../planning/BETA-BUG-TRACKER.md#b-031) | Linux playback fails under a non-C numeric locale | High, potentially release-blocking | L | 1 |
-| [B-032](../../planning/BETA-BUG-TRACKER.md#b-032) | Disconnected-source badge overlaps poster content and watch indicators | Medium | P T (others?) | 2 |
-| [B-033](../../planning/BETA-BUG-TRACKER.md#b-033) | Orphaned favourites remain after their source is removed | Medium | all | 1 |
-| [B-034](../../planning/BETA-BUG-TRACKER.md#b-034) | Mobile search placeholder too long and visually dominant | Low–Medium | P T | 2 |
-| [B-035](../../planning/BETA-BUG-TRACKER.md#b-035) | Mobile search suggestion chips oversized and labelled "Try" | Low–Medium | P T | 2 |
-| [B-036](../../planning/BETA-BUG-TRACKER.md#b-036) | Mobile Search layout and navigation break with the keyboard | Medium | P T | 2 |
-| [B-037](../../planning/BETA-BUG-TRACKER.md#b-037) | Search has no designed empty state | Low–Medium | all | 2 |
-| [B-038](../../planning/BETA-BUG-TRACKER.md#b-038) | Movies and Shows lack sorting and filtering | Medium, product requirement | all | 3 |
-| [B-039](../../planning/BETA-BUG-TRACKER.md#b-039) | Controller button mapping needs a deliberate design | Medium, UX requirement | controllers | 2 |
-| [B-040](../../planning/BETA-BUG-TRACKER.md#b-040) | Home recommendations need more variety | Low–Medium, improvement | all | 3 |
-| [B-041](../../planning/BETA-BUG-TRACKER.md#b-041) | Cross-platform performance audit | High, V1 readiness | all | 1 (baseline) + 3 (final) |
-| [B-042](../../planning/BETA-BUG-TRACKER.md#b-042) | Controller focus and pointer hover conflict on media cards | Major (first master prompt) / to be determined (tracker prompt) | W (pointer + controller) | **pending owner approval** (recommended 2) |
+| [B-001](../../BETA-BUG-TRACKER.md#b-001) | Video frame stuck while audio continues | High, provisional | P T TV F | 1 |
+| [B-002](../../BETA-BUG-TRACKER.md#b-002) | Playback controls disappear after moving window between monitors | Medium | W | 2 |
+| [B-003](../../BETA-BUG-TRACKER.md#b-003) | Multiple Jellyfin addresses overwrite each other | Medium | all | 1 |
+| [B-004](../../BETA-BUG-TRACKER.md#b-004) | Source configuration and controller input unreliable | Medium | TV | 2 |
+| [B-005](../../BETA-BUG-TRACKER.md#b-005) | Library scan status toast overlaps interface | Low–Medium | P T | 1 |
+| [B-006](../../BETA-BUG-TRACKER.md#b-006) | Metadata/search loading feels slow | Low–Medium | P W | 1 |
+| [B-007](../../BETA-BUG-TRACKER.md#b-007) | Home D-pad navigation skips or mishandles See All | Medium | W (TV?) | 2 |
+| [B-008](../../BETA-BUG-TRACKER.md#b-008) | Returning Home can leave controller navigation stuck | Medium | W | 2 |
+| [B-009](../../BETA-BUG-TRACKER.md#b-009) | Focus outline obscures movie titles | Medium | W F TV | 2 |
+| [B-010](../../BETA-BUG-TRACKER.md#b-010) | Search suggestions have poor focus spacing and clipping | Medium | W | 2 |
+| [B-011](../../BETA-BUG-TRACKER.md#b-011) | Controller search has no usable on-screen keyboard | Medium | W TV | 2 |
+| [B-012](../../BETA-BUG-TRACKER.md#b-012) | Controller shortcuts incomplete or unclear | Low | W | 2 |
+| [B-013](../../BETA-BUG-TRACKER.md#b-013) | Home hero does not restore its full position after scrolling | Medium | W | 2 |
+| [B-014](../../BETA-BUG-TRACKER.md#b-014) | Home hero appears to show one alphabetically selected movie | Low, design question | all | 3 |
+| [B-015](../../BETA-BUG-TRACKER.md#b-015) | Poster rows have inconsistent vertical alignment or clipping | Low | W | 2 |
+| [B-016](../../BETA-BUG-TRACKER.md#b-016) | App opens last-used profile instead of profile selection | Medium | W L P T | **unallocated** |
+| [B-017](../../BETA-BUG-TRACKER.md#b-017) | No obvious way to log out or switch active profile | Medium | all | **unallocated** |
+| [B-018](../../BETA-BUG-TRACKER.md#b-018) | Profiles can be deleted without proving ownership | Critical, security | all | 1 |
+| [B-019](../../BETA-BUG-TRACKER.md#b-019) | Backspace in profile PIN input triggers Home | Medium | W L | 2 |
+| [B-020](../../BETA-BUG-TRACKER.md#b-020) | Backspace in profile-name input triggers Home | Medium | W L | 2 |
+| [B-021](../../BETA-BUG-TRACKER.md#b-021) | Backspace behaviour inconsistent across input fields | Medium | W L | 2 |
+| [B-022](../../BETA-BUG-TRACKER.md#b-022) | Windows startup slower than Android | Low–Medium | W | **unallocated** (see B-041) |
+| [B-023](../../BETA-BUG-TRACKER.md#b-023) | Reflux-designed on-screen keyboard for controller input | High, UX requirement | W T (TV to assess) | 2 |
+| [B-024](../../BETA-BUG-TRACKER.md#b-024) | Conflicting resolution values in version description | Medium, provisional | W | 1 |
+| [B-025](../../BETA-BUG-TRACKER.md#b-025) | Controller support robust across the whole app | High, UX requirement | W TV F P T | 2 |
+| [B-026](../../BETA-BUG-TRACKER.md#b-026) | Reflux remains as a Windows background process after closing | Medium, provisional | W | 1 |
+| [B-027](../../BETA-BUG-TRACKER.md#b-027) | Preserve and expose separate Jellyfin libraries | V1.1 requirement → Beta 2 by the owner's plan (confirmation requested) | all | 3 |
+| [B-028](../../BETA-BUG-TRACKER.md#b-028) | Media atmosphere changes have little or no visible effect | Medium, provisional | all | 3 |
+| [B-029](../../BETA-BUG-TRACKER.md#b-029) | Right analogue stick has no useful playback navigation | Medium, UX requirement | controllers | 3 (after B-030) |
+| [B-030](../../BETA-BUG-TRACKER.md#b-030) | Trickplay preview thumbnails are missing | High, playback UX requirement | W L TV F P T | 3 |
+| [B-031](../../BETA-BUG-TRACKER.md#b-031) | Linux playback fails under a non-C numeric locale | High, potentially release-blocking | L | 1 |
+| [B-032](../../BETA-BUG-TRACKER.md#b-032) | Disconnected-source badge overlaps poster content and watch indicators | Medium | P T (others?) | 2 |
+| [B-033](../../BETA-BUG-TRACKER.md#b-033) | Orphaned favourites remain after their source is removed | Medium | all | 1 |
+| [B-034](../../BETA-BUG-TRACKER.md#b-034) | Mobile search placeholder too long and visually dominant | Low–Medium | P T | 2 |
+| [B-035](../../BETA-BUG-TRACKER.md#b-035) | Mobile search suggestion chips oversized and labelled "Try" | Low–Medium | P T | 2 |
+| [B-036](../../BETA-BUG-TRACKER.md#b-036) | Mobile Search layout and navigation break with the keyboard | Medium | P T | 2 |
+| [B-037](../../BETA-BUG-TRACKER.md#b-037) | Search has no designed empty state | Low–Medium | all | 2 |
+| [B-038](../../BETA-BUG-TRACKER.md#b-038) | Movies and Shows lack sorting and filtering | Medium, product requirement | all | 3 |
+| [B-039](../../BETA-BUG-TRACKER.md#b-039) | Controller button mapping needs a deliberate design | Medium, UX requirement | controllers | 2 |
+| [B-040](../../BETA-BUG-TRACKER.md#b-040) | Home recommendations need more variety | Low–Medium, improvement | all | 3 |
+| [B-041](../../BETA-BUG-TRACKER.md#b-041) | Cross-platform performance audit | High, V1 readiness | all | 1 (baseline) + 3 (final) |
+| [B-042](../../BETA-BUG-TRACKER.md#b-042) | Controller focus and pointer hover conflict on media cards | Major (first master prompt) / to be determined (tracker prompt) | W (pointer + controller) | **pending owner approval** (recommended 2) |
 
-Issues found during Beta 2 work (B-043 onward) are in the tracker's [newly discovered issues](../../planning/BETA-BUG-TRACKER.md#newly-discovered-issues-b-043-onward); they are allocated by existing scope only.
+Issues found during Beta 2 work (B-043 onward) are in the tracker's [newly discovered issues](../../BETA-BUG-TRACKER.md#newly-discovered-issues-b-043-onward); they are allocated by existing scope only.
 
 ## The register: features
 
 | ID | Feature | Phase | Default |
 | --- | --- | --- | --- |
-| [F-001](../../planning/BETA-BUG-TRACKER.md#f-001) | Interface haptics (phone, tablet) | 2 | **Off**: explicit opt-in |
-| [F-002](../../planning/BETA-BUG-TRACKER.md#f-002) | Controller rumble | 2 | **On** on compatible hardware; toggle in Settings |
-| [F-003](../../planning/BETA-BUG-TRACKER.md#f-003) | Video haptics | 3 | **Off**, independent of interface haptics; **off on controllers** until explicitly enabled |
-| [F-004](../../planning/BETA-BUG-TRACKER.md#f-004) | Privacy-respecting analytics and diagnostics | 1 (foundation) + 3 (validation) | **Off**: explicit informed consent |
-| [F-005](../../planning/BETA-BUG-TRACKER.md#f-005) | Controller mapping customisation | **unallocated** (overlaps B-039) | — |
-| [F-P1](../../planning/BETA-BUG-TRACKER.md#f-p1-and-f-p2) | Cross-platform collapsible sidebar (master prompt's "F-005") | owner to confirm (Phase 3 in the master prompt) | Expanded or collapsed, per form factor |
-| [F-P2](../../planning/BETA-BUG-TRACKER.md#f-p1-and-f-p2) | Controller sidebar focus toggle with Y (master prompt's "F-006") | owner to confirm (with F-P1) | — |
+| [F-001](../../BETA-BUG-TRACKER.md#f-001) | Interface haptics (phone, tablet) | 2 | **Off**: explicit opt-in |
+| [F-002](../../BETA-BUG-TRACKER.md#f-002) | Controller rumble | 2 | **On** on compatible hardware; toggle in Settings |
+| [F-003](../../BETA-BUG-TRACKER.md#f-003) | Video haptics | 3 | **Off**, independent of interface haptics; **off on controllers** until explicitly enabled |
+| [F-004](../../BETA-BUG-TRACKER.md#f-004) | Privacy-respecting analytics and diagnostics | 1 (foundation) + 3 (validation) | **Off**: explicit informed consent |
+| [F-005](../../BETA-BUG-TRACKER.md#f-005) | Controller mapping customisation | **unallocated** (overlaps B-039) | — |
+| [F-P1](../../BETA-BUG-TRACKER.md#f-p1-and-f-p2) | Cross-platform collapsible sidebar (master prompt's "F-005") | owner to confirm (Phase 3 in the master prompt) | Expanded or collapsed, per form factor |
+| [F-P2](../../BETA-BUG-TRACKER.md#f-p1-and-f-p2) | Controller sidebar focus toggle with Y (master prompt's "F-006") | owner to confirm (with F-P1) | — |
 
 ### Acceptance criteria the owner set (2026-11-19): defaults and consent are requirements
 

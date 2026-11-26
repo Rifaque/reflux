@@ -31,7 +31,7 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
- * The interaction contract (B-025; docs/INPUT_MODEL.md, "Event priority"), through the real screens: the active text
+ * The interaction contract (B-025; docs/product/INPUT_MODEL.md, "Event priority"), through the real screens: the active text
  * editor first, a modal next, then the focused control, the destination, and global shortcuts. Reproduces B-019 and
  * B-020 (Backspace in a PIN or a profile name went Home) and drives the Reflux keyboard (B-023) with a controller.
  */

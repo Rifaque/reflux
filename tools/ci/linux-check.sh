@@ -8,7 +8,7 @@
 # output from another operating system is never reused. Mount a directory at /out to receive the test
 # result files. Append `window` to run only the window tests, and a number to repeat them that often:
 # they involve a window manager, a compositor, and a native engine, and repetition is how to trust them.
-# `package` builds the Linux release archive instead (docs/RELEASE.md, "Desktop artifacts"), from a copy that keeps
+# `package` builds the Linux release archive instead (docs/release/RELEASE.md, "Desktop artifacts"), from a copy that keeps
 # .git so the archive knows its commit, and writes it with its release-info.json to /out.
 set -euo pipefail
 

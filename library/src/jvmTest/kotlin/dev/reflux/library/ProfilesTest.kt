@@ -21,7 +21,7 @@ import kotlin.test.assertTrue
 
 private const val MINUTE = 60_000L
 
-/** Profiles and account isolation (M8; docs/WATCH_STATE.md, "Profiles"). */
+/** Profiles and account isolation (M8; docs/product/WATCH_STATE.md, "Profiles"). */
 class ProfilesTest {
     private var clock = 1_790_000_000_000L
     private val file = Files.createTempDirectory("reflux-profiles").resolve("library.db")

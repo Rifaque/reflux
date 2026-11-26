@@ -35,7 +35,7 @@ import kotlin.test.assertEquals
 
 /**
  * The real media matrix on the desktop engine: every kind of media on a real server, planned for this client and
- * played once (docs/PLAYBACK.md, section 15). It reads the server's files and changes none of them. On request, with
+ * played once (docs/product/PLAYBACK.md, section 15). It reads the server's files and changes none of them. On request, with
  * `REFLUX_MATRIX=1` and `--rerun`: it takes minutes, and its conversions are real work for the server.
  */
 class MediaMatrixLiveTest {

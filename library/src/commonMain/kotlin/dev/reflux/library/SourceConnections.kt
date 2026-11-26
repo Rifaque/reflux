@@ -29,7 +29,7 @@ sealed interface ConnectResult {
 
     /**
      * The account is already signed in on this device, in profile [profileName]: an account is one viewer's, so
-     * another profile cannot share it (docs/WATCH_STATE.md, "Profiles"). Nothing was added; the sign-in just made
+     * another profile cannot share it (docs/product/WATCH_STATE.md, "Profiles"). Nothing was added; the sign-in just made
      * was ended again.
      */
     data class InAnotherProfile(val profileName: String) : ConnectResult
@@ -76,7 +76,7 @@ interface ConfigSeal {
     /** Lets go of whatever was kept for [id], when the source is removed. */
     fun forget(id: SourceId) {}
 
-    /** Stored as it is; used where the platform has nothing better (see docs/RELEASE.md). */
+    /** Stored as it is; used where the platform has nothing better (see docs/release/RELEASE.md). */
     object None : ConfigSeal {
         override fun seal(id: SourceId, config: String) = config
         override fun open(id: SourceId, stored: String) = stored
@@ -150,7 +150,7 @@ class SourceConnections(
     fun open(record: SourceRecord): String = seal.open(record.id, record.config)
 
     /**
-     * Moves libraries a connection used to leave unread into the library's inclusion (docs/NAVIGATION.md): they
+     * Moves libraries a connection used to leave unread into the library's inclusion (docs/product/NAVIGATION.md): they
      * become excluded libraries, so the viewer's choice holds, and the connection reads every library again, so
      * each can be browsed. Run once at start, after [sealStored]; a connection that cannot be rewritten is left
      * working as it was and the problem reported.
@@ -174,7 +174,7 @@ class SourceConnections(
     }
 
     /**
-     * Brings sources from before profiles (M8) into the profile model, once (docs/WATCH_STATE.md, "Profiles"). Run at
+     * Brings sources from before profiles (M8) into the profile model, once (docs/product/WATCH_STATE.md, "Profiles"). Run at
      * start, after [migrateExcludedSections]:
      * - a server's address becomes a shared endpoint, so another profile can sign in to it without typing it;
      * - a connection that is nobody's account (a Plex server reached without signing in) becomes shared, with its
@@ -336,7 +336,7 @@ class SourceConnections(
             library.addSource(source, stored)
             if (name != source.descriptor.displayName) library.queries.renameSource(name, id.value)
         }
-        // Whose it is (docs/WATCH_STATE.md, "Profiles"): an account is the profile's that signed in; anything else is
+        // Whose it is (docs/product/WATCH_STATE.md, "Profiles"): an account is the profile's that signed in; anything else is
         // shared. A server's own records are compared with its account's profile, or for a shared server the profile
         // that added it; a share keeps none.
         val endpoint = if (connector.kind == ConnectionKind.SERVER) {

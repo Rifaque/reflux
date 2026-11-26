@@ -1,4 +1,4 @@
-> **Historical (archived 2026-11-21, Phase 4).** Kept unchanged as a record; not a current plan. Current documents: [docs/README.md](../../README.md); this archive: [history/README.md](../README.md).
+> **Historical (archived 2026-11-21, Phase 4).** Kept unchanged as a record; not a current plan. Current documents: [docs/README.md](../../../README.md#documentation); this archive: [history/README.md](../README.md).
 
 # F-P4: Adaptive Virtual Keyboard and Cross-Modality Layout Morphing
 
@@ -9,7 +9,7 @@
 - **D3:** the mouse keyboard follows the system keyboard layout where reliably detectable, with a documented fallback (§5.1).
 - **D4:** dictation and phone-assisted TV entry are excluded.
 - **D5:** physical typing is a separate input path that never hides or presses the virtual keyboard (§7).
-**Tracker:** [BETA-BUG-TRACKER.md, F-P4](../../planning/BETA-BUG-TRACKER.md#f-p4). **ID:** F-P4 (F-P3 is Media Quick View).
+**Tracker:** [BETA-BUG-TRACKER.md, F-P4](../../BETA-BUG-TRACKER.md#f-p4). **ID:** F-P4 (F-P3 is Media Quick View).
 **Related:** B-023 (the Reflux keyboard), B-051 (the desk keyboard button, modality visuals), B-054 (cursor and held erase), B-004/B-011 (remote and controller text entry), B-025 (the input contract), B-057 (Search), INPUT_MODEL.md ("Text entry by input", "Controller mapping").
 
 This document separates **evidence** (what was measured or found, with its source) from **recommendations** (Reflux's design calls), and says which is which.

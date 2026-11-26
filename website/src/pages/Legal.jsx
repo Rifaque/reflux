@@ -8,7 +8,7 @@ const Review = () => (
 )
 
 /**
- * What Reflux does with data, as its code does it (docs/PRIVACY.md is the inventory this is written from).
+ * What Reflux does with data, as its code does it (docs/release/PRIVACY.md is the inventory this is written from).
  * Nothing here is a promise the code does not keep.
  */
 export function Privacy() {

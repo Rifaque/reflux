@@ -89,7 +89,7 @@ interface FolderBrowser {
 
 /**
  * What the experience layer needs from a platform shell. Everything here is a platform capability; the
- * experience layer checks it instead of assuming it (docs/ARCHITECTURE.md).
+ * experience layer checks it instead of assuming it (docs/engineering/ARCHITECTURE.md).
  */
 interface Platform {
     val artwork: ArtworkLoader
@@ -135,7 +135,7 @@ interface Platform {
     val connections: SourceConnections? get() = null
 
     /**
-     * What profile PINs are checked with: a key the platform's secure store holds (docs/WATCH_STATE.md, "Profiles");
+     * What profile PINs are checked with: a key the platform's secure store holds (docs/product/WATCH_STATE.md, "Profiles");
      * null where there is none, and then no profile can have a PIN.
      */
     val pinKey: dev.reflux.library.PinKey? get() = null

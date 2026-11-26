@@ -131,7 +131,7 @@ class AppState(
 
     /**
      * Whether what is playing can step aside into a mini-player here: the shell can show its video surface in the
-     * dock, and the device is not a television, whose player is the whole screen (docs/NAVIGATION.md, section 8).
+     * dock, and the device is not a television, whose player is the whole screen (docs/product/NAVIGATION.md, section 8).
      */
     val miniPlayerAvailable: Boolean get() = platform.docksVideo && !platform.television
 
@@ -218,14 +218,14 @@ class AppState(
     val metadataAttribution: ProviderAttribution? get() = pipeline.metadataAttribution
 
     /**
-     * Media Atmosphere (docs/DESIGN.md): whether artwork may color the space around it. Off by default, so the
+     * Media Atmosphere (docs/product/DESIGN.md): whether artwork may color the space around it. Off by default, so the
      * canonical page is neutral; the viewer's choice is kept with the library.
      */
     var mediaAtmosphere by mutableStateOf(false)
         private set
 
     /**
-     * Whether Reflux may look up titles, descriptions, and artwork online (docs/METADATA.md, "Online lookups"). On
+     * Whether Reflux may look up titles, descriptions, and artwork online (docs/product/METADATA.md, "Online lookups"). On
      * unless the viewer turned it off; off, what sources say and what was fetched before is all there is.
      */
     var onlineMetadata by mutableStateOf(true)
@@ -246,7 +246,7 @@ class AppState(
         scope.launch { runCatching { read { this.onlineMetadata } }.getOrNull()?.let { onlineMetadata = it } }
         scope.launch { runCatching { read { setting(CONTROLLER_HINTS) } }.getOrNull()?.let { hintsHidden = it == "hidden" } }
         scope.launch { runCatching { read { setting(NAVIGATION_COLLAPSED) } }.getOrNull()?.let { navigationCollapsed = it == "collapsed" } }
-        // Who is watching is known, or asked, from the moment Reflux opens (docs/WATCH_STATE.md, "Profiles").
+        // Who is watching is known, or asked, from the moment Reflux opens (docs/product/WATCH_STATE.md, "Profiles").
         scope.launch { askWhoIsWatchingAtStart() }
     }
 
@@ -519,7 +519,7 @@ class AppState(
     /** The global destinations this platform has, in the navigation's order: the primary ones, then the utility area. */
     val destinations: List<Destination.Section> get() = Destinations.filter { it != Destination.Downloads || keepsCopies }
 
-    /** The utility area this platform has (docs/NAVIGATION.md, section 1), in its order. */
+    /** The utility area this platform has (docs/product/NAVIGATION.md, section 1), in its order. */
     val utilityDestinations: List<Destination.Section> get() = UtilityDestinations.filter { it in destinations }
 
     /** Goes to a global destination, or back to its top when it is the one already shown. */
@@ -538,7 +538,7 @@ class AppState(
     }
 
     /**
-     * Moves focus to the navigation's current destination, where a television's Back goes first (docs/NAVIGATION.md,
+     * Moves focus to the navigation's current destination, where a television's Back goes first (docs/product/NAVIGATION.md,
      * section 2). Installed by the root composable; returns false when focus is already there or cannot move.
      */
     internal var focusNavigation: (() -> Boolean)? = null
@@ -557,7 +557,7 @@ class AppState(
     }
 
     /**
-     * Includes a source in the unified library, or leaves it out (docs/NAVIGATION.md, section 5). Nothing else about
+     * Includes a source in the unified library, or leaves it out (docs/product/NAVIGATION.md, section 5). Nothing else about
      * it changes: it stays connected and can be browsed and played from its own page.
      */
     fun setSourceIncluded(id: SourceId, included: Boolean, name: String): Job = attempt("That couldn't be changed. Try again.") {
@@ -752,7 +752,7 @@ class AppState(
      *
      * @param versionId a specific version instead of Best Version.
      * @param resume false starts from the beginning.
-     * @param scope where it is played from: a source's page plays that source's copy (docs/NAVIGATION.md, section 4).
+     * @param scope where it is played from: a source's page plays that source's copy (docs/product/NAVIGATION.md, section 4).
      */
     fun play(itemId: MediaId, versionId: VersionId? = null, resume: Boolean = true, scope: LibraryScope = LibraryScope.Unified): Job = attempt("This couldn't be played right now.") {
         // The full player is in the way of everything, so nothing is started from under it. What plays in the
@@ -800,7 +800,7 @@ class AppState(
 
     private fun continueFromOutsideIn(itemId: MediaId, profile: ProfileId?): Job = scope.launch {
         // A card opens in the profile whose Continue Watching it was, without asking who is watching; a profile that
-        // has a PIN now is opened with it first (docs/WATCH_STATE.md, "Profiles").
+        // has a PIN now is opened with it first (docs/product/WATCH_STATE.md, "Profiles").
         loadProfiles()
         val target = profile?.let { id -> profiles.firstOrNull { it.id == id } } ?: activeProfile
         when {
@@ -836,7 +836,7 @@ class AppState(
     }
 
     internal fun playbackClosed(session: PlaybackSession, release: Job) {
-        // What the support report says about the last playback (docs/RELEASE.md, "Diagnostics export").
+        // What the support report says about the last playback (docs/release/RELEASE.md, "Diagnostics export").
         runCatching { session.report() }.getOrNull()?.takeIf { it.isNotEmpty() }?.let { lastPlayback = it }
         if (playback === session) playback = null
         releasing = release
@@ -851,13 +851,13 @@ class AppState(
     val canSaveSupportReport: Boolean get() = platform.supportReports != null
 
     /**
-     * A support report of this moment, for a bug report (docs/RELEASE.md, "Diagnostics export"): the build, the
+     * A support report of this moment, for a bug report (docs/release/RELEASE.md, "Diagnostics export"): the build, the
      * platform, what the device plays, each source's kind and state, the last playback, and the recent problems.
      * Titles, source names, addresses, and user names are given to it as words to remove; it removes the rest by shape.
      */
     suspend fun supportReport(now: String): SupportReport {
         val (sources, titles) = read {
-            // The open profile's view: another profile's accounts are not this viewer's to report (docs/WATCH_STATE.md, "Profiles").
+            // The open profile's view: another profile's accounts are not this viewer's to report (docs/product/WATCH_STATE.md, "Profiles").
             val records = visibleSources()
             records.map { record ->
                 val scope = LibraryScope.OfSource(record.id)
@@ -870,7 +870,7 @@ class AppState(
         val playing = playback?.report().orEmpty().ifEmpty { lastPlayback }
         return SupportReport(
             build = platform.build, generatedAt = now,
-            // How many profiles there are, never who: names are the viewers' own (docs/WATCH_STATE.md, "Profiles").
+            // How many profiles there are, never who: names are the viewers' own (docs/product/WATCH_STATE.md, "Profiles").
             environment = platform.platformFacts + SupportReport.Fact("Profiles", read { profiles() }.size.toString()),
             capabilities = SupportReport.capabilities(platform.device), sources = sources,
             playback = playing.map { SupportReport.Fact(it.heading, it.text) },
@@ -1522,7 +1522,7 @@ class AppState(
         panelCloses.remove(close)
     }
 
-    // Profiles (docs/WATCH_STATE.md, "Profiles") ----------------------------------------------------------
+    // Profiles (docs/product/WATCH_STATE.md, "Profiles") ----------------------------------------------------------
 
     /** The profiles of this installation, as last read; one of them is active. */
     var profiles: List<Profile> by mutableStateOf(emptyList())
@@ -1698,7 +1698,7 @@ class AppState(
     }
 
     /**
-     * Starts the profile whose PIN was forgotten over, once the viewer has confirmed it (docs/WATCH_STATE.md,
+     * Starts the profile whose PIN was forgotten over, once the viewer has confirmed it (docs/product/WATCH_STATE.md,
      * "Profiles"): this device is signed out of the profile's server accounts, its downloads are deleted, and its
      * watch history, favorites, collections, pinned versions, preferences, and PIN are erased, so nothing the PIN
      * kept private is shown to whoever reset it. The profile stays, open and empty. No server's own history, no
@@ -1860,7 +1860,7 @@ class AppState(
      */
     fun deleteProfile(profile: Profile, pin: String? = null): Job = attempt("The profile couldn't be deleted. Try again.") {
         if (profile.active || profiles.size <= 1) return@attempt
-        // A profile with a PIN is deleted only with its own PIN (docs/WATCH_STATE.md, "Profiles"). It is checked before
+        // A profile with a PIN is deleted only with its own PIN (docs/product/WATCH_STATE.md, "Profiles"). It is checked before
         // anything is signed out of or deleted, and again by the library in the same transaction that deletes.
         val key = platform.pinKey
         // Whether it has a PIN is read now, not from the page that asked: nothing may go on what the page last knew.

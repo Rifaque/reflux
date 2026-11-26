@@ -2,7 +2,7 @@ package dev.reflux.core.playback
 
 /**
  * How media reached the player, from what the source says it did. Not a plan and not a capability: this is the
- * truth layer under them (docs/PLAYBACK.md). Whether something is decoded in hardware is another question.
+ * truth layer under them (docs/product/PLAYBACK.md). Whether something is decoded in hardware is another question.
  */
 enum class DeliveryMode {
     /** The original file, unchanged. */

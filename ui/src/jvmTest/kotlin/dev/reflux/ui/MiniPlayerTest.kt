@@ -41,7 +41,7 @@ import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 /**
- * The mini-player on screen (docs/NAVIGATION.md, section 8): what is playing, in the navigation's dock, while the
+ * The mini-player on screen (docs/product/NAVIGATION.md, section 8): what is playing, in the navigation's dock, while the
  * page stays the viewer's. One session's other presentation, in every window that has a dock, with a meaning to
  * assistive technology and to a keyboard, and nowhere a device has no dock.
  */

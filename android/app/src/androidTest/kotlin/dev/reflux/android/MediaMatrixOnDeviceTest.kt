@@ -41,7 +41,7 @@ import kotlin.test.assertEquals
 
 /**
  * The real media matrix on this device's real engine and real capabilities: every kind of media on a real server,
- * planned and played once (docs/PLAYBACK.md, section 15). It uses a private library, and leaves the application's
+ * planned and played once (docs/product/PLAYBACK.md, section 15). It uses a private library, and leaves the application's
  * own alone. On request: `RUN_ARGS="-e refluxMatrix true"` through `tools/live/run-on-device.py`. It reads the
  * server's files and changes none of them.
  *

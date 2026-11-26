@@ -24,18 +24,18 @@ data class SourceRecord(
     val availability: Availability,
     val lastScanAtEpochMs: Long?,
     val lastAvailableAtEpochMs: Long?,
-    /** Whether it takes part in the unified library (docs/NAVIGATION.md). Independent of [availability]. */
+    /** Whether it takes part in the unified library (docs/product/NAVIGATION.md). Independent of [availability]. */
     val included: Boolean = true,
     /** It answered, and no longer accepts Reflux's sign-in: signing in again is the way back. */
     val signInRequired: Boolean = false,
-    /** Whose account this is (docs/WATCH_STATE.md, "Profiles"); null for a source every profile shares. */
+    /** Whose account this is (docs/product/WATCH_STATE.md, "Profiles"); null for a source every profile shares. */
     val profileId: ProfileId? = null,
     /** The server address it was reached at, shared by every profile ([ServerEndpoint]); null for a folder or share. */
     val endpointId: String? = null,
 )
 
 /**
- * Which library a read is about (docs/NAVIGATION.md, section 4): the unified library, made of what is included,
+ * Which library a read is about (docs/product/NAVIGATION.md, section 4): the unified library, made of what is included,
  * or one source (or one of its libraries) as it is, whatever its inclusion.
  */
 sealed interface LibraryScope {

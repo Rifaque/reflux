@@ -1,4 +1,4 @@
-// The release data's rules as pure functions (docs/WEBSITE.md, "Release data"): what a store record and a publication
+// The release data's rules as pure functions (docs/release/WEBSITE.md, "Release data"): what a store record and a publication
 // record must say before the site may present them. release-data.mjs applies them and fails the build on a violation;
 // release-lib.test.mjs holds them to it. Nothing here reads a file.
 

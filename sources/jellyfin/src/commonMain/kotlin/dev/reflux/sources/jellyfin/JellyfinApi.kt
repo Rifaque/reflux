@@ -26,7 +26,7 @@ data class JellyfinCredentials(
     val deviceId: String,
     /** The name the user signs in with, for showing who is signed in. Never needed to talk to the server. */
     val userName: String? = null,
-    /** Libraries a connection left unread before M3, by id: moved to the library's inclusion at start (docs/NAVIGATION.md). */
+    /** Libraries a connection left unread before M3, by id: moved to the library's inclusion at start (docs/product/NAVIGATION.md). */
     val excludedLibraries: Set<String> = emptySet(),
     /**
      * The server's other addresses (B-003): the same server and account reached another way (at home through the LAN,

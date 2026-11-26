@@ -29,7 +29,7 @@ data class ObservedAudioOutput(
 }
 
 /**
- * Capabilities of libmpv on a desktop machine, from what has been observed there (docs/DECISIONS.md,
+ * Capabilities of libmpv on a desktop machine, from what has been observed there (docs/decisions/DECISIONS.md,
  * "Desktop capabilities are observed, not declared").
  *
  * Video decoders come from [DecodeEvidence]: software decoders as the engine lists them, hardware decoding as

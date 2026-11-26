@@ -1,6 +1,6 @@
 # Google Play — Reflux 0.9.0-beta.2
 
-**Status: generated and validated, not uploaded.** Nothing here has been uploaded to the Play Console; uploading changes a listing that testers see, so it is the owner's action (or an agent's on the owner's explicit request), and only once Beta 2 is approved (docs/BETA.md, "The Beta 2 gate").
+**Status: generated and validated, not uploaded.** Nothing here has been uploaded to the Play Console; uploading changes a listing that testers see, so it is the owner's action (or an agent's on the owner's explicit request), and only once Beta 2 is approved (docs/release/BETA.md, "The Beta 2 gate").
 
 App: `dev.rsxdevelops.reflux` (Play Console app ID in `release/google-play.md`). Sources: emulator captures, 2026-11-21 (`../capture-plan.md`); provenance in `../source-screenshots/captures.json`.
 

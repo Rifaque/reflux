@@ -218,7 +218,7 @@ data class DownloadItem(
     val itemId: MediaId,
     /**
      * Where the work's page opens: the unified library, or, for a copy of something the viewer left out of it, the
-     * library of the source it was copied from, where the copy belongs (docs/NAVIGATION.md, section 5).
+     * library of the source it was copied from, where the copy belongs (docs/product/NAVIGATION.md, section 5).
      */
     val scope: dev.reflux.library.LibraryScope = dev.reflux.library.LibraryScope.Unified,
     val title: String,

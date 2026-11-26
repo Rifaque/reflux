@@ -1,6 +1,6 @@
 # Contributing to Reflux
 
-Reflux is in beta (docs/BETA.md), working towards 1.0 (docs/ROADMAP.md). Contributions should preserve the project's core principles rather than optimize for feature count.
+Reflux is in beta (docs/release/BETA.md), working towards 1.0 (docs/ROADMAP.md). Contributions should preserve the project's core principles rather than optimize for feature count.
 
 Reflux is free and open-source software under the GNU General Public License, version 3 or later ([LICENSE](LICENSE), [NOTICE](NOTICE)). Contributions are welcome through [issues](https://github.com/Rifaque/reflux/issues) and pull requests.
 
@@ -8,21 +8,21 @@ Reflux is free and open-source software under the GNU General Public License, ve
 - **Third-party code.** Code or assets from elsewhere must carry a license compatible with GPL-3.0-or-later and be named in the pull request; components shipped in builds are listed in `legal/components.txt`, which the build checks.
 - **Security problems** go through [SECURITY.md](SECURITY.md), never a public issue. Other problems: an issue, or support@rsxdevelops.dev.
 - **The name and the logo.** The GPL does not grant the right to use the name Reflux or its logo ([NOTICE](NOTICE)); a modified version must be marked as changed.
-- **During the beta** (docs/BETA.md) only fixes are taken, and Beta 2's scope is frozen.
+- **During the beta** (docs/release/BETA.md) only fixes are taken, and Beta 2's scope is frozen.
 
 ## Before contributing
 
 Read:
 
-- [Product](docs/PRODUCT.md)
-- [Architecture](docs/ARCHITECTURE.md)
-- [Roadmap](docs/ROADMAP.md) and [beta](docs/BETA.md)
-- [Versioning](docs/VERSIONING.md) (before touching versions, tags, or release metadata)
-- [Design](docs/DESIGN.md)
-- [Input model](docs/INPUT_MODEL.md)
-- [Metadata](docs/METADATA.md)
-- [Decision log](docs/DECISIONS.md)
-- [Release readiness](docs/RELEASE.md)
+- [Product](docs/product/PRODUCT.md)
+- [Architecture](docs/engineering/ARCHITECTURE.md)
+- [Roadmap](docs/ROADMAP.md) and [beta](docs/release/BETA.md)
+- [Versioning](docs/release/VERSIONING.md) (before touching versions, tags, or release metadata)
+- [Design](docs/product/DESIGN.md)
+- [Input model](docs/product/INPUT_MODEL.md)
+- [Metadata](docs/product/METADATA.md)
+- [Decision log](docs/decisions/DECISIONS.md)
+- [Release readiness](docs/release/RELEASE.md)
 
 ## Principles
 
@@ -64,7 +64,7 @@ REFLUX_JELLYFIN_TEST_PASSWORD=<its password>
 
 Variables of the same names in the environment take precedence, key by key; only the test reads the file, never Reflux, and nothing in it is repeated in test output. Then `./gradlew :desktop:engine:test --tests "*JellyfinLiveTest*" --rerun-tasks` (Gradle does not treat the file or the environment as an input, so without a forced rerun it may report the test up to date without running it). The test rewrites its user's watch state, so use a dedicated user, not one you care about. With no server of your own, `tools/ci/jellyfin-test-server.sh <scratch-dir>` starts a throwaway one in Docker, and the comment at its top gives the command for it.
 
-Two accounts from one installation (M8, docs/WATCH_STATE.md, "Profiles") have live tests of their own. `JellyfinTwoAccountsLiveTest` makes a second user and deletes it again, so it runs only against a throwaway server whose administrator is named: start one with `tools/ci/jellyfin-test-server.sh <scratch-dir>`, then `REFLUX_JELLYFIN_ADMIN_URL=http://127.0.0.1:8096 REFLUX_JELLYFIN_ADMIN_USER=reflux REFLUX_JELLYFIN_ADMIN_PASSWORD=reflux-test ./gradlew :desktop:engine:test --tests "*JellyfinTwoAccountsLiveTest*" --rerun`; never point it at your own server. `PlexTwoAccountsLiveTest` needs two plex.tv accounts' tokens and a server they can reach, as `REFLUX_PLEX_URL`, `REFLUX_PLEX_TOKEN_A`, and `REFLUX_PLEX_TOKEN_B` in the environment or in `~/.reflux-live/plex.env`. Both write what they observed, without tokens, to `desktop/engine/build/live/`.
+Two accounts from one installation (M8, docs/product/WATCH_STATE.md, "Profiles") have live tests of their own. `JellyfinTwoAccountsLiveTest` makes a second user and deletes it again, so it runs only against a throwaway server whose administrator is named: start one with `tools/ci/jellyfin-test-server.sh <scratch-dir>`, then `REFLUX_JELLYFIN_ADMIN_URL=http://127.0.0.1:8096 REFLUX_JELLYFIN_ADMIN_USER=reflux REFLUX_JELLYFIN_ADMIN_PASSWORD=reflux-test ./gradlew :desktop:engine:test --tests "*JellyfinTwoAccountsLiveTest*" --rerun`; never point it at your own server. `PlexTwoAccountsLiveTest` needs two plex.tv accounts' tokens and a server they can reach, as `REFLUX_PLEX_URL`, `REFLUX_PLEX_TOKEN_A`, and `REFLUX_PLEX_TOKEN_B` in the environment or in `~/.reflux-live/plex.env`. Both write what they observed, without tokens, to `desktop/engine/build/live/`.
 
 To read a failed CI run without its whole log: `tools/ci/failures.sh <run-id>` prints the failed jobs and the failed tests with their first assertion.
 
@@ -76,4 +76,4 @@ Shared (`commonMain`) code must stay free of platform APIs; `check` fails when i
 
 Keep changes focused and explain architectural consequences when they cross core boundaries.
 
-When introducing a significant product or architectural decision, update docs/DECISIONS.md. Record what was verified, and how, in docs/VERIFICATION.md, and user-visible changes under `Unreleased` in CHANGELOG.md.
+When introducing a significant product or architectural decision, update docs/decisions/DECISIONS.md. Record what was verified, and how, in docs/verification/VERIFICATION.md, and user-visible changes under `Unreleased` in CHANGELOG.md.

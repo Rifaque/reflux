@@ -22,12 +22,12 @@
     "amazon-appstore/fire-tv": 5
   },
   "forced": {
-    "google-play/tablet-7-inch": "Layout.kt formFactor(): min side >=600dp -> TABLET rail, >=1200dp -> sidebar; walked on the physical Xiaomi Pad 7 and the Reflux_Tablet emulator (docs/VERIFICATION.md, Phase 2 and 3)",
-    "google-play/tablet-10-inch": "Layout.kt formFactor(): min side >=600dp -> TABLET rail, >=1200dp -> sidebar; walked on the physical Xiaomi Pad 7 and the Reflux_Tablet emulator (docs/VERIFICATION.md, Phase 2 and 3)"
+    "google-play/tablet-7-inch": "Layout.kt formFactor(): min side >=600dp -> TABLET rail, >=1200dp -> sidebar; walked on the physical Xiaomi Pad 7 and the Reflux_Tablet emulator (docs/verification/VERIFICATION.md, Phase 2 and 3)",
+    "google-play/tablet-10-inch": "Layout.kt formFactor(): min side >=600dp -> TABLET rail, >=1200dp -> sidebar; walked on the physical Xiaomi Pad 7 and the Reflux_Tablet emulator (docs/verification/VERIFICATION.md, Phase 2 and 3)"
   },
   "notes": [
-    "google-play/tablet-7-inch: Probable (Android tablet); confirmed by: Layout.kt formFactor(): min side >=600dp -> TABLET rail, >=1200dp -> sidebar; walked on the physical Xiaomi Pad 7 and the Reflux_Tablet emulator (docs/VERIFICATION.md, Phase 2 and 3)",
-    "google-play/tablet-10-inch: Probable (Android tablet); confirmed by: Layout.kt formFactor(): min side >=600dp -> TABLET rail, >=1200dp -> sidebar; walked on the physical Xiaomi Pad 7 and the Reflux_Tablet emulator (docs/VERIFICATION.md, Phase 2 and 3)",
+    "google-play/tablet-7-inch: Probable (Android tablet); confirmed by: Layout.kt formFactor(): min side >=600dp -> TABLET rail, >=1200dp -> sidebar; walked on the physical Xiaomi Pad 7 and the Reflux_Tablet emulator (docs/verification/VERIFICATION.md, Phase 2 and 3)",
+    "google-play/tablet-10-inch: Probable (Android tablet); confirmed by: Layout.kt formFactor(): min side >=600dp -> TABLET rail, >=1200dp -> sidebar; walked on the physical Xiaomi Pad 7 and the Reflux_Tablet emulator (docs/verification/VERIFICATION.md, Phase 2 and 3)",
     "added required companion google-play/feature-graphic (for google-play/phone); use --reuse to keep an existing one",
     "added required companion google-play/tv-banner (for google-play/tv); use --reuse to keep an existing one",
     "added required companion amazon-appstore/fire-tv-icon (for amazon-appstore/fire-tv); use --reuse to keep an existing one",

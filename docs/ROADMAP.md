@@ -2,11 +2,11 @@
 
 The product roadmap: where Reflux is, what 1.0 must be, and how it grows after 1.0. It is the internal, detailed plan; the website's public roadmap is derived from it ([the public roadmap source](#public-roadmap-source), below) and says nothing this file does not.
 
-- **The beta in progress** (Beta 2's scope and gate, Beta 3, the release candidate) is [BETA.md](BETA.md). Each issue's detail is the [tracker](planning/BETA-BUG-TRACKER.md).
+- **The beta in progress** (Beta 2's scope and gate, Beta 3, the release candidate) is [BETA.md](release/BETA.md). Each issue's detail is the [tracker](BETA-BUG-TRACKER.md).
 - **The milestones that built Reflux** (M0 to M13, with every item and limit) are archived unchanged in [history/roadmaps/ROADMAP-M0-M13.md](history/roadmaps/ROADMAP-M0-M13.md). M0 to M11 are complete; M12 (qualification and beta) continues as the beta in BETA.md, and M13 (release candidate and 1.0) is [V1.0](#v10-stable) below.
-- What was run to verify work: [VERIFICATION.md](VERIFICATION.md). Release mechanics: [RELEASE.md](RELEASE.md). Decisions: [DECISIONS.md](DECISIONS.md) (this plan's: 2026-11-21, "The post-beta product roadmap").
+- What was run to verify work: [VERIFICATION.md](verification/VERIFICATION.md). Release mechanics: [RELEASE.md](release/RELEASE.md). Decisions: [DECISIONS.md](decisions/DECISIONS.md) (this plan's: 2026-11-21, "The post-beta product roadmap").
 
-Written in Phase 4 (2026-11-21) and replacing the M0–M13 roadmap as the source of truth for product status. **No date is promised.** Versions are numbered by [VERSIONING.md](VERSIONING.md) and cut only when the owner asks.
+Written in Phase 4 (2026-11-21) and replacing the M0–M13 roadmap as the source of truth for product status. **No date is promised.** Versions are numbered by [VERSIONING.md](release/VERSIONING.md) and cut only when the owner asks.
 
 ## Where Reflux is
 
@@ -67,7 +67,7 @@ Confidence (high, medium, low) says how likely an item is to stay where it is pl
 
 ## Beta maturation (post-alpha to the release candidate)
 
-The beta exists to make 1.0 trustworthy, not to grow it. Its programme, gates and backlog are in [BETA.md](BETA.md); in short:
+The beta exists to make 1.0 trustworthy, not to grow it. Its programme, gates and backlog are in [BETA.md](release/BETA.md); in short:
 
 1. **Beta 2** ships the accepted Phases 1–3 once the gate holds (hosted CI green, the owner's approval and version, release notes, the release workflow).
 2. **Beta 3** takes the Beta 3 backlog (B-074 and B-044 test reliability, B-061 the Skia fallback crash, B-056, whatever testers report) and the qualification the project's own hardware cannot give: a physical Google TV device, Fire TV hardware beyond one stick, physical Linux desktops, more controllers.
@@ -108,7 +108,7 @@ The beta exists to make 1.0 trustworthy, not to grow it. Its programme, gates an
 
 ## V1.1: your library, your way
 
-**Theme:** a large library organised and browsed the way the viewer thinks of it. **Status:** Planned. **Confidence:** high (researched against the code: [planning/V1.1-LIBRARY-RESEARCH.md](planning/V1.1-LIBRARY-RESEARCH.md)).
+**Theme:** a large library organised and browsed the way the viewer thinks of it. **Status:** Planned. **Confidence:** high (researched against the code: [V1.1-LIBRARY-RESEARCH.md](product/V1.1-LIBRARY-RESEARCH.md)).
 
 | Initiative | User problem | Outcome | Priority | Depends on | Platforms | Risk | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- |

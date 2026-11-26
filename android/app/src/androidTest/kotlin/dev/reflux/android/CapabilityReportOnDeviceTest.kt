@@ -19,7 +19,7 @@ import kotlin.test.assertTrue
 
 /**
  * What this device says it can do, read through the real platform and Media3, in the shared model. Holds what must
- * be true anywhere and logs the rest (tag `RefluxCapabilities`) for docs/PLAYBACK.md: no device is named in a rule.
+ * be true anywhere and logs the rest (tag `RefluxCapabilities`) for docs/product/PLAYBACK.md: no device is named in a rule.
  */
 @RunWith(AndroidJUnit4::class)
 class CapabilityReportOnDeviceTest {

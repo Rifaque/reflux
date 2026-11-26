@@ -31,7 +31,7 @@ internal interface LibMpv : Library {
     companion object {
         /** Loads libmpv, or returns null when it is not installed. */
         fun loadOrNull(): LibMpv? {
-            // A packaged Windows build carries libmpv in its own resources folder (docs/RELEASE.md, "libmpv on
+            // A packaged Windows build carries libmpv in its own resources folder (docs/release/RELEASE.md, "libmpv on
             // Windows"); it is found there first, and anywhere else JNA looks (a developer's copy, the system's).
             System.getProperty("compose.application.resources.dir")?.let { dir ->
                 for (name in NAMES) com.sun.jna.NativeLibrary.addSearchPath(name, dir)

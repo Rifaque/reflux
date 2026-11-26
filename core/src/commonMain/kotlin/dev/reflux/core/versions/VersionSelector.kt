@@ -85,7 +85,7 @@ data class VersionSelection(
  * Quality is what this device can actually show and play: a version it plays with compromises loses to one
  * it plays cleanly, and resolution, dynamic range, and audio only count as far as the display and outputs
  * reach (a higher resolution than the display can show is not better). A local file is therefore preferred
- * to the same thing streamed, and never to something materially better (docs/WATCH_STATE.md).
+ * to the same thing streamed, and never to something materially better (docs/product/WATCH_STATE.md).
  */
 object VersionSelector {
     /**

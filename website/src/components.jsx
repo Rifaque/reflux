@@ -24,7 +24,7 @@ export function Lockup({ className = 'lockup' }) {
   )
 }
 
-/** A real Reflux screen, rendered from the app (docs/WEBSITE.md, "Product images"). */
+/** A real Reflux screen, rendered from the app (docs/release/WEBSITE.md, "Product images"). */
 export function Shot({ name, alt, className = '', eager = false }) {
   const [width, height] = showcase.images[name]
   return (

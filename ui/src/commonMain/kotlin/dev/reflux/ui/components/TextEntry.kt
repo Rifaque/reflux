@@ -26,7 +26,7 @@ import dev.reflux.ui.state.KeyboardRequest
 import dev.reflux.ui.theme.LocalLayout
 
 /**
- * What a text field needs from the application (B-025's contract, docs/INPUT_MODEL.md, "Event priority"): to say
+ * What a text field needs from the application (B-025's contract, docs/product/INPUT_MODEL.md, "Event priority"): to say
  * that it has focus, so that keys type instead of acting (one way for every field, never set by a screen), and to
  * open the Reflux keyboard for a controller or a remote (B-023).
  */

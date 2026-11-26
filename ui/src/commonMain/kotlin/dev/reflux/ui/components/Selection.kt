@@ -34,7 +34,7 @@ import kotlinx.coroutines.launch
 
 /**
  * Where each of a set of destinations is, inside the navigation that holds them, so that one mark can show where the
- * viewer is and travel between them (docs/DESIGN.md, "Navigation surfaces").
+ * viewer is and travel between them (docs/product/DESIGN.md, "Navigation surfaces").
  */
 @Stable
 internal class SelectionTrack {

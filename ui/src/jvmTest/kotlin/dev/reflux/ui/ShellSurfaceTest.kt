@@ -32,7 +32,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /**
- * Navigation & Surface System 2.0 (M9; docs/DESIGN.md, "Navigation surfaces"): how M8's structure looks and moves.
+ * Navigation & Surface System 2.0 (M9; docs/product/DESIGN.md, "Navigation surfaces"): how M8's structure looks and moves.
  * One mark shows where the viewer is and travels between destinations (at once, with motion reduced); the phone's bar
  * is as wide as its destinations; Reflux says its own name where there is room; and the shell's geometry in every
  * window class is held to a committed baseline.

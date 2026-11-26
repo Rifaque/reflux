@@ -1,4 +1,4 @@
-# R8 rules for Reflux's Android release (docs/RELEASE.md, "Android release build").
+# R8 rules for Reflux's Android release (docs/release/RELEASE.md, "Android release build").
 #
 # Reflux's own code uses no reflection, no runtime class discovery, and no annotation-driven serialization: JSON is
 # read through kotlinx.serialization's JsonElement tree, the database through SQLDelight's generated code, and

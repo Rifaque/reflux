@@ -101,7 +101,7 @@ internal fun miniAction(session: PlaybackSession, state: PlayerState): Pair<Icon
 }
 
 /**
- * The mini-player: what is playing, in the navigation's dock, while the viewer browses (docs/NAVIGATION.md,
+ * The mini-player: what is playing, in the navigation's dock, while the viewer browses (docs/product/NAVIGATION.md,
  * section 8). It is a presentation of the session the full player shows, never a player of its own: the picture is the
  * shell's one video surface, placed in the dock's picture box, and every control here is the session's.
  *

@@ -7,7 +7,7 @@ package dev.reflux.design
 data class TypeSpec(val size: Float, val weight: Int, val lineHeight: Float, val tracking: Float = 0f)
 
 /**
- * The semantic type roles (docs/DESIGN.md). Hierarchy comes from size, weight, and tone together, never from
+ * The semantic type roles (docs/product/DESIGN.md). Hierarchy comes from size, weight, and tone together, never from
  * scaling everything by the screen: a television sets the whole scale one step up ([LayoutProfile.textScale]) and a
  * phone sets only its featured title smaller ([display]); every other role keeps its size.
  */

@@ -41,7 +41,7 @@ import dev.reflux.ui.theme.Text
 import dev.reflux.ui.theme.glass
 
 /**
- * Settings (docs/NAVIGATION.md, section 1): first the open profile's own (its name, its PIN, clearing its watch
+ * Settings (docs/product/NAVIGATION.md, section 1): first the open profile's own (its name, its PIN, clearing its watch
  * history), then what is about this device (online lookups, Media Atmosphere), then About. Few on purpose: Reflux
  * is meant to be right without any of them (AGENTS.md, "Excellent out of the box").
  */
@@ -130,7 +130,7 @@ internal fun SettingsScreen(app: AppState) {
 
         item(key = "device-title") { Section("This device") }
         // Whether titles, descriptions, and artwork may be looked up online: a privacy choice for the device, so it is
-        // the viewer's to make. Only where the build has a provider to ask (docs/METADATA.md, "Online lookups").
+        // the viewer's to make. Only where the build has a provider to ask (docs/product/METADATA.md, "Online lookups").
         if (app.hasMetadataProvider) {
             item(key = "online") {
                 SwitchRow(

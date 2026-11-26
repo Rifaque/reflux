@@ -1,7 +1,7 @@
 package dev.reflux.design
 
 /**
- * The semantic color roles every component draws with (docs/DESIGN.md, "Visual system"). A component names a
+ * The semantic color roles every component draws with (docs/product/DESIGN.md, "Visual system"). A component names a
  * role ("secondary content", "selected"), never a value, so that an appearance is one instance of this class.
  *
  * Reflux ships exactly one appearance, [Reflux] (dark, neutral-first). [RefluxHighContrast] is not a theme: it is

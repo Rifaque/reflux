@@ -1,6 +1,6 @@
 # Release archive: Reflux 0.9.0-beta.2 store assets
 
-The generated media of this release (captures, store exports, previews: 94 PNG files) are kept **outside Git** in one archive; this folder keeps what is needed to understand, check and regenerate them (decided 2026-11-21; docs/DECISIONS.md, "Beta 2 release"). Commit `85d6d26` added them to Git and they remain in its history; they were removed from the tree in the next release commit, without rewriting history.
+The generated media of this release (captures, store exports, previews: 94 PNG files) are kept **outside Git** in one archive; this folder keeps what is needed to understand, check and regenerate them (decided 2026-11-21; docs/decisions/DECISIONS.md, "Beta 2 release"). Commit `85d6d26` added them to Git and they remain in its history; they were removed from the tree in the next release commit, without rewriting history.
 
 | | |
 | --- | --- |

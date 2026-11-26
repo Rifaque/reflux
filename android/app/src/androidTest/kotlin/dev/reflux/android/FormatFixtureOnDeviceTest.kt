@@ -34,7 +34,7 @@ import kotlin.test.assertEquals
 
 /**
  * The formats the real library lacks, through the whole local path on this device: what the prober reads, what the
- * assessor and planner say, and what Media3 then does (docs/PLAYBACK.md, section 16). A local file has no server, so
+ * assessor and planner say, and what Media3 then does (docs/product/PLAYBACK.md, section 16). A local file has no server, so
  * a plan this device cannot play is `CANNOT_PLAY` or plays without sound; that is the answer, and the engine is asked
  * anyway, to see whether the plan was too strict or too generous. Logged with the tag `RefluxExecution`.
  */

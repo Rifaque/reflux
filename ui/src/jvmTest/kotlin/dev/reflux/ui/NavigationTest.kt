@@ -45,7 +45,7 @@ internal fun DesktopComposeUiTest.selectedDestination(): List<String> = onAllNod
     }
 
 /**
- * The global navigation (docs/NAVIGATION.md): the same six destinations on every window, placed for each, with a
+ * The global navigation (docs/product/NAVIGATION.md): the same six destinations on every window, placed for each, with a
  * back stack that always unwinds the same way, and the unified library told apart from each source's own.
  */
 @OptIn(ExperimentalTestApi::class)

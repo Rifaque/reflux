@@ -259,7 +259,7 @@ Related, and the cause of that stuck video output: a video surface is handed to 
 
 ## 2026-10-13 — Playback progress follows the work
 
-**Playback progress follows the media work, not the physical file or source.** A work has one watch state, owned by Reflux. Whichever version plays, progress is recorded for the work; whichever version plays next, it continues from there. A user who starts a film from a local file and continues it from a server does not choose a source and does not seek. The full contract is in [WATCH_STATE.md](WATCH_STATE.md).
+**Playback progress follows the media work, not the physical file or source.** A work has one watch state, owned by Reflux. Whichever version plays, progress is recorded for the work; whichever version plays next, it continues from there. A user who starts a film from a local file and continues it from a server does not choose a source and does not seek. The full contract is in [WATCH_STATE.md](../product/WATCH_STATE.md).
 
 The state already belonged to works. What this adds is what makes that safe to rely on across copies:
 
@@ -1246,7 +1246,7 @@ M9 opened with the trial the rebaseline asked for (history/milestones/M8-M13-REB
 - **A native surface does not travel.** Resizing it on every frame of a 280 ms transition came out as 10 to 16 moves with gaps of 100 to 180 ms: a few uneven jumps. So the surface is put where it belongs in one move, and the dock arriving around it carries the eye.
 - **A native surface is above everything Reflux draws in its window** (the airspace rule already recorded on 2026-10-09). The dock is therefore a region nothing else is drawn over, the picture is square-cornered inside the dock's rounded material, and whatever covers the page (a sheet, a picker, the question of who is watching) takes the picture out of sight while the sound goes on.
 
-**The adjustment** (docs/PLAYBACK.md, "One session, several presentations"): the session gains a presentation (`FULL`, `MINI`); the experience layer tells the shell where its video surface goes (`VideoFrame`: the whole window, the dock's picture box, or out of sight) and never knows what the surface is; a platform says whether its surface can be placed (`Platform.docksVideo`). Nothing in `core`, the planner, the engines, or watch reporting changed, and there is no second player.
+**The adjustment** (docs/product/PLAYBACK.md, "One session, several presentations"): the session gains a presentation (`FULL`, `MINI`); the experience layer tells the shell where its video surface goes (`VideoFrame`: the whole window, the dock's picture box, or out of sight) and never knows what the surface is; a platform says whether its surface can be placed (`Platform.docksVideo`). Nothing in `core`, the planner, the engines, or watch reporting changed, and there is no second player.
 
 **Not chosen:** a separate always-on-top mini window (focus and stacking the viewer did not ask for, and a second surface for the engine, which libmpv's `wid` cannot change while playing); rendering video into the toolkit through mpv's render API (the rewrite of desktop video output that the 2026-10-09 decision and the rebaseline both rule out for 1.0); the "now playing" bar without video (the accepted fallback, O-8, not needed).
 
@@ -1395,9 +1395,23 @@ M11 decided the open items of its plan (history/milestones/M11-DISTRIBUTION-PLAN
 - **1.0 communication.** "Planned for December 2026", depending on feedback, qualification, and store approval; 10 December is an internal readiness checkpoint and 15 December the release decision, never a promised release date. Each platform publishes through its own path.
 - **No Windows installer in the beta**: none exists or is tested, and building one would change the release; reconsidered for 1.0.
 
+## 2026-11-26 — Documentation: two live documents at the root of `docs/`, five folders, and the guide in the repository README
+
+**Context.** The owner asked for the documentation to be reorganised: `docs/` had grown to 23 files at its root, mixing specifications, release procedures, decisions, verification and handovers; its root was to hold only the roadmap and the bug tracker. Record: [DOCUMENTATION-REORGANIZATION-REPORT.md](../history/verification/DOCUMENTATION-REORGANIZATION-REPORT.md).
+
+**Decisions.**
+- **The root of `docs/`** holds [ROADMAP.md](../ROADMAP.md) and [BETA-BUG-TRACKER.md](../BETA-BUG-TRACKER.md) (moved up from `docs/planning/`), nothing else.
+- **Five folders:** `product/` (what Reflux is and how it behaves: the product, playback, input, navigation, metadata, watch state, offline, design, and the V1.1 library research), `engineering/` (architecture), `release/` (the beta, its notes, releasing, versions, privacy, third-party notices, the website), `decisions/` (this log), `verification/` (the verification log, and the audit and validation reports with their evidence). `history/` keeps its rule: unchanged records, link targets updated, text not edited.
+- **The reading guide** (formerly `docs/README.md`: which document is authoritative for what, which wins when two disagree) is the repository README's "Documentation" section.
+- **Archived:** Phase 4's record, and the CachyOS handover and the Ubuntu transition procedure (the machine they describe no longer exists, and the transition has been carried out). The transition's Linux playback acceptance checklist was extracted into a current procedure, [LINUX-PLAYBACK-ACCEPTANCE.md](../verification/LINUX-PLAYBACK-ACCEPTANCE.md), split into the checks for every Linux desktop and those that depend on the environment.
+- **Citations in code, tests, build scripts, CI and tools** were updated to the new paths, the path only (the owner's choice); nothing reads a document at run or build time.
+- **Nothing was deleted but the reading guide**, whose content is the README section; no document was found to duplicate another (BETA.md, BETA-NOTES.md and CHANGELOG.md serve the programme, the testers and the stores).
+
+**Alternatives rejected.** One `specs/` folder for every specification (the owner's categories were kept); folding BETA-NOTES.md into CHANGELOG.md (different readers, and the notes carry platform notes, known issues and what to test); leaving code citations at the old paths.
+
 ## 2026-11-25 — The final CachyOS session and its closure: Reflux keeps its own Linux desktop entry; a `beta-3` branch; the separation deferred to a tested session
 
-**Context.** The owner brought the CachyOS laptop back for one session (B-092, the mini-player's corners, the integrated renderer, the dock) and then closed the CachyOS work before the drive is wiped for Ubuntu. Record: docs/planning/CACHYOS-FINAL-AUDIT-LEDGER.md ("The owner's final CachyOS session", "Closure"), docs/CACHYOS-FINAL-HANDOVER.md.
+**Context.** The owner brought the CachyOS laptop back for one session (B-092, the mini-player's corners, the integrated renderer, the dock) and then closed the CachyOS work before the drive is wiped for Ubuntu. Record: docs/verification/CACHYOS-FINAL-AUDIT-LEDGER.md ("The owner's final CachyOS session", "Closure"), docs/history/linux/CACHYOS-FINAL-HANDOVER.md.
 
 **Decisions.**
 - **A packaged Reflux on Linux writes its own desktop entry (B-102), the owner's choice.** On Wayland a dock finds a window's icon only through a desktop entry, so without one Reflux showed a generic icon until `bin/install-desktop-entry` had been run. Reflux now writes the installer's entry itself at start, and `Reflux.desktop` beside `bin/`; an entry someone made or edited is left alone, and one Reflux wrote and someone removed is not put back. **This reverses** "It is not written by Reflux itself on first run" (2026-11-24): respecting removal and someone's own entry keeps the viewer's choice. Its release, with the installer's, is still the owner's decision.
@@ -1435,7 +1449,7 @@ Supersedes, in the entry below, "the desktop player stays two windows for now" a
 
 ## 2026-11-24 — The CachyOS final audit: fixes and Beta 3-class changes on the owner's brief; Start shrinks the sidebar; a compact docked keyboard; Reflux names its Linux windows
 
-**Context.** The owner's brief for a final engineering session on the CachyOS machine before it is retired (2026-11-24) asked for its reported bugs to be fixed and the work pushed, which authorises these changes inside Beta 2's freeze. Only three are bug fixes (Quick View's wait, the Linux window class, the hints while typing); the sidebar shrink, the keyboard redesign and the PIN pad are features and redesigns of the kind the freeze sends to Beta 3, and which release carries them is the owner's to decide after the owner's own Windows audit. The record is docs/planning/CACHYOS-FINAL-AUDIT-LEDGER.md.
+**Context.** The owner's brief for a final engineering session on the CachyOS machine before it is retired (2026-11-24) asked for its reported bugs to be fixed and the work pushed, which authorises these changes inside Beta 2's freeze. Only three are bug fixes (Quick View's wait, the Linux window class, the hints while typing); the sidebar shrink, the keyboard redesign and the PIN pad are features and redesigns of the kind the freeze sends to Beta 3, and which release carries them is the owner's to decide after the owner's own Windows audit. The record is docs/verification/CACHYOS-FINAL-AUDIT-LEDGER.md.
 
 **Decisions.**
 - **Start (≡) shrinks the sidebar (F-P1).** A controller's Start, while browsing, toggles the sidebar between its icons with names and its icons alone, focus staying where it is; Y still goes into it (F-P2). This replaces "Start always opens Sources" (2026-11-20) where there is a sidebar, and "not in 1.0: a collapsible desktop sidebar" (2026-11-11). Only `SIDEBAR` shrinks: a tablet's `RAIL` (the Pad 7 is about 1164 dp wide, so always a rail) already has small icons with names beneath, a television's rail is icons until it has focus, and a phone keeps its bar; there Start still opens Sources. A pointer or finger has a button at the sidebar's foot, not a focus stop. The choice is a setting kept across restarts. *(The button at the foot: superseded the same day by "The Linux player is one window…; the sidebar's name is its toggle" (2026-11-24, later). Release placement of F-P1: recommended for Beta 3, the owner's to decide (2026-11-25).)*
@@ -1457,12 +1471,13 @@ Supersedes, in the entry below, "the desktop player stays two windows for now" a
 
 ## 2026-11-21 — Phase 4: one home per fact, a product roadmap by version, store assets by LaunchFrame, and a site that never runs ahead of the builds
 
-**Context.** The owner's Phase 4 master prompt (2026-11-21) asked for documentation consolidation, a product roadmap from post-alpha to V2.0, store screenshots through LaunchFrame, a website overhaul with a roadmap and its easter egg, distribution infrastructure, and Beta 2 readiness, autonomously, with Beta 2's scope frozen and nothing published. Record of the work: planning/PHASE-4.md.
+**Context.** The owner's Phase 4 master prompt (2026-11-21) asked for documentation consolidation, a product roadmap from post-alpha to V2.0, store screenshots through LaunchFrame, a website overhaul with a roadmap and its easter egg, distribution infrastructure, and Beta 2 readiness, autonomously, with Beta 2's scope frozen and nothing published. Record of the work: history/phases/PHASE-4.md.
 
 **Decisions.**
 - **Documentation.** Current documents stay in `docs/`; superseded plans, milestone records and pre-Beta-2 verification move unchanged (by `git mv`) to `docs/history/`, labelled historical, indexed in `docs/history/README.md`, with every link rewritten and checked (`tools/docs/check_links.py`, now in CI). DECISIONS.md and the tracker are not archived: older decisions still bind, and the tracker is live to 1.0. `docs/README.md` says which document is authoritative for what.
-- **Roadmap.** Milestones (M0–M13) are retired as the planning unit after M11; the beta continues in `docs/BETA.md`, and the product plan is by version in `docs/ROADMAP.md`: V1.0 (stable, no new features; 17 criteria, the 2026-10-17 fifteen plus support and platform decisions), V1.1 your library (B-027, B-038, F-P1, B-040), V1.2 playback depth, V1.3 sources and installation, V1.5 the household (under consideration), V2.0 across devices (vision). No date is promised. F-005 is suggested for V1.5 (the handoff listed it among V1.1 candidates "as the owner places them"; the owner may pull it forward). F-003 stays unscheduled and off the public roadmap.
-- **Beta documents.** `docs/BETA.md` is the beta roadmap (builds, scope, gate, known issues, operations); `docs/BETA-NOTES.md` is what testers read; CHANGELOG.md stays the release notes' source.
+  > **Superseded in its layout** by "Documentation: two live documents at the root of `docs/`, five folders, and the guide in the repository README" (2026-11-26); one home per fact and the history rule stand.
+- **Roadmap.** Milestones (M0–M13) are retired as the planning unit after M11; the beta continues in `docs/release/BETA.md`, and the product plan is by version in `docs/ROADMAP.md`: V1.0 (stable, no new features; 17 criteria, the 2026-10-17 fifteen plus support and platform decisions), V1.1 your library (B-027, B-038, F-P1, B-040), V1.2 playback depth, V1.3 sources and installation, V1.5 the household (under consideration), V2.0 across devices (vision). No date is promised. F-005 is suggested for V1.5 (the handoff listed it among V1.1 candidates "as the owner places them"; the owner may pull it forward). F-003 stays unscheduled and off the public roadmap.
+- **Beta documents.** `docs/release/BETA.md` is the beta roadmap (builds, scope, gate, known issues, operations); `docs/release/BETA-NOTES.md` is what testers read; CHANGELOG.md stays the release notes' source.
 - **Release-note categories.** Every CHANGELOG release groups its items under a fixed list of categories in a fixed order (VERSIONING.md); Beta 1 and alpha 2 were regrouped with every item unchanged. `release.py notes` no longer turns a category heading into a store "What's new" line (B-075).
 - **Store assets.** LaunchFrame (installed as the Claude Code plugin `launch-frame@launch-frame` 2.0.0) is the screenshot workflow; each release's assets live in `store-assets/release-<version>/` with provenance. Captures come from emulators with a Creative Commons demo library; tablets use 16:9 as Play's page asks. The Fire TV set uses Google TV emulator captures, labelled so; the owner decides before upload whether to re-capture on the stick. The Fire TV background no longer carries the logo.
 - **Website.** New Features and Roadmap pages; the roadmap's data (`website/src/roadmap.js`) is ROADMAP.md simplified and changes with it; the easter egg is the roadmap played as a Reflux player, behind the mark at the page's end. The site no longer promises 1.0 for December 2026. A feature that arrives with Beta 2 is labelled "Coming in Beta 2" until a Beta 2 publication record exists (`src/released.js`, from release data), so the site never shows as current what cannot be downloaded. The overhauled site is deployed with Beta 2's publication, by the owner.
@@ -1492,7 +1507,7 @@ Supersedes, in the entry below, "the desktop player stays two windows for now" a
   - a user-facing website overhaul;
   - Beta 2's contents and the remaining gate;
   - a future roadmap across V1, V1.1, V1.2, V1.3, V1.5 and Version 2 (candidates, not commitments);
-  - a website roadmap easter egg, to be planned and built in Phase 4 (not in Phase 3). [history/phases/PHASE-4-HANDOFF.md](history/phases/PHASE-4-HANDOFF.md).
+  - a website roadmap easter egg, to be planned and built in Phase 4 (not in Phase 3). [history/phases/PHASE-4-HANDOFF.md](../history/phases/PHASE-4-HANDOFF.md).
 - **The website in Phase 3's closure:**
   - CHANGELOG.md's Unreleased section is grouped for people (`### Playback & Media` …), and the Releases page shows the groups, saying they are not in a downloadable build;
   - the user docs keep describing the downloadable beta, with a note where the next beta changes behaviour;
@@ -1544,7 +1559,7 @@ Supersedes, in the entry below, "the desktop player stays two windows for now" a
 - **B-056** (the brief blank on closing the mini-player) is a minor nitpick, not a Beta 2 blocker. It is skipped and deferred, accepted as a known minor issue, and revisited in a later beta only if reproducible evidence emerges.
 - **The DualSense hot-plug check** is not applicable: the owner has no DualSense. It is not a failure, and no substitute test stands in for it.
 
-**Rules adopted from the closing walks (planning/BETA-BUG-TRACKER.md, B-058 to B-060; accepted with Phase 2 on 2026-11-20).**
+**Rules adopted from the closing walks (docs/BETA-BUG-TRACKER.md, B-058 to B-060; accepted with Phase 2 on 2026-11-20).**
 - **A panel opened in place takes focus, and Back closes it first (B-060).** Panels are a confirmation, a rename, a PIN panel, and adding or deleting a profile.
   - For input that shows focus, the panel's first control (the safe one, on a confirmation) takes focus as it appears.
   - When it closes, focus goes back to what opened it.
@@ -1632,7 +1647,7 @@ Recorded in history/phases/F-P4-ADAPTIVE-KEYBOARD.md (§16, and where each appli
 - A remote's Menu key and a controller's Start open Sources while browsing (`SemanticAction.MENU`); Y, since the final verification, toggles the sidebar (F-P2).
 - Quick View's Menu/Options trigger on a focused media item will have to be reconciled with that. Phase 3 decides it, and Phase 2 does not move it.
 
-The requirement is registered as **F-P3** in [planning/BETA-BUG-TRACKER.md](planning/BETA-BUG-TRACKER.md) and in Phase 3 of [history/phases/BETA-2-PHASES.md](history/phases/BETA-2-PHASES.md).
+The requirement is registered as **F-P3** in [BETA-BUG-TRACKER.md](../BETA-BUG-TRACKER.md) and in Phase 3 of [history/phases/BETA-2-PHASES.md](../history/phases/BETA-2-PHASES.md).
 
 ## 2026-11-19 — Beta 2, Phase 2 authorised: the IDs of the new findings, Forgot PIN, and the statistics provider
 
@@ -1659,7 +1674,7 @@ The requirement is registered as **F-P3** in [planning/BETA-BUG-TRACKER.md](plan
 
 ## 2026-11-19 — A permanent bug tracker beside the phase plan
 
-**Decided by the owner (2026-11-19, the master tracker prompt).** [planning/BETA-BUG-TRACKER.md](planning/BETA-BUG-TRACKER.md) is the permanent, per-issue record of every Beta finding and every issue found since: the original report, reproduction, status, investigation, cause, implementation, tests, verification by kind, evidence, and what is left. [history/phases/BETA-2-PHASES.md](history/phases/BETA-2-PHASES.md) stays the authority for scope, phase and work order, dependencies, exit criteria, and the gate; the two link to each other and do not repeat each other.
+**Decided by the owner (2026-11-19, the master tracker prompt).** [BETA-BUG-TRACKER.md](../BETA-BUG-TRACKER.md) is the permanent, per-issue record of every Beta finding and every issue found since: the original report, reproduction, status, investigation, cause, implementation, tests, verification by kind, evidence, and what is left. [history/phases/BETA-2-PHASES.md](../history/phases/BETA-2-PHASES.md) stays the authority for scope, phase and work order, dependencies, exit criteria, and the gate; the two link to each other and do not repeat each other.
 
 - **Eight status words** (Not Started, Investigating, In Progress, Fixed, Verified, Blocked, Deferred, Not Reproduced) replace the register's earlier list. Verification is reported by kind (automated, emulator, physical device, VM or container, regression, owner acceptance); an issue is Verified only when its acceptance criteria and the matrix's checks are met. B-001 therefore reads Fixed, not "Verified on physical device": its server-source case is untested.
 - **Maintained as the work happens:** code changed without its tracker entry updated is incomplete work. IDs are stable; new issues continue from B-043.
@@ -1667,7 +1682,7 @@ The requirement is registered as **F-P3** in [planning/BETA-BUG-TRACKER.md](plan
 
 ## 2026-11-19 — Beta 2: three phases, cut only after the last; the owner's defaults for haptics and statistics
 
-**Decided by the owner (2026-11-19).** The register, the phase plan, and the gate: [history/phases/BETA-2-PHASES.md](history/phases/BETA-2-PHASES.md).
+**Decided by the owner (2026-11-19).** The register, the phase plan, and the gate: [history/phases/BETA-2-PHASES.md](../history/phases/BETA-2-PHASES.md).
 
 - **Beta 2 is cut only after Phases 2 and 3** are implemented, verified, and accepted, and the gate in BETA-2.md holds. Phase 1 alone does not make a build. `0.9.0-beta.1` stays in testing, unchanged, until then.
 - **The phases are outcome groups, in the owner's order:** 1 reliability, security, data integrity, the statistics foundation, and performance baselines; 2 controller and input, focus, text entry, button mapping, interface haptics, and controller rumble; 3 the media experience (separate libraries, sorting and filtering, Trickplay and right-stick Trickplay, video haptics, atmosphere, recommendations, the featured hero), the final performance work, and the statistics' end-to-end verification. One follow-up per phase at most.
@@ -1709,7 +1724,7 @@ The requirement is registered as **F-P3** in [planning/BETA-BUG-TRACKER.md](plan
 
 ## 2026-11-18 — Beta 2, Phase 1: an authorised exception to the Beta Season freeze, and what it decided
 
-**Decided by the owner (2026-11-18): Phase 1 of the Beta 2 cycle is authorised inside the Beta Season.** The freeze above stands for everything else; this is a named exception with a named scope, not its end. Plan, research, critique, and the revised plan: [history/phases/PHASE-1-PLAN.md](history/phases/PHASE-1-PLAN.md); what ran: VERIFICATION.md, "Phase 1".
+**Decided by the owner (2026-11-18): Phase 1 of the Beta 2 cycle is authorised inside the Beta Season.** The freeze above stands for everything else; this is a named exception with a named scope, not its end. Plan, research, critique, and the revised plan: [history/phases/PHASE-1-PLAN.md](../history/phases/PHASE-1-PLAN.md); what ran: VERIFICATION.md, "Phase 1".
 
 - **Permitted:** the eleven Phase 1 workstreams (profile deletion authorisation B-018; Linux libmpv start-up B-031; the Android frozen frame B-001; the Windows process report B-026; several addresses for one Jellyfin server B-003; unavailable favourites B-033; resolution and HDR labels B-024; the scanning sign's overlap B-005; metadata and search speed B-006; an opt-in statistics foundation; performance baselines) and, added by the owner the same day, bundling libmpv with the Linux tarball (workstream 12). **Not authorised by it:** a version change, a tag, a release, a store upload or promotion, a push, a public website change. Each stays the owner's own decision (VERSIONING.md).
 - **Why the exception:** two security and data defects (B-018, B-003) and two playback failures (B-001, B-031) reported by testers in the season's first days are exactly what a beta exists to find; fixing them in place keeps the beta's evidence about the build people will get.
@@ -1730,7 +1745,7 @@ The requirement is registered as **F-P3** in [planning/BETA-BUG-TRACKER.md](plan
 
 **Linux libmpv cannot be bundled under the LGPL-only rule (workstream 12).** (Superseded in part on 2026-11-19, "Reflux is free and open source under GPL-3.0-or-later": the LGPL-only rule no longer applies to Linux, and the Render API route below is no longer the plan; the finding about mpv's X11 code stands.) mpv's X11 support is GPL-only (mpv 0.42.0, `meson.build`: `x11_opt = get_option('x11').require(get_option('gpl'))`; `video/out/x11_common.c` and `vo_x11.c` are GPL), and `gl-x11`, `egl-x11`, `vdpau`, and `vaapi-x11` depend on it. Reflux's Linux player embeds mpv in an X11 window (`wid`), under Wayland through XWayland, so an LGPL libmpv of Reflux's own cannot show video there, and shipping a GPL libmpv beside proprietary Reflux is a licensing decision the project has refused ("How Reflux builds its Windows libmpv"). **Decided:** the tarball keeps using the distribution's libmpv, the user's own install under the distribution's terms, and says exactly what to install on each distribution (`LinuxPlaybackSetup`, verified in clean Ubuntu 22.04, 24.04, Debian 12, and Fedora 41 containers). **For the owner:** the route to a bundled libmpv that works everywhere is an LGPL libmpv driven through mpv's render API (OpenGL render context, not GPL-gated), with Reflux owning the GL surface on Linux. That replaces the Linux video surface (`VideoSurface`, `X11ErrorGuard`, `wid`): an architecture change for a milestone, not a packaging task. Alternatively, a legal decision about GPL redistribution. Neither is taken here.
 
-**Windows "two Reflux processes" (B-026): not reproduced, and not yet explained.** The packaged `Reflux.exe` is a launcher with the application as its child (two processes named Reflux while it runs). Closed from its window, both went in under a second in every one of 19 runs on the owner's machine, with nothing left. The report's two entries of about 22 MB each after closing match neither a running application nor this pair as measured, so the report stays open (B-026 in [history/phases/BETA-2-PHASES.md](history/phases/BETA-2-PHASES.md)). No code changed; the procedure for a tester who still sees one after closing is in VERIFICATION.md.
+**Windows "two Reflux processes" (B-026): not reproduced, and not yet explained.** The packaged `Reflux.exe` is a launcher with the application as its child (two processes named Reflux while it runs). Closed from its window, both went in under a second in every one of 19 runs on the owner's machine, with nothing left. The report's two entries of about 22 MB each after closing match neither a running application nor this pair as measured, so the report stays open (B-026 in [history/phases/BETA-2-PHASES.md](../history/phases/BETA-2-PHASES.md)). No code changed; the procedure for a tester who still sees one after closing is in VERIFICATION.md.
 
 ## 2026-11-16 — Sources: two actions on the card beside a side navigation; the logo goes Home; the keyboard does not choose the layout
 

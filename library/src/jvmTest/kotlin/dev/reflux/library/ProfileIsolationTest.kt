@@ -41,7 +41,7 @@ private class SharedShelf : CatalogSource {
 }
 
 /**
- * The broad isolation property of M8 (docs/WATCH_STATE.md, "Profiles"): with two profiles that each have their own
+ * The broad isolation property of M8 (docs/product/WATCH_STATE.md, "Profiles"): with two profiles that each have their own
  * account on one server, and a shelf both share, no read the library offers ever gives one profile a title that is
  * only on the other's account, or anything of the other's viewing. It sweeps every read model rather than each
  * screen; [everyQueryIsBoundToTheActiveProfile] holds the SQL itself to the same rule, so a new query cannot quietly
@@ -221,7 +221,7 @@ class ProfileIsolationTest {
             Regex("""EXISTS\s*\(\s*SELECT\s+1\s+FROM\s+version""").containsMatchIn(sql) && sql.trimStart().startsWith("SELECT")
 
     private companion object {
-        /** Viewer-state tables (docs/WATCH_STATE.md, "Profiles"). */
+        /** Viewer-state tables (docs/product/WATCH_STATE.md, "Profiles"). */
         val VIEWER_STATE = listOf("watch_state", "watch_sync", "favorite", "version_preference", "user_collection", "user_collection_item", "profile_setting")
 
         /**

@@ -11,7 +11,7 @@ import dev.reflux.core.source.SourceConnector
 import kotlinx.coroutines.CancellationException
 
 /**
- * Connecting a Plex Media Server from its address (docs/NAVIGATION.md, section 6), in one of three ways:
+ * Connecting a Plex Media Server from its address (docs/product/NAVIGATION.md, section 6), in one of three ways:
  *
  * - a plex.tv account's name and password: Reflux signs in once at plex.tv and keeps only the token, never the
  *   password; for a server shared with the account rather than owned by it, the token plex.tv gives for that server;
@@ -41,7 +41,7 @@ class PlexConnector(
         if (!address.matches(url)) return Connection.Failed(ConnectionProblem.INVALID_ADDRESS)
         val username = request.username?.takeIf { it.isNotBlank() }
         val password = request.password?.takeIf { it.isNotEmpty() }
-        // One client identity per account (docs/WATCH_STATE.md, "Profiles"): a plex.tv account by its name, a token by
+        // One client identity per account (docs/product/WATCH_STATE.md, "Profiles"): a plex.tv account by its name, a token by
         // a digest of it (the token itself never goes into an identity), and a server open without signing in as this
         // installation's one shared connection.
         val deviceId = AccountDevices.id(installation, type, url, username ?: password?.let { "$TOKEN_ACCOUNT:${Sha256.hex(it)}" })

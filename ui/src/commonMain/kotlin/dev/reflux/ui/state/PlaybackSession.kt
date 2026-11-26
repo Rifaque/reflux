@@ -90,7 +90,7 @@ class PlaybackSession internal constructor(
     private val player: Player,
     /**
      * Where playback was started from: the unified library, or a source's own page, whose playback and next
-     * episodes stay on that source (docs/NAVIGATION.md, section 8).
+     * episodes stay on that source (docs/product/NAVIGATION.md, section 8).
      */
     internal val libraryScope: LibraryScope = LibraryScope.Unified,
 ) {
@@ -125,7 +125,7 @@ class PlaybackSession internal constructor(
     /**
      * Whose this playback is: the profile that was watching when it began. Everything the session keeps for a viewer (its
      * reports, the subtitle choice it remembers) is theirs, whoever is watching later; a profile switch ends the session
-     * first (docs/WATCH_STATE.md, "Profiles").
+     * first (docs/product/WATCH_STATE.md, "Profiles").
      */
     val owner: ProfileId = app.library.activeProfile()
 
@@ -352,7 +352,7 @@ class PlaybackSession internal constructor(
     /**
      * A playback with sound and no track in use is not normal playback, though the engine calls it playing. It
      * has to last [SILENCE_MS]: an engine settles on its tracks a moment after it starts. There is no conversion to
-     * fall back on, so the picture goes on and the viewer is told once (docs/PLAYBACK.md).
+     * fall back on, so the picture goes on and the viewer is told once (docs/product/PLAYBACK.md).
      */
     private fun watchSilence(state: PlayerState) {
         if (!state.audioUnavailable) {
@@ -409,7 +409,7 @@ class PlaybackSession internal constructor(
     /**
      * The one way a run-time failure changes a plan: an attempt at the original has shown that [part] cannot play it,
      * which is an unknown resolved, and the source can convert it. It happens once for a work, keeps the track that
-     * was playing, and never moves to another language. Anything else stays the failure it is (docs/PLAYBACK.md).
+     * was playing, and never moves to another language. Anything else stays the failure it is (docs/product/PLAYBACK.md).
      *
      * @param from where the new plan starts, if not where the viewer is now.
      * @return whether a new plan is on its way.
@@ -581,7 +581,7 @@ class PlaybackSession internal constructor(
     /**
      * A seek key. Down is the ten-second seek it always was, at once. Held, it only moves the target (shown in
      * [seekPreview]), faster the longer it is held, and one seek is made when it is let go ([seekKeyReleased]) or has gone
-     * quiet, so a held key is not a burst of seeks (docs/INPUT_MODEL.md).
+     * quiet, so a held key is not a burst of seeks (docs/product/INPUT_MODEL.md).
      *
      * @param repeat the platform says this is the held key repeating.
      */

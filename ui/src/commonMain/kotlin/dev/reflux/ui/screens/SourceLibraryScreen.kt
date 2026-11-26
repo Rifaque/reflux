@@ -55,7 +55,7 @@ internal fun Library.sourceLibraryModel(sourceId: SourceId, section: String?): S
 }
 
 /**
- * "Show me what is on this source" (docs/NAVIGATION.md, section 4): one source, or one of its libraries, as it is,
+ * "Show me what is on this source" (docs/product/NAVIGATION.md, section 4): one source, or one of its libraries, as it is,
  * whether or not it takes part in the unified library. Its works open, play, and are kept from this source's copies;
  * it reads the same library as everything else, and says when the source is away, refuses Reflux, or holds nothing.
  */

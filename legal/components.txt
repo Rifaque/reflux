@@ -1,4 +1,4 @@
-# Third-party software in Reflux's builds, as the About page lists it (docs/RELEASE.md, "Third-party notices").
+# Third-party software in Reflux's builds, as the About page lists it (docs/release/RELEASE.md, "Third-party notices").
 #
 # One component per line, six fields separated by "|":
 #   name | license | texts | targets | modules | note

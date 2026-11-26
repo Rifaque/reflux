@@ -61,7 +61,7 @@ import dev.reflux.ui.theme.Text
 import dev.reflux.ui.theme.glass
 
 /**
- * A profile's mark: its initial in a neutral circle (docs/DESIGN.md: the interface takes no color of its own). The
+ * A profile's mark: its initial in a neutral circle (docs/product/DESIGN.md: the interface takes no color of its own). The
  * active profile's is lit; what tells profiles apart is the name beside it, never a color.
  */
 @Composable
@@ -91,7 +91,7 @@ internal fun ProfileMark(profile: Profile?, size: Dp = 40.dp, lit: Boolean = fal
 }
 
 /**
- * Who is watching (docs/NAVIGATION.md, section 1): the profile entry of the utility area. The profiles of this
+ * Who is watching (docs/product/NAVIGATION.md, section 1): the profile entry of the utility area. The profiles of this
  * installation, switching between them, adding one, and deleting one that is not open. On a phone, where the utility
  * area is this one entry, it also leads to Downloads, Sources, and Settings.
  */
@@ -184,7 +184,7 @@ private fun ProfileRow(profile: Profile, modifier: Modifier = Modifier, manage: 
 /**
  * What can be done with one profile, under its row. The open profile: its name, changed here, and its PIN, in Settings,
  * where it is set and changed with the current one; it is not deleted while open (switch first), so Reflux is never left
- * without one. Another profile: deleted, after a confirmation, and with its own PIN where it has one (docs/WATCH_STATE.md,
+ * without one. Another profile: deleted, after a confirmation, and with its own PIN where it has one (docs/product/WATCH_STATE.md,
  * "Profiles"). Its name and PIN are its owner's, changed from within it.
  */
 @Composable

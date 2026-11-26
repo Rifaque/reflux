@@ -1,6 +1,6 @@
 name: CI
 
-# Every push and pull request, from a clean checkout (docs/RELEASE.md, "CI"). Actions are pinned by commit, with the
+# Every push and pull request, from a clean checkout (docs/release/RELEASE.md, "CI"). Actions are pinned by commit, with the
 # release they are in beside each; nothing here holds a secret.
 on:
   push:
@@ -114,7 +114,7 @@ jobs:
       # trakt.tv answers with about 32 KB of headers, over Node's 16 KB default.
       - run: node --max-http-header-size=65536 scripts/check-links.mjs
       # Every page at seven sizes, from a large display to a phone on its side: no sideways scrolling, readable text,
-      # targets big enough to tap, and the performance budget; the screenshots are kept for review (docs/WEBSITE.md).
+      # targets big enough to tap, and the performance budget; the screenshots are kept for review (docs/release/WEBSITE.md).
       - run: npx playwright install --with-deps chromium
       - run: node scripts/check-layout.mjs --screenshots
       # The roadmap page and its easter egg: readable without script, keyboard-operable, Escape and focus, reduced motion, no CSP error.
@@ -133,7 +133,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - run: python3 -I -m unittest discover -s tools/release -p 'test_*.py' -v
-      # Every relative link and #anchor in the repository's Markdown reaches its file and heading (docs/README.md).
+      # Every relative link and #anchor in the repository's Markdown reaches its file and heading (README.md).
       - run: python3 -I tools/docs/check_links.py .
 
   workflows:

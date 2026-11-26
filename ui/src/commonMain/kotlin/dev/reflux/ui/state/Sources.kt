@@ -253,7 +253,7 @@ internal fun Problems.connection(problem: ConnectionProblem, kind: ConnectionKin
 /**
  * Who the open profile is already signed in as on the server at [address] (of [type]), when that is someone other than
  * [username]: signing in replaces nobody's but this profile's, so the form says so, and that another person wants a
- * profile of their own (docs/WATCH_STATE.md, "Profiles").
+ * profile of their own (docs/product/WATCH_STATE.md, "Profiles").
  */
 internal fun Library.otherAccountOfThisProfile(connections: SourceConnections, type: String?, address: String, username: String): String? {
     if (address.isBlank() || username.isBlank()) return null

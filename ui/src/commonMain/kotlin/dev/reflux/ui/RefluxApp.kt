@@ -193,7 +193,7 @@ internal val NavigationBarHeight = 56.dp
 /**
  * How much of a screen the navigation occupies. Screens start their content below [top] and let it scroll out
  * from under [bottom]; the whole page area starts [start] from the left, where a rail or a sidebar runs down the
- * side (docs/NAVIGATION.md, section 3).
+ * side (docs/product/NAVIGATION.md, section 3).
  *
  * On a phone held upright the navigation is at the bottom, within reach of a thumb, and the top only carries what a
  * page needs there; everywhere else it runs down the left side, and the top of the page carries the way back.
@@ -274,7 +274,7 @@ private fun chromeInsets(navigation: NavigationStyle, onSection: Boolean, prompt
 /**
  * Provides the adaptive layout and design tokens to [content]. The layout follows the window and the input
  * modality; density changes are animated, which is what turns a controller press into a morph rather than
- * a mode switch (docs/DESIGN.md).
+ * a mode switch (docs/product/DESIGN.md).
  */
 @Composable
 fun RefluxTheme(app: AppState, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
@@ -333,7 +333,7 @@ internal fun Modifier.trackPointer(app: AppState): Modifier = pointerInput(app) 
 }
 
 /**
- * The browsing experience: library screens beside, or above, the global navigation (docs/NAVIGATION.md).
+ * The browsing experience: library screens beside, or above, the global navigation (docs/product/NAVIGATION.md).
  *
  * @param bars the system's bars around the window. Reflux draws under them (edge to edge) and keeps every control
  * clear of them; the shell does not pad the application for them.
@@ -665,7 +665,7 @@ private fun Chrome(app: AppState, page: PageScroll, rail: RailFocus, navigationI
         if (app.profileGate == null && bottomBar) LimitedTextSize(NAVIGATION_TEXT_LIMIT) {
             Box(margin.inert(navigationInert)) { CompactNavigation(app) }
         }
-        // What is playing, beside the page while the viewer browses (docs/NAVIGATION.md, section 8): part of the
+        // What is playing, beside the page while the viewer browses (docs/product/NAVIGATION.md, section 8): part of the
         // navigation's own layer, above the phone's bar or in the page's bottom corner beside a rail or a sidebar.
         layout.dock?.takeIf { app.profileGate == null }?.let { dock ->
             var shown by remember { mutableStateOf<PlaybackSession?>(null) }
@@ -758,7 +758,7 @@ private fun Chrome(app: AppState, page: PageScroll, rail: RailFocus, navigationI
                 }
             }
         }
-        // Who is watching: over everything, which it makes inert (docs/WATCH_STATE.md, "Profiles").
+        // Who is watching: over everything, which it makes inert (docs/product/WATCH_STATE.md, "Profiles").
         // It is there at once when Reflux opens on it; asked for later it arrives as a page does, and it leaves the
         // way one leaves, so that choosing who is watching is one movement into their Home.
         var asked by remember { mutableStateOf(app.profileGate) }
@@ -832,7 +832,7 @@ private fun icon(destination: Destination.Section): Icon = when (destination) {
 /**
  * Navigation on a phone held upright: Home, Movies, Shows, and Search along the bottom as icons, where a thumb
  * reaches them, and only what a page needs at the top (the way back, a sign of the library being updated, and the
- * utility area as one entry: the profile, which leads to Downloads, Sources, and Settings; docs/NAVIGATION.md).
+ * utility area as one entry: the profile, which leads to Downloads, Sources, and Settings; docs/product/NAVIGATION.md).
  */
 @Composable
 private fun BoxScope.CompactNavigation(app: AppState) {
@@ -916,7 +916,7 @@ internal class RailFocus {
 }
 
 /**
- * The navigation down the left side (docs/NAVIGATION.md, section 3): a compact rail of icons on a phone on its side,
+ * The navigation down the left side (docs/product/NAVIGATION.md, section 3): a compact rail of icons on a phone on its side,
  * a rail with names beneath on a tablet, a sidebar with names beside on a desktop, and on a television a rail of
  * icons that shows their names while it has focus. Entering it lands on the destination the viewer is in.
  */
@@ -1011,10 +1011,10 @@ private fun NavigationRail(app: AppState, style: NavigationStyle, focus: RailFoc
                 else -> NavigationLabel.NONE
             }
             // A phone's rail, on its side, has the height for the library and one more: its utility area is the one
-            // profile entry, as when it is held upright (docs/NAVIGATION.md, section 3).
+            // profile entry, as when it is held upright (docs/product/NAVIGATION.md, section 3).
             val shownDestinations = if (compact) PrimaryDestinations + Destination.Profiles else app.destinations
             for (destination in shownDestinations) {
-                // The utility area sits apart, at the foot (docs/NAVIGATION.md, section 1), beneath a hairline.
+                // The utility area sits apart, at the foot (docs/product/NAVIGATION.md, section 1), beneath a hairline.
                 if (destination == shownDestinations.firstOrNull { it in app.utilityDestinations }) {
                     Spacer(Modifier.weight(1f))
                     if (!compact) Box(Modifier.fillMaxWidth().padding(horizontal = 10.dp).padding(bottom = 4.dp).height(1.dp).background(RefluxColors.divider))
@@ -1233,7 +1233,7 @@ internal val TopActionGap = 14.dp
 
 /**
  * The utility area on a phone held upright: one entry at the top right, the profile, which leads to who is
- * watching, Downloads, Sources, and Settings (docs/NAVIGATION.md, section 1). While something is being downloaded a
+ * watching, Downloads, Sources, and Settings (docs/product/NAVIGATION.md, section 1). While something is being downloaded a
  * small dot says so; it does not move.
  */
 @Composable
@@ -1267,7 +1267,7 @@ internal fun showsProfileButton(destination: Destination): Boolean =
 
 /**
  * What a controller's buttons do while browsing, said only where each is available now (B-039, B-012; the mapping and
- * its conflict matrix are in docs/INPUT_MODEL.md, "Controller mapping"). Y (and Start) open Sources; X says nothing,
+ * its conflict matrix are in docs/product/INPUT_MODEL.md, "Controller mapping"). Y (and Start) open Sources; X says nothing,
  * being reserved for Phase 3's Media Quick View (DECISIONS.md, 2026-11-19).
  */
 /**

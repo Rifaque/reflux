@@ -13,21 +13,21 @@ plugins {
 // that need an engine skip themselves where none can be loaded.
 val developmentNatives = rootDir.resolve(".reflux/native").takeIf { it.isDirectory }?.absolutePath
 
-// The one product version (docs/VERSIONING.md). Everything that reports a version derives it from this
+// The one product version (docs/release/VERSIONING.md). Everything that reports a version derives it from this
 // property; the numbers stores and installers need are computed here and never written by hand.
 val refluxVersion: String = providers.gradleProperty("reflux.version").get()
 val refluxVersionCode: Int = run {
     val match = Regex("""(\d+)\.(\d+)\.(\d+)(?:-(alpha|beta|rc)\.(\d+))?""").matchEntire(refluxVersion)
-        ?: throw GradleException("reflux.version '$refluxVersion' is not MAJOR.MINOR.PATCH[-alpha|beta|rc.N] (docs/VERSIONING.md)")
+        ?: throw GradleException("reflux.version '$refluxVersion' is not MAJOR.MINOR.PATCH[-alpha|beta|rc.N] (docs/release/VERSIONING.md)")
     val (major, minor, patch) = match.destructured.toList().take(3).map(String::toInt)
     val stage = match.groupValues[4]
     val n = match.groupValues[5].toIntOrNull()
-    if (minor > 99 || patch > 99) throw GradleException("reflux.version '$refluxVersion': MINOR and PATCH stay below 100 (docs/VERSIONING.md)")
-    if (n != null && n !in 1..29) throw GradleException("reflux.version '$refluxVersion': a stage number is 1 to 29 (docs/VERSIONING.md)")
+    if (minor > 99 || patch > 99) throw GradleException("reflux.version '$refluxVersion': MINOR and PATCH stay below 100 (docs/release/VERSIONING.md)")
+    if (n != null && n !in 1..29) throw GradleException("reflux.version '$refluxVersion': a stage number is 1 to 29 (docs/release/VERSIONING.md)")
     val s = when (stage) { "alpha" -> n!!; "beta" -> 30 + n!!; "rc" -> 60 + n!!; else -> 99 }
     major * 1_000_000 + minor * 10_000 + patch * 100 + s
 }
-// Windows needs MAJOR.MINOR.(PATCH * 100 + S); Linux packages sort a stage with `~` (docs/VERSIONING.md,
+// Windows needs MAJOR.MINOR.(PATCH * 100 + S); Linux packages sort a stage with `~` (docs/release/VERSIONING.md,
 // "Desktop package versions"). The channel names who a build is for, from its stage.
 val refluxStage: String = Regex("""-(alpha|beta|rc)\.""").find(refluxVersion)?.groupValues?.get(1) ?: "stable"
 val refluxWindowsVersion: String = refluxVersionCode.let { "${it / 1_000_000}.${it / 10_000 % 100}.${it % 10_000}" }
@@ -42,7 +42,7 @@ val refluxApplicationId: String = providers.gradleProperty("reflux.android.appli
 extra["reflux.applicationId"] = refluxApplicationId
 
 /**
- * The commit a build is made from and whether the tree had changes (docs/VERSIONING.md, "Build metadata"), as
+ * The commit a build is made from and whether the tree had changes (docs/release/VERSIONING.md, "Build metadata"), as
  * `commit=<short hash>` and `modified=<true|false>` lines; empty where there is no Git checkout to ask. Read
  * when a task needs it, never while configuring, so an edit does not invalidate the configuration cache.
  */
@@ -103,7 +103,7 @@ abstract class CheckThirdPartyNotices : DefaultTask() {
         if (uncovered.isNotEmpty() || gone.isNotEmpty()) {
             throw GradleException(
                 buildString {
-                    append("legal/components.txt does not match the ${target.get()} build (docs/RELEASE.md, \"Third-party notices\").\n")
+                    append("legal/components.txt does not match the ${target.get()} build (docs/release/RELEASE.md, \"Third-party notices\").\n")
                     if (uncovered.isNotEmpty()) append("Modules no line covers; read their licenses and add them:\n").append(uncovered.joinToString("\n") { "  $it" }).append('\n')
                     if (gone.isNotEmpty()) append("Lines whose modules are no longer in the build:\n").append(gone.joinToString("\n") { "  $it" })
                 },
@@ -140,7 +140,7 @@ subprojects {
 }
 
 /**
- * The release identity of this tree as JSON (docs/RELEASE.md, "Release system"): the product version and every
+ * The release identity of this tree as JSON (docs/release/RELEASE.md, "Release system"): the product version and every
  * number derived from it, the channel, and the commit. The release tooling and the website read this; neither
  * computes a version of its own.
  */

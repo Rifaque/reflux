@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    Nothing of Reflux leaves the device by backup or by transfer to a new device (docs/RELEASE.md, "Android release
+    Nothing of Reflux leaves the device by backup or by transfer to a new device (docs/release/RELEASE.md, "Android release
     build"): the library holds the user's sources, sealed with a keystore key that never leaves this device, and
     their titles and paths. android:allowBackup="false" stops cloud backup; on Android 12 and later only these rules
     also stop device-to-device transfer.

@@ -10,7 +10,7 @@ import dev.reflux.core.playback.SubtitlePreference
 import dev.reflux.core.profile.PinPolicy
 
 /**
- * A local viewer of this installation (docs/WATCH_STATE.md, "Profiles"): whose watch history, favorites,
+ * A local viewer of this installation (docs/product/WATCH_STATE.md, "Profiles"): whose watch history, favorites,
  * collections, pinned versions, preferences, and server accounts something is. Media truth (works, versions,
  * metadata, artwork, Identify's corrections) is the installation's and is shared; nothing a viewer does is.
  */
@@ -152,7 +152,7 @@ fun Library.deleteProfile(id: ProfileId, pin: String?, key: PinKey?): ProfileDel
 }
 
 /**
- * Starts [id] over, for a viewer who forgot its PIN (docs/WATCH_STATE.md, "Profiles"): its PIN goes, and with it
+ * Starts [id] over, for a viewer who forgot its PIN (docs/product/WATCH_STATE.md, "Profiles"): its PIN goes, and with it
  * everything the PIN kept private, so that resetting reveals nothing: watch history, what its servers last said,
  * favorites, collections, pinned versions, and preferences. The profile itself, with its name, stays, usable at once.
  * Its accounts must have been removed first (`SourceConnections.remove`, which signs this device out of them) and its
@@ -191,7 +191,7 @@ fun Library.seenByActiveProfile(itemId: dev.reflux.core.model.MediaId): Boolean 
 fun Library.profileDownloadIds(id: ProfileId): List<String> = queries.downloadsOfProfile(id.value).executeAsList().map { it.id }
 
 /**
- * Clears [id]'s local watch history (docs/WATCH_STATE.md, "Clearing local watch history"): every position, watched
+ * Clears [id]'s local watch history (docs/product/WATCH_STATE.md, "Clearing local watch history"): every position, watched
  * mark, and play count Reflux keeps for it, and with them its Continue Watching, Next Up, and launcher row. Only
  * Reflux's own record changes: no server is told, no media, download, favorite, or other profile is touched. What
  * its servers last said is kept, so that their unchanged records are recognized as such and do not bring the

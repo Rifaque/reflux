@@ -5,7 +5,7 @@ import dev.reflux.core.net.Redaction
 import dev.reflux.core.playback.DeviceCapabilities
 
 /**
- * A support report: what a person attaches to a bug report when they choose to (docs/RELEASE.md, "Diagnostics
+ * A support report: what a person attaches to a bug report when they choose to (docs/release/RELEASE.md, "Diagnostics
  * export"). It is made only when asked, never sent by Reflux, and says enough to understand a problem without
  * saying who has it or what they watch: no credential, token, cookie, server address, file path, or title.
  *

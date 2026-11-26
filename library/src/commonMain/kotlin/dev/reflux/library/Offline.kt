@@ -39,7 +39,7 @@ import kotlin.concurrent.Volatile
  * Smart Offline: decides what to copy to the device so that it can be watched without its source, makes
  * the copies one at a time, and registers each finished copy as one more version of its work. From then on
  * nothing is special about it: Best Version prefers it as the closest copy, and progress on it is the
- * work's progress like on any other version (docs/OFFLINE.md).
+ * work's progress like on any other version (docs/product/OFFLINE.md).
  *
  * Nothing here knows what kind of source a file comes from, or what kind of device this is.
  *

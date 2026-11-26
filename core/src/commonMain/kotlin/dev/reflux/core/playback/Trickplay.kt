@@ -3,7 +3,7 @@ package dev.reflux.core.playback
 import dev.reflux.core.source.MediaSource
 
 /**
- * The scene previews a source keeps for one version (B-030; docs/PLAYBACK.md, "Trickplay"): pictures taken every
+ * The scene previews a source keeps for one version (B-030; docs/product/PLAYBACK.md, "Trickplay"): pictures taken every
  * [intervalMs] through the video, [count] of them, laid out [columns] by [rows] on each of [sheets] (a server's tile
  * images; a single picture per sheet where the source keeps them one by one). Only a source that already has them
  * offers them: Reflux never generates previews, and never pretends a version has them.

@@ -1,6 +1,6 @@
 # Reflux Verification Log
 
-What was run, on what, and with what result. This is history, not plan: the product roadmap is [ROADMAP.md](history/roadmaps/ROADMAP-M0-M13.md), and what a release still needs is [RELEASE.md](RELEASE.md).
+What was run, on what, and with what result. This is history, not plan: the product roadmap is [ROADMAP.md](../history/roadmaps/ROADMAP-M0-M13.md), and what a release still needs is [RELEASE.md](../release/RELEASE.md).
 
 Rules for adding to it:
 
@@ -10,7 +10,7 @@ Rules for adding to it:
 - Do not edit an old section to make it current; add a new one. Test counts in old sections are counts at that time.
 - Milestone labels are those of the day a section was written. Before 2026-11-02, "M2" means release engineering (now M6) and "M3" real-world validation (now M7); ROADMAP.md, "Earlier numbering", maps every one.
 
-- Sections before Beta 2 (2026-10-08 to 2026-11-17: M0 to M11, Beta 1) are in [history/verification/VERIFICATION-ALPHA-TO-BETA-1.md](history/verification/VERIFICATION-ALPHA-TO-BETA-1.md), with their names unchanged.
+- Sections before Beta 2 (2026-10-08 to 2026-11-17: M0 to M11, Beta 1) are in [history/verification/VERIFICATION-ALPHA-TO-BETA-1.md](../history/verification/VERIFICATION-ALPHA-TO-BETA-1.md), with their names unchanged.
 
 ## Phase 1 (Beta 2): reliability, security, playback, source integrity, observability (2026-11-18 to 19)
 
@@ -99,11 +99,11 @@ On `open-source-gpl` at `556887b`, with three new on-device test files uncommitt
 - **B-041, Android (physical, store build).** The installed store build (`0.9.0-beta.1`, release, the owner's library as installed; read-only: performance counters and swipes), 3 runs each: memory after a cold start (`am start -W -S`, `dumpsys meminfo` TOTAL PSS at 6 s): Phone 2a 331,010 / 307,594 / 376,326 KB; Pad 7 333,773 / 279,895 / 289,038 KB. Frame pacing scrolling Home (`dumpsys gfxinfo`, 8 swipes down and 8 up): Phone 2a 2,824 / 2,796 / 2,780 frames, janky 0.04 / 0.29 / 0.43 %, p50 10 ms, p90 14–17 ms, p95 21 ms, p99 40–46 ms; Pad 7 1,344 / 1,260 / 1,352 frames, janky 0.22 / 0.16 / 0.22 %, p50 13 ms, p90 18–22 ms, p95 30 ms, p99 36–38 ms. Cold-start times during these runs: phone 641 / 566 / 485 ms, tablet 450 / 705 / 496 ms.
 - **Google TV emulator** (`Reflux_TV`, sdk_google_atv64, Android 16; an emulator result, not physical): the same debug and test APKs; `PhaseOneWalkOnDeviceTest` and `SurfaceHandoverOnDeviceTest`, 8 run, OK (the mini-player case skipped by its assumption: no mini-player on a television). B-005: the sign seen and clear on Home, Movies, and Search (the Movies screenshot was taken just after the sign went; the bounds check is the evidence); B-033's walk and B-001's server case passed. The Fire TV was not connected: B-005's Fire TV walk is outstanding.
 - **Full check**, forced, on this tree (`./gradlew check --continue --rerun-tasks`, Windows): **BUILD SUCCESSFUL** in 12 min; 1,496 tests, 0 failures, 0 errors, 24 skipped (the same assumptions as before). `AccessibilityTest.withoutAScreenReaderTheyStillGo` (B-044) passed this time. The on-device tests are not part of `check`; they ran above. Hosted CI has not run (nothing pushed).
-- **Phase 1 against its exit criteria:** history/phases/PHASE-1-PLAN.md, "Stage G"; each issue: planning/BETA-BUG-TRACKER.md.
+- **Phase 1 against its exit criteria:** history/phases/PHASE-1-PLAN.md, "Stage G"; each issue: docs/BETA-BUG-TRACKER.md.
 
 ## Phase 2: controller, focus, interaction, input, haptics (2026-11-19)
 
-On `open-source-gpl` from `7dbade6`, with Phase 2's changes uncommitted at the time of these runs (committed afterwards as `77b994c`, code and tests, and the documentation commit after it). The owner accepted Phase 1 and authorised Phase 2 the same day. Plan, audit and contract: history/phases/PHASE-2-PLAN.md; each issue: planning/BETA-BUG-TRACKER.md.
+On `open-source-gpl` from `7dbade6`, with Phase 2's changes uncommitted at the time of these runs (committed afterwards as `77b994c`, code and tests, and the documentation commit after it). The owner accepted Phase 1 and authorised Phase 2 the same day. Plan, audit and contract: history/phases/PHASE-2-PLAN.md; each issue: docs/BETA-BUG-TRACKER.md.
 
 Nothing was pushed, merged, deployed, versioned, tagged, released or entered in a store console. The store installs on the devices were not touched (the debug build sits beside them).
 
@@ -359,7 +359,7 @@ On the `open-source-gpl` working tree after `b9ddec6`, with this pass's fixes (B
 
 ## Phase 3 (2026-11-20)
 
-On `open-source-gpl`, from `9903e86` (Phase 2 closed). Commits `dcef9fb` (M1), `b2af2b7` (M2–M4) and the closing commit. The owner's Phase 3 work order set the scope (DECISIONS.md, 2026-11-20; history/phases/BETA-2-PHASES.md, Phase 3's state); each issue's record is in planning/BETA-BUG-TRACKER.md. Nothing was pushed, merged, deployed, versioned, tagged, released, or changed in a store console.
+On `open-source-gpl`, from `9903e86` (Phase 2 closed). Commits `dcef9fb` (M1), `b2af2b7` (M2–M4) and the closing commit. The owner's Phase 3 work order set the scope (DECISIONS.md, 2026-11-20; history/phases/BETA-2-PHASES.md, Phase 3's state); each issue's record is in docs/BETA-BUG-TRACKER.md. Nothing was pushed, merged, deployed, versioned, tagged, released, or changed in a store console.
 
 **Environments:**
 - this Windows 11 machine, physical;
@@ -520,7 +520,7 @@ The owner's "Phase 3 Final Validation & Closure" work order, and the steers give
 
 ## Phase 4: consolidation, store assets, website, release rehearsal (2026-11-21)
 
-On `open-source-gpl` from `3aa5964` (Phase 3's closure) to the commits listed in planning/PHASE-4.md, "Closure". Machine: the Windows 11 development PC (physical), Docker Desktop 29.9.3 (containers), the Android emulators named below. No physical phone, tablet, Fire TV or Linux desktop was attached or used. Nothing was pushed, published, uploaded or deployed. The work and its decisions: planning/PHASE-4.md; DECISIONS.md, 2026-11-21.
+On `open-source-gpl` from `3aa5964` (Phase 3's closure) to the commits listed in history/phases/PHASE-4.md, "Closure". Machine: the Windows 11 development PC (physical), Docker Desktop 29.9.3 (containers), the Android emulators named below. No physical phone, tablet, Fire TV or Linux desktop was attached or used. Nothing was pushed, published, uploaded or deployed. The work and its decisions: history/phases/PHASE-4.md; DECISIONS.md, 2026-11-21.
 
 **Automated tests.**
 - Start: `./gradlew check --continue` (Windows): **exit 0**. Executed: `:ui:jvmTest` 548 tests, 0 failures, 1 skipped (`SourcesUiTest` passed: B-074 not reproduced); `:desktop:app:test` 77 (15 skipped, window tests off); `:android:app:testDebugUnitTest` 56; Android lint; `verifySharedSources`. Up to date from 2026-11-20 with unchanged inputs: the other modules' 969 results, 0 failures.
@@ -590,7 +590,7 @@ The owner's scoped fix before Beta 2's release (BETA-BUG-TRACKER.md, B-076). On 
 
 ## CachyOS final audit (2026-11-24)
 
-The owner's brief for a last session on the CachyOS laptop; full record in [planning/CACHYOS-FINAL-AUDIT-LEDGER.md](planning/CACHYOS-FINAL-AUDIT-LEDGER.md). **Environment:** physical laptop, CachyOS (kernel 7.3.5), Hyprland 0.57.2 on Wayland, Reflux through XWayland, Intel Arrow Lake iGPU + NVIDIA RTX 5060 Max-Q, libmpv from mpv 0.42.0 (VA-API hardware decoding), Temurin 21.0.13 (user-local), a GameSir G7 Pro controller (read only). No Android device, emulator or SDK; no Windows machine. Every run used copies of the owner's data or temporary libraries; Reflux's windows were kept on workspace 9.
+The owner's brief for a last session on the CachyOS laptop; full record in [CACHYOS-FINAL-AUDIT-LEDGER.md](CACHYOS-FINAL-AUDIT-LEDGER.md). **Environment:** physical laptop, CachyOS (kernel 7.3.5), Hyprland 0.57.2 on Wayland, Reflux through XWayland, Intel Arrow Lake iGPU + NVIDIA RTX 5060 Max-Q, libmpv from mpv 0.42.0 (VA-API hardware decoding), Temurin 21.0.13 (user-local), a GameSir G7 Pro controller (read only). No Android device, emulator or SDK; no Windows machine. Every run used copies of the owner's data or temporary libraries; Reflux's windows were kept on workspace 9.
 
 | What | Result |
 | --- | --- |
@@ -632,7 +632,7 @@ The owner's brief for a last session on the CachyOS laptop; full record in [plan
 
 ### The player as one window on Linux, after the owner rejected the audit (2026-11-24)
 
-The owner found the player broken on the real CachyOS desktop (a video window without controls, a controls window with a blank background). **Environment:** the same physical laptop and Hyprland session; a test workspace on the HDMI monitor with the owner's approval (monitors recorded and restored around every run); captures limited to Reflux's own window rectangle, taken only while the test workspace was shown; the session's runtime rules neutralised. Record: [planning/CACHYOS-FINAL-AUDIT-LEDGER.md](planning/CACHYOS-FINAL-AUDIT-LEDGER.md), CACHY-002.
+The owner found the player broken on the real CachyOS desktop (a video window without controls, a controls window with a blank background). **Environment:** the same physical laptop and Hyprland session; a test workspace on the HDMI monitor with the owner's approval (monitors recorded and restored around every run); captures limited to Reflux's own window rectangle, taken only while the test workspace was shown; the session's runtime rules neutralised. Record: [CACHYOS-FINAL-AUDIT-LEDGER.md](CACHYOS-FINAL-AUDIT-LEDGER.md), CACHY-002.
 
 | What | Result |
 | --- | --- |
@@ -647,7 +647,7 @@ The owner found the player broken on the real CachyOS desktop (a video window wi
 
 ## Windows acceptance audit of `cachyos-final-audit` (2026-11-24)
 
-The owner's Windows-led acceptance audit of the CachyOS branch (`fec8a4a` plus this audit's fix, B-091). Every result names where it ran: **physical** devices, **emulators**, a **VM** (WSL2) and **hosted CI** are kept apart. Device serials and addresses are not recorded. The record of what was reviewed and decided is in [CACHYOS-FINAL-AUDIT-LEDGER.md](planning/CACHYOS-FINAL-AUDIT-LEDGER.md), "Windows acceptance audit".
+The owner's Windows-led acceptance audit of the CachyOS branch (`fec8a4a` plus this audit's fix, B-091). Every result names where it ran: **physical** devices, **emulators**, a **VM** (WSL2) and **hosted CI** are kept apart. Device serials and addresses are not recorded. The record of what was reviewed and decided is in [CACHYOS-FINAL-AUDIT-LEDGER.md](CACHYOS-FINAL-AUDIT-LEDGER.md), "Windows acceptance audit".
 
 | What | Where | Result |
 | --- | --- | --- |
@@ -713,7 +713,7 @@ On the owner's CachyOS laptop (Hyprland 0.57.2 with Noctalia's shell, eDP-1 2560
 | Hosted CI | `gh run list --commit` | `406382b`: CI 45585080925 and Release 45585081047, success; `5de9fae`: **no run** (`[skip ci]`) |
 | Documentation links | `python -I tools/docs/check_links.py` (Windows 11), after this audit's edits | **PASS**: 585 relative links, 0 broken |
 
-No result above is a Linux, Android or playback result. The Ubuntu validation that follows is [UBUNTU-TRANSITION.md](UBUNTU-TRANSITION.md), section 4.
+No result above is a Linux, Android or playback result. The Ubuntu validation that follows is [UBUNTU-TRANSITION.md](../history/linux/UBUNTU-TRANSITION.md), section 4.
 
 ## Ubuntu validation (2026-11-26)
 
@@ -737,7 +737,7 @@ A covered XWayland window is presented at about one frame a second on GNOME: rea
 
 ## Beta 3 integration (2026-11-26)
 
-`cachyos-final-audit`'s Ubuntu validation (`76b526a`) merged into `beta-3` (`8eaf79c`), and the Windows CI failure of run 45785524870 diagnosed and fixed in the test (B-105, `cbd28ca`). Full record: [planning/BETA-3-INTEGRATION-AUDIT.md](planning/BETA-3-INTEGRATION-AUDIT.md). Production code unchanged (that of `406382b`). Not pushed; no hosted CI.
+`cachyos-final-audit`'s Ubuntu validation (`76b526a`) merged into `beta-3` (`8eaf79c`), and the Windows CI failure of run 45785524870 diagnosed and fixed in the test (B-105, `cbd28ca`). Full record: [BETA-3-INTEGRATION-AUDIT.md](BETA-3-INTEGRATION-AUDIT.md). Production code unchanged (that of `406382b`). Not pushed when these local runs were made; pushed afterwards with the owner's approval (`54c21a4`), hosted CI below.
 
 | Check | Environment | Result |
 | --- | --- | --- |
@@ -746,4 +746,5 @@ A covered XWayland window is presented at about one frame a second on GNOME: rea
 | `./gradlew check --continue`, then the nine up-to-date test tasks with `--rerun` | Windows 11, physical | **BUILD SUCCESSFUL**; 1,695 tests, 0 failed, 37 skipped (window and Linux-only tests skipped, not requested); Beta 3's feature tests 56/56 |
 | `:sources:local:test :playback:mpv:test :desktop:engine:test :desktop:app:test`, clean clone, `REFLUX_REQUIRE_ENGINE_TESTS=true`, CI font | WSL2 Ubuntu 24.04.4 (**VM**), libmpv2 0.37.0 | **BUILD SUCCESSFUL**: 6 / 62 (1 skipped) / 52 (18 skipped) / 101 (23 skipped), 0 failed; `LinuxDesktopEntryTest` 6/6 |
 | Documentation links | Windows 11 | PASS (count in the audit, section 7) |
-| Window tests, physical Linux, Android devices, hosted CI | | NOT RUN (the audit, section 7) |
+| Hosted CI on `54c21a4`: CI [45811843168](https://github.com/Rifaque/reflux/actions/runs/45811843168) and the release rehearsal [45811843105](https://github.com/Rifaque/reflux/actions/runs/45811843105) | GitHub Actions | **PASS**: every applicable job passed on its first attempt: CI's Check (windows-2025), Check (ubuntu-24.04), Android, Website, Release tools and documentation links, Workflow lint and Secret scan; the rehearsal's Linux archive, Windows libmpv from source, and Android, Windows and provenance. The Windows check ran `:sources:local:test`, the folder-watcher test included, and passed. The Windows desktop-window step is Linux-only by design and was skipped; the Linux check's desktop window tests passed. The rehearsal's two draft-release jobs are skipped on a branch push by design |
+| Window tests locally, physical Linux, Android devices | | NOT RUN (the audit, section 7) |

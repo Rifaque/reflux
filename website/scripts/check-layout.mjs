@@ -1,4 +1,4 @@
-// Checks the built site at the sizes people read it on (docs/WEBSITE.md, "Responsive"): every page at a large display,
+// Checks the built site at the sizes people read it on (docs/release/WEBSITE.md, "Responsive"): every page at a large display,
 // a desktop, a laptop, a tablet, a phone upright and on its side. A page must never scroll sideways, keep its text at a
 // readable size, keep what can be tapped big enough to tap, show its heading and navigation, and stay within the
 // performance budget (layout shift, largest paint, and bytes). It serves dist/ as Vercel does (scripts/serve.mjs's

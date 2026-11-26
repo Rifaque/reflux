@@ -1,4 +1,4 @@
-# The build environment of Reflux's Windows libmpv (docs/RELEASE.md, "libmpv on Windows"): Ubuntu 24.04, pinned by
+# The build environment of Reflux's Windows libmpv (docs/release/RELEASE.md, "libmpv on Windows"): Ubuntu 24.04, pinned by
 # digest, with the distribution's MinGW-w64 cross compiler (GCC, POSIX threads) and build tools. Nothing is fetched
 # here but Ubuntu's own packages; every source the DLL is made of is in sources.txt with its SHA-256.
 #

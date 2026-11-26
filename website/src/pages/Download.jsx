@@ -1,7 +1,7 @@
-// Download (docs/WEBSITE.md, "Download"): one card per platform, each saying where Reflux comes from for it, what it
+// Download (docs/release/WEBSITE.md, "Download"): one card per platform, each saying where Reflux comes from for it, what it
 // needs, and the one thing to do next, with its install guide one step away. Every version, file, size, and state is
 // the release data's (scripts/release-data.mjs): the publication record and the store records. The site never offers an
-// Android file: Android and Fire TV come only from their stores (docs/DECISIONS.md, 2026-11-15).
+// Android file: Android and Fire TV come only from their stores (docs/decisions/DECISIONS.md, 2026-11-15).
 import { Link } from 'react-router-dom'
 import release from '../generated/release.json'
 import { Out, PageHead } from '../components.jsx'

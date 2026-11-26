@@ -1,4 +1,4 @@
-> **Historical (archived 2026-11-21, Phase 4).** Kept unchanged as a record; not a current plan. Current documents: [docs/README.md](../../README.md); this archive: [history/README.md](../README.md).
+> **Historical (archived 2026-11-21, Phase 4).** Kept unchanged as a record; not a current plan. Current documents: [docs/README.md](../../../README.md#documentation); this archive: [history/README.md](../README.md).
 
 # Phase 4 handoff
 
@@ -8,10 +8,10 @@ What Phase 4 is for, as the owner set it at Phase 3's closure (2026-11-20), and 
 
 - **Phase 3 is accepted and formally closed by the owner (2026-11-20).**
   - Its closure record (commits, results, accepted limitations, deferred and carried items): [BETA-2.md, "Phase 3 closure"](BETA-2-PHASES.md#phase-3-closure-2026-11-20-accepted-and-formally-closed-by-the-owner).
-  - Each issue: [BETA-BUG-TRACKER.md](../../planning/BETA-BUG-TRACKER.md).
+  - Each issue: [BETA-BUG-TRACKER.md](../../BETA-BUG-TRACKER.md).
   - The runs: VERIFICATION.md's three "Phase 3" sections.
 - **The latest test result is not wholly green:** 941 tests in the UI and core run, with 2 timing-sensitive `SourcesUiTest` failures (B-074). A full `./gradlew check` belongs at the start of Phase 4's release verification.
-- **Beta 2's fix scope is frozen.** Findings go to the tracker's [Beta 3 backlog](../../planning/BETA-BUG-TRACKER.md#beta-3-backlog-from-phase-3s-closure-2026-11-20) unless the owner authorises a critical Beta 2 blocker. Phase 4 does not fix bugs by default.
+- **Beta 2's fix scope is frozen.** Findings go to the tracker's [Beta 3 backlog](../../BETA-BUG-TRACKER.md#beta-3-backlog-from-phase-3s-closure-2026-11-20) unless the owner authorises a critical Beta 2 blocker. Phase 4 does not fix bugs by default.
 - **Beta 2 is not cut.** The gate in BETA-2.md still needs:
   - the owner's acceptance of Phase 3;
   - hosted CI;
@@ -26,7 +26,7 @@ What Phase 4 is for, as the owner set it at Phase 3's closure (2026-11-20), and 
   - B-044: a test-clock intermittent, test infrastructure for M12;
   - B-026 and B-015: Not Reproduced;
   - B-056: Deferred by the owner;
-  - the V1.1 candidates B-027, B-038, B-040 ([V1.1-LIBRARY-RESEARCH.md](../../planning/V1.1-LIBRARY-RESEARCH.md));
+  - the V1.1 candidates B-027, B-038, B-040 ([V1.1-LIBRARY-RESEARCH.md](../../product/V1.1-LIBRARY-RESEARCH.md));
   - F-003, video haptics: a deferred future feature, below.
 
 ## 1. Documentation consolidation

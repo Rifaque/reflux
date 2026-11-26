@@ -23,7 +23,7 @@ import kotlin.math.roundToInt
  * swapchain, cut symmetrically, 0.3 ms per call). It is cut in device pixels, so the radius is taken in device pixels from the
  * window's own DPI, and the toolkit puts its own rectangular region back whenever it reshapes the surface, so the region is made
  * again after each reshape. Regions have hard edges: the controls window over the surface draws the antialiased rim that
- * hides the steps (docs/DECISIONS.md, 2026-11-13).
+ * hides the steps (docs/decisions/DECISIONS.md, 2026-11-13).
  *
  * Only on Windows; elsewhere it does nothing and the picture stays square.
  */

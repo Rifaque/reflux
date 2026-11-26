@@ -1,8 +1,8 @@
-> **Historical (archived 2026-11-21, Phase 4).** Kept unchanged as a record; not a current plan. Current documents: [docs/README.md](../../README.md); this archive: [history/README.md](../README.md).
+> **Historical (archived 2026-11-21, Phase 4).** Kept unchanged as a record; not a current plan. Current documents: [docs/README.md](../../../README.md#documentation); this archive: [history/README.md](../README.md).
 
 # Reflux Launch Plan
 
-The tracks that take Reflux from a working tree to a public product beside the engineering milestones: the website, the demo video, the beta program, and the store distribution paths. Milestones and their order are in [ROADMAP.md](../roadmaps/ROADMAP-M0-M13.md); the checklists a build must pass are in [RELEASE.md](../../RELEASE.md).
+The tracks that take Reflux from a working tree to a public product beside the engineering milestones: the website, the demo video, the beta program, and the store distribution paths. Milestones and their order are in [ROADMAP.md](../roadmaps/ROADMAP-M0-M13.md); the checklists a build must pass are in [RELEASE.md](../../release/RELEASE.md).
 
 ## Website: reflux.rsxdevelops.dev
 
@@ -67,7 +67,7 @@ Captures are made after the M12 candidate is frozen, so the film shows the build
 
 - **Size:** about 15–20 testers, chosen from the signup for coverage, not the first to arrive: phones and tablets, at least three Google TV / Android TV devices, at least three Fire TV devices on Fire OS, Windows and Linux desktops, local folders, Jellyfin servers, and SMB shares; at least two testers using controllers.
 - **Channels:** Google Play closed testing (phones, tablets, Google TV) — an email list or Google Group of the testers; the Amazon Appstore's testing path for Fire TV (Live App Testing); desktop packages from the beta site, checksummed.
-- **Versions:** `0.9.0-beta.N` ([VERSIONING.md](../../VERSIONING.md)); every build has a changelog entry and a tag.
+- **Versions:** `0.9.0-beta.N` ([VERSIONING.md](../../release/VERSIONING.md)); every build has a changelog entry and a tag.
 - **Feedback:** an in-app "Send feedback" link (to a form or email) next to an export of the diagnostics log, which is already redacted; a short form per beta (what you played, what failed, what confused you). Reports are triaged into blocker / critical / normal / later.
 - **Cadence:** a beta build when there is something worth testing, at most weekly; the changelog says what to look at.
 - **Exit:** the M12 exit criteria in ROADMAP.md.

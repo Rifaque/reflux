@@ -1,5 +1,5 @@
 // Every page of the site, with its title and description: the app's routes, the prerendered files, the links check,
-// and the search engines all read this one list (docs/WEBSITE.md).
+// and the search engines all read this one list (docs/release/WEBSITE.md).
 import { DOC_PAGES } from './docs/pages.js'
 
 export const SITE = 'https://reflux.rsxdevelops.dev'

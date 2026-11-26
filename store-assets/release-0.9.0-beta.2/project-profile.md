@@ -12,7 +12,7 @@ People with their own media collection, often a home server, who watch on severa
 
 | Target | Evidence | Selected |
 | --- | --- | --- |
-| google-play/phone | `android/app/src/main/AndroidManifest.xml` LAUNCHER activity; walks on the physical Nothing Phone (2a) (docs/VERIFICATION.md) | yes |
+| google-play/phone | `android/app/src/main/AndroidManifest.xml` LAUNCHER activity; walks on the physical Nothing Phone (2a) (docs/verification/VERIFICATION.md) | yes |
 | google-play/tablet-7-inch | `design/.../Layout.kt` `formFactor()`: shortest side ≥ 600 dp and width < 1200 dp → tablet rail; confirmed at runtime on the `Reflux_Tablet7` emulator (960 × 600 dp) | yes (forced from Probable with that evidence) |
 | google-play/tablet-10-inch | Same rule: ≥ 1200 dp → sidebar; runtime on `Reflux_Tablet` (Pixel Tablet profile, 1280 × 800 dp); physical Xiaomi Pad 7 walks | yes (forced from Probable) |
 | google-play/tv | Manifest LEANBACK_LAUNCHER, `android:banner`, leanback not required | yes |

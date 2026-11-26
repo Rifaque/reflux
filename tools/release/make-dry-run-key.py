@@ -9,7 +9,7 @@ never an argument, in a process listing, or in any output.
 
 This key is NOT Reflux's upload key and must never sign anything given to a store or a person: it exists so that the
 real release configuration (R8, resource shrinking, signing) can be exercised end to end. The upload key is made and
-kept by the owner (docs/RELEASE.md, "Signing").
+kept by the owner (docs/release/RELEASE.md, "Signing").
 """
 import os
 import pathlib

@@ -36,7 +36,7 @@ internal data class NameParts(
 /**
  * Parses one name into title, year, episode marker, edition, and technical remainder.
  *
- * Rules are deterministic and ordered from most to least specific. See docs/METADATA.md.
+ * Rules are deterministic and ordered from most to least specific. See docs/product/METADATA.md.
  */
 internal class NameParser(private val maxYear: Int) {
     private val externalIdPattern = Regex(

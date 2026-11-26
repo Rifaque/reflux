@@ -1,4 +1,4 @@
-"""Self-test of `release.py verify` (docs/RELEASE.md, "Release system"): what passes, and each way a release is refused.
+"""Self-test of `release.py verify` (docs/release/RELEASE.md, "Release system"): what passes, and each way a release is refused.
 
     python -I -m unittest discover -s tools/release -p 'test_*.py'
 

@@ -13,7 +13,7 @@ What Reflux stores, sends, and to whom, as the code does it (checked 2026-11-08 
 | Artwork cache | Data directory | — | No |
 | Diagnostics log | Data directory, Android system log | Credentials, tokens, and addresses' user info redacted (`Redaction`) | Only if the user sends it |
 | Device name | Built from the device: "Reflux on" and the manufacturer and model (Android), or the computer's host name (desktop) | — | Sent to the user's Jellyfin and Plex servers and to plex.tv when signing in and with requests, as clients name themselves to those servers |
-| Device ID | Data directory, a random UUID | — | Not as it is: each Jellyfin and Plex account signs in as a device identity derived from it, the server, and the account (M8, docs/WATCH_STATE.md, "Profiles"), sent to that server as its clients identify themselves. A Plex token is only ever in it as a one-way digest |
+| Device ID | Data directory, a random UUID | — | Not as it is: each Jellyfin and Plex account signs in as a device identity derived from it, the server, and the account (M8, docs/product/WATCH_STATE.md, "Profiles"), sent to that server as its clients identify themselves. A Plex token is only ever in it as a one-way digest |
 | Profiles: each viewer's name, watch state, favorites, collections, pinned versions, and preferences, kept apart (M8) | Library database | As the library. One profile's history, favorites, and server accounts are never shown to another, and an account signed in to in one profile cannot be signed in from another | No |
 | A profile's optional PIN | Never stored: a random salt and an HMAC-SHA256 verifier under a key the platform's secure store holds (Windows Credential Manager, the Secret Service, the Android keystore); wrong entries counted, with growing waits | A lock between people sharing a device, not encryption: the library database is not encrypted, and someone who can read the device's storage and the key can try all ten thousand PINs. On Linux without a Secret Service the key is in the data directory as it is, and the PIN locks the interface only. A forgotten PIN is not recovered: "Forgot PIN" erases what the profile kept on the device, after a confirmation. A profile with a PIN is deleted only with that PIN, checked in the same transaction that deletes, with the same count of wrong entries (2026-11-18, B-018) | No. Never logged, never in a support report |
 
@@ -29,7 +29,7 @@ What Reflux stores, sends, and to whom, as the code does it (checked 2026-11-08 
 
 ## Store disclosures (prepared, not submitted)
 
-No longer true, and not to be used: "no user data leaves the device". With "Online metadata & artwork" on, the titles of the user's media leave the device for Trakt. The facts for each console, to be matched to the console's own wording when the form is filled (the classification itself is not decided here; check the current Play Console and Amazon wording first, and record the answer given in docs/VERIFICATION.md):
+No longer true, and not to be used: "no user data leaves the device". With "Online metadata & artwork" on, the titles of the user's media leave the device for Trakt. The facts for each console, to be matched to the console's own wording when the form is filled (the classification itself is not decided here; check the current Play Console and Amazon wording first, and record the answer given in docs/verification/VERIFICATION.md):
 
 | Fact | Answer |
 | --- | --- |

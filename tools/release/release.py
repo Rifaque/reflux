@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Reflux's release tool (docs/RELEASE.md, "Release system"): one clean commit in, named and checksummed artifacts out.
+"""Reflux's release tool (docs/release/RELEASE.md, "Release system"): one clean commit in, named and checksummed artifacts out.
 
     python -I tools/release/release.py build  [--signing-env FILE] [--out DIR] [--add FILE ...] [--allow-modified]
     python -I tools/release/release.py verify DIR [--public] [--expect-signer-sha256 HEX]
@@ -179,7 +179,7 @@ def metadata_provider(tag, environ) -> str:
     a rehearsal builds without one, and the app then makes no lookups."""
     supplied = bool((environ.get("REFLUX_TRAKT_CLIENT_ID") or "").strip())
     if tag and not supplied:
-        sys.exit("a release needs Trakt's production Client ID in REFLUX_TRAKT_CLIENT_ID (docs/RELEASE.md, \"Metadata provider\")")
+        sys.exit("a release needs Trakt's production Client ID in REFLUX_TRAKT_CLIENT_ID (docs/release/RELEASE.md, \"Metadata provider\")")
     return "client id supplied" if supplied else "no client id"
 
 

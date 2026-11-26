@@ -1,12 +1,12 @@
 # Beta 3 integration audit (2026-11-26)
 
-**What this is.** The record of bringing `cachyos-final-audit`'s Linux and current-release work into `beta-3`, the diagnosis of the Windows CI failure on `cachyos-final-audit` (run 45785524870), and what was tested afterwards. Done on the Windows 11 development machine (physical). Nothing was pushed; `main`, every remote branch and every tag are untouched. Issues are in [BETA-BUG-TRACKER.md](BETA-BUG-TRACKER.md); run results are also in [VERIFICATION.md](../VERIFICATION.md), "Beta 3 integration".
+**What this is.** The record of bringing `cachyos-final-audit`'s Linux and current-release work into `beta-3`, the diagnosis of the Windows CI failure on `cachyos-final-audit` (run 45785524870), and what was tested afterwards. Done on the Windows 11 development machine (physical). Nothing was pushed; `main`, every remote branch and every tag are untouched. Issues are in [BETA-BUG-TRACKER.md](../BETA-BUG-TRACKER.md); run results are also in [VERIFICATION.md](VERIFICATION.md), "Beta 3 integration".
 
 ## Summary
 
 - **The Linux work was already on `beta-3`.** `beta-3` was created from `cachyos-final-audit` at `5de9fae` (the closure, 2026-11-25), so every Linux commit (the integrated renderer, B-084, B-092, B-099, B-102, and the rest) was already in its history. Since then each branch gained **one documentation-only commit**: `814518b` on `beta-3` (the Windows audit before Ubuntu) and `76b526a` on `cachyos-final-audit` (the Ubuntu validation, B-104). The production tree (everything outside `docs/` and `CLAUDE.md`) is **identical** on `406382b`, `5de9fae`, `76b526a` and `814518b`.
 - **Integration:** one normal merge of `76b526a` into `beta-3` (`8eaf79c`), with three documentation files resolved by hand, keeping both sides. No commit was duplicated, rebased or cherry-picked.
-- **Windows CI failure:** a **test race**, not caused by the Linux work and not Windows-specific in principle: `LocalFolderSourceTest.watchesForNewMediaIncludingNewFolders` waited a fixed 300 ms for a file watcher that registers on another thread. Reproduced locally under CPU load (8 of 12 failed), mechanism confirmed, fixed in the test only without loosening it (12 of 12 under the same load), with a negative control. Tracked as **[B-105](BETA-BUG-TRACKER.md#b-105)**. Hosted CI has **not** run on the fix (nothing pushed).
+- **Windows CI failure:** a **test race**, not caused by the Linux work and not Windows-specific in principle: `LocalFolderSourceTest.watchesForNewMediaIncludingNewFolders` waited a fixed 300 ms for a file watcher that registers on another thread. Reproduced locally under CPU load (8 of 12 failed), mechanism confirmed, fixed in the test only without loosening it (12 of 12 under the same load), with a negative control. Tracked as **[B-105](../BETA-BUG-TRACKER.md#b-105)**. **Hosted CI passed** on `54c21a4`, pushed afterwards with the owner's approval (2026-11-26): CI [45811843168](https://github.com/Rifaque/reflux/actions/runs/45811843168) and the release rehearsal [45811843105](https://github.com/Rifaque/reflux/actions/runs/45811843105), every applicable job on the first attempt (section 7).
 - **Beta 3's own work** (F-P1 with B-091, B-085, B-086) is untouched: the merge changed no code.
 
 ## 1. Starting state
@@ -78,15 +78,15 @@ Only four files differed between the branches (all from `76b526a`), plus two fil
 
 | File or change | Source | Beta 3 current state | Integration action | Reason | Required tests |
 | --- | --- | --- | --- | --- | --- |
-| `docs/UBUNTU-VALIDATION-REPORT.md` | `76b526a` (new) | absent | Bring forward source version (verbatim) | the evidence record; not rewritten | link check |
-| `docs/README.md` | `76b526a`: one row | `814518b`: one row (UBUNTU-TRANSITION.md) at the same place | Merge manually: both rows, transition then report | both documents exist on beta-3 | link check |
-| `docs/VERIFICATION.md` | `76b526a`: "Ubuntu validation (2026-11-26)" | `814518b`: "Windows repository audit before Ubuntu (2026-11-25)" at the end | Merge manually: both sections, in date order | both are results; neither replaces the other | link check |
-| `docs/planning/BETA-BUG-TRACKER.md`, header | Ubuntu (2026-11-26) | Windows audit (2026-11-25) | Merge manually: one line, newest first, both histories | | anchors |
+| `docs/verification/UBUNTU-VALIDATION-REPORT.md` | `76b526a` (new) | absent | Bring forward source version (verbatim) | the evidence record; not rewritten | link check |
+| `docs/README.md` (since 2026-11-26 the root README's "Documentation") | `76b526a`: one row | `814518b`: one row (UBUNTU-TRANSITION.md) at the same place | Merge manually: both rows, transition then report | both documents exist on beta-3 | link check |
+| `docs/verification/VERIFICATION.md` | `76b526a`: "Ubuntu validation (2026-11-26)" | `814518b`: "Windows repository audit before Ubuntu (2026-11-25)" at the end | Merge manually: both sections, in date order | both are results; neither replaces the other | link check |
+| `docs/BETA-BUG-TRACKER.md`, header | Ubuntu (2026-11-26) | Windows audit (2026-11-25) | Merge manually: one line, newest first, both histories | | anchors |
 | tracker B-077, B-092, B-101, B-102, B-103 | Ubuntu bullets | unchanged since `5de9fae` | Bring forward (auto-merged) | | |
 | tracker B-084, B-089, B-099 | Ubuntu bullets | `814518b` bullets at the same place | Merge manually: beta-3's 2026-11-25 bullet, then the Ubuntu one | both are evidence | |
 | tracker B-104 entry | `76b526a` (new) | "next free ID: B-104" | Bring forward; the next free ID becomes B-105 (then B-106 with B-105) | ID agreed on both branches, no collision | anchors |
 | tracker Beta 3 backlog table | B-104 row; an older B-084 row | B-084 row (newer status), F-P1, B-085, B-086 rows | Merge manually: B-104 added; beta-3's B-084 row kept ("Ubuntu validation next" → validated 2026-11-26); source's stale B-084 row dropped | beta-3's row was written after the source's | |
-| `docs/UBUNTU-TRANSITION.md` | — | "nothing in it has been run on Ubuntu yet" | Dated status line added, procedure unchanged | the statement became stale | link check |
+| `docs/history/linux/UBUNTU-TRANSITION.md` | — | "nothing in it has been run on Ubuntu yet" | Dated status line added, procedure unchanged | the statement became stale | link check |
 | `sources/local/.../LocalFolderSourceTest.kt` | — (B-105) | fixed 300 ms wait | Test fix (handshake) | the Windows CI failure (section 6) | the test under load; negative control; `check` |
 | Production code, Gradle, CI workflows, fixtures, CHANGELOG | identical | identical | Keep Beta 3 version (no difference) | | full `check` |
 
@@ -116,7 +116,7 @@ Only four files differed between the branches (all from `76b526a`), plus two fil
 
 **Classification:** intermittent **test race** (timing; exposed by load), pre-existing in the test since it was written, unrelated to the Linux audit; seen on Windows, but nothing in it is specific to Windows. Not a toolchain problem, and not a production bug in the watcher (once registered, it reported every event). One product question is recorded unverified in B-105 (the initial refresh and the watcher start independently).
 
-**Fix ([B-105](BETA-BUG-TRACKER.md#b-105), `cbd28ca`, test only).** The fixed wait is replaced by a handshake: rewrite the existing `Movies/existing.mkv` until the watcher reports (200 ms per try, at most 10 s), then settle and drain, as the test already does between steps. No assertion removed or loosened, no timeout raised.
+**Fix ([B-105](../BETA-BUG-TRACKER.md#b-105), `cbd28ca`, test only).** The fixed wait is replaced by a handshake: rewrite the existing `Movies/existing.mkv` until the watcher reports (200 ms per try, at most 10 s), then settle and drain, as the test already does between steps. No assertion removed or loosened, no timeout raised.
 
 | Check after the fix | Result |
 | --- | --- |
@@ -124,7 +124,7 @@ Only four files differed between the branches (all from `76b526a`), plus two fil
 | The test with every core busy, 12 times | **12 of 12 PASS** |
 | Negative control: new subfolders no longer registered (product change, temporary, reverted) | the test **FAILS** (timeout at line 111, the file in the new folder) |
 
-**Status:** resolved locally; **hosted CI has not run on the fix** (nothing pushed). It is not a known intermittent to be re-run; it is fixed, pending hosted confirmation.
+**Status:** resolved locally, then **confirmed on hosted CI** (update, 2026-11-26): `beta-3` was pushed with the owner's approval and `54c21a4` ran CI [45811843168](https://github.com/Rifaque/reflux/actions/runs/45811843168) and the release rehearsal [45811843105](https://github.com/Rifaque/reflux/actions/runs/45811843105); the Windows check ran `:sources:local:test` and the folder-watcher test passed. It is not a known intermittent to be re-run; one green run does not rule out a rare recurrence.
 
 ## 7. Tests after integration
 
@@ -146,20 +146,20 @@ All on `beta-3` at `cbd28ca` (the merge plus B-105's fix). Production code is th
 - **Physical Linux** (Ubuntu or CachyOS): not available to the agent; nothing was repeated there. The Ubuntu report's results stand because the production code is unchanged.
 - **Android instrumented tests and device walks**: no Android code changed; unit tests and lint ran.
 - **Website checks**: no website file changed.
-- **Hosted CI**: nothing pushed (the owner approves pushes); no CI result exists for `beta-3` after `814518b` (which was `[skip ci]`).
+- **Hosted CI**: not run when this record was written (nothing pushed then; the owner approves pushes). *Update (2026-11-26):* after the owner approved the push, `54c21a4` ran CI [45811843168](https://github.com/Rifaque/reflux/actions/runs/45811843168) and the release rehearsal [45811843105](https://github.com/Rifaque/reflux/actions/runs/45811843105): every applicable job passed on its first attempt: CI's Check (windows-2025), Check (ubuntu-24.04), Android, Website, Release tools and documentation links, Workflow lint and Secret scan; the rehearsal's Linux archive, Windows libmpv from source, and Android, Windows and provenance. The Windows check ran `:sources:local:test`, the folder-watcher test included, and passed. The Windows desktop-window step is Linux-only by design and was skipped; the Linux check's desktop window tests passed. The rehearsal's two draft-release jobs are skipped on a branch push by design.
 
 ## 8. Remaining Beta 3 work
 
 - **B-104** (Open, cause established, not implemented). The proposed fix, choosing libmpv's `vaapi-device` as the render node of the GPU Skiko draws with, is supported by evidence: `mpv --hwdec=vaapi-copy --vaapi-device=/dev/dri/renderD129` initialised Intel's iHD at once on the same laptop, and `vainfo` agrees. **Ready to implement as designed, with questions to settle in the implementation:** mapping Skiko's OpenGL vendor string to a PCI vendor ID (Intel `0x8086`, AMD `0x1002`); a machine with two GPUs of the same vendor (fall back to today's request); the fallback renderer (already zero-copy `vaapi` on Intel; untouched); whether the start-up probe's CUDA initialisation (`MpvDecodeProbe`) also wakes NVIDIA (could not be measured). The tests can be written on Windows (node choice from a fake `/sys/class/drm` tree), but **acceptance needs the owner's Ubuntu laptop** (a perf walk showing `vaapi-copy` and NVIDIA idle). Not implemented in this integration, as instructed.
-- **B-105**: hosted CI confirmation on the next owner-approved push.
-- **B-077** (`MpvEngineTest` log-list iteration race; fix specified), **B-089** (UI test font), **B-090**, **B-100**, **B-101**, **B-103** (the owner's decision), and the rest of the tracker's [Beta 3 backlog](BETA-BUG-TRACKER.md#beta-3-backlog-from-phase-3s-closure-2026-11-20).
+- **B-105**: confirmed on hosted CI (`54c21a4`, CI 45811843168); watch for a recurrence.
+- **B-077** (`MpvEngineTest` log-list iteration race; fix specified), **B-089** (UI test font), **B-090**, **B-100**, **B-101**, **B-103** (the owner's decision), and the rest of the tracker's [Beta 3 backlog](../BETA-BUG-TRACKER.md#beta-3-backlog-from-phase-3s-closure-2026-11-20).
 - **The owner's open decisions** (ledger, "Closure"): the integrated Linux player's acceptance and release placement, the desktop entry's placement (CACHY-001, B-102), B-103, and whether `cachyos-final-audit` is separated or retired now that `beta-3` holds everything.
 - **Ubuntu not tested:** software decoding, audio device change, keyring sign-in, HDR, network shares, Jellyfin; the two GNOME test-environment findings.
-- **Before Beta 3 is release-ready:** hosted CI green on `beta-3` (all jobs, including the Windows and Linux window tests); the systematic Beta 2 findings entered and fixed; B-104 fixed and walked on the Ubuntu laptop (if the owner places it in Beta 3); the owner's acceptance of the Linux player; the Beta 3 gate and version per docs/BETA.md and VERSIONING.md, only when the owner asks.
+- **Before Beta 3 is release-ready:** hosted CI green on `beta-3` (all jobs, including the Windows and Linux window tests); the systematic Beta 2 findings entered and fixed; B-104 fixed and walked on the Ubuntu laptop (if the owner places it in Beta 3); the owner's acceptance of the Linux player; the Beta 3 gate and version per docs/release/BETA.md and VERSIONING.md, only when the owner asks.
 
 ## 9. Final state
 
-- **Branch:** `beta-3`, local, ahead of `origin/beta-3` by the merge, `76b526a` (through the merge), and three commits of this session; **not pushed**.
+- **Branch:** `beta-3`, local, ahead of `origin/beta-3` by the merge, `76b526a` (through the merge), and three commits of this session; **not pushed** when this record was written. *Update (2026-11-26):* pushed with the owner's approval as a fast-forward, `814518b..54c21a4`; hosted CI passed (section 7).
 - **Commits created (local):** `8eaf79c` (merge of `76b526a`, documentation), `cbd28ca` (B-105 test fix and its tracker entry), and the commit adding this report and the VERIFICATION.md record. No AI co-author or attribution trailer.
 - **Working tree:** clean after the final commit (only `.gitignore`d build output).
 - **Untouched:** `main` (`1d65dcf`), `open-source-gpl`, the local `cachyos-final-audit` (`5de9fae`), every `origin/` branch (`origin/beta-3` still `814518b`, `origin/cachyos-final-audit` `76b526a`), every tag. No force-push, rebase, reset, stash or clean. No CI workflow changed.
@@ -168,6 +168,6 @@ All on `beta-3` at `cbd28ca` (the merge plus B-105's fix). Production code is th
 ## 10. Assessment
 
 - **Integration: complete.** `beta-3` holds every commit of `cachyos-final-audit` (Linux renderer, B-092, B-099, B-102, the Ubuntu validation and B-104) and all of Beta 3's own work, with both branches' documentation kept.
-- **Ready for systematic Beta 2 bug fixing:** yes, with the caveat that hosted CI has not yet run on this `beta-3`; the first owner-approved push should be watched on every job, the Windows check included.
-- **The Windows CI failure:** **resolved locally**: diagnosed, reproduced, fixed in the test without weakening it, verified on Windows under load and on Linux (WSL2); hosted confirmation pending. It was a test race, not a regression from the Linux work.
+- **Ready for systematic Beta 2 bug fixing:** yes. *Update (2026-11-26):* the caveat written here (no hosted CI yet) is resolved: hosted CI on the pushed `beta-3` (`54c21a4`) passed every applicable job on its first attempt, the Windows check included.
+- **The Windows CI failure:** **resolved locally**: diagnosed, reproduced, fixed in the test without weakening it, verified on Windows under load and on Linux (WSL2), and confirmed on hosted CI (`54c21a4`, CI 45811843168). It was a test race, not a regression from the Linux work.
 - **Before Beta 3 is release-ready:** section 8.

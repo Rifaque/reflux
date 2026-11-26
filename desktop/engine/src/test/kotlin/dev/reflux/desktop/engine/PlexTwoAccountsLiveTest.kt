@@ -23,7 +23,7 @@ import kotlin.test.assertNotEquals
 import kotlin.test.assertTrue
 
 /**
- * Two accounts on one real Plex Media Server, from one Reflux installation (M8; docs/WATCH_STATE.md, "Profiles"): the
+ * Two accounts on one real Plex Media Server, from one Reflux installation (M8; docs/product/WATCH_STATE.md, "Profiles"): the
  * Plex half of [JellyfinTwoAccountsLiveTest]. It observes what the server does when two accounts use one client
  * identity (how every account signed in before M8), and checks that per-account identities keep both signed in and
  * that "this device's session" never resolves to the other account's. The second half signs in through the application's own connections as two profiles, so it exercises the source identity a token gets (`PlexSource.idOf`), not the connector alone.

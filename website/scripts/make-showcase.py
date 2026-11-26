@@ -1,5 +1,5 @@
 """Makes the website's product images (public/showcase/*.webp) from the LaunchFrame source captures of a release
-(docs/WEBSITE.md, "Product images"): real captures only, system bars cropped off, scaled uniformly, never edited.
+(docs/release/WEBSITE.md, "Product images"): real captures only, system bars cropped off, scaled uniformly, never edited.
 
     python -I website/scripts/make-showcase.py store-assets/release-0.9.0-beta.2/source-screenshots
 

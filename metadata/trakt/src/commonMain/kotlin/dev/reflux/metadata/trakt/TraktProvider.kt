@@ -31,7 +31,7 @@ import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.intOrNull
 
 /**
- * The Trakt API v2 adapter (the Standard API, no user account; docs/METADATA.md, "Provider").
+ * The Trakt API v2 adapter (the Standard API, no user account; docs/product/METADATA.md, "Provider").
  *
  * The application's Client ID is sent as `trakt-api-key`. It identifies the application and is not a secret; there
  * is no client secret and no OAuth here, because looking up a title needs neither. It comes from the build, never
@@ -266,7 +266,7 @@ class TraktProvider(
         )
     }
 
-    /** Trakt's poster, fanart, and logo, as one witness among the others (docs/METADATA.md, "Artwork precedence"). */
+    /** Trakt's poster, fanart, and logo, as one witness among the others (docs/product/METADATA.md, "Artwork precedence"). */
     private fun artwork(images: JsonObject?): List<RemoteArtwork> = buildList {
         for ((key, kind) in listOf("poster" to ArtworkKind.POSTER, "fanart" to ArtworkKind.BACKDROP, "logo" to ArtworkKind.LOGO)) {
             // Trakt gives no language or vote for an image; the model's defaults stand.

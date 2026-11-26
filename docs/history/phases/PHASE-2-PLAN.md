@@ -1,10 +1,10 @@
-> **Historical (archived 2026-11-21, Phase 4).** Kept unchanged as a record; not a current plan. Current documents: [docs/README.md](../../README.md); this archive: [history/README.md](../README.md).
+> **Historical (archived 2026-11-21, Phase 4).** Kept unchanged as a record; not a current plan. Current documents: [docs/README.md](../../../README.md#documentation); this archive: [history/README.md](../README.md).
 
 # Phase 2 (Beta 2): Controller, Focus, Interaction, Input, Haptics & UX Reliability
 
 > **Status: ACCEPTED AND CLOSED BY OWNER (2026-11-20).** See "Closure" below and DECISIONS.md, 2026-11-20, "Phase 2 accepted and closed".
 
-Written 2026-11-19 on `open-source-gpl` at `7dbade6`. The tree was clean, and the screenshot left untracked at Phase 1's end was gone. Phase 1 had been accepted by the owner, and the owner's Phase 2 brief of the same day authorised this work (DECISIONS.md, 2026-11-19, "Phase 2 authorised"). Scope, order and exit criteria are in [BETA-2.md](BETA-2-PHASES.md); each issue's record is in [BETA-BUG-TRACKER.md](../../planning/BETA-BUG-TRACKER.md); runs are in VERIFICATION.md, "Phase 2". This file holds the plan, the audit behind it, and the interaction contract it implements.
+Written 2026-11-19 on `open-source-gpl` at `7dbade6`. The tree was clean, and the screenshot left untracked at Phase 1's end was gone. Phase 1 had been accepted by the owner, and the owner's Phase 2 brief of the same day authorised this work (DECISIONS.md, 2026-11-19, "Phase 2 authorised"). Scope, order and exit criteria are in [BETA-2.md](BETA-2-PHASES.md); each issue's record is in [BETA-BUG-TRACKER.md](../../BETA-BUG-TRACKER.md); runs are in VERIFICATION.md, "Phase 2". This file holds the plan, the audit behind it, and the interaction contract it implements.
 
 **Hardware at the start.** Over USB adb: the Nothing Phone (2a) and the Xiaomi Pad 7 (both physical). Also this Windows 11 machine, the Google TV emulator (`Reflux_TV`), the Ubuntu 26.04 QA VM, and WSL2. The Fire TV was not connected (it uses network adb at a changing address). There is one monitor at a time (see B-002).
 
@@ -197,9 +197,9 @@ The closing walks are recorded in VERIFICATION.md, "Phase 2: closing walks and c
 
 | Issue | What | State |
 | --- | --- | --- |
-| [B-058](../../planning/BETA-BUG-TRACKER.md#b-058) | Linux on Wayland: the video covered the player's controls (also in the released beta) | Fixed; walked in the Linux VM |
-| [B-059](../../planning/BETA-BUG-TRACKER.md#b-059) | A Search tab clicked with the mouse took the typing; Backspace then left Search | Fixed; walked in the Linux VM |
-| [B-060](../../planning/BETA-BUG-TRACKER.md#b-060) | Panels opened in place lost focus to the navigation; Back skipped them | Fixed; walked on the Google TV emulator by hand |
+| [B-058](../../BETA-BUG-TRACKER.md#b-058) | Linux on Wayland: the video covered the player's controls (also in the released beta) | Fixed; walked in the Linux VM |
+| [B-059](../../BETA-BUG-TRACKER.md#b-059) | A Search tab clicked with the mouse took the typing; Backspace then left Search | Fixed; walked in the Linux VM |
+| [B-060](../../BETA-BUG-TRACKER.md#b-060) | Panels opened in place lost focus to the navigation; Back skipped them | Fixed; walked on the Google TV emulator by hand |
 
 **Skipped by the owner's decision.**
 - **B-056:** deferred, a known minor issue.
@@ -219,14 +219,14 @@ The owner's final verification brief made the Windows PC, the GameSir G7 Pro, th
 
 | Issue | What | State |
 | --- | --- | --- |
-| [B-002](../../planning/BETA-BUG-TRACKER.md#b-002) | Controls window sized in the wrong scale on the 150% monitor. Java2D's Direct3D pipeline is now off on Windows | Fixed, walked on the owner's two monitors |
-| [B-050](../../planning/BETA-BUG-TRACKER.md#b-050) | Reflux crashed when the controller reconnected (the joystick API corrupting the heap). Now asked only for non-XInput controllers, once devices have settled | Fixed, walked; a DualSense hot-plug is pending |
-| [B-054](../../planning/BETA-BUG-TRACKER.md#b-054) | Reflux keyboard cursor jumping to the end; the field's caret not following; held X | Fixed, walked |
-| [F-P2](../../planning/BETA-BUG-TRACKER.md#f-p1-and-f-p2) | Y toggles the sidebar (the owner's decision on the walk) | Fixed, walked |
-| [F-002](../../planning/BETA-BUG-TRACKER.md#f-002) revised | Controller feedback on by default on Windows **and Linux** (kernel force feedback); a light tick on moves, a confirmation on choices | Windows felt; Linux tested against a faked kernel and its libc path in a VM; physical Linux pending |
-| [B-051](../../planning/BETA-BUG-TRACKER.md#b-051) | A mouse can open and use the Reflux keyboard from Search on Windows and Linux | Fixed, walked on Windows |
-| [B-052](../../planning/BETA-BUG-TRACKER.md#b-052) | RT, or B held, closes the mini-player | Fixed, walked on Windows |
-| [B-053](../../planning/BETA-BUG-TRACKER.md#b-053) | Details opens on Play for a controller or a remote | Fixed, walked (Windows controller; Fire TV remote) |
-| [B-055](../../planning/BETA-BUG-TRACKER.md#b-055) | Controller hints: LT hides them; keys in their controller shapes, outlined; calm motion; the hold ring | Fixed, walked ("Looks right") |
-| [B-056](../../planning/BETA-BUG-TRACKER.md#b-056) | The screen blanks briefly when the mini-player closes (also by mouse, also with the B-002 change off) | Deferred: accepted as a known minor issue (the owner's decision, 2026-11-20) |
-| [B-057](../../planning/BETA-BUG-TRACKER.md#b-057) | Search redesign: the field leads; All / Movies / Shows as a real filter; the idle page from the library (recent, quick finds with counts, genres); results in sections; a no-results page with ways on | Fixed; walked on the Pad 7 and the Fire TV |
+| [B-002](../../BETA-BUG-TRACKER.md#b-002) | Controls window sized in the wrong scale on the 150% monitor. Java2D's Direct3D pipeline is now off on Windows | Fixed, walked on the owner's two monitors |
+| [B-050](../../BETA-BUG-TRACKER.md#b-050) | Reflux crashed when the controller reconnected (the joystick API corrupting the heap). Now asked only for non-XInput controllers, once devices have settled | Fixed, walked; a DualSense hot-plug is pending |
+| [B-054](../../BETA-BUG-TRACKER.md#b-054) | Reflux keyboard cursor jumping to the end; the field's caret not following; held X | Fixed, walked |
+| [F-P2](../../BETA-BUG-TRACKER.md#f-p1-and-f-p2) | Y toggles the sidebar (the owner's decision on the walk) | Fixed, walked |
+| [F-002](../../BETA-BUG-TRACKER.md#f-002) revised | Controller feedback on by default on Windows **and Linux** (kernel force feedback); a light tick on moves, a confirmation on choices | Windows felt; Linux tested against a faked kernel and its libc path in a VM; physical Linux pending |
+| [B-051](../../BETA-BUG-TRACKER.md#b-051) | A mouse can open and use the Reflux keyboard from Search on Windows and Linux | Fixed, walked on Windows |
+| [B-052](../../BETA-BUG-TRACKER.md#b-052) | RT, or B held, closes the mini-player | Fixed, walked on Windows |
+| [B-053](../../BETA-BUG-TRACKER.md#b-053) | Details opens on Play for a controller or a remote | Fixed, walked (Windows controller; Fire TV remote) |
+| [B-055](../../BETA-BUG-TRACKER.md#b-055) | Controller hints: LT hides them; keys in their controller shapes, outlined; calm motion; the hold ring | Fixed, walked ("Looks right") |
+| [B-056](../../BETA-BUG-TRACKER.md#b-056) | The screen blanks briefly when the mini-player closes (also by mouse, also with the B-002 change off) | Deferred: accepted as a known minor issue (the owner's decision, 2026-11-20) |
+| [B-057](../../BETA-BUG-TRACKER.md#b-057) | Search redesign: the field leads; All / Movies / Shows as a real filter; the idle page from the library (recent, quick finds with counts, genres); results in sections; a no-results page with ways on | Fixed; walked on the Pad 7 and the Fire TV |

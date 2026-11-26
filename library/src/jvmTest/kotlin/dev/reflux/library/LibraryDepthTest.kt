@@ -41,7 +41,7 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-/** A media server whose catalog describes its works (docs/METADATA.md, "Provenance and precedence"). */
+/** A media server whose catalog describes its works (docs/product/METADATA.md, "Provenance and precedence"). */
 private class DescribingServer(name: String) : CatalogSource {
     var entries = mutableListOf<CatalogEntry>()
     var reachable = true

@@ -45,7 +45,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 /**
- * The visual system of M4 (docs/DESIGN.md, "Visual system"), held by what the rendered screens show rather than by
+ * The visual system of M4 (docs/product/DESIGN.md, "Visual system"), held by what the rendered screens show rather than by
  * golden images: material tiers and their opaque fallback, artwork under the navigation, Media Atmosphere off and
  * on, edge to edge, and the cues for where the viewer is. Each test also saves its screens for review
  * (`-Preflux.screenshots=<dir>`), which together are the representative set for visual regressions.

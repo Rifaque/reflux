@@ -16,7 +16,7 @@ import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
 /**
- * The boundaries the M8 architecture challenge probed (docs/VERIFICATION.md, "M8: architecture challenge"): nothing
+ * The boundaries the M8 architecture challenge probed (docs/verification/VERIFICATION.md, "M8: architecture challenge"): nothing
  * behind the question of who is watching can be reached, the navigation fits every window it is placed in, and
  * nothing of one viewer's session is left on screen for the next.
  */

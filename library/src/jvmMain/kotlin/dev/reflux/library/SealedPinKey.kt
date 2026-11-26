@@ -7,12 +7,12 @@ import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
 
 /**
- * The key profile PINs are checked with (docs/WATCH_STATE.md, "Profiles"): 32 random bytes made once per
+ * The key profile PINs are checked with (docs/product/WATCH_STATE.md, "Profiles"): 32 random bytes made once per
  * installation and kept the way server credentials are, through the platform's [ConfigSeal] (Windows Credential
  * Manager, the Secret Service on Linux, a key in the Android keystore). The database keeps only what the seal
  * returns. So a copy of the database alone cannot be used to try PINs; where the platform has no secure store
  * (a Linux desktop without a Secret Service) the key is kept as it is, and the PIN is a lock on the interface only,
- * which docs/PRIVACY.md says.
+ * which docs/release/PRIVACY.md says.
  */
 class SealedPinKey(private val library: Library, private val seal: ConfigSeal) : PinKey {
     private val random = SecureRandom()

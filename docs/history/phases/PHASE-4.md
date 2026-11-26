@@ -1,6 +1,8 @@
+> **Historical (archived 2026-11-26).** Phase 4's record, closed on 2026-11-21. Kept unchanged as a record; not a current plan. Current documents: [README.md](../../../README.md#documentation); this archive: [history/README.md](../README.md).
+
 # Phase 4: consolidation, product direction, store assets, website, release infrastructure
 
-The execution record for Phase 4 (the owner's master prompt of 2026-11-21, "Reflux | Phase 4 Autonomous Mission", from the brief in [history/phases/PHASE-4-HANDOFF.md](../history/phases/PHASE-4-HANDOFF.md)): what was done in each workstream, its evidence, what is left, and the Beta 2 readiness assessment. Decisions: [DECISIONS.md](../DECISIONS.md), 2026-11-21. Runs: [VERIFICATION.md](../VERIFICATION.md), "Phase 4".
+The execution record for Phase 4 (the owner's master prompt of 2026-11-21, "Reflux | Phase 4 Autonomous Mission", from the brief in [history/phases/PHASE-4-HANDOFF.md](PHASE-4-HANDOFF.md)): what was done in each workstream, its evidence, what is left, and the Beta 2 readiness assessment. Decisions: [DECISIONS.md](../../decisions/DECISIONS.md), 2026-11-21. Runs: [VERIFICATION.md](../../verification/VERIFICATION.md), "Phase 4".
 
 **Phase 4 authorises no release.** Nothing was pushed, merged, tagged, deployed, uploaded to a store, submitted, or announced. Beta 2's scope stayed frozen: no product behaviour changed.
 
@@ -25,8 +27,8 @@ The execution record for Phase 4 (the owner's master prompt of 2026-11-21, "Refl
 | --- | --- | --- | --- |
 | P0 | Baseline and health | Done | Above |
 | P1 | Documentation audit and consolidation | Done | [P1](#p1-documentation) |
-| P2 | Product roadmap and versions | Done | [ROADMAP.md](../ROADMAP.md); [P2](#p2-roadmap) |
-| P3 | LaunchFrame and store screenshots | Done, Fire TV provenance pending the owner | [store-assets/release-0.9.0-beta.2](../../store-assets/release-0.9.0-beta.2/README.md); [P3](#p3-store-assets) |
+| P2 | Product roadmap and versions | Done | [ROADMAP.md](../../ROADMAP.md); [P2](#p2-roadmap) |
+| P3 | LaunchFrame and store screenshots | Done, Fire TV provenance pending the owner | [store-assets/release-0.9.0-beta.2](../../../store-assets/release-0.9.0-beta.2/README.md); [P3](#p3-store-assets) |
 | P4 | Website overhaul | Done, not deployed | [P4](#p4-website) |
 | P5 | Distribution | Rehearsed locally; owner steps remain | [P5](#p5-distribution) |
 | P6 | Beta 2 readiness | Assessed: ready with known risks | [Beta 2 readiness](#beta-2-readiness) |
@@ -40,7 +42,7 @@ The execution record for Phase 4 (the owner's master prompt of 2026-11-21, "Refl
 
 ## P2 roadmap
 
-[ROADMAP.md](../ROADMAP.md): where Reflux is; the platforms; the path (alpha, Beta 1, Beta 2 current, Beta 3 and RC, V1.0, V1.1, V1.2, V1.3, V1.5, V2.0) with themes and statuses (Completed, Current, Committed, Planned, Under consideration, Long-term vision); V1.0's 17 criteria and today's gaps against them; for each later version, initiatives with user problem, outcome, priority, dependencies, platforms, risk and status; F-003 unscheduled by the owner's decision; not planned; ecosystem notes (2026-11-21); the public roadmap's source (`website/src/roadmap.js`). Rationale: DECISIONS.md, 2026-11-21.
+[ROADMAP.md](../../ROADMAP.md): where Reflux is; the platforms; the path (alpha, Beta 1, Beta 2 current, Beta 3 and RC, V1.0, V1.1, V1.2, V1.3, V1.5, V2.0) with themes and statuses (Completed, Current, Committed, Planned, Under consideration, Long-term vision); V1.0's 17 criteria and today's gaps against them; for each later version, initiatives with user problem, outcome, priority, dependencies, platforms, risk and status; F-003 unscheduled by the owner's decision; not planned; ecosystem notes (2026-11-21); the public roadmap's source (`website/src/roadmap.js`). Rationale: DECISIONS.md, 2026-11-21.
 
 ## P3 store assets
 
@@ -117,7 +119,7 @@ New results only; the record is VERIFICATION.md, "Phase 4". Historical results (
 
 ## Closure
 
-**Phase 4 is complete, with owner-dependent items.** Every in-scope workstream was carried out and checked; what remains needs the owner's accounts, devices, or approval. **Phase 4 does not authorise any release:** Beta 2 still waits for the gate in [BETA.md](../BETA.md).
+**Phase 4 is complete, with owner-dependent items.** Every in-scope workstream was carried out and checked; what remains needs the owner's accounts, devices, or approval. **Phase 4 does not authorise any release:** Beta 2 still waits for the gate in [BETA.md](../../release/BETA.md).
 
 **Commits** (branch `open-source-gpl`, local, not pushed): `232ef76` documentation consolidation, roadmaps, beta documents, changelog categories, link check, B-075; `684158c` the website; `85d6d26` the store assets; `1aa0ce8` RELEASE.md's process and matrix, CLAUDE.md; `90a42da` B-075's second part; `5491309` README, CONTRIBUTING, readiness; then the P5 and closure records.
 

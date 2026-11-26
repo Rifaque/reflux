@@ -6,7 +6,7 @@ data class Easing(val x1: Float, val y1: Float, val x2: Float, val y2: Float)
 data class MotionSpec(val durationMs: Int, val easing: Easing)
 
 /**
- * The motion vocabulary (docs/DESIGN.md, "Motion"). Motion says what changed and where it went; durations are
+ * The motion vocabulary (docs/product/DESIGN.md, "Motion"). Motion says what changed and where it went; durations are
  * short enough never to slow navigation, and nothing moves on its own. With the system's reduce-motion setting,
  * every one of these takes no time, and the end state is drawn as it would have been.
  */

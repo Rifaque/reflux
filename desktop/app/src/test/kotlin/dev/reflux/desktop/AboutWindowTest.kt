@@ -36,7 +36,7 @@ class AboutWindowTest {
         assumeTrue("window tests not requested", windowTestsRequested)
         try {
             Shell(environment()).use { shell ->
-                // About is reached from Settings since M8 (docs/NAVIGATION.md, section 1).
+                // About is reached from Settings since M8 (docs/product/NAVIGATION.md, section 1).
                 shell.awaitShown("Settings")
                 shell.click("Settings")
                 shell.click("About Reflux")

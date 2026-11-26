@@ -4,7 +4,7 @@ package dev.reflux.core.playback
  * What is known of something this client may or may not be able to do.
  *
  * [UNKNOWN] is an answer, not a missing one: it does not mean supported and it does not mean unsupported. Whoever
- * reads it decides what to do about not knowing (docs/PLAYBACK.md, section 6).
+ * reads it decides what to do about not knowing (docs/product/PLAYBACK.md, section 6).
  */
 enum class Support {
     SUPPORTED,

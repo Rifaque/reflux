@@ -121,7 +121,7 @@ internal fun DetailsScreen(app: AppState, itemId: MediaId, scope: LibraryScope =
 }
 
 /**
- * Where the page was opened from (docs/NAVIGATION.md, section 4): what it lists, plays, and keeps is the unified
+ * Where the page was opened from (docs/product/NAVIGATION.md, section 4): what it lists, plays, and keeps is the unified
  * library's, or one source's, and the pages it leads to stay there.
  */
 private val LocalLibraryScope = staticCompositionLocalOf<LibraryScope> { LibraryScope.Unified }

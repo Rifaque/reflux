@@ -40,7 +40,7 @@ import java.awt.event.HierarchyEvent
  * Video goes straight from the engine to a native child window (mpv's `wid`), which keeps hardware
  * decoding zero-copy and lets the engine drive the display directly (HDR output, frame timing). Because a
  * native surface always sits above toolkit-drawn content in the same window, the player's controls are
- * drawn in a transparent window layered over it ([VideoOverlay]). See docs/DECISIONS.md.
+ * drawn in a transparent window layered over it ([VideoOverlay]). See docs/decisions/DECISIONS.md.
  */
 internal class VideoSurface {
     /** The surface to show, or null while nothing is playing. A new one is made for every player. */

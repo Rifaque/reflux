@@ -167,7 +167,7 @@ internal fun SourcesScreen(app: AppState) {
                 )
             }
         }
-        // Settings (Media Atmosphere, online lookups) and About live in Settings since M8 (docs/NAVIGATION.md, section 1).
+        // Settings (Media Atmosphere, online lookups) and About live in Settings since M8 (docs/product/NAVIGATION.md, section 1).
     }
 }
 
@@ -179,7 +179,7 @@ private fun iconOf(kind: ConnectionKind?): Icon = when (kind) {
 
 /**
  * A source as one quiet card: what it is, whether it is there, and whether it is in the library; selecting it
- * shows the rest: its switch and its libraries' (docs/NAVIGATION.md, section 5), the way into its own library, and
+ * shows the rest: its switch and its libraries' (docs/product/NAVIGATION.md, section 5), the way into its own library, and
  * what can be done about it.
  */
 @Composable

@@ -176,7 +176,7 @@ class WatchReconcilerTest {
         assertEquals(SourceUpdate(true, null), reconcile(finished, theirs, baselineOf(theirs, 1_000), now = 3_000, version = extendedOnServer).update)
     }
 
-    // Clearing local watch history (docs/WATCH_STATE.md, "Clearing local watch history") ------------------------
+    // Clearing local watch history (docs/product/WATCH_STATE.md, "Clearing local watch history") ------------------------
 
     private fun afterClear(theirs: SourceUserState, baseline: SyncBaseline?, clearedAt: Long, now: Long = 5_000, mine: WatchState? = null) =
         WatchReconciler.reconcile(id, mine, theirs, baseline, onServer, now, clearedAtEpochMs = clearedAt)

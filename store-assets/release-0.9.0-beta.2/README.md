@@ -1,6 +1,6 @@
 # Reflux — store assets for 0.9.0-beta.2
 
-Made with LaunchFrame 2.0.0 (the Claude Code plugin `launch-frame@launch-frame`) in Phase 4, 2026-11-21. **Generated and validated; nothing uploaded.** Beta 2 is not approved or cut yet (docs/BETA.md); these are ready for its listing update. The folder name is the version these assets are for, not a version cut.
+Made with LaunchFrame 2.0.0 (the Claude Code plugin `launch-frame@launch-frame`) in Phase 4, 2026-11-21. **Generated and validated; nothing uploaded.** Beta 2 is not approved or cut yet (docs/release/BETA.md); these are ready for its listing update. The folder name is the version these assets are for, not a version cut.
 
 **The images are in the release archive, not in Git:** see [ARCHIVE.md](ARCHIVE.md) to restore them.
 
